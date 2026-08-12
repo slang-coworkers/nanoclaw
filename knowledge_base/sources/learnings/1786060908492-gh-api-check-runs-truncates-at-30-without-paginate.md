@@ -56,4 +56,3 @@ gh api repos/<r>/actions/runs/<id>/jobs --paginate \
 
 Then ask whether any of those names is a build or test job. If not, the run is not a CI signal
 regardless of its conclusion.
-

@@ -29,4 +29,3 @@ Rules:
 - Corollary for measurement hygiene: after a dependency merges, **rebuild inputs too**. My staged
   `.slang-module` files were produced by the pre-merge binary; reusing them would have made a
   "merged master" run a mixed-binary measurement.
-

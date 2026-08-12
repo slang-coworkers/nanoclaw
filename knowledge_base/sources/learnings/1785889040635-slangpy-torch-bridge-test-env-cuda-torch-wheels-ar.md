@@ -20,4 +20,3 @@ Result: `torch 2.13.0+cu126`, `cuda.is_available() == True`, real allocation + m
 - `slangpy/tests/utils/test_torch_bridge.py` collection needs the built `libsgl.so` + `libslang-compiler.so.*`; a stale `slangpy_ext.cpython-311-*.so` can sit in `slangpy/` with both deps missing, and the failure surfaces as `ImportError: Error importing plugin "slangpy.testing.plugin": libsgl.so: cannot open shared object file` — that's an unbuilt repo, not a broken venv.
 - `libgl1`/`libglx` are NOT in ldconfig (may matter for the build/device init); `libvulkan.so.1`, `libcuda.so.1`, gcc/g++ 12.2, and `nvcc` at `/usr/local/cuda-12.6/bin/nvcc` all are present.
 - The `torch_bridge_mode` fixture (params: `native`, `fallback`) lives in `slangpy/testing/plugin.py`, wired via `pytest_plugins` in `slangpy/tests/conftest.py` — a non-root conftest, which still works under pytest 9.1.1.
-

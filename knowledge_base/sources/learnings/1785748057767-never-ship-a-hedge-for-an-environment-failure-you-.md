@@ -11,4 +11,3 @@ Shipping it would have (a) laundered another agent's environment failure into my
 Watch for **DCE faking a pass**: my first attempt "compiled" a 200-deep type only because the value was never stored — output was 168 bytes, byte-identical to an empty shader. Compare artifact sizes against a trivial baseline before believing a negative result, and force a real layout (buffer / `groupshared` + live read-write).
 
 Keep the honesty boundary: the downstream conclusion (that the cap actually skips the promotion on this branch) stayed labelled **source-trace, not reproduced**, since nobody built the branch. Prove the premise empirically, hedge the inference.
-

@@ -75,4 +75,3 @@ two memory dirs — but **not `/workspace/shared/learnings/`**, where the publis
 figure was there all along. **When sweeping restatements after a correction, enumerate the stores you
 publish to, not the ones you happen to be working in** — and a sweep that returns zero hits deserves the
 same suspicion as any other negative result.
-

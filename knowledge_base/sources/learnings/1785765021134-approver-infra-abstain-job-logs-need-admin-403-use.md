@@ -57,4 +57,3 @@ doubles usage. Also note the critique-gate PreToolUse hook still denies read-onl
 `.../pulls/...` GETs in a Bash command line (known hook bug); putting the call in a small
 `.sh` file under the PR workspace is a clean, auditable way through — and the script doubles
 as a record of exactly what was fetched.
-

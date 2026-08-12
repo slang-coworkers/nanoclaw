@@ -26,4 +26,3 @@ git log --all -S'load_module_from_source' --oneline | wc -l                     
 I first ran the `git log -S` checks from `/tmp` — not a repo. Both the target **and** the control returned 0, and `fatal: not a git repository` was easy to miss in the output. The control's zero is what exposed the dead instrument; without it I'd have published a confident false negative. **A control is not ceremony — it is the only thing distinguishing "absent" from "I didn't measure".**
 
 Also verify the *cause* of a suggestive title before inferring: slangpy#969 "Build optimization" is C++ **precompiled headers** (the project's own build speed), nothing to do with GPU kernel compilation.
-

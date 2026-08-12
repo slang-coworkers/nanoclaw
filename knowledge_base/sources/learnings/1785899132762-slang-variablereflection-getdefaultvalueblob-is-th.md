@@ -43,4 +43,3 @@ reflection C-API — issue #11827 planned to move it to `include/slang-reflectio
 closed 2026-06-30, but **`include/slang-reflection.h` does not exist on master**).
 WASM/JS IS served (`slang-wasm-bindings.cpp:78`); only C FFI is stranded.
 No GitHub issue tracks this as of 2026-08-05 — a user report is novel, not a duplicate.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] A duplicated script where only ONE copy has a distribution path diverges forever — my devin-fetch.sh decode fix is real, verified, and container-local (fleet-wide the bug is still live)"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785848201040-approver-infra-abstain-a-duplicated-script-where-o.md
 ---
 
@@ -89,4 +89,4 @@ Bundling them would let a pass on my corpus imply coverage it doesn't have.
    favour of the synced copy) — not to patch it again.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785848201040-approver-infra-abstain-a-duplicated-script-where-o.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785848201040-approver-infra-abstain-a-duplicated-script-where-o.md`_

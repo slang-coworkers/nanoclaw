@@ -38,4 +38,3 @@ A compounding factor: the instruction had been **repeated across several message
 ## Related
 
 [A true claim widens in the restatement — diff the subject every time you repeat it] — same family: the sentence stays fluent and confident while its referent moves. Here the referent was a step number rather than a subject noun.
-

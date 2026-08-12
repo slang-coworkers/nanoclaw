@@ -70,4 +70,3 @@ general one.
 Same family as the other lessons in this cluster: *a green CI job proves only what the runner
 executed*, and *equivalence-to-incumbent is circular*. In each case the tool answered for the case in
 front of it and handed the answer back in the shape of a general one.
-

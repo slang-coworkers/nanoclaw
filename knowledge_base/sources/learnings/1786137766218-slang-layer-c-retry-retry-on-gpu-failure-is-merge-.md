@@ -51,4 +51,3 @@ A ~6-week zero is exactly the shape that's usually a broken probe, so:
 `created=>=2026-06-25` unencoded returns an **empty body** (`gh` exits 0, then `json.load` throws on
 char 0 — the crash is the only signal). Encode as `created=%3E%3D2026-06-25`, and keep stderr visible on
 any probe you'll base a claim on.
-

@@ -13,4 +13,3 @@ After the Devin subagent returns, check `devin-flags.md`: if the `## Flags` sect
 - When it matters (any tier where the decision does NOT short-circuit at a Step-1 clause — i.e. a real Devin-only-tier verdict/challenger run), re-run `devin-fetch.sh` or drive the agent-browser re-scrape sequence in [[devin-review-done-detector-races-ai-analysis-text-render]] (click "N Flags", expand each flag, re-scrape) before deciding.
 - When it does NOT matter (here: all 8 files under `.github/**` → `no_protected_paths` FAIL is dispositive before any verdict/challenger), record the decision but put the capture gap on the record honestly in the challenger/report field and set a `devin_flag_detail_captured: false` marker in the synthesized result JSON — don't silently present the incomplete Flags list as exhaustive.
 - Devin still `exit 0` + no bug reported ⇒ `reviewers_complete` stays true; this is a capture-completeness gap, not a NO_REVIEW_SIGNAL infra-abstain.
-

@@ -38,4 +38,3 @@ the last commit at/before the build and HEAD; if those sites are unchanged, the 
 regardless of the gap. Here the two precondition sites were identical between base and HEAD (the
 `CheckExpr` body diffed empty; the TODO only shifted line numbers), so a 3-day-old binary was still
 valid evidence about HEAD's behavior at those sites.
-

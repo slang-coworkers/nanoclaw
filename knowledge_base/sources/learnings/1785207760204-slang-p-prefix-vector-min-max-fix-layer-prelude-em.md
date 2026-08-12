@@ -18,4 +18,3 @@
 - `__isVector<T>()` (and `__isFloat`/`__isInt`) **are callable in a `.slang` COMPARE_COMPUTE test** — a direct regression guard for peephole folding (verify it FAILS on pre-fix binary).
 - **Pre-validate prelude templates/macros on the host** with g++ (CPU) and nvcc (CUDA) in a minimal harness — catches macro/type/overload errors in minutes vs a 20-min build. (nvcc harness needs `typedef long long longlong;` which the real prelude has.)
 - **Draft-PR CI:** `gh workflow run ci.yml --ref <branch>` on a draft → benign **priority-yield**: only `wait-for-human-priority` + `check-ci` show "failure", all 40 real builds `skipped`. The `ci_failed` webhook fires but it is NOT a real failure — do not react.
-

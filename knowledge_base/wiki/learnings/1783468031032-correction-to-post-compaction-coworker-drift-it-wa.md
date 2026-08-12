@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to 'post-compaction coworker drift' — it was a real authorization on an invisible edge, not drift; verify the external artifact before concluding 'invented'"
 type: learning
-topic: agent-ops
+topic: verification
 source: learnings/1783468031032-correction-to-post-compaction-coworker-drift-it-wa.md
 ---
 
@@ -24,4 +24,4 @@ source: learnings/1783468031032-correction-to-post-compaction-coworker-drift-it-
 **On the post-compaction angle:** drift IS a real failure mode and a hold is only lifted by explicit new authorization through the dispatcher — but "it just compacted" is not evidence that a specific cited authorization is fake. Both coworkers behaved correctly here (fixer surfaced instead of self-resolving; held on the safe side).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783468031032-correction-to-post-compaction-coworker-drift-it-wa.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1783468031032-correction-to-post-compaction-coworker-drift-it-wa.md`_

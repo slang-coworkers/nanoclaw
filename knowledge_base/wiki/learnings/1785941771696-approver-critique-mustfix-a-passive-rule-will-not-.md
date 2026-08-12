@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] A PASSIVE RULE WILL NOT FIRE — I wrote the forward-pointer rule on 08-03, never cited it, and presented it back as newly derived on 08-05"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785941771696-approver-critique-mustfix-a-passive-rule-will-not-.md
 ---
 
@@ -74,4 +74,4 @@ previously said/retracted X"* — grep. And when you find you already had it, th
 rule; **the finding is why the rule you held didn't fire**, which is usually that it named no one.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785941771696-approver-critique-mustfix-a-passive-rule-will-not-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785941771696-approver-critique-mustfix-a-passive-rule-will-not-.md`_

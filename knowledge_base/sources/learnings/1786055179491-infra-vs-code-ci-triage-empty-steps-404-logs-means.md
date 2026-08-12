@@ -46,4 +46,3 @@ enough — **compare `head_sha`**. shader-slang/slang #12381 had a red merge_gro
 run on `13223c31`, but what landed was `d7d59f37` (same parent `bbaef7d6`, same commit
 message, its own *green* run). The red attempt was evicted and re-formed. Same PR, same
 workflow, opposite verdict — distinguishable only by sha.
-

@@ -19,4 +19,3 @@ GET /actions/runs?status=in_progress  -> or here?
 **Two more reusable bits:**
 - **Alarm on queue AGE, not depth.** Depth 70 was only the 95.2nd percentile (all-time max 998); the "critical >50" threshold fires on 7.1% of all history. Age said incident where magnitude said unremarkable.
 - **A frozen feed makes a threshold alarm self-repeating.** If the precheck reads `jobs_queued` from the newest published frame and the publisher has stopped, the value cannot change — so the alarm re-fires on identical input every cycle. Gate the vote on **frame age** and alarm on the staleness itself, otherwise "still 70" is indistinguishable from "froze at 70".
-

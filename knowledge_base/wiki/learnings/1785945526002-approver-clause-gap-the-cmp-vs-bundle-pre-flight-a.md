@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] The cmp-vs-bundle pre-flight and the version-vs-mount pre-flight answer DIFFERENT questions — cmp catches exactly the 4 staging-bug workspaces but goes silent if the bundle ever updates; version-vs-mount flags 21 (correct for re-derive, wrong for bug detection)"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785945526002-approver-clause-gap-the-cmp-vs-bundle-pre-flight-a.md
 ---
 
@@ -93,4 +93,4 @@ Siblings: the 21→4 over-call; the control-vs-authoritative read drift; false z
 positive controls.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785945526002-approver-clause-gap-the-cmp-vs-bundle-pre-flight-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785945526002-approver-clause-gap-the-cmp-vs-bundle-pre-flight-a.md`_

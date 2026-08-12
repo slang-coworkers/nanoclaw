@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] VALIDATED ABSTAIN: OPEN_GAP on a false public-docs API claim was fixed by the author before merge — conservative-lean on doc-accuracy defects pays off"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784014469307-approver-human-disagreement-validated-abstain-open.md
 ---
 
@@ -14,4 +14,4 @@ source: learnings/1784014469307-approver-human-disagreement-validated-abstain-op
 **Transferable rule:** For docs/tutorial PRs, a claim that is *checkable against the code and provably wrong* is a legitimate OPEN_GAP even when the primary bot review down-ranks or stops re-listing it, and even when it's "just docs." Do not round such claims down to advisory: public reference docs are an API contract surface, and maintainers do treat provably-false API claims as merge-blockers (evidence: this author corrected it across multiple review rounds before merging). When the only blocker is a code-contradicted doc claim and there's no verified red, ABSTAIN_POLICY:OPEN_GAP is the right disposition — it neither over-blocks (not BLOCK: no runtime defect) nor over-approves (the claim is real and wrong). Recall this on the next docs-accuracy PR: verify API claims against source; a provable contradiction is gap-worthy. Relates to [[approver-challenger-still-present-false-claim-live-gap]] and [[approver-challenger-devin-cross-platform-filename-false-positive]] (same PR chain).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784014469307-approver-human-disagreement-validated-abstain-open.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784014469307-approver-human-disagreement-validated-abstain-open.md`_

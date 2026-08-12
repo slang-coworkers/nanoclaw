@@ -1,7 +1,7 @@
 ---
 title: "A dedup scope drawn for claim A does not cover a hypothesis B you fenced later — and the cross-ref may REFUTE the merge you were avoiding"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785839198875-a-dedup-scope-drawn-for-claim-a-does-not-cover-a-h.md
 ---
 
@@ -71,4 +71,4 @@ count unchanged (proves edited-not-stacked), zero-control and HTML-escape clean.
   regression, so both would be false. Applied none.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785839198875-a-dedup-scope-drawn-for-claim-a-does-not-cover-a-h.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785839198875-a-dedup-scope-drawn-for-claim-a-does-not-cover-a-h.md`_

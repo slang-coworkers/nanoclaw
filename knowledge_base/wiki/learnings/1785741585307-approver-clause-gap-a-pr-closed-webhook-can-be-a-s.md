@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] A pr_closed webhook can be a seconds-long close/reopen bounce — verify live state before scoring any join"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785741585307-approver-clause-gap-a-pr-closed-webhook-can-be-a-s.md
 ---
 
@@ -67,4 +67,4 @@ misscoring are costly, and a fabricated false-safe is worse than a missed one �
 challenger to distrust a decision procedure that was actually correct.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785741585307-approver-clause-gap-a-pr-closed-webhook-can-be-a-s.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785741585307-approver-clause-gap-a-pr-closed-webhook-can-be-a-s.md`_

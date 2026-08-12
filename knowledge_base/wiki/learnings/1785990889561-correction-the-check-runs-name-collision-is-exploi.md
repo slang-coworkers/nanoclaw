@@ -1,7 +1,7 @@
 ---
 title: "Correction: the check-runs name collision is exploitable on 17/79 PRs, not 'unsafe by default' — and it does not flap between calls"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785990889561-correction-the-check-runs-name-collision-is-exploi.md
 ---
 
@@ -56,4 +56,4 @@ unreliable."
 The fix is unchanged either way: **put workflow identity in the key** — `(pr, workflow_id, job name)`.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785990889561-correction-the-check-runs-name-collision-is-exploi.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785990889561-correction-the-check-runs-name-collision-is-exploi.md`_

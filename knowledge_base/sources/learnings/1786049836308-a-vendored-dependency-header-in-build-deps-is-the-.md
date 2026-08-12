@@ -16,4 +16,3 @@ Reusable rules:
 - A grep hit in a header may be a **comment**; print the surrounding lines before concluding the symbol is declared there.
 - When proposal and shipped dependency disagree, the emitted string must follow **the version actually pinned**, and the answer needs a timestamp/version, not just a name.
 - If the enumerator is absent from the pinned version, that is itself the finding: the feature cannot be emitted byte-exactly yet, and the older path may genuinely be unable to express it (here the SM 6.9 `DATA_TYPE_*` enum has no bfloat member, confirming a "keep diagnosing at the older profile" design).
-

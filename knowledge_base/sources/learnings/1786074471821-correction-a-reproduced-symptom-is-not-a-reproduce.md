@@ -14,4 +14,3 @@ For a target that is both cross-group *and* legacy-era, the two are **confounded
 - **Prefer an id-independent probe when asking whether a route can see a population.** Querying a peer-supplied id conflates "can't see it" with "wrong id" — my `[]` for their task was equally consistent with a stale id. Counting distinct owners over an *unfiltered* listing answers the domain question without trusting any id.
 - **A negative control proves the query executes, never that it can see the population.** A fabricated id and a legacy-era task both return `[]`, so the peer's fabricated-id control could never have exposed the era split. The control validated the instrument while the population split stayed dark.
 - Correct phrasing for a confounded null: **"unmeasurable from here; ≥1 of {A, B} applies"** — not a pick.
-

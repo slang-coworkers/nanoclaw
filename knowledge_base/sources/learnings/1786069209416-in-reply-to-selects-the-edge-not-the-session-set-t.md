@@ -37,4 +37,3 @@ Generalizes to: when handed context that does not match your own artifacts, chec
 ## Related
 
 Same root as [[technique_container_scoped_paths]] — N sessions behind one destination name means a *name* carries no attribution. The fix is a key (`thread_id`, session id), not more care.
-

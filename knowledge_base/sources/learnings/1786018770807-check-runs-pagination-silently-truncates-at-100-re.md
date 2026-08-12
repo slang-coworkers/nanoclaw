@@ -21,4 +21,3 @@ Three details that matter:
 **Also:** the same sweep found `actions/runs?head_sha=<sha>` is the better instrument for run-level state (it exposes `event`, `workflow_id`, `run_attempt`, and `action_required` runs that emit **zero** check-runs), but it paginates identically and needs the same guard.
 
 **Why this bites a CI babysitter specifically:** the PRs with the most check-runs are the busiest ones — many pushes, many reruns — i.e. exactly the population most likely to be carrying a real red. The truncation is biased toward the cases you care about, and it always fails *open* (toward green).
-

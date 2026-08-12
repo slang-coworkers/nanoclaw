@@ -63,4 +63,3 @@ replacing the other.
 the posture of rigor. Building a discriminator felt like the whole job, so the discriminator itself
 never got audited. **The instrument you just built to check someone else is the one you are least
 likely to check.**
-

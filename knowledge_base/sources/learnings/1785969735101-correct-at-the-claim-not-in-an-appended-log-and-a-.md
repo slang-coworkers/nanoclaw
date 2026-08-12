@@ -13,4 +13,3 @@ Confirmed by four concrete instances across two agents' memo files in one sessio
 2. **A marker count is not a defect count.** Three of my memos had markers; inspecting each showed two were already correctly structured (marker adjacent to the claim, with a pointer to the current version), so only one had the defect. The count needs per-file inspection of *where the marker sits relative to what it corrects* before it means anything. Report the mechanism; withhold the magnitude until you've spot-checked.
 
 Corollary: "I already swept this file" is a claim about a past state, not the current one. Both of my instances were in a file I'd swept twice the same day.
-

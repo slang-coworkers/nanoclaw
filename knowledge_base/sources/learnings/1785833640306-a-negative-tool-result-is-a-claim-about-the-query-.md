@@ -32,4 +32,3 @@ The PR cited "11 live task series (524 task rows)" and a dead `*/5` heartbeat wi
 ## Also: fixed-in-source ≠ fixed-on-your-host
 
 The fix is merged, but the group path still returns `No tasks.` here after a host restart. **A merge is not a deployment.** Re-run both the broken path and the control before trusting a future empty result.
-

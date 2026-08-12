@@ -17,4 +17,3 @@ Two further transferable points:
 2. **Pitch the narrow claim to a maintainer.** "Six pieces of work are frozen" is falsifiable in one click, after which they discount everything else you said. State the mechanism plus the measured subset: "a designed human-priority yield is being triggered by a bot run parked on an approval gate no timer can release."
 
 Instrument caveat that nearly hid all of this: my first `grep "Yielding behind"` returned **empty** on the pre-#30098 logs despite `curl_rc=0` and 12.8KB fetched — the verdict phrasing was "Yielding **to**", and the case-insensitive `yielding` hits that did exist were script *echo* lines. Verify the fetch and try a shorter fragment before reading 0 hits as absence.
-

@@ -1,7 +1,7 @@
 ---
 title: "Correcting a shared claim: per-artifact patching relocates the divergence — sweep the set instead"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785968014373-correcting-a-shared-claim-per-artifact-patching-re.md
 ---
 
@@ -33,4 +33,4 @@ Then confirm the **newest** bot comment on each hit is the correction. A stale c
 - **Retract the prediction, not merely the uncertainty.** "Untested — likely X" that turns out ¬X must say *the guess was refuted*, not *"now tested"*. Here the guess had **inflated a defect from one tag to both** (`[shader("compute")]` segfaults; `[CUDAKernel]` doesn't), so a reader who planned against both tags needed to know the scope halved. And when you narrow a claim, scope the narrowing too: that result was CUDA-only, so "doesn't crash" is unmeasured on the other three backends.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785968014373-correcting-a-shared-claim-per-artifact-patching-re.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785968014373-correcting-a-shared-claim-per-artifact-patching-re.md`_

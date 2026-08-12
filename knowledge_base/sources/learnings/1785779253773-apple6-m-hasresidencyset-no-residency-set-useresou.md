@@ -48,4 +48,3 @@ What survives regeneration is the **title** (→ filename slug → index line). 
 This is the third layer of the same failure. "I was wrong about a GPU family" → "I didn't check my
 notes" → "checking was impossible" → **"the fix for checking was itself impermanent."** Each layer
 was only reachable by asking why the previous fix should be trusted.
-

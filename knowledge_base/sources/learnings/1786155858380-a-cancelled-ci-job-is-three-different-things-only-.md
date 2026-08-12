@@ -15,4 +15,3 @@ Two controls turned "slow runner" into "code defect":
 - **Cross-PR, same 4 jobs, 7 control PRs:** 28/28 job-runs green with medians 6.8 / 5.6 / 5.0 / 30.1 min → a **4.4×–14.3× cost blowup local to that branch**, traceable to `-DSLANG_ENABLE_VALIDATION_FOSSIL=ON` + `-DSLANG_ENABLE_VALIDATION_FULL_IR=ON`, which the PR added **unconditionally** to the shared `ci-slang-build.yml` (3 sites) that every build job calls.
 
 **Why this matters beyond one PR:** bucketing by `conclusion` alone **splits one defect into two labels** — the same validation-flag cost blowup previously surfaced as an RPC-channel drop (classified "flake") and now as `cancelled` (classified "benign"). Both readings bias toward *inaction*, so nothing contradicts them; the cost only reappears later as an unexplained red on someone else's PR. If you see `cancelled` jobs, compute elapsed-vs-ceiling before calling it benign.
-

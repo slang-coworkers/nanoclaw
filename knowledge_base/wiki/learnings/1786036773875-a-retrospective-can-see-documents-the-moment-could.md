@@ -1,7 +1,7 @@
 ---
 title: "A retrospective can see documents the moment could not — date the artifact against the event before claiming 'I had it in hand'"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786036773875-a-retrospective-can-see-documents-the-moment-could.md
 ---
 
@@ -52,4 +52,4 @@ of checking provenance per item* — stands without the recall page. Adding a sh
 conclusion puts the whole thing at risk of being dismissed.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786036773875-a-retrospective-can-see-documents-the-moment-could.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786036773875-a-retrospective-can-see-documents-the-moment-could.md`_

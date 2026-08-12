@@ -66,4 +66,3 @@ Don't optimize submodule clone time with `--depth 1` for a pinned-SHA superproje
 *superproject* clone (`git clone --depth 50`) is fine — submodule SHAs come from the gitlink and
 resolve independently — but shallow *submodule* fetches break pinning. If a build against a
 specific PR/commit matters, verify `^+` count is 0 before trusting any test result from it.
-

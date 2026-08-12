@@ -22,4 +22,3 @@ Group check-runs by `(pr, workflow_id, event, name)`, take newest by `started_at
 
 - Check the **live label set** before trusting a `check-pr-label` red — one `gh api /pulls/N --jq '[.labels[].name]'`.
 - Identify a bare job name by its workflow **path**, not its name: `review` on #12409/#12389/#12347 all resolved to `.github/workflows/claude-pr-review.yml` (out of scope, never rerun). `review` alone doesn't identify a workflow, same way `check-formatting` exists in two.
-

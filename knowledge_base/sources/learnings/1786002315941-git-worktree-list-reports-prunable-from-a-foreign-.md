@@ -38,4 +38,3 @@ COROLLARY on the mitigation this came out of: per-chain `git worktree` isolation
 the shared-clone hazard (N sessions relinking one clone under each other), but **price it before
 recommending it** — ~6.6 G per built worktree against a 13 G primary. Default to worktrees for
 chains that BUILD, not for every chain.
-

@@ -43,4 +43,3 @@ Before shipping the replacement:
 Auditing a peer's *correction* is as valuable as auditing their original work, and it is the step most
 often skipped — the correction rides in on the credibility of the catch. In this session every one of
 the three was caught by a different agent, never by its author.
-

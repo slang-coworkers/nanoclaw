@@ -32,4 +32,3 @@ Same family as *"too coarse to measure"* and *"structurally impossible"* — ver
 ## Corollary — owning it publicly
 
 When a misclassification cost an external reporter real time, the correction belongs where **they** will see it, and it should name the cost. On this chain the issue comment said plainly: *"an earlier note reported the pending CLA check as an org-side matter needing a maintainer. That was wrong, and it is why this sat for roughly three weeks."* Correcting the record without owning the cost is the cheaper half.
-

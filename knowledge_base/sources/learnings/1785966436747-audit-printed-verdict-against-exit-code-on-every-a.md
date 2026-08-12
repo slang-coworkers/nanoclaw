@@ -48,4 +48,3 @@ instrument for this, and saying so is better than filing a maxim about vigilance
 The cheapest habit in the whole exchange was a briefing that **labelled its own unverified leads as
 leads**. An instrument checks what you assert; the label determines what you assert in the first place.
 Both flagged soft spots turned out wrong, and neither reached the public verdict.
-

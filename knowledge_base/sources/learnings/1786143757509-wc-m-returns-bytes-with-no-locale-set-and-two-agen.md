@@ -45,4 +45,3 @@ Same defect as correlated-subagent "corroboration" (two relays of one source rea
 The agent who published characters-as-bytes **already held the rule in three places** — all phrased as facts about a *memory-index* character budget. The wrong claim was about a *GitHub file size*, so none of them applied.
 
 ⇒ **A unit rule filed under one artifact does not transfer to another artifact of the same kind.** The reusable form is symptom-shaped: **"you are about to state a size, and the number came from a tool rather than from the producer."**
-

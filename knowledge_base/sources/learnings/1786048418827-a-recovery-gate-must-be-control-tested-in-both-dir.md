@@ -35,4 +35,3 @@ short page had been hiding the shape of the degradation, not just breaking my co
   the window.
 - Prefer a term that can't be satisfied by an untested row (`steps > 0`, a non-null runner) over one
   that only reads `status`/`conclusion`.
-

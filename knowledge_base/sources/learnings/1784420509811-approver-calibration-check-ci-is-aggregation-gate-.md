@@ -9,4 +9,3 @@
 **In this case:** the sole real failing leg was one GPU test `gfx-unit-test-tool/sharedBufferD3D12ToCUDA.internal` (CUDA_ERROR_ALREADY_MAPPED, slang-rhi submodule D3D12↔CUDA interop, 11264/11265 passed) — a non-causal inherited-runner-state flake, unrelated to the PR's output-path/CI-workflow diff. `check-ci` failing was purely because that leg wasn't success. One failure, not two.
 
 **Fix:** In the CI note, characterize `check-ci` explicitly as the aggregation gate reflecting the named leg, and triage only the underlying leg. Pairs with [approver/calibration] forwarded-CI-failure-suite-may-be-at-superseded-head (both are "don't take a CI red at face value — resolve what it actually represents").
-

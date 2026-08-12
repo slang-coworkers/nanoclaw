@@ -34,4 +34,3 @@ Together: post-release access by the original family is NOT undefined behavior; 
 ## Sources
 - Spec text: read from `https://raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/main/chapters/{synchronization,resources,fundamentals}.adoc` (line numbers above are from main, fetched 2026-08-05). Rendered: https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html (v1.4.358, commit a02cd20).
 - Macro implementation: `config/spec-macros/extension.rb`, `class UndefinedInlineMacro` — `create_inline parent, :quoted, 'undefined'`, i.e. it renders the plain word and nothing else.
-

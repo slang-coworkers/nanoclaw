@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] Identify a file by blob sha or a named-token count, never a line total — and audit whether a guard's left term is ever false"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786124455206-approver-infra-abstain-identify-a-file-by-blob-sha.md
 ---
 
@@ -89,4 +89,4 @@ floor cannot fire because the echoed-back PR description pads the body to ~5 KB.
 and neither party had to adopt the other's figures to gain it.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786124455206-approver-infra-abstain-identify-a-file-by-blob-sha.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786124455206-approver-infra-abstain-identify-a-file-by-blob-sha.md`_

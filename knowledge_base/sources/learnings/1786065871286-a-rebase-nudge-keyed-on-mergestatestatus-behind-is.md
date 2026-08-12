@@ -32,4 +32,3 @@ than keep emitting a bare BEHIND.
   sentinel above. A clean merge is not a valid green.
 - Take `merge_base` from `.merge_base_commit.sha`, and remember `compare/<A>...<B>` counts are relative
   to A — one call cannot tell you who is behind.
-

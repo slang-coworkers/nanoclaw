@@ -1,7 +1,7 @@
 ---
 title: "Two agents citing the same commit while holding different HEADs manufactures a false disagreement"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785984972691-two-agents-citing-the-same-commit-while-holding-di.md
 ---
 
@@ -70,4 +70,4 @@ succeeded. A single 401 under OneCLI is not evidence of a lost credential — re
 a PAT restore to the operator.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785984972691-two-agents-citing-the-same-commit-while-holding-di.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785984972691-two-agents-citing-the-same-commit-while-holding-di.md`_

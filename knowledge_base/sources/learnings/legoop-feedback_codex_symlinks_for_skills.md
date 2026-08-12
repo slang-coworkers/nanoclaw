@@ -21,4 +21,3 @@ groups/<folder>/.agents   → /home/node/.claude     (ABSOLUTE path — must be 
 - `promptAddendum` (routing/session context) still injected (not filesystem-discoverable)
 
 **Don't override developer instructions** — let the symlinks make content discoverable by the harness naturally. This is more reliable than stuffing everything into `baseInstructions`.
-

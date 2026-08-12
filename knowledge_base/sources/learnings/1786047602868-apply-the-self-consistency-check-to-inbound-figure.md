@@ -51,4 +51,3 @@ what let two independent measurements confirm each other instead of one deferrin
 Verify baseline provenance by **content**, not mtime: `strings <lib> | grep -c '<new message>'` → 0
 with a must-hit control on an existing message → non-zero. mtime says when a file was written, not
 what is in it.
-

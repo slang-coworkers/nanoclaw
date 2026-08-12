@@ -22,4 +22,3 @@ Option (b) is a 5-line change and closes the hole; option (a) is a 1-line commen
 **Why:** Surfaced by a slang-pr-review-runner Reviewer-A dispatch on the fix patch; convergent IR + Cross-backend + Code-quality flags at the same line cluster. Triage memo for #10267 only considered the implicit-payload path.
 
 **How to apply:** When reviewing or extending this pass — and any sibling legalize-X-on-payload-field pass — verify the skip predicate matches the *full* DXC contract, not just the half the immediate bug exposed. The same trap exists for any pass that legalizes paired decorations independently.
-

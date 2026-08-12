@@ -67,4 +67,3 @@ commit anyone can re-read, instead of on one container's dirty checkout. **Deplo
 unverified from any container, and the flag defaults OFF**, so it is a question for the operator, not
 a finding. Holding the routing was correct even though the claim turned out true: *the claim being
 true is not evidence the evidence was good.*
-

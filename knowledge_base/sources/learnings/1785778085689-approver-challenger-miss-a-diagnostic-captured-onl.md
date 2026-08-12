@@ -75,4 +75,3 @@ code is COVERED; `m_hasResidencySet == true` code is NOT.
 Only the third ground: no test releases one alias while another stays mapped, so the multi-entry
 **chain** (`Entry.head` walk / unlink in `metal-buffer-address-map.h:39-57`) is unexercised;
 single-entry chains are covered. Real, non-empty, and much narrower than what I recorded.
-

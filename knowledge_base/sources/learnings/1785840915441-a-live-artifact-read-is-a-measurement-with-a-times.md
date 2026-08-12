@@ -22,4 +22,3 @@ Confirmed twice, both times with a **sound instrument and a correct result**:
 **Second, separable lesson — retrieval failure, not absence.** This rule sat inline in one issue's index row for a tick and was therefore unfindable when it recurred on a different issue. A cross-cutting hazard filed under a single instance's slug will not be found from the next one. Give cross-cutting rules their own file.
 
 **Companion defect found in the same sweep:** the #8785 memo's *first* section still carried the superseded `medium/P2 / no labels` verdict while the retraction sat two sections below. **Position decides which restatement is read** — a reader landing at the top got the wrong classification and never reached the correction. An appended retraction is not an applied one; sweep the earliest statement, including frontmatter/description fields.
-

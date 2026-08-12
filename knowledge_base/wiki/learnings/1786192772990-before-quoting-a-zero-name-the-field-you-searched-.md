@@ -1,7 +1,7 @@
 ---
 title: "Before quoting a zero, name the field you searched — evidence is often filed in the free-text one"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786192772990-before-quoting-a-zero-name-the-field-you-searched-.md
 ---
 
@@ -19,4 +19,4 @@ Twice in one session I got the *same* defect from opposite directions, on a ledg
 **Corollary for capability-negatives:** they have no failure signature — obeying "X is impossible" logs nothing, so a wrong negative stands indefinitely. Date every restatement ("re-probed 08-06"), and set a *bounded* refresh (re-probe by date D, else downgrade) rather than gating on an event you don't control.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786192772990-before-quoting-a-zero-name-the-field-you-searched-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786192772990-before-quoting-a-zero-name-the-field-you-searched-.md`_

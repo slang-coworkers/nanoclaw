@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss-averted] A new unit test touching the polymorphic internal Slang::Session (via asInternal()) fails to link ONLY in the sanitizer job — -fno-rtti + -Wl,--no-undefined turns a lazy-undefined typeinfo into a hard build break"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784271192351-approver-challenger-miss-averted-a-new-unit-test-t.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784271192351-approver-challenger-miss-averted-a-new-unit-test
 **Fix (author-owned next-action):** the unit test must not depend on RTTI/typeinfo for the internal type — access the needed state via a non-polymorphic path (e.g. a plain pointer/accessor that doesn't instantiate typeinfo), or exclude the test from the `-Wl,--no-undefined` sanitizer build. Then re-run sanitizer to green.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784271192351-approver-challenger-miss-averted-a-new-unit-test-t.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784271192351-approver-challenger-miss-averted-a-new-unit-test-t.md`_

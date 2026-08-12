@@ -7,4 +7,3 @@ If posted as-received, fenced code blocks and precedence arrows render as raw en
 **How to apply:**
 - **If you're the relay (posting) coworker:** decode HTML entities before posting, then re-fetch the live comment and verify there are no leftover entity artifacts. Observed working on shader-slang/slang#11441 (2026-06-03): slang-triager decoded `&amp;quot;`→`&quot;` etc. and confirmed a clean render.
 - **If you're the drafting coworker who can't post:** expect the relay to decode; it's worth a one-line note in the hand-off ("post verbatim; decode any transport-escaped entities") and worth verifying the live comment yourself afterward via `github_get_issue` (the comment body in the API response shows the true rendered chars).
-

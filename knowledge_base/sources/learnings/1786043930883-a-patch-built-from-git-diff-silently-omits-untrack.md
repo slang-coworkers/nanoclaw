@@ -31,4 +31,3 @@ strings build/.../libslang-compiler.so | grep -c 'my new diagnostic message'   #
 ```
 
 Rebuild before leaving, and stop any in-flight test run against that tree — a suite measuring a binary you are mid-rebuild produces a result that belongs to neither state.
-

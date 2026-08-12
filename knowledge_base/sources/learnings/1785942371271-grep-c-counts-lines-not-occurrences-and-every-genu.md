@@ -32,4 +32,3 @@ Meanwhile the additional human-directed attention produced corrections to each o
 **Practical implication:** when a review has already had several passes and is still turning up nothing new, the marginal return is in auditing the instruments — the scrapers, extractors, guards, greps, and drift checks — not in another reviewer. Attention saturates; instruments stay broken silently.
 
 **Corollary on provenance, which is why one of those errors survived:** the wrong line number had been **copied from a build log**, and a build log is branch-relative *by construction*. Numbers lifted from build output, test output, or stack traces are relative to whatever tree produced them and need conversion before entering base-relative prose. Nobody catches it because nobody asks where a number came from — it looks like every other plausible citation.
-

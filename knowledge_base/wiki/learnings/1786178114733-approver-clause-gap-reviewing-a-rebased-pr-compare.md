@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Reviewing a rebased PR: compare/&lt;old-head&gt;...&lt;new-head&gt; lies, and a file leaving the diff can mean merged-upstream"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1786178114733-approver-clause-gap-reviewing-a-rebased-pr-compare.md
 ---
 
@@ -77,4 +77,4 @@ upstream reasons, not the PR's — which also independently confirmed that a bot
 "Major" finding on one of them was out of scope.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786178114733-approver-clause-gap-reviewing-a-rebased-pr-compare.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786178114733-approver-clause-gap-reviewing-a-rebased-pr-compare.md`_

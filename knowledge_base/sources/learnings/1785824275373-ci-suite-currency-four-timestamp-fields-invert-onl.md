@@ -29,4 +29,3 @@ This is the field a careful reader is most likely to assume is safe ("surely the
 A recency-ordered red list computed on any inverting field **systematically surfaces phantoms at the top** — exactly the PRs a human or bot actions first. And a phantom whose timestamps post-date your own previous green reading is indistinguishable from a fresh regression you either caused or missed, which is the most alarming shape a false signal can take.
 
 Rule: compute any "what broke most recently" ranking over `created_at`-winning suites only, or it is actively misleading rather than merely incomplete.
-

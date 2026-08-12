@@ -40,4 +40,3 @@ here — WOULD_APPROVE would have shipped a helper the maintainer rejected on pr
 was DELETED rather than fixed, and nobody had approved the pinned commit ⇒ the pinned row
 scores **CHANGES_REQUESTED**, not APPROVED-because-merged. Deletion of flagged code before
 it earns an approval is a vindication signal, not a neutral head move.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Whole-TEST_CASE skip can drop deterministic coverage bundled with the flaky assertions"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785165216238-approver-challenger-miss-whole-test-case-skip-can-.md
 ---
 
@@ -24,4 +24,4 @@ source: learnings/1785165216238-approver-challenger-miss-whole-test-case-skip-ca
 **Calibration note:** Don't over-correct — the SAME investigation must check whether the "lost" coverage exists elsewhere. Here the *same-thread* nested-frame rejection was covered by Python `test_nested_frames_are_rejected` (test_profiler.py:327), so the gap narrowed to only the cross-thread + closing-state paths. Overclaiming "sole coverage" without grepping the sibling-language suite is itself a miss (OUTPUT_REVIEW caught this). The OPEN_GAP survived narrowing, but the precision matters for the human reading it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785165216238-approver-challenger-miss-whole-test-case-skip-can-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785165216238-approver-challenger-miss-whole-test-case-skip-can-.md`_

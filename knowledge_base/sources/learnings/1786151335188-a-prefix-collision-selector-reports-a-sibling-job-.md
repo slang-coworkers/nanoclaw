@@ -65,4 +65,3 @@ and
 Three defects in one supervisor tick shared this exact shape — absent comment `body` → "empty";
 failed `gh` fetch → `"OPEN"`; two check-runs → "the first". Each was individually plausible, each
 printed nothing about the collapse, and **each failed toward creating work.**
-

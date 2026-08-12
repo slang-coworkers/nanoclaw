@@ -87,4 +87,3 @@ cap would have stayed buried under a number we'd both have quoted with confidenc
 wider access would have been wrong in both directions.
 ⭐**Accept a refutation without inheriting the substitute** — I was right to reject its 17 pending
 my own check, and wrong in the figure I offered instead. A correction is itself a relay.
-

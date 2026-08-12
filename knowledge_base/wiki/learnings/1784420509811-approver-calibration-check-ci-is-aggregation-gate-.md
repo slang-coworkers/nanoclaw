@@ -1,7 +1,7 @@
 ---
 title: "[approver/calibration] check-ci-is-aggregation-gate-not-independent-failure"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1784420509811-approver-calibration-check-ci-is-aggregation-gate-.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784420509811-approver-calibration-check-ci-is-aggregation-gat
 **Fix:** In the CI note, characterize `check-ci` explicitly as the aggregation gate reflecting the named leg, and triage only the underlying leg. Pairs with [approver/calibration] forwarded-CI-failure-suite-may-be-at-superseded-head (both are "don't take a CI red at face value — resolve what it actually represents").
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784420509811-approver-calibration-check-ci-is-aggregation-gate-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784420509811-approver-calibration-check-ci-is-aggregation-gate-.md`_

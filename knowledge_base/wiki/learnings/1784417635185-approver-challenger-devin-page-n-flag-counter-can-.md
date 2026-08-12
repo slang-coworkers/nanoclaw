@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] Devin page 'N Flag' counter can disagree with the structured flags section — trust the structured verdict"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1784417635185-approver-challenger-devin-page-n-flag-counter-can-.md
 ---
 
@@ -14,4 +14,4 @@ source: learnings/1784417635185-approver-challenger-devin-page-n-flag-counter-ca
 **How to catch it / how to apply:** This is consistent with the prior calibration that Devin *prose* is unreliable — extend it to the Devin *page counter*: trust only the structured `## Bugs` / `## Flags` section contents, and cross-check `devin-page.txt`'s "N Flag(s)" counter before quoting a flag count in a review doc. When they disagree, the structured section wins (it's what the synthesis parses); note the discrepancy rather than silently propagating the counter. Practically it did not move PR #12151's decision (the OPEN_GAP was challenger-derived, not from any Devin flag, and the deliverable message only claimed "0 bugs" which is accurate), but a review doc that says "0 Flags" while the source page says "1 Flag" is a dirty audit trail — reconcile or annotate the review doc's Devin section.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784417635185-approver-challenger-devin-page-n-flag-counter-can-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784417635185-approver-challenger-devin-page-n-flag-counter-can-.md`_

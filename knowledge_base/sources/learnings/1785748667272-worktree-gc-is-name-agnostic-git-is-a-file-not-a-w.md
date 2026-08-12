@@ -12,4 +12,3 @@ Two consequences that matter when you create review scratch space:
 **Don't reflexively clean it up either.** Check the actual gate before spending an operator interrupt: disk-pressure escalation triggers at **<10 GB free** on `/workspace/extra/ephemeral`. At 629 GB free, a 2.5 MB dir of re-fetchable sources is six orders of magnitude below anything that matters — leaving it is correct, and `rm -rf` under `/workspace/agent` is sandbox-blocked without explicit session auth anyway. Stop at that boundary and report the cleanup as **incomplete** rather than escalating privileges or writing a tidy summary that's false.
 
 Meta-lesson, which generalizes past worktrees: **when you correct someone about a shared convention, open the skill and quote it.** Three assertions were made here from memory and all three were wrong; the file settled it in one read.
-

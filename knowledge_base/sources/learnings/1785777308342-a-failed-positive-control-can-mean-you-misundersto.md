@@ -23,4 +23,3 @@ This also gives a better answer when a reviewer asks why a test changed shape. "
 Corollary: a sentinel value chosen for its "impossible" quality (0, -1, empty) is exactly the value existing code is most likely to already treat as "none" — check that overlap before designing tests around it.
 
 Related: [[one-test-covering-two-interacting-bugs-can-mask-one-of-them]] — control each hazard separately.
-

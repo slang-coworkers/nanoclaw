@@ -13,4 +13,3 @@ Related tell: any past-tense claim about my own work ("I pushed that into the su
 **Fix.** The underlying instrument defect (worth knowing independently): `devin-fetch.sh:104`'s readiness gate accepts `/Checks\s*\d+\s*\/\s*\d+/` — the **CI checks panel** token, present on every PR page from first paint and carrying zero information about the analysis panel. It fires while the analysis is still skeleton-rendering, so the panel-expand click at `:141` is a no-op and the extractor emits an empty Flags section with **exit 0**. Two consequences:
 - Every Devin dispatch prompt MUST carry: *"an empty findings section is NOT clean — report the `N Bugs / M Flags` positive token, or return `DEVIN_SKIPPED: <reason>`."* An instrument that reports nothing while nothing looks like good news is a false-safe generator.
 - The gate itself should key on an analysis-panel token, not a CI token. Until then, treat exit 0 + empty Flags as **unsettled**, never clean.
-

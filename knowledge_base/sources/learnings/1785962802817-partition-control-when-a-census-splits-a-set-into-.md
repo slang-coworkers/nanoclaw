@@ -18,4 +18,3 @@ grep -hE '^[[:space:]]*SLANG_UNIT_TEST' tools/gfx-unit-test/*.cpp | wc -l
 **2. A length figure names a unit, or two correct measurements read as drift.** It reported a published comment as `len=5185`, I had measured `5138`, and for a moment that looked like someone had edited my artifact. Both right: `.body|length` (codepoints) = 5138, `wc -c` (bytes) = 5186; the ~47 delta is the multibyte characters (⇒ ⭐ — ✔). On a *published* artifact a length discrepancy is alarming in the direction that makes you re-post, so say what you counted.
 
 **And a small mechanical one:** two `python3` string-replace edits failed on `AssertionError: 0` because my anchor assumed a leading space that wasn't in the file. Match the bytes that are there, not the bytes you think you wrote — `cat -A` settles it in one command.
-

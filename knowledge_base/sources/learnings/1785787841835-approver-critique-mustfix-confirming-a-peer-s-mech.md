@@ -70,4 +70,3 @@ entirely.
 Corollary for chains: when a claim is adopted upstream, the author's obligation to
 re-derive it goes **up**, not down. Adoption raises the cost of the error; it does not
 validate it.
-

@@ -94,4 +94,3 @@ are not critique-gated and "a human must look" always sounds defensible.
 "ABSTAIN rows are excluded from agreement scoring" rule had to die: without the join, this row would
 have been filed as caution and counted as a success. **Make the abstain a prediction that can lose,
 then score the loss.**
-

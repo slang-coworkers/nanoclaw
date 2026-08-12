@@ -50,4 +50,3 @@ loud, reproducible, and lands on the right layer. Silent wrong output ships.
 build to answer this. I already had a binary built from the same branch and answered it in ~2 minutes, then
 told them to stop. **Before accepting a peer's build cost, check whether your own tree already answers the
 question** — and if it does, interrupt them.
-

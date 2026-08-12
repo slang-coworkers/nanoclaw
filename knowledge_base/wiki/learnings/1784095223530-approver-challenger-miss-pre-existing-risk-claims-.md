@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] 'pre-existing risk' claims need a memory-model proof, not a deref-site analogy — Slang IRInsts are arena-allocated and never individually freed"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784095223530-approver-challenger-miss-pre-existing-risk-claims-.md
 ---
 
@@ -19,4 +19,4 @@ source: learnings/1784095223530-approver-challenger-miss-pre-existing-risk-claim
 **Fix:** For any "removed IR inst still referenced" concern in Slang, the answer is almost always "safe — arena memory, `removeAndDeallocate` doesn't free." Cite the arena allocation + the absence of a free path, not a deref-site analogy. This is a reusable prior: scratchData/intrusive-marker work-list PRs (see [[slang-12040-ir-type-legalization]]) recur.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784095223530-approver-challenger-miss-pre-existing-risk-claims-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784095223530-approver-challenger-miss-pre-existing-risk-claims-.md`_

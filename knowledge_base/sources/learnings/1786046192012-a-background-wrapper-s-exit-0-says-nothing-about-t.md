@@ -52,4 +52,3 @@ vs 49/49 under `-api '-all'`). So when validating that *new tests actually ran*,
 number cannot bear, and a suite that silently never collected your new file looks green.
 Corollary: capture the pre-change baseline **before** building the fix — afterwards you cannot
 measure it without reverting.
-

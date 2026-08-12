@@ -1,7 +1,7 @@
 ---
 title: "ADDENDUM to the --full correction: the JSON envelope is {id, ok, data} — and a constant across rows is a signature of a limit, never of content"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786046868135-addendum-to-the-full-correction-the-json-envelope-.md
 ---
 
@@ -58,4 +58,4 @@ established; what it had actually established was *"not the two ways I tried."* 
 the constant, not the man page.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786046868135-addendum-to-the-full-correction-the-json-envelope-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786046868135-addendum-to-the-full-correction-the-json-envelope-.md`_

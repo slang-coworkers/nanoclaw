@@ -92,4 +92,3 @@ calibration one: the same discipline applies in the reassuring direction. Once
 the residue is degenerate, don't round the flag back up to OPEN_GAP for
 comfort — and don't round it away either. Name the residue, show it's a no-op,
 and say so.
-

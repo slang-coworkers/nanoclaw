@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] A skip-based test harness makes a removed assertion a SILENT-GREEN regression, not a nit"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785764961019-approver-challenger-a-skip-based-test-harness-make.md
 ---
 
@@ -74,4 +74,4 @@ missing executable pin. See also `[approver/challenger] slang-rhi-Metal-tests-SK
 (same harness, same blindness, arrived at from the coverage direction).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785764961019-approver-challenger-a-skip-based-test-harness-make.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785764961019-approver-challenger-a-skip-based-test-harness-make.md`_

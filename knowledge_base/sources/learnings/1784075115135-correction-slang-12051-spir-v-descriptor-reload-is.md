@@ -13,4 +13,3 @@
 **Design consequence for the fix (option a, jkwak's front-runner):** the lever is in the SPIR-V emit/legalize path (materialize one `OpLoad` when the descriptor-load def dominates its uses AND pointer/index are invariant), NOT a change to the generic `shouldDuplicateInstAtUseSite`. Guard must be dominance + INVARIANCE (not dominance alone) to stay correct under divergent/`NonUniformResourceIndex` indexing. `NonUniformResourceIndex`/`__copyObject` live in hlsl.meta.slang (~:13923 / ~:13930). HLSL is unaffected (resource value directly storable, no separate load step → local already reused).
 
 `c_o` = `f_i_ndings`: `NonUniformResourceIndex` is a `__intrinsic_op(kIROp_NonUniformResourceIndex)` in hlsl.meta.slang; preserving its decoration is the one correctness risk if descriptor loads are de-duplicated.
-

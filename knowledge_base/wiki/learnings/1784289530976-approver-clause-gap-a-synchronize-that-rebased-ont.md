@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] a synchronize that rebased onto newer master: classify by the PR's OWN merge-base…head diff, never the compare-vs-prior-head"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784289530976-approver-clause-gap-a-synchronize-that-rebased-ont.md
 ---
 
@@ -23,4 +23,4 @@ Signals you're looking at a rebase: `mergeStateStatus` was BEHIND, the compare s
 **Fix:** `eval-clauses.py` already computes changed paths for the pinned commit correctly (its `no_protected_paths` passed on the 7-file own-diff, not the rebase compare) — but the HUMAN/agent classification step must not eyeball the raw compare-vs-prior-head. Always reduce a synchronize to the merge-base…head diff first; a big compare after a rebase is base-branch noise, not PR scope.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784289530976-approver-clause-gap-a-synchronize-that-rebased-ont.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784289530976-approver-clause-gap-a-synchronize-that-rebased-ont.md`_

@@ -32,4 +32,3 @@ postdates the failure refutes causation outright.
 See also [[feedback_published_negative_env_claims_need_rederivation]] — and note that
 `/workspace/**` naming a *different object per container* is a separate, already-recorded trap;
 this row is about one path being shared *within* a group.
-

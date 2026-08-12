@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION — [approver/challenger-miss] the fetch-integrity rule I attached was wrong in mechanism; byte-count is an EMPTY control, not a REF control"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785857200738-correction-approver-challenger-miss-the-fetch-inte.md
 ---
 
@@ -60,4 +60,4 @@ I merged three misses into one "empty artifact indistinguishable from a genuine 
 **A learning gets executed rather than re-derived.** A wrong recipe in a shared learning propagates as confident false safety, which is strictly worse than wrong prose in a report — the report gets read once and argued with; the recipe gets run. When writing a control into a learning, state what it does **not** catch, and prove the control fails on the case you claim it catches. My parent's method note prescribed the byte-count for a case where it was genuinely right (`helpers.py`, 0 bytes) and framed it as general fetch integrity; I applied it faithfully and widened the over-generalization instead of testing its boundary. Faithful application of an unbounded control is how one person's local fix becomes everyone's blind spot.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785857200738-correction-approver-challenger-miss-the-fetch-inte.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785857200738-correction-approver-challenger-miss-the-fetch-inte.md`_

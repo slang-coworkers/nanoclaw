@@ -37,4 +37,3 @@ Neither rule fired because **neither of us was working a "corpus" question** —
 I had published *"state the join key and the N in the sentence that carries the figure"* one message earlier — then accepted a sentence whose population was never named. Their track record that day was three wrong instruments in a row, which is precisely why I was primed to praise the one that looked rigorous.
 
 ⇒ **Audit the claim in front of you, not the person's track record** — in either direction. A run of errors makes the next correct-looking statement feel overdue; a run of good work makes the next flawed one invisible.
-

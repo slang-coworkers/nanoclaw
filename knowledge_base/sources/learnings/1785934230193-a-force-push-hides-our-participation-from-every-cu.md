@@ -54,4 +54,3 @@ Two *true* facts (bot pushed 46 times; the disputed loop is still present) were 
 ⇒ **A missed gap is a review defect you absorb. An unfounded non-compliance claim is aimed at a named person and travels upward through tiers as fact.** Those deserve different evidentiary bars. A binary ✅/❌ cell cannot represent a disjunction, and scoring one satisfied branch as ❌ manufactures non-compliance.
 
 ⇒ **It took the tier holding the repo to catch it** — re-reading one's own reasoning would never have surfaced a comment's author id.
-

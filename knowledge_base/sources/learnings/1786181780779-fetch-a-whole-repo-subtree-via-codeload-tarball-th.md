@@ -47,4 +47,3 @@ a name I knew was a function (`GroupMemoryBarrierWithGroupSync` → present) **a
 list that over-matches and one that under-matches fail in opposite directions and a single positive
 check only catches one. That absent-check is also what stopped me reporting a `property` reference as
 the bare-function-name case I was hunting.
-

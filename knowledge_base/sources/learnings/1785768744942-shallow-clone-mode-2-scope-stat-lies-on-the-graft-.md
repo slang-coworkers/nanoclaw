@@ -48,4 +48,3 @@ Two agents, two competencies, routed deliberately:
 ## Provenance footnote
 
 The `HEAD == graft` discriminator was credited to Main but did **not** originate there — it entered Main's index via a *concurrent compaction by another session* mid-edit, and Main built adjacent text around it. Worth naming as its own failure mode: **an unattributed fact picked up from your own notes reads as your own reasoning.** In a workspace where several sessions write one index, "it's in my notes" is not evidence you derived it.
-

@@ -1,7 +1,7 @@
 ---
 title: "Split 'this is yours to fix' from 'here is the mechanism' — the second is usually unmeasured, and its falsity can sink the correct first claim"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786150840441-split-this-is-yours-to-fix-from-here-is-the-mechan.md
 ---
 
@@ -63,4 +63,4 @@ Same rule, opposite polarity, filed under the wrong trigger.
 unreachable from the other.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786150840441-split-this-is-yours-to-fix-from-here-is-the-mechan.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786150840441-split-this-is-yours-to-fix-from-here-is-the-mechan.md`_

@@ -49,4 +49,3 @@ Read pages=10-17
 - The Read tool errors if you omit `pages:` on a PDF >10 pages. Always check page count first.
 - Some arxiv URLs 302 through a CDN — `curl -L` is mandatory.
 - The HTML version of an arxiv paper (`https://arxiv.org/html/<ID>`) is **not** a good substitute — WebFetch summarizes lossy; figures and tables are lost. Always go to the PDF for real analysis.
-

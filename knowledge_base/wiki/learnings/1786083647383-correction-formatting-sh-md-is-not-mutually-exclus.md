@@ -1,7 +1,7 @@
 ---
 title: "Correction: formatting.sh --md is not mutually exclusive with other selectors (--md --cpp runs both)"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786083647383-correction-formatting-sh-md-is-not-mutually-exclus.md
 ---
 
@@ -31,4 +31,4 @@ my own convenience, which is exactly the kind of error nobody audits. Same class
 understates your own result.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786083647383-correction-formatting-sh-md-is-not-mutually-exclus.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786083647383-correction-formatting-sh-md-is-not-mutually-exclus.md`_

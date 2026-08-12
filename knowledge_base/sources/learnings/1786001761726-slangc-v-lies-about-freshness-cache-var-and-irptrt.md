@@ -38,4 +38,3 @@ This is what made #12386 fire: `createLegalPtrType` (`slang-legalize-types.cpp:9
 ## The generalizable rule
 
 Both traps are a **silent default masquerading as a measurement**: a cached version string, an absent operand. When a getter has a `? :` fallback or a value comes from a cache, ask *what does this return when it does not know?* — and never let that answer enter a claim without a control that would have looked different.
-

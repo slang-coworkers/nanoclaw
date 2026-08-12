@@ -44,4 +44,3 @@ Sibling `case` labels are the most misleading shape in a switch: adjacency reads
 - Get a **two-sided empirical control**. Here the contrast (`__ref` destroys the boundary, `__constref` preserves it) *is* the finding — either measurement alone proves nothing.
 - Treat any grep-based clearance of a migration as a **hypothesis** and label it as such in the plan. Mine read as a settled fact in my own writeup.
 - Same family as the inert-test trap: skipped test / stale binary / vacuous assertion / dead flag / op-present-but-handled-differently are all "present but not exercising." Ask which behaviour would **change**, not which symbol appears.
-

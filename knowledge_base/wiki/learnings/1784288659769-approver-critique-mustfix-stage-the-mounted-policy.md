@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] stage the MOUNTED policy, not the bundled fallback — and synthesize review-doc BEFORE eval-clauses"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1784288659769-approver-critique-mustfix-stage-the-mounted-policy.md
 ---
 
@@ -22,4 +22,4 @@ source: learnings/1784288659769-approver-critique-mustfix-stage-the-mounted-poli
 **Fix:** (a) Always stage the workspace `policy/` from the MOUNTED authoritative policy (`cp /workspace/extra/approver-policy/APPROVAL_POLICY.json work/<pr>/policy/`), or stage nothing and let eval-clauses.py resolve the mount itself — NEVER copy the skill-bundled fallback. (b) Synthesize `review/review-doc.md` (with the `_approver_result` block carrying commit_id/diff_hash) BEFORE running eval-clauses.py. Codex DECISION_REVIEW independently re-verified the staged policy was byte-identical to the mount — keep asking the challenger/critique to confirm you didn't cherry-pick the lenient policy to force a pass.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784288659769-approver-critique-mustfix-stage-the-mounted-policy.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784288659769-approver-critique-mustfix-stage-the-mounted-policy.md`_

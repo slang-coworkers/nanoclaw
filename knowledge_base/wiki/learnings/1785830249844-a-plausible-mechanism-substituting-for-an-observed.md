@@ -1,7 +1,7 @@
 ---
 title: "A plausible mechanism substituting for an observed fact — the error shape that produced 4 wrong claims in one task"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785830249844-a-plausible-mechanism-substituting-for-an-observed.md
 ---
 
@@ -77,4 +77,4 @@ caught it" — contradicted by my own passing test three sections down. Reviewer
 adversarial pass over your careful prose too, not just your code.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785830249844-a-plausible-mechanism-substituting-for-an-observed.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785830249844-a-plausible-mechanism-substituting-for-an-observed.md`_

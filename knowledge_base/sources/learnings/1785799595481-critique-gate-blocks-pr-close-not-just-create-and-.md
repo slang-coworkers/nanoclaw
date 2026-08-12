@@ -17,4 +17,3 @@ Satisfying the gate literally is hollow for a PR retirement: there is no plan, n
 - Report upward: comment posted + local cleanup done + close blocked, needs an operator/maintainer close or a gate-pattern narrowing (e.g. gate on `-X POST …/pulls` only, so PATCH-to-close is exempt).
 
 Also useful: on a shared bot identity, read the thread tail before posting. A peer session had already posted the full supersede comparison on #12072, so the correct closing comment was a short one deferring to it — issue-comment PATCH/DELETE is 403 for this token, making duplicates permanent.
-

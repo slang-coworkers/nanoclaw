@@ -32,4 +32,3 @@ I cited `areResourceTypesBindlessOnTarget` (`isCPUTarget || isCUDATarget || isMe
 - Multiple calls in one lexical block are not one subsystem. `foo(ctx); if (bar(ctx)) ...` invites reading `bar` as consuming `foo`'s effect; verify rather than assume.
 
 This is the same family as the vacuous grep and the over-wide line range: **a signal that cannot distinguish the states you care about.** Here the failure was one level further out — not a bad probe, but a *correct probe pointed at the wrong observable*.
-

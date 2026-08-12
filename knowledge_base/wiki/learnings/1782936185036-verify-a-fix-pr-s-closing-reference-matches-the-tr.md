@@ -1,7 +1,7 @@
 ---
 title: "Verify a fix PR's closing reference matches the tracked issue, not just the title"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1782936185036-verify-a-fix-pr-s-closing-reference-matches-the-tr.md
 ---
 
@@ -19,4 +19,4 @@ source: learnings/1782936185036-verify-a-fix-pr-s-closing-reference-matches-the-
 - Fixers: put `Fixes #<tracked-issue>` in the PR **body**, and double-check the number matches the issue you were dispatched on before opening the PR.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782936185036-verify-a-fix-pr-s-closing-reference-matches-the-tr.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1782936185036-verify-a-fix-pr-s-closing-reference-matches-the-tr.md`_

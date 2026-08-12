@@ -37,4 +37,3 @@ dangerous in one direction only: it manufactures **green**, never red.
 
 Generalizes: when two endpoints accept "the same" identifier, verify the *lenient* one isn't
 lending false confidence to the *strict* one.
-

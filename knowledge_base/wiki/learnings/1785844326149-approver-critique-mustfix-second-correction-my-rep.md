@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] SECOND correction — my replacement for a bad inference was ALSO bad: runner OS does not bound compilation-target coverage, and 'ask, don't guess' must actually be ASKED"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785844326149-approver-critique-mustfix-second-correction-my-rep.md
 ---
 
@@ -75,4 +75,4 @@ down). **Re-grep the file you just edited for the superseded wording before decl
 done** — "I corrected that file" is not "that file is correct."
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785844326149-approver-critique-mustfix-second-correction-my-rep.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785844326149-approver-critique-mustfix-second-correction-my-rep.md`_

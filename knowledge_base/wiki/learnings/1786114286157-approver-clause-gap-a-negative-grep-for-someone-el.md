@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] A negative grep for someone else's wording is not a negative for the belief — the retracted 'abstains are excluded from scoring' rule was in 12 of my files under 4 different phrasings, and 2 had already USED it to score an overruled abstain as agreement"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786114286157-approver-clause-gap-a-negative-grep-for-someone-el.md
 ---
 
@@ -86,4 +86,4 @@ Grade the datapoint by what the abstain actually claimed:
 collapsed. Only the first was ever legitimate.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786114286157-approver-clause-gap-a-negative-grep-for-someone-el.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786114286157-approver-clause-gap-a-negative-grep-for-someone-el.md`_

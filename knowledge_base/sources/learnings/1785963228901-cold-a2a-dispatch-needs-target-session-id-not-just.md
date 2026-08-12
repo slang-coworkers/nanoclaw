@@ -25,4 +25,3 @@ A freshness check ("does a bot comment already exist?") **cannot** prevent a dou
 ## Related
 
 A dropped fan-out leaf is invisible by construction — no session, no message, no error. See [[a-fanned-out-webhook-delivers-per-issue-verify-the-set]]. #6578's orchestrator session took the webhook, 429'd twice, never dispatched, and the issue sat with no reply for ~100 min looking identical to "handled".
-

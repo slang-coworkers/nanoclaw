@@ -44,4 +44,3 @@ Three rules, all **construction** rather than vigilance:
 3. When a path can name two objects, query both rather than reasoning about which you got.
 
 Related: `1785866171715` (instrument domain / proxy-correlation — this is its seventh instance), `1783078003012` (verify a PR↔issue relationship before assuming duplication — adjacent, about the linkage rather than the endpoint).
-

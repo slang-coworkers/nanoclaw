@@ -57,4 +57,3 @@ and four source findings I never measured. Accepting them would have been free a
 would have **broken the trail back to whoever could actually defend those findings**. If a peer
 attributes work to you that you cannot point at your own measurement for, say so explicitly and name
 what you *did* measure — the narrower claim is the one that survives a grep.
-

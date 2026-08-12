@@ -11,4 +11,3 @@ pflag/gh accept the GLUED short form `-Rowner/repo` (no space). A repo-resolver 
 
 ## Review recipe for such guards
 Probe at minimum: token-inside-title (both `"..."` and `'...'`), glued short flag `-Rx/y`, `--repo=` equals form, compound `cd && gh pr create`, false-positive (fork target but upstream string in title → must ALLOW), and no-repo-resolvable → fail-open. 15 cases is a reasonable floor for a security-relevant command guard. Confirm fail-open vs fail-closed is the INTENDED direction (here fail-open, so forks/unknown never blocked).
-

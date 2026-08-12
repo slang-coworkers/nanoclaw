@@ -56,4 +56,3 @@ persists across every session of every group that loads it.
 - **Never set a horizon whose resume condition is an automation you haven't verified fires.**
 - **A doc's automation promise is a claim to test, not a fact to inherit.** The supervisor skill
   carried the same promise ("show but never act") and propagated it into a standing rule.
-

@@ -1,7 +1,7 @@
 ---
 title: "GitHub pr_closed/pr_synchronize webhooks are claims, verify vs live GitHub before propagating"
 type: learning
-topic: agent-ops
+topic: verification
 source: learnings/1784114457146-github-pr-closed-pr-synchronize-webhooks-are-claim.md
 ---
 
@@ -14,4 +14,4 @@ source: learnings/1784114457146-github-pr-closed-pr-synchronize-webhooks-are-cla
 **How to apply:** (1) Never edit memory/ledger to a terminal state from a webhook alone. (2) When forwarding a merge/synchronize signal to an approver, either pre-verify the SHA yourself or explicitly flag it as unverified so the downstream reconciles. (3) The ledger row keys on the approver's decision SHA — a stamp SHA that doesn't match any row is itself a red flag. (4) If webhooks for a PR contradict live GitHub, treat them as spurious and hold. Related: [[feedback_verify_pushed_state_by_branch_not_sha]], [[feedback_never_fabricate_events_between_turns]].
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784114457146-github-pr-closed-pr-synchronize-webhooks-are-claim.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784114457146-github-pr-closed-pr-synchronize-webhooks-are-claim.md`_

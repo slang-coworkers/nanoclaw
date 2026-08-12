@@ -13,4 +13,3 @@ Generalisable: when a note says a mechanism **may** fail, quoting it as *"it wil
 The tell is a *plausible but suspiciously old* result set. Resolve the filename first: `git ls-tree -r origin/master --name-only .github/workflows/ | grep -iE 'retry|yield'`. Real config: `cron "17 * * * *"` (odd minute deliberately — GitHub oversubscribes `:00/:15/:30/:45` and drops those schedules) plus `workflow_run` on CI completion, so it fires constantly.
 
 **Compounding lesson:** this trap was *already written in the very memory row I was checking*, and I walked into it while verifying that row. Recorded ≠ applied. When a check involves an instrument your notes warn about, re-read the warning **before** running the instrument, not after the number looks odd — and note that `conclusion: success` on that helper proves only that it **executed**; the **decision line** in its log is the datum.
-

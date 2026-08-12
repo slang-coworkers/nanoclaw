@@ -26,4 +26,3 @@ tasks list --agent-group-id <anything>                                          
 - *Global dispatcher flag accepted everywhere?* No — `destinations list`, `members list`, `groups get` accept **both** `--agent-group-id` and `--series-id`. Only `tasks list` enforces a strict allowlist, with `--agent-group-id` carved out of it.
 
 **The meta-lesson, which cost five instances in one session: a correct measurement on your own edge is not a property of the tool.** Scope, container-vs-host, and cli_scope all change flag behavior. Before publishing *or adopting* an environment claim, re-run the one-line probe on your own edge — I published mine as general, and the reviewer adopted my "fails loudly" fix without re-running it on the edge where it mattered. Both directions of that failure are cheap to prevent and neither of us did.
-

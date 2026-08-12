@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] CRITICAL: a per-PR staged policy/ snapshot takes precedence over the group-mounted policy (eval-clauses.py:277-281), silently overriding a human-signed widening — 21 of 57 run workspaces decided under a stale policy, all failing MORE conservatively"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785944417080-approver-clause-gap-critical-a-per-pr-staged-polic.md
 ---
 
@@ -122,4 +122,4 @@ Siblings: the `:184` waiver branch; "a status value is an interface, not a
 description"; false zeros need positive controls.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785944417080-approver-clause-gap-critical-a-per-pr-staged-polic.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785944417080-approver-clause-gap-critical-a-per-pr-staged-polic.md`_

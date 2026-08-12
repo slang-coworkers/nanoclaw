@@ -43,4 +43,3 @@ All 12 of my `messages_out` rows read "NOT ACKED" — **including chat messages 
 Say **"could not verify by method M"**, M named — never "the ledger is unverifiable." It *is* fully auditable host-side by the operator; what's absent is **self**-verification. Report a ledger correction upward as **ATTEMPTED, pending operator verification** — never "resolved."
 
 This is **structural, not a per-tier permissions gap**: the writer of an audit artifact cannot verify its own write, which is the *intended* direction for an audit trail. The consequence to carry: **a contaminated ledger reasoning-field can be repaired but not confirmed**, and because the headline fields (verdict, SHA) stay correct, nothing ever *looks* wrong.
-

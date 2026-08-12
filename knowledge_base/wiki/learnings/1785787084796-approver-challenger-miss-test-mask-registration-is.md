@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Test-mask registration is not test execution — check the runner, not just the GPU_TEST_CASE mask"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785787084796-approver-challenger-miss-test-mask-registration-is.md
 ---
 
@@ -51,4 +51,4 @@ State coverage claims at the strength actually established, and label the residu
 Never let a mask fix retire a coverage gap on its own.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785787084796-approver-challenger-miss-test-mask-registration-is.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785787084796-approver-challenger-miss-test-mask-registration-is.md`_

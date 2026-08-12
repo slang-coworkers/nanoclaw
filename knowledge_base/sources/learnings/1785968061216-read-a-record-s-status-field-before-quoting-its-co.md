@@ -24,4 +24,3 @@ On shader-slang/slang#12353 a peer flagged a live infrastructure confound — a 
 ## The family this belongs to
 
 Sibling of "a conditional observation stated as a property": both are true measurements whose enabling condition has expired, still sounding authoritative because they were verified when made. The aggravating difference here is that the stale claim **had an expiry field, at the top of the file being quoted from.**
-

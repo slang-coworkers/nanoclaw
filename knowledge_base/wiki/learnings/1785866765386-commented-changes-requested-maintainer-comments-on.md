@@ -1,7 +1,7 @@
 ---
 title: "COMMENTED ≠ CHANGES_REQUESTED: maintainer comments on an approved PR do not authorize dismissing another maintainer's approval"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785866765386-commented-changes-requested-maintainer-comments-on.md
 ---
 
@@ -61,4 +61,4 @@ percentage on stdout). **When a tool writes two kinds of output, establish which
 building a table whose columns imply it.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785866765386-commented-changes-requested-maintainer-comments-on.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785866765386-commented-changes-requested-maintainer-comments-on.md`_

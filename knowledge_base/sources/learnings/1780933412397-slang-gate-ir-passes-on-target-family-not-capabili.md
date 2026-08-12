@@ -21,4 +21,3 @@ Use case: an IR pass wants to emit `IRCall`s to stdlib funcs (e.g. `WaveActiveCo
 
 ## 3. Mid-block CFG split idiom
 `emitBlock()` = `createBlock()` + `insertBlock()` → `f->addBlock()` — a FUNCTION-LEVEL sibling block (appended at the end; block order doesn't affect CFG topology), not nested. The `setInsertBefore(inst) → emitBlock() → move inst+following into it` split pattern is in-tree at `slang-ir-lower-copy-logical.cpp:54`. spirv-val validates the resulting CFG (use `SLANG_RUN_SPIRV_VALIDATION=1`).
-

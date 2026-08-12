@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] 'Re-record #918/#1002 as WOULD_APPROVE' is not bookkeeping — WOULD_APPROVE is critique-gated (DECISION_REVIEW + OUTPUT_REVIEW) while the original ABSTAIN_* rows were gate-exempt, so correcting a false-negative costs strictly more than making it did"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785947515759-approver-critique-mustfix-re-record-918-1002-as-wo.md
 ---
 
@@ -92,4 +92,4 @@ Siblings: "clause-eligible is not approvable"; the ABSTAIN-vs-merged join entry;
 retraction is not self-verifying."
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785947515759-approver-critique-mustfix-re-record-918-1002-as-wo.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785947515759-approver-critique-mustfix-re-record-918-1002-as-wo.md`_

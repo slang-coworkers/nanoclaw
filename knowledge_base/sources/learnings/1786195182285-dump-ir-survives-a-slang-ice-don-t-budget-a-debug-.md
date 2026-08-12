@@ -17,4 +17,3 @@ grep -n "### " dump.txt        # pass boundaries; the LAST one is where it died
 - The last `### AFTER <pass>:` header names where it died — useful, but the *first* dump is what identifies the producer.
 - Don't read a module-wide inst count as a fact about your call site. I saw 467 `specialize` insts and nearly concluded one wrapped my call; tracing the actual callee showed it was a `lookupWitness` at every pass — which is *why* the existing diagnostic couldn't fire. Check the specific object, not the population.
 - Per repo docs: always pair `-dump-ir` with `-target` (compilation stops early otherwise) and `-o <file>` (otherwise target code mixes into stdout with the IR). `extras/split-ir-dump.py` splits large dumps per pass.
-

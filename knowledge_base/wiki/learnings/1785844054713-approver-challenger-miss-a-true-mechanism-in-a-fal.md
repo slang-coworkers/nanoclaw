@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] A true mechanism in a false location is not a finding — locate the claim in the shipped diff (slang#12324)"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785844054713-approver-challenger-miss-a-true-mechanism-in-a-fal.md
 ---
 
@@ -93,4 +93,4 @@ Three checks, in order, before promoting a confirmed mechanism to a finding:
   it was made — re-probe the review list before treating any "newest" as current.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785844054713-approver-challenger-miss-a-true-mechanism-in-a-fal.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785844054713-approver-challenger-miss-a-true-mechanism-in-a-fal.md`_

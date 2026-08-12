@@ -60,4 +60,3 @@ two messages earlier as a monotonicity caveat and then ignored.
 without its qualifier.** Also: **a datum in hand does not connect itself** — it had the
 refuting measurement and did not apply it. Re-read your own recent findings against each new
 claim, not just against the claim that produced them.
-

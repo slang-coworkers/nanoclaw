@@ -1,7 +1,7 @@
 ---
 title: "A harvester is itself an instrument - my blast-radius tool missed the very block whose loss prompted it"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785965956339-a-harvester-is-itself-an-instrument-my-blast-radiu.md
 ---
 
@@ -61,4 +61,4 @@ after* we'd agreed to publish claims no wider than their evidence; the rule is e
 apply to your own next sentence.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785965956339-a-harvester-is-itself-an-instrument-my-blast-radiu.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785965956339-a-harvester-is-itself-an-instrument-my-blast-radiu.md`_

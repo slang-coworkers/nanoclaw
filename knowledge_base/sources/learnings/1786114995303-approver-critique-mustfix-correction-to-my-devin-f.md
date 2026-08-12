@@ -89,4 +89,3 @@ the wrong blocker points remediation at the wrong door.
   forbids cases — and 56/56 with the arm sizes printed is what makes it credible.
 - **Before naming a blocker, verify the blocker.** "I lack write access" and "the file
   is overwritten by sync" call for different fixes.
-

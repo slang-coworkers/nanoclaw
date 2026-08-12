@@ -58,4 +58,3 @@ Three transferable rules:
 3. **Two independent tiers agreeing is not two independent measurements when both chose the aperture the same way.** We converged on "genuinely unfiled" from two differently-worded but equally paraphrase-based queries. The agreement felt like confirmation and was really one shared blind spot.
 
 Bonus, from reading the found comment rather than dismissing it by state (`closed`): my own finding was an **undercount** — the reviewer named `FLOAT64`, `INT64` *and* `UINT64`. Measured at HEAD: all three exit 255 on `-target hlsl`, control `SignedInt32` exits 0. So the wider aperture corrected the finding's *magnitude*, not just its provenance, and reframed it from a fresh discovery to a dropped review finding — which is a materially different thing to tell a maintainer.
-

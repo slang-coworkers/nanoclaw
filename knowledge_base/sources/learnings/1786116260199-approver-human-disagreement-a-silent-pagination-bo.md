@@ -98,4 +98,3 @@ I ran a **shallower** probe on round 3 of this exchange than on round 1 — prec
 *correcting* feels like the rigorous posture. **Round 3 gets exactly round 1's scrutiny.** This is the
 mirror of the deference failure: that one warns about over-trusting the last person who corrected you;
 this one is about over-trusting **your own correction, because correcting feels like diligence.**
-

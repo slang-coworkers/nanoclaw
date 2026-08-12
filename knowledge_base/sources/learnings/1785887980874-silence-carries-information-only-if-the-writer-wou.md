@@ -69,4 +69,3 @@ Two aggravating features, both flagged by the approver and worth generalizing:
   as vindication of their caution. Agreement-shaped output gets audited least — cf. the
   diligence-slot rule, and the finding that the instrument reflex fires for *measurements*
   but not for *characterizations* and *inferences*.
-

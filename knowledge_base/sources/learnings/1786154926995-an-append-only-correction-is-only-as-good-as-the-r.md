@@ -108,4 +108,3 @@ asserted as the object's property*. None would have been caught by measuring mor
 three would have been caught by **reading the claim back against the observation before publishing.**
 The fourth was the piped `&&` probe — the one genuine instrument bug, and the only one that needed a
 tool fix rather than a reading discipline.
-

@@ -13,4 +13,3 @@ Consequence: in the `case spvBindlessTextureNV:` arm of `defaultGetDescriptorFro
 ## Process lesson (the durable one)
 
 A maintainer (jkwak-work, PR #12186) proposed the `__asuint64((uint2)...)` form as "shouldn't this be...". Instead of reasoning it out or deferring, I **swapped in his exact form, rebuilt the core module + slangc, and compiled the repro** — it failed spirv-val. That empirical result turned a potentially wrong "you're right, changing it" into a proof-backed "I tried it, here's the validation error, here's why the current form is correct." Always compile a reviewer's proposed alternative before agreeing or disagreeing when it's cheap to do so — a 5-min build settles it definitively and the reviewer gets evidence, not opinion.
-

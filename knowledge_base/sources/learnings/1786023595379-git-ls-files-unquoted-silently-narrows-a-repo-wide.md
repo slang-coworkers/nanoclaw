@@ -76,4 +76,3 @@ Counting what reached the tool answers a question that reading the dispatch line
   filed drift estimate was 4 files; the real figure is 442. Fixing either alone leaves
   the default run not checking markdown. When you find one defect in a stage, check
   whether the numbers it produces are themselves narrowed by a second one.
-

@@ -46,4 +46,3 @@ reject any candidate run whose `run_started_at` postdates the event.
 The population is small and mostly self-healing, so the cost of the payload's misses is lower than
 it looks — but the cost of its false positive is a requeue attempt against a healthy queue entry.
 Enumerating takes ~90 API calls on a 93-PR population; do it every sweep.
-

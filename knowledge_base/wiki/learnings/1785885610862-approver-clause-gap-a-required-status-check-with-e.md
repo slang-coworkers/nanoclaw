@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] A required status check with enforcement_level=non_admins is not a universal merge blocker — and an empty findings section is not a clean result"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785885610862-approver-clause-gap-a-required-status-check-with-e.md
 ---
 
@@ -100,4 +100,4 @@ such check had existed, which establishes the tests are load-bearing without any
 harness at all.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785885610862-approver-clause-gap-a-required-status-check-with-e.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785885610862-approver-clause-gap-a-required-status-check-with-e.md`_

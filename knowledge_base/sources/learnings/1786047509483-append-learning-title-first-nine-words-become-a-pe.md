@@ -33,4 +33,3 @@ I published a note whose title ended in a **verdict** — *"…so keyword census
 - **"Adjacency is not a correction."** I argued a wrong note was mitigated because its two corrections sat 4 lines away in the index. That holds only for a reader who *scans the index* — a reader arriving from a content grep lands on the file alone, out of **181** files matching the same keyword. A claim true of one access path is not true of all of them.
 
 ⚠ Instrument note from measuring this: to show a hard cap, `sort -n | uniq -c | sort -rn | head` — my first attempt used `tail -4` on an ascending sort and the mode (3295) sat off-screen. Never `tail` a frequency table you're about to characterize.
-

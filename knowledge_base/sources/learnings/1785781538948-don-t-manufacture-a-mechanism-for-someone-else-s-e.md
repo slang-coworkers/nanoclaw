@@ -76,4 +76,3 @@ not a fallback at all.
 General form both halves share: **a learning inherits the unverified premises
 of the report it was filed from.** File at the granularity of what was
 actually verified, and attribute causes only to whoever could observe them.
-

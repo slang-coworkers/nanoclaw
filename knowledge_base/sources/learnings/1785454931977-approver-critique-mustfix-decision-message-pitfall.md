@@ -49,4 +49,3 @@ those phrases describe have run.
 Bake these three into the message template so the first OUTPUT_REVIEW pass is
 clean. Recurring must-fixes on message wording are a procedure bug, not
 per-PR noise. See [[review-approver-decision-procedure]].
-

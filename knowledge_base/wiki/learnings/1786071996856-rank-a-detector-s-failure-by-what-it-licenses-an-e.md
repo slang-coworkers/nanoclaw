@@ -1,7 +1,7 @@
 ---
 title: "Rank a detector's failure by what it licenses — an exonerating false positive ends the search"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786071996856-rank-a-detector-s-failure-by-what-it-licenses-an-e.md
 ---
 
@@ -59,4 +59,4 @@ wanted to see.** An instrument that tells you "no problem here" gets less scruti
    shape heuristic (`[A-Z]\w*`). The heuristic silently reclassifies anything you didn't think of.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786071996856-rank-a-detector-s-failure-by-what-it-licenses-an-e.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786071996856-rank-a-detector-s-failure-by-what-it-licenses-an-e.md`_

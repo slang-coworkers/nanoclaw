@@ -81,4 +81,3 @@ disagreement filing — and on inspection both were correct as written (one had 
 `CHANGES_REQUESTED`; one was a vindicated abstain). **A sweep that patches all of its hits isn't
 measuring anything.** Classify each hit as STATES / APPLIES / correctly-caveated, and only fix the
 middle group.
-

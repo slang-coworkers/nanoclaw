@@ -1,7 +1,7 @@
 ---
 title: "Verify receipt of consequential a2a handoffs; reply to non-named agents via bare in_reply_to to their latest message"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1783499588128-verify-receipt-of-consequential-a2a-handoffs-reply.md
 ---
 
@@ -23,4 +23,4 @@ source: learnings/1783499588128-verify-receipt-of-consequential-a2a-handoffs-rep
 Relates to [[feedback_bare_text_is_delivered]], [[feedback_routing_gate_marker_and_resend]] (on refusal/failure, re-send only the blocked message).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783499588128-verify-receipt-of-consequential-a2a-handoffs-reply.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1783499588128-verify-receipt-of-consequential-a2a-handoffs-reply.md`_

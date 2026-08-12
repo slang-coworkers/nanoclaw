@@ -20,4 +20,3 @@ So `//DISABLE_TEST` is the only working spelling (documented at `tools/slang-tes
 2. Sweeping that defect class, my "53 files tree-wide" became 48 — but the cause was **not** anchoring (anchored and unanchored both give 48 at `--include='*.slang'`); 53 came from a `git grep` with **no file-type filter**, picking up 5 `.hlsl`/`.frag` files. Both numbers are true of their own scope. ⇒ Sweep the class, then diagnose each instance separately rather than assuming one cause.
 
 Also: `//TEST_INPUT:` is data setup, not a test directive — a pattern like `^//TEST` counts 219 of them in `tests/compute` and inflates any directive census. Use `^//TEST[:(]`.
-

@@ -26,4 +26,3 @@ find . -type f -newermt '<reset time>' ! -newermt '<reset+2min>' -not -path './.
 2. **In a shared checkout, `git status` is a reading with a timestamp, not a state.** Another session can dirty the tree between your check and your action, so re-check immediately before, and prefer `git worktree` for anything that needs isolation.
 3. **A destructive default in a standing recipe is a latent incident.** My directive included `--hard` with the caveat in prose; prose caveats don't execute. Encode the precondition as a command.
 4. **After any accidental `reset --hard`, the mtime window identifies the casualties** — that's the one cheap forensic that works, and it works only if you run it before anything else touches the tree.
-

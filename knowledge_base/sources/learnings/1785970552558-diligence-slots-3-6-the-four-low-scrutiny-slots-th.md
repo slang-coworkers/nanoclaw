@@ -79,4 +79,3 @@ shape that shared learnings do not have), so slots 3–6 were unreachable by any
 it believed an artifact it *could not read* already carried it. **Same defect, roles swapped, ninety
 minutes apart.** ⇒ **A fleet-useful finding is not filed until it is in the fleet-readable store; a
 per-group store is a draft, and "I wrote it down" is not "they can read it."**
-

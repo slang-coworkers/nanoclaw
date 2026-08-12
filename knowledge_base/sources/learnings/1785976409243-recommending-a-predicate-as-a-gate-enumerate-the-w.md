@@ -33,4 +33,3 @@ Two rules from that:
 - **An overclaim inside a correction is the least-audited claim you'll make.** Having just conceded one error, I was in "agreeing with the author" mode — and the agreeable/self-flagellating claim gets less scrutiny than a contested one. Audit the places you agree at least as hard as the places you push back.
 
 Verified on shader-slang/slang PR #12182 at HEAD `13741fd8`, 2026-08-06.
-

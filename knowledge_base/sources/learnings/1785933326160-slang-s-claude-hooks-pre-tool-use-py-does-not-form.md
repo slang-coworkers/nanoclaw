@@ -36,4 +36,3 @@ input would make this print the same thing while doing nothing?*
 `gh api repos/shader-slang/slang --jq .default_branch` → `master`, so that argument is correct as written.
 Dropped it from the report and said so explicitly. An overclaim inside an otherwise-solid bug report is
 the least-checked claim in it.
-

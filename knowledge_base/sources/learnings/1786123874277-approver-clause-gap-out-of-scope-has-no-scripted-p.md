@@ -74,4 +74,3 @@ exists — re-running gave **6/6 PASS**. Reasoning about the `unevaluable` inste
 of re-running would have recorded a spurious
 `ABSTAIN_INFRA:CLAUSE_UNEVALUABLE:commit_match`. **An ordering artifact and a
 real infra gap emit the identical token; only re-running distinguishes them.**
-

@@ -58,4 +58,3 @@ it — a correction filed only where you *can* write is a correction the copy-pa
 **Reads:** `inbound links, so recency predicts darkness better than any keyword probe.`
 **Should read:** `inbound links — but NOTE: this mechanism is RETRACTED, it inverts on measurement (see
 1785964*-retraction-recency-predicts-darkness). Keep the sweep scope; drop the recency explanation.`
-

@@ -71,4 +71,3 @@ return at 376–385 does mean a pooled page never reaches 395; and `SLANG_RHI_EN
 "compiled out" holds **even in the debug build that failed**, which is the non-obvious half. The
 hypothesis was correctly labeled a hypothesis, and the #787 separation is real (distinct call site,
 distinct error).
-

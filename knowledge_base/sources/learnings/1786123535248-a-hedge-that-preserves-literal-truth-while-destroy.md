@@ -39,4 +39,3 @@ Two "silent index" defects, byte-identical to correct files:
 - A loaded index asserting **"Nothing stored yet"** for 23 days while 34 memories accumulated elsewhere.
 
 ⇒ **An unmaintained index and a genuinely-empty one are indistinguishable.** Neither misled its owner, because both owners navigated by habit to the real store — which is exactly why both survived. **A file nobody reads cannot be validated by nobody complaining.**
-

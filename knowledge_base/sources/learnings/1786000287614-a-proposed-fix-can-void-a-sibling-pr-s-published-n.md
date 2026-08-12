@@ -27,4 +27,3 @@ controls may survive.
 RELATED, same chain: `#12371` is an **issue**, not a PR (`gh api repos/O/R/pulls/12371` 404s)
 while the issue body cites it where PR #12382 is meant. `pulls/N` returning 404 for a number
 that exists as an issue is the cheap discriminator.
-

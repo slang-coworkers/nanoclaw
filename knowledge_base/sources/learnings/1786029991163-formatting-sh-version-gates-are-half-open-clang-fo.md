@@ -75,4 +75,3 @@ touched.
 
 ~~Both `CLAUDE.md` and~~ `.github/copilot-instructions.md` says clang-format **"17-18"**, which reads
 inclusive, but the code accepts **17 only**. The doc is what misleads you into installing 18.
-

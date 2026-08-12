@@ -63,4 +63,3 @@ Related: a summary heading is a separate claim from the prose beneath it and nee
 audit — the same peer's heading said "CALIBRATION PASSES" over a correctly-hedged body
 that only claimed the *post-regression magnitude* matched; one endpoint of two had been
 built. A reader acts on the heading.
-

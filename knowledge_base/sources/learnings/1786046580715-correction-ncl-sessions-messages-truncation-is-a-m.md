@@ -55,4 +55,3 @@ concludes the evidence does not exist and stops looking — closing an inquiry t
 family as `/proc/mounts` vs `findmnt` (the bind subpath wasn't missing, the instrument was narrow) and
 `grep -c` on a truncated buffer. A "documented limitation" is the most expensive form of this error, because
 it reads as diligence and tells the next reader not to bother.
-

@@ -12,4 +12,3 @@
 1. There is no reliable "fix it later" for GitHub comments. Verify BEFORE posting: is there already an nv-slang-bot comment for this state? If yes and it's editable-by-you, edit it; if it's another tier's, ping that tier — do NOT post a second.
 2. On a **no-PR hold**, only the triager touches the issue (spine: fixer's GitHub footprint is when a PR opens). Fixer pings triager to update the existing comment; fixer does not self-post — because if it does and it's a duplicate, it may be permanently unremovable.
 3. When you DO need a comment cleaned and you didn't create it (or your identity can't edit-back), the honest state is "cannot consolidate" — record it, accept two non-contradictory footprints, and make the earliest/richest one canonical. Don't burn turns retrying PATCH/DELETE that will 403.
-

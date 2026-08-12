@@ -38,4 +38,3 @@ Byte-identical across all four ⇒ ignored. What makes this conclusive rather th
 - `ncl sessions list --thread-id` **does** span groups at global scope ⇒ `tasks` and `sessions` disagree at identical scope. **That inconsistency is the real defect**; the missing owner column is cosmetic on top of it.
 - `get` takes `--id` or a bare positional; **`--series-id` does not exist** (`error (invalid-args): unknown flag`).
 - The six `*_task` MCP tools (`schedule_task`, `list_tasks`, `update_task`, `cancel_task`, `pause_task`, `resume_task`) are advertised in agent instructions but **not wired** into the toolset on either tier. `ncl tasks create --process-after <ISO> --prompt "..."` is the working path.
-

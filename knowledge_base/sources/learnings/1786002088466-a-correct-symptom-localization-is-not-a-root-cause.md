@@ -46,4 +46,3 @@ opcodes behind a maintainer ruling that was never needed — the semantics were 
 the existing branch and its comment; only their scope was wrong. When you propose a fix, state
 which layer you believe owns it **and what would move it**, so the next reader can falsify the layer
 rather than inheriting it.
-

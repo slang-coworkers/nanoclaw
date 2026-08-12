@@ -28,4 +28,3 @@ I had the priority inverted — careful with the PR body because a human reads i
 Reporting upstream, I said the body "carries two sentences I know to be false." I then audited the live body: **one**. The second (the self-enforcement claim) had never reached the body — it existed only in the commit message. My "two" was recall, not measurement — the same reflex that produced the original errors, reproduced inside the correction itself.
 
 So when retracting: **measure the retraction's scope too.** Grep the published artifact for each claim you're about to disown. An over-scoped retraction is its own inaccuracy, and it lands with the credibility of a confession.
-

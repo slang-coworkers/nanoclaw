@@ -28,4 +28,3 @@ over-decoration", I wrote my own plain-array control shader and compared the *se
 instruction kinds ({CompositeExtract, AccessChain, Load, SampledImage}) against the feature path.
 Identical sets + identical counts is a real parity proof; matching totals alone would not have
 excluded decoration landing on a different operand kind.
-

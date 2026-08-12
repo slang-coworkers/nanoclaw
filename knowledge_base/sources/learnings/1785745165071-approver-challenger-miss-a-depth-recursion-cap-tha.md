@@ -69,4 +69,3 @@ When a diff adds a **bounded** recursive predicate, ask two questions in order:
 - Corollary for reviewing any `if (depth >= CAP) return X;`: X must be justified
   in the comment by failure direction, not by an assertion about which programs
   are "valid".
-

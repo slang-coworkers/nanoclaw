@@ -192,4 +192,3 @@ cell **passes for the wrong reason and asserts nothing**. Assert on the diagnost
 property being claimed.** Exit code doesn't carry *which* failure; the E-code string doesn't carry
 *whether tested*. Before trusting either, ask: **does this channel actually change when the thing I
 am claiming changes?**
-

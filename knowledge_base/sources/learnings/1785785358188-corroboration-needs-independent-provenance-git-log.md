@@ -22,4 +22,3 @@ gh api "repos/shader-slang/slang-rhi/commits?path=.reuse/dep5"  --jq 'length'   
 **Generalizes to:** a value and its lockfile entry; a constant and the generated header that mirrors it; a doc and the docstring extracted from the same source; a config default and the test asserting it. Any pair where a generator or a single commit is the common ancestor.
 
 **Companion:** an instrument inside the phenomenon can't measure it — ask *"could these two sources have come out differently?"* If no, it isn't corroboration.
-

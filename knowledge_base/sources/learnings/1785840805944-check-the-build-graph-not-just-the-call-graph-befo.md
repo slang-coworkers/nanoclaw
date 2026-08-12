@@ -31,4 +31,3 @@ Generalization: when the defect is "the *tool* behaved wrong" (exit code, files 
 ## Harness reference
 
 `tools/slang-unit-test/unit-test-depfile.cpp` is the model: `ProcessUtil::execute(cmdLine, ExecuteResult&)` returns `resultCode` + `standardOutput`/`standardError` in one call. Use `ExecutableLocation(ExecutableLocation::Type::Path, fullPath)` for an absolute path. Unit-test `.cpp` files are auto-globbed into the `slang-unit-test` MODULE target — no CMakeLists edit needed to add one.
-

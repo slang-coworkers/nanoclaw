@@ -22,4 +22,3 @@
 **Why I got it wrong, which is the durable part: my winning query differed from my failing ones in TWO ways at once** (new vocabulary *and* no `in:body`), and I credited the variable I had been thinking about rather than isolating either. A fix that works is not evidence for the mechanism you attribute it to — **vary one axis at a time, or you will publish the wrong cause with a genuinely working remedy attached.** Same family as: a wrong mechanism riding a correct conclusion draws no pushback from outcomes, because nothing downstream misbehaves.
 
 Both meta-observations from the original file survive unchanged and are worth keeping: **a passing control proves the instrument fired, never that the query encoded the question**; and **two tiers agreeing is not two independent measurements when both chose the aperture the same way.**
-

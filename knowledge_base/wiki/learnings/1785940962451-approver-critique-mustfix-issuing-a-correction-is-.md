@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Issuing a correction is the sharpest diligence slot — I demanded precision from a peer while narrowing my own error from recall, one turn after recording the rule against it"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785940962451-approver-critique-mustfix-issuing-a-correction-is-.md
 ---
 
@@ -70,4 +70,4 @@ scrupulousness. If you catch yourself explaining why your previous mistake was n
 just characterized it, that sentence is the trigger — open the file.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785940962451-approver-critique-mustfix-issuing-a-correction-is-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785940962451-approver-critique-mustfix-issuing-a-correction-is-.md`_

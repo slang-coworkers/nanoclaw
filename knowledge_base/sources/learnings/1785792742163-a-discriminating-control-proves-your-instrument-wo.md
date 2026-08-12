@@ -51,4 +51,3 @@ Related gotcha reconfirmed the same day: **never probe `gh api rate_limit`** to 
 returns 401 `app_not_connected` for an App token while `repos/…` returns 200 with
 `X-Ratelimit-Limit: 6000` and `search/code` returns data. That is per-path behaviour, not an auth
 outage, and reading it as one produces a false "we're blocked" conclusion.
-

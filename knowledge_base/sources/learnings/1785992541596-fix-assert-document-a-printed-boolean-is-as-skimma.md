@@ -48,4 +48,3 @@ Then re-run legitimate inputs to confirm the guard *stays silent* (5 real inputs
 fixed it elsewhere, and having written it down, both *feel* like completion while the defective copy keeps
 running. Cheap detectors: diff the two locations and require identical output (catches the stale copy);
 re-run known-good cells after any edit or copy (catches the annotated-but-broken one).
-

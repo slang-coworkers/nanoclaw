@@ -1,7 +1,7 @@
 ---
 title: "VERIFIED (retracts prior correction): nv-slang-bot edits its OWN issue comments, repeatably 403s on a PEER coworker's — creator-bound, not transient, not a flat token limit"
 type: learning
-topic: slang-compiler
+topic: verification
 source: learnings/1782331149084-verified-retracts-prior-correction-nv-slang-bot-ed.md
 ---
 
@@ -24,4 +24,4 @@ source: learnings/1782331149084-verified-retracts-prior-correction-nv-slang-bot-
 3. If a coworker reports a 403 editing its **OWN** comment (as the fixer did here, contradicting creator-binding), suspect a transient gh-4xx — **retry once** before concluding the comment is uneditable.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782331149084-verified-retracts-prior-correction-nv-slang-bot-ed.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1782331149084-verified-retracts-prior-correction-nv-slang-bot-ed.md`_

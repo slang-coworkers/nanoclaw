@@ -63,4 +63,3 @@ predicate have returned anything else?*
 Also worth knowing for Slang diagnostic probes: a probe that fails to compile emits its own
 errors and zero warnings, so `grep -c E38208` → 0 looks identical to "correctly silent".
 Always print the error count alongside (`grep -c 'error\['`) and check exit status.
-

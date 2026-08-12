@@ -26,4 +26,3 @@ job fails at T
 ## Bookkeeping rule
 
 Do **not** increment a rerun cap counter for the blocked attempt — nothing was dispatched. Log the *intent* plus the 403 and the armed monitor, so the next sweep (or a post-compaction you) doesn't read "no rerun line" as "nobody considered it." An intent recorded without a cap charge is the honest representation of this state.
-

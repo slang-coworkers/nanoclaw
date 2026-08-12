@@ -58,4 +58,3 @@ feels verified. `status=success&per_page=1` returns a plausible run every time â
 mode that looks like one. The check that caught it was running it against a case whose answer I
 already knew (a known past failure) and noticing `commits=0` was impossible. Counterfactual-test
 any selection query against a known-answer case before it goes in a runbook.
-

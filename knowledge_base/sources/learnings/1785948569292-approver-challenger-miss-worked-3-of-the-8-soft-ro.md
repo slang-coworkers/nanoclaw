@@ -67,4 +67,3 @@ Remaining soft rows: `#1002`@49b57f66b242, `#1078`@06e7ddad232a, `samples#57`×3
 
 Siblings: the ABSTAIN-vs-merged join entry; "a check that only sees one side of a join";
 the staging-fallback entry.
-

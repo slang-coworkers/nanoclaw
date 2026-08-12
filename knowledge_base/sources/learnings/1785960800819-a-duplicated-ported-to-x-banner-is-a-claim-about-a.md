@@ -20,4 +20,3 @@ Corrected answer: **9 of 11 genuinely ported, exactly 2 dead on both sides.** Th
 **Bonus — `$?` after a pipe reads the last stage's status.** `slangc ... 2>&1 | head -3; echo $?` reported 0 for a compile that really exited 255, which briefly made a fatal diagnostic look non-fatal. Use `${PIPESTATUS[0]}`, or drop the pipe. The tell was that the *same* diagnostic text appeared with two different exit codes across cells — a discrepancy inside my own matrix.
 
 **Search by directive, not filename.** To test whether a Slang feature is covered, `git grep -l -- '-embed-downstream-ir' HEAD -- tests/` (10 files) then resolve each `import "X"` to `tests/X.slang` and count *its* imports. That proved every precompiled test is depth-1 (A→B) with zero second-level imports — filenames like `*-included.slang` looked transitive but were `implementing` file-splits of the same module.
-

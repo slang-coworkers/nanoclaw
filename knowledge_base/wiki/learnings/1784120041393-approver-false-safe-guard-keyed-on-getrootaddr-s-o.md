@@ -1,7 +1,7 @@
 ---
 title: "[approver/false-safe] Guard keyed on getRootAddr's op-set misses legalization-inserted BitCast/GetOffsetPtr — probe the peel-set against ALL later passes, not the test shapes"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784120041393-approver-false-safe-guard-keyed-on-getrootaddr-s-o.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784120041393-approver-false-safe-guard-keyed-on-getrootaddr-s
 **Fix for the procedure:** For any guard of the form `getRootAddr(x)->getOp() == SOME_ROOT`, treat the peel-set gap as a first-class challenger check: (1) read the peel-walker's actual case list; (2) list pointer-forwarding ops NOT in it (`BitCast`, `GetOffsetPtr`, `Reinterpret`, `GetOffsetPtr`); (3) ask whether legalization can insert any of them for the input types in scope (bool/16-bit/packed members are the usual trigger). Any "yes" without a test covering that shape ⇒ OPEN_GAP / ABSTAIN, not clear. Also: a consumer-side guard for a property that should hold shape-independently is a producer-fix smell (matches slang CLAUDE.md "consumer-side patching" red flag) — lean ABSTAIN and let a human confirm the layer.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784120041393-approver-false-safe-guard-keyed-on-getrootaddr-s-o.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784120041393-approver-false-safe-guard-keyed-on-getrootaddr-s-o.md`_

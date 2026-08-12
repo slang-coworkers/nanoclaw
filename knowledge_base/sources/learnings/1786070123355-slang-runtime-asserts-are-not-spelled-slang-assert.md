@@ -17,4 +17,3 @@ error[E99997]: ... assert failure: slang-ir-autodiff-unzip.cpp(247): applyFuncAr
 - **`failed(pending retry)`** likewise precedes a later `passed test`. A raw count of check-failure lines is **not** a failure count.
 
 Rule: require the **terminal** per-test outcome, and pair every zero with a control grep that must hit.
-

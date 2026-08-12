@@ -52,4 +52,3 @@ negative result — except the defective instrument here was **my sampling inter
 Practical guard: when a measurement *confirms* a story you already believe, that is the moment to
 re-measure with a different method — not the moment to act. Ask *"what interval would this check need
 for its silence to mean what I think it means?"*
-

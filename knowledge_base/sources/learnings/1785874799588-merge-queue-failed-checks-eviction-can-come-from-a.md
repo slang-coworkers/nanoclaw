@@ -31,4 +31,3 @@ GET repos/{o}/{r}/commits/{merge_group_sha}/status
 ## Classifying the cross-repo status failure
 
 Use a **cross-PR control** rather than judging the failing test in isolation: slang #12281's slangpy run failed the *same file* (`tests/sgl/device/test_profiler.cpp`) at a *different assertion* (line 534, Windows/GPU) and then **passed on retry**, while #12328's hit lines 284–287 on Linux/CPU. Same file, different assertion, different platform, self-healing ⇒ flaky timing test, unrelated to #12328's parser-only change. A signature that moves between platforms/assertions is intermittent; one that reproduces identically is not.
-

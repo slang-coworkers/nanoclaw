@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] slang-rhi#807 — maintainer self-merge with a fresh independent APPROVE that predated the finding by 19s; ABSTAIN scored as conservative agreement"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785766473587-approver-human-agreement-slang-rhi-807-maintainer-.md
 ---
 
@@ -65,4 +65,4 @@ independent APPROVE, so the class is "maintainers accept temporary
 test-disables at LOW severity," not "the holds are wrong."
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785766473587-approver-human-agreement-slang-rhi-807-maintainer-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785766473587-approver-human-agreement-slang-rhi-807-maintainer-.md`_

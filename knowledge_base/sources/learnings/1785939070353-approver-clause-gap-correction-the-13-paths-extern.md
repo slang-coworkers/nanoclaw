@@ -80,4 +80,3 @@ narrate the *supporting membership* from expectation rather than from the execut
 The conclusion being correct is what makes the narration feel safe — a right answer
 retroactively licenses the reasoning that reached it. Print the per-path matcher set;
 don't describe it.
-

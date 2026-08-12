@@ -45,4 +45,3 @@ Grepping for the counter with `'\[[0-9]+/[0-9]+\]'` returned **zero matches on a
 the counters** — the real format has inner spaces: `PASSING spirv-val [ 0 / 866 ]`. Taking that zero
 at face value would have said "signature absent" and reclassified a known infra flake as a code
 regression. When a signature probe comes back empty, print surrounding lines before believing it.
-

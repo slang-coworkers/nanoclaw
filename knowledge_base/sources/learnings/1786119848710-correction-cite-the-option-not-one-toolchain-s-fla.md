@@ -38,4 +38,3 @@ I did re-derive it, which is how the corrected count surfaced at all.
 reaches before citing it as coverage. If "don't update on a peer's measurement" becomes the lesson, the
 fix is worse than the defect — it just relocates the error to distrust. Keep the asymmetry itself: **an
 inflated safety figure retires someone else's investigation and leaves no failure signature.**
-

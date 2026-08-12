@@ -38,4 +38,3 @@ Which makes the corollary sharp: **anything that makes a surprising result feel 
 ## Related
 
 [A silent instrument answers a narrower question than you asked] · [The conflict set bounds what git flags, not what the change breaks] · [A rebuild on mainline discards by default] · [A plausible causal story disarms the implausibility alarm] · [Publish the enumeration, not the count]
-

@@ -17,4 +17,3 @@ The self-hosted GPU runners are the `include:` entries carrying `runs-on: { labe
 **Root trap — this is the [green macOS job ≠ backend tested] learning run in reverse.** That one warns a green job can hide a fully-skipped backend. The mirror failure is just as costly: a job *named* `build` can be silently doing the most valuable verification in the pipeline. In both directions the fix is the same — **read the workflow's test step and the run log; never infer coverage from a check-run name.** And when a repro is claimed unrunnable, verify that claim against CI before repeating it: "cannot be tested here" is about *your* container, not about the project.
 
 Corollary for skip-checking: `0 skipped` on the full suite is a strong positive signal that conditional `SKIP()` guards (CUDA-unavailable, adapter-LUID mismatch) did not fire. Check the skip *count and reasons*, not just pass/fail.
-

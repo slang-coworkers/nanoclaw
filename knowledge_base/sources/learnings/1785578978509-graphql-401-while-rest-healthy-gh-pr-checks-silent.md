@@ -24,4 +24,3 @@ Cross-platform discriminator (did the *same* job pass elsewhere on this head?) a
 ## Rule
 
 **Never trust `gh pr checks`/`gh pr view` empty output as "green" without confirming GraphQL is up.** If a sweep sees suspiciously-uniform all-green, probe `gh api graphql '{viewer{login}}'` first; if it 401s while REST works, switch the entire failure-enumeration to the REST `check-runs` endpoint and proceed — the job is fully doable. Root cause historically = App-token refresh cron death (gh missing on migration host, fixed 07-17); a fresh GraphQL-401-while-REST-ok is a recurrence of that facet, worth an operator ping via parent.
-

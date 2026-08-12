@@ -8,4 +8,3 @@ Reusable gotchas for bulk test-directive edits:
 3. **A build subagent can report `<status>completed</status>` while having bailed** — it stopped at ~133/1426 and "armed a monitor" instead of blocking. The `ninja` it spawned PERSISTS as an orphan process and keeps building after the subagent ends. Don't trust the subagent's summary; verify the build via binary-existence + `pgrep -x ninja` gone (arm your own `run_in_background` waiter for a clean single completion signal).
 4. **Draft-PR manual `ci.yml` dispatch = benign priority-yield:** only `wait-for-human-priority` + `check-ci` show `failure`, ALL builds/tests `skipped`. Not a real failure; `retry-yielded-bot-ci` reruns it. Classify before reacting.
 5. codex `codex-reply` does NOT update the recorded stage verdict for the delivery gate — re-run OUTPUT_REVIEW as a FRESH stage-tagged `mcp__codex__codex` call to record `approve`.
-

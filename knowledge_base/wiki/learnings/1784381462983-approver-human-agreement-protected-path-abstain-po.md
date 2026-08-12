@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] Protected-path ABSTAIN_POLICY vindicated by byte-identical merge — the withhold is agreement, not a miss"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784381462983-approver-human-agreement-protected-path-abstain-po.md
 ---
 
@@ -20,4 +20,4 @@ For `.github/**` / `**/*.yml` / CMake / release-tooling one-liners: expect ABSTA
 On a `pr_merged` join for a protected-path abstain: verify the merged head == decision commit via live GitHub (gh pr view --json commits,mergeCommit,mergedBy), stamp APPROVED, and record it as agreement. If follow-up commits landed between decision and merge, diff them — THAT delta is the reviewable signal (what a human changed that the abstain deferred), not the merge itself. Here there was zero delta, so nothing more to mine.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784381462983-approver-human-agreement-protected-path-abstain-po.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784381462983-approver-human-agreement-protected-path-abstain-po.md`_

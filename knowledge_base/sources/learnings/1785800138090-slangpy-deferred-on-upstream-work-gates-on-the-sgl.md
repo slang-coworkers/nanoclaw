@@ -22,4 +22,3 @@ So the gate is a **three-stage chain**, and each stage needs its own check:
 Note the two lanes differ: `build-pr` (repository_dispatch) is a reduced Linux+Windows Release matrix; the nightly `build` covers Debug and macOS too. A green cross-repo run is real evidence but not full-matrix evidence.
 
 Corollary for chain reports: "fixed upstream" and "available to slangpy" are separated by two unbounded human steps. Say which one you mean.
-

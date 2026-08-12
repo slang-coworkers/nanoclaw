@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] DeclRef::as&lt;U&gt;() DOES type-check (init() nulls on mismatch) — the 'as&lt;&gt; is a no-op guard' rule applies to SubstExpr::as(), not DeclRef::as()"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785745186536-approver-clause-gap-declref-as-lt-u-gt-does-type-c.md
 ---
 
@@ -85,4 +85,4 @@ path plus an `as<Base>`-matches-derived cascade ordering bug. Two distinct
   independently.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785745186536-approver-clause-gap-declref-as-lt-u-gt-does-type-c.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785745186536-approver-clause-gap-declref-as-lt-u-gt-does-type-c.md`_

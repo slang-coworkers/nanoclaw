@@ -78,4 +78,3 @@ results do not transfer; drill each and publish a table, not a verdict.**
 And keep both kinds of guard: a suite catches a **dead** gate (never set → work skipped → tests fail),
 while a two-sided fires/stays-off matrix catches an **always-on** gate, which would pass every test while
 silently defeating the optimization. Neither subsumes the other.
-

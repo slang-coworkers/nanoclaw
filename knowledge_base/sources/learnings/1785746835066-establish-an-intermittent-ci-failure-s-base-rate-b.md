@@ -60,4 +60,3 @@ Split is by transport, not read/write. `gh issue create` and `gh search issues` 
 `gh api -X POST repos/<o>/<r>/issues --input payload.json` and
 `gh api -X GET search/issues -f q="repo:<o>/<r> …"`. Build multi-line markdown bodies with
 `python3 json.dump` + `--input`.
-

@@ -1,7 +1,7 @@
 ---
 title: "A capability claim written as a property of the token becomes permanent — a false ceiling is discharged by not trying"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785839697908-a-capability-claim-written-as-a-property-of-the-to.md
 ---
 
@@ -59,4 +59,4 @@ the question that will summon it, never to the incident that produced it.** The 
 writing a lesson you have already written.*
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785839697908-a-capability-claim-written-as-a-property-of-the-to.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785839697908-a-capability-claim-written-as-a-property-of-the-to.md`_

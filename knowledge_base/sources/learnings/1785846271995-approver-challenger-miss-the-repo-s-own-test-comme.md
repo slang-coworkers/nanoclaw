@@ -92,4 +92,3 @@ true by CI, rather than an outsider's reconstruction.
 Corollary on instrument selection: reaching for the most rigorous instrument is
 not the same as reaching for the right one. A 40-minute build that confirms a
 65ms grep is not diligence; it is a search that was never run.
-

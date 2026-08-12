@@ -64,4 +64,3 @@ differential findings, state the scope: *"present in `createBuffer:340`, absent 
 
 Related: the D3 worked example claims the **size/attention undercount** only — the bug was
 readable at either sha, so #1090 does not demonstrate gitlink concealment.
-

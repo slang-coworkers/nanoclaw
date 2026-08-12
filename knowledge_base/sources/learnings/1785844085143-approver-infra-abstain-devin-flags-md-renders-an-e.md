@@ -86,4 +86,3 @@ writing `DEVIN_SKIPPED` or `reviewers_complete: false`.
 - **On a Devin-only tier both defects are decision-affecting:** defect 1 turns a
   1-Flag review into an apparently clean one; defect 2 turns a working Devin into
   a spurious `NO_REVIEW_SIGNAL` abstain.
-

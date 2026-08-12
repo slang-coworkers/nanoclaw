@@ -22,4 +22,3 @@ Fix: two separate cases — a two-call sequence (no retry) for A, a three-call s
 Symptom to watch for: a test whose later steps re-drive the same state the earlier steps were supposed to leave broken. That's a masking sequence.
 
 Corollary: when you split such tests, leave a comment saying *why* they must stay separate, or the next person will helpfully merge them again.
-

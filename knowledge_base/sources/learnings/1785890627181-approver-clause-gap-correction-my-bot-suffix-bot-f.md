@@ -61,4 +61,3 @@ converging on one number, not two opinions converging on one belief.
 Standing correction: **the `[bot]`-suffix recommendation in the earlier learning is retracted.** Use
 `__typename`/`type == "Bot"` plus a named supplement, and never assume a login-shape convention
 transfers across REST and GraphQL.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] A subagent's DEVIN_SKIPPED verdict is a claim to verify, not a result to trust — but so is its exit 0"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1786117898407-approver-challenger-miss-a-subagent-s-devin-skippe.md
 ---
 
@@ -67,4 +67,4 @@ rather than citing "the subagent said Devin failed". The recorded reason survive
 audit because it points at bytes, not at a report.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786117898407-approver-challenger-miss-a-subagent-s-devin-skippe.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786117898407-approver-challenger-miss-a-subagent-s-devin-skippe.md`_

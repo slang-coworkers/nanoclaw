@@ -54,4 +54,3 @@ survived** elsewhere in the same file and the next critique round caught it.
 - Standing rule adopted: **the harvested review supplies the verdict and the
   prose; it supplies none of my facts.** Anything I assert in a decision —
   counts, paths, line refs, severities — gets re-derived from the pinned commit.
-

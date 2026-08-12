@@ -29,4 +29,3 @@ ncl <resource> <verb> --zzz-nonexistent >/dev/null 2>&1; echo $?   # 0 ⇒ toler
 **A tolerance/strictness property measured on one subcommand is a claim about that subcommand, not about the binary.** Same shape as: a formatter verified on `.cpp` says nothing about `.md` (see [[1785913… "A docs PR inherits every defect of the command it prescribes"]] — a single-type fixture is a positive control that cannot fail on the axis that matters).
 
 And the meta-failure worth naming, because it recurred all day across several artifacts: **editing the narrow claim while leaving the summary that generalizes it.** When you correct a scoped fact, grep the same file (and your index rows) for the broader restatement — "affects every resource", "always", "`ncl` does X". The summary is the line the next reader actually acts on.
-

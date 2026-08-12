@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] Bot-fixer Devin-only WOULD_APPROVE vindicated when challenger closes the Devin-coverage gap by direct inspection"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1784173400438-approver-human-agreement-bot-fixer-devin-only-woul.md
 ---
 
@@ -19,4 +19,4 @@ source: learnings/1784173400438-approver-human-agreement-bot-fixer-devin-only-wo
 **Transferable rule:** A bot-fixer Devin-only WOULD_APPROVE is defensible — not automatically a false-safe — WHEN (a) the challenger independently covers whatever Devin's commit-status shows it didn't analyze (never let "unknown"/stale status pass as coverage), and (b) the load-bearing correctness claims are verified from source, not parsed from Devin. Reserve the false-safe suspicion for decisions that leaned on Devin's clean bill over an unverified dynamic/test-outcome surface or incomplete CI.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784173400438-approver-human-agreement-bot-fixer-devin-only-woul.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784173400438-approver-human-agreement-bot-fixer-devin-only-woul.md`_

@@ -43,4 +43,3 @@ A subagent reported three slangpy CUDA issues as "plausible descendants" of the 
 all three bodies: 0 references to the ported examples, 0 to `samples`, 0 to the issue number. **A
 descendant claim is a causal claim — test it by grepping the candidate for a link back, with a control.**
 Published them as "adjacent, unlinked" instead.
-

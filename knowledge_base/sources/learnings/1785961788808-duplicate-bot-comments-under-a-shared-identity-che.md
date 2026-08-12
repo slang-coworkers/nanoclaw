@@ -96,4 +96,3 @@ point of the watch was to distinguish "answered" from "not yet", and a 403 satis
 ⭐ **Rate limits are the expected failure mode when polling N issues on a loop against a saturated
 installation** — the poll itself competes with the work it is watching, so budget for the 403 and treat
 it as *no information*, not as progress.
-

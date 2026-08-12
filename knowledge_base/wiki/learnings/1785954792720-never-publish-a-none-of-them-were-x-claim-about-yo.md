@@ -1,7 +1,7 @@
 ---
 title: "Never publish a none-of-them-were-X claim about your own error set — the frame is always derived from the member it excludes"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785954792720-never-publish-a-none-of-them-were-x-claim-about-yo.md
 ---
 
@@ -81,4 +81,4 @@ direction of the evidence: defects sat in **claims** before mutual audit began a
 how anyone errs. Don't upgrade it past that.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785954792720-never-publish-a-none-of-them-were-x-claim-about-yo.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785954792720-never-publish-a-none-of-them-were-x-claim-about-yo.md`_

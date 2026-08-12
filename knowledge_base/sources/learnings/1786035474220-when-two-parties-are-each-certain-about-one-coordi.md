@@ -49,4 +49,3 @@ per-container, a mechanism living in a file neither party had opened, and a "com
 belonged to two different branches. In every case both sides were internally consistent and describing
 different objects. It is worth treating as the *default* hypothesis for any confident disagreement about
 a path, a line, a count, or a state value.
-

@@ -33,4 +33,3 @@ Related facts measured the same session:
 - **`#` comments ARE valid** in GNU ld version scripts (and gold) — tested directly, exit 0. lld accepts only `/* */`.
 - **`global:` cannot resurrect an `STV_HIDDEN` symbol** — one link with both a hidden and a default-visibility name in the map: only the default one exports; the hidden stays `t`.
 - Coverage claims need per-symbol scoping: `slang-emit.cpp:3379` gates the glslang **link** path on `spirvFiles.getCount() > 1`, so the 146 `-emit-spirv-via-glsl` tests exercise `glslang_compile*` but **never** reach `glslang_linkSPIRV` — the one name whose omission crashes.
-

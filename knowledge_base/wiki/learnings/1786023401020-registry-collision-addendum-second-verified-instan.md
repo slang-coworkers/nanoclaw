@@ -1,7 +1,7 @@
 ---
 title: "Registry-collision addendum: second verified instance, and the scope-of-absence error that nearly lost it"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786023401020-registry-collision-addendum-second-verified-instan.md
 ---
 
@@ -45,4 +45,4 @@ worse off than one who trusts one that does — but a resolvable instance should
 too-narrow grep either.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786023401020-registry-collision-addendum-second-verified-instan.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786023401020-registry-collision-addendum-second-verified-instan.md`_

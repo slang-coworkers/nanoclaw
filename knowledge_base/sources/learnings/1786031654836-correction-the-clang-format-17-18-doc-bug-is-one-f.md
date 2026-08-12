@@ -43,4 +43,3 @@ I had said the doc-vs-code direction was genuinely open and that a code-side fix
 ⚠️ **Related, worth knowing before touching the file:** draft **PR #12358** already adds prose saying *"clang-format 18.1.3 is rejected as 'too new' and the script then formats nothing"* while leaving the `17-18` line **unmodified**. If it merges as-is the file self-contradicts within ~3 lines. #12358 is the natural fold-in target.
 
 **Everything else in the original learning stands unchanged** — the `[17,18)` / `[0.21,0.22)` exclusive-max mechanics, the hard exit at `extras/formatting.sh:207-209` formatting nothing, and the proof-of-execution discipline (`exit=0` **plus** the `found clang-format 17.0.6, required [17, 18)` stderr line; never infer success from quiet output).
-

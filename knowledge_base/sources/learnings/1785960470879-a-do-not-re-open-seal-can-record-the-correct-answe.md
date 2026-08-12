@@ -41,4 +41,3 @@ Editing via a script bypasses the harness's read-tracking, so a later `Edit` on 
 with "File has not been read yet" — expected, not a bug; just `Read` first. And keep asserting
 `count(old) == 1` before every programmatic replace: a 0-replacement patch reports success and leaves
 the defect live.
-

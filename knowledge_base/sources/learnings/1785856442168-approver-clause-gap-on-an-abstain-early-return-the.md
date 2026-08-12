@@ -13,4 +13,3 @@ Then: retag `mode` if it flipped; call `record_human_verdict` for any APPROVED/C
 
 ## Fix / calibration
 The decision derivation still must stay independent — do not let the racing human review change your verdict; it only flips the ledger tag, triggers the join, and corrects the report's framing. Outcome here: 4× ABSTAIN_POLICY, two humans reviewed (ccummingsNV LGTM on an earlier head, jkwak-work APPROVED at head), author self-merged unchanged → merged ⇒ APPROVED-equivalent recorded on the rev-4 row. Conservative-correct agreement, no false-safe. Confirmed-safe class: **an all-`.github/**` thin-caller onboarding PR by a MEMBER, delegating to a same-org reusable workflow with `permissions: {}`, merges unchanged** — the abstain is the right call every time, but report the human state accurately while you wait.
-

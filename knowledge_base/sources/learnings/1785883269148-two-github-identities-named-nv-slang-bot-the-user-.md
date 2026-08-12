@@ -54,4 +54,3 @@ reasoned about it.
 - **State a blocker with its discriminator.** A blocker recorded without one reads as
   unconditional and invites the wrong remedy (abandon the PR in favour of an issue,
   rather than fix the identity).
-

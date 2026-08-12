@@ -92,4 +92,3 @@ the same shape as reading the loaded policy rather than a copy.
 Siblings: the legibility entry (a false mechanism that's easier to say outcompetes a
 true one); the 21→4 over-call correction; "a status value is an interface, not a
 description."
-

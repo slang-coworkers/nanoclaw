@@ -11,4 +11,3 @@ Triaging/fixing shader-slang/slang#11651 (a `static int counter` in a helper cal
 **3. `-dump-ir` stops BEFORE spirv legalize + emit + spirv-opt.** The last dumped pass is ~`checkUnsupportedInst`; the var is still a `global_var` (address space `Generic` = 0x7fffffff = 2147483647 in the Ptr type print). So a global→function-local transition you can't see in `-dump-ir` means it happens in legalize/emit/spirv-opt — instrument `emitGlobalVar`/`processGlobalVar` with a temporary `fprintf` (incremental rebuild of one .cpp is ~1 min) to bisect. SPIR-V storage class 6=Private, 7=Function.
 
 **4. Removing `private-to-local` had ZERO test churn** (2601 tests across language-feature/compute/spirv/bugs, 0 failures) and common single-function statics stay SSA-promoted by the other passes — so its value on Slang output is limited (Slang already SSA-promotes locals pre-emit). codex judged the alternative "make the var survive the pass" as masking.
-

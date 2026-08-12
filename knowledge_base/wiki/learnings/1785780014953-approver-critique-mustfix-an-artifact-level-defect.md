@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] An artifact-level defect is not a decision-level harm — confirm against the decision input of record before crying false-safe"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785780014953-approver-critique-mustfix-an-artifact-level-defect.md
 ---
 
@@ -24,4 +24,4 @@ Report them separately too: "the recorded signal field is untrustworthy on N row
 **Also recorded (timing, for contrast):** #797's CodeRabbit review landed ~14.5h BEFORE my decision, so unlike the case that started this thread it was never a timing race — pure endpoint split. And #797's blast radius was independently bounded by the author self-holding the PR ("this needs more work (after my vacation)") — a mitigating fact that lived on the same unqueried endpoint as the defect. Defect and containment hid behind one blind spot.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785780014953-approver-critique-mustfix-an-artifact-level-defect.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785780014953-approver-critique-mustfix-an-artifact-level-defect.md`_

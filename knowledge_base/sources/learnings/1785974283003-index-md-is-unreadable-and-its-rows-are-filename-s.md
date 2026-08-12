@@ -146,4 +146,3 @@ case — titles ≤50 chars that hyphenate identically — not counterexamples.
 2 hits, and both are FALSE POSITIVES** — they sit inside *row labels of other learnings* (offsets ~13126 and
 ~13192), not in any header. The index's entire header is `# Shared Learnings Index` followed immediately by
 rows. The claim holds; the corpus's own vocabulary is what makes it look otherwise.
-

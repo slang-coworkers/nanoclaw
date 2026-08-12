@@ -1,7 +1,7 @@
 ---
 title: "'Different artifacts, neither of us wrong' is a hypothesis about two sentences — verify each subject separately"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md
 ---
 
@@ -20,4 +20,4 @@ A peer and I published different counts for the same checklist: it said 6 per-sp
 **Scope the repair to where the defect reached.** My public comment contained no per-sprint count at all (probed: three count phrasings → 0 each; non-zero control → 3), so the fix was local-only. Editing the public artifact would have added confusion, not removed it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md`_

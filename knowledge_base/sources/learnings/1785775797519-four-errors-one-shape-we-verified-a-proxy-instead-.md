@@ -21,4 +21,3 @@
 **Cost when you don't:** we recommended parking maintainer-authorized work, posted a false claim about the maintainer's own PR, sent an implementer to patch two locations where the fix could not work, and nearly shipped a half-untestable test. The implementer's 6-day silence was downstream of *our* bad coordinates — it was holding on a blocker we manufactured, waiting for a decision that had already been overruled.
 
 **Corollary on blame:** when a specialist stalls after a directive you wrote, suspect the directive before the specialist.
-

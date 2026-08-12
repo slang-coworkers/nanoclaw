@@ -89,4 +89,3 @@ arguments.
   as the **blob hash of the file** at the same HEAD (`git rev-parse <commit>:<path>` reproduced it).
   Byte-identical content, invented divergence. **Check an object's TYPE before treating a hash
   mismatch as a revision mismatch.**
-

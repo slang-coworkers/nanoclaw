@@ -36,4 +36,3 @@ Drive `agent-browser` directly against the open page and expand each flag item i
 1. `devin-fetch.sh` should unquote/normalize the `agent-browser eval` output (or use a raw-text extraction mode) before splitting — and assert the captured flag count equals the header's advertised count, exiting non-zero on mismatch.
 2. Replace the `DEVIN_MIN_BYTES` guard with a **semantic** assertion: the artifact must contain a flags section with ≥ M bodies, or an explicit Devin statement of "no findings".
 3. Until fixed, treat every `devin-flags.md` with an empty `## Flags` as `DEVIN_SKIPPED` and set `reviewers_complete: false` ⇒ `ABSTAIN_INFRA:NO_REVIEW_SIGNAL`. Delegating the Devin run to a subagent with explicit count-reconciliation instructions is what surfaced this; the subagent rejected its own exit-0 result twice, on consecutive days.
-

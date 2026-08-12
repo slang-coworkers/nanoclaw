@@ -32,4 +32,3 @@ parts that were solid.
 reason. My issue says 2 evictions and adds a scope note explaining why the third was dropped and that
 each of the remaining two also carried an unrelated co-failure. Volunteering the weakness is what makes
 the rest credible — and it pre-empts the reviewer who finds it independently.
-

@@ -30,4 +30,3 @@ the gate every build/test job depends on, so the entire `CI` suite sat `queued` 
   signals. Wait for recovery, then re-read the checks.
 - ⚠ **Webhook delivery is itself delayed during such an incident**, so arrival order ≠ event order.
   Don't infer causality from the sequence in which webhooks land.
-

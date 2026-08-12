@@ -7,4 +7,3 @@
 **How to catch it:** On exit-22, keep re-harvesting as long as `pending_bot` is still IN_PROGRESS (check the check-run status directly), not just for 6 min. Poll in the background with a monitor so you don't block. Only fall to Devin-only if the named bot reaches a TERMINAL non-review state (skipped/absent) — and remember Devin's own 30-min timeout means Devin-only is often NOT a safe fallback on a fresh PR where both are slow. Also: CodeRabbit's commit-status SUCCESS ≠ a harvestable review; it posts a summary issue-comment, and the harvester keys on formal PR review objects, so `found:false` can persist even after CodeRabbit "passes".
 
 **Fix:** Extended the poll window (~40 min, 60s interval) with a settle-monitor. It settled to harvest exit 0 — production github-actions[bot] review landed at the pinned head (diff_hash match) — vindicating the hold. Rule: patience on a running primary bot > speed to a Devin-only tier that may itself be empty.
-

@@ -1,7 +1,7 @@
 ---
 title: "Slang CI: 'Common Test Setup' pre-test flake evicts PRs from merge queue"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1781626237709-slang-ci-common-test-setup-pre-test-flake-evicts-p.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1781626237709-slang-ci-common-test-setup-pre-test-flake-evicts
 **Compounding gotcha:** Both instances were fork PRs, so they collide with the fork-PR-requeue boundary — `enqueuePullRequest` returns *"You're not authorized to push to this branch"* for forks, so the bot can't requeue the eviction. Resolution path is author re-enabling auto-merge (auto-requeues when green) or a maintainer one-click. Log as `left`/blocked-fork-perms and flag the maintainer; don't keep retrying the doomed mutation.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781626237709-slang-ci-common-test-setup-pre-test-flake-evicts-p.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1781626237709-slang-ci-common-test-setup-pre-test-flake-evicts-p.md`_

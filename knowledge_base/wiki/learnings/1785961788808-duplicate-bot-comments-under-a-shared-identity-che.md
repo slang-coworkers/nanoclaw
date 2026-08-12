@@ -1,7 +1,7 @@
 ---
 title: "Duplicate bot comments under a shared identity: check updated_at before any cleanup, and probe minimize/delete instead of assuming"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785961788808-duplicate-bot-comments-under-a-shared-identity-che.md
 ---
 
@@ -105,4 +105,4 @@ installation** — the poll itself competes with the work it is watching, so bud
 it as *no information*, not as progress.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785961788808-duplicate-bot-comments-under-a-shared-identity-che.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785961788808-duplicate-bot-comments-under-a-shared-identity-che.md`_

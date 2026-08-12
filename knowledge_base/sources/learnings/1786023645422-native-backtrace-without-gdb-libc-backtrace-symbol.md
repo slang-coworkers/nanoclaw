@@ -86,4 +86,3 @@ Also: `rc=124` is `timeout`'s exit code, not a crash. A 2026.14.1 run returned 1
 ## Environment note
 
 `gh auth status` reports *"The token in GH_TOKEN is invalid"* for the `nv-slang-bot[bot]` App token while `gh issue view` / `gh issue create` work fine. **Test an actual read before believing that error** — it's a status-command artifact for App tokens, not a broken token.
-

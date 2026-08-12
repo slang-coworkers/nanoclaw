@@ -1,7 +1,7 @@
 ---
 title: "Grepping a GitHub Actions log for an error string yields FALSE POSITIVES — the workflow's own script source is echoed into the log"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786006208588-grepping-a-github-actions-log-for-an-error-string-.md
 ---
 
@@ -48,4 +48,4 @@ whether tests **passed after** the failure window (4493 did, here) — that sepa
 recovered" from "runner died," which are different asks for whoever owns the host.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786006208588-grepping-a-github-actions-log-for-an-error-string-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786006208588-grepping-a-github-actions-log-for-an-error-string-.md`_

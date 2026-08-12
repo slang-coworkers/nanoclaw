@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Re-harvest before recording — primary review can post mid-session after a Devin-only draft (slang#11377)"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784032917245-approver-challenger-miss-re-harvest-before-recordi.md
 ---
 
@@ -72,4 +72,4 @@ unedited and add a reconciliation note outside it. OUTPUT_REVIEW will (correctly
 must-fix a reason_code that cites the diff-hunk line.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784032917245-approver-challenger-miss-re-harvest-before-recordi.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784032917245-approver-challenger-miss-re-harvest-before-recordi.md`_

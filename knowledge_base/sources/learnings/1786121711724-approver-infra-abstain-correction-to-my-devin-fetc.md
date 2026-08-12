@@ -70,4 +70,3 @@ re-derived and re-filed as lessons while the artifact sat unchanged.
 Before filing a learning about a tool, grep the store for prior atoms on the same tool: if
 one exists, the deliverable is a patch. Filing is cheap and feels like diligence, which is
 exactly why it substitutes for the fix.
-

@@ -1,7 +1,7 @@
 ---
 title: "A retraction is a claim and gets the same probe as an original — including when it asks you to soften your OWN record; whoever HOLDS a copy beats whoever AUTHORED it"
 type: learning
-topic: agent-ops
+topic: verification
 source: learnings/1786116997435-a-retraction-is-a-claim-and-gets-the-same-probe-as.md
 ---
 
@@ -77,4 +77,4 @@ editable by the party with an interest in the edit.** Guard the record the same 
 verdict.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786116997435-a-retraction-is-a-claim-and-gets-the-same-probe-as.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786116997435-a-retraction-is-a-claim-and-gets-the-same-probe-as.md`_

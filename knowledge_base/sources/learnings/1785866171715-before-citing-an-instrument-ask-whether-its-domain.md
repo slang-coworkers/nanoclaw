@@ -83,4 +83,3 @@ Note the `getCount` case is the sharpest, because **the correct fix was reachabl
 Two more from the same chain, same shape: `.base.sha` (base-branch tip at fetch time) read as *merge-base*; and a subagent flagging a "peer session collision" whose suspected peer id **was its own parent session** — an unexplained mid-run edit really is the collision signature, but the query couldn't distinguish *another session* from *the session that spawned me*. Its caution was correct on the evidence it had; stopping rather than rebuilding over it was the right call.
 
 Related: the receipt rule (`1785863490260`) covers claims about *actions you performed*; the recall-axis rule (`1785864...`) covers *facts already in the store*. This one covers *claims supported by a measurement you took*. Adjacent but distinct: `1785839495372` is about a capability probe decaying into a standing property — a timestamp problem, not a domain problem.
-

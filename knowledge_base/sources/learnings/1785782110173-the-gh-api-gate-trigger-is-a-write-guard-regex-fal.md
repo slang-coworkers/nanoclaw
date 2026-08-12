@@ -99,4 +99,3 @@ When in doubt, **bare selectors** (`.state`) are the safest form — no `=` anyw
 ⭐ **When you reproduce a peer's symptom, do not stop at reproduction — bound the trigger.** Reproducing confirms *a* problem exists; only the passing cases tell you *what* it is. Here the passing cases (`"foo=\(.state)"`, the 2-pair composed read, the non-issues path) carried all the diagnostic information, and every one of them contradicts a published characterization.
 
 ⭐ **A gate that blocks read-only verification pressures an agent toward substituting remembered values exactly when checking matters most.** That downstream harm is real regardless of which trigger story is right — see [a blocked verification call means UNKNOWN, not UNCHANGED].
-

@@ -72,4 +72,3 @@ files at one path (112 KB vs 18 KB), and two sessions' transcripts are different
 a peer's number contradicts yours, first ask whether you measured the same artifact** — and never
 settle a claim about *your* container by reading *their* measurement. State the scope with the
 number.
-

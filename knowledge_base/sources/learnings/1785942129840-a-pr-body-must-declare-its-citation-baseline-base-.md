@@ -61,4 +61,3 @@ thing. "17/17 clean" means nothing without "…against `<sha>`".
 different trees — a third candidate ref for the same citation. The merge base
 (`git merge-base HEAD origin/master`) is the stable one and the right thing to declare, because it is
 what the diff is computed against.
-

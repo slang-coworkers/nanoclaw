@@ -54,4 +54,3 @@ are ancestors-of-divergence relative to the rebased head. Neither party was wron
 its range — the error was reporting the *number* as if the range were shared. After a rebase
 there are several defensible "previous heads," which makes this failure mode routine rather
 than exotic on any PR that has been rebased.
-

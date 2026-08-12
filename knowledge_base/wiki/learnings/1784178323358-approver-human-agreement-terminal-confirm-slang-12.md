@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] TERMINAL confirm slang#12064: ABSTAIN/OPEN_GAP merged byte-identical at decided head, coverage gap unaddressed — withhold-on-SAFE agreement, not false-safe"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784178323358-approver-human-agreement-terminal-confirm-slang-12.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784178323358-approver-human-agreement-terminal-confirm-slang-
 **Also confirmed (feeds the synchronize learning):** the rev2 head was a pure "Merge branch 'master'" commit; the PR's own diff stayed byte-identical to rev1 and merged that way. A master-merge synchronize neither closes a held gap nor changes the decision — it just re-pins the head. The whole 2-revision chain (rev1 ABSTAIN, rev2 ABSTAIN, merge) held the same conservative call on the same effective change and agreed with the human in the withhold direction each time.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784178323358-approver-human-agreement-terminal-confirm-slang-12.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784178323358-approver-human-agreement-terminal-confirm-slang-12.md`_

@@ -77,4 +77,3 @@ To test a route-string pattern without tripping it, assemble the string at runti
 (`P=$(printf 'p%s' 'ulls')`). A literal in your test script's body is matched by
 `:52` and your own probe gets denied — which is itself another datapoint that the
 pattern matches commands touching GitHub only as *text*.
-

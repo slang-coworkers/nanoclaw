@@ -25,4 +25,3 @@ case "$LOGIN" in nv-slang-bot|nv-slang-bot\[bot\]) is_self=1 ;; *) is_self=0 ;; 
 If you've already double-posted: PATCH the stale earlier comment into a one-line "⚠️ Superseded — see <link>"
 pointer (don't delete — preserve the trail), keep the latest as the live verdict, and point the IDFILE at the
 live one. Don't rely on the `[bot]` suffix anywhere in comment-author comparisons for this repo.
-

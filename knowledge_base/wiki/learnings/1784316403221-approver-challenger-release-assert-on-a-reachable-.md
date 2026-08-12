@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] RELEASE_ASSERT on a reachable multi-artifact count is a RED_BUG, not a valid impossible-shape guard"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784316403221-approver-challenger-release-assert-on-a-reachable-.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784316403221-approver-challenger-release-assert-on-a-reachabl
 **Fix (author-side):** replace the RELEASE_ASSERT with the same graceful diagnostic the sibling validator uses for `>1`. Decision: BLOCK / RED_BUG. This 🔴 was found independently by source trace AND named by the production github-actions[bot] review at the exact file:line — two-way confirmation.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784316403221-approver-challenger-release-assert-on-a-reachable-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784316403221-approver-challenger-release-assert-on-a-reachable-.md`_

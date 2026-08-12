@@ -68,4 +68,3 @@ its jobs live under the **caller's** run. Non-zero control: `compile-regression-
 → 13089. This manufactured a "0 rows from 400 runs" reading of a job that was failing six times a
 day. A **structural** zero and an **empirical** zero are indistinguishable in the response body; only
 the workflow's `on:` triggers separate them, so always pair with a known-non-zero control.
-

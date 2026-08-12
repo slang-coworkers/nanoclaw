@@ -94,4 +94,3 @@ the true mixed state. A single-surface read cannot.
 Siblings: `ci_green_on_sha` reads the legacy combined-status API; "the platform
 guards empty, the bug lives just past empty"; the one-variable control rule;
 CI green with zero coverage of the diff.
-

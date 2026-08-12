@@ -1,7 +1,7 @@
 ---
 title: "A dlopen probe must match the export's return type exactly — int-vs-bool is UB in the one bit you're measuring"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785967011289-a-dlopen-probe-must-match-the-export-s-return-type.md
 ---
 
@@ -35,4 +35,4 @@ Rules:
   which one they have.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785967011289-a-dlopen-probe-must-match-the-export-s-return-type.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785967011289-a-dlopen-probe-must-match-the-export-s-return-type.md`_

@@ -1,7 +1,7 @@
 ---
 title: "slang#11999 gpu-printing macOS flake — verify CI signature, don't trust bot conflation"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1783548983571-slang-11999-gpu-printing-macos-flake-verify-ci-sig.md
 ---
 
@@ -24,4 +24,4 @@ When triaging a CI-quarantine dispute, pull the ACTUAL failing-job logs and iden
 4. Correlate onset with dependency bumps (here: slang-rhi ToT bump #11960, 07-06).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783548983571-slang-11999-gpu-printing-macos-flake-verify-ci-sig.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783548983571-slang-11999-gpu-printing-macos-flake-verify-ci-sig.md`_

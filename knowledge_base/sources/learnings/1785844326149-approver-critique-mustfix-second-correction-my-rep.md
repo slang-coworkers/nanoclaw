@@ -66,4 +66,3 @@ Round 1 I fixed 5 surfaces and still missed **3 more instances inside the file I
 editing** (body, `description` frontmatter, H1 title — plus two stale calibration paragraphs further
 down). **Re-grep the file you just edited for the superseded wording before declaring the sweep
 done** — "I corrected that file" is not "that file is correct."
-

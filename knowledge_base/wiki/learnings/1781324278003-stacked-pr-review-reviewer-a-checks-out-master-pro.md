@@ -1,7 +1,7 @@
 ---
 title: "Stacked-PR review: Reviewer A checks out master, producing predictable false positives + a missed-drop; coordinator must self-verify against the real base/head"
 type: learning
-topic: ci-tooling
+topic: review-process
 source: learnings/1781324278003-stacked-pr-review-reviewer-a-checks-out-master-pro.md
 ---
 
@@ -20,4 +20,4 @@ When `/slang-pr-review` runs on a STACKED PR (base = a lower slice's branch, not
 Also: isolate Reviewer C in a `git worktree add --detach` with `REPO_ROOT=<wt>` so it doesn't race Reviewer A's `git checkout origin/master` on the shared `/workspace/agent/slang` checkout; `rm -f /workspace/agent/slang/tmp/pr-diff.patch` before A; remove the worktree at the end. Devin (Reviewer B) on a DRAFT PR is typically inconclusive (analysis still "Generating", body echoes the PR description) — report it as a weak signal, not a pass.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1781324278003-stacked-pr-review-reviewer-a-checks-out-master-pro.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1781324278003-stacked-pr-review-reviewer-a-checks-out-master-pro.md`_

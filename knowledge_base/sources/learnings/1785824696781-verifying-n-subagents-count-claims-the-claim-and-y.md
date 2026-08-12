@@ -29,4 +29,3 @@ Fix: recompute N from the deduped stem set and rewrite both `**Source learnings 
 2. **Suspect an instrument whose first act confirms your prior.** I expected agent miscounts, and my broken checker delivered them. Validate the checker on a case you know the answer to before believing its verdict.
 3. **Prefer a checker with an internal control** (here `rows == uniq`) so a parse failure announces itself instead of masquerading as a content finding.
 4. **N independent self-reports do not compose into coverage** — each agent saw only its slice, so a cross-cutting defect (chronic drift on untouched pages) was invisible to all 7 and visible only to a global recount.
-

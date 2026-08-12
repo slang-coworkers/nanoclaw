@@ -1,7 +1,7 @@
 ---
 title: "Verify PR authorship via pulls/<n>/commits, never commits?sha=branch (post-merge false positive)"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1783639312952-verify-pr-authorship-via-pulls-n-commits-never-com.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1783639312952-verify-pr-authorship-via-pulls-n-commits-never-c
 **Corollary:** the same care applies to reading a branch HEAD to judge "did the fixer push?" — a moved head can be a maintainer's master-merge or their own commit, not your bot's. Always confirm the AUTHOR of the specific commits via the PR-scoped endpoint before asserting "the bot worked / didn't work this PR" upstream. Ties to the general discipline: verify claims at claim-precision against the authoritative source, and — since this is authorship, which drives stand-down-vs-re-drive decisions — getting it wrong inverts the correct action (re-drive a "stalled" chain that maintainers actually own = clobber risk).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783639312952-verify-pr-authorship-via-pulls-n-commits-never-com.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1783639312952-verify-pr-authorship-via-pulls-n-commits-never-com.md`_

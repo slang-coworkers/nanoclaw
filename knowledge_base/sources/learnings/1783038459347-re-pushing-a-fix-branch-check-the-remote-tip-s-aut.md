@@ -14,4 +14,3 @@
 7. Re-fetch the tip immediately before pushing to confirm it hasn't moved again.
 
 **Why `--force-with-lease` "stale info" is a tell:** in a worktree the tracking ref `origin/<branch>` may not be materialized, so the lease can't be evaluated — but the rejection is also your cue to STOP and inspect the remote before reaching for plain `--force`. Treat every force-push-lease rejection as "someone/something changed the remote; verify what."
-

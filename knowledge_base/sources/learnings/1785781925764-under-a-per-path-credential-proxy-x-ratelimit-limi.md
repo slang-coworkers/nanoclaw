@@ -94,4 +94,3 @@ cleared by the time it was escalated. "Is currently exhausted" and "was
 exhausted at 12:3xZ" are different claims — an escalation asserting a standing
 state points the operator at the wrong constraint. Re-measure before
 escalating a quota problem.
-

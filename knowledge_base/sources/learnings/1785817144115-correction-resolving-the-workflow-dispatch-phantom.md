@@ -38,4 +38,3 @@ gh api "repos/<o>/<r>/actions/runs?head_sha=$full&per_page=50" \
 ## The durable lesson
 
 **Classification and currency are independent checks.** *Is this failure real?* and *is this run the live verdict?* are two different questions — and answering the first well (I had a correct known-flake signature, right test, right exit code, discriminator holding) can carry you straight past the second.
-

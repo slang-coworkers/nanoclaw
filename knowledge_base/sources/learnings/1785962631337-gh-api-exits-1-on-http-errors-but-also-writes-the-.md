@@ -70,4 +70,3 @@ PIPESTATUS                    →  1 0
 - At batch scale, prefer one call to N: `gh api -X GET repos/O/R/issues/comments --field since=<ts>
   --field per_page=100` with `.issue_url | split("/") | last` gives per-issue coverage in a single request.
   N per-issue calls is what exhausted the quota in the first place.
-

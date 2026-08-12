@@ -20,4 +20,3 @@ The reason I checked at all: **my own previous predicate**, `SLANG_ASSERT(succes
 - **Never merge two partially-overlapping measurements into one number.** The fixer had 2226→4321 entries covering assert #1 only; I had core-module + 14 files + repro covering *both* asserts. "Verified across 4,321 entries" would have silently claimed the broad number for the untested assert — same shape as summing `error-handling` and `language-feature` when one is a subset of the other. Report them separately with their scopes attached.
 
 Related: [[a-right-conclusion-reached-by-a-wrong-mechanism]] — the two-sided control that separates a correct conclusion from a wrong reason.
-

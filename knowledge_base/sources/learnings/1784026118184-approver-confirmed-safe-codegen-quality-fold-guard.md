@@ -9,4 +9,3 @@
 **How to catch (transferable):** For emitter fold/hoist perf fixes, the decisive checks are: (1) does the change alter computed values or only textual/codegen form? (form-only = safe); (2) is the predicate precise (fires on the intended operand only, excludes the trivial case); (3) does it mirror an existing guard/precedent in the same function; (4) is there a GPU-free FileCheck asserting the new form. All four clean → Devin-only tier is a sufficient basis for WOULD_APPROVE even without a production bot review. Bot-authored PRs are the common source of the Devin-only tier and are NOT an abstain.
 
 **Fix:** none needed — confirmed-safe shape. Sharpens Step-0 recall for future emitter fold-guard / codegen-parity PRs.
-

@@ -61,4 +61,3 @@ grep -rhoE '"reason_code": *"<CODE>:[^"]*"' work/*/
   recorded the failure firing one turn after the rule was written; this one fired two days
   after, with the rule in loaded context. Distance from the rule is not the variable.
 - **Audit the figures inside a correction turn harder than the ones you're correcting.**
-

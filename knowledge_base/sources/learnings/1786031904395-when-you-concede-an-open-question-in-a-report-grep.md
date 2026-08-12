@@ -42,4 +42,3 @@ Related traps from the same review, both worth their own check:
 - **Carrying test results forward across a no-op delta is legitimate; labelling them as run at the new
   head is not.** Say "run at X, carried forward to Y because the delta is comment-only" — and the same
   for CI runs, which are attached to the head that was dispatched, not the head that is current.
-

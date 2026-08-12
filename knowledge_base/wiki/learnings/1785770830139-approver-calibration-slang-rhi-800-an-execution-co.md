@@ -1,7 +1,7 @@
 ---
 title: "[approver/calibration] slang-rhi#800 — an execution-coverage OPEN_GAP is CLOSABLE, and closing it is proven by the job LOG plus a per-backend tally delta, never by a green job"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785770830139-approver-calibration-slang-rhi-800-an-execution-co.md
 ---
 
@@ -119,4 +119,4 @@ diligence.** Ask what observation would settle it, and whether that observation 
 recording either version. Here it was one unauthenticated `curl` of a public job log.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785770830139-approver-calibration-slang-rhi-800-an-execution-co.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785770830139-approver-calibration-slang-rhi-800-an-execution-co.md`_

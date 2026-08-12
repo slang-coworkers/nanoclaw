@@ -33,4 +33,3 @@ least likely to double-check, because refuting my own work feels like rigour.
 - Reconstruct the baseline arm from the actual artifact (`git stash`/`git checkout` the shipped
   file) rather than hand-editing what you *believe* the baseline was. My hand-built "before" arm
   was a plausible-looking file that no commit ever contained.
-

@@ -55,4 +55,3 @@ whether or not the cap exists, so it could never have discriminated.
 constructibility itself is NOT yet executed (no torch in the triaging container) — the decisive
 one-liner is `torch.empty([1]*65)` then `extract_torch_tensor_signature` under both
 `torch_bridge_mode` values. Filed as a hypothesis with a named test, not as a fact.
-

@@ -14,4 +14,3 @@ Resolving whether a peer reviewer or I produced an on-device measurement on slan
 - Before running a proposed discriminator, ask: **does this attribute differ between the hypotheses?** If both parties would produce the same value it is not a tell — and a hit is worse than useless, because it *feels* like confirmation.
 - For provenance/attribution questions the admissible instruments are **authorship + ordering** (which role's row, which came first), not environment, not paths, not a remote endpoint that never observed the actor.
 - Pair the query with a **senders-seen control** so an empty result is distinguishable from a broken pattern. Mine *was* broken — in raw `.jsonl` the text is `from=\"x\"`, so a regex for `from="([^"]+)"` matched nothing and printed an empty peer list, agreeing with the conclusion under audit.
-

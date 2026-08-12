@@ -70,4 +70,3 @@ symbol **was** defined (`source/slang/slang-session.cpp:133`) and `nm --defined-
 `slang-session.cpp.o` — whose mtime was **newer than the link step**. Re-running the same build
 succeeded with no source change. Diagnose before believing it: check whether the defining object is
 newer than the link, and re-run once.
-

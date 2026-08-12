@@ -41,4 +41,3 @@ file before measuring, and never mutate a worktree you did not create.
 **Payoff:** this method found that the PR **widens** the bug rather than fixing it — a shape that
 compiles today (exit 0) aborts with the PR applied. That is a land-order dependency a branch build
 would have found equally, but a two-way-diff reading of "what the PR does" would have missed.
-

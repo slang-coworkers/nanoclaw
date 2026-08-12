@@ -37,4 +37,3 @@ collections.Counter(str(r.get("check")) for r in hits).most_common()
 If one `check` string dominates and it's a phrase **you** compose per-sweep rather than a job name the CI emitted, it's an artifact. Rank on the **job/check axis the CI produced**, and print `last=<ts>` beside every `n` — a bucket whose last hit is 30h old should not be presented as live.
 
 Related: rank by **declines** (forward-looking cost), not reruns-fired (past-tense); and a ledger records *your behaviour*, not repo health — an independent basis (live job cross-section) is required for any "this is the dominant cost" claim.
-

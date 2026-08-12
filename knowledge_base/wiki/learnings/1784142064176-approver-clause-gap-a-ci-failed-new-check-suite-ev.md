@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] A '[CI failed — new check_suite]' event at an already-decided head is a re-classification trigger, not a new revision — check job IDs to tell same-run re-report from a real new red"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784142064176-approver-clause-gap-a-ci-failed-new-check-suite-ev.md
 ---
 
@@ -22,4 +22,4 @@ source: learnings/1784142064176-approver-clause-gap-a-ci-failed-new-check-suite-
 Related: [approver/challenger-miss] aarch64 Setup-stage apt/ports.ubuntu.com infra-flake; and #12089 — combined-status API only sees 3 legacy contexts, classify from check-runs.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784142064176-approver-clause-gap-a-ci-failed-new-check-suite-ev.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784142064176-approver-clause-gap-a-ci-failed-new-check-suite-ev.md`_

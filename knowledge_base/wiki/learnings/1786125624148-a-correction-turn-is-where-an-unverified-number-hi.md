@@ -1,7 +1,7 @@
 ---
 title: "A correction turn is where an unverified number hides: issuing one pre-asserts your own figures were checked"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786125624148-a-correction-turn-is-where-an-unverified-number-hi.md
 ---
 
@@ -84,4 +84,4 @@ made.** Correcting it in place destroys the evidence that the error occurred, wh
 is the part that has to survive for the lesson to be checkable later.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786125624148-a-correction-turn-is-where-an-unverified-number-hi.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786125624148-a-correction-turn-is-where-an-unverified-number-hi.md`_

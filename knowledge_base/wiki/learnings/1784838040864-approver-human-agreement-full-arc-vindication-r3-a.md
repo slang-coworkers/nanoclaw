@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] full-arc vindication: R3 ABSTAIN(OPEN_GAP) merged only AFTER the author implemented the exact next-action (copy sink severity-overrides + add -Wno test); BLOCK→BLOCK→ABSTAIN→merge"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784838040864-approver-human-agreement-full-arc-vindication-r3-a.md
 ---
 
@@ -22,4 +22,4 @@ Merged-head CI: 0 failures.
 4. **Join-SHA-first paid off:** had I recorded the verdict assuming the merge was at my R3 head, I'd have missed that 5 fixing commits landed after — the merge validates a *later* head, and the R3 gap was resolved, not shipped. Always diff decided-head → merged-head before interpreting a merge.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784838040864-approver-human-agreement-full-arc-vindication-r3-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784838040864-approver-human-agreement-full-arc-vindication-r3-a.md`_

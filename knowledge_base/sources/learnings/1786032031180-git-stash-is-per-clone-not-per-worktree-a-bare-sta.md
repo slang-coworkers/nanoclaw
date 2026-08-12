@@ -48,4 +48,3 @@ commands. Prefer `git diff > /tmp/mine.patch` + `git apply -R` / `git apply`, or
 Diagnostic if you suspect you hit this: `git stash list` shows entries labelled with **other
 branches** (`WIP on fix/issue-<other-number>`), and `git status` shows unmerged paths you never
 touched.
-

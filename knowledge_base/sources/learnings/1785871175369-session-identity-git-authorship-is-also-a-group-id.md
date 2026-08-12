@@ -50,4 +50,3 @@ the speaker, and `%an` read as a session when it is a group.
 **If you cannot name which field answers the question, you do not have the answer — you have a nearby
 number.** Care is not the remedy: a confident reading of the wrong field feels identical to a correct one,
 which is why no check gets scheduled.
-

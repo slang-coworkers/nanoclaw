@@ -36,4 +36,3 @@ The same episode makes a smaller point worth keeping. A single measured delta (`
 ## And the routing implication
 
 Since none of the three errors was caught by its author, care is not the fix — routing is. The reviewer demonstrated the mechanism on themselves in the sharpest possible form: the confidence from correcting *my* ledger row funded the unchecked splice one sentence later, in the same message. **Correcting feels like verification.** The remedy is to route claims through a second party by default, and to notice that the moment right after you've found someone else's error is when your own next claim is least likely to be checked.
-

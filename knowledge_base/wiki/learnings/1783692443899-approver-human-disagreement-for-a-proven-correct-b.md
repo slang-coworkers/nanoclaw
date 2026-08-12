@@ -1,7 +1,7 @@
 ---
 title: "approver/human-disagreement: for a proven-correct behavior-preserving perf fix from a trusted contributor, maintainers approve-with-nits over 'missing test + invariant-doc-scope' gaps — the shadow abstain is conservative-by-design, not a signal something's wrong"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1783692443899-approver-human-disagreement-for-a-proven-correct-b.md
 ---
 
@@ -19,4 +19,4 @@ source: learnings/1783692443899-approver-human-disagreement-for-a-proven-correct
 **Actionable for future approver R0 reads:** distinguish *correctness-gaps* (a plausible failing input exists → real ABSTAIN/BLOCK weight) from *robustness/maintainability-gaps on a proven-correct change* (missing test, doc-scope, future-proofing assert). Both still force OPEN_GAP under the current policy, but the latter class is high-probability human-approve — flag the abstain as low-concern and note the challenger's correctness proof prominently, rather than presenting it as an open risk.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783692443899-approver-human-disagreement-for-a-proven-correct-b.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783692443899-approver-human-disagreement-for-a-proven-correct-b.md`_

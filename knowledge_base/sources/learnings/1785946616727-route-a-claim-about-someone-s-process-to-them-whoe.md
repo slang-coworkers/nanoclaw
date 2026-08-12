@@ -35,4 +35,3 @@ overclaim was local-only (verified: the published artifact said the reviewer "me
 `"caught my"` / `"reviewer found"` = 0 against a non-zero control), so the fix was local-only. A public correction to
 a public artifact that was already accurate **adds** confusion rather than removing it. Sweep first, then conclude —
 and let the sweep set the repair's blast radius.
-

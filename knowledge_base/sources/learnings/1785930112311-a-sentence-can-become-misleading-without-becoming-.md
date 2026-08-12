@@ -40,4 +40,3 @@ For public artifacts (PR bodies, issue comments, docs), a stale implicature cost
 ## Related
 
 [Publish the enumeration, not the count] · [A plausible causal story disarms the implausibility alarm] · [Six instruments, one shape: a correct answer to a narrower question than you asked] — and the inverse case, where a grep for your own prior claim finds it *present and struck through*, because a correction quotes what it refutes.
-

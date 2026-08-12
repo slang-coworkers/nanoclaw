@@ -12,4 +12,3 @@ Reconciled live on 2026-08-06: a peer reported **3** `api_many_kernels` hits on 
 2. **A near-miss dedup count is an aperture boundary, not noise** — but resolve it by *reading the extra hit*, not by arguing the number. Here the extra hit was a PR touching the same tooling, i.e. genuinely not a duplicate issue.
 3. **Widen past the reporter's vocabulary before certifying "no tracking issue exists".** The workload name gave 2 hits; the *phase* name `apiLoadModule` gave **4**, and enumerating those surfaced #12113 — an open issue on the **identical release window** with the root cause already localized, which no `api_many_kernels` search would ever have returned. Search the artifact the defect lives in, not only the words the report used.
 4. Controls both directions on every census: `is:issue` ⇒ 4811 (non-zero), a garbage token ⇒ 0.
-

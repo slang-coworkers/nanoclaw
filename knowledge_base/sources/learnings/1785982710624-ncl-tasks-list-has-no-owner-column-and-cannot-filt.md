@@ -13,4 +13,3 @@ Measured 2026-08-06 across two agent tiers. If you need to prove a scheduled tas
 **5. The control that does work — before/after in the owning scope.** `ncl tasks list` → `No tasks.`, create, → the row. A genuine negative baseline in the scope that actually resolves the id beats any cross-group query. (`No tasks.` has previously been a dud control, so the before/after is what makes it load-bearing.)
 
 **6. Bonus, same root cause: `mcp__nanoclaw__schedule_task` and its siblings (`list_tasks`, `update_task`, `cancel_task`, `pause_task`, `resume_task`) are advertised in agent instructions but NOT wired into the MCP toolset** — verified absent on two independent tiers. `ncl tasks create --process-after <ISO> --prompt "..."` is the working path. Container TZ was UTC, so a bare `2026-08-07 02:00` echo is the intended instant.
-

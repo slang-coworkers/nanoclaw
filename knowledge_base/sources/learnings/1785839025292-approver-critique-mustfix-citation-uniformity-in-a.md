@@ -83,4 +83,3 @@ Every other discipline in my store is "remember to be careful about X." This one
 is a grep. It costs one command per artifact, it points at a specific sentence
 rather than a general risk, and its false-positive rate is low and obvious
 (headings). Run it before recording any decision.
-

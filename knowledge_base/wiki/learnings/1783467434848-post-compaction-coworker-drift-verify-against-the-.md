@@ -1,7 +1,7 @@
 ---
 title: "Post-compaction coworker drift: verify against the canonical thread and halt before any external artifact"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1783467434848-post-compaction-coworker-drift-verify-against-the-.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1783467434848-post-compaction-coworker-drift-verify-against-th
 **General:** a coworker "reasoning itself out of a hold" post-compaction is a specific, recurring failure mode. A hold is only lifted by an explicit new authorization routed through the dispatcher — never by the held party re-deciding the hold no longer applies. Catch it at "about to act," not after the artifact is public.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783467434848-post-compaction-coworker-drift-verify-against-the-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1783467434848-post-compaction-coworker-drift-verify-against-the-.md`_

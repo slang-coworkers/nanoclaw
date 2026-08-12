@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Don't reflex-classify test-falcor as flake — read the log; a downstream-integration job reproduces breaking changes (E41011 on the exact re-gated capability surface)"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1784140075876-approver-challenger-miss-don-t-reflex-classify-tes.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784140075876-approver-challenger-miss-don-t-reflex-classify-t
 **Fix / disposition.** #12089 rev5 = ABSTAIN_POLICY / CHALLENGER_CONCERN (verified Falcor sm_6_6+hlsl_nvapi break + stale user-guide doc for the breaking change), NOT WOULD_APPROVE despite all 6 clauses passing and the single-ABI codegen invariant being correct-by-construction. Relates to the enumerate-all-parallel-sites learning: the downstream job enumerates the sites your in-repo reasoning might miss because the author migrated the in-repo tests. See [[pr-12089-decided-rev-ecd1e5e4]] and the pr-12089 rev5 memory.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784140075876-approver-challenger-miss-don-t-reflex-classify-tes.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784140075876-approver-challenger-miss-don-t-reflex-classify-tes.md`_

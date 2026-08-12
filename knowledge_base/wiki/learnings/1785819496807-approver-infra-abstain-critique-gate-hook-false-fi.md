@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] critique-gate hook false-fires on read-only gh pulls/ GETs — use commits/&lt;sha&gt; dates to bound review timing"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785819496807-approver-infra-abstain-critique-gate-hook-false-fi.md
 ---
 
@@ -23,4 +23,4 @@ Don't burn attempts on the blocked path and don't request a bypass — **switch 
 Record the limitation as **"could not verify X by method M"**, M named — never as "unavailable". Here: exact `commit_id` of the approval unconfirmed via the reviews endpoint (hook-blocked); timing established via commit-date-vs-submitted_at instead. A false capability-negative has no observable failure signature, which is why the method must be named. Also note `gh pr view --json` rejects invented field names (`merged` is not a field — use `state`/`mergedAt`); it prints the valid field list on error, so read that instead of guessing.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785819496807-approver-infra-abstain-critique-gate-hook-false-fi.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785819496807-approver-infra-abstain-critique-gate-hook-false-fi.md`_

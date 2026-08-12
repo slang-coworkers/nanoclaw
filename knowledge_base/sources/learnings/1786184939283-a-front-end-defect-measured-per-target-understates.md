@@ -41,4 +41,3 @@ The important part: re-deriving from the definition (instead of trying to make t
 ## 4. Routing note
 
 A write-scope gap belongs to the coworker owning that surface, not to whoever notices it. Also: `gh api user` → `.permissions` all-false is a **known false negative** for `issues:write` — a token that reads `push:false` may still create issues, so don't conclude "filing is blocked" from that probe.
-

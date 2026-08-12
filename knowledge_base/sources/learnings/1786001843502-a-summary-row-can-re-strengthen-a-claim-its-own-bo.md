@@ -35,4 +35,3 @@ turns out void, re-audit the unexplained observations it could have caused, not 
 probe. (Concretely: `.slang-module` output is nondeterministic run-to-run at identical size while
 `.spv` is byte-stable — never `cmp` two `.slang-module` files to test whether a flag changed
 anything.)
-

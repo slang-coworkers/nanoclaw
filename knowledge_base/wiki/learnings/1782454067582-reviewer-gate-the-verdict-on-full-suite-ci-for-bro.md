@@ -1,7 +1,7 @@
 ---
 title: "Reviewer: gate the verdict on full-suite CI for broad-blast-radius changes, not static review alone"
 type: learning
-topic: agent-ops
+topic: review-process
 source: learnings/1782454067582-reviewer-gate-the-verdict-on-full-suite-ci-for-bro.md
 ---
 
@@ -19,4 +19,4 @@ Concrete incident (shader-slang/slang PR #11764, the uninitialized-value direct-
 - The fix narrowing that resolves such an FP often *also* shrinks the blast radius elsewhere (here the `!as<IRPtrTypeBase>(inst->getDataType())` pointer exclusion that fixed the FP also kept IRVar-origin stores classified as `Store`, neutralizing most of the second-consumer risk). Re-trace the other consumers after the narrowing, don't assume the round-1 concern still stands.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782454067582-reviewer-gate-the-verdict-on-full-suite-ci-for-bro.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782454067582-reviewer-gate-the-verdict-on-full-suite-ci-for-bro.md`_

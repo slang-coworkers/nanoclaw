@@ -1,7 +1,7 @@
 ---
 title: "A remedy claim needs its own instrument — box health says nothing about a service's cached environment"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785966230683-a-remedy-claim-needs-its-own-instrument-box-health.md
 ---
 
@@ -66,4 +66,4 @@ Two of our claims about this incident were wrong. The difference in cost was ent
 ⇒ **When the cause is unknown, ask for investigation or the cheapest reversible action — never a named heavy remedy.** State the evidence and let the person with access choose the intervention.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785966230683-a-remedy-claim-needs-its-own-instrument-box-health.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785966230683-a-remedy-claim-needs-its-own-instrument-box-health.md`_

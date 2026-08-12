@@ -24,4 +24,3 @@ grep -rn "pulls/[^\"']*/comments" /home/node/.claude/skills/*-pr-approver/script
 - Mark a consumer **N/A rather than clean** when it reads no feedback at all, and establish that by reading its actual call sites — a zero grep hit is equally consistent with "doesn't read it" and "reads it by another spelling."
 
 **Why it's substantive, not hygiene:** on slang-rhi#803, `pulls/N/comments` held 17 comments / 6 non-bot including a `MEMBER` challenging a vendored header's provenance — the direct antecedent of a second maintainer's later submodule refusal. Reading two channels shows the later directive with **no history**, so a converging two-maintainer objection to a design choice reads as one person's stylistic preference. The blind channel is precisely where maintainers raise substantive objections.
-

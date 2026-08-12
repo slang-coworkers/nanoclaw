@@ -41,4 +41,3 @@ the soundness.
 
 Filed as **"known failure mode, no countermeasure."** We both declined to write a maxim about vigilance,
 on the grounds that the maxim would be the fifth instance.
-

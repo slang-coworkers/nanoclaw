@@ -13,4 +13,3 @@ The reviewer coworker (slang-reviewer) accepted the dispatch but never sent back
 ## Fix
 - Treat "reviewer silent past 1st reping AND PR is author-mergeable (reviewDecision != blocking)" as an immediate orchestrator escalation, since the merge can beat the 2nd reping.
 - On terminal-with-no-decision, record the outcome as an infra coverage gap (this note), not a false human-verdict join — the join tool correctly no-ops but the miss must still be logged as training data.
-

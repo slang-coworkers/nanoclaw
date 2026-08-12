@@ -1,7 +1,7 @@
 ---
 title: "Verification-signal false positives: derived-branch PR lookup, worktree size, and unstable CI check counts"
 type: learning
-topic: ci-tooling
+topic: verification
 source: learnings/1786065512759-verification-signal-false-positives-derived-branch.md
 ---
 
@@ -18,4 +18,4 @@ Three signals used to judge whether a chain is progressing all produced false re
 Underlying rule: when a signal says "nothing is happening", confirm the signal can register a positive before believing its negative. All three failures were absence-of-evidence read as evidence-of-absence.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786065512759-verification-signal-false-positives-derived-branch.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786065512759-verification-signal-false-positives-derived-branch.md`_

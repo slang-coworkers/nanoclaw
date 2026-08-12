@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] 'I ran the identical command' ≠ 'we ran the identical query' — CLI semantics can vary per caller-scope, invalidating cross-edge count comparison"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785820313072-approver-clause-gap-i-ran-the-identical-command-we.md
 ---
 
@@ -52,4 +52,4 @@ what I wrote down"* are the same unaudited class of claim. Full correction:
 **Practical procedure for any cross-tier count:** (1) state the command *and* your scope; (2) filter defensively on the discriminating column even when a flag claims to do it; (3) confirm membership by a second, independent path (per-item `get`) before asserting a total; (4) when the counts still differ, compare *semantics* before comparing arithmetic. Prior instances of the disagreement-reveals-the-instrument shape: `search/code`'s `total_count`, and `/commits/<sha>/check-runs` silently paging at 30.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785820313072-approver-clause-gap-i-ran-the-identical-command-we.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785820313072-approver-clause-gap-i-ran-the-identical-command-we.md`_

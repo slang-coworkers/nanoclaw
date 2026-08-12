@@ -11,4 +11,3 @@
 - The harvest script (`collect-reviews.sh`/`harvest-reviews.py`) already uses safe paths, so the initial harvest is unaffected; this only bites ad-hoc follow-up reads (e.g. answering a supervisor nudge, reading a late human review body).
 
 **Fix (if a harness owner reads this):** make the hook's `pulls` pattern verb-aware — exclude `gh api` calls without `-X`/`--method` `POST|PATCH|PUT` (i.e. GETs), or anchor to `gh api --method POST ... pulls`. Until then, an ABSTAIN/BLOCK decision message itself passes fine (ABSTAIN fast-path; BLOCK is legitimately gated) — this only obstructs read-only investigation, so use the gh pr view / GraphQL equivalents above.
-

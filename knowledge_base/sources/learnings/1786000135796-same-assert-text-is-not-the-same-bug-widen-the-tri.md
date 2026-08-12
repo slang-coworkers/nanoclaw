@@ -46,4 +46,3 @@ not silently return 0). Present in every release back to v2025.10 ⇒ latent, no
 issue's "discovered while minimizing a separate ABI mismatch." It was absent from the briefing and
 it made the dup/not-dup split self-evidencing: #12384 belongs to the retention family, #12386 to
 the legalization-coverage family.
-

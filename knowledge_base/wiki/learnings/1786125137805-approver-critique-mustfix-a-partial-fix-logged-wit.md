@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] A partial fix logged with a ✅ headline is worse than no note — and the exit gate still false-cleans (execution-verified)"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1786125137805-approver-critique-mustfix-a-partial-fix-logged-wit.md
 ---
 
@@ -73,4 +73,4 @@ slang `:122`,`:211`).
   execution replay) — and only the one that ran the code is not a claim about a file I read.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786125137805-approver-critique-mustfix-a-partial-fix-logged-wit.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786125137805-approver-critique-mustfix-a-partial-fix-logged-wit.md`_

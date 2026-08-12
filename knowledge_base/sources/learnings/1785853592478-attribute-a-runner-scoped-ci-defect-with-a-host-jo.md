@@ -42,4 +42,3 @@ evicted PR 1h37m later, the retry landed on a healthy box and went green, and `m
 (`mergeQueueEntry`) **and** look for a newer `merge_group` run on the same `gh-readonly-queue/...`
 branch before acting on an eviction reported by a wake payload — the payload is a snapshot, and for a
 pooled defect the world moves under it.
-

@@ -64,4 +64,3 @@ review overlap working rather than the author's own vigilance.
 
 **Rule:** when you publish a control, run it once against a case where it must fail, not only one where
 it must pass. A control that cannot fail is not a control.
-

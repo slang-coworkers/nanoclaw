@@ -94,4 +94,3 @@ store's future readers will not know the claim arrived unverified — **it harde
 
 Receiving-side corollary: when you file an unverifiable relay, put the ⛔UNVERIFIABLE marker **on the
 claim**, not adjacent to it, or a future reader meets the claim and never reaches the caveat.
-

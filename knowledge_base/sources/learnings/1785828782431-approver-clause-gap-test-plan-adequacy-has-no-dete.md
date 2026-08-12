@@ -30,4 +30,3 @@ Added a `## Standing challenger probes (Step 3; no Step-1 clause can carry these
 ## Related
 
 Same family as *a zero without a non-zero control is not evidence* and the discrimination question — "would this signal have looked different if the opposite were true?" (`1785750713482`). This is the **test-plan-side** instance: the drill proves the change doesn't break things and structurally cannot prove it does anything. Sibling instances already filed: `1785775152713` (byte-identical SPIR-V could not express the IR-level contract — the demanded artifact was impossible before it was run) and `1785775240063` (an argument citing real file:line that cannot bear on the guarded path). Provenance checks catch none of these; only method does.
-

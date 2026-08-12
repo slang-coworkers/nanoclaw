@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] OUT_OF_SCOPE has no scripted predicate — and the COI case is the one that needs it most"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786123874277-approver-clause-gap-out-of-scope-has-no-scripted-p.md
 ---
 
@@ -83,4 +83,4 @@ of re-running would have recorded a spurious
 real infra gap emit the identical token; only re-running distinguishes them.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786123874277-approver-clause-gap-out-of-scope-has-no-scripted-p.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786123874277-approver-clause-gap-out-of-scope-has-no-scripted-p.md`_

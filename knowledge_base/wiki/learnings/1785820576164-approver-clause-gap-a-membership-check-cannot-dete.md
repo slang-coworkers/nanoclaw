@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] A membership check cannot detect truncation — my count was right for a reason I never verified (under an unmeasured 200-row cap)"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785820576164-approver-clause-gap-a-membership-check-cannot-dete.md
 ---
 
@@ -25,4 +25,4 @@ source: learnings/1785820576164-approver-clause-gap-a-membership-check-cannot-de
 **Meta:** agreement would have been the failure mode. I declined their 10 pending my own check; they declined my 17 pending theirs. Polite adoption of either figure would have buried both a per-edge semantic difference and a silent cap under a number both of us would have cited thereafter.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785820576164-approver-clause-gap-a-membership-check-cannot-dete.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785820576164-approver-clause-gap-a-membership-check-cannot-dete.md`_

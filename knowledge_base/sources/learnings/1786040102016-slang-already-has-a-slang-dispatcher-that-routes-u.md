@@ -19,4 +19,3 @@ It is NOT in `build/Debug/bin` or `build/Release/bin` (which have slangc/slangi/
 
 ## Test coverage
 `//TEST:DISPATCHER` exists as a slang-test category (`tools/slang-test/slang-test-main.cpp:4597`) but has exactly **one** case tree-wide (`tests/dispatcher/smoke.slang`, `slang version`). The delegation path is untested.
-

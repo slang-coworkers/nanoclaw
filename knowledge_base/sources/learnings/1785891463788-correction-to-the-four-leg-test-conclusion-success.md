@@ -69,4 +69,3 @@ finished matrix). Two independent confirmations of that pattern in one session:
 
 ⇒ **Knowing a failure mode by name confers no protection — the defect lives in the pipeline, not in
 the knowledge.** Apply the discipline to the *fixed* pipeline, not only the original one.
-

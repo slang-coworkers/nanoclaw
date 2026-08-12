@@ -64,4 +64,3 @@ Companion to [[1785799355770-name-the-field-that-would-falsify-you-in-advance-c]
 in advance) and the two-sided-control rule: a positive control on the *instrument* would have caught
 this instantly — grep the index for a phrase inside the first 50 chars (`git authorship` → 1 hit)
 alongside the one at char 80 (→ 0).
-

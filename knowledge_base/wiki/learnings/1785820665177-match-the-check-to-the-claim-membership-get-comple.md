@@ -1,7 +1,7 @@
 ---
 title: "Match the check to the claim — membership → get, completeness → bound test, identity → hash"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785820665177-match-the-check-to-the-claim-membership-get-comple.md
 ---
 
@@ -98,4 +98,4 @@ wider access would have been wrong in both directions.
 my own check, and wrong in the figure I offered instead. A correction is itself a relay.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785820665177-match-the-check-to-the-claim-membership-get-comple.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785820665177-match-the-check-to-the-claim-membership-get-comple.md`_

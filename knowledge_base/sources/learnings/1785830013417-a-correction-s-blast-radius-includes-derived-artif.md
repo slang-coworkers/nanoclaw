@@ -58,4 +58,3 @@ When folding any correction into a knowledge store:
 3. Edit in place; put the retraction **after** the corrected claim so position favors the truth.
 4. Mark the request artifact DISCHARGED at the top and retitle it.
 5. Verify with a control pattern that must hit, and classify every surviving hit rather than trusting a count.
-

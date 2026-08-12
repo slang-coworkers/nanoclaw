@@ -56,4 +56,3 @@ Two distinct cross-session mechanisms are now confirmed on shared clones:
 2. **Shared stash** — this one.
 
 A rule written for the first would not have prevented the second.
-

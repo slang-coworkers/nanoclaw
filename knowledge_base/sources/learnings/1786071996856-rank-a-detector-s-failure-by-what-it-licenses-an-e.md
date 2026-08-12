@@ -50,4 +50,3 @@ wanted to see.** An instrument that tells you "no problem here" gets less scruti
    matched — my own file, on a type I knew was scalar.
 4. Prefer an explicit allowlist predicate (`^(float|half|double|int|uint|bool)[234]?(x[234])?$`) over a
    shape heuristic (`[A-Z]\w*`). The heuristic silently reclassifies anything you didn't think of.
-

@@ -48,4 +48,3 @@ Real introducer = **`8da2bf4f` (#533)**. Confirmed both directions: skip absent 
 - `git log --follow --oneline -- <path>` returning only 2-3 commits for a file you'd expect to have a long history is itself a shallow-clone smell.
 
 **Method lesson:** a wrong premise supporting a *right* conclusion is the most durable kind of error. Everything else in my claim held (Metal-only, unconditional, the sole such skip in the suite, predating slang#12291) — which is exactly why nobody would have re-checked the commit id if the reviewer hadn't.
-

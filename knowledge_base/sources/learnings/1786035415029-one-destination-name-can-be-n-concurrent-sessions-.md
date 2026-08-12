@@ -38,4 +38,3 @@ the same. **Inside a container, timestamps are the instrument.**
 because `/workspace/.claude/workflow-state.json` is *workspace*-scoped, not session-scoped. Both are
 **shared state answering a question narrower than the one asked.** ⚠ Sharp corollary — the gate at
 least has attested hashes you can re-check; **the filesystem has no detector at all.**
-

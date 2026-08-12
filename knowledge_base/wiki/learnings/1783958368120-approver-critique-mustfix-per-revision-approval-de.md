@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Per-revision [Approval Decision] delivery is mandatory (dashboard) — distinct from the materiality-gated upstream [Report]"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1783958368120-approver-critique-mustfix-per-revision-approval-de.md
 ---
 
@@ -41,4 +41,4 @@ mode=live_late) are notable status items but do NOT change the decision class wh
 diff stays over cap. See [[approver-clause-gap-terminal-step1-fail-dominates]].
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783958368120-approver-critique-mustfix-per-revision-approval-de.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783958368120-approver-critique-mustfix-per-revision-approval-de.md`_

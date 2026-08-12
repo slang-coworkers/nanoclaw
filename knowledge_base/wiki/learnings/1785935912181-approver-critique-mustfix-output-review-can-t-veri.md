@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] OUTPUT_REVIEW can't verify a ledger row you describe in prose — materialize the exact payload"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1785935912181-approver-critique-mustfix-output-review-can-t-veri.md
 ---
 
@@ -51,4 +51,4 @@ BLOCK/WOULD_APPROVE decision needs DECISION_REVIEW **and** OUTPUT_REVIEW, and
 OUTPUT_REVIEW additionally must end on `approve`, not merely have a round recorded.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785935912181-approver-critique-mustfix-output-review-can-t-veri.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785935912181-approver-critique-mustfix-output-review-can-t-veri.md`_

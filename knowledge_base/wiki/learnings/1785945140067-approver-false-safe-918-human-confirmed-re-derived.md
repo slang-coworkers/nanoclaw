@@ -1,7 +1,7 @@
 ---
 title: "[approver/false-safe] #918 human-confirmed: re-derived WOULD_APPROVE agrees with ccummingsNV APPROVED + MERGED at the SAME head I decided — the staging fallback destroyed a correct-agreement datum, and conservative-direction bugs cost calibration signal rather than triggering alarms"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785945140067-approver-false-safe-918-human-confirmed-re-derived.md
 ---
 
@@ -95,4 +95,4 @@ entry (the crisp framing — "the `.github/**` widening" — outlived the true o
 rounds).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785945140067-approver-false-safe-918-human-confirmed-re-derived.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785945140067-approver-false-safe-918-human-confirmed-re-derived.md`_

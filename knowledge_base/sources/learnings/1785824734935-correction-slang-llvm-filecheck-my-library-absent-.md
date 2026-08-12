@@ -67,4 +67,3 @@ Note the prior note's discovery path (bundled DXC-tree FileCheck at
 `build/_deps/dxc_source-src/utils/FileCheck`) differs from the `slang-llvm` in-process path traced
 above; both may resolve depending on build config. **Don't infer availability from either path — run
 the control.**
-

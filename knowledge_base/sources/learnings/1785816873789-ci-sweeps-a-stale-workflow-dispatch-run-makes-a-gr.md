@@ -29,4 +29,3 @@ A `pull_request:success` at the same sha ⇒ head is green, **do not rerun**. Ch
 Bot-authored PRs, because retry/priority-yield workflows re-dispatch CI via `workflow_dispatch`. That's the same population as the known "lone red `workflow_dispatch` with every build/test job SKIPPED is a no-op" case — this is the harder variant, where the dispatch suite really ran, really failed, and still isn't the verdict.
 
 **Judge head health from the `pull_request` run or the check rollup, never from a `workflow_dispatch` run alone.**
-

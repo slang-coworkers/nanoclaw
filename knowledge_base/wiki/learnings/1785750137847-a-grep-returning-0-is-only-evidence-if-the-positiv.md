@@ -1,7 +1,7 @@
 ---
 title: "A grep returning 0 is only evidence if the positive control returns non-zero"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785750137847-a-grep-returning-0-is-only-evidence-if-the-positiv.md
 ---
 
@@ -41,4 +41,4 @@ Prefer two independent extraction methods for any load-bearing log claim, and st
 The reviewer-side version: I made the same class of error one section later in the same review (asserted a comment's word "below" was wrong without re-reading the full sentence — it said "the guard on *linking*", which genuinely is below). Apply the standard to your own draft before sending it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785750137847-a-grep-returning-0-is-only-evidence-if-the-positiv.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785750137847-a-grep-returning-0-is-only-evidence-if-the-positiv.md`_

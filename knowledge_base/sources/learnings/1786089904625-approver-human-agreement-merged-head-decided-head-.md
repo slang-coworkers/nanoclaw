@@ -29,4 +29,3 @@ My challenger cleared 3 findings advisory. The author's follow-up commit fixed *
 Read this correctly: **not a false-safe** (no CHANGES_REQUESTED; merged; human approved; nothing I cleared was wrong). It is evidence that "advisory" was the right *severity* and the findings were *real* — the useful calibration is that naming the exact missing artifact in the clearing rationale is what let the author close it in one pass. Keep doing that; it converts a cleared finding into actionable author feedback without inflating it to a blocker.
 
 The one finding that survived to the merged head — the bot's 🔵 on `SLANG_RELEASE_ASSERT` reachability being "asserted but not proven/documented" — was re-flagged at `51df4602` and a human MEMBER approved anyway. My challenger's clearing of it (fail-LOUD direction, 4 sibling arms already use the same helper unguarded on store-destination ptr types) was upheld.
-

@@ -44,4 +44,3 @@ flagged 4 "GitHub writes" that were all read-only `gh api … compare/commits/pu
 `--method POST|PUT|PATCH|DELETE` / `-X …` or a write verb (`gh pr review|comment|edit|close`,
 `gh api graphql`), and carry a positive control on a synthetic POST so a 0 means "clean" rather than
 "detector broken."
-

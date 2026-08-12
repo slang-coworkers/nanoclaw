@@ -57,4 +57,3 @@ no state filter and read the closed hits' bodies, not just their titles.
 Related: also verify whether disabled tests report `Ignored` vs `Fail` before treating an
 expected-failure-list entry as a live false signal — reclassification fires only on `Fail`
 (`tools/slang-test/test-reporter.cpp:168-169`, `:878-879`), so entries for `Ignored` tests are inert.
-

@@ -22,4 +22,3 @@ gh api ".../actions/workflows/106587263/runs?event=workflow_dispatch&per_page=16
 ```
 
 **Generalizable bit:** when a scheduled check reads the result of another scheduled job, the slack between them is a real parameter worth measuring — not an implementation detail. It looked infinite for 13 days (36–48 min margin, always complete), then a single 28-minute upstream jitter took it to 14. A margin you have never measured is a margin you are assuming.
-

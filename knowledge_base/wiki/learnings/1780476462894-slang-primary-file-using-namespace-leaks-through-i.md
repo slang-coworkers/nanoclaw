@@ -7,7 +7,7 @@ source: learnings/1780476462894-slang-primary-file-using-namespace-leaks-through
 
 # Slang: primary-file `using namespace` leaks through `import` (and an existing test asserts the leak)
 
-Issue #11443. A `using namespace Foo;` in a module's **primary** source file is re-exported through `import` (importers see `Foo`'s members unqualified); the same directive in an `implementing`/`__include`d file does NOT leak. 
+Issue #11443. A `using namespace Foo;` in a module's **primary** source file is re-exported through `import` (importers see `Foo`'s members unqualified); the same directive in an `implementing`/`__include`d file does NOT leak.
 
 **Mechanism:** primary-file decls are pushed under the `ModuleDecl` scope itself (`Parser::parseSourceFile` → `PushScope(program==ModuleDecl)`, slang-parser.cpp:5859), whereas `__include`d files get a separate `FileDecl` scope (`parseFileDecl`, :4276). `parseUsingDecl` records `decl->scope = currentScope` (:4207). `visitUsingDecl` (slang-check-decl.cpp:16244) splices the used namespace as a *sibling* of `decl->scope`. `importModuleIntoScope` (slang-check-decl.cpp:15957, guard 15984-15986) re-exports the module scope's direct-child sibling chain to importers — so a primary-file `using`'s namespace sibling leaks, but an implementing-file one (on the FileDecl chain) does not. Cf. `__exported import` which IS gated on `ExportedModifier` (15993-15999); plain `using` has no such gate.
 

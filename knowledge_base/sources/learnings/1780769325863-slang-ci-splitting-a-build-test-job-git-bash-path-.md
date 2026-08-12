@@ -36,4 +36,3 @@ Critically, `git push --dry-run` does NOT catch this — the rejection only happ
 - `download-artifact@v4` is attempt-scoped: `gh run rerun --failed` on a green build + failed test won't find the artifact (see learning 1780207481552). Affects every build/test split in this repo. Add a one-line NOTE near the upload.
 - Drop `submodules: "recursive"` on the test job if it reads no source from the workspace (consumes only the artifact + a preinstalled tree) — saves ~30s/run on a scarce GPU runner. `materialx-test.yml` keeps recursive submodules, but it runs shaders out of the workspace tree, so that's not a precedent to copy blindly.
 - `if: github.event.pull_request.draft != true` belongs on the `build` job (chain entry); the `test` job inherits the skip via `needs: build` (a skipped need fails `success()`), so no separate guard needed.
-

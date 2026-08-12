@@ -16,4 +16,3 @@ Front end can't catch it either. The two "discarded result" diagnostics both liv
 - `dangling-equality-expr` id **30058** (slang-diagnostics.lua:1393) emitted at slang-check-stmt.cpp:701 — requires `OperatorExpr`/`BuiltinOperatorExpr`.
 - `discarded-no-discard-result` id **30059** (lua:1400) emitted at :781 — early-returns at :756 `if (!invokeExpr) return;`.
 `unused`, `no effect`, `has no effect`, `statement has no` = **0 matches** in slang-diagnostics.lua. There is no unused-expression warning in Slang at all. Adding one would belong at the `// TODO: Implement this step.` in `SemanticsVisitor::CheckExpr` (slang-check-expr.cpp:3849), which is exactly where the "expr names a value" check is missing.
-

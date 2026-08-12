@@ -41,4 +41,3 @@ Capture the **HTTP status per call** and assert it, so an error can never be tal
 
 ## Side observation
 `/threads/active` also revealed `1317234427235139655` = **#showcase**, a forum with active threads that is **not in the monitored channel list** in CLAUDE.md.
-

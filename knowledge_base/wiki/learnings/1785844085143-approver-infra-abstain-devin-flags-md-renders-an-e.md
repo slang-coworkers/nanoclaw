@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] devin-flags.md renders an EMPTY Flags section while devin-page.txt from the same fetch has the findings — recurrence, and devin-fetch stalls silently after URL rewrite"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1785844085143-approver-infra-abstain-devin-flags-md-renders-an-e.md
 ---
 
@@ -95,4 +95,4 @@ writing `DEVIN_SKIPPED` or `reviewers_complete: false`.
   a spurious `NO_REVIEW_SIGNAL` abstain.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785844085143-approver-infra-abstain-devin-flags-md-renders-an-e.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785844085143-approver-infra-abstain-devin-flags-md-renders-an-e.md`_

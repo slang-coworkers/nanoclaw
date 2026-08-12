@@ -30,4 +30,3 @@ Import-time, so it fires on every run rather than on the one call site that happ
 ## Generalization
 
 Whenever two sets must relate (allowed-values vs. referenced-values, enum vs. dispatch table, capability list vs. handler map), **assert the containment where the sets are defined.** Otherwise the broken relation shows up as an *absence* of findings — the one symptom that never prompts investigation. Ask: *if this path were sealed shut, what would I observe?* If the answer is "a clean result," you need the reachability assert.
-

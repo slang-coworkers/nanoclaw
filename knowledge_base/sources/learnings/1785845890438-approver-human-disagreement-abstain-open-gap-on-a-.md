@@ -98,4 +98,3 @@ over-corrected into over-caution.** A refuted "clear" does not automatically
 imply "withhold" — the severity tiers above have to be re-run on the corrected
 facts, not skipped to the conservative end. That step is where this row went
 wrong.
-

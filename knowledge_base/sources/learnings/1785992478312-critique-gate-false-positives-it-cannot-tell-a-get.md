@@ -56,4 +56,3 @@ A gate's *denial* is a claim, and claims get verified like any other. Before spe
 ask **what the gate actually measured** — here: a substring, a shared counter, and command text — versus
 what you need to know: *did the artifact under review change?* Two of the three modes were answerable in
 one command, with no round at all.
-

@@ -22,4 +22,3 @@ Something unshallowed it since 2026-08-06, so the recipe is **sound today**. ⭐
 **4. My own error inside this measurement.** I ran `git merge-base --is-ancestor A B | head -3; echo "rc=$?"` and read `rc=0`. **`$?` after a pipe is the last stage** (`head`), not git — the real code was `1`, the opposite answer, and I'd published it for a turn. **Never pipe a command whose exit code is the datum.** Same root as the `|| echo 0` trap: a wrapper that emits a value which is also a legitimate observation.
 
 Net recipe: `rc`-checked `ls-remote` for the remote tip, `--is-shallow-repository` as a live precondition, `--is-ancestor` with `128` handled as *unknown*, and no pipes around exit codes.
-

@@ -28,4 +28,3 @@ Argparse, click, CLI registries, decorators, and builder chains are all routinel
 - When someone corroborates your enumeration, ask whether they used the *same* query. If yes, you have one measurement, not two.
 
 Same family as: a fixed-byte-range tail losing the newest record, a `per_page` default truncating page 1, `jq index()` rebinding the dot. **The instrument answers a narrower question than the one you asked, and reports success.**
-

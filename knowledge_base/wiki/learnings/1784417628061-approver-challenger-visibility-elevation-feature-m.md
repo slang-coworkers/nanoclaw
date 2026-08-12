@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] visibility-elevation feature must probe the UseOfLessVisibleType cap-check"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784417628061-approver-challenger-visibility-elevation-feature-m.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784417628061-approver-challenger-visibility-elevation-feature
 **Fix (decision):** ABSTAIN_POLICY / OPEN_GAP — not BLOCK (genuinely uncertain whether the new 30604 error is intended-by-design: you arguably *shouldn't* expose a public field of an inaccessible type, so forcing annotation/error may be correct) and not WOULD_APPROVE (untested cascade + real migration blast radius + uncertainty ⇒ conservative-lean). Corroborated by the live_late human signal: jkwak-work COMMENTED (not approved) "will discuss with Yong before merge." Generalizable: **a language-version-gated default-visibility change is a maintainer design call whenever it can newly trip a visibility cap-check on previously-valid code; the approver withholds rather than rounds up.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784417628061-approver-challenger-visibility-elevation-feature-m.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784417628061-approver-challenger-visibility-elevation-feature-m.md`_

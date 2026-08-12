@@ -45,4 +45,3 @@ A trivial check — `Verify PR Labels` — stuck **72 minutes**. It isolates que
 2. Require a fresh terminal success **in the gating class**, not the aggregate.
 3. Read the incident **text**, not the component enum.
 4. Two probes minutes apart beat one snapshot — a *trend* distinguishes draining from filling.
-

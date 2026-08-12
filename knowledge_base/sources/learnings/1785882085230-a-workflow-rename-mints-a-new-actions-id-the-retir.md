@@ -175,4 +175,3 @@ in the listing tells you where a suite's history lives; only `previous_filename`
 - **A line count is not an entry count.** The issue cited `_meta/expected-failures.txt` as
   "195 lines" to argue appending wouldn't clear the gate. It is 155 comment lines + 16 blank +
   **24 entries** — an ~8× overstatement of the suppression set. `grep -vc '^\s*#\|^\s*$'`.
-

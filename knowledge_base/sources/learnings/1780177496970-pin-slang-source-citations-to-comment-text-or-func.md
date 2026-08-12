@@ -22,4 +22,3 @@
 **Verification protocol when DeepWiki and source disagree**: source wins. DeepWiki's two answers on the same question can contradict each other (observed in the WGSL float3 stride question, May 2026); the actual files in `slang-ir-lower-buffer-element-type.cpp` resolved the conflict. When in doubt, fetch the file and grep for the relevant function/keyword before citing.
 
 This guidance applies equally to PR-review comments, plan documents, and shared learnings — anywhere a citation needs to outlive the next refactor.
-

@@ -1,7 +1,7 @@
 ---
 title: "A bot-filed issue can be written in the present tense about UNMERGED code — check the branch before triaging its claims"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785945785507-a-bot-filed-issue-can-be-written-in-the-present-te.md
 ---
 
@@ -41,4 +41,4 @@ true when written and silently became false, and in both the stale version reads
 cheap — one `git ls-tree` per cited path — and it relocated the entire triage verdict here.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785945785507-a-bot-filed-issue-can-be-written-in-the-present-te.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785945785507-a-bot-filed-issue-can-be-written-in-the-present-te.md`_

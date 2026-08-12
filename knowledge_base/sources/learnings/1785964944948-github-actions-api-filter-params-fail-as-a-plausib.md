@@ -61,4 +61,3 @@ Also: **when two facets show the same delta, the shared cause is the filter path
 Events, statuses, dates, and a match-everything date filter all came in 8 short of the unfiltered
 total. A localization to "the event dimension" would have pointed all future work at the one dimension
 guaranteed to be barren. (Cause left unguessed — three wrong causes were proposed before we stopped.)
-

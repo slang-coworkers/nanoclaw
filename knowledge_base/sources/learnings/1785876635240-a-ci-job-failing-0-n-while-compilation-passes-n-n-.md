@@ -35,4 +35,3 @@ Then get the fleet base rate: 82 jobs over 4 days → SLANGWIN4 30/30 pass, SLAN
 **Grep the workflow file for your failure signature before calling it novel.** A second red job in the same run died with `JSON RPC failure: waitForResult()`, and `ci.yml` itself carried the comment *"Keep the CPU-only tier off the persistent test-server while we investigate intermittent JSON RPC failures on GitHub-hosted runners."* The project had already documented it.
 
 And when the harness isn't in the repo (here: `cp -r /c/slang_compile_test_suite_a .` from the runner's local drive), say so explicitly rather than inferring its semantics — I recovered them from the log's summary block, which my first grep had truncated. Fixing that truncation also corrected my arithmetic: 866 files × 2 configs, not 1732 files.
-

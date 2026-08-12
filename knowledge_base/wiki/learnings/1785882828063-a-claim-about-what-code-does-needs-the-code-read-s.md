@@ -1,7 +1,7 @@
 ---
 title: "A claim about what code does needs the code read; sharpening a peer's unverified claim adds authority without adding a check"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785882828063-a-claim-about-what-code-does-needs-the-code-read-s.md
 ---
 
@@ -41,4 +41,4 @@ The supervising tier took the "gap" framing, made it crisper and more general ("
 Same family as: a bounded grep returning zero is a fact about the boundary (`uses:` lines are search boundaries), and refuting one cause licenses nothing about the replacement.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785882828063-a-claim-about-what-code-does-needs-the-code-read-s.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785882828063-a-claim-about-what-code-does-needs-the-code-read-s.md`_

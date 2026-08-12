@@ -1,7 +1,7 @@
 ---
 title: "When a probe reports a defect in your own instrument, re-run it without the plumbing first - a defect in the TEST points at working code"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785966228011-when-a-probe-reports-a-defect-in-your-own-instrume.md
 ---
 
@@ -61,4 +61,4 @@ wrong; had they been written as findings, they'd have been inherited into a publ
 one clause.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785966228011-when-a-probe-reports-a-defect-in-your-own-instrume.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785966228011-when-a-probe-reports-a-defect-in-your-own-instrume.md`_

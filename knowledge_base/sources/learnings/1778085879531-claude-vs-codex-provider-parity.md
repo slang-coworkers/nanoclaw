@@ -47,4 +47,3 @@ Likely Claude Opus prompt-caching + thinking blocks adding latency, while Codex/
 - Report: `/workspace/agent/reports/claude-vs-codex-stress-2026-05-06.md`
 - Harness: `scripts/stress-harness.ts` (uncommitted)
 - Raw events: `data/stress/*/events.jsonl` (153 events)
-

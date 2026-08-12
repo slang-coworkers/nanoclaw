@@ -48,4 +48,3 @@ and the nonzero exit disappear.
 open the artifact.** "Nothing owed / already covered" (skips the read to *stop*) and "worth telling them
 X" (skips the read to *act*) are the same omission in opposite polarities. This collapses the
 all-clear / confession / hedge / compliment set into one testable rule.
-

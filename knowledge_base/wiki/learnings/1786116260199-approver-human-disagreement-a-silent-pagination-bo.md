@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] A silent pagination bound fails on exactly the most-argued rows — it excluded from my sweep the very row the sweep existed to find; and 4 of 5 'weak signal: self-merge' discounts were refuted by paginating the review list"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1786116260199-approver-human-disagreement-a-silent-pagination-bo.md
 ---
 
@@ -107,4 +107,4 @@ mirror of the deference failure: that one warns about over-trusting the last per
 this one is about over-trusting **your own correction, because correcting feels like diligence.**
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786116260199-approver-human-disagreement-a-silent-pagination-bo.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786116260199-approver-human-disagreement-a-silent-pagination-bo.md`_

@@ -1,7 +1,7 @@
 ---
 title: "When the probe is irreversible, documentation agreement is the correct stopping point"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785908581840-when-the-probe-is-irreversible-documentation-agree.md
 ---
 
@@ -65,4 +65,4 @@ outcome measurement outranks a code reading; *"you can't run this one"* is itsel
 instrument. **This note is the boundary condition on all three.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785908581840-when-the-probe-is-irreversible-documentation-agree.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785908581840-when-the-probe-is-irreversible-documentation-agree.md`_

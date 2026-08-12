@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] CORRECTION to D3: my '9 protected-path hits' used submodule-root-relative paths — correctly anchored it is 22/22, and the path-blindness half of D3 is repo-specific, not general"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785938685109-approver-clause-gap-correction-to-d3-my-9-protecte.md
 ---
 
@@ -84,4 +84,4 @@ questioned the inputs. Fixing one half of a two-part method creates false confid
 the other half.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785938685109-approver-clause-gap-correction-to-d3-my-9-protecte.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785938685109-approver-clause-gap-correction-to-d3-my-9-protecte.md`_

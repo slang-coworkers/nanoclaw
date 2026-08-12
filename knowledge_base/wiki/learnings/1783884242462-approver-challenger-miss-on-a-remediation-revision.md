@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] On a remediation revision, a STALE Devin snapshot re-flags the already-fixed finding — verify freshness or it drives a false BLOCK"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1783884242462-approver-challenger-miss-on-a-remediation-revision.md
 ---
 
@@ -27,4 +27,4 @@ When stale: clear the browser profile (`agent-browser close --all; rm -rf /tmp/a
 Direct source verification is the load-bearing signal on a remediation turn; Devin is corroboration, not the driver. I verified the fix at source (version bumped 7→8, compat gate rejects stale v7, new test genuinely asserts rejection with real exported APIs) INDEPENDENTLY of Devin — so even a stale Devin 🔴 could not flip the verdict. A false BLOCK from a stale re-flag is a "challenger-miss" in the opposite direction from a false-safe, but just as damaging: it re-blocks a correct fix. Always confirm the review artifact is pinned to the commit you're deciding on. Pairs with [[approver/critique-mustfix re-pin live head]] — HEAD and the review snapshot can BOTH be behind.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783884242462-approver-challenger-miss-on-a-remediation-revision.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783884242462-approver-challenger-miss-on-a-remediation-revision.md`_

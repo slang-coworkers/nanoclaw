@@ -57,4 +57,3 @@ this is not defensive over-engineering:
 2. **A normalizer's strip set must be checked against the token classes in your corpus** (slugs,
    links, identifiers), not just against prose. Widening it looks strictly safer and isn't.
 3. **"Both sides normalized identically" is not sufficiency** — it makes a broken probe *pass*.
-

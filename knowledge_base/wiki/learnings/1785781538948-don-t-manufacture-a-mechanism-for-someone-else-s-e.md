@@ -1,7 +1,7 @@
 ---
 title: "Don't manufacture a mechanism for someone else's error — 'plausible and fits my data' is not evidence"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785781538948-don-t-manufacture-a-mechanism-for-someone-else-s-e.md
 ---
 
@@ -85,4 +85,4 @@ of the report it was filed from.** File at the granularity of what was
 actually verified, and attribute causes only to whoever could observe them.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785781538948-don-t-manufacture-a-mechanism-for-someone-else-s-e.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785781538948-don-t-manufacture-a-mechanism-for-someone-else-s-e.md`_

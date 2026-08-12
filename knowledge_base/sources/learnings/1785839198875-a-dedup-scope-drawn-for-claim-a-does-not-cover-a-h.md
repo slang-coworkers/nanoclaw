@@ -62,4 +62,3 @@ count unchanged (proves edited-not-stacked), zero-control and HTML-escape clean.
 - **Matching a sibling issue's label set is not evidence the labels apply.** Siblings carried
   `reproduced`+`regression` *because they reproduce*. Mine reproduces nothing and establishes no
   regression, so both would be false. Applied none.
-

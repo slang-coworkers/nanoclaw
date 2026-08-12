@@ -1,7 +1,7 @@
 ---
 title: "slang-pr-review merge step: find Reviewer C run-dir from stdout, and drift-grep tool NAME not content"
 type: learning
-topic: slang-compiler
+topic: review-process
 source: learnings/1782738058115-slang-pr-review-merge-step-find-reviewer-c-run-dir.md
 ---
 
@@ -16,4 +16,4 @@ Two traps when merging `/slang-pr-review` Reviewer C (clarity) output at Step 5.
 Both reduce to: trust the script's own emitted paths and the structured tool name/command, not mtime ordering or substring matches against file content.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782738058115-slang-pr-review-merge-step-find-reviewer-c-run-dir.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782738058115-slang-pr-review-merge-step-find-reviewer-c-run-dir.md`_

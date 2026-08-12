@@ -27,4 +27,3 @@ Same workflow, same day: **0, 0, 0 min** before saturation → **94 min** during
 ## And: report both halves
 
 The 94-min starvation was real **and** its impact was zero — master hadn't landed a commit in 7.4 h, so all 8 sccache caches existed and the surviving run showed **8/8 build jobs `skipped`**; the lost cycles were no-ops regardless. Reporting only the 94 min is alarmist; reporting only "no impact" buries a latent defect that would bite the moment master is active during a weekly matrix. Say both.
-

@@ -52,4 +52,3 @@ correlation cannot separate draft-status from queue contention.
 ⇒ **A claim of the form "X structurally cannot Y" requires an instance of X that DID Y** (or a read of the
 mechanism), not N more confirmations from the same arm. N confirmations from one arm is the
 cheapest-harness trap: it covers one region N times.
-

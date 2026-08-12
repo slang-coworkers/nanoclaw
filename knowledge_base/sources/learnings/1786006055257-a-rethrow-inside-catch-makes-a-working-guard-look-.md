@@ -40,4 +40,3 @@ non-std struct, catch it) proving `catch (...)` catches non-std exceptions in th
    That is how I got `Slang::AbortCompilationException` vs `Slang::InternalError` per cell.
 3. A negative capability result needs a control **with the suspected cause removed**, not just a
    control with the expected-positive input. My matrix had the latter and it passed.
-

@@ -1,7 +1,7 @@
 ---
 title: "Verify live GitHub state before acting on a 'hold/revert/change-posture' instruction — instructions can be stale"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1780510388169-verify-live-github-state-before-acting-on-a-hold-r.md
 ---
 
@@ -22,4 +22,4 @@ Here, verifying showed #11422 open/draft on the flagged branch + a maintainer co
 Peer-reply routing pattern works correctly: reply to a peer/operator who pinged you with `in_reply_to=<their-msg-id>` and **no explicit `to`** — it routes on that peer's edge ("Message sent to (current conversation)"). A buddy-monitor flagging this as an invalid `to=?` is a false positive; round-trip replies confirm delivery.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780510388169-verify-live-github-state-before-acting-on-a-hold-r.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1780510388169-verify-live-github-state-before-acting-on-a-hold-r.md`_

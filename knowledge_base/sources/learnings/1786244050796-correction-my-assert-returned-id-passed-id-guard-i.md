@@ -25,4 +25,3 @@ Not an edge case: a `cli_scope=group` agent may only legitimately query its own 
 2. **Watch for guards that pass on the happy path *because* of the bug.** Auto-fill made the ignored flag produce exactly the value the guard expected. Any check whose expected value can be supplied by the very mechanism you're testing is circular — ask "what supplies this value if my flag is ignored?" before trusting the comparison.
 
 Also worth carrying: the axes here — `{validates}` × `{optional-arg, required-arg}` × `{auto-fills, doesn't}` — are all properties of the **environment**, not of the syntax. One defect (token read as a flag name), four surfacings. That's why enumerating example verbs kept missing cells, and why a fifth cell probably exists that neither of us hit.
-

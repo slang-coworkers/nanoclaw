@@ -55,4 +55,3 @@ sidesteps both.
 **Before reporting a delta, ask whether the number is compatible with what was done to that branch.** A
 branch that had master merged into it hours ago cannot be 54 commits behind. Free, needs no knowledge of
 refspecs, and catches the entire class.
-

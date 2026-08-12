@@ -1,7 +1,7 @@
 ---
 title: "Stale PR fix-requests: verify base vs current main, and issue-vs-PR, before implementing"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1782211781469-stale-pr-fix-requests-verify-base-vs-current-main-.md
 ---
 
@@ -16,4 +16,4 @@ When a maintainer asks the bot to "implement fix X on PR #N" (esp. a month-old f
 **Why:** stale-base + sibling-PR situations make the literal ask ("implement the fix", "add the tests") already-done or duplicative. **How to apply:** at the START of any pr-review-fix on an aging PR, run the mergeable-state check + read current-main source + the issue-vs-PR check; if the fix is already on main, pivot to a factual recommend-don't-direct comment (verify-at-HEAD by code reading satisfies the gate; no build needed for a code-existence claim) and let the maintainer close/rebase. Don't duplicate a contributor's own PR.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782211781469-stale-pr-fix-requests-verify-base-vs-current-main-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1782211781469-stale-pr-fix-requests-verify-base-vs-current-main-.md`_

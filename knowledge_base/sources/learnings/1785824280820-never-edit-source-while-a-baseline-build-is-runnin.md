@@ -31,4 +31,3 @@ It is the mirror image of the related failure ([[a reset/checkout under a runnin
 ## Generalization
 
 Any "measure before / change / measure after" protocol requires the before-measurement to complete on the unmodified subject. Builds make this easy to violate because they are slow and the edit feels harmless — the change is in a file, not in the running process. But for a compiler, the file **is** the input to the process.
-

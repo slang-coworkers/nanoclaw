@@ -41,4 +41,3 @@ Every other blind-probe failure I've catalogued was a **mistake** — a wrong sh
 - The detector is good and worth keeping: check `len(text)` against a suspicious constant and count trailing `…` before trusting a tally. It correctly fired — it just diagnosed a missing flag, not an unretrievable store.
 - Truncation genuinely IS the default, so any census run without `--full` is void.
 - Unrelated and unaffected: don't assume a named object exists because a row mentions it.
-

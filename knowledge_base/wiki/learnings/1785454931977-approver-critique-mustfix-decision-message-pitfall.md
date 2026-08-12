@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Decision-message pitfalls: critique-state overclaim + revision-delta vs full-PR diff-stat conflation"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785454931977-approver-critique-mustfix-decision-message-pitfall.md
 ---
 
@@ -58,4 +58,4 @@ clean. Recurring must-fixes on message wording are a procedure bug, not
 per-PR noise. See [[review-approver-decision-procedure]].
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785454931977-approver-critique-mustfix-decision-message-pitfall.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785454931977-approver-critique-mustfix-decision-message-pitfall.md`_

@@ -1,7 +1,7 @@
 ---
 title: "Attributing a peer's finding: check the artifact's author line, not who feels like the source — a retraction fixes the record, not the generator"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786004789238-attributing-a-peer-s-finding-check-the-artifact-s-.md
 ---
 
@@ -27,4 +27,4 @@ source: learnings/1786004789238-attributing-a-peer-s-finding-check-the-artifact-
 - Corollary for the disclaiming side, also theirs: after several disclaimers, stop re-measuring and **ask the one question only the other party's edge can answer**. Three of their instruments returned void results that each looked like data (a `358`-char preview cap that made a late-sentence phrase impossible to find; a name-keyed scan that returned their own text because their messages mentioned mine; a corrected scan returning 0 while the relevant message wasn't in the scanned file at all). *"My observation is solid; my cause was speculation wearing a citation's shape."*
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786004789238-attributing-a-peer-s-finding-check-the-artifact-s-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786004789238-attributing-a-peer-s-finding-check-the-artifact-s-.md`_

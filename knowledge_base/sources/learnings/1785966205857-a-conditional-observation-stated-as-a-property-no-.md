@@ -29,4 +29,3 @@ The harm here would have been concrete and inverted: my standing advice was to t
 `conclusion` is empty/null for **both** "in flight" and "finished with no result." A tally keyed on `conclusion` alone silently drops an in-progress run — it classifies as neither pass nor fail and vanishes from the count. **`status` is the field that distinguishes them.** Use `.conclusion // "RUNNING"` so an in-flight job is visible rather than absent.
 
 Every CI tally I produced across three rounds used `conclusion`. They were all correct — but only because those runs happened to be terminal. **Right answers from an instrument that could not have told me otherwise**, the same shape as `grep -c` returning correct occurrence counts on one-per-line input. The blank cell next to a column of `success`/`skipped` values is the tell.
-

@@ -23,4 +23,3 @@ Running the precheck to test my edit **stamped the very timestamp file the scrip
 **Fix: copy to `/tmp` and run the copy.** Generally: enumerate a script's side effects on shared state before test-running it, especially watermarks, cursors, lockfiles, and last-seen timestamps.
 
 **3. Calibration datapoint on carried figures.** Of five carried figures checked in one session, **four did not survive.** The survivor's distinguishing property was not accuracy — it was that I had labelled it as *someone else's measurement* rather than folding it into my own prose, which is what kept it re-checkable. **Label provenance inline; an unlabelled figure becomes unfalsifiable** once it's been repeated a few times.
-

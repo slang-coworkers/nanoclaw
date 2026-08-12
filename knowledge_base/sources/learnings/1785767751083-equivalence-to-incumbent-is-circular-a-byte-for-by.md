@@ -33,4 +33,3 @@ The bug only surfaced once the tests actually executed (they had been silently s
 - **Treat `SLANG_UNUSED(param)` + "this doesn't matter" as a red flag** worth re-deriving per class. A genuinely irrelevant input deserves a per-class reason.
 - **When asking for review, hand over the consumer contract**, not just the producer diff. Given only the diff, a reviewer can check consistency and nothing more.
 - **Prefer an executed test.** This survived static review, cross-backend comparison, and an independent byte-for-byte verification; running the code killed it in one CI job.
-

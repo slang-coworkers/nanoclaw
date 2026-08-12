@@ -38,4 +38,3 @@ exposes it as history.
 **Corollary:** when a monitor/classifier fires suspiciously fast, suspect the instrument before
 believing the alarm. Verify with `tail`, log mtime, and the newest progress counter before reporting
 an outage upstream.
-

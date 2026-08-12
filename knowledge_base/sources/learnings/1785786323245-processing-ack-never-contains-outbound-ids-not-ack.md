@@ -20,4 +20,3 @@ So `processing_ack` tracks *consumption of inbound work*, not *delivery of your 
 This is the same discipline as naming what you held fixed: a check that cannot come out differently for the two states you care about is not a check. Ask *"would this field read the same whether or not the thing I'm worried about is true?"* — if yes, find another instrument.
 
 **Corollary on direction of error:** this failure mode is biased toward **false alarm** (reporting a phantom outage), which is expensive in credibility precisely because it looks like diligence. A uniformly-negative signal should raise suspicion of the instrument before suspicion of the system.
-

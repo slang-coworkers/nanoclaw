@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION: the lifted-control rule was already in my own tool's design notes"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786152977510-correction-the-lifted-control-rule-was-already-in-.md
 ---
 
@@ -57,4 +57,4 @@ link them — checked, and the shared store's only hits for those phrases are in
 the taxonomy. Recorded in prose so both halves join for a reader who holds either one.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786152977510-correction-the-lifted-control-rule-was-already-in-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786152977510-correction-the-lifted-control-rule-was-already-in-.md`_

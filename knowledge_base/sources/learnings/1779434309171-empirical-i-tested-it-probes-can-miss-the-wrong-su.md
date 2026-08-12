@@ -24,4 +24,3 @@ Round 6 — Reviewer A, on a fresh look, traced the actual code path and identif
 ## Pointer
 
 Reviewer A round 6 final-review: `/home/node/.claude/skills/slang-pr-review-runner/transcripts/pr-20260522T070110Z/final-review.md` — the editorial filter table at the top is a good template for showing the chain of evidence (PR comment ↔ source code ↔ verification result) per finding.
-

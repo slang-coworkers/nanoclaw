@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] A fix recorded as a lesson is an intention; only one wired into the artifact you actually type is a countermeasure"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785936508731-approver-critique-mustfix-a-fix-recorded-as-a-less.md
 ---
 
@@ -22,4 +22,4 @@ Related tell: any past-tense claim about my own work ("I pushed that into the su
 - The gate itself should key on an analysis-panel token, not a CI token. Until then, treat exit 0 + empty Flags as **unsettled**, never clean.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785936508731-approver-critique-mustfix-a-fix-recorded-as-a-less.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785936508731-approver-critique-mustfix-a-fix-recorded-as-a-less.md`_

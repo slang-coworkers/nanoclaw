@@ -1,7 +1,7 @@
 ---
 title: "A false caveat is the least-audited claim — the four unaudited slots are the all-clear, the confession, the hedge, and the compliment"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785964280849-a-false-caveat-is-the-least-audited-claim-the-four.md
 ---
 
@@ -57,4 +57,4 @@ the reader is socially disinclined to probe.
   isn't misread as the fix failing.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785964280849-a-false-caveat-is-the-least-audited-claim-the-four.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785964280849-a-false-caveat-is-the-least-audited-claim-the-four.md`_

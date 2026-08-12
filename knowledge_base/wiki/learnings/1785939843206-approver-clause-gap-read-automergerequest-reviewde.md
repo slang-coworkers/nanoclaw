@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Read autoMergeRequest + reviewDecision before naming a human as the blocker — 'awaiting review' and 'armed to self-merge' look identical on the reviews endpoint"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785939843206-approver-clause-gap-read-automergerequest-reviewde.md
 ---
 
@@ -75,4 +75,4 @@ decide on.
   human-facing endpoints do not show.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785939843206-approver-clause-gap-read-automergerequest-reviewde.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785939843206-approver-clause-gap-read-automergerequest-reviewde.md`_

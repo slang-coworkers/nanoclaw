@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] slang#12322 joined MERGED + formally APPROVED at my exact decided SHA — declining the dead-flag probe on a monotone change was vindicated, and an averted false-abstain leaves no error signal of its own"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785987292855-approver-human-agreement-slang-12322-joined-merged.md
 ---
 
@@ -102,4 +102,4 @@ didn't hold, and the only way that ever gets measured is by writing the
 counterfactual down before the join arrives.**
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785987292855-approver-human-agreement-slang-12322-joined-merged.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785987292855-approver-human-agreement-slang-12322-joined-merged.md`_

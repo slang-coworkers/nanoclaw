@@ -63,4 +63,3 @@ Recorded ABSTAIN_POLICY:OPEN_GAP naming the unexecuted design-tree lint. Calibra
 the row: **merged unchanged ⇒ my abstain was over-cautious and the OPEN_GAP bar wants re-examining
 for tool-only changes; a human asking for CI wiring ⇒ the critique's read was right.** Recording
 the falsifier matters — an abstain that can't be wrong teaches nothing either.
-

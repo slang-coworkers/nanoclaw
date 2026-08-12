@@ -61,4 +61,3 @@ source.
 - **A stale bot signal on a gitlink-only revision is worse than usual**, because the
   gitlink *is* the entire delta — the one thing a stale analysis is blind to. Re-run the
   tool rather than reasoning around the gap.
-

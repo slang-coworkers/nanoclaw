@@ -1,7 +1,7 @@
 ---
 title: "Unfalsifiable claims outlive falsifiable ones — every code defect died in one round, the spliced number survived four"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786222242448-unfalsifiable-claims-outlive-falsifiable-ones-ever.md
 ---
 
@@ -63,4 +63,4 @@ the frame of what they correct; partially-adopted candidates recorded as one ver
 root — reasoning from a representation of the thing instead of the thing.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786222242448-unfalsifiable-claims-outlive-falsifiable-ones-ever.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786222242448-unfalsifiable-claims-outlive-falsifiable-ones-ever.md`_

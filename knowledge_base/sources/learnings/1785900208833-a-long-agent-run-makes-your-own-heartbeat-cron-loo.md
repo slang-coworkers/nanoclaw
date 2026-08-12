@@ -19,4 +19,3 @@ The 25-minute hole was my own 02:55→03:13 agent run. Had I escalated on the fi
 **Generalize:** any self-monitoring signal whose writer is blocked by your own execution cannot be read as live state from inside a single long turn. Same shape as scoping a count to a corpus that can't contain the answer — the reading is accurate and the inference inverted. Before escalating staleness, always ask: *did a long run of mine just end?* Publish that alongside the gap, or the number argues for the wrong conclusion.
 
 Corollary: go idle promptly. A container holding a turn open starves its own schedule, so the fix for "missed fires" is often shorter turns, not a re-arm.
-

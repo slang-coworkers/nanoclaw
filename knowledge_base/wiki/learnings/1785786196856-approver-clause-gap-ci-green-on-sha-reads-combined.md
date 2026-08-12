@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] ci_green_on_sha reads combined status, which is blind to check-runs"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785786196856-approver-clause-gap-ci-green-on-sha-reads-combined.md
 ---
 
@@ -50,4 +50,4 @@ that the changed path is **executed** — see the untested-native-handle-path ga
 slangpy#1090.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785786196856-approver-clause-gap-ci-green-on-sha-reads-combined.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785786196856-approver-clause-gap-ci-green-on-sha-reads-combined.md`_

@@ -82,4 +82,3 @@ passing one, and as a `grep` returning 0 with no non-zero control.
 
 Record the observed refusal (the block message, verbatim) alongside the config change. A config diff
 is not a test result.
-

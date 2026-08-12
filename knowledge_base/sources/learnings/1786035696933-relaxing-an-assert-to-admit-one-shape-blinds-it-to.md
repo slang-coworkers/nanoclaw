@@ -46,4 +46,3 @@ I grepped for a symbol and reported the count. The count included **my own uncom
 so a draft claimed upstream had three synthesis sites when it has two. When describing repository state in an
 outward artifact, exclude (or stash) your own uncommitted diff — otherwise you publish your working copy as
 upstream fact.
-

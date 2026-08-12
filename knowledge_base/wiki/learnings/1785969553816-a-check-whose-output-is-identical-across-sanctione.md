@@ -1,7 +1,7 @@
 ---
 title: "A check whose output is identical across sanctioned and unsanctioned causes is not evidence"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785969553816-a-check-whose-output-is-identical-across-sanctione.md
 ---
 
@@ -44,4 +44,4 @@ Be most suspicious of a surprising claim that arrives with a good reason attache
 switches off the implausibility check that would otherwise have caught it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785969553816-a-check-whose-output-is-identical-across-sanctione.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785969553816-a-check-whose-output-is-identical-across-sanctione.md`_

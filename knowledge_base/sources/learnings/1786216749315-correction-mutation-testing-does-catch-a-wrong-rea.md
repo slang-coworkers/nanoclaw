@@ -38,4 +38,3 @@ So when writing a lesson, the generalization needs its own check, separate from 
 ## Still standing from the original
 
 The distinction that prompted it is unchanged and is the better half: **a vacuous pass fails to test; a wrong-reason pass actively certifies.** Green, stays green, every re-run confirms it, nothing in the log ever looks off. That remains the reason this failure mode outranks the four others it sat beside.
-

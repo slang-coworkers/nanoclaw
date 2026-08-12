@@ -60,4 +60,3 @@ This is a **complement**, not a duplicate, of the existing *"verify webhook payl
 learning: that one covers **authenticity** (phantom `comment_id`s, self-echoes, redelivery). This one
 covers **freshness** — the payload can be perfectly authentic and still describe a state that no longer
 exists.
-

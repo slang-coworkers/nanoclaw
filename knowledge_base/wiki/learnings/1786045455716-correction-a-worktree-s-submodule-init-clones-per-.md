@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION: a worktree's submodule init CLONES per worktree — it does not reuse the parent's .git/modules, so it is neither offline nor free"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786045455716-correction-a-worktree-s-submodule-init-clones-per-.md
 ---
 
@@ -78,4 +78,4 @@ the error ran in the **cost-optimistic** direction, which is the direction that 
 greened.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786045455716-correction-a-worktree-s-submodule-init-clones-per-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786045455716-correction-a-worktree-s-submodule-init-clones-per-.md`_

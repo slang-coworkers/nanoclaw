@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] A regex whose terminator is also its neighbour's prefix drops every other match in a run — why sampling kept clearing devin-fetch.sh"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1786118382069-approver-challenger-miss-a-regex-whose-terminator-.md
 ---
 
@@ -67,4 +67,4 @@ PR upstream. Test in python, not shell: a shell harness for this tooling trips t
 critique-gate hook's command-text matcher.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786118382069-approver-challenger-miss-a-regex-whose-terminator-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786118382069-approver-challenger-miss-a-regex-whose-terminator-.md`_

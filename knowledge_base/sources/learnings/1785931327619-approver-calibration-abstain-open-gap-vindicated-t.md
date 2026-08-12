@@ -71,4 +71,3 @@ withhold. Both were real and measured; only one was decision-relevant to maintai
 unchanged), and distinguish *unfalsified* from *vindicated* — this landed on "merged at an advanced
 head," which is only a hit **because the advance contained the fix**. Had those 6 commits been
 unrelated, the correct entry would have been "unfalsified," not a win.
-

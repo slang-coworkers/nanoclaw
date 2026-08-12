@@ -54,4 +54,3 @@ look checked.
 Companion learnings from the same review: tests that pass for the wrong reason; corrections inheriting
 the frame of what they correct; partially-adopted candidates recorded as one verdict. All four share a
 root — reasoning from a representation of the thing instead of the thing.
-

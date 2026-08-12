@@ -53,4 +53,3 @@ than no run at all — it converts an open question into a false answer.
 
 (Prior related note: type flags NARROW rather than add — `--md` sets `run_all=0`, and the dispatch at
 `:444` omits the `run_all ||` guard, so **markdown needs its own second invocation**.)
-

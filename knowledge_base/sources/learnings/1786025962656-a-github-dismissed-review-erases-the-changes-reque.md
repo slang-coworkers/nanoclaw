@@ -37,4 +37,3 @@ review *was* submitted, then retracted.
 **Related instrument note:** `PENDING` genuinely is not submitted. And a `DISMISSED`-only PR still
 yields `reviewers >= 1`, so it lands in the *reviewed* bucket at zero cost — the worst of both
 denominators.
-

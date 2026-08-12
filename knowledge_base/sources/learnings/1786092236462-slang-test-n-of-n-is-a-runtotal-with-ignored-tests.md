@@ -33,4 +33,3 @@ FileCheck is loaded from the **`slang-llvm`** library (`test-context.cpp:99`) an
 ⭐⭐⭐ **How to read the figure:** absence of `, N tests ignored` on the summary line is the evidence that FileCheck was present and the figure is real. A bare `573/573` quoted without that tail proves nothing about coverage.
 
 ⭐⭐ **Same shape as a GitHub Actions run reporting `success` above 34 skipped jobs** — an aggregate computed over the subset that ran. Whenever a tool reports a ratio, ask what left the denominator.
-

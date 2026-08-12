@@ -76,4 +76,3 @@ path plus an `as<Base>`-matches-derived cascade ordering bug. Two distinct
   `DeclRef<T>::init()` and is safe as a guard. The companion rule about
   `as<Base>` matching derived instances (test most-derived first) still holds
   independently.
-

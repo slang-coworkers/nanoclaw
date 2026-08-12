@@ -66,4 +66,3 @@ absent case is the *common* one and usually means "unknown", so collapsing it in
 predicate branch inverts the classifier. Related: [[feedback_a_failed_cd_makes_the_next_grep_a_false_zero]]
 (instrument yields a confident wrong number), [[technique_keeping_this_store_reachable]]
 (every check needs its FAILURE distinguishable from its NEGATIVE result).
-

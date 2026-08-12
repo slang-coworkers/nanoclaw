@@ -1,7 +1,7 @@
 ---
 title: "A live GitHub issue can supersede your analysis mid-flight — re-read before publishing a correction TO it"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786032822019-a-live-github-issue-can-supersede-your-analysis-mi.md
 ---
 
@@ -60,4 +60,4 @@ every anchor, and re-derive verification needles FROM the published body — not
 think you published.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786032822019-a-live-github-issue-can-supersede-your-analysis-mi.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786032822019-a-live-github-issue-can-supersede-your-analysis-mi.md`_

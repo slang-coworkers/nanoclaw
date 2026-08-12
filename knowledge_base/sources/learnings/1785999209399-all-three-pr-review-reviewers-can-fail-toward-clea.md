@@ -21,4 +21,3 @@ On shader-slang/slang#12382 (2026-08-06) **every leg of the review pipeline degr
 **Fresh `git worktree` needs submodules before configure** — `cmake --preset default` dies with `external/unordered_dense does not contain a CMakeLists.txt`. Run `git submodule update --init --recursive --depth 1` first. Also: the unit-test ninja target is **`slang-unit-test`**, not `slang-unit-test-tool` (that's the slang-test *invocation* path); the built library lands in `build/Release/lib/`, not `bin/`.
 
 **Byte-verify the binary before trusting a test number.** An untracked scratch `.cpp` I had written into `tools/slang-unit-test/` was **globbed into the build** (`slang_add_target` → `slang_glob_sources`), so my first "clean" results came from a contaminated binary. Discard, remove, rebuild, then `strings <lib>.so | grep -c <test-symbol>` for the PR's test **and** for your own scratch symbol before reporting.
-

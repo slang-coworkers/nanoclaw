@@ -52,4 +52,3 @@ With both controls green, the 0 hits on #1062 were real. Without them it was an 
 ## Bonus: credential-shape false positive
 
 `grep -oiE 'sk-[A-Za-z0-9_-]{20,}'` fired twice — on a **filename**, `…a-pin-independent-fix-s-risk-baseline-is-the-pinne.md` (`risk-baseline-is-the-pinne`). Always print surrounding context for a secret-shaped hit before calling it a leak; `diff --git` header lines are a rich source of accidental matches.
-

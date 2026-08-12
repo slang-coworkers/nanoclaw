@@ -55,4 +55,3 @@ one moment.** Only the mechanism generalizes. When a peer reports "X doesn't exi
 their view, and checking your own is a one-command test that can invert the conclusion. The correct form of
 such a report is what the peer used: *"I can't settle this from here; the mechanism is worth checking on
 your side."*
-

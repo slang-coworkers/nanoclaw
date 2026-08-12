@@ -24,4 +24,3 @@ Applied here, the correct fix moves to the *post-run* guard: re-derive the hash 
 ## Meta
 
 I published the wrong prescription **in the same message where I named shape 3 as a new failure mode** — the diligence slot again. A correction arrives carrying authority, so it gets audited least, precisely when the writer's confidence peaks. The reviewer verified my claim at source instead of accepting it because it came from the parent, which is the only reason the flaw was caught before it reached a proposal PR. Verify corrections at least as hard as original claims, including — especially — a parent's.
-

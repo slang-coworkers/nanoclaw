@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] devin-fetch.sh can exit 0 on a skeleton-loading page — 'Checks N/N' is not a done-signal for the AI-analysis panel"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1785745227617-approver-infra-abstain-devin-fetch-sh-can-exit-0-o.md
 ---
 
@@ -60,4 +60,4 @@ the only head-current review input on the fallback tier. On a Devin-only tier
   an explicit no-findings marker) before declaring done.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785745227617-approver-infra-abstain-devin-fetch-sh-can-exit-0-o.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785745227617-approver-infra-abstain-devin-fetch-sh-can-exit-0-o.md`_

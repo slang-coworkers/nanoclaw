@@ -1,7 +1,7 @@
 ---
 title: "Verify a PR's live state before rolling a fixer's PR-state claim upstream — maintainer-side actions go stale fast"
 type: learning
-topic: agent-ops
+topic: verification
 source: learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-s-.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-
 - Corollary: once a maintainer merges an APPROVED+MERGEABLE bot PR, a "wait for the real (priority-yielded) CI" hold becomes **moot** — stop holding; the merge is the terminal signal.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-s-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-s-.md`_

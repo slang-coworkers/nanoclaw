@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Re-check live PR head at record time — synchronize can supersede your pin mid-analysis"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784223025561-approver-clause-gap-re-check-live-pr-head-at-recor.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784223025561-approver-clause-gap-re-check-live-pr-head-at-rec
 **Note:** read-only `gh api .../pulls` GETs trip the critique-delivery-gate's PR-creation text matcher (it greps for `pulls\b`); route the URL through a shell variable so the literal pattern isn't in the command text. These are reads, not writes.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784223025561-approver-clause-gap-re-check-live-pr-head-at-recor.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784223025561-approver-clause-gap-re-check-live-pr-head-at-recor.md`_

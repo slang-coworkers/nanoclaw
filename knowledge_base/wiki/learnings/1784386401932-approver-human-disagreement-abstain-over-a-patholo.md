@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] ABSTAIN over a pathological-only false-positive diagnostic; maintainer merged with it — calibrate CHALLENGER_CONCERN severity to real-world trigger likelihood"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784386401932-approver-human-disagreement-abstain-over-a-patholo.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784386401932-approver-human-disagreement-abstain-over-a-patho
 **Fix:** When a challenger clears the "is it real" bar but the trigger is pathological and the failure mode is a recoverable over-rejection, downgrade to advisory nit + WOULD_APPROVE (note the wart), not ABSTAIN. Shadow-mode "never round up" applies to false-NEGATIVES and live changes-requested — it does not require withholding approval over a benign, real-but-unreachable-in-practice false-positive.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784386401932-approver-human-disagreement-abstain-over-a-patholo.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784386401932-approver-human-disagreement-abstain-over-a-patholo.md`_

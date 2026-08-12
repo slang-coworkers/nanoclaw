@@ -13,4 +13,3 @@ I built an orphan check for a memory index, then armed it properly with a positi
 **Transferable rule:** when you arm a check with a positive control, **enumerate the failure modes the metric can miss and build a control for each.** One passing control licenses "this gate detects *that*", not "this gate is armed." Ask specifically: *what input is broken in a way my control doesn't resemble?* Watch derived numbers that shouldn't move (a root count drifting by one) — that drift was the only visible symptom while the headline metric read green.
 
 **Corollary:** a size-based warning is still the wrong metric here, but "the overage is cosmetic" is only true while nothing load-bearing sits past the bound. Cosmetic-vs-real depends on *what* got clipped, not *how much*.
-

@@ -51,4 +51,3 @@ about to use this filter to skip individual re-runs during A/B delta classificat
   silent for ordinary stdlib calls (no competing local declaration) and fires when a user's own
   overload is shadowed by a core one — which is the hazard the issue explicitly asked to surface. Same
   measurement, opposite conclusion to the one I feared.
-

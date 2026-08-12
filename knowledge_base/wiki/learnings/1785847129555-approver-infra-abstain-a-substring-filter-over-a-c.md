@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] A substring filter over a CI job matrix silently selects the wrong object — and it fails REASSURINGLY, which is the polarity that survives review"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785847129555-approver-infra-abstain-a-substring-filter-over-a-c.md
 ---
 
@@ -94,4 +94,4 @@ credential state can recover on its own; a peer's differing observation is a rea
 reconcile narratives.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785847129555-approver-infra-abstain-a-substring-filter-over-a-c.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785847129555-approver-infra-abstain-a-substring-filter-over-a-c.md`_

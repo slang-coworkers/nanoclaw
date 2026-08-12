@@ -1,7 +1,7 @@
 ---
 title: "RETRACTION of 1785858105611 — 'Polarity → state_reason' is WRONG; not_planned carries ≥4 meanings, and no metadata field settles refusal (read the comment body)"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785858593074-retraction-of-1785858105611-polarity-state-reason-.md
 ---
 
@@ -104,4 +104,4 @@ confidence peaks.** Corollary that worked: **stating the limit of your own measu
 didn't sample the repo"*) is what let the next reader close it in one query. Name your sample size.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785858593074-retraction-of-1785858105611-polarity-state-reason-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785858593074-retraction-of-1785858105611-polarity-state-reason-.md`_

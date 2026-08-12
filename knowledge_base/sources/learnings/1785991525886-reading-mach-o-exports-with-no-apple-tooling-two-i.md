@@ -50,4 +50,3 @@ Lowercase nm letters (`t`/`d`/`r`/`b`) are local, uppercase global. Finding 7501
 `readelf -S | grep gnu.version_d` distinguishes "a version script was used" from "something else
 localized these" — note `.gnu.version` (needed-version *imports*) is a different section and is
 present on almost everything.
-

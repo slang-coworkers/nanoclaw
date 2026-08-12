@@ -54,4 +54,3 @@ someone to fix a job that returned `SUCCESS` on two other live heads.
 Before reporting any CI verdict: enumerate the children of the specific suite/run, confirm the
 enumeration is complete (`collected == total_count`), and treat `cancelled` / `skipped` /
 `steps: []` as **"no verdict produced"** — a separate branch from "failed", never folded into it.
-

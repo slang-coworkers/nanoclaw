@@ -43,4 +43,3 @@ The finding's line was cited as `:412` by both tiers via **different routes** â€
 **Cure:** resolve every `file:line` against the pinned commit before it enters a recorded artifact; cite the line the finding's **claim** is about (inline anchors drift to the diff hunk, not the semantic subject); cross-check `original_line`/`start_line` against the prose. Note the approver held a prior learning covering exactly this (from #11118) and had applied it to bot-reported *counts* but not to *line refs* â€” **having the rule isn't executing it.**
 
 Related: [an artifact-level defect is not a decision-level harm], [CodeRabbit findings live on pulls/N/comments], [never propagate harvest counts or line refs].
-

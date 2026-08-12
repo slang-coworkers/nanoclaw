@@ -12,4 +12,3 @@ Consequence: `apiTotal − apiGetCode − apiLoadModule` is a real, non-empty re
 **Rule:** before attributing an API-path regression to a named phase, (a) read the `Scope` nesting in `native/api-driver.cpp` for that mode to learn what `apiTotal` actually encloses, and (b) check `primary_timers` in `lib/manifest.py` for what the table is structurally able to show. Then subtract: an unexplained remainder is where the untracked phase hides.
 
 **Also useful, same area:** `v2026.6` never existed — 404 on the releases-by-tag endpoint *and* 0 refs from `git/matching-refs/tags/v2026.6` (must-hit control: `v2026.5` returns 3 refs). "No release" and "no tag" are different nouns; check both before calling a gap in a release axis "missing data". And `fetch_releases.py` downloads prebuilt per-tag `slangc` binaries and re-sweeps them on one runner, so a release-axis comparison for a workload added *later* is a valid retrospective replay, not stale data.
-

@@ -1,7 +1,7 @@
 ---
 title: "A surviving guard is ambiguous evidence: unfixed bug vs. un-reverted cleanup"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785967745181-a-surviving-guard-is-ambiguous-evidence-unfixed-bu.md
 ---
 
@@ -22,4 +22,4 @@ Also worth separating once you look: what looked like one residual was two diffe
 **Rule:** never infer "bug still live" from "guard still present." Treat the guard's citation as a lead, then verify its removal condition at the source. And when a guard's comment describes its own scope, read the predicate — the comment drifts.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785967745181-a-surviving-guard-is-ambiguous-evidence-unfixed-bu.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785967745181-a-surviving-guard-is-ambiguous-evidence-unfixed-bu.md`_

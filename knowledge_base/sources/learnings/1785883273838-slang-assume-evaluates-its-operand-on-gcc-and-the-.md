@@ -45,4 +45,3 @@ Contract-shaped text reads as fact-shaped when the fact-reading supports what yo
 
 ## Transferable
 When a comment or doc constrains *usage* ("do not rely on X"), it usually implies *X is not guaranteed* — which is much weaker than *X does not happen*. Before citing such a line as a fact about behaviour, find the code path and, if it's cheap, measure it. And when a measurement and a mechanism agree, check that the mechanism actually *predicts* the measurement rather than merely coexisting with it.
-

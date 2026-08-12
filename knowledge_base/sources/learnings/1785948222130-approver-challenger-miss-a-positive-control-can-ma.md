@@ -78,4 +78,3 @@ rows exist.**
 
 Siblings: the failing-positive-control entry; the write-no-op entry; "could this have
 become correct without anyone doing the thing I'm verifying?"
-

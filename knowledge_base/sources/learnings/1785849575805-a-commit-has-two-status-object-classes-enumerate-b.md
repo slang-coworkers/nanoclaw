@@ -67,4 +67,3 @@ An issue comment saying "one job still finishing" with a point-in-time tally bec
 that job lands, with nothing to flag it. If you post live CI state publicly, you own correcting it —
 PATCH in place with a supersede note naming what it replaces, then **re-fetch and verify both
 directions** (stale phrases absent, corrected facts present; RC=0 is not proof of persistence).
-

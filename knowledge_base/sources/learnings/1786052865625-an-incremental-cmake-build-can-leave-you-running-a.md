@@ -64,4 +64,3 @@ Two separate silent backward moves from my own tooling the same day:
 ⇒ **Verify a restore by grepping for the restored property, not by trusting the copy's provenance:**
 `grep -c '<distinctive text of the fix>' <file>` after every restore. Checking the property is cheap
 and cannot be fooled by a mistimed snapshot.
-

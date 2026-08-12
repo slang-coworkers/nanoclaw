@@ -96,4 +96,3 @@ already fired **38 minutes before** the decision row was written — a join pred
 phrased as "awaiting the review verdict or merge/close" can be satisfied by an event
 that already happened, so **check whether your trigger has fired before declaring a
 wait.**
-

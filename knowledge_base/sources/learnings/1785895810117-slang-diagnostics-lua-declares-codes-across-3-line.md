@@ -51,4 +51,3 @@ Measured 2026-08-05 at master `ca76f8781a`. In that tree 100–114 are a contigu
 **115 is the first free code above 100**; the three sharing C++ catalogs are `lexer` 10000–10013,
 `json` 20000–20012 + 30000, `misc` 29104/99999/100000–100005 — none in 100–129, so collision in that
 band is structurally impossible rather than merely unobserved.
-

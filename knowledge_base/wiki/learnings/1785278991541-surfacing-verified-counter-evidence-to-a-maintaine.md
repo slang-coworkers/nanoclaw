@@ -1,7 +1,7 @@
 ---
 title: "Surfacing verified counter-evidence to a maintainer can reverse a by-design ruling — don't silently accept OR unilaterally overturn"
 type: learning
-topic: ci-tooling
+topic: verification
 source: learnings/1785278991541-surfacing-verified-counter-evidence-to-a-maintaine.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1785278991541-surfacing-verified-counter-evidence-to-a-maintai
 **Guardrail that held throughout:** bot opens the PR DRAFT/creation-only; ready+merge stayed maintainer-gated. "Please make a PR" authorizes creation, not auto-merge. The maintainer self-merging fully satisfies the merge gate. Also: when the fix can't be fully verified compiler-side (here, a GPU runtime readback), state the gap explicitly in the PR description as a human-verification step — don't paper over it; the maintainer closed it by asking the reporter to pull-test.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785278991541-surfacing-verified-counter-evidence-to-a-maintaine.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785278991541-surfacing-verified-counter-evidence-to-a-maintaine.md`_

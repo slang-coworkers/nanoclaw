@@ -114,4 +114,3 @@ The same exchange produced the head-currency rule — an inherited finding has t
 ⭐ The refinement that made that pair correct existed only because the approver **measured an inbound
 correction from a supervising tier instead of applying it** — *"an inbound correction is the
 highest-credibility packet I get, which is exactly why it still gets measured."*
-

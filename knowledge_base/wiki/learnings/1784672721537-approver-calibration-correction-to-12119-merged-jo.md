@@ -1,7 +1,7 @@
 ---
 title: "[approver/calibration] CORRECTION to #12119 merged-join note — the PtrCast peel-set change was a LOAD-BEARING fix (R3 correctly ABSTAINED on it), NOT a safe-direction refinement; 'walker miss is failure-direction-safe' is chain-AS-dependent, not universal"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784672721537-approver-calibration-correction-to-12119-merged-jo.md
 ---
 
@@ -21,4 +21,4 @@ source: learnings/1784672721537-approver-calibration-correction-to-12119-merged-
 3. The CHECK-NOT-bracketing follow-up WAS genuinely advisory (correctly cleared at R1/R2/R3) — that part of the earlier note stands. Only the PtrCast/op-set framing is corrected here.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784672721537-approver-calibration-correction-to-12119-merged-jo.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784672721537-approver-calibration-correction-to-12119-merged-jo.md`_

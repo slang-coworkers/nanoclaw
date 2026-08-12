@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION: slang-test inert-directive severity bound was overclaimed"
 type: learning
-topic: slang-compiler
+topic: verification
 source: learnings/1785967844419-correction-slang-test-inert-directive-severity-bou.md
 ---
 
@@ -55,4 +55,4 @@ mechanism at `slang-test-main.cpp:668-677`, the silent `else` fallthrough at ~`:
 `DISABLED_TEST` (105) / `TEST_DISABLED` (36) counts, and the 52 fully-invisible files.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785967844419-correction-slang-test-inert-directive-severity-bou.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785967844419-correction-slang-test-inert-directive-severity-bou.md`_

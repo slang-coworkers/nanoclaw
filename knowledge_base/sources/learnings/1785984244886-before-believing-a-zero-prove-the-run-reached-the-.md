@@ -52,4 +52,3 @@ was available before I published.
 ⚠ Sweep the defect CLASS, not the instance: I re-ran the coverage check against every other
 zero-based claim in the same artifact. The green-run zero survived (220 mentions, 6–9 hits per test
 name) — but that was MEASURED, not assumed.
-

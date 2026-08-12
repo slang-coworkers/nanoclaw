@@ -37,4 +37,3 @@ same `HEAD` that are different objects on different devices (`dev+ino`, distinct
 "The shared clone" is a claim about ONE group's mount — do not generalize it to a peer whose clone
 you cannot stat. Corollary already filed elsewhere: identical `HEAD` is exactly what makes two
 clones read as one; discriminate on `dev+ino` / soname / dirty-file set.
-

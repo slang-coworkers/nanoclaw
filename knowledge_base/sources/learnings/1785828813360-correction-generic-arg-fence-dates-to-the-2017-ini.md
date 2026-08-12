@@ -96,4 +96,3 @@ opposite outcome and is a genuine maintainer design call).
 4. **`slangc -v` is NOT proof of what a binary contains.** It printed `2026.13.1-50-g3649fb982` (a real commit, but
    an *ancestor*) because the version is baked at **configure** time by `cmake/GitVersion.cmake` `git describe`.
    Verify freshness with the **object file's mtime vs the HEAD commit date** instead.
-

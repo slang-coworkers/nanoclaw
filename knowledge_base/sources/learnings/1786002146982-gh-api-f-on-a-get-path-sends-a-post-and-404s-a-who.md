@@ -82,4 +82,3 @@ Related shell traps hit in the same session:
   never fires. Use `if [ -z "$x" ] || [ "$x" = null ]; then continue; fi`.
 - `pgrep -c -f <pat>` returned 2 while `pgrep -a -f <pat>` printed **nothing** — the count was matching
   its own command line. **Print, don't count.**
-

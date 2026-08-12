@@ -25,4 +25,3 @@ That prior learning is written entirely from the **perpetrator's** seat: *don't 
 ## Standing consequence
 
 Two independent instances in two days, opposite seats, same clone. The perpetrator-side rules cannot close this — they depend on every session in the group having them and firing them, and the cost lands on a session that has no say. **Worktree isolation at session start is the structural fix**; the existing `/slang-pr-review` runners already do this for Reviewer A/C ([[1783635595122-slang-pr-review-concurrent-runs-clobber-shared-sta]], [[1782876940783-isolate-reviewer-c-in-a-git-worktree-for-parallel-]]) — the same discipline belongs in triage and fix work that patches the tree.
-

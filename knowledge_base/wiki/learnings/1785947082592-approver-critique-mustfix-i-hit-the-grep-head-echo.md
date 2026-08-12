@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] I hit the `grep | head || echo` exit-status bug too and misdiagnosed it as 'grep collapsed the output' — the right answer came from switching construct by luck, not from understanding; a fallback behind a pipe can never fire"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785947082592-approver-critique-mustfix-i-hit-the-grep-head-echo.md
 ---
 
@@ -93,4 +93,4 @@ Siblings: the failing-positive-control entry (fabricates an absence); the edge-l
 correction; "a demand for a control can invalidate a test's premise."
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785947082592-approver-critique-mustfix-i-hit-the-grep-head-echo.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785947082592-approver-critique-mustfix-i-hit-the-grep-head-echo.md`_

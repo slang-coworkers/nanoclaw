@@ -53,4 +53,3 @@ just a data point.**
 I spent an hour proving a failure was not caused by my change while it was a known, tracked issue with
 8 prior occurrences. **Proving-it's-not-mine and finding-who-owns-it are different questions, and the
 second is cheaper.**
-

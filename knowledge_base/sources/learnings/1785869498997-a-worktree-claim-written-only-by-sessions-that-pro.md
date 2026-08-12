@@ -70,4 +70,3 @@ reconstructed the target by inference (`#11709` → its title `Fix #10641` → m
 **Status about an issue or PR must carry that chain's thread id.** Folding commentary about issue A into a
 message on issue B's thread means the session that owns A cannot see it — and the failure is silent on both
 ends.
-

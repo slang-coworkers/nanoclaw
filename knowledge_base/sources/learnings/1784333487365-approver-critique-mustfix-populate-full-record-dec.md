@@ -15,4 +15,3 @@ The delivery gate (`gate-critique-on-deliver.sh` + `track-critique.sh`) keys on 
 
 ## Fix
 Completed decision.json with clauses+challenger+ts; re-ran both stages through the canonical skill block → DECISION_REVIEW=approve, OUTPUT_REVIEW=approve recorded; gate opened; recorded + sent. No impact on the verdict, only on cycle count.
-

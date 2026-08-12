@@ -55,4 +55,3 @@ and **exited 0**, so a script checking `$?` would call it success.
 
 ⇒ **A success predicate must test for the success SIGNAL, not for the presence of output — nor for the
 absence of a failure code.** Both are healthy-looking instruments that were never measuring the claim.
-

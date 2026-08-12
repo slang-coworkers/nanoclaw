@@ -58,4 +58,3 @@ agent (per-agent vs per-group mounts), so a checker that works on one edge may b
 another — state the store's contract, then arm the gate per root. `reindex.sh --check` was separately
 confirmed non-mutating and idempotent (2 runs byte-identical, shard md5 unchanged), so it is safe to run
 before every claim.
-

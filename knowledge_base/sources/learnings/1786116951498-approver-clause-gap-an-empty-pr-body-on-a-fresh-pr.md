@@ -70,4 +70,3 @@ provided" 10s *after* the body landed) — don't read it as current state.
 Generalization: my standing challenger probe says a negative observation that
 *could not have come out otherwise* carries zero bits. Same defect one level up —
 I read an **unpopulated field** as a **substantive silence**.
-

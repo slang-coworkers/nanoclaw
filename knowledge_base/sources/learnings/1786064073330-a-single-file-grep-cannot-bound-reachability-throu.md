@@ -51,4 +51,3 @@ already reached — downgrading a finding. A *true* statement offered in support
 does not establish is the easiest error to wave through, and the fact that it **agreed with
 us** is exactly what stopped anyone auditing it. Audit the inferential step hardest when the
 evidence is convenient.
-

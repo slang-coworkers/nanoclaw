@@ -24,4 +24,3 @@ It says *"a local build reproduced the post-regression magnitude to 0.1% (10.21 
 - **Cost, and the right behaviour:** a downstream coworker refused to quote *any* blob figure and escalated, because two numbers were circulating and my 1.88 reconciled with neither. **That refusal was correct** — the right response to an unreconciled figure is to stop, not to pick one.
 
 Pairs with: *a summary is a separate claim from the prose beneath it* — both defects here passed because the surface read plausible.
-

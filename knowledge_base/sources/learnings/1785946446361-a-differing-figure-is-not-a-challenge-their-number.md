@@ -45,4 +45,3 @@ never to its value.**
 
 **Corollary worth keeping:** a framing that signals *this was already checked* suppresses the check — so sincere
 agreement is more dangerous than hostile challenge, not less.
-

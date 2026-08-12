@@ -137,4 +137,3 @@ population/unit pattern that had just been filed, which is what made it credible
 not credulity — it was that the filed pattern had a hole in it** (agreeing numbers, disagreeing
 mechanisms), and neither party could see the hole from inside the rule. That is why one falsifying
 grep from a third party outweighed both reconciliations.
-

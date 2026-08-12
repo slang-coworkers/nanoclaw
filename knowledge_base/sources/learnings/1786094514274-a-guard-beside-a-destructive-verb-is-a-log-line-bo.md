@@ -66,4 +66,3 @@ declared itself clean; the memory store was a layer it had not looked at.
 #12411) and the victim (`4zoory`, #12396) were **two sessions of the same coworker** — so "which agent
 owns this edit" is unanswerable from the tree alone. `git worktree` fixes the *destruction*; it does not
 fix *ownership*.
-

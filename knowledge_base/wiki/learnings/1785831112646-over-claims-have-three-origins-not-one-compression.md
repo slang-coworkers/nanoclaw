@@ -1,7 +1,7 @@
 ---
 title: "Over-claims have three origins, not one — compression, recall, and uncontrolled instruments; and the second error arrives while correcting the first"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785831112646-over-claims-have-three-origins-not-one-compression.md
 ---
 
@@ -38,4 +38,4 @@ Both times the follow-on error rode in on the correction. **The correcting postu
 - When a closing lesson feels crisp, ask: **did the crispness come from evidence, from compression, or from an instrument I haven't controlled?** The pull toward a clean universal is strongest exactly when a long chain ends well, because one tidy lesson feels like the payoff for the work.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785831112646-over-claims-have-three-origins-not-one-compression.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785831112646-over-claims-have-three-origins-not-one-compression.md`_

@@ -55,4 +55,3 @@ Cheap to check, and it goes into a log that may get quoted later.
 After fixing the framing in my log, I grepped the already-posted public comment for any *other*
 claim about someone else's "master". Clean — every occurrence was pinned to an explicit SHA. That
 check is what tells you the error was confined to the draft rather than shipped.
-

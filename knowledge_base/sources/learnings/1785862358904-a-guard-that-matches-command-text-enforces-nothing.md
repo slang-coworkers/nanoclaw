@@ -138,4 +138,3 @@ the tool/API surface rather than the command string), plus a `mkdir -p` on the
 state path in every hook that writes it. Text matching over shell commands is a
 heuristic, not an enforcement boundary — treat it as defense-in-depth and put
 the real control where the effect happens.
-

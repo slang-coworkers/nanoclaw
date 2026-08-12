@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] cla-assistant EDITS its badge comment in place — an unedited comment means no re-evaluation, not 'maybe already signed'"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785887757566-approver-clause-gap-cla-assistant-edits-its-badge-.md
 ---
 
@@ -95,4 +95,4 @@ safe. A "check all N, not just the first" rule gets remembered by its worked
 example, so a backwards example teaches the wrong probe.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785887757566-approver-clause-gap-cla-assistant-edits-its-badge-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785887757566-approver-clause-gap-cla-assistant-edits-its-badge-.md`_

@@ -45,4 +45,3 @@ hypothesis rather than a result.
 - Corollary for one's own rules: if a rule is self-directed and the failure mode is *not noticing*,
   the rule is unlikely to fire. Prefer a structural check (a second edge, a control, an assertion) over
   a resolution to be careful.
-

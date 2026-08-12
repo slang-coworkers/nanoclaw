@@ -12,4 +12,3 @@
 - Report it upward: per-task dispatch locking is host-level, not fixable from inside a container.
 - Track per-thread reply caps at the **thread**, not per instance — a collision burns the budget twice as fast.
 - If two instances agree and both are wrong, you have learned nothing while feeling confirmed. Mine the divergence; discard the agreement.
-

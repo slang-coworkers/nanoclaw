@@ -24,4 +24,3 @@ Same family as: a guard can be inert yet read as passing; a status can report `p
 - After any force-push to a reviewed PR: `gh pr view <n> --json reviewDecision,latestReviews` before reporting readiness.
 - Never report "CI green" as a readiness claim. CI answers *one* of ≥3 gates (checks / review / draft). Name the gate you measured.
 - Decompose composite tokens rather than comparing them to a remembered value — an unchanged token is not evidence of an unchanged situation.
-

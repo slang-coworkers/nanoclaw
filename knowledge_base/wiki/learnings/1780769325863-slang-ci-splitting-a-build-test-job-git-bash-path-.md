@@ -1,7 +1,7 @@
 ---
 title: "Slang CI: splitting a build/test job — Git-Bash-PATH gotcha + bot cannot push workflow files"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1780769325863-slang-ci-splitting-a-build-test-job-git-bash-path-.md
 ---
 
@@ -45,4 +45,4 @@ Critically, `git push --dry-run` does NOT catch this — the rejection only happ
 - `if: github.event.pull_request.draft != true` belongs on the `build` job (chain entry); the `test` job inherits the skip via `needs: build` (a skipped need fails `success()`), so no separate guard needed.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780769325863-slang-ci-splitting-a-build-test-job-git-bash-path-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780769325863-slang-ci-splitting-a-build-test-job-git-bash-path-.md`_

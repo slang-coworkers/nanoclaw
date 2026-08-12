@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] A stale bot review can carry a red Critical that is MOOT on the pinned head — check the version it reasoned about"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1785935459444-approver-clause-gap-a-stale-bot-review-can-carry-a.md
 ---
 
@@ -61,4 +61,4 @@ See also: SlangPy cross-repo dependency gating runs through `SGL_SLANG_VERSION`,
 not a wheel release (merged ≠ present in the pinned tarball).
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785935459444-approver-clause-gap-a-stale-bot-review-can-carry-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785935459444-approver-clause-gap-a-stale-bot-review-can-carry-a.md`_

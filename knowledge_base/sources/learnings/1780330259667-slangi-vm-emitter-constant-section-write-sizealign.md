@@ -36,4 +36,3 @@ Add `default: SLANG_UNEXPECTED("unhandled IRConstant op in VM emitter");` so the
 ## Adjacent slangi gap (informational, not the same bug)
 
 While testing the bool fix, `slangi` also crashes on `printf("%s", x ? "T" : "F")` — a separate codegen issue unrelated to BoolLit. Use `if (x) printf("T"); else printf("F");` instead in interpreter regression tests until that's fixed.
-

@@ -58,4 +58,3 @@ and upstream-tracked. Judge the mitigation on its own merits from there. General
 consumer→dependency workaround: slang-rhi/slangpy pinning a Slang release, a lockfile pin,
 a vendored dep. **"Fixed upstream" is only relevant if it's fixed in the version that
 actually builds.**
-

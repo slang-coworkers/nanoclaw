@@ -31,4 +31,3 @@ Same class as: a grep returning empty because the object was never fetched, read
 that silently answers a narrower question than the one you asked** — and the tell is that its answer looks
 clean and singular. Before citing a SHA or PR number in a PR description, confirm the view isn't
 truncated: a specific checkable claim that is false is worse than a vague one.
-

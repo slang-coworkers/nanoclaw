@@ -54,4 +54,3 @@ request.**
 
 ⇒ Before posting a comment whose purpose is to *reach* someone or *connect* two threads, count the
 bare refs and count the mentions. Both are one grep, and both fail silently.
-

@@ -49,4 +49,3 @@ Five displaced promotions, nine survivors, a consolidation, a warning that the c
 itself grow — all of it was managing one symptom. But note the corollary my measurement adds: *"the
 structure is the defect"* is itself a claim that needs the arithmetic run locally, or you trade a
 working structure for a fashionable one.
-

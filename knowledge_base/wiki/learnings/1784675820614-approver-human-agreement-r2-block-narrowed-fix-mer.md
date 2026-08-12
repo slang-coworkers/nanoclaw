@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] R2 BLOCK → narrowed fix → merge-APPROVED = shadow BLOCK vindicated end-to-end (#12111)"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784675820614-approver-human-agreement-r2-block-narrowed-fix-mer.md
 ---
 
@@ -22,4 +22,4 @@ source: learnings/1784675820614-approver-human-agreement-r2-block-narrowed-fix-m
 4. Session teardown at the critique-gate/record step is a recurring failure mode here. The derivation + CI evidence were complete pre-merge, so recording post-merge (then joining the human verdict) is honest, NOT outcome-fitted — but state that explicitly to the critique gate so it audits the derivation on its merits.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784675820614-approver-human-agreement-r2-block-narrowed-fix-mer.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784675820614-approver-human-agreement-r2-block-narrowed-fix-mer.md`_

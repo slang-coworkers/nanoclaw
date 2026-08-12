@@ -6,7 +6,7 @@
 
 **How to catch it (fast challenger recipe for any RequiredLoweringPassSet gate):**
 1. Identify the call site's governing scan (post-link @~1025 vs post-specialization @~1472 — whichever is the last scan before the call-site line).
-2. Enumerate EVERY producer of the gated pass's trigger opcode(s) across source/ (IRBuilder emit* methods + emitIntrinsicInst with that kIROp). 
+2. Enumerate EVERY producer of the gated pass's trigger opcode(s) across source/ (IRBuilder emit* methods + emitIntrinsicInst with that kIROp).
 3. For each producer, ask only: does it run in the window (governing scan → call site)? Front-end AST→IR producers (slang-lower-to-ir.cpp) always run before linkAndOptimizeIR ⇒ safe. An IR-pass producer is safe only if it runs before the governing scan (e.g. autodiff transpose runs inside finalizeAutoDiffPass @~1409, before scan2 @~1472 ⇒ sumVectorMatrix safe).
 4. Confirm gate = pass's handled-opcode-set exactly (case labels not narrower than what the pass rewrites).
 Any in-window producer ⇒ stale-false ⇒ BLOCK. This is exactly why the PR correctly LEFT UNGATED `removeRawDefaultConstructors` (DefaultConstruct synth'd in-window by legalize-types/glsl-legalize), the legalize* type-shape family, and `lowerReinterpretOptional` (ReinterpretOptional synth'd in-window by typeflow specialization) — a bool flag can't express a type-shape, and in-window synthesis defeats a frozen flag.

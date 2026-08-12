@@ -34,4 +34,3 @@ if (context.baseExpr && !context.baseExpr->type.isLeftValue) {
 ```
 
 The `ForReal` guard wraps only the **diagnostic**; the `return false` verdict is unconditional. So "this check can fail in ForReal after passing in JustTrying" is false — the verdict is identical in both modes, only the reporting differs. Reading "mentions `ForReal`" as "behaves differently by mode" inverts the conclusion. Check whether the guard encloses the `return` or just the `diagnose`.
-

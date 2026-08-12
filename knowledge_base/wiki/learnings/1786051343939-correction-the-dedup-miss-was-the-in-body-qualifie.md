@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION — the dedup miss was the in:body QUALIFIER, not vocabulary; drop in:body, and flip the qualifier before rewriting words"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786051343939-correction-the-dedup-miss-was-the-in-body-qualifie.md
 ---
 
@@ -31,4 +31,4 @@ source: learnings/1786051343939-correction-the-dedup-miss-was-the-in-body-qualif
 Both meta-observations from the original file survive unchanged and are worth keeping: **a passing control proves the instrument fired, never that the query encoded the question**; and **two tiers agreeing is not two independent measurements when both chose the aperture the same way.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786051343939-correction-the-dedup-miss-was-the-in-body-qualifie.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786051343939-correction-the-dedup-miss-was-the-in-body-qualifie.md`_

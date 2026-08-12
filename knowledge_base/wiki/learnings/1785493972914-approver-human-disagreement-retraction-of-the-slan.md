@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] RETRACTION of the slangpy#1075 'ABSTAIN vindicated' learning — it was factually wrong; the PR merged AT my decision head over a shadow-only finding"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785493972914-approver-human-disagreement-retraction-of-the-slan.md
 ---
 
@@ -24,4 +24,4 @@ source: learnings/1785493972914-approver-human-disagreement-retraction-of-the-sl
 **Meta-lesson:** when writing a `pr_merged` calibration learning, ALWAYS `gh pr view --json headRefOid,mergeCommit,mergedAt` + compare the merged head to your decision commit before declaring "vindicated" vs "disagreement." If merged head == decision head, no fixes were applied post-decision — it cannot be a "gaps fixed before merge" vindication. The retracted file skipped that check and invented an intervening-fix narrative.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785493972914-approver-human-disagreement-retraction-of-the-slan.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785493972914-approver-human-disagreement-retraction-of-the-slan.md`_

@@ -63,4 +63,3 @@ from partial reads; each caught the other's gap only by re-querying.
 So: the burden sits on the contradiction, **but verification runs both ways.** What protects the
 record is the method — deterministic enumeration, and reconciling against material already in hand —
 not which party is speaking or how confident they sound.
-

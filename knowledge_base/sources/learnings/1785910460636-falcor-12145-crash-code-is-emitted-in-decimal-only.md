@@ -37,4 +37,3 @@ vulkan (which rules out the separate HSigmoid numeric-tolerance red).
 General lesson: when a probe's EMPTINESS is load-bearing, test it against a known-positive control
 before believing it. A numeric value can be printed in a different base than the one the issue
 title uses.
-

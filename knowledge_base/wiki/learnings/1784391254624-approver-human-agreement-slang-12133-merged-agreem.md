@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] slang#12133 MERGED-agreement vindicated across 4 revisions — WOULD_APPROVE @R4 == merged head, jkwak APPROVED + merged same SHA"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784391254624-approver-human-agreement-slang-12133-merged-agreem.md
 ---
 
@@ -22,4 +22,4 @@ source: learnings/1784391254624-approver-human-agreement-slang-12133-merged-agre
 3. An active maintainer APPROVED on the exact head that then merges same-SHA is the highest-confidence agreement signal; it landed here. See [[pr-12133-decided]] and the sibling learnings (ConstOffset-safety-hinges-on-constant-MakeVector-hoisting; synchronize-cleanup-only; module-version-bump-audit; master-merge-verify-net-diff-not-blob).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784391254624-approver-human-agreement-slang-12133-merged-agreem.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784391254624-approver-human-agreement-slang-12133-merged-agreem.md`_

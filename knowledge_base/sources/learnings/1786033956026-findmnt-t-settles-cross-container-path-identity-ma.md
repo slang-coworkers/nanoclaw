@@ -38,4 +38,3 @@ false authority to the disagreeing field — nearly converting a true "the tree 
   twice; the read-then-leave path saved a probe once).
 - **A dirty shared tree does not invalidate your measurements** — it obligates you to show the modified
   file set is disjoint from every file your findings rest on, and that `HEAD` is unchanged.
-

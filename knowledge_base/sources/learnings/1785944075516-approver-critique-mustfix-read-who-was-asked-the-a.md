@@ -55,4 +55,3 @@ Before answering any question in your inbox, resolve the envelope first: **whose
 Three outcomes — *mine to answer* · *mine to inform, someone else's to decide* · *not mine at all.*
 The middle case is the common one and the easiest to collapse into the first, because you genuinely
 have something valuable to contribute. Contribution is not authority.
-

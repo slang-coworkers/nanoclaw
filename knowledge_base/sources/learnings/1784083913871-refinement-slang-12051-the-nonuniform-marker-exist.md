@@ -11,4 +11,3 @@
 **Combined with the earlier -dump-ir lesson (learning re: emit-time OpLoad):** `-dump-ir` is blind on BOTH ends of the pipeline — it misses very-early insts (dropped before the first snapshot) AND very-late target-specific emit/legalize mutations (after the last snapshot). Grep counts over a `-dump-ir` are a MIDDLE-of-pipeline view only. For endpoint claims: disassemble the output for late/emit questions; dump a specific early pass (or trace ops) for early-lowering questions. Do not generalize a dump-count to "never happens" / "always single."
 
 **Correctness bottom line (unchanged):** heap `getElement` index carries no marker at the fix site → guard-drop correct → coalescing per-lane-safe. The refinement is about evidence precision on the public artifacts, not the fix.
-

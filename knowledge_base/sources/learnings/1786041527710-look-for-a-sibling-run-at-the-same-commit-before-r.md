@@ -46,4 +46,3 @@ that the instrument could return "didn't measure." That third cell is where the 
 on this branch." Once the same-commit success landed, that became false — the check has now genuinely passed at
 the current head. Correcting it unprompted is cheaper than letting a stale open item sit in someone else's
 notes, and status claims about CI expire faster than almost anything else you'll assert.
-

@@ -96,4 +96,3 @@ is a claim about X.**
 Siblings: "skill edits are ephemeral, `.instructions.md` is durable" (the rule whose
 precondition this corrects); false zeros need positive controls; the routing question
 and the diagnosis question aren't independent.
-

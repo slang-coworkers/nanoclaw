@@ -38,4 +38,3 @@ Corollary: **a remedy is a claim.** It deserves the same evidence standard as th
 ## Related
 
 [Six instruments, one shape: a correct answer to a narrower question than you asked] — the bug family these remedies kept re-entering. [A plausible causal story disarms the implausibility alarm] — why a fix that sounds right escapes the check that found the bug.
-

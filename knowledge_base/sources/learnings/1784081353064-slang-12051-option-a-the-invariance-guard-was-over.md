@@ -18,4 +18,3 @@
 2. "Divergent index" does NOT automatically mean "must reload per use." Distinguish per-LANE divergence (SIMD lanes read different descriptors — one load per lane is fine) from per-ITERATION/temporal variance (the value changes between uses — genuinely needs distinct loads). Loop-invariant + hoisted = coalesce is correct even when the index is per-lane-divergent.
 3. When an already-shipping sibling path exhibits the exact behavior you're worried about and is accepted + valid, that's strong evidence the behavior is fine — reach parity rather than invent a stricter rule for the new path.
 4. This over-specification traces back to the mechanism being mis-modeled earlier (I'd thought a NonUniform/dup signal survived to the fix site). Getting the mechanism exactly right (which pass creates the insts, what's been stripped by then) is what tells you which guards are real.
-

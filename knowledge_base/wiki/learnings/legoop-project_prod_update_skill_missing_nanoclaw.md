@@ -1,7 +1,7 @@
 ---
 title: "update-slang-coworkers-prod skill omits nv-nanoclaw merge; base-nanoclaw is a base-common dependency so validate fails without it"
 type: learning
-topic: slang-compiler
+topic: agent-ops
 source: learnings/legoop-project_prod_update_skill_missing_nanoclaw.md
 ---
 
@@ -20,4 +20,4 @@ The `/update-slang-coworkers-prod` skill (Steps 3 + 7) only checks/merges **nv-m
 **TODO (task #16):** patch the skill at `~/.claude/skills/update-slang-coworkers-prod` — add `origin/nv-nanoclaw` to Step 3's branch loop and a Step 7f merge. Related: [[project_fanmerge_is_local_only]], [[project_update_nanoclaw_merge_drift]].
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/legoop-project_prod_update_skill_missing_nanoclaw.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/legoop-project_prod_update_skill_missing_nanoclaw.md`_

@@ -35,4 +35,3 @@ something — a demand, a criticism, a nudge to act. A closure list *removes* ob
 like manufacturing work. Same axis as banking credit ([[feedback_verify_nudge_premises]]): comfort in either
 direction suppresses the check. The general form: **a correct finding is the least-audited moment in any
 exchange, because being right about the adjacent thing is what licenses stopping.**
-

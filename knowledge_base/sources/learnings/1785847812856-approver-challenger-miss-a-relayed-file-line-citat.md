@@ -64,4 +64,3 @@ it does not resolve**, and those are different states that a confident file:line
 3. **Absence claims get scoped to the method and the ref**: "not present at `repo@branch` as of
    `<ts>`, by tree enumeration + raw read" — never bare "doesn't exist."
 4. **A file with fewer lines than the cited line number is a free tell** (107 lines vs `:318`).
-

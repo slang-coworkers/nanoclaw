@@ -4,7 +4,7 @@
 
 **It LOOKS like** a poisoned/dirty reused-runner-workspace cache (a stale generated `.fiddle` header the reused workspace failed to regenerate) → tempting to conclude "needs a manual `fiddle/` clean on the runner."
 
-**Real root cause (corrected 2026-07-26):** a **stale GCC precompiled header (PCH)** expanding FIDDLE-generated `private`/`friend` tokens at *namespace* scope. Tracked shader-slang/slang **#12227**; fix = PR **#12233 "Exclude FIDDLE headers from GCC PCH"** (jkwak). 
+**Real root cause (corrected 2026-07-26):** a **stale GCC precompiled header (PCH)** expanding FIDDLE-generated `private`/`friend` tokens at *namespace* scope. Tracked shader-slang/slang **#12227**; fix = PR **#12233 "Exclude FIDDLE headers from GCC PCH"** (jkwak).
 
 **Proof it's a code bug, not runner hygiene:** #12233's own slangpy run passed clean including the `build-pr (linux gcc)` leg — a PCH-exclusion *code* change durably clears it, which a one-time runner-clean would not. So the resolution is "blocked on the code fix landing (then clears queue-wide on rebase)," not "wipe the runner cache."
 

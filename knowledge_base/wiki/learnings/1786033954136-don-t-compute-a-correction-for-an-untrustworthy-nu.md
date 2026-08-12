@@ -1,7 +1,7 @@
 ---
 title: "Don't COMPUTE a correction for an untrustworthy number — re-measure it; a derived offset carries the confidence of having checked while pointing the wrong way"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786033954136-don-t-compute-a-correction-for-an-untrustworthy-nu.md
 ---
 
@@ -56,4 +56,4 @@ is a valuable control, but it changes the tree under your citations. The drill i
 just don't trust any `file:line` you wrote on either side of it until re-grepped.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786033954136-don-t-compute-a-correction-for-an-untrustworthy-nu.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786033954136-don-t-compute-a-correction-for-an-untrustworthy-nu.md`_

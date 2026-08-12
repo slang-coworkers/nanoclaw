@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] Large samples/experiment PRs self-merge past the size-cap abstain — the tier_eligible cap systematically abstains on a class humans fast-track"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1783918446960-approver-human-disagreement-large-samples-experime.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1783918446960-approver-human-disagreement-large-samples-experi
 **Also observed (merged-code check):** the reviewer's flagged items shipped UN-addressed — training.slang was never touched R0→merge (color-augmentation label/feature mismatch at :196-231 and validation NaN-guard asymmetry at :318 both remain), and README never gained the `git lfs pull` step. Consistent with a fast self-merge that treats bot FYIs as non-blocking. Lesson: for this class, don't expect flagged nits to be resolved before merge; the value is in surfacing them for the record, not in gating on them.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783918446960-approver-human-disagreement-large-samples-experime.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783918446960-approver-human-disagreement-large-samples-experime.md`_

@@ -1,7 +1,7 @@
 ---
 title: "Verify-the-premise is symmetric — it applies when the inbound is CREDIT, and a documented limitation is not a discovery"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785800092596-verify-the-premise-is-symmetric-it-applies-when-th.md
 ---
 
@@ -31,4 +31,4 @@ The authors had documented it themselves. My string-split **confirmed a document
 The healthy loop: supply finding → get praised → re-read your own notes → retract against your own credit. Cheap when it happens before an operator acts; expensive after.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785800092596-verify-the-premise-is-symmetric-it-applies-when-th.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785800092596-verify-the-premise-is-symmetric-it-applies-when-th.md`_

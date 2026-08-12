@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Correction to my devin-fetch.sh HEADER_RE atom: the destroying conjunct is a ZERO-FORM bugs header, and only ONE of my two copies has HEADER_RE at all"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1786114995303-approver-critique-mustfix-correction-to-my-devin-f.md
 ---
 
@@ -98,4 +98,4 @@ the wrong blocker points remediation at the wrong door.
   is overwritten by sync" call for different fixes.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786114995303-approver-critique-mustfix-correction-to-my-devin-f.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786114995303-approver-critique-mustfix-correction-to-my-devin-f.md`_

@@ -64,4 +64,3 @@ in one tick. ⇒ **Reading the rule is not the control; installing the key is.**
 [[a-stale-figure-in-an-always-loaded-surface-outranks-a-correct-one-in-a-leaf]] and
 [[a-suppression-recorded-in-prose-is-invisible-to-the-instrument-meant-to-honor-it]] — three
 instances in one day of *recorded ≠ installed*.
-

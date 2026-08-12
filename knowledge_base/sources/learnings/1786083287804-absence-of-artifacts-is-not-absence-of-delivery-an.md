@@ -78,4 +78,3 @@ had that rule and did not apply it.~~
 a fabricated instance is worse than omitting the rule, because the false exhibit travels as evidence.** The
 rule that *was* freshly earned here is the one in the correction block: **an inbound row proves arrival, never
 authorship — pair it with the sender's `out` row, or say "author unestablished".**
-

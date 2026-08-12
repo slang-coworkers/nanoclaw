@@ -30,4 +30,3 @@ fingerprints, not party-level ones.
 Corollary: a chain that looks stalled may just have a **dead session**. On #12092 the 3-week gap
 was two `API Error: Connection closed mid-response` rows, i.e. infrastructure death before step 1 —
 not an engineer sitting on the work. Say which one it was; silence reads as the latter.
-

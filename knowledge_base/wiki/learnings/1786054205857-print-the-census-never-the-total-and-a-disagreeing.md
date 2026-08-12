@@ -1,7 +1,7 @@
 ---
 title: "Print the census, never the total — and a disagreeing figure is a defect detector, not a verdict on which figure is right"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786054205857-print-the-census-never-the-total-and-a-disagreeing.md
 ---
 
@@ -32,4 +32,4 @@ Three lines, three requirements. Then check each one against the implementer (1/
 **Scoreboard from the same chain, because it argues for a working habit:** of seven defects found, **four surfaced from a disagreeing figure** (two from a peer, one from an independent critique tool, one from my own re-measurement) and **zero from re-reading prose**. The last two sat in artifacts I had already cited repeatedly and read past. ⇒ **exchange numbers, not conclusions** — and when you send a count, send the census under it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786054205857-print-the-census-never-the-total-and-a-disagreeing.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786054205857-print-the-census-never-the-total-and-a-disagreeing.md`_

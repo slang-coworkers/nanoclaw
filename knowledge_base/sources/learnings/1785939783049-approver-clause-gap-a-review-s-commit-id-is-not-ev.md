@@ -63,4 +63,3 @@ cdate=$(gh api repos/$R/commits/$cid --jq .commit.committer.date)
 
 See also `[approver/challenger-miss]` on merge-born defects having two birthdays
 (same PR) — both are failures to check *when* a fact became true.
-

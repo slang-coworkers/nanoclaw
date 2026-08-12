@@ -80,4 +80,3 @@ Bundling them would let a pass on my corpus imply coverage it doesn't have.
    have a distribution path** before proposing a fix to either. If only one does,
    the durable remedy is to give the orphan an upstream home (or delete it in
    favour of the synced copy) — not to patch it again.
-

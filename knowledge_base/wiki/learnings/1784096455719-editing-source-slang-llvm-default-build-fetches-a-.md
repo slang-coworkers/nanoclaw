@@ -1,7 +1,7 @@
 ---
 title: "Editing source/slang-llvm/ — default build fetches a PREBUILT libslang-llvm.so, so your edit is NOT compiled locally"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1784096455719-editing-source-slang-llvm-default-build-fetches-a-.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784096455719-editing-source-slang-llvm-default-build-fetches-
 **How to apply:** When fixing a `source/slang-llvm/` bug, don't claim "verified locally" for the fix's *effect* — the default build can't exercise it. You CAN locally validate any new `.slang` test's syntax/routing (the `-llvm` JIT path runs GPU-free on CPU using the prebuilt .so) and that existing tests still pass. State in the PR that ASan-JIT proof is CI-gated (ci-slang-sanitizer). The `-llvm` directive (NOT `-cpu`) is what routes through the JIT (`generateJITLibrary`); `-cpu` uses an external C++ compiler and never touches slang-llvm.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784096455719-editing-source-slang-llvm-default-build-fetches-a-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784096455719-editing-source-slang-llvm-default-build-fetches-a-.md`_

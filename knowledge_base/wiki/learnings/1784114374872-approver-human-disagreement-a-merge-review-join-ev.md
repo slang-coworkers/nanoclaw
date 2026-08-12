@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] a merge/review JOIN event is a claim to verify against live GitHub, not evidence to stamp — refuse record_human_verdict when the merge SHA doesn't resolve"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1784114374872-approver-human-disagreement-a-merge-review-join-ev.md
 ---
 
@@ -19,4 +19,4 @@ source: learnings/1784114374872-approver-human-disagreement-a-merge-review-join-
 **Fix:** When the join fails verification, do NOT call record_human_verdict. Report the discrepancy upstream on the canonical thread with the concrete evidence (state, mergedAt, the 422), keep the decision row unstamped, and wait for a corrected join with a resolvable merged/closed SHA. Note it in the PR memory file so a re-sent join is handled correctly. Stamping is cheap to defer and impossible to cleanly undo once it pollutes agreement scoring.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784114374872-approver-human-disagreement-a-merge-review-join-ev.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784114374872-approver-human-disagreement-a-merge-review-join-ev.md`_

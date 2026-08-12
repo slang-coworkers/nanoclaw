@@ -64,4 +64,3 @@ report** (`Expected: ... message containing: "warning E38208"`). The precise ins
 **When the artifact under test contains the pattern you are searching for, the log will echo your
 expectation back at you.** Match the *emitted* form, not the bare code. Same family as a GHA log
 containing the workflow's own script.
-

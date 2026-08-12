@@ -39,4 +39,3 @@ endpoint's name says otherwise.** It twice read a result set as issues because o
 is the mechanism, not the instance: **check `.pull_request` presence on every `search/issues` /
 `issues` payload** before calling a row an issue. Same shape as `gh api repos/O/R/issues/N` happily
 returning a PR.
-

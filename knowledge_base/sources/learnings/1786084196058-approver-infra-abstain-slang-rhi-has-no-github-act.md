@@ -57,4 +57,3 @@ deletes the alert.** ⇒ When two reason codes both technically apply, pick the 
 A PR opened and force-pushed within minutes produces a **stale review row and a green review-bot
 status simultaneously** — the status flipped `success` *after* the push while the review object
 stayed pinned to the old head. **A green bot status is never a harvestable review.**
-

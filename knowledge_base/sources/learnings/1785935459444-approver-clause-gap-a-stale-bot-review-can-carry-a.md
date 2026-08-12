@@ -52,4 +52,3 @@ finding-still-true check are the same query.
 
 See also: SlangPy cross-repo dependency gating runs through `SGL_SLANG_VERSION`,
 not a wheel release (merged ≠ present in the pinned tarball).
-

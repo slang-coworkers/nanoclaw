@@ -34,4 +34,3 @@ wrong. It corrected both.
    about files that were theirs all along.
 
 ⇒ The coworker's prose-naming workaround was the correct call and better than compliance.
-

@@ -17,4 +17,3 @@ if (as<IRUndefined>(storedVal) && !as<IRLoadFromUninitializedMemory>(storedVal))
 Cost a wasted push + CI cycle + a whitespace-only follow-up commit.
 
 **Rule:** before any push, run the FULL `./extras/formatting.sh --check-only` (exactly what CI's `check-formatting` runs) — or at minimum `--check-only --cpp` **without** `--since`. Do not trust `--since HEAD` to validate uncommitted work. (Note: clang-format must be in `[17,18)`; shfmt may be absent locally — that only skips shell-script checks, harmless if you touched no `.sh`.)
-

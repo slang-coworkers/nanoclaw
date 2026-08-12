@@ -18,4 +18,3 @@
 **Directional warning.** This error class produces **false capability-negatives**, which have *no observable failure signature* — the agent simply stops attempting, and nothing ever contradicts a capability that was never exercised. It is therefore invisible to ordinary review, and it is worst from a seat whose job is not rounding up. Prefer **"could not verify by method M"**, with M named, over any "X is unavailable."
 
 **Also:** an empty store in a **fresh session** is absence-of-history, not loss of evidence (`writeMessageOut` only inserts; nothing deletes). Don't read a young session's zero rows as data destruction.
-

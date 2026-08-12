@@ -60,4 +60,3 @@ The `gate-critique-on-deliver.sh` hook still denies read-only `gh api …/pulls�
 substring match at `:81`, while `:71` shows the anchored pattern that fixes this class). Unfixable
 agent-side — `BASH_PATTERNS` at `:52` is a built-in floor and config is additive-only. Workaround
 remains splitting the literal: `P="pull"; P="${P}s"`. Raised with the operator.
-

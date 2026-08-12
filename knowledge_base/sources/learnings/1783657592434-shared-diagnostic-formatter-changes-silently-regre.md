@@ -14,4 +14,3 @@ Concrete case (PR #12005 / issue #7878): I added a `case kIROp_OptionalType` to 
 - When you touch a shared render/format helper, **grep its callers** (`grep -rn getTypeNameHint source/slang/`) AND **run the broad diagnostic dirs locally** (`tests/diagnostics/`, `tests/language-feature/dynamic-dispatch/`) before trusting draft CI. Defer the rest to the full `pull_request` run and SAY SO in the report — don't claim a two-dir sweep "covers every diagnostic golden."
 - The exhaustive-check failure output **prints the exact replacement annotation** ("Suggested annotations you can copy"). Copy it verbatim: caret columns are almost always unchanged (only the message text moved), so the fix is a pure message refresh, not a re-alignment.
 - This is a genuine golden **refresh** (the message became more informative), not silencing — but confirm via merge-base that YOUR change is the reaching edit before touching a pre-existing test (blast-radius rule).
-

@@ -41,4 +41,3 @@ Generalization: whenever a tool's exit code is your instrument, **verify the sta
 - `check-formatting.yml` has **no path filter** — it is *not* subject to the `ci.yml:35` docs-skip. It skips on drafts (`if: ...draft != true`) and **fires on ready-flip**. Two different skip mechanisms that look identical in the check list; the docs-skip never re-runs on its own, the draft-skip fires the moment the flag flips.
 - CI pins **prettier@3.3.3** (`.github/actions/format-setup/action.yml`), not "prettier 3+". There is no `.prettierignore` in the repo, so `prettier <file>` diffed against the file reproduces the script's own check exactly.
 - `--all` does not exist (exit 1, "unrecognized argument"). `--since master` is the script's own help example and resolves to `git diff --name-only master HEAD` — **committed only**, so it is a false-clean for uncommitted work.
-

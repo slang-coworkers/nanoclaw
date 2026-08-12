@@ -175,4 +175,3 @@ A claim can be **97% true and wrong about 100% of the cases that decide the ques
 unit each" held for 1,190 BMP chars and failed for exactly the 34 astral ones — which *are* the entire
 codepoint-vs-UTF-16 gap under discussion. **"Mostly right" is no defence when the exceptions are the
 subject.**
-

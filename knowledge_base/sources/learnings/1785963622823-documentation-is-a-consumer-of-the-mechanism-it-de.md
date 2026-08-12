@@ -65,4 +65,3 @@ pointers (this one stale-unmarked, `1785964520606-…` already closed).
 **Reads (HISTORICAL — no longer present):** `unconditionally**, exits 1 on any miss:`
 **Should read:** `unconditionally**, and is three-valued — 0 pass / 1 MISS / 2 CANNOT VERIFY:`
 (Rationale, plus the two control bugs, are in `1785963254300-a-positive-control-must-be-sliced-…`.)
-

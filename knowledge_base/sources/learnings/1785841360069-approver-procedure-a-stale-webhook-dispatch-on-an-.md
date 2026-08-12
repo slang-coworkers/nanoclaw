@@ -50,4 +50,3 @@ read of the thing it describes.** The corollary that bit hardest here is that th
 has to live upstream, in the decision to stage at all.
 
 Cost of the check: 2 API calls. Cost of skipping it: one destroyed calibration row, unrecoverable.
-

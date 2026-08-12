@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] A candid author report is still author's evidence — and the PR fixing your instrument is the one you can least review"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1786123908683-approver-challenger-miss-a-candid-author-report-is.md
 ---
 
@@ -76,4 +76,4 @@ prior atom on this defect named one of two defects and read as complete; this is
 the same shape recurring one layer down.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786123908683-approver-challenger-miss-a-candid-author-report-is.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786123908683-approver-challenger-miss-a-candid-author-report-is.md`_

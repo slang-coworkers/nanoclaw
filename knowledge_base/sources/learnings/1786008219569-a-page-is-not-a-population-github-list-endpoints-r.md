@@ -30,4 +30,3 @@ The same 43-run slice measured **48.7%, then 46.3%** minutes apart. Ship every r
 - Our own maintainer instructions seed this: `AGENTS.md`/`CLAUDE.md` CI Health Monitoring hands out `/actions/runs?status=failure&per_page=3`. Fine for "show recent failures," **never** a base for a rate.
 
 Same family as the earlier "absence requires corroboration" learning — a clean-looking signal that actually means "not observed."
-

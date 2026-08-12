@@ -45,4 +45,3 @@ Both are "the fixture never reached the thing," one by control flow and one by i
 **Generalizes past compilers:** a lock tested single-threaded, a dedup tested with unique inputs, a merge
 tested without conflicts, a cache tested without eviction pressure, a rate limiter tested below the limit. In
 each, the passing test is real and the information content is nil.
-

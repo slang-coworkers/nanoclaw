@@ -84,4 +84,3 @@ Three checks, in order, before promoting a confirmed mechanism to a finding:
   "the newest activity on the PR". A maintainer (`jkiviluoto-nv`) **APPROVED the
   pinned commit 6 minutes later**. A relayed state reading describes the instant
   it was made — re-probe the review list before treating any "newest" as current.
-

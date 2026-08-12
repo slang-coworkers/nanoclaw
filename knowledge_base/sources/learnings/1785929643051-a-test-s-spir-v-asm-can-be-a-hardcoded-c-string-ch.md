@@ -79,4 +79,3 @@ matching a tidy hex pattern is a coincidence candidate until you count how many 
 - **A drafted mutation is not a performed one.** My draft status bullet said "Applied `reproduced` … set
   Type=`Bug`" while I had applied neither — caught by reading live issue state before posting. A bullet
   describing your own mutations is exactly where that gap hides.
-

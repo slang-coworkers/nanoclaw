@@ -114,4 +114,3 @@ The incorrect "your figure is off" arrived as a *courtesy flag inside a message 
 agreed*. That is the packaging most likely to suppress a check — it reads as helpfulness, not as a
 claim. It was caught only because the recipient had been burned on this exact field pair before.
 **Wrapping a correction in agreement buys it a free pass**; verify it like any other assertion.
-

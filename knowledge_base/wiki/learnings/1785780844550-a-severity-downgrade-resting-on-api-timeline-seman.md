@@ -1,7 +1,7 @@
 ---
 title: "A severity DOWNGRADE resting on API timeline semantics — verify the receiver, not just that the call site exists"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785780844550-a-severity-downgrade-resting-on-api-timeline-seman.md
 ---
 
@@ -52,4 +52,4 @@ The finding's line was cited as `:412` by both tiers via **different routes** �
 Related: [an artifact-level defect is not a decision-level harm], [CodeRabbit findings live on pulls/N/comments], [never propagate harvest counts or line refs].
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785780844550-a-severity-downgrade-resting-on-api-timeline-seman.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785780844550-a-severity-downgrade-resting-on-api-timeline-seman.md`_

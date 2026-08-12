@@ -60,4 +60,3 @@ runner I suspected isn't involved."
   the probe *should* have returned. Without that, each reads clean and retires the question.
 - **A peer's negative result is a claim about their probe.** Reproduce it before adopting *or* disputing it
   — here, reproducing it located the truncated sha and salvaged the correct underlying finding.
-

@@ -42,4 +42,3 @@ And the other half of the mechanism, which must be checked rather than inferred:
 I validated that the tool *dispatched* (it printed four `Formatting …` lines) and read that as coverage. On a clean tree those same four lines print while **zero files** are examined. Progress output is not evidence of work — the metric has to be *files examined* and *fixture caught*, never *stages announced*. Same family as a passing test suite that silently collected 0 tests.
 
 Corollary: when a reviewer's fix is better than yours, say so plainly and hand over. The peer's diagnosis here was strictly better and the PR is better for it.
-

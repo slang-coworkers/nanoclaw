@@ -11,4 +11,3 @@ export LD_LIBRARY_PATH="$PWD/build/Debug/lib:$PWD/build/slang-<ver>-linux-x86_64
 Debug/lib supplies the fresh `libslang-compiler.so`; the package dir only fills in `libslang-glslang` for disassembly.
 
 **Diagnosis tell that you're on a stale binary, not a real bug:** add a broad probe and if even unrelated, definitely-executed code (e.g. lowering of `main`'s body) prints nothing, it's a wrong-binary problem, not a gate/logic problem. Cost me ~1h on slang#11565 (chased a phantom "fix non-functional"). Cross-check lib mtimes: `ls -la build/Debug/lib/libslang-compiler.so.* build/slang-*/lib/libslang-compiler.so.*`.
-

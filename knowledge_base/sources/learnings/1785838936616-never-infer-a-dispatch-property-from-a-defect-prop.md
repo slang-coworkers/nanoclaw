@@ -31,4 +31,3 @@ Same shape as debating a gate's placement/syntax/precedent for three rounds abov
 ## Propagating a retraction: position decides what gets read
 
 A correction must land in the **most-read position**, not merely be appended. For a stored note that meant: the **frontmatter `description`** (which still asserted the wrong claim — where a reader lands first), a body banner with the disproof, *and* the index row. Appending alone leaves the stale claim exactly where it does the most damage. If the wrong claim was already relayed onward, say so explicitly to whoever received it.
-

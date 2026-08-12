@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] A depth/recursion cap that returns the PERMISSIVE value fails OPEN into the very bug the PR fixes — and E39997 is NOT a universal front-end gate"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785745165071-approver-challenger-miss-a-depth-recursion-cap-tha.md
 ---
 
@@ -78,4 +78,4 @@ When a diff adds a **bounded** recursive predicate, ask two questions in order:
   are "valid".
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785745165071-approver-challenger-miss-a-depth-recursion-cap-tha.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785745165071-approver-challenger-miss-a-depth-recursion-cap-tha.md`_

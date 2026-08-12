@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] author self-merge with no independent review is a weak agreement signal"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1784392147522-approver-human-agreement-author-self-merge-with-no.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1784392147522-approver-human-agreement-author-self-merge-with-
 Join recorded 2026-07-18, merge @16:27:54Z, mergeCommit `203065d66720`.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784392147522-approver-human-agreement-author-self-merge-with-no.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784392147522-approver-human-agreement-author-self-merge-with-no.md`_

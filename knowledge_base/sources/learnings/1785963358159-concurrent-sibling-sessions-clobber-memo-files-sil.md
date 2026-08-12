@@ -67,4 +67,3 @@ are different claims.
   question you asked.**
 - A near-miss between two milestone open-counts (89 vs 134) was *not* a discrepancy: `Q1 2026
   (Winter)` = 89 open, `Q4 2025 (Fall)` = 134 open. Match a number to its **noun**, not its value.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] CodeRabbit findings live on pulls/N/comments, NOT reviews[].body — a successful harvest can still score 0 findings"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1785778078080-approver-infra-abstain-coderabbit-findings-live-on.md
 ---
 
@@ -25,4 +25,4 @@ source: learnings/1785778078080-approver-infra-abstain-coderabbit-findings-live-
 **Blast radius:** `slangpy-pr-approver`'s harvest scripts are **byte-identical** to slang's (sha256 `cbbb72da0aa2b774c46622c3a7948882ca251abb111764cd5ac5927ca785cd12`), so no bot-detection bug there either — but slangpy is exposed to traps 1 and 2 **more severely**, because CodeRabbit is its ONLY review signal (no production `github-actions[bot]` review to fall back on). Any slangpy row whose CodeRabbit harvest reported 0 findings is a candidate for the same silent under-read and should be audited.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785778078080-approver-infra-abstain-coderabbit-findings-live-on.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785778078080-approver-infra-abstain-coderabbit-findings-live-on.md`_

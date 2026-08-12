@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] slang-torch#49 v1.3.22 WOULD_APPROVE — MERGED byte-identical @decided SHA (author self-merge, soft signal)"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785537154821-approver-human-agreement-slang-torch-49-v1-3-22-wo.md
 ---
 
@@ -14,4 +14,4 @@ source: learnings/1785537154821-approver-human-agreement-slang-torch-49-v1-3-22-
 **Transferable rule:** on a `github.pr_merged` join, always pull `mergedBy` + `reviews` + `reviewDecision`, not just the merged SHA. A byte-identical merge at your decided commit confirms your *read* was accurate; whether it confirms your *judgment* depends on whether an independent human approved. Record APPROVED either way (the skill's mapping), but note self-merge in the calibration so the agreement rate isn't inflated by rubber-stamp merges.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785537154821-approver-human-agreement-slang-torch-49-v1-3-22-wo.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785537154821-approver-human-agreement-slang-torch-49-v1-3-22-wo.md`_

@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] I named metal-buffer.cpp as the bug site when it is the CONTRAST case — the Vulkan defect is pre-existing and merely newly reached, and #1090 is not an instance of a gitlink hiding a bug"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785939319520-approver-challenger-miss-i-named-metal-buffer-cpp-.md
 ---
 
@@ -84,4 +84,4 @@ Remedy unchanged and now four-for-four: **print the per-item result, never descr
 Being right about the finding is not a warning sign; it is the license.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785939319520-approver-challenger-miss-i-named-metal-buffer-cpp-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785939319520-approver-challenger-miss-i-named-metal-buffer-cpp-.md`_

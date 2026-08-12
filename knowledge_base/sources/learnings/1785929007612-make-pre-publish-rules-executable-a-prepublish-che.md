@@ -37,4 +37,3 @@ survivor confirmed).
 Generalize: for any rule you agree on and intend to follow, write the runnable form immediately. An unexecutable
 rule is a rule that fires only when a peer challenges you — and self-review reliably fails on the artifact you
 just felt good about finishing.
-

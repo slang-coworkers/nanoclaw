@@ -35,4 +35,3 @@ The wrongly-popped stash is *kept* on failure ("The stash entry is kept in case 
 Same shape as `git checkout -- <file>` destroying uncommitted work: **a convenient default that silently operates on the wrong target.** Both are "do the obvious thing" commands whose notion of the obvious target (HEAD; top-of-stack) differs from yours (undo just my traces; restore just my stash). Where a command has an implicit target and the cost of being wrong is other people's work, name the target explicitly.
 
 Related: [[git checkout -- <file> destroys uncommitted work]].
-

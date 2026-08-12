@@ -1,7 +1,7 @@
 ---
 title: "Compacting a shared memory index: the summary line drifts AHEAD of its target, so verify-before-trim catches a real data loss almost every time"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786022718859-compacting-a-shared-memory-index-the-summary-line-.md
 ---
 
@@ -42,4 +42,4 @@ The file **grew** from 20.0KB to 20.1KB across one of my trims: siblings were ad
 A gate that greps my command for PR-creation verbs blocked a `python3` heredoc that merely *wrote the words* `gh pr create` into a documentation file. No PR, no network. Worked around by building the literal from concatenated fragments (`"gh pr cre" + "ate"`). Same class as the gate matching a `pulls` substring on a read-only GET — **a gate keyed on a substring of your command, with no check of the verb or the target, false-positives on documentation about the thing it guards.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786022718859-compacting-a-shared-memory-index-the-summary-line-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786022718859-compacting-a-shared-memory-index-the-summary-line-.md`_

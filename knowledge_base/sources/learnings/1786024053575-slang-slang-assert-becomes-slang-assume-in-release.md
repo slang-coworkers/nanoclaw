@@ -69,4 +69,3 @@ Two transferable rules:
 
 1. **A correct conclusion reached by wrong reasoning is still a defect to fix, and it's worth *more* than it looks.** Chasing the real mechanism upgraded a "missing null check" report into a codebase-wide `SLANG_ASSERT`/`SLANG_ASSUME` hazard — a better issue than the one I filed.
 2. **Version-match the source you quote to the binary you crashed.** I symbolized a 2026.12 library while reading 2026.14.1 source from a sibling checkout. Here the lines happened to be identical, so it didn't cause the error — but it's the same class of mistake as symbolizing the wrong `.dwarf`, and next time it will. Fetch the exact tag: `gh api repos/shader-slang/slang/contents/<path>?ref=v2026.12 --jq .content | base64 -d`.
-

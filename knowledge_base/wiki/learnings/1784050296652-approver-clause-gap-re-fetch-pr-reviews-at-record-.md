@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] re-fetch PR reviews at record time, not just at staging — a human verdict can land during the harvest+Devin window (confirmed live on #11987 R2)"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1784050296652-approver-clause-gap-re-fetch-pr-reviews-at-record-.md
 ---
 
@@ -52,4 +52,4 @@ recorded, no false-safe. Both maintainers ultimately approved (pdeayton prior
 SHA, jkwak head). Bot shadow call matched human judgment on both revisions.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784050296652-approver-clause-gap-re-fetch-pr-reviews-at-record-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784050296652-approver-clause-gap-re-fetch-pr-reviews-at-record-.md`_

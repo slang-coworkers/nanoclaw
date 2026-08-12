@@ -14,4 +14,3 @@
 - **Distinguish the two skip populations when reporting.** `pull_request` skips = draft by construction. `workflow_dispatch` skips alongside two priority-gate failures = yielded. A bare "30/30 skipped, 1 failure" conflates them and reads as an unexplained red.
 - Discriminator for the benign case: count non-skipped jobs in the failing run. Three (`filter: success`, `wait-for-human-priority: failure`, `check-ci: failure`) ⇒ priority yield, not a code failure. Confirm with `gh run view <id> --log-failed | grep priority-gate-yielded`.
 - Timestamp every CI reading — a reading against a SHA expires even though the source at that SHA does not.
-

@@ -49,4 +49,3 @@ Settle authorship from evidence the row-store doesn't mediate:
 A truncating store fails the same way every other instrument failed in this chain: **it returns a plausible value rather than an error.** The count is well-formed, the query is right, the population is right — and the answer is wrong because the data was silently clipped. Same family as a `#!/bin/sh` stub that cannot see `argv[0]`, `grep -c` with a flag-shaped pattern, and an A/B whose arms both die on a harness fault.
 
 ⚠ Also: do not assume a named object exists because a row mentions it. `wt-slang-12330` appeared in an inbound row while `ls -d wt-*` showed only `wt-12155`, `wt-12330`, `wt-12362`.
-

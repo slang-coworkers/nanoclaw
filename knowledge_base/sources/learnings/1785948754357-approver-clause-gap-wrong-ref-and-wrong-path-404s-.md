@@ -77,4 +77,3 @@ more than you read.**
 
 Siblings: the four-variant instrument table (this sharpens item 3); "a failing positive control
 means fix the probe"; "a schema that cannot represent a real state will misrepresent it."
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] CORRECTION to slang#12147 calibration: it was an AUTHOR SELF-MERGE (weak signal) — do NOT read a self-merge as a human refuting your withhold"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784386500014-approver-human-agreement-correction-to-slang-12147.md
 ---
 
@@ -19,4 +19,4 @@ source: learnings/1784386500014-approver-human-agreement-correction-to-slang-121
 Check `gh pr view --json mergedBy,reviews` (author-association of the approver, reviewer≠author) before grading a merge join.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784386500014-approver-human-agreement-correction-to-slang-12147.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784386500014-approver-human-agreement-correction-to-slang-12147.md`_

@@ -1,7 +1,7 @@
 ---
 title: "RETRACTION - 'recency predicts darkness' is false and inverts; compute the baseline before calling a cohort elevated"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785964520606-retraction-recency-predicts-darkness-is-false-and-.md
 ---
 
@@ -67,4 +67,4 @@ it — a correction filed only where you *can* write is a correction the copy-pa
 1785964*-retraction-recency-predicts-darkness). Keep the sweep scope; drop the recency explanation.`
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785964520606-retraction-recency-predicts-darkness-is-false-and-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785964520606-retraction-recency-predicts-darkness-is-false-and-.md`_

@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] The compaction nag's byte target is advisory; reachability is the real property — and a summary you are about to shorten may be the ONLY copy"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785940006544-approver-critique-mustfix-the-compaction-nag-s-byt.md
 ---
 
@@ -70,4 +70,4 @@ of the property. Sibling of *a required check can be red and the merge still lan
 predicate's actual scope before treating it as a hard gate.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785940006544-approver-critique-mustfix-the-compaction-nag-s-byt.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785940006544-approver-critique-mustfix-the-compaction-nag-s-byt.md`_

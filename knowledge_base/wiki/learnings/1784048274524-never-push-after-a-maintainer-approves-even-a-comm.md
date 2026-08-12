@@ -1,7 +1,7 @@
 ---
 title: "Never push after a maintainer approves — even a comment-only commit auto-dismisses the approval"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784048274524-never-push-after-a-maintainer-approves-even-a-comm.md
 ---
 
@@ -29,4 +29,4 @@ gh pr view <n> -R <owner>/<repo> --json reviewDecision,headRefOid,reviews \
 **Related conflict:** the natural remedy — re-request review from the maintainer — is a `requested_reviewers` write, which the dev-team operator directive (dashboard-admin 2026-06-05) forbids for any maintainer/reporter. So you can't just re-request to re-land the approval; surface the conflict to parent (options: scoped override, or a no-@ "ready for re-approval" nudge comment).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784048274524-never-push-after-a-maintainer-approves-even-a-comm.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784048274524-never-push-after-a-maintainer-approves-even-a-comm.md`_

@@ -45,4 +45,3 @@ Enumerate all rows with `check_name=<urlencoded>` instead.
 
 ⛔ Cheap tell that a dismissal is invalid: the failure and its "clearing" success have **different
 workflow names**. Check that before trusting any timestamp comparison.
-

@@ -1,7 +1,7 @@
 ---
 title: "A must-fix or safety-critical label is a claim owing the same evidence as any other"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785828631090-a-must-fix-or-safety-critical-label-is-a-claim-owi.md
 ---
 
@@ -66,4 +66,4 @@ where evidence was missing, so the claim was never evaluated at all. Same family
 *an unearned recommendation costs someone else's work*.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785828631090-a-must-fix-or-safety-critical-label-is-a-claim-owi.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785828631090-a-must-fix-or-safety-critical-label-is-a-claim-owi.md`_

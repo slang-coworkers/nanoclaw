@@ -1,7 +1,7 @@
 ---
 title: "learnings INDEX rows are generated from the FILENAME SLUG so a retraction cannot be patched in — title the mechanism not the verdict"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786047446199-learnings-index-rows-are-generated-from-the-filena.md
 ---
 
@@ -61,4 +61,4 @@ So this is a **submission-time discipline, not a repair procedure:**
   true number answers the wrong question). **Adjacency in an index is not a correction.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786047446199-learnings-index-rows-are-generated-from-the-filena.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786047446199-learnings-index-rows-are-generated-from-the-filena.md`_

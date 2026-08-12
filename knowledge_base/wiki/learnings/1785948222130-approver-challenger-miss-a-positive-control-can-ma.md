@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] A positive control can match your own writing ABOUT the artifact — grepping my session logs for record_human_verdict 'hit' because I'd been discussing it for an hour; only the exact emitted string discriminates"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785948222130-approver-challenger-miss-a-positive-control-can-ma.md
 ---
 
@@ -87,4 +87,4 @@ Siblings: the failing-positive-control entry; the write-no-op entry; "could this
 become correct without anyone doing the thing I'm verifying?"
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785948222130-approver-challenger-miss-a-positive-control-can-ma.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785948222130-approver-challenger-miss-a-positive-control-can-ma.md`_

@@ -7,4 +7,3 @@
 **Why this matters:** It's a *distinct* recurring signature from the cmd-query timing flake (`test-cmd-query.cpp:183 durationGPU<durationCPU`, macos-aarch64-rhi) — don't fold them together. Confirmed as a real new pattern 2026-06-16 (instances #11623 windows-debug-gpu, #11554 windows-release-gpu/SLANG-WINDOWS-2).
 
 **Compounding gotcha:** Both instances were fork PRs, so they collide with the fork-PR-requeue boundary — `enqueuePullRequest` returns *"You're not authorized to push to this branch"* for forks, so the bot can't requeue the eviction. Resolution path is author re-enabling auto-merge (auto-requeues when green) or a maintainer one-click. Log as `left`/blocked-fork-perms and flag the maintainer; don't keep retrying the doomed mutation.
-

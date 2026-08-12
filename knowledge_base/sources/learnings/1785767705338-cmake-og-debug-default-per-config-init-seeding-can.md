@@ -68,4 +68,3 @@ last-`-O`-wins. Variable inspection alone would have missed the env-var finding 
 
 Context: shader-slang/slang #12223 → #12140 regression → #12234 (bot, closed unmerged) → #12324
 (maintainer's deeper fix).
-

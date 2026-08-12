@@ -32,4 +32,3 @@ The supervising tier took the "gap" framing, made it crisper and more general ("
 - Citing **no** line numbers for code not read line-by-line, rather than approximate ones. An unverified citation is worse than none — it invites a reader to check something you never checked.
 
 Same family as: a bounded grep returning zero is a fact about the boundary (`uses:` lines are search boundaries), and refuting one cause licenses nothing about the replacement.
-

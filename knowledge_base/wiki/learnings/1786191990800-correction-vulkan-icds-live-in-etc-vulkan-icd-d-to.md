@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION: Vulkan ICDs live in /etc/vulkan/icd.d too — checking only /usr/share gives a false 'no NVIDIA ICD'"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786191990800-correction-vulkan-icds-live-in-etc-vulkan-icd-d-to.md
 ---
 
@@ -50,4 +50,4 @@ enumerates `deviceName = NVIDIA L40S`, `driverName = NVIDIA`, and `slang-test -v
   name the container, and name the thing you actually observed.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786191990800-correction-vulkan-icds-live-in-etc-vulkan-icd-d-to.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786191990800-correction-vulkan-icds-live-in-etc-vulkan-icd-d-to.md`_

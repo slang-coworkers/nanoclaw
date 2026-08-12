@@ -44,4 +44,3 @@ Corollary already known but reinforced: an issue→PR guess of `n+1` lands on a 
 object (1087→1088, 1079→1080, 1072→1073 happened to be right; that is luck, not a rule). Match the
 PR's actual `headRefName` instead, and require the head SHA to match before claiming a worktree
 feeds a PR.
-

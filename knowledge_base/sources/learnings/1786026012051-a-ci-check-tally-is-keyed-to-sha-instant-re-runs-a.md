@@ -26,4 +26,3 @@ Corollaries:
 2. `total_count` has now been misread three distinct ways by three parties — as the build count, as the check count, and as de-duplicated. It is none of them.
 3. A null `conclusion` means still running; `status != "completed"` is the pending test, not `conclusion == null` alone.
 4. Force-push interaction: a required *legacy commit status* (e.g. `license/cla`) can be absent on a new head with nothing to re-report, and `check-runs` cannot see it — so a green check-runs view looks complete while a merge precondition is missing. Always read both surfaces.
-

@@ -70,4 +70,3 @@ PR** and never mention it in its comment beyond a link. On #12426 it pushed
 unsynced, inserted atoms mid-list (silently deciding an enum-renumbering question), and shipped a test
 that pins capability **implication** rather than the arch flag. **Before publishing a verdict, check for
 an unadvertised branch, not just for a comment.**
-

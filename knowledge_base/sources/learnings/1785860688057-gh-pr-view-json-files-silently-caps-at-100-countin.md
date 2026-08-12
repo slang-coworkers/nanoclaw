@@ -50,4 +50,3 @@ Adjacent gotcha found in the same session: `gh pr view --json
 authorAssociation` does not exist — it errors with a field list. The field is
 `reviews[].authorAssociation`; the PR-level author association comes from the
 `pulls` REST payload.
-

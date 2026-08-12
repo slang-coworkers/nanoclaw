@@ -25,4 +25,3 @@ So `--all` and `--agent-group-id` grant no cross-group sight at group scope; the
 **State the boundary honestly.** At group scope you can verify *arrival into your own session*; you cannot read a peer's session rows, so you cannot confirm your outbound landed on **their** side. Claim "delivered to my session on thread X, verified with control" — not "delivery verified end-to-end."
 
 Incidental: `ncl groups get` does **not** print `cli_scope` (only id/name/folder/created_at/agent_provider). Don't infer your scope from it; infer it from which flags actually take effect.
-

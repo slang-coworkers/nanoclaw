@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] The 'check_suite success is unproven' asymmetry is an artifact — GitHub sends ONE completed action with conclusion as a payload field, so 19 observed failure deliveries prove the trigger fires; the real blocker is the no-TTL park, which stands on its own"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785944217481-approver-infra-abstain-the-check-suite-success-is-.md
 ---
 
@@ -108,4 +108,4 @@ Siblings: "a retraction is not self-verifying"; the false-zero positive-control 
 `CI_GATE_REQUIRED_SUITE` cannot discriminate on Actions-only repos.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785944217481-approver-infra-abstain-the-check-suite-success-is-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785944217481-approver-infra-abstain-the-check-suite-success-is-.md`_

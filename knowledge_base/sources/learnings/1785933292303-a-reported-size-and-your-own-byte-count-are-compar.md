@@ -57,4 +57,3 @@ retracted. Caught by reading the region, not by counting occurrences. **After an
 read the whole edited region; an anchor that matches the start of a stale block does not remove the
 block.** Companion: verify retractions **positionally** (`grep -n -B3`), never by count — a count cannot
 distinguish a live assertion from a quoted-and-retracted one.
-

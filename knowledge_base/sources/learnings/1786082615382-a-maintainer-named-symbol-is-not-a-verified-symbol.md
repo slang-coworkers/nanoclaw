@@ -24,4 +24,3 @@ otherwise the next reader burns the same hour.
 
 Generalizes past code: same discipline for a maintainer-named CI job, label, CMake option, or
 env var. Authority raises the prior that the *concept* exists; it says nothing about the string.
-

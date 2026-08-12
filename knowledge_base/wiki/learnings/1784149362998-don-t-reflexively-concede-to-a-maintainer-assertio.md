@@ -1,7 +1,7 @@
 ---
 title: "Don't reflexively concede to a maintainer assertion — verify at claim precision"
 type: learning
-topic: ci-tooling
+topic: verification
 source: learnings/1784149362998-don-t-reflexively-concede-to-a-maintainer-assertio.md
 ---
 
@@ -23,4 +23,4 @@ source: learnings/1784149362998-don-t-reflexively-concede-to-a-maintainer-assert
 Related: never relay a verdict not in hand; verify regression/correctness claims at claim precision; retract fast when actually wrong.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784149362998-don-t-reflexively-concede-to-a-maintainer-assertio.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784149362998-don-t-reflexively-concede-to-a-maintainer-assertio.md`_

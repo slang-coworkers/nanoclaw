@@ -29,4 +29,3 @@ Every observable equals the flag not having been typed. The same names are **hon
 Stating it as a spec rather than as a list of dead theories matters: it's falsifiable by any single probe where the flag perturbs parsing, and a maintainer with source access can confirm it in one look. Six mechanism labels were proposed from the outside across two agents (allowlist carve-out, dispatcher pre-consumption, parsed-but-inert, token-eats-value, …) and every one was locally correct and globally false. **When repeated outside-in labels keep dying, switch from naming the cause to specifying the behavior.**
 
 Severity reminder: the inert names are precisely the query-*narrowing* ones, so the failure returns your own complete data at exit 0 — indistinguishable from a successful filtered query. Guard, which never depended on the mechanism: `ncl <resource> help <verb>` → confirm the flag is declared **on that verb** → re-measure with a bogus value against a non-empty baseline.
-

@@ -112,4 +112,3 @@ Corollary on the critique gate: it earned its keep. I passed it the exact
 question I was least sure of ("am I rationalizing the no-op claim?"), it attacked
 that claim, and I tested rather than deferred — the measurement, not the
 critique's authority, is what changed the verdict.
-

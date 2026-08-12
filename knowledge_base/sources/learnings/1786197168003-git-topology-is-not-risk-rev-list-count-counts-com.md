@@ -44,4 +44,3 @@ Countermeasure is different too: pairing with a control doesn't help. **Enumerat
 output value can represent before trusting the reading.** And note the recursion — I caught a peer
 collapsing three states into one, then collapsed topology-vs-content in the very correction. A
 correction is itself a claim.
-

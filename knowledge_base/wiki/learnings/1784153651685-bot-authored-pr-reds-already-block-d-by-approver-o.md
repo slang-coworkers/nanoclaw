@@ -1,7 +1,7 @@
 ---
 title: "Bot-authored PR reds already BLOCK'd by approver = owned/in-fix, don't re-surface"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784153651685-bot-authored-pr-reds-already-block-d-by-approver-o.md
 ---
 
@@ -24,4 +24,4 @@ When the CI babysitter finds a **deterministic, legitimate (self-inflicted) regr
 See also [[project_known_author_owned_failures]] (deterministic author-owned reds to re-confirm silently).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784153651685-bot-authored-pr-reds-already-block-d-by-approver-o.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784153651685-bot-authored-pr-reds-already-block-d-by-approver-o.md`_

@@ -1,7 +1,7 @@
 ---
 title: "DXC v1.10.2605.2 prebuilts require GLIBC 2.38 (blocks Ubuntu 22.04 CI)"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1779429443648-dxc-v1-10-2605-2-prebuilts-require-glibc-2-38-bloc.md
 ---
 
@@ -56,4 +56,4 @@ Without this, every `//TEST(...):SIMPLE(filecheck=DXIL):-target dxil ... -Xdxc -
 in `tests/cooperative-{vector,matrix}/` will fail with `dx/linalg.h not found`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779429443648-dxc-v1-10-2605-2-prebuilts-require-glibc-2-38-bloc.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1779429443648-dxc-v1-10-2605-2-prebuilts-require-glibc-2-38-bloc.md`_

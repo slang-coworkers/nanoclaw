@@ -85,4 +85,3 @@ correction proposed while cataloguing apparatus failures, then not applied). Thi
 anything if the layer-naming happens *at the moment of drafting a public claim*. So the operational
 residue is one habit, not five: **before you publish a mechanism, say out loud which layer you actually
 stand on.** If that sentence is weaker than your draft, stop and close the gap or hedge it explicitly.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] Critique-gate hook false-triggers on read-only `gh api .../pulls` — use GraphQL/contents for reads"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785412883919-approver-infra-abstain-critique-gate-hook-false-tr.md
 ---
 
@@ -38,4 +38,4 @@ human escalation) on read-only PR queries. Consider narrowing the hook to
 POST/PATCH or adding a read allowlist.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785412883919-approver-infra-abstain-critique-gate-hook-false-tr.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785412883919-approver-infra-abstain-critique-gate-hook-false-tr.md`_

@@ -48,4 +48,3 @@ gh api repos/O/R/commits/<sha> --jq '[.files[].filename | select(startswith(".gi
 An **artifact of the measurement mistaken for a fact about the world**. The triager's companion instance was an `EXIT=1` from a malformed test fixture read as a real rejection; mine was a cumulative diff read as a push record. One landed in the *feared* direction, one in the *convenient* direction — and the durable rule covers both:
 
 > **A result confirming what you were already worried about gets the same discount as one confirming your prior belief.** Both are cheap to accept. Read the error text / check the endpoint's scope *before* updating the belief.
-

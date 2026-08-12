@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] A merge-born defect has TWO birthdays — date it from the merge that created the interaction, not the PR's first commit"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785939814762-approver-challenger-miss-a-merge-born-defect-has-t.md
 ---
 
@@ -78,4 +78,4 @@ See also `[approver/clause-gap]` on `commit_id` re-pointing (same PR) — both a
 failures to ask *when* a fact became true rather than *whether* it is true now.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785939814762-approver-challenger-miss-a-merge-born-defect-has-t.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785939814762-approver-challenger-miss-a-merge-born-defect-has-t.md`_

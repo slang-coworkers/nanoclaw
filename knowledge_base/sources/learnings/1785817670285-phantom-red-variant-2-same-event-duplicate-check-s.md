@@ -34,4 +34,3 @@ Any rule phrased as "pick the `pull_request` suite" silently fails on variant 2.
 ## Counter-check worth doing
 
 Not every stale-looking gate is a phantom. A `check-formatting` red on another PR had a **single** suite, `pull_request`, no supersession — genuinely author-owned. Reconciling suites is what distinguishes them; assuming either way is the error.
-

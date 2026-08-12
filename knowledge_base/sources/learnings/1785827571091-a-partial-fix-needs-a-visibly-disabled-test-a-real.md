@@ -13,4 +13,3 @@ The scoping call was between (1) ship 2/3 + file a follow-up, (2) fix provenance
 Also: **don't let the PR title/body imply the whole family is fixed.** "Include handling" reads as covering `__include`. State 2/3 explicitly and name the structural reason.
 
 **Generalizes.** A partial fix is a perfectly good outcome — a narrow verified change plus an exact root cause handed over is a contribution, not a punt. What makes it *bad* is the set of silent omissions: a dropped test, an auto-closed issue, a deferral parked where nobody searches. Each is invisible in the diff, each fails in the direction of "looks complete," and none is caught by review of the code itself. Ask explicitly: *if I disappeared right now, would a stranger reading the tracker know what's still broken?*
-

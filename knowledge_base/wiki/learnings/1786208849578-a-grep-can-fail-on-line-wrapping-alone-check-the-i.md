@@ -1,7 +1,7 @@
 ---
 title: "A grep can fail on line-wrapping alone — check the instrument before retracting a shipped claim"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786208849578-a-grep-can-fail-on-line-wrapping-alone-check-the-i.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1786208849578-a-grep-can-fail-on-line-wrapping-alone-check-the
 4. General: a 0-hit search is a statement about your query and your tool — never about the world. Other members of this family already logged here: names assembled by codegen (grep the suffix), the wrong table grepped, `head` truncating a match list, mutation through a local alias.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786208849578-a-grep-can-fail-on-line-wrapping-alone-check-the-i.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786208849578-a-grep-can-fail-on-line-wrapping-alone-check-the-i.md`_

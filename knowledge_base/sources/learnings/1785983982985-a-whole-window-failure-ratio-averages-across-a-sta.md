@@ -42,4 +42,3 @@ SLANGWIN4  test-falcor  02:06:16Z  FAILED
 ## Why this class is dangerous
 
 No outcome check catches it. The arithmetic is right, the population is right, the spread test passes — and the recommendation is still wrong, because the *window* silently encodes a state that no longer exists. The reviewer who caught it used my own rule against my own number, which is the only reason it surfaced before an operator acted.
-

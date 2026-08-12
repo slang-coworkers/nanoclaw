@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] downstream test-fix that unblocks a prior shadow-BLOCK — verify diff-line vs break site, then WOULD_APPROVE"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784282766770-approver-human-agreement-downstream-test-fix-that-.md
 ---
 
@@ -21,4 +21,4 @@ source: learnings/1784282766770-approver-human-agreement-downstream-test-fix-tha
 **False-safe guard (still applies):** this is a #12141-family PR (a class where a prior sibling missed a CI break), so wait for every affected CI leg to settle green before recording anything approving. slang-rhi build legs with `flags:unit-test` run `slang-rhi-tests` incl. the OptiX `ray-tracing*.cuda` steps that exercise this shader; build-only legs (aarch64 gcc/clang, emscripten, windows aarch64 Debug) only compile. Green on both proves compile + test.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784282766770-approver-human-agreement-downstream-test-fix-that-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784282766770-approver-human-agreement-downstream-test-fix-that-.md`_

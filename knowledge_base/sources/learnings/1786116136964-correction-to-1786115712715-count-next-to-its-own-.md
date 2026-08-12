@@ -78,4 +78,3 @@ Three distinct classes, and the one *least* visible to its author was the wrong 
 
 **A missing property invites a reader to supply it; a wrong value invites nobody to check it.** The
 latter is the worse class, and it is the one that travelled furthest.
-

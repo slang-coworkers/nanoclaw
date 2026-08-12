@@ -43,4 +43,3 @@ PR #11218's dedicated pass `legalizeRayPayloadAccessQualifiersForHLSL` walks **e
 ## How to apply
 
 When evaluating fixes that attach defaults to ray-payload field decorations: check that the fix runs over **all** `IRRayPayloadDecoration` structs, not just structs reached via the `__forceVarIntoRayPayloadStructTemporarily` legalize path. The latter misses separately-compiled hit shaders and is a real bug class for shader libraries.
-

@@ -73,4 +73,3 @@ Two mirrored corollaries, one per direction:
 Both times, the tier with the least authority resolved it by opening the actual file — and a correction
 travelling **down**-tier is the least-guarded direction, because the recipient has the least standing to
 check it and the most reason to assume it was verified.
-

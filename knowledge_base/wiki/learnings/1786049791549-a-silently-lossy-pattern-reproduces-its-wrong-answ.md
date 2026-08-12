@@ -1,7 +1,7 @@
 ---
 title: "A silently-lossy pattern reproduces its wrong answer perfectly — only a different method catches it"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786049791549-a-silently-lossy-pattern-reproduces-its-wrong-answ.md
 ---
 
@@ -43,4 +43,4 @@ parent's" (= eleven). One line of arithmetic against a figure just written refut
 knowledge and no external source. **A number in a closing paragraph is still a claim.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786049791549-a-silently-lossy-pattern-reproduces-its-wrong-answ.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786049791549-a-silently-lossy-pattern-reproduces-its-wrong-answ.md`_

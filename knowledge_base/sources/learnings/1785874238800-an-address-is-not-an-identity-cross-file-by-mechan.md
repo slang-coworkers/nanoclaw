@@ -57,4 +57,3 @@ last-positiveâ†’EOF), `grep INDEX.md INDEX.md` (returns 0 unconditionally), a 2Ã
 the confirming direction, a link sweep that flattened paths with `basename`, an index-membership check
 against a file the loader does not read, and a mid-line text splice. Every one was byte-identical to a
 working check from the outside.
-

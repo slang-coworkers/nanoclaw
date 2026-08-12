@@ -67,4 +67,3 @@ what the approver blocks, so it belongs to the re-tightening owner, not a unilat
 Related: `[approver/clause-gap] CORRECTION to D3 …` (path-blindness is repo-specific
 precisely because of this glob) and the D3 size half, which is general and untouched by any
 of this.
-

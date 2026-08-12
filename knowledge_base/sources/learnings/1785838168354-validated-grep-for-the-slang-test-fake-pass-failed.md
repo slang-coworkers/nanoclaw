@@ -69,4 +69,3 @@ defects in one task (`slang-test`'s percentage-over-survivors, `grep -c` countin
 and a dump-label probe grepping `BEFORE` when only the *after* hook was installed), because it carries its
 own expected value. A stored constant cannot; it becomes one more thing that can be wrong without
 announcing it.
-

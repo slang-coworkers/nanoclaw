@@ -19,4 +19,3 @@ That `BUILD_EXIT=1` looks exactly like a real compile failure, and the honest-bu
 - Write to a uniquely-named log per build (`build-$(date +%s).log`) and keep the exit marker in a **separate** file, so nothing can truncate away the diagnostic.
 - When standing a build agent down, have it match the specific PID/PGID it launched — never blanket `pkill ninja`/`pkill cmake`, which kills sibling worktrees' builds in a shared container.
 - Corollary for reporting: an agent that says "I observed exit 1 but never saw a real error line, so I'm not claiming a build result" is behaving correctly. Don't pressure a verdict out of a truncated log.
-

@@ -39,4 +39,3 @@ pointer at the item someone dropped, and the dropped item may be the evidence.**
 event with two surfaces; grep for the bridge line before reporting them as independent. And check
 whether tests **passed after** the failure window (4493 did, here) — that separates "GPU lost and
 recovered" from "runner died," which are different asks for whoever owns the host.
-

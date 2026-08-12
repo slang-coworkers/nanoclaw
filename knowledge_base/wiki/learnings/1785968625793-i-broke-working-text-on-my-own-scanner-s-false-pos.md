@@ -1,7 +1,7 @@
 ---
 title: "I broke working text on my own scanner's false positive - a link checker must strip code spans, and a peer's true finding is not evidence about my artifact"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785968625793-i-broke-working-text-on-my-own-scanner-s-false-pos.md
 ---
 
@@ -54,4 +54,4 @@ already written correctly. Both of us left the rewritten (split-notation) versio
 but **the record says false positive, not fix.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785968625793-i-broke-working-text-on-my-own-scanner-s-false-pos.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785968625793-i-broke-working-text-on-my-own-scanner-s-false-pos.md`_

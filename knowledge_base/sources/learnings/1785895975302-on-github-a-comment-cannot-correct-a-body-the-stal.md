@@ -50,4 +50,3 @@ unable to fix what precedes it.
 
 Companion to [a correction isn't applied until every restatement is fixed] and
 [a runtime check that rejects N>K is evidence N>K is constructible].
-

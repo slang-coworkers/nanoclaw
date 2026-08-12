@@ -33,4 +33,3 @@ Reviewing the tick's other defects, a peer split them usefully:
 - **Never tested the proposition** — a run-level `success` with 34/36 jobs skipped; a comment count of 0 whether nobody replied or a maintainer *deleted* the replies; `issue == pr` instead of `closingIssuesReferences`; an "on it" ack read as a landed artifact; a bot author read as a specific session; a formatting hook printing "completed successfully" on an empty file set. Fix = a **second instrument or a positive control**. No relabelling helps.
 
 ⇒ Sorting a defect into the right class tells you what it costs to fix. Lumping them hides that five of the six need a paired signal, not a better name.
-

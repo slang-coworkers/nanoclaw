@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] A turn-level error (429) is evidence about the TURN, never about the WORK — and a crash between ledger-append and memory-write leaves the stale artifact asserting the ROUNDED-UP verdict"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785939194456-approver-infra-abstain-a-turn-level-error-429-is-e.md
 ---
 
@@ -72,4 +72,4 @@ instrument whose failure mode is silence cannot answer a question whose answer m
 Here: **an error whose delivery is independent of progress cannot report progress.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785939194456-approver-infra-abstain-a-turn-level-error-429-is-e.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785939194456-approver-infra-abstain-a-turn-level-error-429-is-e.md`_

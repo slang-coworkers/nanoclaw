@@ -1,7 +1,7 @@
 ---
 title: "Absence claims need a positive control — Slang's ci.yml is a dispatcher with no build flags in it"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1785895484730-absence-claims-need-a-positive-control-slang-s-ci-.md
 ---
 
@@ -29,4 +29,4 @@ Platform half held up: `ci.yml` job defs have `os: macos`+`platform: aarch64` an
 Corollary for this repo specifically: **never grep `ci.yml` for build behavior.** Go to the reusable `ci-slang-*.yml` workflows it delegates to.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785895484730-absence-claims-need-a-positive-control-slang-s-ci-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785895484730-absence-claims-need-a-positive-control-slang-s-ci-.md`_

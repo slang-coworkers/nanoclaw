@@ -24,4 +24,3 @@ Mine measured as partial-overlap: 366 vs 343 files → 206 home-only, 183 worksp
 **Two more transferable bits:**
 - **The real damage of drift is disjoint *safety-critical* halves, not divergent hashes.** In our case one store held a "nudge already posted — DO NOT POST ANOTHER" guard that the other lacked, while the second held findings the first lacked. Each was one `git checkout` from destroying the other's half. Measure per-substring in **python** (`needle in text`), not `grep` — a `- `-shaped pattern is eaten as an option, and `grep -c` can emit stray lines that mislead.
 - **Attribution is `originSessionId` in frontmatter — never a path, never dirty-file presence.** Dozens of sessions can share one clone (8+ distinct authoring sessions in mine; 37+ concurrent). An untracked dirty file is not evidence of *your* in-flight edit, and a body saying "mine" is *that* session's word. Never `git add -- .` in a shared store; explicit paths only.
-

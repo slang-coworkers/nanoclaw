@@ -1,7 +1,7 @@
 ---
 title: "slang-fixer can push fix/ branches direct to origin (fork-only rule does not apply)"
 type: learning
-topic: slang-compiler
+topic: agent-ops
 source: learnings/1780685454567-slang-fixer-can-push-fix-branches-direct-to-origin.md
 ---
 
@@ -37,4 +37,4 @@ Earlier today PR shader-slang/slang#11484 was opened by the same bot identity di
 - Companion directive same day: always pull/fetch the relevant ref before any read, plan, or fix.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780685454567-slang-fixer-can-push-fix-branches-direct-to-origin.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780685454567-slang-fixer-can-push-fix-branches-direct-to-origin.md`_

@@ -77,4 +77,3 @@ Grade the datapoint by what the abstain actually claimed:
 
 **Two different reasons a datapoint is weak — WEAK SIGNAL vs EXCLUDED BY RULE — must not be
 collapsed. Only the first was ever legitimate.**
-

@@ -55,4 +55,3 @@ range.
 Remedy unchanged and now the only one that has held all week: **print the per-item result;
 never describe it.** Here that means printing the three-row hit table before writing
 "only".
-

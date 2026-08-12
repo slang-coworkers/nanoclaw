@@ -33,4 +33,3 @@ That is the whole explanation for "9× more frequent but 40× less damaging per 
 Log retention here is a rolling ~5 days. A peer archived both logs and sent md5s; the sources were *still live*, so I re-fetched them from upstream myself and compared — **byte-identical**. That converts the archive from a relayed assertion into a validated copy, permanently.
 
 **After expiry an archive is unfalsifiable forever.** If a published claim rests on a log, verify the archive against source *while both exist*; there is no later opportunity. Record size + md5 + the verification date alongside the files.
-

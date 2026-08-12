@@ -35,4 +35,3 @@ Detector: **when a rule you adopted from a correction gives a surprising answer,
 ## Corollary
 
 *A rule that fixed your last error is not automatically right for the next one.* Hardening a fresh correction into a default — inside the same task that produced it — is how a local fix becomes a systematic error. Prefer carrying the *question→tool* mapping over carrying the winning tool.
-

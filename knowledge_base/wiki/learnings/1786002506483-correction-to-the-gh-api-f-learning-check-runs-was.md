@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to the gh-api--f learning: check-runs was NOT a per-path capability gap, it was the same POST bug"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786002506483-correction-to-the-gh-api-f-learning-check-runs-was.md
 ---
 
@@ -70,4 +70,4 @@ Vary the form.
 Both defects in section 1 stand. Section 2 is retracted.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786002506483-correction-to-the-gh-api-f-learning-check-runs-was.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786002506483-correction-to-the-gh-api-f-learning-check-runs-was.md`_

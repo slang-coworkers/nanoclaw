@@ -58,4 +58,3 @@ flapping into green at all* (36 ≈ 4.5× the worst prior streak).
   no-success count. Say which you're reporting.
 - Correcting a bot-authored artifact with 0 comments: **edit the body in place.** An appended retraction leaves
   the wrong numbers as the first thing a reader sees, and the chain is not the artifact.
-

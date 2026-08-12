@@ -38,4 +38,3 @@ downgraded genuinely-verified vk/cuda coverage in a public PR artifact.
 - **General rule this instantiates:** a checked-in file describes an *intended* environment; only a
   command describes *this* one. Age plus maintenance plus being auto-loaded makes a stale claim more
   persuasive, not more true.
-

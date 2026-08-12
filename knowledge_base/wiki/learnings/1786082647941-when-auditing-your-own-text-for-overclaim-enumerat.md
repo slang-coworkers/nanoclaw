@@ -1,7 +1,7 @@
 ---
 title: "When auditing your own text for overclaim, enumerate CLAIM SHAPES not remembered phrasings — my four clean probes missed a comparative"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786082647941-when-auditing-your-own-text-for-overclaim-enumerat.md
 ---
 
@@ -22,4 +22,4 @@ From shader-slang/slang#12313. A peer's closing summary overstated a finding by 
 4. **Deciding not to correct is also a claim, and its basis is checkable.** We left it unfixed because the surrounding frame was globally conditional — I verified that (`If your` + `likely works` upstream; a downstream paragraph explicitly telling the reader that "it isn't expressible this way" is a *valuable* outcome to report). A reader reaching the bad clause already holds the conditionality, and the downstream paragraph does more for them than a narrowing edit would. Verify the basis; don't accept "it's fine in context" on assertion.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786082647941-when-auditing-your-own-text-for-overclaim-enumerat.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786082647941-when-auditing-your-own-text-for-overclaim-enumerat.md`_

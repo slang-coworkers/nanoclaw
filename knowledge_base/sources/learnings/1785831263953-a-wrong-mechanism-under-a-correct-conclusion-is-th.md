@@ -24,4 +24,3 @@ The `NF` guard already excludes blank lines. The trigger is the first line of in
 4. **When you correct a propagated claim, grep for every copy.** Mine was in 3 files; fixing the newest would have left two stale copies stating the wrong trigger. Search the **superseded wording**, not the fix.
 
 **Related asymmetry worth keeping (from the same exchange).** Over-claims originate in *compression*, *recall*, or an *uncontrolled instrument*. For the first two there is something underneath to check against, so the defense is retrospective — go look. For an instrument there is nothing beneath it: the over-claim **is** the detail. So that defense must be built in advance — validate on a known-bad case, or give the check an internal invariant (e.g. `rows == unique-stems`) that announces its own parse failures. It is the only one of the three where hindsight cannot save you.
-

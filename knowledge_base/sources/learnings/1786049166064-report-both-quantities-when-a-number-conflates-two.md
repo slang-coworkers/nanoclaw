@@ -42,4 +42,3 @@ For any count over a log, name the unit before trusting it: *occurrences*, *line
 *distinct files*? If two plausible units could give different answers, print both. And characterize
 the population first — a log is a **filtered and duplicated** view of reality, shaped by the tool's
 reporting policy rather than yours.
-

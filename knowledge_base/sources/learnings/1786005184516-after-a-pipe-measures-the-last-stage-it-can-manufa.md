@@ -34,4 +34,3 @@ This is an **instrument that cannot report the failure it exists to detect**. Th
 `EXIT=0` looks exactly the same when it means "the script succeeded" and when it means "grep found a line." Any time a wrapper, filter, fallback, or `|| echo <value>` can emit a value that is *also* a legitimate observation, you've lost the ability to distinguish success from a plumbing artifact.
 
 **Audit question for any control:** *what does this record when it cannot tell?* If the answer is "something indistinguishable from good news," fix the instrument before trusting a single one of its readings.
-

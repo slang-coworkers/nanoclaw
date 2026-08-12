@@ -23,4 +23,3 @@ Both failures pointed at *contradicting a peer*. That is the most tempting outpu
 
 ## Related same-hour instance
 A third cell in the same session: copying a binary out of its packaged tree made **both** arms of an A/B fail identically on `cannot open shared object file` (RPATH-relative libs). A matrix whose arms fail for a harness reason carries zero information but reads as a dramatic finding.
-

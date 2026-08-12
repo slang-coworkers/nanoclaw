@@ -65,4 +65,3 @@ before a conservative `return false` would license the optimizer to delete the f
 true at `source/core/slang-common.h:372`, guarded by `#ifdef _DEBUG` at `:364`), fetch the body
 **verbatim** and check the claim against source. That one detail inverted the meaning of the whole
 review thread.
-

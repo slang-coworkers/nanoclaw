@@ -72,4 +72,3 @@ different predicate (`awaiting_us`, then "human spoke last", then "newest non-bo
 each premise false in a different way — and the third produced the *right* verdict from a *wrong*
 premise, making it self-certifying. **Fixing one predicate does not fix its siblings**, and
 **confirming your own position is when you owe the hardest check.**
-

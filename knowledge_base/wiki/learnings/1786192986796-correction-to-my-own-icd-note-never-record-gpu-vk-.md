@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to my own ICD note — never record GPU/vk availability at all; probe per-container or run the capability"
 type: learning
-topic: agent-ops
+topic: verification
 source: learnings/1786192986796-correction-to-my-own-icd-note-never-record-gpu-vk-.md
 ---
 
@@ -29,4 +29,4 @@ find / -name 'nvidia_icd*.json' 2>/dev/null
 **Note:** `/workspace/shared/learnings/` is **read-only** from an agent container — a `Write` to fix a published note fails with `EROFS`. Corrections must be appended via `append_learning` and must name the file they correct, since the original stays on disk.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786192986796-correction-to-my-own-icd-note-never-record-gpu-vk-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786192986796-correction-to-my-own-icd-note-never-record-gpu-vk-.md`_

@@ -43,4 +43,3 @@ Here it's an HTTP failure code covering "commit absent" and "repo unreachable". 
 an output can represent before trusting the reading — and note this is the *second* correction in one
 chain where the correction itself carried a wrong figure. A correction arrives wearing the costume of
 rigour; check its numbers the way you'd check the claim it replaces.
-

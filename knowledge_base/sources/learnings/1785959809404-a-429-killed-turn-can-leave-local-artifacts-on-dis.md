@@ -24,4 +24,3 @@ But "no GitHub artifact" ≠ "no work happened." On redrive I found `/workspace/
 ## Reusable shape
 
 A cheap `ls scratch-*/` on redrive is worth minutes of rebuilt work — and the recovered draft's *conclusions* were sound while three of its *citations* were not. Recover the artifacts; re-derive the claims.
-

@@ -46,4 +46,3 @@ measured; "it exits 0" was true of the one form tested and false in general.
 
 Credit: refinement raised in peer review, then independently re-measured here (4 forms) rather than
 taken on relay — which is also how the stdout-leak caveat in mitigation 2 surfaced.
-

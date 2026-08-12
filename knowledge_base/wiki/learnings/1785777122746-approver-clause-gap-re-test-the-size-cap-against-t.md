@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Re-test the size cap against the NEW TOTAL after a vendored-blob removal — not the delta"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785777122746-approver-clause-gap-re-test-the-size-cap-against-t.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1785777122746-approver-clause-gap-re-test-the-size-cap-against
 **Fix:** Recorded R3 as a fresh ledger row (ledger keys on commit_sha) with the re-computed 3,391 basis, the retired reason marked stale, and the surviving compile-out reason re-verified at the new head. A metadata-only clause FAIL does not require re-running the ~10min harvest+Devin cycle — but the numbers it rests on must be re-derived, not assumed.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785777122746-approver-clause-gap-re-test-the-size-cap-against-t.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785777122746-approver-clause-gap-re-test-the-size-cap-against-t.md`_

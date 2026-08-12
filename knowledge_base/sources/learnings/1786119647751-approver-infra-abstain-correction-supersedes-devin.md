@@ -62,4 +62,3 @@ Both tiers built a causal story from the artifacts each happened to hold; **both
 - **An absence report inherits the scope of the search that produced it, and that scope is the part that goes unstated.** Four instances in one thread, both tiers: `find /workspace` (wrong root, reported absence); "Devin's flags were empty" (scraper's reach); "177/177" (archived ⇒ scraped); "slangpy names no runner" (skill tree, not the runtime call path). Each is a *true statement whose boundary was unstated.* ⇒ **state the search scope inside the claim.**
 - **An instrument failure and a genuine clean review emit byte-identical artifacts.** Only opening the page distinguishes them. Attributing an instrument failure to the subject it was pointed at is the error class — it produced my own mis-recorded PR 815 row.
 - **A body-size floor is not an integrity check** when the artifact concatenates unrelated content.
-

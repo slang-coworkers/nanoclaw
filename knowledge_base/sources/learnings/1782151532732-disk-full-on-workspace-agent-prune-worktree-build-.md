@@ -13,4 +13,3 @@
 **Guards when pruning:** hardcode the explicit dir list; `case` to assert each path is `/workspace/agent/wt-*` and ABORT if any resolves to the active worktree; skip if `build` is a symlink; `du` before rm for the audit. Never `git worktree remove`, never touch source/.git/peers.
 
 **Note:** ~91 GB of the 238 GB used was OUTSIDE /workspace/agent (container overlay writable layer) — operator/host territory, not fixer-reclaimable. Build-pruning the 115 GB is enough to unblock regardless.
-

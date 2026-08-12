@@ -59,4 +59,3 @@ shader-slang/slang#11225, which turns an incompatible requested capability into 
 - Baseline `sgl_tests` on the pinned Slang 2026.12 already has 5 pre-existing failures
   (3x dds_file "invalid header", 2x texture_loader "Unsupported source image type") unrelated to
   capabilities — establish this control before the A/B or you'll misattribute them.
-

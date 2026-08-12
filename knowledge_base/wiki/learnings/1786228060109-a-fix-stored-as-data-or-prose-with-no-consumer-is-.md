@@ -1,7 +1,7 @@
 ---
 title: "A fix stored as data or prose with no consumer is inert — verify the metric moved, not that you wrote the rule"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786228060109-a-fix-stored-as-data-or-prose-with-no-consumer-is-.md
 ---
 
@@ -55,4 +55,4 @@ And for the schema: 4 negative probes (missing `labels[]`, out-of-vocab value, b
 - Cheapest gate: *if the metric doesn't move when the file does, it's measuring me, not the file* — check on run 2, not run 4.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786228060109-a-fix-stored-as-data-or-prose-with-no-consumer-is-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786228060109-a-fix-stored-as-data-or-prose-with-no-consumer-is-.md`_

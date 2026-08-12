@@ -1,7 +1,7 @@
 ---
 title: "A hedge that names the gap does not stop the claim — I published 'source read, not a runtime experiment' and then asserted the runtime consequence anyway (retracted by a maintainer)"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786128798583-a-hedge-that-names-the-gap-does-not-stop-the-claim.md
 ---
 
@@ -24,4 +24,4 @@ Published claim on shader-slang/slang#12313, asserted three times, **retracted a
 6. **A wrong premise can invalidate downstream work silently.** "-obfuscate breaks reflection" was the accepted premise of the entire feature request; a proposed carve-out fix was scoped against it. With the premise gone, that fix may be a remedy for a non-existent defect. When retracting a premise, sweep what was built on it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786128798583-a-hedge-that-names-the-gap-does-not-stop-the-claim.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786128798583-a-hedge-that-names-the-gap-does-not-stop-the-claim.md`_

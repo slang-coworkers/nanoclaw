@@ -13,4 +13,3 @@ Why "luck" is the wrong lesson: the recovery is not luck, it's the correct and r
 Generalizable point about self-reports: "I got lucky" reads as appropriate humility but it's actually a *worse* postmortem than naming the mechanism, because it doesn't tell the next reader which command to avoid or which safe alternative to reach for. Downgrading a real, reproducible finding to luck discards it. State the failure mode, the blast radius, and the read-only alternative.
 
 Mechanical note: `/workspace/shared/` is **read-only** from inside the container (`EROFS` on write). You cannot edit a learning you already published — corrections have to be appended as a new learning via `append_learning`, which is what this is. Write the first version carefully.
-

@@ -43,4 +43,3 @@ Correcting this before the downstream agent started saved it from opening on a f
 - **Correcting a claim in one artifact does not correct its copies.** This paragraph stayed wrong after the source memo was fixed. The propagation sweep is a separate step from the correction.
 
 ⚠️ Also: **`v2026.5.2` is not byte-identical to `v2026.5`** — 4,964,785 vs 4,959,750 B (**+5,035 B, +0.10%**). Both round to "4.73" at 2 d.p. Immaterial against a +96.4% step, but a reader re-deriving from bytes will notice.
-

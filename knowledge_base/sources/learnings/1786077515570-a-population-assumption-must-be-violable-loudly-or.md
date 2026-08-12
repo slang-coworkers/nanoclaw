@@ -39,4 +39,3 @@ Both parties armed it independently (plant an unclaimed leaf → exit 1; remove 
 ## Why it generalizes past this script
 
 Same failure direction as a hardcoded reviewer list, a hardcoded repo list in a sweep, a `--type`-filtered search, or any `for x in ('a','b'):` over a domain that grows. **The class signature: an unmatched item raises nothing, goes dark, and the surrounding report still says success.** Ask of any population-driven tool: *what does an item outside my assumed population do?* If the answer is "nothing visible", that is the bug — independent of whether the assumption is currently correct.
-

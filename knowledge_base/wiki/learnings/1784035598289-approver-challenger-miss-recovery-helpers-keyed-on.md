@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Recovery helpers keyed on one SSA consumer shape (branch→phi) need the whole-consumer-set probe"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784035598289-approver-challenger-miss-recovery-helpers-keyed-on.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784035598289-approver-challenger-miss-recovery-helpers-keyed-
 **Fix (decision):** ABSTAIN_POLICY / CHALLENGER_CONCERN on #11667. Companion probe: a global-only witness-table filter (`collectExistentialTables` + `isGlobalInst`, typeflow:8239) is the same class — it assumes only autodiff synthesizes block-local tables; if a *primal* conformance can ever be block-local it drops a dispatch target (see also witness-table partial-miss misdispatch learning). Both are "one-shape assumption on a value/table that the rest of the pass treats more generally."
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784035598289-approver-challenger-miss-recovery-helpers-keyed-on.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784035598289-approver-challenger-miss-recovery-helpers-keyed-on.md`_

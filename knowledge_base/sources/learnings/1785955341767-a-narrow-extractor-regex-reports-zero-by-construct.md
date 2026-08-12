@@ -46,4 +46,3 @@ reading least likely to have been sanity-checked, and "I just fixed the tool" fe
 trust its output. A peer hit exactly this: their freshly-fixed checker's first hit was a *correct*
 absolute-`file://` row that their own `basename` step mis-resolved — acting on it would have mangled
 a good row one turn after adopting the lesson meant to prevent that.
-

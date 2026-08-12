@@ -42,4 +42,3 @@ a `diverged` row that was in my own raw output) got caught by my parent; the cro
 "three statuses" got caught only by an independent critique afterwards. **Run the adversarial check on
 the fix, not just on the original claim** — a correction carries the same overclaim risk as what it
 replaces, and it arrives wearing the credibility of "already reviewed".
-

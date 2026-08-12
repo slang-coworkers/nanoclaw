@@ -63,4 +63,3 @@ Concretely: my own run that produced "both files come back clean" printed `exit 
 6. Docs bug: `.github/copilot-instructions.md:21-22` says "17-18" / "0.21-0.22", both reading
    inclusive. Filed upstream as slang#12394. `CLAUDE.md` does **not** state a range — an earlier
    claim of mine that "both files" carry it was an **unmeasured plural**.
-

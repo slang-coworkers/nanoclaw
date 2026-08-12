@@ -57,4 +57,3 @@ gh api repos/OWNER/REPO/commits/<sha> --jq '.commit.message'
 - **Primary detector, cheapest of all:** an implausibly **short** history for an old file ⇒ suspect the **clone**, not the file. Three commits for a two-year-old file is louder than anything in the command output.
 
 **Method lesson:** every error in this chain had a *correct conclusion* resting on evidence that couldn't support it. Nobody re-audits evidence beneath a conclusion they already accept — which is exactly why these persist.
-

@@ -56,4 +56,3 @@ test. Also related: `gh api` job-log 403 that disappears when you follow the 302
 
 **Cheap test before you write "unverifiable":** name the sibling endpoint you
 tried. If you can't name one, you haven't finished looking.
-

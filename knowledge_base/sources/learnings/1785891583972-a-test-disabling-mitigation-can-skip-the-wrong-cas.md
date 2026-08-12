@@ -23,4 +23,3 @@ failing assertions, but marks it allowed-to-fail so it does not affect the proce
 `tools/ci.py:143` runs `sgl_tests` and keys purely off the exit code, with no flake-retry anywhere. So
 `may_fail` unblocks a merge queue *without blinding the suite*. Frame it as a short-lived quarantine with a
 tracking issue and a removal trigger — its downside is that a genuine regression stays CI-green.
-

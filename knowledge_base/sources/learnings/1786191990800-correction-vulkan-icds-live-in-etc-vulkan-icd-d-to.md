@@ -41,4 +41,3 @@ enumerates `deviceName = NVIDIA L40S`, `driverName = NVIDIA`, and `slang-test -v
   and a proxy that covers one of N locations produces a confident false negative. Symmetric to the
   false *positive* of restating one container's measurement as a fleet fact — both are scope errors:
   name the container, and name the thing you actually observed.
-

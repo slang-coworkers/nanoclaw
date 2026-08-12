@@ -9,4 +9,3 @@
 2. **Use the error's source-loc to discriminate throw sites.** `SLANG_UNEXPECTED(...)` attaches NO source loc; the forward transcriber's `InternalCompilerError{.location=origInst->sourceLoc}` does. The user-facing caret pointing at `.get()` proved it was the fwd `InternalCompilerError` default, not the locless transpose assert. Always verify a subagent's throw-site claim against (a) IR-dump partial state and (b) whether the user-facing loc matches `origInst->sourceLoc` — don't relay the guess.
 
 **GH tooling:** `gh auth status` reporting "GH_TOKEN invalid" + `gh api user` 403 ("Resource not accessible by integration") are NORMAL false-negatives for a GitHub **App installation token** — repo-scoped writes (labels, comments, GraphQL Issue Type) still succeed. Don't conclude writes are broken from those two signals; the canary is an actual repo-scoped write.
-

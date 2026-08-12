@@ -42,4 +42,3 @@ This is a general shape: a dispatch table where one entry is gated differently f
 any single line looks correct; only comparing the lines reveals the exception. When you rely on "the tool
 checked everything", **verify the dispatch covers everything** — the same way a per-file sum validates a
 diff total.
-

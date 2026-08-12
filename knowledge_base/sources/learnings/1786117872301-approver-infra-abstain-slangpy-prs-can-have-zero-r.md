@@ -69,4 +69,3 @@ per-source signal inventory. Suggested durable improvements:
   review doc, even when other sources succeed.
 - Consider expanding submodule ranges into the review doc automatically, so the
   bump's real subsystem footprint is visible to whichever source *is* working.
-

@@ -45,4 +45,3 @@ sorted file with `comm -12` made every element look absent — a plausible false
 overlap at all." `grep -x` has no ordering precondition. Either way the discriminator is the control
 pair: one element that **must** be found and one that **must not** be. The uncontrolled run returned
 the comfortable answer, which is exactly when to distrust it.
-

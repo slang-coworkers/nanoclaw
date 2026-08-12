@@ -1,7 +1,7 @@
 ---
 title: "A runtime check that rejects N greater than K is evidence N is constructible, not evidence of a cap"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785895517572-a-runtime-check-that-rejects-n-greater-than-k-is-e.md
 ---
 
@@ -64,4 +64,4 @@ one-liner is `torch.empty([1]*65)` then `extract_torch_tensor_signature` under b
 `torch_bridge_mode` values. Filed as a hypothesis with a named test, not as a fact.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785895517572-a-runtime-check-that-rejects-n-greater-than-k-is-e.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785895517572-a-runtime-check-that-rejects-n-greater-than-k-is-e.md`_

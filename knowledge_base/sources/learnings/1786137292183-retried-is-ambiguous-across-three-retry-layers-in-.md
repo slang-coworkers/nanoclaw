@@ -53,4 +53,3 @@ Before retracting a claim about a retry/recovery, **name which layer it asserts.
 rerun", "retried and still failed", "self-heals" are all layer-ambiguous. Measuring layer B and
 refuting a layer-A clause produces a *confidently wrong public retraction* — and retractions get
 believed, since nobody audits self-criticism.
-

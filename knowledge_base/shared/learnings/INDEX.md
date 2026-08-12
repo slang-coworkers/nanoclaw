@@ -4021,6 +4021,7 @@
 - [evicted pr requeue decision needs three independen](ag-1776713259045-nax3cr/1786494014693-evicted-pr-requeue-decision-needs-three-independen.md) — _ag-1776713259045-nax3cr_
 - [two top ci infra buckets are distinct external fal](ag-1776713259045-nax3cr/1786494033565-two-top-ci-infra-buckets-are-distinct-external-fal.md) — _ag-1776713259045-nax3cr_
 - [falcor full length branch isolated failure is need](ag-1776713259045-nax3cr/1786501058011-falcor-full-length-branch-isolated-failure-is-need.md) — _ag-1776713259045-nax3cr_
+- [read the full failing leg set before classifying a](ag-1776713259045-nax3cr/1786507887853-read-the-full-failing-leg-set-before-classifying-a.md) — _ag-1776713259045-nax3cr_
 - [never judge github api quota from rate limit the g](ag-1777389337838-f54d9l/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — _ag-1777389337838-f54d9l_
 - [a cited error line number that doesn t match the f](ag-1777389337838-f54d9l/1786381124227-a-cited-error-line-number-that-doesn-t-match-the-f.md) — _ag-1777389337838-f54d9l_
 - [fork pr ci rows commits sha pulls returns 0 and br](ag-1777389337838-f54d9l/1786382020324-fork-pr-ci-rows-commits-sha-pulls-returns-0-and-br.md) — _ag-1777389337838-f54d9l_
@@ -4059,6 +4060,7 @@
 - [getentrypointcode oob entry point index one missin](ag-1780667166418-apezq5/1786487521970-getentrypointcode-oob-entry-point-index-one-missin.md) — _ag-1780667166418-apezq5_
 - [slang 12488 an issue can describe a pr s proposed ](ag-1780667166418-apezq5/1786488866039-slang-12488-an-issue-can-describe-a-pr-s-proposed-.md) — _ag-1780667166418-apezq5_
 - [unhandled local inst ice family entry point only d](ag-1780667166418-apezq5/1786494483979-unhandled-local-inst-ice-family-entry-point-only-d.md) — _ag-1780667166418-apezq5_
+- [slang rhi capability push is spir v neutral under ](ag-1780667166418-apezq5/1786511622280-slang-rhi-capability-push-is-spir-v-neutral-under-.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -4099,6 +4101,7 @@
 - [delivery gate codex attestation mechanics that blo](ag-1780667166439-vmjrwe/1786490307277-delivery-gate-codex-attestation-mechanics-that-blo.md) — _ag-1780667166439-vmjrwe_
 - [slang 12486 the e50100 entry point gate is pinned ](ag-1780667166439-vmjrwe/1786495950035-slang-12486-the-e50100-entry-point-gate-is-pinned-.md) — _ag-1780667166439-vmjrwe_
 - [ref accessor return lowering fix producer then a l](ag-1780667166439-vmjrwe/1786497578453-ref-accessor-return-lowering-fix-producer-then-a-l.md) — _ag-1780667166439-vmjrwe_
+- [slang debug build slang assert does not always cat](ag-1780667166439-vmjrwe/1786514794799-slang-debug-build-slang-assert-does-not-always-cat.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -4109,6 +4112,7 @@
 - [reviewing a comment s style is not verifying its f](ag-1780667168475-a9tac8/1786413091170-reviewing-a-comment-s-style-is-not-verifying-its-f.md) — _ag-1780667168475-a9tac8_
 - [formatting sh check only exits 0 when its tools ar](ag-1780667168475-a9tac8/1786424195348-formatting-sh-check-only-exits-0-when-its-tools-ar.md) — _ag-1780667168475-a9tac8_
 - [plausible negative ask what a check prints in the ](ag-1780667168475-a9tac8/1786424971755-plausible-negative-ask-what-a-check-prints-in-the-.md) — _ag-1780667168475-a9tac8_
+- [a removed posix include can compile clean on linux](ag-1780667168475-a9tac8/1786516325450-a-removed-posix-include-can-compile-clean-on-linux.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -4285,6 +4289,8 @@
 - [approver human disagreement a human approve at the](ag-1783611156430-vvj8oi/1786497895197-approver-human-disagreement-a-human-approve-at-the.md) — _ag-1783611156430-vvj8oi_
 - [approver challenger calibration hard coded identif](ag-1783611156430-vvj8oi/1786502456767-approver-challenger-calibration-hard-coded-identif.md) — _ag-1783611156430-vvj8oi_
 - [approver challenger concurrency block pattern a pa](ag-1783611156430-vvj8oi/1786502900915-approver-challenger-concurrency-block-pattern-a-pa.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger re gate on the settled head wi](ag-1783611156430-vvj8oi/1786506953129-approver-challenger-re-gate-on-the-settled-head-wi.md) — _ag-1783611156430-vvj8oi_
+- [approver infra build based challenger control need](ag-1783611156430-vvj8oi/1786512746751-approver-infra-build-based-challenger-control-need.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement a finding held by a re](ag-1783611156448-d49n0a/1786357056431-approver-human-disagreement-a-finding-held-by-a-re.md) — _ag-1783611156448-d49n0a_
 - [approver human agreement a merge can ship an unver](ag-1783611156448-d49n0a/1786361356886-approver-human-agreement-a-merge-can-ship-an-unver.md) — _ag-1783611156448-d49n0a_
 - [approver infra abstain record decision returns dec](ag-1783611156448-d49n0a/1786361652051-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156448-d49n0a_

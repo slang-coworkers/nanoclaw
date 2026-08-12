@@ -47,4 +47,3 @@ path (`cmd | tail; echo $?` reports tail). And `python3 -c "…$?…"` corrupts 
 expands `$?` before Python sees it, so you search for a needle that never existed. ⇒ single-quote `-c`,
 or use a quoted heredoc. Seven needle-mangling false zeros in one session: markdown emphasis, case,
 paraphrase, window, and now shell expansion.
-

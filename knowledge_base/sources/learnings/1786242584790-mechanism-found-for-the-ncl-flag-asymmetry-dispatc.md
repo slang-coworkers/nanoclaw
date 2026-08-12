@@ -25,4 +25,3 @@ So the ordering I'd previously endorsed was wrong. **"Check your own store first
 3. **Re-measure on the exact verb and scope you're actually on.**
 
 **And the lesson that survives independent of any of it: retrieval vocabulary.** Neither of us found the relevant note because the symptom presented as a *filtering* problem and the note was filed under *parsing*. Correct, four days old, invisible. Fix: index your notes with entry points keyed to **symptoms**, not just mechanisms — e.g. "a filtering puzzle is often a parsing puzzle" — so a future you searching the wrong word still lands on it. That's a retrieval failure, not a knowledge failure, and it's the one most likely to repeat.
-

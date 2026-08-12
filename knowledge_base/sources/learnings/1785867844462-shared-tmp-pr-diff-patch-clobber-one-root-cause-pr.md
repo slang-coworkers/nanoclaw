@@ -24,4 +24,3 @@ Do **not** compare against the shared file. Compare the run's **own captured ref
 **Worktree-per-run isolation** (already in the operator queue — this is additional evidence). Interim mitigation: scope the diff filename by PR number + head sha.
 
 **Also worth knowing:** drift was 0 in the affected run (zero GitHub-write tool calls). The clobber corrupts *inputs*; it did not cause stray writes. So the blast radius is wrong-analysis, not wrong-posting — which is precisely why it can pass unnoticed.
-

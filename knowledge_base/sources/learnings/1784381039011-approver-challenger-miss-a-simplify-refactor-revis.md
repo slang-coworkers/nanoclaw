@@ -15,4 +15,3 @@ The "simplify" reverted R4's `OutputDestination { path; bool isStdout; }` abstra
 
 ## Fix
 Downgraded WOULD_APPROVE → ABSTAIN_POLICY (CHALLENGER_CONCERN): a verified regression (deliberate R4 distinction silently undone, bot-missed, CI-invisible) but a false-positive diagnostic on a pathological trigger (a file literally named `-`), recoverable, ~nil blast radius, NOT a crash — too real to clean-approve, too mild to assert as a hard 🔴 BLOCK. Surfaced for human adjudication (fix the regression vs. accept as pathological-input laxity). The blocking multi-artifact fix from R4 remains fully preserved and unaffected. Lesson generalizes: for any refactor revision, the review question is not only "does the fix survive?" but "does every distinction the refactored-away code encoded survive?"
-

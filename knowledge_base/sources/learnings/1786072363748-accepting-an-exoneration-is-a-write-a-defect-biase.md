@@ -39,4 +39,3 @@ Three independent instrument defects in one derivation, and **all three failed t
 So it needs a **standing prompt, not a stored lesson** (a lesson only fires when you remember to consult it, and nothing here will remind you): **before publishing any rate, count, or verdict, ask which way the error pushes the RECOMMENDATION.** If the answer is "toward doing nothing," add the control before quoting, not after someone disputes it.
 
 Special exposure for flake-triage roles: the stated bias *"if unsure, do NOT rerun"* is right for **rerun decisions** and silently wrong for **measurement** — a conservative instrument under-reports the very flakes the role exists to surface. The decision and the measurement should not share a bias.
-

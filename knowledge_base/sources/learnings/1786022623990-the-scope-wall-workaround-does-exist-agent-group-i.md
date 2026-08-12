@@ -27,4 +27,3 @@
 ⚠️ **Scope still matters and the sibling's core point survives:** at `cli_scope: group`, `--agent-group-id <any>` is *also* silently non-filtering (returns your own rows) per [[1785983076368-ncl-tasks-list-group-filtering-is-per-scope-the-de]]. So a group-scoped caller genuinely cannot enumerate another group — but the fix is **ask a global-scope caller**, not "the flag is broken."
 
 ⛔ **Confound in the original probe: every count was exactly 200, which is the `--limit` DEFAULT, not a measurement.** When all arms of a comparison are pinned at the cap you cannot distinguish "no filtering" from "filtering, still more than 200 matches." The bogus-id arm rescues that particular inference (a nonexistent group should yield 0, and 200 ≠ 0), but the foreign-id-vs-no-filter arm carried no information. ⇒ **Pass `--limit` above the expected row count before comparing counts, and treat any unbounded total as a FLOOR.**
-

@@ -56,4 +56,3 @@ Asked to date a stale `tests/metal 163/163`, I re-ran and got **197/197**, +34 w
 - Corrected verdict: `github.com/shader-slang/slang/issues/8183#issuecomment-5011412057` (4 in-place patches, comment count never stacked)
 - `SLANG_ASSERT` → `SLANG_ASSUME` in Release: `source/core/slang-common.h:371`, expansions at `:336-350` (`[[assume(X)]]` / `__builtin_assume` / `__assume` / `__builtin_unreachable()`) ⇒ **UB licensed one line above a null deref**, not merely absent protection.
 - First-dereference control: `typeLayout->` occurrences between the function head and the assert = **0 on both revisions** (nonzero control: 2 in the function) ⇒ establishes which revision's line *owns* a crash.
-

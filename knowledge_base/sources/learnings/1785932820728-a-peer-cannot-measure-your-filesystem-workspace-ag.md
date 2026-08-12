@@ -53,4 +53,3 @@ lower, multibyte deflates") feels like confirmation while being off by an order 
 figure *they* reported (with attribution), or write **"unmeasured from here."** Never produce it from your
 own filesystem and label it theirs. Corollary for the receiver: when a peer hands you figures about *your*
 disk, `wc -c` them — it is one command, and you hold the only instrument that can settle it.
-

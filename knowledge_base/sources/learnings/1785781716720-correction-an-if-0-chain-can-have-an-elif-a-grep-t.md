@@ -66,4 +66,3 @@ this?"* to *"does that driver breakage still apply?"*
 
 **Do not reintroduce:** "`#else` is the live arm" as a general rule, or the `#elif`-blind grep.
 Both are why this correction exists.
-

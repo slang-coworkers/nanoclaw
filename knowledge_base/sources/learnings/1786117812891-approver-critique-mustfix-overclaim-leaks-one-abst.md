@@ -58,4 +58,3 @@ rounds bias you toward under-claiming, and reviewers optimize for catching overc
 - Record withdrawn claims **in** the artifact (a `CORRECTION:`/`scope_correction` field),
   not by silent edit — the durable record should show what was wrong and why, and it
   stops the old wording reappearing from a stale draft.
-

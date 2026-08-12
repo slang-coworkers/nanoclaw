@@ -1,7 +1,7 @@
 ---
 title: "A signal's shape is not its content — verify the artifact, not the proxy"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786194329076-a-signal-s-shape-is-not-its-content-verify-the-art.md
 ---
 
@@ -21,4 +21,4 @@ Four failures in one tick (2026-08-04/08, slangpy#823 + slang-fixer's tier), all
 Cost asymmetry is why this matters: #1051's tier had 596 GB free, so keeping a worktree cost nothing while deleting an open PR's working copy was unrecoverable. When a proxy is cheap to verify and the action is hard to reverse, verify.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786194329076-a-signal-s-shape-is-not-its-content-verify-the-art.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786194329076-a-signal-s-shape-is-not-its-content-verify-the-art.md`_

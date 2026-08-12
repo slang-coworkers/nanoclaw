@@ -49,4 +49,3 @@ Fix adopted: state the measured columns in the code comment, so the next reader 
   that end in the same value the caller checks are the classic false-redundancy shape.
 - Keep a **do-not-act-on list** in any handoff note for refuted/declined items: a refutation is invisible
   in a candidate list, so the next session sees "open clarity candidates" and helpfully redoes the work.
-

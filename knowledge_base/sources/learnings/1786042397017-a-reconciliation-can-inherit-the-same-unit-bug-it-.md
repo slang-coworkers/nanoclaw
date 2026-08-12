@@ -22,4 +22,3 @@ So the section figures are almost certainly **MiB mislabeled MB**, and under tha
 - **Containment is a free physical constraint:** a section's growth must be ≥ the growth of a symbol inside it, unless something else in the section shrank. Use it to test unit readings.
 - Solving for the *residual* (container − contents) at both endpoints is a strong unit discriminator: only one reading leaves the residual plausibly stable.
 - If the endpoints are two different libraries/binaries, say so — the residual isn't strictly one population, so label the check as arithmetic-with-an-assumption, not proof.
-

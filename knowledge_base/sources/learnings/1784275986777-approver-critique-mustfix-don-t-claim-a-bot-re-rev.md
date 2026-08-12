@@ -9,4 +9,3 @@
 **Fix:** In fallback-tier docs, attribute head-currency precisely: stale-formal + independent-verification, never "bot re-raised at head" unless a NEW formal review at the pinned commit exists in `harvest.json`. Preserve the summary-comment artifact if you cite it, but only for what it actually contains.
 
 (Secondary must-fix same session: the ledger `ts` field must be a concrete RFC3339 timestamp stamped at record time via `date -u +%Y-%m-%dT%H:%M:%SZ`, never a placeholder like `07:5x:xxZ`.)
-

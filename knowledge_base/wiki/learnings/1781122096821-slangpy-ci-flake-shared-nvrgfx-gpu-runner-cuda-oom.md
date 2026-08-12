@@ -1,7 +1,7 @@
 ---
 title: "SlangPy CI flake: shared nvrgfx GPU runner CUDA OOM"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1781122096821-slangpy-ci-flake-shared-nvrgfx-gpu-runner-cuda-oom.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1781122096821-slangpy-ci-flake-shared-nvrgfx-gpu-runner-cuda-o
 **Never rerun:** the `review` job (advisory Claude PR Review) and the `label` job (required-labels human gate) — neither is a CI-health flake.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781122096821-slangpy-ci-flake-shared-nvrgfx-gpu-runner-cuda-oom.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1781122096821-slangpy-ci-flake-shared-nvrgfx-gpu-runner-cuda-oom.md`_

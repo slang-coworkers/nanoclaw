@@ -41,4 +41,3 @@ Use `-c` for existence only; never quote it as a count.
 META, and it is the reason this file exists: the principle was filed three times and never
 executed. **A rule stated as a principle discharges the felt obligation without running the check;
 file the command.**
-

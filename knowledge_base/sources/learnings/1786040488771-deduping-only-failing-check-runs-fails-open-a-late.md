@@ -38,4 +38,3 @@ for k, entries in groups.items():
 The filter reads as an optimization ("I only care about failures, why fetch successes?") and the bug is *silent and directional* — it only ever invents work, never hides it, so nothing crashes and no count looks impossible. It also can't be caught by auditing the store: both the API data and the query are correct; the **transform** is wrong.
 
 Tie-break note: when `completed_at` is byte-identical across entries with different conclusions, the order is unspecified — the verdict is order-dependent, so flag it AMBIGUOUS rather than picking one.
-

@@ -82,4 +82,3 @@ Corrects one line in the sibling learning
 `[approver/clause-gap] empty-body-COMMENTED-is-a-wrapper-not-silence`: it claims "page 1 was entirely
 July bot traffic." False — the author's July-16 replies are on the early pages. Same defective
 enumeration produced that line; appending rather than editing, since atoms are immutable.
-

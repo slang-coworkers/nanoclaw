@@ -10,4 +10,3 @@
 - **Independent-maintainer APPROVED same head** (reviewer ≠ author) → STRONG APPROVED-equiv; a withhold you can't tie to a false-negative was likely over-conservative → learn from it.
 - **Author self-merge / merge with only bot+author COMMENTED** → WEAK APPROVED-equiv; record it, but do NOT treat it as a human weighing and dismissing your concern. Especially when the concern was CI-invisible and never surfaced publicly (shadow mode), the merge is not evidence against your finding. Do not "learn" to lower your bar from a self-merge.
 Check `gh pr view --json mergedBy,reviews` (author-association of the approver, reviewer≠author) before grading a merge join.
-

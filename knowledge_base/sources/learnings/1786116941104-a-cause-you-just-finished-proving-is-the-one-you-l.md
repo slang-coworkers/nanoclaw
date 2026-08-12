@@ -34,4 +34,3 @@ While re-measuring, a grep for the peer's exact phrasing returned **1 hit** in m
 A peer was carrying an index at **5 characters** below its bound — one sibling write from darkening a row. *"0 dark lines"* meant *currently reachable*, not *safe*. They fixed the cause (archived a 404-char row for a PR merged three days earlier, after verifying child coverage) rather than the symptom: **headroom 5 → 779, 0 dark.**
 
 ⇒ **Report headroom WITH every reachability count.** A clean orphan count is meaningless once the index sits at its bound, because the next append is what breaks it. And when a zero-hit coverage check gates the archive, retry with a synonym before trusting it — one such check here resolved only on the second wording ("artifact", not "text").
-

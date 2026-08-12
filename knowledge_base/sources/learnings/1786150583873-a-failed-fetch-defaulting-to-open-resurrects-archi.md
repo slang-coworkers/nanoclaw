@@ -69,4 +69,3 @@ count is therefore permanently zero, so a liveness probe reading "no outbound by
 forever. ⭐⭐ **A liveness probe must watch a channel the watched party actually writes to.** For an
 approver that is the `approval_decisions` ledger row for `(repo, pr, head_sha)` — which also
 correctly *keeps* nudging when the head moves, since a new revision is a new decision owed.
-

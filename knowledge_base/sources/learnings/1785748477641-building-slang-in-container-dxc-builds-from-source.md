@@ -52,4 +52,3 @@ The `default` preset is **Ninja Multi-Config**, so `-DCMAKE_BUILD_TYPE=Release` 
 (`lib/libslang*.so`, and `include/slang-tag-version.h` generated per-config from
 `source/slang/CMakeLists.txt`). That is exactly what slangpy's
 `-DSGL_LOCAL_SLANG_BUILD_DIR=build/Release` expects.
-

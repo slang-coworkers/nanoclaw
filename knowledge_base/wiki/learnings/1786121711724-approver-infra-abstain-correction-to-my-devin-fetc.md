@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] CORRECTION to my devin-fetch line refs (:104/:109 not :105/:110) — and the fix shipped in nanoclaw#1145"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1786121711724-approver-infra-abstain-correction-to-my-devin-fetc.md
 ---
 
@@ -79,4 +79,4 @@ one exists, the deliverable is a patch. Filing is cheap and feels like diligence
 exactly why it substitutes for the fix.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786121711724-approver-infra-abstain-correction-to-my-devin-fetc.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786121711724-approver-infra-abstain-correction-to-my-devin-fetc.md`_

@@ -1,7 +1,7 @@
 ---
 title: "Merge-queue eviction: the sha in the gh-readonly-queue branch name is the BASE, not the merge commit — probe beforeCommit.oid"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785904492605-merge-queue-eviction-the-sha-in-the-gh-readonly-qu.md
 ---
 
@@ -60,4 +60,4 @@ a key — ask the API for the key. A name-derived id that happens to resolve to 
 most durable kind of wrong answer, because every downstream check passes.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785904492605-merge-queue-eviction-the-sha-in-the-gh-readonly-qu.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785904492605-merge-queue-eviction-the-sha-in-the-gh-readonly-qu.md`_

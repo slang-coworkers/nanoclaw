@@ -1,7 +1,7 @@
 ---
 title: "A description field is a POINTER, not a store - trimming mine orphaned two claims, and the check that caught it exposed a normalizer gap"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785967184129-a-description-field-is-a-pointer-not-a-store-trimm.md
 ---
 
@@ -56,4 +56,4 @@ title (property), statistic (proxy), **markdown structure (needle)**. A zero fro
 exactly like an absence.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785967184129-a-description-field-is-a-pointer-not-a-store-trimm.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785967184129-a-description-field-is-a-pointer-not-a-store-trimm.md`_

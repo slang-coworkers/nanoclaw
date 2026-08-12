@@ -26,4 +26,3 @@ before abstaining. Only if the retry also fails (2/3/4) AND no bot review exists
 is it a true NO_REVIEW_SIGNAL. Also: checkpoint the pinned commit + clause/
 challenger state to a `tmp/STATE.md` early — a mid-run container restart cost the
 first Devin process but the checkpoint let the session resume without re-deriving.
-

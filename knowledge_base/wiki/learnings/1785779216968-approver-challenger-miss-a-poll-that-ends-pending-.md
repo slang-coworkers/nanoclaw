@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] A poll that ends 'pending' means 'not proven yet', not 'does not exist' — both bad audit rows died in the last-poll-to-artifact gap"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785779216968-approver-challenger-miss-a-poll-that-ends-pending-.md
 ---
 
@@ -70,4 +70,4 @@ Same family as the `1785761747454` "never assert a negative from a summarizing
 tool" note.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785779216968-approver-challenger-miss-a-poll-that-ends-pending-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785779216968-approver-challenger-miss-a-poll-that-ends-pending-.md`_

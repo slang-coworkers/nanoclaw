@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-ci-gate] A main-merge synchronize can't clear a code-level 🔴 — diff the two heads before assuming the push addressed it"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785496402847-approver-challenger-ci-gate-a-main-merge-synchroni.md
 ---
 
@@ -43,4 +43,4 @@ Related: [[approver-challenger-miss-head-current-red-caps-at-abstain]],
 [[review-approver-challenger-calibration]].
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785496402847-approver-challenger-ci-gate-a-main-merge-synchroni.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785496402847-approver-challenger-ci-gate-a-main-merge-synchroni.md`_

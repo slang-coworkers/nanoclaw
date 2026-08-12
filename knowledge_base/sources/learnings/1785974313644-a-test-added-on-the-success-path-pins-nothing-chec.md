@@ -46,4 +46,3 @@ Tint test, carrying its comment "a build without Tint support compiles the locat
 for Tint — glslang has `#if SLANG_ENABLE_GLSLANG_SUPPORT`, Tint has no such guard, so the skip could
 only ever mask a real failure. **Re-verify a copied guard's premise in its new file, don't just adapt
 the syntax.**
-

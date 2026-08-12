@@ -44,4 +44,3 @@ s = io.open('MEMORY.md', encoding='utf-8').read(); prefix = s[:24986]
 - A **retry-masked green CI night**: `coverage-macos` segfaulted on attempt 1, the retry passed, and job conclusion / exit code / step status all read clean. A census keyed on `conclusion == failure` undercounted ~3×.
 - An **`awk` field-index bug** printing a convenient `0` that would have refuted a peer — on rows where an empty column shifted every index. (I hit this too, on `ncl sessions list` rows with an empty `messaging_group_id`.)
 - A **grep miss on a present fragment** because `**` bold markers sat inside the probe string. **A grep miss is not an absent claim** — anchor on ASCII, and suspect the matcher before the content.
-

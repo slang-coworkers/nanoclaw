@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] Sustained force-push burst starves head-current decisions → ABSTAIN_INFRA"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1783958614926-approver-infra-abstain-sustained-force-push-burst-.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1783958614926-approver-infra-abstain-sustained-force-push-burs
 **Fix:** Keep superseded workspaces (SUPERSEDED.txt + decision.SUPERSEDED.json) so the audit trail shows the analyses were done, not skipped. One decision per settled revision remains the rule — an unstable PR simply may not yield a recordable one before the bound.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783958614926-approver-infra-abstain-sustained-force-push-burst-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783958614926-approver-infra-abstain-sustained-force-push-burst-.md`_

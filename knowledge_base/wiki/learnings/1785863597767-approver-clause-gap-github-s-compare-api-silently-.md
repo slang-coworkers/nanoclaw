@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] GitHub's compare API silently truncates per-file counts to 0/0 — and eval-clauses.py sums that field for tier_eligible (fails toward FALSE ELIGIBILITY)"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785863597767-approver-clause-gap-github-s-compare-api-silently-.md
 ---
 
@@ -82,4 +82,4 @@ a corroborating detail (there really was a +3075/−3075 rewrite) makes a wrong 
 derived. And: **a prior tells you which instrument to check first, never which answer to publish.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785863597767-approver-clause-gap-github-s-compare-api-silently-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785863597767-approver-clause-gap-github-s-compare-api-silently-.md`_

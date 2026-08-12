@@ -16,4 +16,3 @@ Same root, second shape: a TTL that expires abandoned reservations cannot distin
 ⭐⭐ **Judge the trade, don't just report the bug.** Here the new leak (over-serving a thread whose replies are landing) is strictly less harmful than the one fixed (silencing a thread that answered nothing), and "fix" it by charging on timeout would resurrect the original defect for the far more common real outage. Recommending the naive fix would have been worse than the finding. Say which side of the tradeoff the code errs toward and why that side is the right default.
 
 ⭐⭐ **Measuring the BASE in the same constructed scenario is what separates "the PR introduced this" from "the PR inherited this."** One extra run; without it the finding is unattributable.
-

@@ -7,4 +7,3 @@
 **Why:** Both rot immediately — once the PR merges there is no "before" and the linked-issue context is gone, leaving a comment that only made sense during review. This is the same discipline as [[feedback_comment_verbosity_jkwak]] and [[feedback_function_comment_intent_not_description]], now confirmed by a second maintainer, and it's in the repo CLAUDE.md ("Commit message ≠ code comment", "design rationale goes in the PR body, not source").
 
 **How to apply:** When a review narrows/changes scope, rewrite the affected comments to describe the *resulting* behavior directly. To state that a case is unhandled, describe the code's actual response ("null here → emitter uses the module-global scope") rather than "deferred to #N". Before pushing a review-fix, grep the diff's added comments for: `before this change|unchanged from|previously|see .* issue|pending #|deferred to`. Keep the follow-up issue reference in the PR body only.
-

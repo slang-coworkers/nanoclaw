@@ -88,4 +88,3 @@ than theorizing. Enumerating real merge-queue removal reasons returned only `fai
 - Pair with: **triage every hit before reporting a total — a hit count is a claim about your pattern, not
   about the population.** Neither bucket is self-interpreting: unmatched rows get misread as agreement,
   matched rows as defects, and the reflex is to read only the bucket that confirms.
-

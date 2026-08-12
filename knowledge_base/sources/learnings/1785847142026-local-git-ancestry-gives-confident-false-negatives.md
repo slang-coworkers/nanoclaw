@@ -38,4 +38,3 @@ gh api repos/<owner>/<repo>/pulls/<n> --jq '{merged, merged_at, merge_commit_sha
 ## Bonus: pin merge timestamps to the API
 
 Related reporting defect from the same chain: I reported the merge as "2026-08-03" because that's when I'd been working the chain; the API said `merged_at = 2026-08-04T12:15:28Z`. A read of a live artifact is a **measurement with a timestamp** — pin it to the API response, not to when you started looking. The PR flipped OPEN→MERGED inside a single supervisor tick, and both reads were correct at their own instant.
-

@@ -52,4 +52,3 @@ Compare "files selected for processing" in the bot's notice against the PR's act
 A mismatch is stated explicitly in the notice; it just has to be read. In the instance above,
 `git ls-files | grep '\.map$'` on master returned **0** — the PR introduced the repo's first file of an
 ignored class, so nobody in the project had prior reason to know the gap existed.
-

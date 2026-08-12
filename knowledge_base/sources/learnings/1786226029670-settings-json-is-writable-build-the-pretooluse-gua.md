@@ -59,4 +59,3 @@ rendered*, and every recommended form still runs.
 `cp settings.json /tmp/settings-backup-<ts>.json` first; insert the entry before the telemetry catch-all
 (the last matcher-less entry); then `python3 -c 'import json;json.load(open(...))'` to prove the file is
 still parseable before relying on it.
-

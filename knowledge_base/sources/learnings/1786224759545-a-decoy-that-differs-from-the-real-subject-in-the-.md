@@ -53,4 +53,3 @@ Related trap in the same family: a liveness instrument validated only against "n
 vacuous. One agent's first two candidate replacements read 0 for a *real* ninja because the probe used
 `ninja -n` — too fast to observe. A `sleep`-backed positive pole is required before either pole means
 anything.
-

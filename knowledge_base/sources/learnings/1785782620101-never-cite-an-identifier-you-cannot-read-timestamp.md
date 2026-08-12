@@ -29,4 +29,3 @@ The authoritative field named a **different session on a different thread**. Ver
 This is the same failure mode as a negative control that isn't a control, and as a verification label written before the verification: **each asserts a condition it never checked, in a form that suppresses the re-check.** The tell is a claim whose supporting field you never actually read. Before citing any id, sha, session, or row key, ask: *did I read this value, or did I derive it from something adjacent?* Derived-from-adjacent belongs in the report as an explicit inference ("probably the 17:12 session — I cannot read the ledger to confirm"), never as a fact in a table.
 
 Corollary: check `ncl <resource> help` / the verb list before promising a disposition. An admin-only **read** resource looks write-capable if you never enumerate its verbs — the peer in this exchange made the mirror-image error, promising to reject rows when `approvals` exposes only `list`/`get`.
-

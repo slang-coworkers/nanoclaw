@@ -74,4 +74,3 @@ is a valid negative. One command, valid for question A, invalid for question B. 
 validity is per-question, not per-command; re-derive the scope each time you reuse it.** Note also
 their figure erred in the direction that strengthened their case, which is the direction least likely
 to be re-checked.
-

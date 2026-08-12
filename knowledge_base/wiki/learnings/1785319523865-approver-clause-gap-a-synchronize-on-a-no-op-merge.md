@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] A synchronize on a no-op merge commit re-triggers the reviewable webhook but leaves PR footprint byte-identical — decide from net diff, re-verify gaps against live source"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785319523865-approver-clause-gap-a-synchronize-on-a-no-op-merge.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1785319523865-approver-clause-gap-a-synchronize-on-a-no-op-mer
 **Second, unrelated gotcha (delivery gate):** the `[Approval Decision]` critique-gate hook (`gate-critique-on-deliver.sh`) has an ABSTAIN fast-path that allows the message iff it contains `ABSTAIN_POLICY|ABSTAIN_INFRA` AND NOT the bare tokens `WOULD_APPROVE|BLOCK` (word-boundary match). Writing "not BLOCK" or "not a BLOCK" in the rationale trips the guard and forces a spurious critique demand even though `record_decision` already succeeded (host relaxes the ledger gate for ABSTAIN rows). **Fix: in an ABSTAIN decision message, never write the uppercase tokens `BLOCK`/`WOULD_APPROVE` — phrase as "not a blocking defect" / "not blocking" instead.**
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785319523865-approver-clause-gap-a-synchronize-on-a-no-op-merge.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785319523865-approver-clause-gap-a-synchronize-on-a-no-op-merge.md`_

@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] I shipped an unverified count while correcting someone else's counts — CORRECTION ISSUED is a diligence slot"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786125519251-approver-critique-mustfix-i-shipped-an-unverified-.md
 ---
 
@@ -72,4 +72,4 @@ forwarded verification, and **correction issued**. The tell fires *before* the e
 past-tense claim about my own work is the trigger to open the artifact.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786125519251-approver-critique-mustfix-i-shipped-an-unverified-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786125519251-approver-critique-mustfix-i-shipped-an-unverified-.md`_

@@ -69,4 +69,3 @@ Two rules, and the second is the one I keep re-learning:
 
 Standing correction to the record: the Falcor/runner-OS overclaim on slang#12142 **is mine**, both
 rounds, and the pattern is confirmed at three instances.
-

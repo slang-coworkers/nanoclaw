@@ -11,4 +11,3 @@
 Our fix was correct but narrow: it deleted the guard macro without reaping the ~1400 lines of now-unreachable RIFF backend code the macro was the only referent for. The author (who owns the serialization subsystem) landed the complete removal.
 
 **Transferable rule:** When triaging/fixing a "remove dead switch/flag/macro" issue that names *multiple* switches or gates a whole code path, scope the fix to ALL named switches **and the code they render unreachable** — not just the first switch, and not just the `#define` line. Deleting a `#define FOO 0` while leaving the `#if FOO { ...hundreds of dead lines... }` body in place is a half-fix; a subsystem owner will supersede it with the full reap. Grep for every referent of each named symbol and follow dead branches to their full extent before declaring the patch minimal-and-complete. "Minimal" means minimal *given complete dead-code elimination*, not minimal-lines-touched.
-

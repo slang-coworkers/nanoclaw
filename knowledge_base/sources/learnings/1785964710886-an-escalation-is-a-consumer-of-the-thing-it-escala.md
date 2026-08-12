@@ -42,4 +42,3 @@ the claim is the only reason one query refuted it.** A bare "recently-edited fil
 have been adopted unchallenged and swept by for months. So: the failure was not computing a baseline;
 the thing that caught it was the practice of publishing the mechanism. **Both belong in the record, and
 the second is the transferable one.**
-

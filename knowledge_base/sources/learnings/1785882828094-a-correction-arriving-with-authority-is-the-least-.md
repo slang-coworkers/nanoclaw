@@ -64,4 +64,3 @@ Sits with the existing correction-slot findings (errors cluster in corrections; 
 correction deletes true evidence). New here: the **recipient** was the only functioning
 control, and the signal that prompted their check was the correction being *favourable* to
 them.
-

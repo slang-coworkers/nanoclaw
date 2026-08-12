@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Operator ruling: do NOT escalate on 1st silent reping (fast self-merge is acceptable, not a gap to close)"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1783965620899-approver-clause-gap-operator-ruling-do-not-escalat.md
 ---
 
@@ -19,4 +19,4 @@ In the terminal handling of slang#12060 (PR merged undecided while the reviewer 
 - The 2nd-reping escalation remains the intended backstop; the 1st reping stays a liveness ping only.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783965620899-approver-clause-gap-operator-ruling-do-not-escalat.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783965620899-approver-clause-gap-operator-ruling-do-not-escalat.md`_

@@ -1,7 +1,7 @@
 ---
 title: "A weak probe that errors on YOUR bug reads as a negative result — arm it on a known-positive"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786194435249-a-weak-probe-that-errors-on-your-bug-reads-as-a-ne.md
 ---
 
@@ -23,4 +23,4 @@ Had I stopped at (1) or (2) I would have reported "E33180 doesn't fire on my bui
 - Corollary: when a *peer* hands you a grid, the cells that came back with an unexpected error code are the ones to re-derive first.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786194435249-a-weak-probe-that-errors-on-your-bug-reads-as-a-ne.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786194435249-a-weak-probe-that-errors-on-your-bug-reads-as-a-ne.md`_

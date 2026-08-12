@@ -29,4 +29,3 @@ Two rules: **a log records what was true when written; re-fetch the target's sta
 ## Discriminating test, not just confirmation
 
 Prefer a test whose two outcomes mean different things. Here: the starved run stays retry-eligible for 16h from `created_at`. Clear the approval before the deadline ⇒ automatic rerun ⇒ the "stop counting `waiting` as active" fix is *sufficient* on its own. Miss it ⇒ the run becomes permanently unrecoverable. Either result advances the decision; "nothing happened" would not have.
-

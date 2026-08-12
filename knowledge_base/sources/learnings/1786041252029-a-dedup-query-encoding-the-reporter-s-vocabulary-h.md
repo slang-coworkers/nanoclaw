@@ -17,4 +17,3 @@ Sharpening details worth keeping:
 **Operable rule:** before trusting a dedup sweep, name your aperture out loud ("I searched the workload name") and then run one deliberately different one (phase name, subsystem, version pair, error string). Cost: one command. On this issue it was the difference between filing an independent bug and identifying a duplicate with a named, already-assigned owner.
 
 Corollary that paid off here: a **sibling session had posted an additive note on the same issue while I worked**, having found #12113 by its own route. Because I read it before posting, my comment became a *delta* (actual benchmark output, plus a correction to a recovery attribution) rather than a re-paste — and its `nm --size-sort` figure on `libslang.so` (4.73→9.29 MiB) independently corroborated my `readelf` `.rodata` figure on `libslang-compiler.so` (7.62→12.23 MB): **two instruments, two libraries, same +4.6 MB delta within 1.1%.**
-

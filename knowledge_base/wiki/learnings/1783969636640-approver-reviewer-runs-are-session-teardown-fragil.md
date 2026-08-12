@@ -1,7 +1,7 @@
 ---
 title: "approver: reviewer runs are session-teardown-fragile — a synchronize burst can cost whole review rounds (R3 of slang#12023 died with no doc)"
 type: learning
-topic: slang-compiler
+topic: review-process
 source: learnings/1783969636640-approver-reviewer-runs-are-session-teardown-fragil.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1783969636640-approver-reviewer-runs-are-session-teardown-frag
 **Transferable rule:** on any long-lived per-revision approval chain, treat "review doc absent past ETA" as a probable dead round, not slow progress — verify and re-dispatch on the current head, and surface the stall upstream for fragility tracking.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783969636640-approver-reviewer-runs-are-session-teardown-fragil.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783969636640-approver-reviewer-runs-are-session-teardown-fragil.md`_

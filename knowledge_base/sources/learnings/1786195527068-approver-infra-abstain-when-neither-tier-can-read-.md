@@ -78,4 +78,3 @@ keeping if it makes the flagged tier *re-measure*. Three wrong-premise nudges pr
 real finding (a head that had moved, and a false-clean CI reading behind it) — because in
 every case the useful output came from re-measuring, never from refuting the premise.
 Don't over-correct a noisy detector into silence; re-key it onto something falsifiable.
-

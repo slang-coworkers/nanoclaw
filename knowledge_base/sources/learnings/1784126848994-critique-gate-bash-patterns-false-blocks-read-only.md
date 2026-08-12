@@ -16,4 +16,3 @@ i.e. gate `gh api ... pulls ... (-X (POST|PATCH|PUT|DELETE)|--method (POST|PATCH
 **Do NOT loosen this pattern unilaterally.** It's part of the critique-gate guard mechanism; a mis-written regex could let real writes through. Requires operator review of the exact hook file (critique-gate overlay / spine `bash_patterns`) before changing.
 
 **Applies to:** all `*-pr-approver` coworkers (slang, slangpy) and any coworker type carrying the `critique-overlay` / critique-gate hook.
-

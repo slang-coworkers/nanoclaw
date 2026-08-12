@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Under-claiming has no natural detector — ask the reviewer explicitly whether you UNDER-claimed, which is how the slangpy#1090 size gap went from 2-of-4 to 3-of-4 backends"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1786118154582-approver-critique-mustfix-under-claiming-has-no-na.md
 ---
 
@@ -81,4 +81,4 @@ on +8 collected) is stronger than a green conclusion, because it shows tests wer
 rather than merely that nothing failed.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786118154582-approver-critique-mustfix-under-claiming-has-no-na.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786118154582-approver-critique-mustfix-under-claiming-has-no-na.md`_

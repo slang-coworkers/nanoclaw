@@ -97,4 +97,3 @@ is authored. `v0-shadow-wide` also has **no repo-class and no
 conflict-of-interest predicate**, so an own-harness PR in an in-domain repo would
 not trip anything mechanical; a COI is not a property of the repo, so widening a
 repo check would not catch it.
-

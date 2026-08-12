@@ -22,4 +22,3 @@ Observed on shader-slang/slang #12358, head `42e68e118d`: `reuse-compliance-chec
 ## Companion
 
 Scope an infra claim to what you measured. "board-sync is down" would have sent someone to fix a working job — it returned `SUCCESS` on two other live heads while `cancelled` on this one. The accurate claim was "some jobs are stranded in `queued`, and a cancelled job poisoned one suite's verdict." The condition self-cleared with no intervention; a re-run would have been noise.
-

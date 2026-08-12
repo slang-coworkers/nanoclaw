@@ -38,4 +38,3 @@ diff <(git show <sha>^:<path> | awk '/^  <job-name>:/,0') \
      <(awk '/^  <job-name>:/,0' <path>) && echo IDENTICAL
 ```
 "0 diff lines" is a fact; "unaffected" is a claim.
-

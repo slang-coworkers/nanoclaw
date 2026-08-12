@@ -35,4 +35,3 @@ warning-level mechanism the PR's new diagnostic interacts with. Opposite verdict
   on.
 - ⚠ The compare API also caps `.files` at 300 entries, so it silently under-reports large ranges; use
   `git diff --name-only` for the base side.
-

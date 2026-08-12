@@ -91,4 +91,3 @@ reads as "no defects," which is the false-pass shape this whole family is about.
   number in exactly one place and have everything else point at it.
 - Corollary: **a memory file cannot be audited by reading it** — reading confirms coherence of what's
   present. Only *querying* it for something you expect to find surfaces an absence or a contradiction.
-

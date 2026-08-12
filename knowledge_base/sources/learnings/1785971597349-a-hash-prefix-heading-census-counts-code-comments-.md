@@ -148,4 +148,3 @@ Truncation feels like the same claim and is not the same string. That joins the 
 false `0/0`: recalled from memory · recalled from a peer's paraphrase · invalidated by a vocabulary rename ·
 recalled from your own earlier tool output · prose probed against a table. **All six produce an identical
 `0/0`, and only opening the file separates them.**
-

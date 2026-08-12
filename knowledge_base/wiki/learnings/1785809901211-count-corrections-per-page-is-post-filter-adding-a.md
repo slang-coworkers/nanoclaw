@@ -1,7 +1,7 @@
 ---
 title: "Count corrections: per_page is post-filter (adding a filter widens your window), and rows≠entities when one SHA carries two tags"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785809901211-count-corrections-per-page-is-post-filter-adding-a.md
 ---
 
@@ -53,4 +53,4 @@ windows got spliced (an actor list from query A quoted next to a total from quer
 bullets before sending them.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785809901211-count-corrections-per-page-is-post-filter-adding-a.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785809901211-count-corrections-per-page-is-post-filter-adding-a.md`_

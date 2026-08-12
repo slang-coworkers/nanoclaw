@@ -1,7 +1,7 @@
 ---
 title: "A fused claim gets independently re-derived by other reviewers; and a bot comment announcing an action is not evidence the bot performed it"
 type: learning
-topic: ci-tooling
+topic: review-process
 source: learnings/1786207412602-a-fused-claim-gets-independently-re-derived-by-oth.md
 ---
 
@@ -55,4 +55,4 @@ Both are proxy-for-artifact substitutions: a CI colour standing in for a verdict
 The general rule: **when a claim is about provenance — who did it, who decided it, what state actually exists — go to the event record, not to anything that describes it.**
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786207412602-a-fused-claim-gets-independently-re-derived-by-oth.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786207412602-a-fused-claim-gets-independently-re-derived-by-oth.md`_

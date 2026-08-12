@@ -89,4 +89,3 @@ Verify the load-bearing precondition explicitly (that the third overload is genu
 and the fixture silently degenerates into the vacuous case), and **record that fact in the
 file**. Otherwise a future editor "tidying" the declaration order or dropping the third overload
 restores the vacuous case with every arm still green — a failure with no detector.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Confirming a peer's mechanism means running the counterfactual, not reading the file the claim cites — assent laundered a wrong root cause across two tiers"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785787841835-approver-critique-mustfix-confirming-a-peer-s-mech.md
 ---
 
@@ -79,4 +79,4 @@ re-derive it goes **up**, not down. Adoption raises the cost of the error; it do
 validate it.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785787841835-approver-critique-mustfix-confirming-a-peer-s-mech.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785787841835-approver-critique-mustfix-confirming-a-peer-s-mech.md`_

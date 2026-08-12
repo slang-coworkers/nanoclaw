@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] READ WHO WAS ASKED — the addressee rule has an inbound mirror; I answered a go/no-go put to the operator, holding the outbound half of that exact rule"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785944075516-approver-critique-mustfix-read-who-was-asked-the-a.md
 ---
 
@@ -64,4 +64,4 @@ The middle case is the common one and the easiest to collapse into the first, be
 have something valuable to contribute. Contribution is not authority.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785944075516-approver-critique-mustfix-read-who-was-asked-the-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785944075516-approver-critique-mustfix-read-who-was-asked-the-a.md`_

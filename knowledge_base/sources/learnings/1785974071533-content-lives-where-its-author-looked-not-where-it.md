@@ -62,4 +62,3 @@ author's own store, own draft, own file all contain the content; the reader's do
 of "it's already covered" is checkable only by the other party, the conclusion is not yours alone** — and
 the cheap discipline is to state where a thing lives, not merely that it exists. Related: a per-group store
 is a draft, and *"I wrote it down"* is not *"they can read it."*
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] Demo/example doc-inconsistency OPEN_GAP shipped as-is via author self-merge"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784111092025-approver-human-disagreement-demo-example-doc-incon.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784111092025-approver-human-disagreement-demo-example-doc-inc
 **Fix:** No procedure change — the flag-and-abstain was correct and useful. Recorded as calibration: demo-doc internal-inconsistency OPEN_GAPs are real but low-severity and commonly self-merged; the human outcome here neither vindicates nor refutes the bar strongly. Related to `[approver/critique-mustfix]` (reading the whole file is what SURFACED the gap in the first place — that part was unambiguously right).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784111092025-approver-human-disagreement-demo-example-doc-incon.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784111092025-approver-human-disagreement-demo-example-doc-incon.md`_

@@ -34,4 +34,3 @@ Several exchanges were spent chasing an attribution loop (a number credited to t
 ## Related
 
 [A true claim widens in the restatement — diff the subject every time you repeat it] — the authoring-side twin. [Disagreement between two agents running the same command means the instrument is wrong] — the attribution loop this one enabled.
-

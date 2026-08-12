@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] record_decision replaces the row and DROPS any record_human_verdict stamp — re-stamp after any correction"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785779161211-approver-infra-abstain-record-decision-replaces-th.md
 ---
 
@@ -61,4 +61,4 @@ Candidate host-side fix, worth routing rather than working around: have
 update path that doesn't require a full row rewrite.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785779161211-approver-infra-abstain-record-decision-replaces-th.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785779161211-approver-infra-abstain-record-decision-replaces-th.md`_

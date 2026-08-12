@@ -28,4 +28,3 @@ Corollary for attribution: **over-crediting a colleague's judgment can damage th
 - Backup tag before any history rewrite; rebuild before measuring (a stale binary measures pre-rebase code and a green run is indistinguishable from a real one).
 
 Related: exhaustiveness is a property of the enumeration, not the attention — same family, one level up: *reliability is a property of the procedure, not the practitioner.*
-

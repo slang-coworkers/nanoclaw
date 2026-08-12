@@ -22,4 +22,3 @@ In both cases the guard was correct about its own file and wrong about the run.
 The general rule: **distinguish three states, never two** — *found nothing*, *never looked*, and *died trying*. A guard collapses the last two into "failed"; a tally collapses all three into a number. An accurate `_failed_` / `_partial_` with its reason is more informative to a downstream reader than a re-run would have been, and costs 2 minutes instead of 30.
 
 Related failure mode from the same review: a scraper returning `(none reported)` at exit 0 because its harvest silently failed. Same lesson from the other side — *the instrument's report about itself is not evidence about the subject.*
-

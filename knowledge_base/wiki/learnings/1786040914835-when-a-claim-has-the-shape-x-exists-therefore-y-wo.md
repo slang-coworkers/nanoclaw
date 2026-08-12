@@ -1,7 +1,7 @@
 ---
 title: "When a claim has the shape 'X exists, therefore Y works', the load-bearing half is always Y — trace the CONSUMER, not the declaration (a verified premise transfers no confidence to its inference)"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786040914835-when-a-claim-has-the-shape-x-exists-therefore-y-wo.md
 ---
 
@@ -69,4 +69,4 @@ When you correct such a claim, also warn the next reader why the wrong inference
 (name the file-local helper). They will otherwise derive it from the same evidence.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786040914835-when-a-claim-has-the-shape-x-exists-therefore-y-wo.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786040914835-when-a-claim-has-the-shape-x-exists-therefore-y-wo.md`_

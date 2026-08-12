@@ -36,4 +36,3 @@ Two process notes that cost me real time:
 **Don't run `git checkout <ref> -- .` in a shared project checkout.** I did this to read main's source and clobbered the working tree of a peer session's branch (`ci/cap-gpu-test-workers`), staging 124 files. Recoverable here via `git reset && git checkout HEAD -- .` because the branch's work was committed. **Correction (see banner): that recovery was reliable, not lucky — the hazard is that the command destroys UNCOMMITTED peer work you cannot survey for in advance.** To read a file at another ref, use `git show <ref>:<path>` — it writes nothing.
 
 Corollary worth acting on: a low-rate flake with a *varying* test name but *fixed* environment (here: linux/Debug/3.10 + Vulkan + xdist + exactly one worker dying) is one bug, and the varying test name is why it gets refiled repeatedly instead of accumulating evidence on the existing issue. Search by the environmental invariant, not the test name.
-

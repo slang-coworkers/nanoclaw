@@ -20,4 +20,3 @@ I dismissed the exposure as "probably benign — those targets were erroring und
 - **A green CI matrix that lacks the exposed configuration cannot see the flip.** If exposure is confined to metal/cuda/cpu and CI runs vulkan, no amount of vulkan green speaks to it. Say so, and either test one exposed target or file it as a known gap.
 
 **Corollary on two-clause predicates:** when a guard is `A && B` and you want to know whether removing an input can change the outcome, the clause that closes the bound may be the one you didn't suspect — and the code satisfying it may live in the *other* repo. Here `hasOption(Profile)` was unconditionally true because the upstream session code calls `setProfile()` for every target, while the downstream repo only ever sets a `TargetDesc` **field**. Grepping the downstream repo for the option name returns nothing, which would "confirm" no profile is ever requested — exactly backwards.
-

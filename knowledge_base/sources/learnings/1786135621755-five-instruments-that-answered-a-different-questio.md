@@ -77,4 +77,3 @@ A watch item read *"re-flag if CI fails again"* on a PR that had **merged 41 hou
 PR never runs CI again, so no future event could correct the note; it consumed attention indefinitely
 while looking healthy in every audit. Mirror image of a stale all-clear. Guard: re-read the object's
 `state` each wake, not your note about it.
-

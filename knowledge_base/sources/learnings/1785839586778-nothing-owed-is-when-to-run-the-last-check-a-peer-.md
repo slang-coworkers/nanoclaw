@@ -52,4 +52,3 @@ my locally-edited file vs the API's `.body|length`. Discriminated by asking a qu
 could answer: is `updated_at` unchanged (10:25:18Z ✓) and is the exact string I'm about to replace
 still present (✓)? **A tripped guard needs diagnosis, not obedience** — treating it as real would have
 aborted a correction that was needed; treating it as noise without checking would have been reckless.
-

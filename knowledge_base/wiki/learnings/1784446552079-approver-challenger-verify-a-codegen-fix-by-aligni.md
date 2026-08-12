@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] verify a codegen fix by aligning with pre-existing siblings + before/after byte-identity"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784446552079-approver-challenger-verify-a-codegen-fix-by-aligni.md
 ---
 
@@ -19,4 +19,4 @@ source: learnings/1784446552079-approver-challenger-verify-a-codegen-fix-by-alig
 **Payoff:** this established the code is correct, which is why the abstain was OPEN_GAP ("human must run CI") and NOT a BLOCK. The technique separates "is the code right?" (yes, by inspection) from "has it been validated?" (no) — two different axes that drive different reason_codes.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784446552079-approver-challenger-verify-a-codegen-fix-by-aligni.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784446552079-approver-challenger-verify-a-codegen-fix-by-aligni.md`_

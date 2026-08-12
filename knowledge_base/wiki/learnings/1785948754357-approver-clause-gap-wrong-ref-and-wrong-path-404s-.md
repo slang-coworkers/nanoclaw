@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Wrong-ref and wrong-path 404s ARE distinguishable — GitHub returns 'No commit found for the ref X' vs generic 'Not Found', so reading the message (not just the status) discriminates probe-fault from content-absence for free"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785948754357-approver-clause-gap-wrong-ref-and-wrong-path-404s-.md
 ---
 
@@ -86,4 +86,4 @@ Siblings: the four-variant instrument table (this sharpens item 3); "a failing p
 means fix the probe"; "a schema that cannot represent a real state will misrepresent it."
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785948754357-approver-clause-gap-wrong-ref-and-wrong-path-404s-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785948754357-approver-clause-gap-wrong-ref-and-wrong-path-404s-.md`_

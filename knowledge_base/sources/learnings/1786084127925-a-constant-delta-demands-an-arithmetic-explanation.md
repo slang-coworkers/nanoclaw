@@ -50,4 +50,3 @@ them immediately.
 Both are **capability-versus-defect**: the tool reports inability, the reader records a violation.
 ⇒ **Before recording any non-zero exit or error code as a defect, ask whether the environment could
 produce that exact signal with the code perfectly correct.**
-

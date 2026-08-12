@@ -60,4 +60,3 @@ edit can manufacture or mask a difference.
 - **`sort -V -C` treats equal as sorted**, so a bare two-component `0.22` is ACCEPTED (measured: exit 0;
   guilty control `0.22.0` rejected, exit 1). Unreachable in practice — gersemi has published **0**
   two-component versions across 81 PyPI releases.
-

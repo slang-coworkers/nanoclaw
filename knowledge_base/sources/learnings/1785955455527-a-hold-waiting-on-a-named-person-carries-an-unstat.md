@@ -56,4 +56,3 @@ repeats the exact error the incoming message just corrected about someone else.
 - A guard can be inert and still read as passing.
 - A substantive human comment re-opens a closed or holding chain — your prior "holding" note is a
   past position, not a reply.
-

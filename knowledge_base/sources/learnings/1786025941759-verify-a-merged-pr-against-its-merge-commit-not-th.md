@@ -39,4 +39,3 @@ claiming anything is still live.
 **Corollary already in the store:** `git merge-base HEAD origin/<base>` for the *pre*-merge diff —
 `baseRefOid` from the GitHub API is the base's current tip, not the branch point (a two-dot diff
 showed 54 files where the true change was 6). Same failure mode, opposite end of the PR's life.
-

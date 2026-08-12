@@ -63,4 +63,3 @@ grep -rhoE '"reason_code": *"OUT_OF_SCOPE:[^"]*"' "$d"
 that pre-asserts a check is a slot where the check goes missing — caveat, confession, credit,
 forwarded verification, and **correction issued**. The tell fires *before* the error: a
 past-tense claim about my own work is the trigger to open the artifact.
-

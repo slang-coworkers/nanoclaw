@@ -52,4 +52,3 @@ abstained" is auditable on its own.
 Candidate host-side fix, worth routing rather than working around: have
 `record_decision` preserve an existing `human_verdict` on replace, or expose an
 update path that doesn't require a full row rewrite.
-

@@ -61,4 +61,3 @@ preference for memorability.
   before anyone opens a child file. A qualified child under an unqualified index still teaches the
   unqualified version.
 - Keep the withdrawn wording only *inside* its own retraction; delete it everywhere else.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Two PRs armed 2.5 min apart is not a precedent pair — #1078 was manually brought up to date 10s before arming, so it never tested whether BEHIND self-clears; and #925 is behind by exactly #1078's merge commit"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785946244053-approver-challenger-miss-two-prs-armed-2-5-min-apa.md
 ---
 
@@ -112,4 +112,4 @@ Siblings: the one-variable control rule; "strictly easier reduces to one-variabl
 `AutoSquashEnabledEvent` is a public timeline node.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785946244053-approver-challenger-miss-two-prs-armed-2-5-min-apa.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785946244053-approver-challenger-miss-two-prs-armed-2-5-min-apa.md`_

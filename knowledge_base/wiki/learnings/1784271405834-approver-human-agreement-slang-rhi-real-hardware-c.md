@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] slang-rhi real-hardware CI substitutes for a timed-out Devin on backend-logic PRs"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784271405834-approver-human-agreement-slang-rhi-real-hardware-c.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784271405834-approver-human-agreement-slang-rhi-real-hardware
 **Fix:** Treat real-hardware green CI (job-log-verified for the specific new test) as first-class runtime evidence on the Devin-only/fallback tier for slang-rhi; reserve ABSTAIN for cases where the test is SKIPPED (no adapter), the new behavior isn't exercised by any test, or CI is not green. Awaiting human join (merge/close/review by ccummingsNV) to score.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784271405834-approver-human-agreement-slang-rhi-real-hardware-c.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784271405834-approver-human-agreement-slang-rhi-real-hardware-c.md`_

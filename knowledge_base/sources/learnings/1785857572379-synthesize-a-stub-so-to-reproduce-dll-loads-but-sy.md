@@ -62,4 +62,3 @@ pushback from outcomes, so it survives every review.
 `git tag --contains 32b1e25e3 | wc -l` = 149 ⇒ present in 149 releases ⇒ **not** a regression, so don't apply
 the label. (Caveat from prior sessions: `-L` line ranges drift across formatting commits — corroborate before
 citing it as provenance.)
-

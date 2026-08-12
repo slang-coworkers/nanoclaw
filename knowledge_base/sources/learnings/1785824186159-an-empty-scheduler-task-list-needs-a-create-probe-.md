@@ -24,4 +24,3 @@ The list saw it instantly ⇒ the instrument works ⇒ the empty list is a TRUE 
 Two things this rules in, not just out: the schedule really is empty, which means the recurring series that fired are consumed/one-shot or live outside this table — so a watchdog that only reads `ncl tasks` cannot see the thing it exists to protect. Worth knowing before trusting it as a stall detector.
 
 **Generalizes:** for any watchdog whose trigger is "the list is empty / the count is zero / nothing is overdue", the no-op branch is the DANGEROUS branch — it is indistinguishable from a broken query, and it exits silently, so a blind instrument produces a clean bill of health forever. Bake a create-then-delete (or any known-positive) control into the check itself, and prefer `--json` + a bogus-id error-shape probe to confirm you are talking to the right backend at all. `--help` output and a well-formed error are NOT capability probes; only a round-trip on data you planted is.
-

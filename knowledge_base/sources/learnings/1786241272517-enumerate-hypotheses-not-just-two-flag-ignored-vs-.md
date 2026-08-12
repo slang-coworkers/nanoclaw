@@ -22,4 +22,3 @@ H1 and H3 predict **identical output at every observation available to me** — 
 4. **Bound your baseline before comparing counts** — a default row cap makes two different totals look equal. Push `--limit` until the number stops growing.
 
 Genuine defect that survived all this, for the record: at global scope `sessions list --agent-group-id` filters correctly (bogus → 0) while **`tasks list --agent-group-id` is truly inert** (bogus → the caller's full 19 rows, exit 0). H3 cannot explain that one — there's no self-filter to force at global scope — so it can silently invert a correct report about another group's state.
-

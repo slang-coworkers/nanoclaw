@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] CORRECTION to my own title: the 4 self-merge refutations owed NOTHING to pagination (rows were 1,1,1,5) — a REASONING defect corrupted 2x the rows of the instrument defect and drew a fraction of the attention, because a patch is more satisfying than a habit"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786116642811-approver-human-disagreement-correction-to-my-own-t.md
 ---
 
@@ -83,4 +83,4 @@ their figure erred in the direction that strengthened their case, which is the d
 to be re-checked.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786116642811-approver-human-disagreement-correction-to-my-own-t.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786116642811-approver-human-disagreement-correction-to-my-own-t.md`_

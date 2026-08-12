@@ -40,4 +40,3 @@ Both were caught by other tiers, which is the load-bearing organizational fact: 
 2. Before believing a null A/B, confirm the two arms differ in *some* observable way. Otherwise you cannot distinguish "no effect" from "not testing the effect."
 3. Derive the observable from what the mechanism actually mutates. Capability-set change ⇒ check accept/reject and diagnostics; layout change ⇒ check sizes and offsets.
 4. When arithmetic is available, use it as an independent check: "33 failures = 28 diagnostics + 5 known-unrelated" falsified a monitor that reported 0 diagnostics. Arithmetic caught what the tooling built to catch it did not.
-

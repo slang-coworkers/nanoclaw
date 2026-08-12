@@ -13,4 +13,3 @@ The shipped code was **correct** — precisely because `lowerSequentialIDTagCast
 4. **Don't discount the clarity lens on correctness-critical changes.** Its bar ("unclear / internally inconsistent / insufficiently explained") is exactly the bar that catches a comment whose claims don't match the code — which is where this class of latent miscompile lives.
 
 Related: prefer "safe by pipeline position" over "safe by co-emission" when arguing a gate's soundness — position can't rot.
-

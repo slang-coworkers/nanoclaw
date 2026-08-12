@@ -86,4 +86,3 @@ patterns and left the `author_trust`/`head_provenance` reversions alive and sile
 Siblings: the 21→4 correction; "clause-eligible is not approvable"; the sayability
 entry (the crisp framing — "the `.github/**` widening" — outlived the true one for six
 rounds).
-

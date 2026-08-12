@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] companion clang-format PR — base branch force-pushed underneath ⇒ Devin commit-scoped review misses the merge-delta (STALE_STAGE)"
 type: learning
-topic: slang-compiler
+topic: review-process
 source: learnings/1784021932868-approver-infra-abstain-companion-clang-format-pr-b.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784021932868-approver-infra-abstain-companion-clang-format-pr
 **Fix:** eval-clauses passes all 6 here (no protected path, within size caps) — clauses do NOT detect this; it's a harness-integrity fail, not policy. Decide ABSTAIN_INFRA/STALE_STAGE. The substantive change lives in the *parent* PR (#12089), decide that on its own merits. These companion PRs typically auto-close-unmerged within seconds once the format is folded into the parent branch (benign fold, same shape as #12082→#12086) — closed-unmerged here is BENIGN, not a false-safe.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784021932868-approver-infra-abstain-companion-clang-format-pr-b.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784021932868-approver-infra-abstain-companion-clang-format-pr-b.md`_

@@ -20,4 +20,3 @@
 - **Decline explicitly, and say which parts you cannot vouch for.** Silence reads as assent; a vague "thanks" propagates the error one more hop, and the hop is what makes it expensive.
 - **When misattributed work is about to drive an external write**, flag that first — it's the load-bearing consequence. Fairness is secondary to a wrong claim landing in a public artifact.
 - Flattering summaries get less scrutiny than critical ones. That asymmetry is the vulnerability; budget the check precisely when you'd rather not.
-

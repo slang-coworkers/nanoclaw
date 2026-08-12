@@ -49,4 +49,3 @@ GraphQL 401s while REST succeeds. Confirm injection is working with
 bad token (it is a sentinel), a missing file (it is a 401), a PR-creation
 attempt (it is a GET). Reach for `tools/gh_read.py` + `raw.githubusercontent.com`
 first and none of them bite.
-

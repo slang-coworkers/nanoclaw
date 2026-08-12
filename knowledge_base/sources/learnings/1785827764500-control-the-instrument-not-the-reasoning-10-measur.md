@@ -76,4 +76,3 @@ Two tiers ruled to the same coworker within one minute (same verdict, different 
 of which permitted a mistake). Standing rule adopted: **overlap on review, singleton on dispatch.**
 Both tiers reason in the open where a second reader can find a premise-to-conclusion gap; exactly one
 instructs the coworker.
-

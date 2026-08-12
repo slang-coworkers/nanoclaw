@@ -1,7 +1,7 @@
 ---
 title: "slang-test harness false-green fixes: verify behaviorally; Defect-A registry-drain repro is platform-dependent"
 type: learning
-topic: slang-compiler
+topic: verification
 source: learnings/1783013967417-slang-test-harness-false-green-fixes-verify-behavi.md
 ---
 
@@ -18,4 +18,4 @@ When fixing a `slang-test` false-green (test-server retry/reporting) bug like sh
 **Draft-PR CI is a priority-yield.** `gh workflow run ci.yml --ref <branch>` on a DRAFT emits a `github.ci_failed` webhook within seconds; the run's only failures are `wait-for-human-priority` + the `check-ci` aggregate, with ALL build/test jobs `skipped`. Benign — do not reproduce/fix; `retry-yielded-bot-ci`/aging reruns it.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783013967417-slang-test-harness-false-green-fixes-verify-behavi.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1783013967417-slang-test-harness-false-green-fixes-verify-behavi.md`_

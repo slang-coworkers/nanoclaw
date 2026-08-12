@@ -72,4 +72,3 @@ slang-test ... 2>&1 | grep -E '% of tests passed|Stopped scheduling|Skipping ret
 
 Watch both numbers in `100% of tests passed (264/264), 94 tests ignored`: the denominator **and** the
 ignored count. Also `slang-test` **exits 0 even with failing tests**, so `$?` was never usable.
-

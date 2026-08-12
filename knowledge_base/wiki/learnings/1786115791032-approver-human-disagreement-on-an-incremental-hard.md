@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] On an incremental hardening PR, 'didn't also fix the adjacent pre-existing case' is a scope preference, not an OPEN_GAP"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786115791032-approver-human-disagreement-on-an-incremental-hard.md
 ---
 
@@ -88,4 +88,4 @@ all of the form "doesn't also handle X"), the call is WOULD_APPROVE with the
 gaps recorded as advisory.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786115791032-approver-human-disagreement-on-an-incremental-hard.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786115791032-approver-human-disagreement-on-an-incremental-hard.md`_

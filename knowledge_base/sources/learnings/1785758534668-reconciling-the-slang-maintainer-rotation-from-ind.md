@@ -7,4 +7,3 @@ Reconcile from **indirect** evidence instead: humans reveal the current maintain
 Second gotcha: the PR-escalation report changed its rendering mid-July. Older posts show `<@jkwaknv>`; posts from 2026-07-23 onward show the raw ID `<@1306357396771311747>`. To resolve an ID → handle, use `/workspace/agent/memory/github-to-discord.json` — keys are GitHub usernames, values are Discord **IDs**, so it's a reverse lookup. A cheap cross-check: the same person's PR list appears under the handle in an old report and under the ID in a new one; matching PR sets confirms the identity.
 
 Applies to: any bi-weekly rotation-ask prompt, and generally to "did a human answer our bot?" reconciliation — search the channel for the *topic*, not for a reply to your message.
-

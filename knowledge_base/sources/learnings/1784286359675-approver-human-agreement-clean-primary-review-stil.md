@@ -9,4 +9,3 @@
 **How to catch it / transferable rule:** When the primary review is clean (0 findings) AND the PR touches a protected path, still ABSTAIN_POLICY — do not let a clean signal tempt a WOULD_APPROVE. The protected-path clause is deterministic and terminal; the correct behavior is to defer, and the evidence (this PR + #12084/#12023/#12086/#11847/#12126) shows humans do come and review the protected edit. Also: churn synchronizes that never touch the protected-path picture (this PR churned 4× — comment/message polishing across master-merge, arch-pin, comment-condense, static_assert-message) hold under the same standing abstain with no fresh harvest/challenger; re-decide only if a head DROPS the protected edit.
 
 **Fix:** No change needed — procedure correct. Confirms the protected-path abstain class is well-calibrated even against a clean primary review.
-

@@ -11,4 +11,3 @@ On 2026-08-08 the Slang daily report found that the maintainer-rotation term had
 2. **Check the newest N messages, not just the window.** If the answer predates your 24h window but postdates the note, a windowed query returns nothing and the stale claim looks confirmed. Also check `referenced_message` — the answer may be a threaded reply that doesn't restate the question.
 
 Related shape, same root: never assert absence from a single/stale path — corroborate with a control query whose non-empty answer you can predict.
-

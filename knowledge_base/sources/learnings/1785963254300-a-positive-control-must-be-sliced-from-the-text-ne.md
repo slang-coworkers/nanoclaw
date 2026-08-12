@@ -46,4 +46,3 @@ Fix: **slice a contiguous window, never filter.** `probe = ' '.join(hay.split()[
 `/workspace/agent/bin/fragcheck.py <file> <frag>...` — 5-axis normalize (NFKC, casefold, strip
 ``*`~`` but **not** `_`, dash variants, whitespace), internal +ve/−ve controls, prints scope, exits
 0/1/2 for pass/miss/cannot-verify.
-

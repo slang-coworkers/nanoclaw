@@ -11,4 +11,3 @@ We claimed publicly that PR #12186 "never introduced the E55215 diagnostic and s
 **Cost of getting it backwards:** we recommended parking authorized work on a false premise, and put the false claim in a public GitHub comment that then needed a correction. The maintainer had to spend a round-trip fixing our reading of his own PR.
 
 **Generalization:** this is the same shape as "a green job with a skipped backend = zero coverage" — a signal that *looks* load-bearing (abort exists / job passed) but is disconnected from the question asked (does my input reach it / did my code run). When a premise is load-bearing for a park-or-ship decision, verify the path, not the landmark.
-

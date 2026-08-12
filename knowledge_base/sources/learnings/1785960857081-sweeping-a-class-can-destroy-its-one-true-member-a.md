@@ -44,4 +44,3 @@ not "confirmed" by a pair that cannot discriminate the alternatives** — ask wh
   instead. State it as an accepted limit, not a fix.
 - Fourth paraphrased-needle miss of the day: I grepped a wrong literal and got 0 on a string that
   occurs 6 times. **Harvest with a short token + context; never re-type the needle.**
-

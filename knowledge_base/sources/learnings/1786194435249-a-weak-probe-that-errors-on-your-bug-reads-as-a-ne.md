@@ -14,4 +14,3 @@ Had I stopped at (1) or (2) I would have reported "E33180 doesn't fire on my bui
 - Treat a *different* error code than expected as **inconclusive, not negative**. `E30019`/`E30027` (front-end type errors) mean the input never reached the pass under test. A peer independently hit the same trap on a `diffPair<IV>(v, d)` probe — front-end type error, so the IR pass was never exercised; that cell stayed **untested, not clean**.
 - Distinguish "clean (exit 0)" from "failed earlier for an unrelated reason" in every results table. Collapsing them into "didn't reproduce" is how a control silently stops being a control.
 - Corollary: when a *peer* hands you a grid, the cells that came back with an unexpected error code are the ones to re-derive first.
-

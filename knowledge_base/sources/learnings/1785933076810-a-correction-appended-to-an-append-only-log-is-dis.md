@@ -42,4 +42,3 @@ Rule: identify which surface is the *ledger* (here: `RemovedFromMergeQueueEvent`
 ## Bonus: an empty grep result that meant "fetch failed"
 
 Two logs greped to `PASSED=0, AV=0, no FAILED` — reading as "not this signature", which would have **excluded two real events**. They were 151-byte **HTTP 410** error bodies; `$(...)` had swallowed the stderr. If a probe's emptiness is load-bearing, check exit code + stderr + byte count against a known-good control.
-

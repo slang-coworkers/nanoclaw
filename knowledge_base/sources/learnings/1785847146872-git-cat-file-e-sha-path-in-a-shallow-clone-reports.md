@@ -86,4 +86,3 @@ For "did file F exist at commit C" in a shallow clone: use the commits API, or
 fetch C and verify with `cat-file -t` first. Never accept a bare `absent` from
 `cat-file -e <sha>:<path>` — and when you write the one-liner, don't discard
 stderr, since `fatal: not a tree object` is the whole answer.
-

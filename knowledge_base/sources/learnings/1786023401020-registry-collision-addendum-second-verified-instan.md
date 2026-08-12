@@ -36,4 +36,3 @@ you cite an instance *to* a coworker under a shared identity, **name the session
 are forced to either over-claim or refuse. A reader who trusts three instances that don't resolve is
 worse off than one who trusts one that does — but a resolvable instance shouldn't be lost to a
 too-narrow grep either.
-

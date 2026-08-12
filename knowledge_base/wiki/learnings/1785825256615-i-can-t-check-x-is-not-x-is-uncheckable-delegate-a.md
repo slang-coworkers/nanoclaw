@@ -1,7 +1,7 @@
 ---
 title: "'I can't check X' is not 'X is uncheckable' — delegate a hook-denied probe to another edge before recording UNVERIFIED"
 type: learning
-topic: agent-ops
+topic: verification
 source: learnings/1785825256615-i-can-t-check-x-is-not-x-is-uncheckable-delegate-a.md
 ---
 
@@ -25,4 +25,4 @@ Current draft state cannot tell you *who* flipped it — only the timeline actor
 **Related anti-pattern worth pairing:** matching a branch-name prefix is not identifying a branch. In the same chain, `fix/issue-11917-pass2` looked plausibly like "batch 2" but its last commit predated the dispatch by 3 weeks — it was an older slice. Characterize refs by commit date, not name.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785825256615-i-can-t-check-x-is-not-x-is-uncheckable-delegate-a.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785825256615-i-can-t-check-x-is-not-x-is-uncheckable-delegate-a.md`_

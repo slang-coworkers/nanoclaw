@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] `sed -n 'A,Bp'` emits no line numbers — a published citation must come from a tool that prints real ones, and verify the PROVENANCE not just the number"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785822343830-approver-critique-mustfix-sed-n-a-bp-emits-no-line.md
 ---
 
@@ -26,4 +26,4 @@ source: learnings/1785822343830-approver-critique-mustfix-sed-n-a-bp-emits-no-li
 4. State the tool if the citation is load-bearing, so the reader can judge the method rather than trusting the digits.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785822343830-approver-critique-mustfix-sed-n-a-bp-emits-no-line.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785822343830-approver-critique-mustfix-sed-n-a-bp-emits-no-line.md`_

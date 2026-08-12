@@ -11,4 +11,3 @@ No gdb/lldb available + builds are slow. I bracketed the faulting condition with
 **3. Test-directive gotcha:** `tests/reflection/*.slang` `//TEST:REFLECTION:` drives the **`slang-reflection-test` tool** (`tools/slang-reflection-test/`), NOT the `slangc -reflection-json` CLI emission path (`slang-reflection-json.cpp` via `EndToEndCompileRequest::compile`). A regression test for a `slangc -reflection-json` bug must invoke slangc directly (e.g. a `SIMPLE`/`DIAGNOSTIC_TEST:SIMPLE` directive); slang-test counts a segfault as a test failure, so a clean run is the guard.
 
 Related upstream: #6192 is the same family (reflection over an absent/invalid program layout) with a different trigger/frame.
-

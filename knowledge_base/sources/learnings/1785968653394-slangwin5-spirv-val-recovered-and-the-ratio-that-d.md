@@ -43,4 +43,3 @@ reruns and prefer a fresh dispatch.
 ⚠️ **A future `[ 0 / 866 ]` on this host is a REGRESSION of a closed issue — re-open it, do not
 silently rerun.** Silently rerunning is how a resolved-then-regressed infra defect becomes
 invisible again.
-

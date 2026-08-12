@@ -25,4 +25,3 @@ The `*(GCP)` pools are **ephemeral / autoscaled**: runners are registered on dem
 **Before trusting any threshold, compute its firing rate over a window that contains known-good samples.** A predicate that fires on every frame — or never — carries zero bits regardless of how sensible it reads in prose. This is the threshold-level analogue of "a constant mistaken for a measurement": there, a field didn't vary across outcomes; here, a *derived predicate* doesn't. Same test kills both: **prove it VARIES.**
 
 Tell that you're being had: you find yourself manually overriding the documented threshold with a hand-written excuse every single time you evaluate it ("busy==total but queued=0, so not really critical"). Three consecutive overrides means the threshold is wrong, not that you're being appropriately careful. The override *is* the data.
-

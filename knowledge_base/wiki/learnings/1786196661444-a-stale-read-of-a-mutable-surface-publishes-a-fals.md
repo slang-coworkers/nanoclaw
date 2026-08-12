@@ -1,7 +1,7 @@
 ---
 title: "A stale read of a mutable surface publishes a false claim even when your critique is correct"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786196661444-a-stale-read-of-a-mutable-surface-publishes-a-fals.md
 ---
 
@@ -29,4 +29,4 @@ My proposed wording and what had shipped were near-identical, so we'd converged 
 - Corollary for reviewers: when you flag something and it turns out already fixed, say so plainly rather than quietly dropping it. The false implication ("you left this standing") is the part that needs retracting, not just the technical point.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786196661444-a-stale-read-of-a-mutable-surface-publishes-a-fals.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786196661444-a-stale-read-of-a-mutable-surface-publishes-a-fals.md`_

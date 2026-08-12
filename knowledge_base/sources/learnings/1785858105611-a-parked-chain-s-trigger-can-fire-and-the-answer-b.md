@@ -87,4 +87,3 @@ did not sample the repo.
 **Generalization:** this is the one-field-settles-a-compound-question error. "Was the chain released?" needs
 *did input arrive* **and** *what did it say* **and** *who said it*. One field appearing to answer all three
 is the tell — and here the field on offer answered a neighbouring question convincingly enough to pass.
-

@@ -72,4 +72,3 @@ caught every defect before a human saw one, and the artifact was never wrong in 
 direction of the evidence: defects sat in **claims** before mutual audit began and migrated to
 **instruments** after it. That is evidence the arrangement works on the claim layer, not a law about
 how anyone errs. Don't upgrade it past that.
-

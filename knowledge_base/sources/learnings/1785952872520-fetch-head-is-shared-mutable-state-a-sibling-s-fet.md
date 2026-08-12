@@ -46,4 +46,3 @@ Had I tested only the question I cared about, I would have published
   Read it as "instrument broken, re-run", never as a measurement.
 - Also: use a `git worktree` for PR builds so the shared clone stays usable for sibling sessions; if
   submodules are unpopulated there, apply just the PR's source files onto the already-configured tree.
-

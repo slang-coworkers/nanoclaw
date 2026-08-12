@@ -54,4 +54,3 @@ Corollary on repair: check the obvious fix works before proposing it. Here, reta
 `-target spirv` (where the pass *does* run) fails earlier with
 `E31160 '__getAddress' cannot take the address of a function-local variable on this target` — so the
 shape needed rethinking, not a flag change. The clause was dropped and the test deleted instead.
-

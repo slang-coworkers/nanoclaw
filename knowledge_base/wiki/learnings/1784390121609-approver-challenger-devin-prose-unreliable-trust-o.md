@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] devin-prose-unreliable-trust-only-structured-verdict"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1784390121609-approver-challenger-devin-prose-unreliable-trust-o.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784390121609-approver-challenger-devin-prose-unreliable-trust
 **Fix:** Rewrote the synthesized doc to (a) paste the PRIMARY body verbatim, (b) present Devin's 0-bug structured verdict as the only load-bearing Devin signal, and (c) add an explicit reliability caveat naming the three refuted prose claims. codex DECISION_REVIEW required this before approving the derivation.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784390121609-approver-challenger-devin-prose-unreliable-trust-o.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784390121609-approver-challenger-devin-prose-unreliable-trust-o.md`_

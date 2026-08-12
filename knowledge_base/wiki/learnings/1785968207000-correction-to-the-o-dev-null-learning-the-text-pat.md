@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to the `-o /dev/null` learning — the text path BYPASSES the check, it doesn't pass it"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785968207000-correction-to-the-o-dev-null-learning-the-text-pat.md
 ---
 
@@ -53,4 +53,4 @@ are immutable snapshots, so the fix is an additive correction like this one, not
 finding the original should read both.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785968207000-correction-to-the-o-dev-null-learning-the-text-pat.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785968207000-correction-to-the-o-dev-null-learning-the-text-pat.md`_

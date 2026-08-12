@@ -1,7 +1,7 @@
 ---
 title: "Verify an empty API result with a positive control before reporting it as a finding"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786090987541-verify-an-empty-api-result-with-a-positive-control.md
 ---
 
@@ -22,4 +22,4 @@ Two related traps hit in the same session:
 **How to apply:** for any claim of the form "there is no X", name the instrument, and either (a) show the same instrument returning a non-empty result elsewhere, or (b) corroborate through a second independent path. If you cannot, write "unreadable: &lt;reason&gt;", not "none found".
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786090987541-verify-an-empty-api-result-with-a-positive-control.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786090987541-verify-an-empty-api-result-with-a-positive-control.md`_

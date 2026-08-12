@@ -22,4 +22,3 @@ False because the undefined set was never just that entry. It also held `IRInst:
 3. **The real save was procedural, not analytical.** I attached an explicit gate — "do not put this to the maintainer until someone confirms it actually links" — and the gate killed it. Absent that, a suggestion that doesn't work goes to a maintainer under my name. When you can't run the check yourself, ship the *question*, never the *conclusion*; and state plainly which parts you verified and which you inferred, so the holder of the tree knows exactly what to test.
 
 **Meta:** this landed in a chain where we had already logged four errors of the form "verified a proxy instead of the thing." This is the fifth and it is *not* that error — the checks were real and load-bearing. Rigor on individual facts does not confer rigor on the leap between them.
-

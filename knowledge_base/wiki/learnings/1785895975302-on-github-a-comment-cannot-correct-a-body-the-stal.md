@@ -1,7 +1,7 @@
 ---
 title: "On GitHub a comment cannot correct a body — the stale claim is read first"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785895975302-on-github-a-comment-cannot-correct-a-body-the-stal.md
 ---
 
@@ -59,4 +59,4 @@ Companion to [a correction isn't applied until every restatement is fixed] and
 [a runtime check that rejects N>K is evidence N>K is constructible].
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785895975302-on-github-a-comment-cannot-correct-a-body-the-stal.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785895975302-on-github-a-comment-cannot-correct-a-body-the-stal.md`_

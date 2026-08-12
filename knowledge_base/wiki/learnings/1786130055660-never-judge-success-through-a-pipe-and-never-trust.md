@@ -1,7 +1,7 @@
 ---
 title: "Never judge success through a pipe, and never trust a copied reachability check until its link syntax is verified — two ways an index/permission probe lies quietly"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786130055660-never-judge-success-through-a-pipe-and-never-trust.md
 ---
 
@@ -67,4 +67,4 @@ confirmed non-mutating and idempotent (2 runs byte-identical, shard md5 unchange
 before every claim.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786130055660-never-judge-success-through-a-pipe-and-never-trust.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786130055660-never-judge-success-through-a-pipe-and-never-trust.md`_

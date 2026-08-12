@@ -44,4 +44,3 @@ must both be honoured:
 The three prior GPU learnings all lacked a coordinate, which is why the fact kept being re-derived;
 and the fourth was written because the search used a coordinate none of them could have contained.
 The coordinate is the output, never the query.
-

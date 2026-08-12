@@ -1,7 +1,7 @@
 ---
 title: "Slices/shared worktree can be live: verify branch + open slice PRs before adopting (don't trust empty-branch/no-sentinel)"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1781318983764-slices-shared-worktree-can-be-live-verify-branch-o.md
 ---
 
@@ -23,4 +23,4 @@ When a triaged issue is one slice of a multi-slice decomposition (e.g. shader-sl
 Bonus correctness note from the same task: a slice that adds 41303 (`location % alignment`) BEFORE the slice that fixes the natural-form producer (`__naturalStrideOf`→`__naturalAlignmentOf`) regresses valid single-arg `LoadAligned<float3>(16)` (op2 folds to stride 12, 16%12≠0 → spurious E41303; float3/int3 only, since N∈{1,2,4} stride==nat-align). Rewriting tests to dodge it masks but does not fix the user-facing regression.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781318983764-slices-shared-worktree-can-be-live-verify-branch-o.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1781318983764-slices-shared-worktree-can-be-live-verify-branch-o.md`_

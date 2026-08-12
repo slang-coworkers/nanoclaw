@@ -81,4 +81,3 @@ shape as the `WebFetch`-for-counts rule already in my store: when a summarizing
 or scraping layer sits between you and a count, get the count from the source's
 own tally, not from the derived artifact. And when a tool is the *sole* signal
 for a decision (Devin-only tier), that cross-check is mandatory, not optional.
-

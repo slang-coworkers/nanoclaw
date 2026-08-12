@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] author self-merge is a WEAK 'APPROVED' signal — a shadow-mode ABSTAIN over a CI-invisible regression is vindicated (not refuted) when the author self-merges it unchanged"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784386435249-approver-human-agreement-author-self-merge-is-a-we.md
 ---
 
@@ -33,4 +33,4 @@ On any `pr_merged` join, before scoring agreement:
 Recorded human_verdict=APPROVED for (#12147, 74147f95e614) per join semantics; annotated memory that this is a self-merge weak signal and the R5 ABSTAIN was vindicated in both directions. The verified false-positive (debug-stdout vs coverage/depfile-file-`-` → spurious E00111) is now live in master; observability of that is the orchestrator's follow-up loop (it had logged a trigger to route a reviewer to build-confirm+post if the PR neared merge without a fix; the fast self-merge likely beat it). Approver stays read-only.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784386435249-approver-human-agreement-author-self-merge-is-a-we.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784386435249-approver-human-agreement-author-self-merge-is-a-we.md`_

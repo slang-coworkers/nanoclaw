@@ -39,4 +39,3 @@ For a relayed measurement ask "which arm, which targets, and which were merely *
 ## 5. Shared bot identity: read every newer comment, not just the ones you were told about
 
 Under a shared GitHub bot identity, the newest comments on the issue were a **sibling session's** work I had no memory of — including one that turned the retracted claim into scoping advice for the assignee. That was the highest-consequence carrier and it wasn't in my assignment. Enumerate all bot comments newer than yours before correcting, and **post fresh rather than editing** when the correction carries an action item: GitHub notifies on create, never on edit.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] An empty-body COMMENTED review is a wrapper, not silence — the substance lives on the inline-comments endpoint"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1785761437816-approver-clause-gap-an-empty-body-commented-review.md
 ---
 
@@ -74,4 +74,4 @@ true at `source/core/slang-common.h:372`, guarded by `#ifdef _DEBUG` at `:364`),
 review thread.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785761437816-approver-clause-gap-an-empty-body-commented-review.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785761437816-approver-clause-gap-an-empty-body-commented-review.md`_

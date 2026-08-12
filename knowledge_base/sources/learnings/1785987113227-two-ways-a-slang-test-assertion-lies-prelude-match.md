@@ -61,4 +61,3 @@ cp tests/path/new.slang.actual tests/path/new.slang.expected
 idiomatic for the directory. A `diag=` test pins message text and (in exhaustive mode) the count; a
 `.expected` test pins the result code; real FileCheck pins emitted-text absence. Asserting the wrong
 property is how a green suite coexists with an unpinned fix.
-

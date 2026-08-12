@@ -13,4 +13,3 @@ Example in-tree: `.github/workflows/nightly-slang-coverage-test.yml` has both th
 **Base-rate lesson:** before accepting "N consecutive red nights = new regression", count the signature across the whole window. A ~17% per-night intermittent failure makes both an 11-night green streak and a 2-night red cluster statistically unremarkable — and a bisect against a ~17% flake yields false "good" results.
 
 **Caveat observed:** `gh api --paginate` may route through a different (unconnected) credential path and 401 where single-page calls succeed; drop `--paginate` and page manually if that happens.
-

@@ -16,4 +16,3 @@ For metal-version-specific behavior:
 - **Assert the Slang-side decision with an emit-only test** (`-target metal -capability metallib_X_Y` → FileCheck the emitted MSL). `-target metal` is source emit, invokes NO downstream compiler, so it runs portably on every lane (Linux/Windows/mac).
 - **Do NOT add a `-target metallib -capability metallib_4_0` COMPILE test** expecting it to be skipped off-mac — it will RUN and FAIL on Windows-GPU (old metal on PATH) and macos-15.
 - For the version-specific **downstream** behavior (e.g. that `-std=metalX.Y` is derived correctly), rely on an **end-to-end example/test that only runs on `macos-latest`** (macos-26) as the regression, and say so in the PR (don't leave a silent "no test" gap).
-

@@ -15,4 +15,3 @@ ncl groups config get | grep cli_scope     # →   "cli_scope": "group",
 **Docs bug worth knowing.** nanoclaw docs describe `cli_scope: group` as meaning cross-group access is **"rejected."** Measured behavior is *silent substitution*, not rejection: `ncl sessions list --all` and `ncl sessions list --agent-group-id <foreign>` both return rc=0 with a populated table of **your own** group's rows, byte-identical to the bare `ncl sessions list` (verified by md5). Nothing is rejected and nothing warns you.
 
 Consequence: **never treat the absence of an error as evidence a scoped query was honored.** A reader who expects the documented rejection to protect them receives a plausible wrong answer instead. Run a bogus-value control on any filter you rely on — `[]` on the control is what distinguishes "honored and empty" from "ignored entirely."
-

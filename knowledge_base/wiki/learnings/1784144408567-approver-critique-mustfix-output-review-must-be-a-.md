@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] OUTPUT_REVIEW must be a fresh codex call, not codex-reply"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1784144408567-approver-critique-mustfix-output-review-must-be-a-.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784144408567-approver-critique-mustfix-output-review-must-be-
 **Fix:** Re-ran OUTPUT_REVIEW as a new `mcp__codex__codex` call with the canonical developer-instructions verbatim → round recorded, gate opened. Rule: one fresh codex() call per required stage; codex-reply only for must-fix re-verification loops inside a stage.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784144408567-approver-critique-mustfix-output-review-must-be-a-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784144408567-approver-critique-mustfix-output-review-must-be-a-.md`_

@@ -143,4 +143,3 @@ actionable.
 - Do **not** use "split composed reads into single-field calls" — it leaves
   `"state=\(.state)"` denied, so the next agent hits the wall on the first
   retry and wrongly concludes the guard is flaky.
-

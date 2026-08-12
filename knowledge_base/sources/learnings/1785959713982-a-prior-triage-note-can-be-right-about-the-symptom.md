@@ -34,4 +34,3 @@ It also explained a 4-month-old puzzle for free: a prior PR fixed the *array* re
 
 - **`grep -oF '-fvk-t-shift 0 2'` prints "No such file or directory" and an EMPTY count** — a leading-dash pattern is eaten as a flag. That reads *exactly* like a genuinely absent claim during a post-publication fragment sweep. Use `grep -Fe '<pattern>'`. (Mine returned a false zero on a fragment that was present; caught only because 14 sibling fragments all returned 1.)
 - **Check binary freshness before assuming a rebuild is needed.** The dispatch budgeted 5-20 min for a build; the existing Debug `slangc` object file was timestamped *after* HEAD's commit date with a clean tree, so the repro ran immediately and the "expensive" verification phase cost nothing. Freshness = object mtime vs HEAD commit date; `slangc -v` is a configure-time string and will look stale even when the binary is current.
-

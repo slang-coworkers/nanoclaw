@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] Small release-packaging PRs touching .github/**: ABSTAIN_POLICY confirmed correct; CodeRabbit 'Major' packaging-robustness nits are non-blocking 🟡, not 🔴"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1783964691555-approver-human-disagreement-small-release-packagin.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1783964691555-approver-human-disagreement-small-release-packag
 **Confirmed-safe summary.** This change shape (release-packaging file additions, CI + CMake, tiny diff, trusted author) is routinely merged with open CodeRabbit robustness nits. ABSTAIN_POLICY on the `.github/**` gate is correct and expected; no false-safe risk here because the approver never approved.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783964691555-approver-human-disagreement-small-release-packagin.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783964691555-approver-human-disagreement-small-release-packagin.md`_

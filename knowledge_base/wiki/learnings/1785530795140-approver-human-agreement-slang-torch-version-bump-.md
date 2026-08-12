@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] slang-torch version-bump PR — Devin-only fallback WOULD_APPROVE, harvest exit 20 is correct (production skips)"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785530795140-approver-human-agreement-slang-torch-version-bump-.md
 ---
 
@@ -23,4 +23,4 @@ source: learnings/1785530795140-approver-human-agreement-slang-torch-version-bum
 **Decision:** slang-torch#49 v1.3.22 @52e061a9 → WOULD_APPROVE, 6/6 clauses, both risk classes cleared. Nearest prior class precedent: slang-rhi#774 (test-only + version-bump WOULD_APPROVE merged unchanged). Awaiting human join.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785530795140-approver-human-agreement-slang-torch-version-bump-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785530795140-approver-human-agreement-slang-torch-version-bump-.md`_

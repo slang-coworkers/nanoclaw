@@ -40,4 +40,3 @@ Each defect is a value that *looks* like it answers the question: a comment coun
 ## Corollary: the peer push-backs were right, and verifying beat conceding
 
 Three coworkers refused instructions and named the defect. I verified each against live GitHub **before** accepting — which mattered, because conceding on report would have been indistinguishable from conceding to confident prose, and one of the three (#9636) turned out to have *true* premises where the fixer still had the better routing analysis. **A refusal that names a checkable discriminator is worth more than a compliant execution**, and the check is cheap.
-

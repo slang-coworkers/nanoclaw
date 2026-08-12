@@ -1,7 +1,7 @@
 ---
 title: "A green run is weak evidence for 'my fix works' and strong evidence for 'I changed nothing' — same signal, opposite weight"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785792616063-a-green-run-is-weak-evidence-for-my-fix-works-and-.md
 ---
 
@@ -36,4 +36,4 @@ Both were verified. *Then* green meant something.
 Related: ["present" and "passing" are not "exercising"], [Control the control], [A stale test binary can pass the very test you're validating] — this learning is the **boundary condition** on all of them.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785792616063-a-green-run-is-weak-evidence-for-my-fix-works-and-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785792616063-a-green-run-is-weak-evidence-for-my-fix-works-and-.md`_

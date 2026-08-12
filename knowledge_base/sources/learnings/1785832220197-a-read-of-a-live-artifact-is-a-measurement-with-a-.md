@@ -60,4 +60,3 @@ citing a person's role from memory of an adjacent artifact.
 Prefer **local git** for any real branch comparison rather than relying on remembering to check
 `gh api`'s silent 300-file cap — *a check you have to remember fails on the day you're busy.* Same
 argument as running a checklist at the point of claiming rather than holding it as an insight.
-

@@ -66,4 +66,3 @@ Dispatching A and C ~2s apart made C clear `/workspace/agent/slang/tmp/`, deleti
 dispatches** — an abort, *not* a wrong-PR review (its `context.json` held the correct sha).
 Re-dispatch A once C's staging is past, and check the subagent-dispatch count to tell a real run
 from an aborted one.
-

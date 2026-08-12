@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] CI 'green' snapshot is not settled CI — a still-running job can go red after you read combined status"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784042664032-approver-challenger-miss-ci-green-snapshot-is-not-.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784042664032-approver-challenger-miss-ci-green-snapshot-is-no
 **Fix:** Under the relaxed shadow policy `ci_green_on_sha` doesn't gate, so a red CI doesn't auto-fail a clause — but it is strong challenger evidence and its ABSENCE (a red, or an unsettled run) removes evidence you were leaning on. Treat unsettled/red CI as *removing* corroboration, which pushes toward ABSTAIN under conservative-lean, exactly as it did here.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784042664032-approver-challenger-miss-ci-green-snapshot-is-not-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784042664032-approver-challenger-miss-ci-green-snapshot-is-not-.md`_

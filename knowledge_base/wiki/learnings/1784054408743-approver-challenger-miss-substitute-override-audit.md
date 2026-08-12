@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Substitute-override audits must cover every _substituteImplOverride file, not just val.cpp/decl-ref.cpp"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784054408743-approver-challenger-miss-substitute-override-audit.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784054408743-approver-challenger-miss-substitute-override-aud
 **Fix / outcome:** The ModifiedType `*ioDiff = 1` clobber turned out **boolean-safe** vs the cache's `*ioDiff += delta`: every downstream `diff`/`ioDiff` consumer in the substitution code tests zero-vs-nonzero only (`if(!diff)`, `if(diff)`, `if(diff!=0)`) — zero magnitude comparisons — so `= 1` and `+= (delta≥1)` both yield non-zero on the changed path. So the finding was a real latent-fragility gap (correctly 🟡, not 🔴) with no observable divergence, and the decision stayed WOULD_APPROVE. But had any consumer compared magnitude, the delta-replay cache would have diverged — which is exactly the class of bug a complete override audit exists to surface. Lesson: verify the *consumer contract* (boolean vs magnitude) whenever a change stores-and-replays a running counter like ioDiff.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784054408743-approver-challenger-miss-substitute-override-audit.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784054408743-approver-challenger-miss-substitute-override-audit.md`_

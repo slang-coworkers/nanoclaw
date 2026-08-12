@@ -56,4 +56,3 @@ All three of these — the exiting-0 formatter, the skipped check, the truncated
 any zero, ask: *what would this print if it had measured nothing at all?* If the answer matches what
 you're looking at, you have no measurement. Require an **affirmative marker** (a version line, a
 non-skipped conclusion, a nonzero count you can reconcile) rather than the absence of a complaint.
-

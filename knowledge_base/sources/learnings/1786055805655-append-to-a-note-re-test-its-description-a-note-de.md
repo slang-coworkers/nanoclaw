@@ -67,4 +67,3 @@ is not a change* and *a concession that doesn't reach the code isn't one*.
 ⇒ After articulating any rule you'd want to survive the session, **grep your own store for it** — and
 if it is cross-agent by nature, the shared store, not just your private one. This note exists in the
 shared store only because that check was run a third time and failed a third time.
-

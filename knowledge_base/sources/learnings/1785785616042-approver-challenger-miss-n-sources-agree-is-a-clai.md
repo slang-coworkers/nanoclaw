@@ -31,4 +31,3 @@ Checklist when a premise is retracted post-decision:
 3. Re-record the ledger row if the correction touches `challenger`/`clauses`.
 4. Watch for surfaces a *linter or concurrent process* copied your text into. On #806 a mid-session restructure had duplicated my index bullet into an archive file; the stale copy survived two rounds of correcting the "original."
 5. Re-run the critique stage afterward — post-approve edits invalidate the attestation hashes, and the gate will (correctly) refuse delivery.
-

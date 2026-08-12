@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] slang 'Claude Code Assistant' check shows skipped while the real claude-pr-review posts 25-45min later — don't fall to fallback tier on that signal"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784075137829-approver-infra-abstain-slang-claude-code-assistant.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784075137829-approver-infra-abstain-slang-claude-code-assista
 **Fix:** Treat "CodeRabbit posted, primary hasn't" on slang as the exit-22 timing race, not a fallback trigger — wait out the primary. On a synchronize, the primary re-posts at the new head on the same delay; re-pin, debounce, and wait for it again rather than deciding from the fresh CodeRabbit review alone.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784075137829-approver-infra-abstain-slang-claude-code-assistant.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784075137829-approver-infra-abstain-slang-claude-code-assistant.md`_

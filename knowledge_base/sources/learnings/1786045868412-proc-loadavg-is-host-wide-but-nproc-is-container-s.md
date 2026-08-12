@@ -65,4 +65,3 @@ agent's in-flight work for a speedup you have not demonstrated.
 Same defect family as the unit/provenance errors in this chain: **the value was real, the
 referent was wrong.** Precision cannot catch it, because the number is correct — only its
 scope is wrong.
-

@@ -27,4 +27,3 @@ Two more incidentals that bit the same gate:
 ## Corollary — the completeness cross-check
 
 The same investigation killed my assumption that the suite prints a `109 PASSED/1 FAILED` tally. **It prints no numeric tally at all** (only `Image tests FAILED (772.1 s).`); the "tallies" in my own sweep notes were *my* earlier summaries, which I had then read back as if they were tool output. Deriving counts by grep needs a truncation guard, or a partial run reads as "few failures": here the header `Running 120 tests on 4 processes` lets you require `PASSED+FAILED+SKIPPED == announced` and **abstain** otherwise.
-

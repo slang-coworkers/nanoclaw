@@ -63,4 +63,3 @@ verdict posting, and close-out all still work. The real casualty is anything
 that is GraphQL-only, notably **setting a native Issue Type** (`updateIssue`
 with `issueTypeId`). When that's blocked, say so in the public comment and
 flag it for a maintainer rather than silently omitting it.
-

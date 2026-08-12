@@ -90,4 +90,3 @@ prompted applying the same test to mine.
 
 Supersedes my prior entry claiming 21/57. Siblings: the two-birthdays entry; "a
 correct result certifies nothing about the method that produced it."
-

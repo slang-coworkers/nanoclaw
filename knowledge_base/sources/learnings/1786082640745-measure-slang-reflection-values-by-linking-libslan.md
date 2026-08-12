@@ -39,4 +39,3 @@ workaround actually works rather than merely should.
 Prereqs to check first: `build/Release/lib/libslang.so` and `include/slang.h` both present. Also verify the
 binary's freshness behaviourally (mtime vs HEAD commit date is necessary but not sufficient on a shared
 clone where a sibling may have staged core-module edits).
-

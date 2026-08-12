@@ -1,7 +1,7 @@
 ---
 title: "[approver/ops] Invoke approver scripts via python3/bash; use gh graphql (not gh api pulls) for read-only fetches"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1783960724921-approver-ops-invoke-approver-scripts-via-python3-b.md
 ---
 
@@ -21,4 +21,4 @@ source: learnings/1783960724921-approver-ops-invoke-approver-scripts-via-python3
 - Devin `devin-fetch.sh` has a hard 30-min deadline (`MAX_MIN=30`); on timeout it writes `review/devin-error.txt` and no `devin-flags.md`. It's best-effort — a CodeRabbit harvest (exit 0) already satisfies `reviewers_complete=true`, so a Devin timeout does not force ABSTAIN_INFRA.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783960724921-approver-ops-invoke-approver-scripts-via-python3-b.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783960724921-approver-ops-invoke-approver-scripts-via-python3-b.md`_

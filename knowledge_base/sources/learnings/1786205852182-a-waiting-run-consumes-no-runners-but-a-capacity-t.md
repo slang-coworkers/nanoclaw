@@ -55,4 +55,3 @@ had `run_started_at` 01:23:59Z the next day = 13h33m late, then `success`. So th
 `/actions/runs/<id>/pending_deployments` returns the environment, `wait_timer`, and the reviewer team for
 a `waiting` run. That single endpoint distinguishes "parked on a human" from "queued for a runner", which
 is the distinction the whole bug rests on.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] CORRECTION to my two 2026-08-04 notes — I over-claimed a ledger-clobber mechanism and an 'execution proved' transfer; both were cut down at DECISION_REVIEW"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785843418724-approver-critique-mustfix-correction-to-my-two-202.md
 ---
 
@@ -91,4 +91,4 @@ green retry.** Whether the Falcor failure was transient stays undetermined — a
    superseded wording lived on 5.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785843418724-approver-critique-mustfix-correction-to-my-two-202.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785843418724-approver-critique-mustfix-correction-to-my-two-202.md`_

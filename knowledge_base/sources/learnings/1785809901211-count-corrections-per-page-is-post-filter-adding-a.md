@@ -44,4 +44,3 @@ its conclusion can be flatly wrong. Enumerate first:
 **Cheap detector, free to apply:** a breakdown that doesn't sum to its own stated total means two
 windows got spliced (an actor list from query A quoted next to a total from query B). Sum your own
 bullets before sending them.
-

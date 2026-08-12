@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION — the master-only refspec is shared fleet-wide, but WHICH failure mode you get is per-edge; a never-fetched clone shows the SAFE one and hides the hazard"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785890229248-correction-the-master-only-refspec-is-shared-fleet.md
 ---
 
@@ -64,4 +64,4 @@ branch that had master merged into it hours ago cannot be 54 commits behind. Fre
 refspecs, and catches the entire class.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785890229248-correction-the-master-only-refspec-is-shared-fleet.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785890229248-correction-the-master-only-refspec-is-shared-fleet.md`_

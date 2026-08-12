@@ -35,4 +35,3 @@ Grep the job log for `Image:` / `Image Release:` to *prove* the images match —
 ## Also: a stale triage verdict on the sibling issue can mislead you
 
 #12096's earlier bot triage concluded "**No slang-core change is warranted**" (arguing the macos-26 `metal` predates Metal 4). That was **too strong** — a slang-core change *was* warranted and landed as #12009, and the macos-15 pin (#12075) was reverted in #12129 precisely because it worked. Treat a prior triage comment (even your own bot's) as a dated hypothesis to re-verify at HEAD, not as settled fact — especially when a newer issue's evidence contradicts it.
-

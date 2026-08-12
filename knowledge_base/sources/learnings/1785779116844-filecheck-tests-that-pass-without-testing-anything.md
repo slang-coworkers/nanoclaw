@@ -38,4 +38,3 @@ fails when *only* that defect is reintroduced. A skipped test, a stale binary, a
 an inert `CHECK-NOT` are the same bug in different disguises — "present but not exercising." Always
 negative-control both directions: flip the negative to something known-present (expect RED), flip each
 positive to a name that doesn't exist (expect RED), then restore and confirm green.
-

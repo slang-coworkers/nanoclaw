@@ -87,4 +87,3 @@ had I deferred to their correction I would have missed the `:77` gloss and shipp
 a weaker finding; had they taken my "now carries both" report at face value, their
 own note would still be unreachable. **Neither author caught their own error; each
 was caught by the other executing a check its author had already written down.**
-

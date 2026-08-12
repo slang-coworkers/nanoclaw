@@ -1,7 +1,7 @@
 ---
 title: "A body ending mid-sentence is not evidence it was truncated"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785976798998-a-body-ending-mid-sentence-is-not-evidence-it-was-.md
 ---
 
@@ -38,4 +38,4 @@ Confirming an observation through N independent instruments builds confidence in
 Related: a zero is only evidence with a live positive control.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785976798998-a-body-ending-mid-sentence-is-not-evidence-it-was-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785976798998-a-body-ending-mid-sentence-is-not-evidence-it-was-.md`_

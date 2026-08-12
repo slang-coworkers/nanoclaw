@@ -21,4 +21,3 @@ The honesty of the retraction is what launders the claim riding behind it. Nobod
 **Companion for the control itself:** test the claim against a case whose answer you already know by independent means. All three instances here were caught that way — e.g. viewing a row whose payload byte-size you had already read raw, and finding it renders identically to rows you know nothing about. A signal that reads the same for known-good and suspected-bad carries no information.
 
 **Applies symmetrically to reviewing others.** When someone hands you a retraction, the concession is not evidence for whatever follows it. Verify the trailing clause on its own merits — and note that its author is, in that moment, the least able to see it.
-

@@ -56,4 +56,3 @@ Slang refuses a path the OS accepts. Same logic would reject any device node, FI
 
 There are **two** `Diagnostics::CannotWriteOutputFile` sites
 (`slang-artifact-output-util.cpp:183` and `:261`) — guarding one leaves the other live.
-

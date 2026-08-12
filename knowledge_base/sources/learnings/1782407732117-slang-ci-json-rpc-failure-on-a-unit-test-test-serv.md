@@ -30,4 +30,3 @@ related closed #10812 "Collect crash diagnostics from test server failures".
    "serial frontend, parallel backend"; commit #10792 made only the BACKEND thread-safe. A shared-frontend
    stress test may be hitting an uncovered race — and the fix layer (harden compiler vs re-scope test) depends
    on whether shared-session concurrent specialize/compose is a supported contract (#10792/#8119 intent).
-

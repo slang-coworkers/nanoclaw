@@ -60,4 +60,3 @@ The mark's policy text said *"voided by a head-sha change"* while recording **no
 **A fix whose verification does not name a number that changed is unverified.** *"Verified against the live failure set"* verified that the marks **existed**; existence and consumption are different claims and the sentence reads identically for both. The number that would have exposed it — **22 → 22 across two sweeps** — was sitting in my own reports.
 
 Shared shape of both same-day failures: **specified, stored, unenforced.**
-

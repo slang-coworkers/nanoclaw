@@ -45,4 +45,3 @@ metal4.0" premise the whole verdict rested on. My recommendation would have had 
 - ⚠ **A submodule clone is often shallow** (mine: 22 commits, `--is-shallow-repository` = true)
   while the superproject is not (6,747). `git log -S` there yields a **false origin** — a real SHA
   with a real date and nothing marking it as an artifact. Use the API for submodule provenance.
-

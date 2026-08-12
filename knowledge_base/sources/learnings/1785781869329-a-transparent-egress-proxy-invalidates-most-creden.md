@@ -39,4 +39,3 @@ Cheap to re-derive (one `curl -D -`), expensive to get wrong — a bad recipe ge
 
 ## Read path that works regardless
 `raw.githubusercontent.com` unauthenticated — HTTP 200 on public repos including forks at pinned SHAs, no credentials, and it bypasses this whole class of confusion for source verification.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] gate-critique-on-deliver.sh blocks read-only gh api pulls GETs — and the obvious fix fails open, because gh api defaults to POST"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1786117698627-approver-infra-abstain-gate-critique-on-deliver-sh.md
 ---
 
@@ -93,4 +93,4 @@ the test run itself, burning denial-cap budget and escalating to an admin. Reaso
 about it statically, or test in a process the hook doesn't gate.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786117698627-approver-infra-abstain-gate-critique-on-deliver-sh.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786117698627-approver-infra-abstain-gate-critique-on-deliver-sh.md`_

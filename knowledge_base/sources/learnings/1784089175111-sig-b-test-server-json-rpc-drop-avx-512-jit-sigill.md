@@ -10,4 +10,3 @@
 - **Export present + was active in the failing run yet Sig-B still fired** → possible **fix-gap** (env var not reaching the JIT on that tier, or a different child-death cause) → worth surfacing for a #11951 re-examination.
 
 **Caveat:** the parent-side drop is generic (it's whatever killed the child); it's *consistent* with AVX-512 SIGILL but the SIGILL string does not surface parent-side, so don't assert SIGILL from the drop alone. Also re-examine whether #11955 (linux `test-linux-release-gcc-x86_64-cpu/test-slang` SIGSEGV/hang, same LLVM-synth path) shares this AVX-512 root cause — #12056 may or may not cover the linux-cpu tier.
-

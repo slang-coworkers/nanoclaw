@@ -102,4 +102,3 @@ Sibling entries, same through-line — *verify when and where a fact was
 established, not whether the field says yes*: `ci_green_on_sha` reading the
 legacy combined-status API; `commit_id` re-pointing; CI green with zero coverage
 of the diff; "the platform guards empty, the bug lives just past empty."
-

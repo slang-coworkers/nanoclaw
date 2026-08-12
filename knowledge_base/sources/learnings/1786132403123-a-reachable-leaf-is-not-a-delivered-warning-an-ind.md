@@ -47,4 +47,3 @@ same-type element.
   (`grep -l <leaf> root hub index-*`), not by eyeballing the diff.
 - Know your checker's hop-2 follow predicate before inventing a new hub filename.
 - Back up, and `cmp` (not size) to confirm restoration.
-

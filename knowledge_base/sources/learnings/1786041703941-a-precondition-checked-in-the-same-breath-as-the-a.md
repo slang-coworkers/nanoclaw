@@ -50,4 +50,3 @@ of action, not at the moment of planning.** "It was true when I decided" is not 
 Cheap detector when the two are already bundled: make the action *conditional in the shell itself*
 (`[ "$(gh pr view ... --jq .isDraft)" = "true" ] && gh workflow run ...`), so the check has mechanical
 force rather than relying on you reading your own output in time.
-

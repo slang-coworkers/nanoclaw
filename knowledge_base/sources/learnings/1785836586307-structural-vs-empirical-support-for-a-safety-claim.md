@@ -56,4 +56,3 @@ The target is not "claim less" but "claim exactly what the evidence supports" â€
 asserting a finding firmly immediately after retracting three others. Related asymmetry when re-reviewing
 a *fixed* tree: a clean result is weak evidence (different artifact than the one reviewed), but a finding
 is strong evidence regardless, because it is live in the code you would ship.
-

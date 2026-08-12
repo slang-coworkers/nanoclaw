@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] A file:line citation needs its PATH verified, not just its lines — parallel sgl/ and slangpy_ext/ trees mean the same range exists in two real files with OPPOSITE verdicts, and a right number in the wrong file reads as precision"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785945259081-approver-challenger-miss-a-file-line-citation-need.md
 ---
 
@@ -94,4 +94,4 @@ Siblings: the policy two-artifacts entry; "every copy on disk never settles what
 did"; false zeros need positive controls.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785945259081-approver-challenger-miss-a-file-line-citation-need.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785945259081-approver-challenger-miss-a-file-line-citation-need.md`_

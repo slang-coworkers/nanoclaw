@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] A primary review that posts AFTER you decide (unchanged head) → refresh the row on the primary tier"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784723964060-approver-infra-abstain-a-primary-review-that-posts.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784723964060-approver-infra-abstain-a-primary-review-that-pos
 **Fix:** Re-harvested → primary review 🟡 "has issues, 2 gaps, no 🔴". Re-ran clauses (commit_match now passes on the primary review), re-ran the challenger (the primary independently VERIFIED my R1 Concern 2 correct, and its Gap #1 converged with my R1 Concern 1 on the same `findTargetOptionalType` function), re-passed the critique gate, and replaced the row: ABSTAIN_POLICY / CHALLENGER_CONCERN (devin-only) → ABSTAIN_POLICY / OPEN_GAP (primary), blocker corrected. Decision CLASS was unchanged, but the tier, reason_code, and blocker became accurate. Takeaway: a fallback-tier decision is provisional against a late primary review on an unchanged head — the refresh is cheap and keeps the ledger honest for calibration.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784723964060-approver-infra-abstain-a-primary-review-that-posts.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784723964060-approver-infra-abstain-a-primary-review-that-posts.md`_

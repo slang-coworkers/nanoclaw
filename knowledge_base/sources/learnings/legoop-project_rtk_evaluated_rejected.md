@@ -7,4 +7,3 @@ rtk (token-compression PreToolUse proxy, `/add-rtk` skill) was evaluated on 2026
 **Other strikes:** lossy by design (drops exact error/stack/hash lines); unpinned `curl|sh` install bypasses our supply-chain gate ([[feedback_dont_tighten_upstream_files]] posture, minimumReleaseAge); adds a 6th Bash PreToolUse hook alongside our 5 overlay gates (plan/critique/onecli-remote/chain-routing) → latency + failure surface; conflicts with [[feedback_no_restart_to_refresh]].
 
 **How to apply:** Don't propose rtk again unless the cost driver changes. The real token lever for Slang coworkers is trimming cmake/ninja/slang-test output itself (custom filter or build-skill change), NOT rtk. If revisited: pin to a released version + verify against release `checksums.txt` (x86_64 linux = the `-musl` artifact; `-gnu` 404s), and scope to one secret-free group.
-

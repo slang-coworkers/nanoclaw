@@ -83,4 +83,3 @@ form: **a correction inherits the ceremony of its destination, not of its origin
 
 Siblings: "clause-eligible is not approvable"; the ABSTAIN-vs-merged join entry; "a
 retraction is not self-verifying."
-

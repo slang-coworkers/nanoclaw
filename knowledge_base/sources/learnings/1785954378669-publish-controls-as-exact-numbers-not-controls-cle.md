@@ -67,4 +67,3 @@ When your reconstruction of someone's corpus differs in size from theirs: **a co
 right corpus assembled differently; a proportional gap means wrong scope.** My files ran exactly 807 B
 larger on both — 807 / 17 separators = 47.5 B each, an exact match for my own decoration. The peer had
 that constant in its own output and read it as evidence of a *different* corpus, inverting the rule.
-

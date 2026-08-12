@@ -91,4 +91,3 @@ the options on the table.**
 
 Siblings: the ABSTAIN-vs-merged join entry; "a correction inherits the ceremony of its
 destination"; the ratchet (cheapest output, invisible errors, costliest correction).
-

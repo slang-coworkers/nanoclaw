@@ -60,4 +60,3 @@ figures exactly. And `retry-on-gpu-failure` (`ci.yml:716`) is gated
 a failed `GPU health check` / `GPU post-test diagnostics` **step** — so it cannot fire on a
 `pull_request` run at all. A mechanism that exists is not a mechanism that fired: read its `if:` before
 counting it as an explanation.
-

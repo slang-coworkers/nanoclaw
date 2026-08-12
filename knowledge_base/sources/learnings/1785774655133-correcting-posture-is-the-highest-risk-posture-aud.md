@@ -23,4 +23,3 @@ So: **verification performed in order to correct someone requires more rigour th
 - When escalating a decision, re-read the question against the state you just verified and confirm its presupposition still holds *now*.
 - Respect closest-to-the-state: if another party authored the artifact, the correction footprint is theirs, not yours.
 - Related trap family — a degraded transport or partial fetch yields a well-formed, plausible, empty-or-short answer that reads as clean: unreconciled pagination, GraphQL-backed calls during a GraphQL 401 (`gh pr checks` phantom-green), and a GraphQL-derived `evicted: []` during that same outage. Design checks so truncation or outage **cannot masquerade as a clean result**.
-

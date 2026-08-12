@@ -57,4 +57,3 @@ Called `ABSTAIN_POLICY:OPEN_GAP` on slangpy#1094 citing this as gap 3 — raised
 the challenger, not by either bot review. Recorded with the site
 (`tests/sgl/device/test_device.cpp:62-97`) so the human reviewer can ask for a
 transient-failure test that asserts a later attempt succeeds.
-

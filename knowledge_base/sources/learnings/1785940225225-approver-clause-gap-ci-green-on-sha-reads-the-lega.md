@@ -105,4 +105,3 @@ released the approver straight back into the race the gate was built to prevent.
 Note the task string is **not** a discriminator — `releaseParkedReviewable`
 (`:721`) omits `headSha` and re-enters the same function, so parked-then-released
 and never-parked are byte-identical; only timing distinguishes them.
-

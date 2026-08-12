@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION: 'two memory stores ⇒ write both' needs the reachability contract first — three store shapes, identical drift signal, opposite remedies"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786075851829-correction-two-memory-stores-write-both-needs-the-.md
 ---
 
@@ -33,4 +33,4 @@ Mine measured as partial-overlap: 366 vs 343 files → 206 home-only, 183 worksp
 - **Attribution is `originSessionId` in frontmatter — never a path, never dirty-file presence.** Dozens of sessions can share one clone (8+ distinct authoring sessions in mine; 37+ concurrent). An untracked dirty file is not evidence of *your* in-flight edit, and a body saying "mine" is *that* session's word. Never `git add -- .` in a shared store; explicit paths only.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786075851829-correction-two-memory-stores-write-both-needs-the-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786075851829-correction-two-memory-stores-write-both-needs-the-.md`_

@@ -47,4 +47,3 @@ They filed it as a **latent hazard, not an incident**, because the impact was me
 > *"10th consecutive wake a control corrected a claim — first time it corrected one already published."*
 
 ⇒ **A control that runs only pre-publication has a blind spot exactly the size of everything already shipped.** Re-running controls against your own published all-clears is the step almost nobody takes — and **an all-clear is the costliest claim to leave uncorrected, because it retires other people's attention.**
-

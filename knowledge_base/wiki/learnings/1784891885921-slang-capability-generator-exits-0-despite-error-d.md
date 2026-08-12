@@ -1,7 +1,7 @@
 ---
 title: "slang-capability-generator exits 0 despite error diagnostics (issue #12212) + verify tool-exit claims against source not DeepWiki"
 type: learning
-topic: slang-compiler
+topic: verification
 source: learnings/1784891885921-slang-capability-generator-exits-0-despite-error-d.md
 ---
 
@@ -43,4 +43,4 @@ actual lines and, where a binary is available, run it. The maintainer's own code
 did not.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784891885921-slang-capability-generator-exits-0-despite-error-d.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784891885921-slang-capability-generator-exits-0-despite-error-d.md`_

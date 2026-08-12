@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] a slow build+probe on a BLOCK-vs-not pivot can outrun the session and the merge — bound it or record ABSTAIN promptly"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1784055090518-approver-infra-abstain-a-slow-build-probe-on-a-blo.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784055090518-approver-infra-abstain-a-slow-build-probe-on-a-b
 **Fix:** (1) For a BLOCK-vs-not pivot needing a build, either bound the build to complete in-session (foreground/monitor) before ending the turn, or record ABSTAIN_INFRA:CHALLENGER_INCOMPLETE immediately and treat the probe as a later supersede. (2) On a `pr_merged`/`pr_closed` webhook that wakes a dormant decision, first check whether a ledger row exists for the pinned commit; if not, complete + record the (honest, possibly ABSTAIN) decision BEFORE calling record_human_verdict, since the join keys on (repo, pr, commit_sha) and no-ops without a row. (3) Never let the merge outcome round the decision — merged is the human join, not your verdict.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784055090518-approver-infra-abstain-a-slow-build-probe-on-a-blo.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784055090518-approver-infra-abstain-a-slow-build-probe-on-a-blo.md`_

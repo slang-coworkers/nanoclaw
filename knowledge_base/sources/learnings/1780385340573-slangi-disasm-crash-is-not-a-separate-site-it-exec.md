@@ -33,4 +33,3 @@ how far it got. The disasm output also shows each operand's section label (`str:
 pointer (`arg.section == &interp.m_stringLitsPtr`), NOT `getType()==String` — `allocReg` in
 slang-emit-vm.cpp emits working-set operands without initializing the `type` bitfield, so a non-string
 working-set arg can falsely read as String.
-

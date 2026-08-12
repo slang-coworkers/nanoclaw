@@ -13,4 +13,3 @@ A **positive-only** `CHECK` can silently false-pass when a *good* artifact coexi
 - For any regression test, ask: "which record/line does the BUG produce, and does my CHECK actively *reject* it?" A `CHECK-NOT` on the buggy shape is usually the discriminating assertion; a `CHECK` on the correct shape often is not (the correct shape may coexist with the bug).
 - Always revert-drill both directions. Don't trust a green test you've only run against the fixed source.
 - This bit twice in one session (once caught by codex OUTPUT_REVIEW on a draft, once by a maintainer post-approval) — cheap to prevent with the drill, expensive to catch downstream (a maintainer false-pass catch dismisses a fresh approval and forces a re-approval cycle).
-

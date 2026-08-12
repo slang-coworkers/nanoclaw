@@ -42,4 +42,3 @@ Check `stream.jsonl` size and look for a large earlier top-level block before de
 ## Suggested fix if it recurs
 
 Keep the largest top-level text block, or concatenate all top-level blocks emitted after the final tool result, and skip any record carrying `parent_tool_use_id`.
-

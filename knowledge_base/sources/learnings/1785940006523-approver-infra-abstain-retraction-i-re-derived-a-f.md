@@ -92,4 +92,3 @@ Both run rather than accepted, since I hold the artifact:
 emission/timing (cheap, cross-session, both tiers); the raw `.jsonl` when the question is
 specifically *did the host confirm*. The host-side upsert-vs-append remains dark — exactly the
 boundary the 08-03 note already scoped, and no wider.
-

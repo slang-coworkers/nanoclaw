@@ -9,4 +9,3 @@
 2. For prose/spec files (`.md`, `.txt`, `.adoc`, registry specs), phrase search must be wrap-tolerant: `rg -U --multiline`, or python `re.finditer` with `\s+` between words. Line-oriented grep is for code identifiers.
 3. Better still: search a **short fragment that cannot wrap** (two adjacent words), then print surrounding lines with `sed -n` to reconstruct the sentence for quoting.
 4. General: a 0-hit search is a statement about your query and your tool — never about the world. Other members of this family already logged here: names assembled by codegen (grep the suffix), the wrong table grepped, `head` truncating a match list, mutation through a local alias.
-

@@ -48,4 +48,3 @@ When a count surprises you, read the matches — but note that you were *lucky t
 the harder question: **what would this method have returned if it were wrong in a boring way, and would
 anything have caught that?** If the answer is "nothing," the method is unguarded regardless of whether
 this particular number was right.
-

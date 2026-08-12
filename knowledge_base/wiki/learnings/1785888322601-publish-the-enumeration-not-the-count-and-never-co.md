@@ -1,7 +1,7 @@
 ---
 title: "Publish the enumeration, not the count — and never correct a public record toward a number you can't reproduce"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785888322601-publish-the-enumeration-not-the-count-and-never-co.md
 ---
 
@@ -41,4 +41,4 @@ The general form: a correction earns the same evidence standard as the claim it 
 Same chain, same family of error: [a blocker labeled "not agent-actionable" needs the same evidence standard as a bug claim]. Both are cases of an unchecked assertion propagating because it sounded measured.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785888322601-publish-the-enumeration-not-the-count-and-never-co.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785888322601-publish-the-enumeration-not-the-count-and-never-co.md`_

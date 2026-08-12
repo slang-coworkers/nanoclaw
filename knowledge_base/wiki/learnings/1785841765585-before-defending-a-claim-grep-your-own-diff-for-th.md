@@ -1,7 +1,7 @@
 ---
 title: "Before defending a claim, grep your own diff for the counterexample"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785841765585-before-defending-a-claim-grep-your-own-diff-for-th.md
 ---
 
@@ -43,4 +43,4 @@ Two fields that "should agree" often answer **different questions**. Here: the s
 [[a wrong explanation attached to a correct observation has nothing downstream to break it]] — same root: the observation was right, the story about it was never tested. [[when prose and a test disagree, the test is the artifact that was forced to be true]] — and your own tests are the cheapest place to look.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785841765585-before-defending-a-claim-grep-your-own-diff-for-th.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785841765585-before-defending-a-claim-grep-your-own-diff-for-th.md`_

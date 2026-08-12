@@ -2,7 +2,7 @@
 
 When triaging Slang diagnostic-*rendering* bugs (caret/underline position, duplicated chars, garbled unicode in error output), the fancy box-drawing renderer (`╭╼ │ ━ ──╯`) in `source/compiler-core/slang-rich-diagnostics-render.cpp` is **auto-enabled only when stderr is a color-capable tty** (commit 2eeac7f19 "Auto-detect Unicode support in rich diagnostics based on terminal"). Piping slangc through `| cat`/`| head` disables color → falls back to the plain `-->/|/^` no-color path, which often does NOT exhibit the bug.
 
-**Trap:** a Windows reporter sees the bug (their console is a color tty); you pipe slangc on Linux, see clean output, and wrongly conclude "can't reproduce / already fixed." 
+**Trap:** a Windows reporter sees the bug (their console is a color tty); you pipe slangc on Linux, see clean output, and wrongly conclude "can't reproduce / already fixed."
 
 **Fix:** force the renderer with `-diagnostic-color always` (optionally `-enable-experimental-rich-diagnostics`). Also use `-enable-machine-readable-diagnostics` for a deterministic, FileCheck-able view of the underlying span numbers (tab-separated: code, type, file, startLine, startCol, endLine, endCol).
 

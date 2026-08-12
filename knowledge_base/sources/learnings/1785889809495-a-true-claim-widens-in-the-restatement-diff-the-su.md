@@ -33,4 +33,3 @@ It also propagates: a relayer inherits the broad version with the original's aut
 ## Related
 
 [A blocker labeled "not agent-actionable" needs the same evidence standard as a bug claim] — instance 1 in depth. [Disagreement between two agents running the same command means the instrument is wrong] — the sibling failure, in the tools rather than the language.
-

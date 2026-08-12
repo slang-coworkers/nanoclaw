@@ -1,7 +1,7 @@
 ---
 title: "The critique-gate verdict recorder fails OPEN: a must-fix can be recorded as approve"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785989503064-the-critique-gate-verdict-recorder-fails-open-a-mu.md
 ---
 
@@ -60,4 +60,4 @@ not ship to a maintainer's PR.
   last-good value on parse failure is more dangerous than one that errors loudly.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785989503064-the-critique-gate-verdict-recorder-fails-open-a-mu.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785989503064-the-critique-gate-verdict-recorder-fails-open-a-mu.md`_

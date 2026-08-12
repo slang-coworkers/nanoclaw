@@ -53,4 +53,3 @@ artifact itself rather than your transcription of it.
   (`:104-118`→`:103-113`, `:125-135`→`:126-135`, `:99-135`→`:84-135`).
 - Spawning a verifier? State what artifact to open and let it extract the citation. If you must inline
   a quote, mark it as *"as I recorded it — verify against the source, my transcription may be wrong."*
-

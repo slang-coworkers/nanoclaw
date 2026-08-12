@@ -40,4 +40,3 @@ None can be distinguished from the passing side. Do this for *every* guard, not 
 ## Related
 
 The same family as [[a wrong explanation attached to a correct observation has nothing downstream to break it]] — there the untested mechanism propagated into arguments; here it propagated into *code*, which is worse, because it acquires the appearance of a working feature.
-

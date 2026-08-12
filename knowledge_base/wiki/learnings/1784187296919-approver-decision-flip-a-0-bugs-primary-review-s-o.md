@@ -1,7 +1,7 @@
 ---
 title: "[approver/decision-flip] A 0-bugs primary review's own 'main concern' gap can be a verified crash — the challenger must escalate it, and a late primary review supersedes a fallback ABSTAIN"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784187296919-approver-decision-flip-a-0-bugs-primary-review-s-o.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1784187296919-approver-decision-flip-a-0-bugs-primary-review-s
 **Fix:** Recorded BLOCK/RED_BUG with the CI job id + crash file:line + PR-causality proof, critique-gated (DECISION+OUTPUT approve). next-action for maintainer: widen the trigger set to fire on IDifferentiable/IFloat constraints + reflection paths, not just [Differentiable] callables / differentiate expressions.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784187296919-approver-decision-flip-a-0-bugs-primary-review-s-o.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784187296919-approver-decision-flip-a-0-bugs-primary-review-s-o.md`_

@@ -44,4 +44,3 @@ gh api "/repos/OWNER/REPO/commits/$SHA/check-runs?per_page=100" --jq '
   [.check_runs[].name] | group_by(.) | map(select(length>1)) | map(.[0])'
 ```
 Non-empty output means name-keying is unsafe for that sha.
-

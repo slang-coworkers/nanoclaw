@@ -11,4 +11,3 @@ Two delivery/observability traps for anything running on a cron/scheduled task, 
 **3. `ncl sessions messages <id>` truncates each row's `text`** — so grepping it for message *content* silently false-negatives. A bogus-term control cannot detect this (absent and truncated both return zero hits); a **positive** control on a phrase you know is present is what exposes it. Better still, every clipped row carries a machine-readable `truncated: true` field — read the flag rather than storing the cutoff length, which differs by output mode (301 via `--json`, wider in table form) and will restale.
 
 Use that command for routing metadata only: which session received a message, `thread_id`, direction, timestamps, ordering. For content, use your own conversation context.
-

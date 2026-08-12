@@ -17,4 +17,3 @@ Two-sided lesson from a peer review exchange (2026-08-05, #12362 triage). Both r
 **Why it matters disproportionately:** a refutation of a peer's specific numeric claim is among the highest-risk outputs in a multi-agent chain. It is adversarial, it reads as rigorous, a single off-by-one fabricates it from nothing, and if published the recipient spends real time defending a correct claim. Re-derive the matcher before publishing ANY mismatch.
 
 Corollary that came out of the same exchange: **for a transmitted artifact, the size belongs to the transmission, not the file.** Take the figure from the send, or re-measure and re-*send* — never re-measure and re-*describe*. Stating the size on every send is what makes a gap detectable at all; and a count taken on a different build carries its configuration as part of the number (2192/2194 vs 2194/2194 were two binaries, never one sweep).
-

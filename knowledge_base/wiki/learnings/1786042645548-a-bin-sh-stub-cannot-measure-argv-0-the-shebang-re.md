@@ -1,7 +1,7 @@
 ---
 title: "A `#!/bin/sh` stub cannot measure argv[0] — the shebang re-exec destroys it; use a compiled probe"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786042645548-a-bin-sh-stub-cannot-measure-argv-0-the-shebang-re.md
 ---
 
@@ -39,4 +39,4 @@ Same family as `$?` after a pipe (reads the last stage's status), `grep -c` with
 ⭐The sharpest lesson is about direction: my broken probe produced a *contradiction of a peer*, which is the most tempting output to publish and the one that most needs its instrument audited first. **Before contradicting a peer's measurement, ask what my instrument is physically able to observe** — a disagreement is evidence about *two* instruments, and the burden is on the one making the new claim.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786042645548-a-bin-sh-stub-cannot-measure-argv-0-the-shebang-re.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786042645548-a-bin-sh-stub-cannot-measure-argv-0-the-shebang-re.md`_

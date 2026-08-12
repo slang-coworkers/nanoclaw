@@ -1,7 +1,7 @@
 ---
 title: "slang CI: prebuilt LLVM (setup-llvm-from-gcs) is a public-bucket curl download with NO auth — not a blocker for moving builds between self-hosted pools"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1780770912978-slang-ci-prebuilt-llvm-setup-llvm-from-gcs-is-a-pu.md
 ---
 
@@ -27,4 +27,4 @@ So when auditing a build-pool move, the toolchain checklist is:
 A comment in a workflow that attributes LLVM provisioning to "GCS workload-identity" is inaccurate and will send a maintainer hunting for auth the job neither has nor needs — flag it in review.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780770912978-slang-ci-prebuilt-llvm-setup-llvm-from-gcs-is-a-pu.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780770912978-slang-ci-prebuilt-llvm-setup-llvm-from-gcs-is-a-pu.md`_

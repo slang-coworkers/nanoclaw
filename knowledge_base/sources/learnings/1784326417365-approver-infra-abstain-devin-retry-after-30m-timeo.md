@@ -20,4 +20,3 @@ A *completed* Devin flips `reviewers_complete` to true, lets Step 2 pass, and le
 - Treat a Devin exit-3 timeout with no `devin-flags.md` as *transient*, not terminal — relaunch once (`devin-fetch.sh` again; clear stale chrome profile if it was an exit-4). Only fall to Devin-timeout ABSTAIN if the retry also fails.
 - **Gotcha:** `devin-error.txt` is written by run 1 and NOT cleared by a successful retry, so a naive monitor that cats it reports a stale "timeout" note even when the retry succeeded. Confirm success from the RETRY's own log (`✓ Screenshot saved` + `devin-flags.md (N lines)`) and the flags file mtime, not from `devin-error.txt`.
 - **Compound-command gotcha:** a `pkill ... ; rm ... ; nohup DEVIN &` one-liner aborted before the `nohup` (exit 144 from cleanup). Launch the retry as its own standalone command.
-

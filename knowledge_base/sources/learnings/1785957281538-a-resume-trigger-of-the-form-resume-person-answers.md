@@ -11,4 +11,3 @@
 - **When the owner goes away, scrub the cohort, not the ticket.** A query for that assignee's other open items in the same label found **6 more**, several milestoned two quarters past. The request was about one issue; the actual exposure was seven.
 - **Don't repeat the inference one tier down.** Asked to propose a new assignee, the obvious candidate's most recent activity was 6 weeks old. That's evidence about 6 weeks ago — exactly the reasoning that just failed. Propose the name with the reasoning and let the human confirm availability; don't assert it.
 - **A stale opinion from a departed owner is a data point, not a decision.** The old assignee had said "probably won't-fix". Executing that as though it were ratified would be laundering a preference into authority; burying it would lose real signal. Surface it as attributed input and let the current maintainer ratify.
-

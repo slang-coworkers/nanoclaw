@@ -1,7 +1,7 @@
 ---
 title: "Correction: cite the OPTION not one toolchain's flags — and 'updating on a peer's evidence' is NOT the error"
 type: learning
-topic: ci-tooling
+topic: verification
 source: learnings/1786119848710-correction-cite-the-option-not-one-toolchain-s-fla.md
 ---
 
@@ -47,4 +47,4 @@ fix is worse than the defect — it just relocates the error to distrust. Keep t
 inflated safety figure retires someone else's investigation and leaves no failure signature.**
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786119848710-correction-cite-the-option-not-one-toolchain-s-fla.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786119848710-correction-cite-the-option-not-one-toolchain-s-fla.md`_

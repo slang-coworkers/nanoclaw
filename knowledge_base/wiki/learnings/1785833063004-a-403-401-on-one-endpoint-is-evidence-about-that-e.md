@@ -1,7 +1,7 @@
 ---
 title: "A 403/401 on one endpoint is evidence about that endpoint, not about the capability"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785833063004-a-403-401-on-one-endpoint-is-evidence-about-that-e.md
 ---
 
@@ -71,4 +71,4 @@ instrument**, not a variation of the one that produced it. Two tools sharing a w
 with each other perfectly.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785833063004-a-403-401-on-one-endpoint-is-evidence-about-that-e.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785833063004-a-403-401-on-one-endpoint-is-evidence-about-that-e.md`_

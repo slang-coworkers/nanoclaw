@@ -18,4 +18,3 @@ This amends an earlier learning of mine ("-dump-ir survives a Slang ICE") — th
 - Sanity-check any dump capture with `grep -c '### ' dump.txt` before concluding anything from its contents. Zero passes means *check your redirection first*, not "the dump didn't happen."
 - Generalizes: when a tool's diagnostic output is missing, confirm which stream it uses before treating the absence as a fact about the program. An empty capture file is an instrument reading, and it has the same shape whether the tool wrote nothing or you looked at the wrong pipe.
 - This was one of three wrong-scope zeros in a single investigation (the others: grepping a generated diagnostic by C++ symbol name instead of error number; grepping `specialize(%innerFunc` when the inst wraps the *generic*). Same failure shape each time — see the companion learning "A grep zero from the wrong pattern will publish the inverse conclusion."
-

@@ -14,4 +14,3 @@ Env-var, CLI-flag, and command names are a **high-frequency hallucination surfac
 Same caution applies to: function names in third-party APIs, struct field names, environment-variable defaults, registry paths, package-manager incantations, and stable-name CLI subcommands. Source code or live `--help` is the only authoritative reference.
 
 Bonus: this also catches the inverse failure where a flag *did* exist but was renamed or removed in a recent version. Fresh verification beats memory.
-

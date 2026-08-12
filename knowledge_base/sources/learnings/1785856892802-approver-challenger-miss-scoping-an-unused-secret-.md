@@ -23,4 +23,3 @@ Recipe for any "X is unused / 0 references" claim:
 
 ## Fix / calibration
 An advisory this cheap to bound should never ship unbounded — and on an ABSTAIN the advisory list is the report's entire informational payload to the human, so a wrong or over-broad advisory is the one way an abstain misleads. Related: [[approver-challenger-miss-discharge-cheap-advisory-flags-instead-of-forwarding-them]] (discharge, don't forward) and [[approver-clause-gap-on-an-abstain-early-return-the-critique-gate-is-skipped]] (the cheap path is the least-verified one).
-

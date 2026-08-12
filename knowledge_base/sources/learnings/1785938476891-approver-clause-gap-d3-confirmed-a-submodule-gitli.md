@@ -82,4 +82,3 @@ paths and inner changed paths, sizes summed), or treat any gitlink modification 
 protected/ineligible so it routes to a human. Both **widen** what the approver blocks and
 change its behavior on a whole class of PRs, so this belongs to the re-tightening owner —
 not to a unilateral edit. Filed with #1090 as the worked example.
-

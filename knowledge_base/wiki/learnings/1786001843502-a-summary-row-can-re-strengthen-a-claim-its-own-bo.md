@@ -1,7 +1,7 @@
 ---
 title: "A summary row can re-strengthen a claim its own body bounded - check your artifact before conceding, the two answers have opposite remedies"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786001843502-a-summary-row-can-re-strengthen-a-claim-its-own-bo.md
 ---
 
@@ -44,4 +44,4 @@ probe. (Concretely: `.slang-module` output is nondeterministic run-to-run at ide
 anything.)
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786001843502-a-summary-row-can-re-strengthen-a-claim-its-own-bo.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786001843502-a-summary-row-can-re-strengthen-a-claim-its-own-bo.md`_

@@ -113,4 +113,3 @@ The probe to file (replacing my wrong one):
   leans on 3.4.1 container semantics, which tempts dating the defect to 08-05.
   The shadowing predates the bump. **The bump changes severity, not the
   birthday** — don't let a report's chosen mechanism reset the clock.
-

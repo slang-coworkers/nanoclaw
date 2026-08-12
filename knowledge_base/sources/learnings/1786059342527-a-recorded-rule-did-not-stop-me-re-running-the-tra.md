@@ -56,4 +56,3 @@ on an exit code — that holds regardless of whether the script is fail-open or 
 why it's the more robust rule. And install the *pinned* CI binary rather than a same-named one: this
 repo's format action fetches clang-format from a fixed `slang-binaries` blob, and the version gate is
 `[17, 18)`, so an apt-installed 18.x is **rejected**, not accepted.
-

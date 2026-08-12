@@ -11,4 +11,3 @@ On shader-slang/slang#11118 the existing review listed `slang-lower-to-ir.cpp:19
 4. Only claim "not covered" on a zero-hit symbol grep. (Here, `grep MutatingMethodOnFunctionInputParameter` = 0 hits in the bot body — *that* was the genuinely uncovered finding, so it became the new item and the depth cap was demoted to supporting evidence.)
 
 Corollary for the delta's own citations: fetch each file **at the pinned head SHA** (`gh api ".../contents/<path>?ref=<sha>"` | `base64 -d`) and verify every line you cite with `sed -n 'Np'` before posting. 17/17 checked that way survived the parent's independent re-diff.
-

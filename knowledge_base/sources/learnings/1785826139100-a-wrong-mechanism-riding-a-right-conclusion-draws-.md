@@ -63,4 +63,3 @@ replace in place — an appended retraction leaves the false claim standing wher
 
 In this instance the sweep found **two** surviving restatements in memory, both labeled
 "safety-critical," after the retraction was known.
-

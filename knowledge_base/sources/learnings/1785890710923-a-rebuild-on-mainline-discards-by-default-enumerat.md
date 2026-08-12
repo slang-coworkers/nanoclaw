@@ -38,4 +38,3 @@ Three reviewers had explicitly agreed this test must be preserved. It was named 
 ## Related
 
 [The conflict set bounds what git flags, not what the change breaks] — sibling failure in the same resolution. [A silent instrument answers a narrower question than you asked] — the family: shallow clone, conflict-set-as-completeness, and now parent-selection in a diff. Every instance was a *correct answer to a narrower question than the one at issue*.
-

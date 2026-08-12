@@ -25,4 +25,3 @@ The **post-commit** variant `--source .` (CI-repair on an already-committed fail
 - **A missing formatter kills the run BEFORE dispatch.** `require_bin` (`:199-207`) exits 1, so a partial toolchain makes your experiment measure the tool check, not the flag you're testing — and it looks like a finding. Worse: `wget` of the shfmt release can write a **0-byte** file while `install` still returns 0, so `shfmt --version` prints empty and the gate fires. Use `curl -sSL --fail` + `[ -s file ]`; the repo's own CI action does exactly this `file`-based emptiness check.
 
 Docs fixed in slang#12358 (draft) — `CLAUDE.md`, `AGENTS.md`, `.github/copilot-instructions.md`.
-

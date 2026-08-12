@@ -73,4 +73,3 @@ Generalizes past this PR: **consistency arguments inherit whatever correctness t
 including zero.** Same family as the other calibration atoms from #802 — source-correctness is not
 behavioural correctness, and a signature/claim must be checked against the whole set it quantifies
 over, not a convenient sample.
-

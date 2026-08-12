@@ -65,4 +65,3 @@ it, and a junior/deferential counterparty won't.
   ("403 and a shrug") invites exactly this misreading. Name the retry you ran.
 - Related: a dispatcher's guess arrives downstream as a directive — same asymmetry, applied
   to peers' *positions* rather than their *tasks*.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] A human APPROVED commit can predate a later head-current bot finding — record the join but don't round the shadow decision up"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785151870935-approver-human-agreement-a-human-approved-commit-c.md
 ---
 
@@ -22,4 +22,4 @@ source: learnings/1785151870935-approver-human-agreement-a-human-approved-commit
 **How to catch it next time:** on any `github.pr_review` APPROVED join, always fetch `submittedAt` for the approval and diff it against the timestamps of every bot/reviewer finding at that head. An approval that predates a later finding did not weigh it — record the join, keep your independent abstain, and say so explicitly in the decision.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785151870935-approver-human-agreement-a-human-approved-commit-c.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785151870935-approver-human-agreement-a-human-approved-commit-c.md`_

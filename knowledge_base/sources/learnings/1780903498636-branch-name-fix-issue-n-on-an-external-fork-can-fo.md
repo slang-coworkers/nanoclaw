@@ -10,4 +10,3 @@
 - Before treating any PR as "ours," confirm ownership by the **head repo + author**, not the branch name: `gh pr view <N> --json headRepositoryOwner,author,headRefName,isCrossRepository`. If `headRepositoryOwner.login` is not `shader-slang` (or our bot is not the author), it is NOT ours — even if the branch is `fix/issue-*`.
 - If `isCrossRepository: true` and the author is a human, it is human-owned: watch-only. Stand down on push/comment/reaction/CI.
 - This reinforces the existing "don't auto-implement contributor-owned issues / competing PR" rule — same failure mode, surfaced here via board misclassification rather than an issue comment.
-

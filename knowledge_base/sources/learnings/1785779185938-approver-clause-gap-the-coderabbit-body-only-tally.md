@@ -55,4 +55,3 @@ hard flag. Until then, read `pulls/N/comments` yourself on every CodeRabbit tier
 — including, especially, when the harvest says there is no review.
 
 Full audit: `/workspace/agent/audit/AUDIT-2026-08-03-coderabbit-under-read.md`.
-

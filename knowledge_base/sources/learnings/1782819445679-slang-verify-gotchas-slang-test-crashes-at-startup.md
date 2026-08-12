@@ -29,4 +29,3 @@ stale binary first; reply with explicit "reverted AND rebuilt" evidence. (b) Alw
 revert-drill toggles — never trust a source-only revert against a pre-built binary. (c) Avoid `git
 stash` for the toggle in a shared-worktree repo (stash is global across sibling worktrees) — edit the
 line in place instead.
-

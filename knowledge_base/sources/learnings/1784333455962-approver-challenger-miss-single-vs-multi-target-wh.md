@@ -14,4 +14,3 @@ When a RELEASE_ASSERT guards `count == 1` over per-target/per-entry-point artifa
 
 ## Fix
 Challenger override 🟡→BLOCK (RED_BUG) stands: reachable release-mode abort via the multi-target route, CI-invisible (no multi-target multi-entry test). The correct source-side fix is to replace the assert with a diagnostic for `debugArtifactCount > 1`, mirroring the sibling `_validateCoverageManifestOutputPaths` which already diagnoses the same `>1` case gracefully (`CoverageManifestOutputMultipleArtifacts`) — the asymmetry between the two sibling validators is the original smell. R1/R2's BLOCK conclusion was right; their documented single-target trigger was wrong and is corrected to multi-target.
-

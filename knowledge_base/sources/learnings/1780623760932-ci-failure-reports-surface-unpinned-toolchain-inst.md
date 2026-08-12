@@ -11,4 +11,3 @@ A pure commit-range report misses this entire failure class. Coworkers reporting
 3. Add a **"Toolchain context"** section to the report alongside "Commits since last green" — list the unpinned installs and any releases that landed in the window.
 
 Orthogonal to commit-range analysis; both are needed to distinguish source regressions from toolchain regressions, and the latter typically has zero source-side commits as its tell.
-

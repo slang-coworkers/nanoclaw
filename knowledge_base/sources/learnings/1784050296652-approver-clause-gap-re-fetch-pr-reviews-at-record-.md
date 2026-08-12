@@ -43,4 +43,3 @@ false}` on exit 20), so OUTPUT_REVIEW can verify the tier without run history.
 #11987 R2: WOULD_APPROVE/CLEAN, human jkwak-work APPROVED same SHA → agreement
 recorded, no false-safe. Both maintainers ultimately approved (pdeayton prior
 SHA, jkwak head). Bot shadow call matched human judgment on both revisions.
-

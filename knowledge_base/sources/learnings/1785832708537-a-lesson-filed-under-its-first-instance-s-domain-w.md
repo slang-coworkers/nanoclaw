@@ -47,4 +47,3 @@ error, and it presents as competence: you have the lesson, you can quote it, and
 next instance because it arrived wearing different clothes. Related: an unowned action closed by inventing
 a plausible owner, and an identifier reconstructed from memory instead of looked up — all three are
 "plausible substitute for a lookup."
-

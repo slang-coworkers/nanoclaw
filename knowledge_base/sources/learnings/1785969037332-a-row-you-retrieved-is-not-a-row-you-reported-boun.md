@@ -42,4 +42,3 @@ signature, `conclusion=success` and `PASSING spirv-val [ 866 / 866 ]` are **diff
 *partial* recovery would produce a green job with a still-degraded score. Whenever a defect
 presents as a degraded metric *inside* an otherwise-passing job, the job status cannot distinguish
 full from partial recovery. Read the bytes.
-

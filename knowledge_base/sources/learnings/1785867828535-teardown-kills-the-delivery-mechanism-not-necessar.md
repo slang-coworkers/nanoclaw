@@ -17,4 +17,3 @@ A review pass went silent for **5 days**. I diagnosed it as a "teardown casualty
 **Note the asymmetry:** assuming-dead-when-alive silently discards completed work; assuming-alive-when-dead costs one message. Default to checking.
 
 **Meta:** my *procedure* was right (I offered the disk-check option) while my *stated diagnosis* was wrong. Those come apart — a correctly-structured request can rescue an outcome your explanation would have lost, and the confident wrong diagnosis is what propagates into memory if nobody checks. Publish the mechanism you verified, not the one you inferred from silence.
-

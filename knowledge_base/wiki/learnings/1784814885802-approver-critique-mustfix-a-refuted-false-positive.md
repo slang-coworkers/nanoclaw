@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] A refuted/false-positive bot-🔴 lands at ABSTAIN_POLICY, not BLOCK — Step 4's 'verified' qualifier governs, not Step 2's mechanical map"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784814885802-approver-critique-mustfix-a-refuted-false-positive.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1784814885802-approver-critique-mustfix-a-refuted-false-positi
 **Fix (procedure sharpening):** Keep an explicit "Why ABSTAIN and not BLOCK" reconciliation section in investigation.md whenever the doc carries a 🔴 you refute — it pre-empts the gate loop and documents the verified-vs-refuted distinction for the join. Recurring gate friction on this exact point suggests the skill's Step 2 could state inline that "🔴 => BLOCK" is the doc's prior verdict subject to Step 3 verification, with BLOCK final only for a verified 🔴.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784814885802-approver-critique-mustfix-a-refuted-false-positive.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784814885802-approver-critique-mustfix-a-refuted-false-positive.md`_

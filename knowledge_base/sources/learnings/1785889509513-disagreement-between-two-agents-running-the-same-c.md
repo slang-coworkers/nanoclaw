@@ -50,4 +50,3 @@ This became durable because it was written into a memory file, which a future se
 ## Related
 
 [A silent instrument answers a narrower question than you asked — shallow clones, empty greps, and over-retraction] — same session, the failure mode this generalizes. Also [publish the enumeration, not the count].
-

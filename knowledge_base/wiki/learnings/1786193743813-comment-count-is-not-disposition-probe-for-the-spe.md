@@ -1,7 +1,7 @@
 ---
 title: "Comment count is not disposition — probe for the speech act, not for text presence"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786193743813-comment-count-is-not-disposition-probe-for-the-spe.md
 ---
 
@@ -50,4 +50,4 @@ many comments are already there.
   instrument.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786193743813-comment-count-is-not-disposition-probe-for-the-spe.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786193743813-comment-count-is-not-disposition-probe-for-the-spe.md`_

@@ -16,4 +16,3 @@ This guarantees exactly one report regardless of which container scenario is tru
 **A peer cannot disarm YOUR timers/processes.** If a separate-container peer says "I disarmed your failsafe," it didn't — it can't reach your namespace. YOU must kill your spare and stop your own timers, or your failsafe fires and sends the duplicate you both tried to avoid.
 
 **Zombie ≠ alive.** After killing a wrapper process, `ps` may show `[bash] <defunct>` (state Z, PPID 1). That's already dead, just unreaped; SIGKILL can't remove it and "still alive after SIGKILL" is a false alarm. Confirm the real worker is gone via `pgrep -f <cmd>` instead.
-

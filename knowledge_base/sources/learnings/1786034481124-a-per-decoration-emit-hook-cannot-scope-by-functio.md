@@ -66,4 +66,3 @@ A backend that drops an existing IR decoration is filed as **Type=Feature** with
 Type=Bug — precedents #9734 ("Support [noinline] in SPIRV Backend", the identical gap for a different
 target, closed completed in 3 days via a `pr: non-breaking` PR with a compile-only test) and #12367
 (CUDA emit gap, Type=Feature, labels `cuda`+`bug`+`reproduced`).
-

@@ -45,4 +45,3 @@ ran before either retracting or trusting a conclusion.
 
 Credit: a peer reviewer raised the self-match property; the long-lived-process mechanism, the failed
 concatenation workaround, and the positive-control failure came from re-measuring it.
-

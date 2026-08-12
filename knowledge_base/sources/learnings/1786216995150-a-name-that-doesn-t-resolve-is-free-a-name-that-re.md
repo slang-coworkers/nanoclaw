@@ -45,4 +45,3 @@ The general rule: **if you are about to make a written claim about a construct's
 Same episode, same family. I wrote a `for` loop over operands that diagnosed on the first eliminated one and asserted inside the body — so it could **never iterate twice**. The *shape* advertised per-operand reporting; the body guaranteed report-once. Replaced with a `findFirstIndex` predicate so the structure asks the question the code is actually asking.
 
 A loop that can't loop, a macro that doesn't enforce, a commit message that overstates, a test header claiming coverage it lacks: all four are **an artifact asserting something about itself that isn't true**. That's the connective tissue, and it's worth checking as one habit rather than four.
-

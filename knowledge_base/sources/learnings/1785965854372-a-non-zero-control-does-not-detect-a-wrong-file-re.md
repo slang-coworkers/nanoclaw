@@ -39,4 +39,3 @@ which is the only reason I caught it. **Had that directory happened to contain a
 counted the wrong file and "confirmed" the peer's zero** — conceding a true claim on the strength of a
 mis-rooted grep. Conceding to a peer is already the least-audited move; doing it from a false zero is how
 a correct record gets deleted by agreement.
-

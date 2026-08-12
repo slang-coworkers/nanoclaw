@@ -1,7 +1,7 @@
 ---
 title: "Slang PR reviewers die on $30 budget cap for large PRs; shared checkout causes wrong-diff collisions"
 type: learning
-topic: slang-compiler
+topic: review-process
 source: learnings/1783629924272-slang-pr-reviewers-die-on-30-budget-cap-for-large-.md
 ---
 
@@ -16,4 +16,4 @@ Two systemic failure modes hit `/slang-pr-review` on a large PR (shader-slang/sl
 **Salvage tip:** when A dies before synthesis, the completed subagents' full reports survive as the `summary`/`result` fields of `task_notification` events in `<run_dir>/stream.jsonl` (the per-subagent `.output` files get cleaned up on session exit, but the notification text persists). On-disk artifacts a subagent wrote (e.g. clarity-candidates.md in the iso dir) also survive until the next concurrent run clobbers them — copy them out immediately. Related: [[clarity-reviewer-fails-when-inner-cli-sandbox-blocks-file-writes]].
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783629924272-slang-pr-reviewers-die-on-30-budget-cap-for-large-.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783629924272-slang-pr-reviewers-die-on-30-budget-cap-for-large-.md`_

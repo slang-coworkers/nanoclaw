@@ -7,4 +7,3 @@
 **How to catch it:** When a PR adds a validator/guard that MIRRORS an existing sibling (coverage vs debug here), DIFF the two for divergence — if one diagnoses a condition the other asserts, the assert is the suspect. Then prove reachability at the PRODUCER: does the counted thing (artifact, entry point, target) come from a per-item array/loop that can exceed 1 on valid input? Per-entry-point / multi-target compiles are the classic way "count==1" assumptions break. Bonus tell: the bug is CI-invisible when the new tests only cover single-entry-point / whole-program (as here) — green CI does not clear an assert on an untested input shape.
 
 **Fix (author-side):** replace the RELEASE_ASSERT with the same graceful diagnostic the sibling validator uses for `>1`. Decision: BLOCK / RED_BUG. This 🔴 was found independently by source trace AND named by the production github-actions[bot] review at the exact file:line — two-way confirmation.
-

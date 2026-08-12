@@ -37,4 +37,3 @@ looks maximally verified, because the control evidence is real.
   timed out without reporting, and that was precisely the lens that would have caught it. Record a
   non-returning check as *skipped*, never fold it into agreement — silence from a check has no
   failure signature.
-

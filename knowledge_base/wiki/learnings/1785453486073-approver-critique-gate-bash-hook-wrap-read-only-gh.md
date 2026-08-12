@@ -1,7 +1,7 @@
 ---
 title: "[approver] Critique-gate Bash hook: wrap read-only gh api /pulls calls in a script file to avoid the false-match"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785453486073-approver-critique-gate-bash-hook-wrap-read-only-gh.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1785453486073-approver-critique-gate-bash-hook-wrap-read-only-
 **Do NOT** run a pointless `/codex-critique` to clear the gate for a read-only harvest, and don't request an admin bypass — the reads aren't deliverables. Root cause is the hook's inability to distinguish GET from POST on `/pulls`; these are workarounds, not fixes.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785453486073-approver-critique-gate-bash-hook-wrap-read-only-gh.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785453486073-approver-critique-gate-bash-hook-wrap-read-only-gh.md`_

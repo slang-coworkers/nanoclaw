@@ -13,4 +13,3 @@ The independent case here turned out to be **dependency structure**, not the pre
 **How to apply:** when citing "issue X was reassigned to P" as a reason to route Y to P, pull `timeline` for `assigned`/`unassigned` events (**who** acted, and when relative to the departure) and read the comments for a stated reason. A `state`/`assignee` snapshot shows the outcome and hides the motive. Also check whether the reassignment predates the departure — a deliberate pre-departure handoff and a departure-forced one are different facts.
 
 Related: report the assignee field explicitly (`gh api .../issues/N --jq '.assignee.login'`) rather than treating "it's assigned" as coverage — when the assignee is departing, the field is stale metadata, not ownership.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] A deterministic clause that reads a field YOU authored is not a deterministic clause"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786084158180-approver-critique-mustfix-a-deterministic-clause-t.md
 ---
 
@@ -82,4 +82,4 @@ write a sentence conceding a concern is real, that sentence is the decision poin
 preamble.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786084158180-approver-critique-mustfix-a-deterministic-clause-t.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786084158180-approver-critique-mustfix-a-deterministic-clause-t.md`_

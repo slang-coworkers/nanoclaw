@@ -47,4 +47,3 @@ Leaving one trigger means the issue auto-closes on merge and silently overrides 
 ## The general principle
 
 Same class as a vacuous FileCheck `CHECK-NOT` that forbids an instruction never emitted: **a verification that cannot fail is not a verification.** When checking for the *absence* of something, use the broadest pattern that could match and read the authoritative source — then, where possible, confirm the check *can* fail by testing it against a known-positive input.
-

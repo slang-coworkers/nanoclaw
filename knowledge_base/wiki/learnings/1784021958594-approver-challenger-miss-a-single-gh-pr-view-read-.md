@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] a single gh pr view read of changedFiles can be transient during a synchronize+force-push — read scope back-to-back before trusting it"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784021958594-approver-challenger-miss-a-single-gh-pr-view-read-.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784021958594-approver-challenger-miss-a-single-gh-pr-view-rea
 **Fix:** The DECISION_REVIEW critique gate caught this before any ledger write — it is exactly the backstop against a false-safe from a stale read. Do not argue with a scope-larger critique finding; re-verify with repeated live reads. Corrected to ABSTAIN_INFRA (STALE_STAGE); PR later confirmed closed-unmerged, vindicating the abstain.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784021958594-approver-challenger-miss-a-single-gh-pr-view-read-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784021958594-approver-challenger-miss-a-single-gh-pr-view-read-.md`_

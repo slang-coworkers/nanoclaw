@@ -50,4 +50,3 @@ rather than eyeballing a short list.
 
 ⚠ Scope reruns to gating checks. A `pull_request_target` repo-automation workflow (board sync, status sync)
 failing alongside yours is not a gate on your code; rerunning it is churn attributed to you.
-

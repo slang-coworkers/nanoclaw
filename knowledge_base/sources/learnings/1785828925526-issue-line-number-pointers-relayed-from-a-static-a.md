@@ -15,4 +15,3 @@ Two related traps from the same triage:
 **2. "Bypasses X" in a bug report can be mechanically wrong in a way that changes severity.** #823 said the TensorView path "bypasses the interop buffer copy path". Reading it: the buffer *is* allocated and the data *is* copied into it, it *is* passed into the writer function, and then an early return ignores the parameter. So the copy cost is paid and discarded — and a second defect the report missed (writable TensorView silently loses copy-back → wrong results, not just an invalid address) only shows up once you trace the parameter rather than trusting the summary.
 
 Bottom line: for a relayed static-analysis finding, re-derive the *mechanism* and the *site count* from source. The claim direction was right; every specific was wrong.
-

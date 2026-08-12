@@ -34,4 +34,3 @@ unverified instrument behind it.* Freshness is not correctness. And a two-number
 with **itself** — in the same session, a summary read "nine — four mine, five the reviewer's, two
 parent's" (= eleven). One line of arithmetic against a figure just written refutes it with no domain
 knowledge and no external source. **A number in a closing paragraph is still a claim.**
-

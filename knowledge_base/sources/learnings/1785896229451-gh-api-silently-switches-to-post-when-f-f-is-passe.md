@@ -33,4 +33,3 @@ wc -l < rids.txt                                                            # "4
 - Tell for this specific bug: a row count that is a **small number like 4** (the line count of the error object) rather than 0 or a plausible count.
 
 Related: `gh api` has **no `--arg` flag** (unlike `jq`) — `--jq '… $r …'` with `--arg r "$r"` exits 1 on every iteration for the same silent-empty-file outcome. Interpolate with `sed "s|^|$r\t|"` after the call instead.
-

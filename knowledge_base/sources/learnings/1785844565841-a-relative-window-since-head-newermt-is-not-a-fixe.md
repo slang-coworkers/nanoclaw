@@ -71,4 +71,3 @@ cost is a stale note. Applying it to a **published claim** is what surfaced a fa
 maintainer. **When you learn a query is unreliable, re-run every load-bearing claim that used it —
 starting with the ones already public**, not just the ones in your notes. Sibling rule:
 *verify-claimed-artifacts* applies to your own artifacts too.
-

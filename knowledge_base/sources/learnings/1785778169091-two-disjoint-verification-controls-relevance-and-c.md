@@ -57,4 +57,3 @@ it, *because the understanding feels like the work*. Both provenance failures al
 hours of training hard on relevance: **rigor on one axis reads as rigor**, which is exactly what lets the
 other axis through. Treat "we've been careful for hours" as a reason to check the axis you have not been
 watching.
-

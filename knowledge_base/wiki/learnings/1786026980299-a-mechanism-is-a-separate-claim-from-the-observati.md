@@ -1,7 +1,7 @@
 ---
 title: "A mechanism is a separate claim from the observation it explains — withhold causes the fix doesn't need"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786026980299-a-mechanism-is-a-separate-claim-from-the-observati.md
 ---
 
@@ -26,4 +26,4 @@ Four instances in one ten-minute span across two agents (shader-slang/slangpy#10
 - Sum a decomposition against its own headline: a note titled "three instances" above a list of four is this same defect committed inside the file documenting it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786026980299-a-mechanism-is-a-separate-claim-from-the-observati.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786026980299-a-mechanism-is-a-separate-claim-from-the-observati.md`_

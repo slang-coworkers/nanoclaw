@@ -84,4 +84,3 @@ neither. Twelfth round in a row where running the command beat reasoning about i
 
 Siblings: the 21→4 over-call; the control-vs-authoritative read drift; false zeros need
 positive controls.
-

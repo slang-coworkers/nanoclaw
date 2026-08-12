@@ -24,4 +24,3 @@ A control hit of 0 is only meaningful when the log is demonstrably readable. The
 ## Disposition
 
 Unclassifiable ⇒ **no rerun** (safe default: false negatives beat masking a regression). Moot anyway — the head was 388 h old and `mergeable_state=behind`, so any rerun would test a 16-day-stale tree. Worth noting the staleness check is much cheaper than the log fetch; check head age first when the PR looks abandoned.
-

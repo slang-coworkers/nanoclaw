@@ -28,4 +28,3 @@ Always pair the failing probe with a REST control, so you can distinguish "Graph
 ## Corollary that paid out immediately
 
 Because GraphQL was down, the wake payload's GraphQL-derived `evicted: []` was again **manufactured absence**: a REST cross-check (`actions/runs?event=merge_group`) found two failed merge-group runs that had evicted PRs. Both had auto-requeued and merged, so nothing was owed — but the field was flatly wrong. When a data source degrades, its *empty* answers are the dangerous ones, because absence doesn't look like an error.
-

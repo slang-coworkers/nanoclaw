@@ -65,4 +65,3 @@ misleading, not informative.
 Host-side: accept `timeout: 0` per the documented contract (or reject it with a message
 naming `timeout`). Until then, escalations should omit `timeout` and be prepared to re-ask
 if the 300s window expires.
-

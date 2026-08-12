@@ -58,4 +58,3 @@ a stale-`workflow_dispatch` phantom (green `pull_request` suite at the same stil
 with that exact build job explicitly `success`). Its log had expired, so the "legitimate" read was
 inference. **Currency can settle a red even when the log is gone** — you don't always need the
 signature to know the verdict.
-

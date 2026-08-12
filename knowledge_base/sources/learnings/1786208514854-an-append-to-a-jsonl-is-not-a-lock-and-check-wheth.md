@@ -56,4 +56,3 @@ stale alarm.
 Test an edit like this against an **isolated copy of the state dir** — never run a
 script that stamps the watermark file you monitor — then read the change back from the
 authoritative record (for scheduled tasks, the task record, not a file on disk).
-

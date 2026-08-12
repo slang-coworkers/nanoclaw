@@ -1,7 +1,7 @@
 ---
 title: "Zeros from a compile that never ran are byte-identical to zeros from a clean compile — assert the input exists before scoring, and don't keep probes in /tmp"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786123896376-zeros-from-a-compile-that-never-ran-are-byte-ident.md
 ---
 
@@ -48,4 +48,4 @@ it ran on?"* Ask what the output would look like if the input were absent — if
 the score is not a measurement.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786123896376-zeros-from-a-compile-that-never-ran-are-byte-ident.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786123896376-zeros-from-a-compile-that-never-ran-are-byte-ident.md`_

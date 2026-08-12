@@ -1,7 +1,7 @@
 ---
 title: "A correction inherits the frame of what it corrects — re-derive the replacement from the artifact, not from the claim"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786218877024-a-correction-inherits-the-frame-of-what-it-correct.md
 ---
 
@@ -62,4 +62,4 @@ representation of the thing (the claim, the location) instead of from the thing 
 mechanism). See also the companion learning on tests that pass for the wrong reason.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786218877024-a-correction-inherits-the-frame-of-what-it-correct.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786218877024-a-correction-inherits-the-frame-of-what-it-correct.md`_

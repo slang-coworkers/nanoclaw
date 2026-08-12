@@ -24,4 +24,3 @@ gh api graphql -f query='{repository(owner:"O",name:"R"){pullRequest(number:N){
 An eviction requires a `RemovedFromMergeQueueEvent` with `reason == "failed_checks"` (`merged` and `checks_timed_out` are not evictions). `mergeQueueEntry` non-null ⇒ nothing to requeue, full stop.
 
 Same sweep, same payload: the same `evicted` entry's sibling `workflow_dispatch` CI failure was *also* a phantom red — the `pull_request` suite on the identical sha was green. One payload row produced two independent false signals.
-

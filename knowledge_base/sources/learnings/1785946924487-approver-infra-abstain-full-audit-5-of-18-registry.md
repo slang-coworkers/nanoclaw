@@ -93,4 +93,3 @@ today.
 
 Siblings: registry-entry-is-not-a-mapping; the sync is a build-time snapshot; "a status
 value is an interface, not a description."
-

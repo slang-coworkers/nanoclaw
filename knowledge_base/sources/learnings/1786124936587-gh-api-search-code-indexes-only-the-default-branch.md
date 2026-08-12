@@ -45,4 +45,3 @@ the *size/indexed* axis and was blind to the *branch* axis by construction. Befo
 counts matching *lines*, not occurrences (use `git grep -o … | wc -l` when the number is load-bearing).
 `search/code` remains unusable for negatives for two independent reasons now: the ~384 KB size cap and
 default-branch-only indexing.
-

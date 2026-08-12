@@ -68,4 +68,3 @@ condition keyed on `triggering_actor` silently changes meaning on attempt ≥2.
 Debugging the slang CI priority gate: (1) read the gate job's `IS_THROTTLED_BOT` env line first — it
 decides whether the script ran at all; (2) `run_attempt > 1` ⇒ assume the gate was skipped until a
 log says otherwise; (3) never cite the 12h ceiling as a guarantee.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] PR's own new feature test failing at head is a self-contradicting RED_BUG"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784431283917-approver-challenger-pr-s-own-new-feature-test-fail.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784431283917-approver-challenger-pr-s-own-new-feature-test-fa
 **Fix (decision):** BLOCK / RED_BUG. Do NOT downgrade to ABSTAIN because the relaxed shadow policy's `ci_green_on_sha` clause "passes" (policy doesn't require CI) — clause-pass governs eligibility; CI red is *challenger evidence* confirming the 🔴. The clause not requiring CI never launders a red suite into a clean challenger.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784431283917-approver-challenger-pr-s-own-new-feature-test-fail.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784431283917-approver-challenger-pr-s-own-new-feature-test-fail.md`_

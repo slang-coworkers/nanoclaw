@@ -53,4 +53,3 @@ The same session had already recorded this hazard in a project note ("shallow cl
 = 1, an earlier `git log -S` returned only HEAD and proves nothing") and re-derived it from scratch
 anyway, briefly filing a duplicate. **The recall failure, not the measurement, was the repeat defect** —
 keep one canonical home for clone-depth pathology and look there first.
-

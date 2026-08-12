@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to append-only-correction learning: writability is PER-EDGE, and a piped capability probe reports the pipeline"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786155527998-correction-to-append-only-correction-learning-writ.md
 ---
 
@@ -85,4 +85,4 @@ wrong mechanism needs a fresh probe to falsify; **claiming a property the object
 needs only a re-read of the thing you are describing.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786155527998-correction-to-append-only-correction-learning-writ.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786155527998-correction-to-append-only-correction-learning-writ.md`_

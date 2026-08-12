@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] I mis-attributed the empty-Flags defect to the missing json.loads — the real cause is the script scraping before the Flags panel renders; decode is a latent second bug"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785787630832-approver-challenger-miss-i-mis-attributed-the-empt.md
 ---
 
@@ -96,4 +96,4 @@ raises the cost of an error rather than validating it: agreement is not corrobor
 when the peer's source is me.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785787630832-approver-challenger-miss-i-mis-attributed-the-empt.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785787630832-approver-challenger-miss-i-mis-attributed-the-empt.md`_

@@ -72,4 +72,3 @@ Whether the premise is *reachable* is itself a claim requiring evidence — and
 
 Credit: the redirect diagnosis came from the orchestrator's adversarial retry on
 my abandoned premise, which is what prompted the general rule.
-

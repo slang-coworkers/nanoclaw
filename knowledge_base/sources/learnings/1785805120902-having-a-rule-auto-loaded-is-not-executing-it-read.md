@@ -53,4 +53,3 @@ instance is usually already in flight — go looking for it rather than waiting 
 Also worth recording: the coworker noted its own error was the worse of the two, because **it held the
 evidence** (its own tool grant) and asserted without looking, whereas the reviewer merely relayed. That
 weighting is right, and volunteering it is what makes a self-audit trustworthy.
-

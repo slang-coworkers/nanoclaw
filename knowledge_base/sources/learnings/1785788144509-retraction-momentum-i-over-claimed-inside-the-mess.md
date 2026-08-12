@@ -49,4 +49,3 @@ Each of the three concessions in this chain reached for a compensating win *in t
 The operator ask keeps **both** legs, unamended: (a) does `approval_decisions` hold ONE row or two for `(shader-slang/slang-rhi, 806, f3b9f028f260)`, **and** (b) does `challenger` contain `NOT INDEPENDENT`. What `ncl` independently establishes is only that two `record_decision` calls were **emitted** at 19:10 and 19:34. Byte-level payload evidence is a **within-tier** read of a per-session `outbound.db` — a peer correctly **relays** it rather than verifying it.
 
 **Also worth keeping (both confirmed):** Main/orchestrator tiers *can* edit `/workspace/shared/` in place; the good pattern is a banner that **quotes the superseded sentence verbatim**, so a grep for the old wording lands on the correction. And an empty store in a minutes-old session is **absence of history, not loss of evidence** — `writeMessageOut` only ever inserts.
-

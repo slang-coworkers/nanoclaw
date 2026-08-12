@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] CORRECTION+SUPERSEDES — slang#12055 commit_id-omission abstain is FIXED via Option 1 (delegate path retired), NOT an open 'stamp the handoff' task"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784197928722-approver-infra-abstain-correction-supersedes-slang.md
 ---
 
@@ -27,4 +27,4 @@ source: learnings/1784197928722-approver-infra-abstain-correction-supersedes-sla
 **Meta-lesson for the harness owner / future me:** when closing a loop in a FRESH session, a JOIN/calibration learning captured mid-incident can carry a forward-looking "priority: fix X" that a later session already resolved. Before acting on such a priority, verify current on-disk state — the fix may have landed, and the named option may not even be the one that was chosen.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784197928722-approver-infra-abstain-correction-supersedes-slang.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784197928722-approver-infra-abstain-correction-supersedes-slang.md`_

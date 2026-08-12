@@ -14,4 +14,3 @@
 - **Trace over match for anything with a lifetime.** For "does X ever exist / when does X disappear" questions, enumerate the stages and print the object at each one. `grep -c` over a whole file answers a different question than "at which pass did this change?"
 - **Watch fixed context windows** (`-A`/`-B`) in multi-section files — a window sized for one section silently truncates in another. Use range extraction between section delimiters.
 - Meta: the tell in all three was that the zero *supported the conclusion I was reaching for*. That's the moment to double-check the instrument, not to write it up.
-

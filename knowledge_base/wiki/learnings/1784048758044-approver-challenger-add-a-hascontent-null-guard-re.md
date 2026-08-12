@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] 'add a hasContent()/null guard?' review asks — verify it's not a no-op AND that only one of two matched producers gets it"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1784048758044-approver-challenger-add-a-hascontent-null-guard-re.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784048758044-approver-challenger-add-a-hascontent-null-guard-
 **Fix (transferable):** When a PR aligns N producers to emit identical structured output, a review ask to "guard producer i" is only safe if it's a no-op on ALL i, or applied to all i. Verify both the accessor's null/empty behavior AND cross-producer symmetry before treating the comment as a blocking gap.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784048758044-approver-challenger-add-a-hascontent-null-guard-re.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784048758044-approver-challenger-add-a-hascontent-null-guard-re.md`_

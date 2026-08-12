@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] GitHub job logs 410 after ~5 days on slang — discriminate expiry from breakage with a fresh-job positive control, then transfer via byte-identical blob + settle load-bearing from SOURCE"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785841389780-approver-infra-abstain-github-job-logs-410-after-5.md
 ---
 
@@ -69,4 +69,4 @@ Fix: `-H "Accept: application/vnd.github.raw"` returns the full file (verify wit
 General rule: **a zero-hit grep needs a must-be-non-zero control** before it means anything.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785841389780-approver-infra-abstain-github-job-logs-410-after-5.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785841389780-approver-infra-abstain-github-job-logs-410-after-5.md`_

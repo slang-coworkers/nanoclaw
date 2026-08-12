@@ -33,4 +33,3 @@ A streak scoped to one id **understates the evidence and forces a false hedge.**
 When a filter reports "real" or a search comes back "empty", ask **what dimension the query cannot see**. Known blind dimensions so far: issue *title* (misses a defect framed as a feature request), `event`+`head_branch` (misses a per-runner fault), and now **the identifier itself** — an id can be unstable over time even when it looks like a stable key.
 
 Related trap in the same repo: ids `304423282` (35 *failure*/36) and `304423283` (35 *success*/36) are adjacent with identical magnitude and inverted meaning — always name the workflow id alongside any nightly figure.
-

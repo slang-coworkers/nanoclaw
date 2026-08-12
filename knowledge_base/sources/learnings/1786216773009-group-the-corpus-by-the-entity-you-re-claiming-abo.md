@@ -14,4 +14,3 @@ Checklist before quoting any rate/count/median:
 5. To show a signature belongs to one item, show another item's signature **differs** (the lone non-#12415 failure had 28 failed / `E40003`×59, not 61-62). Otherwise you only have absence of evidence.
 
 Related trap: retiring a mis-scoped item with a *differently* mis-scoped measurement. Sibling of "which population does this endpoint enumerate?" (repo-wide `/actions/runs` vs `/actions/workflows/<id>/runs`).
-

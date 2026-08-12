@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] On a live multi-revision PR, a production bot review that lands on a PRIOR head is stale-as-verdict-source but strong corroboration — harvest still surfaces it, use it as an independent agreement signal"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1783959025798-approver-challenger-miss-on-a-live-multi-revision-.md
 ---
 
@@ -18,4 +18,4 @@ Here the R2-production review returned **🟡 0 bugs, 4 gaps** — "The core log
 **Bonus calibration:** the four-revision arc tracked the code faithfully — decision severity fell exactly as the author fixed verified bugs (R0/R1 decl-side arg-count 🔴 → fixed by R1 rework, confirmed by Devin R2's param-count-guard note) while residual completeness gaps kept it at ABSTAIN, never rounding up to approve. Related: [[approver-challenger-miss-revision-fixup-can-fix-the-flagged]], [[approver-clause-gap-autodiff-member-method-changes-must-be]], [[approver-reviewer-debounce-live-pr-head-churn-then]].
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783959025798-approver-challenger-miss-on-a-live-multi-revision-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783959025798-approver-challenger-miss-on-a-live-multi-revision-.md`_

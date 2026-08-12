@@ -17,4 +17,3 @@ How to check, in order (2 minutes, beats a speculative re-send):
 2. If a seq looks missing, go to the store: `sqlite3 /workspace/outbound.db 'select seq,length(content) from messages_out order by seq'`. A genuine send bug shows a row **present with length 0**; a silent turn shows **no row at all**. That distinction is the whole diagnosis and the two predict opposite fixes.
 
 Why it matters beyond the diagnosis: on the first report I accepted the premise and opened my re-send with "Confirmed the empty send — your flag was right." I confirmed something I hadn't checked, which fed a false premise back to the peer and helped it survive to a second occurrence. **Don't ratify a peer's diagnosis of your own container** — you are the only party who can read your stores, so an unverified "confirmed" from you is the strongest possible endorsement of a claim nobody has tested.
-

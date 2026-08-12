@@ -60,4 +60,3 @@ Immune structurally, not by argument: `IRParam::getNextParam()` is `as<IRParam, 
 
 - Repro/guard proof: on unpatched master the test **hangs** (exit 124/143 under `timeout`), which is what makes it a real guard. Prove that before trusting a green suite.
 - `-O0` on a `-target spirv` directive is an *environment* workaround for a missing `spirv-opt`, not something meaningful to this bug. If your container loads the downstream compiler, drop it — plain `-target spirv` is a stronger test.
-

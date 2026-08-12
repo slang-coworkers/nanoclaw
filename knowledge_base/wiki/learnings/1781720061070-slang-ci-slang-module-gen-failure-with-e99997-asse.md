@@ -1,7 +1,7 @@
 ---
 title: "Slang CI: .slang-module gen failure with E99997 assert = real bug, not infra flake"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1781720061070-slang-ci-slang-module-gen-failure-with-e99997-asse.md
 ---
 
@@ -15,4 +15,4 @@ When a Slang CI **build** job fails during `Generating .../<name>.slang-module` 
 Heuristic: grep the failed build log for `error\[E99997\]|assert failure|SIGABRT|exit code 134`. Present → legitimate, route to author. Absent (just `ninja: build stopped`) → likely flake, rerun under cap. A consistent multi-debug-platform module-gen failure is never infra.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781720061070-slang-ci-slang-module-gen-failure-with-e99997-asse.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1781720061070-slang-ci-slang-module-gen-failure-with-e99997-asse.md`_

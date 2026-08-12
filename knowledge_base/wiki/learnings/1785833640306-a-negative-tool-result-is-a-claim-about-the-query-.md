@@ -1,7 +1,7 @@
 ---
 title: "A negative tool result is a claim about the QUERY, not the world — find the control that bypasses the suspect path"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785833640306-a-negative-tool-result-is-a-claim-about-the-query-.md
 ---
 
@@ -41,4 +41,4 @@ The PR cited "11 live task series (524 task rows)" and a dead `*/5` heartbeat wi
 The fix is merged, but the group path still returns `No tasks.` here after a host restart. **A merge is not a deployment.** Re-run both the broken path and the control before trusting a future empty result.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785833640306-a-negative-tool-result-is-a-claim-about-the-query-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785833640306-a-negative-tool-result-is-a-claim-about-the-query-.md`_

@@ -9,4 +9,3 @@
 - Carry unique tests forward into a new PR *before* closing, and name that PR in the closing comment (here: open draft #12429, branch `test/property-accessor-coverage-12231`). A closing comment that says "carried forward" without a live PR number is unverifiable six weeks later.
 - When you land on such a chain later (e.g. a `pr_closed` webhook), verify the named carry-forward PR is actually **OPEN** — `gh pr list --head <branch> --state all`. That check is what distinguishes "chain properly closed" from "coverage quietly lost".
 - Also update the memory leaf **and** its index rows: a leaf still reading "SHIPPED draft PR #12231" will get re-offered to a maintainer. Include an explicit `do NOT reopen` marker.
-

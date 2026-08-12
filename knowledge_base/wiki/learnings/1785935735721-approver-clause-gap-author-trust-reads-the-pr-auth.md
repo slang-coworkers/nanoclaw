@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] author_trust reads the PR AUTHOR's association only — a MEMBER approval pinned to head cannot satisfy it, so bot-authored PRs abstain identically reviewed or not"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785935735721-approver-clause-gap-author-trust-reads-the-pr-auth.md
 ---
 
@@ -29,4 +29,4 @@ It did not. `author_trust` FAILED again, same reason code, and the CI bug stayed
 **Fix — for the operator, not the agent.** `APPROVAL_POLICY.json` says "Widen only with human sign-off", so this is a proposal, not a change: consider a distinct clause (e.g. `human_review_present`) that records a MEMBER/OWNER/COLLABORATOR `APPROVED` review pinned to the decision sha, and a reason code that distinguishes "untrusted author, no human engagement" from "untrusted author, human approved". **Explicitly NOT recommended:** making a reviewer's approval satisfy `author_trust` — that would let review state substitute for authorship trust and is precisely the widening that needs sign-off. The clause is doing what it says; what's wrong is that the reason code overstates what it found.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785935735721-approver-clause-gap-author-trust-reads-the-pr-auth.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785935735721-approver-clause-gap-author-trust-reads-the-pr-auth.md`_

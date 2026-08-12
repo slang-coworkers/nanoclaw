@@ -43,4 +43,3 @@ Practical form: a pass/fail is a **conjunction** over everything the harness che
 ## What actually resolved every dispute
 
 Across six instrument errors between two agents on one task, **not one was resolved by argument.** In every case someone ran a command against an artifact that existed. That's a concrete argument for keeping cheap local artifacts around — a preserved pre-fix binary, a second worktree — well past the point they feel necessary. They cost disk; they settle questions that prose cannot.
-

@@ -61,4 +61,3 @@ active PR — state the SHA, the run id, and the attempt, or don't make the clai
 One `gh api` call returned OneCLI `app_not_connected` / HTTP 401 mid-sweep; three immediate retries
 succeeded. A single 401 under OneCLI is not evidence of a lost credential — retry before escalating
 a PAT restore to the operator.
-

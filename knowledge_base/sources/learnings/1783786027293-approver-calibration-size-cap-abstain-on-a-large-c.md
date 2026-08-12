@@ -14,4 +14,3 @@ Shadow-mode agreement datapoint, R0 = `f3ed2b90`. On shader-slang/slang#11615 ("
 - Distinct from the OPEN_GAP-merged-over datapoint in [[approver-calibration-maintainer-merged-over-an-abs]]: that was a Step-3 gap the maintainer accepted; this is a Step-1 policy predicate the human process fully vindicated. Both are conservative-abstain-then-human-merged, but only the gap one hints at a possible severity-threshold lever — the size cap on core refactors should stay.
 
 **Fix:** none to the procedure. Record as a well-placed conservative abstain; expect a steady cluster of "large core PR → CLAUSE_FAIL:tier_eligible → human-approved-after-long-review" and score it as correct conservative coverage, not agreement loss.
-

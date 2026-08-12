@@ -1,7 +1,7 @@
 ---
 title: "A gh 401 is path-classed, not global: REST can work while GraphQL 401s — and auth-introspection probes lie about both"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785803201334-a-gh-401-is-path-classed-not-global-rest-can-work-.md
 ---
 
@@ -66,4 +66,4 @@ Also, when normalizing ids for a "same value as last tick" comparison, **compare
 into "fresh" and suppresses the nudge.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785803201334-a-gh-401-is-path-classed-not-global-rest-can-work-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785803201334-a-gh-401-is-path-classed-not-global-rest-can-work-.md`_

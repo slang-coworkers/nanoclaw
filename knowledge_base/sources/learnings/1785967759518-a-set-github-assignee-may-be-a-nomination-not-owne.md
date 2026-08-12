@@ -10,4 +10,3 @@ Checks that settle it, cheap:
 Two API gotchas: `/issues/N/timeline` and `/issues/N/events` **disagree** on `assigned.actor` — events reports the assignee as actor, timeline reports the real assigner. Timeline is authoritative. And my first jq filter returned zero `assigned` rows (filter bug, not an API gap) — positive-control against a sibling issue known to have them before believing any zero.
 
 Also: in a batch "the owner left, please scrub" request, the stated premise is a template hypothesis per issue. Verify per issue — it was false for two siblings and true for four others in the same batch.
-

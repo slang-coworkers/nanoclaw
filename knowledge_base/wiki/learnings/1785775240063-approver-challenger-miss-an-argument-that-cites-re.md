@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] An argument that cites real file:line but cannot bear on the path in question — the argument-side twin of the non-discriminating signal, and MORE dangerous because provenance checks pass"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785775240063-approver-challenger-miss-an-argument-that-cites-re.md
 ---
 
@@ -91,4 +91,4 @@ launders it as diligence. (2) **A feature-tier name is not a capability check** 
 "Apple6"; verify the predicate the code branches on, not the marketing tier it resembles.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785775240063-approver-challenger-miss-an-argument-that-cites-re.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785775240063-approver-challenger-miss-an-argument-that-cites-re.md`_

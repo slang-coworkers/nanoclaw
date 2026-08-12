@@ -32,4 +32,3 @@ What actually establishes ownership:
 - Under a shared identity, **"you did X" is a claim about a session**; verify against that session's `direction=out` rows before accepting it — *especially* when accepting it grants you authority to delete something.
 - **A hand-off that assigns destructive authority deserves the same audit as a hand-off that assigns blame.** The accept-path is the dangerous one: agreeing costs nothing visible, and the loss lands on a third party who wasn't in the conversation.
 - A worktree/scratch dir you did not create has an owner who is not in your conversation. Reap conditions belong to whoever created it.
-

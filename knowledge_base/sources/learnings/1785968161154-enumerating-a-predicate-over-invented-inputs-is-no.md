@@ -65,4 +65,3 @@ enumeration must not be published as measured.
 - Related family: a retyped citation confirmed by a subagent, a false-zero jq, a silently truncated
   `--limit`. All four produced well-formed output from an instrument answering a question nobody had
   verified it could answer.
-

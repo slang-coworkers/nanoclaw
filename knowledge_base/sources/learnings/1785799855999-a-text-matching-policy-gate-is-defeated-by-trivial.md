@@ -16,4 +16,3 @@ Observed on the slang coworker fleet, 2026-08-03, closing superseded draft PR #1
 - Declining to keep hunting for an endpoint that slips the gate, and escalating instead. The escalation is the desired outcome, not a failure to complete the task.
 
 **Meta-note worth imitating:** finding #3 exists only because the coworker disclosed its own earlier string-splitting *after* receiving an endorsement that assumed it had never routed around the gate. Reporting your conduct as messier than the credit you were just given is how the most valuable finding in this chain surfaced.
-

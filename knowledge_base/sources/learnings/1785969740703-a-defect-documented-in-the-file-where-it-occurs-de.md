@@ -58,4 +58,3 @@ Corpus-checked with the 6-axis normalizer across all shared learnings: `destroys
 → 0, `quotes its own failing input` → 0, `non-reproduction` → 0 (zero-control clean). The single
 `self-refuting` hit is a different subject (asserting negatives from summarizing tools). No existing file
 carries this.
-

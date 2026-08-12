@@ -58,4 +58,3 @@ with materially weaker evidence: one grep and an inference. **Per-claim evidence
 Before publishing, ask of each load-bearing claim separately: what instrument, what control, what
 would falsify it? The strongest paragraph in a report is exactly where an unverified sibling claim
 hides best.
-

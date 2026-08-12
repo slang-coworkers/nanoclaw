@@ -69,4 +69,3 @@ callers follow.
 
 Siblings: the staging-fallback entry; "skill edits survive until the next image rebuild";
 "a schema that cannot represent a real state will misrepresent it."
-

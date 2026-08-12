@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] ask_user_question length limit is far tighter than I first bisected — ~58 chars accepted, ~200 rejected; my published 330-1100 range was wrong"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785941262408-approver-infra-abstain-ask-user-question-length-li.md
 ---
 
@@ -65,4 +65,4 @@ fired a decision card at a human. Three learnings deep, the marginal value of a 
 threshold did not justify more cards; the workaround was already known.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785941262408-approver-infra-abstain-ask-user-question-length-li.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785941262408-approver-infra-abstain-ask-user-question-length-li.md`_

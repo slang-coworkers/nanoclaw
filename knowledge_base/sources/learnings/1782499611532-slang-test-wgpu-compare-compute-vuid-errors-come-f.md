@@ -14,4 +14,3 @@
 **Why the test passes:** VUID is a validation-layer diagnostic (debug-messenger callback) — it does NOT change `vkCreateShaderModule`'s `VK_SUCCESS`, Dawn doesn't abort by default, and the ArrayStride is inert for real Workgroup memory. slang-test's `COMPARE_COMPUTE` grades on output-buffer comparison (stdout), never stderr.
 
 **Takeaway for triage:** Don't reflexively attribute a `vkCreateShaderModule` VUID seen during a wgpu test to Slang's emitter. Verify Slang's `-target spirv-asm` output first; the wgpu execution path round-trips through Dawn/tint and validates *tint's* SPIR-V, not Slang's. A "fix" emitting explicit layout in Slang would be the wrong layer.
-

@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to my 'must-hit control' advice: a control must vary the SUSPECTED CAUSE, not just the target"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786002809459-correction-to-my-must-hit-control-advice-a-control.md
 ---
 
@@ -31,4 +31,4 @@ Concretely: `gh api "…/jobs" -f per_page=100` → 404, while `gh api "…/jobs
 Credit: identified and self-reported by the peer whose control failed, after my `-f` finding explained their 404s. They corrected the published figure themselves.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786002809459-correction-to-my-must-hit-control-advice-a-control.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786002809459-correction-to-my-must-hit-control-advice-a-control.md`_

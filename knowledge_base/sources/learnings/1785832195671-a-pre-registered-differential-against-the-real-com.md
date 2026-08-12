@@ -24,4 +24,3 @@ MINE:   variantFn2 scope=%13 → CU %13 wraps DebugSource %7  → f1.slang   WRO
 **Two implementation guards for a deliberate bail-out** (both learned from earlier failures the same day):
 - **The ambiguity test must assert the fallback is PRESERVED**, and be negative-controlled — gate removed ⇒ red, gate present ⇒ green. Otherwise "the gate fired" is indistinguishable from "the case never arose."
 - **Make the silence deliberate in the code comment**, naming the measured regression case. A future reader will otherwise "finish" the bail-out by picking the first occurrence — reintroducing exactly the measured regression. An unexplained conservative bail-out reads as incompleteness.
-

@@ -26,4 +26,3 @@ Verify identity before trusting a recovered doc:
 `compose-and-run.sh`'s diff-integrity guard compares the model-materialized `tmp/pr-diff.patch`, which is **shared across concurrent runs**. On #12269 it fired listing files from an entirely different PR, while the run's own `pr-diff.reference` and the review footer both pinned the correct head. Same clobber independently explains why one of A's six subagents (`code-quality-reviewer`) reported on a *different* PR (#12271) despite reading the right diff.
 
 **Adjudicate, don't auto-trust:** if `pr-diff.reference` matches the real PR file list and the footer sha matches the head, the marker is a false positive. This has now fired spuriously 5+ times across #12262/#12263/#12275/#12281/#12269. The real fix is run isolation (worktree-per-run) so runs stop sharing `tmp/`.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] RequiredLoweringPassSet gates: stale-false reduces to a producer-vs-governing-scan check"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1784006091575-approver-human-agreement-requiredloweringpassset-g.md
 ---
 
@@ -13,7 +13,7 @@ source: learnings/1784006091575-approver-human-agreement-requiredloweringpassset
 
 **How to catch it (fast challenger recipe for any RequiredLoweringPassSet gate):**
 1. Identify the call site's governing scan (post-link @~1025 vs post-specialization @~1472 — whichever is the last scan before the call-site line).
-2. Enumerate EVERY producer of the gated pass's trigger opcode(s) across source/ (IRBuilder emit* methods + emitIntrinsicInst with that kIROp). 
+2. Enumerate EVERY producer of the gated pass's trigger opcode(s) across source/ (IRBuilder emit* methods + emitIntrinsicInst with that kIROp).
 3. For each producer, ask only: does it run in the window (governing scan → call site)? Front-end AST→IR producers (slang-lower-to-ir.cpp) always run before linkAndOptimizeIR ⇒ safe. An IR-pass producer is safe only if it runs before the governing scan (e.g. autodiff transpose runs inside finalizeAutoDiffPass @~1409, before scan2 @~1472 ⇒ sumVectorMatrix safe).
 4. Confirm gate = pass's handled-opcode-set exactly (case labels not narrower than what the pass rewrites).
 Any in-window producer ⇒ stale-false ⇒ BLOCK. This is exactly why the PR correctly LEFT UNGATED `removeRawDefaultConstructors` (DefaultConstruct synth'd in-window by legalize-types/glsl-legalize), the legalize* type-shape family, and `lowerReinterpretOptional` (ReinterpretOptional synth'd in-window by typeflow specialization) — a bool flag can't express a type-shape, and in-window synthesis defeats a frozen flag.
@@ -21,4 +21,4 @@ Any in-window producer ⇒ stale-false ⇒ BLOCK. This is exactly why the PR cor
 **Fix / rule:** For this gate family, the whole correctness question is producer-timing, not diff size. A diagnostic-only pass (e.g. processLateRequireCapabilityInsts — diagnoses+removes existing insts, no synthesis) is doubly safe: false flag = pure no-op, drops no diagnostic. Links: [[approver-human-agreement-purely-additive-gate-pass]] (the merged #12050/#11920 precedent this extends).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784006091575-approver-human-agreement-requiredloweringpassset-g.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784006091575-approver-human-agreement-requiredloweringpassset-g.md`_

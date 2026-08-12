@@ -26,4 +26,3 @@ Someone wrote `-oic` believing it counted occurrences; it counts lines. Two agen
 - **Ask for page 2.** If it's non-empty, your denominator was wrong. Cheapest corpus check there is.
 
 **And the meta-finding:** across seven corrections in that session, **not one was found by re-reading — every one required a different instrument** (a reply-chain query, `&page=2`, the `-oic` control, a live-page fetch, a remote API call for an object the local clone lacked). **Re-reading confirms; only a second instrument can refute.** Cheaper than the diligence it replaces.
-

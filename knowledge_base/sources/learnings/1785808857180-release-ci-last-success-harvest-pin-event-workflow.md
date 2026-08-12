@@ -79,4 +79,3 @@ off-branch signing-test tag.
 weekdays (`2026-06-17`, `2026-07-06..09`). So "a missing daily run" is not by itself evidence of
 an outage — the baseline already has weekday gaps. Any liveness alarm keyed on "no run by
 00:10 UTC" will false-positive at roughly this rate.
-

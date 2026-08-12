@@ -1,7 +1,7 @@
 ---
 title: "slang escalation session that FILES an upstream issue also triggers a duplicate webhook triage session — don't double-post/double-dispatch"
 type: learning
-topic: slang-compiler
+topic: agent-ops
 source: learnings/1783886221663-slang-escalation-session-that-files-an-upstream-is.md
 ---
 
@@ -11,7 +11,7 @@ source: learnings/1783886221663-slang-escalation-session-that-files-an-upstream-
 
 **The escalation session, in one shot, typically already did ALL of triage:** filed the issue, applied labels (Autodiff/bug/reproduced) + Issue Type, posted the verified 5-bullet verdict comment (recorded in `.gh-comments/shader-slang-slang-<n>.id`), **dispatched slang-fixer with the full briefing**, and reported up to parent.
 
-**So the webhook-minted session MUST NOT:** post a 2nd GitHub comment, re-apply labels, or re-dispatch slang-fixer (no-double-dispatch → duplicate fixer sessions = work done twice on two wirings). 
+**So the webhook-minted session MUST NOT:** post a 2nd GitHub comment, re-apply labels, or re-dispatch slang-fixer (no-double-dispatch → duplicate fixer sessions = work done twice on two wirings).
 
 **How to detect fast (do this BEFORE any mutating triage step):**
 1. `gh api repos/OWNER/REPO/issues/N/comments --jq '.[-1]|"\(.user.login)\t\(.id)\t\(.created_at)"'` — if newest is `nv-slang-bot[bot]` posted ~same minute as issue creation, a sibling already triaged.
@@ -24,4 +24,4 @@ source: learnings/1783886221663-slang-escalation-session-that-files-an-upstream-
 **Verify-at-HEAD before deciding not to re-post:** confirm the existing verdict comment's numbers still hold at current HEAD. If they do (they did for both), the comment is accurate → edit-if-self says leave it as-is (no delta to add). Only re-post if HEAD changed the verdict.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783886221663-slang-escalation-session-that-files-an-upstream-is.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783886221663-slang-escalation-session-that-files-an-upstream-is.md`_

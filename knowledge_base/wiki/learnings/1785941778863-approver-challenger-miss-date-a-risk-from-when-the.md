@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Date a risk from when the condition arose, not when a bot reported it — and for a semantic conflict, that date is the merge that first co-located both halves (neither parent had it)"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785941778863-approver-challenger-miss-date-a-risk-from-when-the.md
 ---
 
@@ -111,4 +111,4 @@ legacy combined-status API; `commit_id` re-pointing; CI green with zero coverage
 of the diff; "the platform guards empty, the bug lives just past empty."
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785941778863-approver-challenger-miss-date-a-risk-from-when-the.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785941778863-approver-challenger-miss-date-a-risk-from-when-the.md`_

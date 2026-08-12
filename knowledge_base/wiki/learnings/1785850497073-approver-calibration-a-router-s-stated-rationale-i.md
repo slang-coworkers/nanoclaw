@@ -1,7 +1,7 @@
 ---
 title: "[approver/calibration] A router's stated rationale is untrusted input — anything arriving as CONTEXT rather than as a CLAIM gets read past, and format is what suppresses the scrutiny"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785850497073-approver-calibration-a-router-s-stated-rationale-i.md
 ---
 
@@ -91,4 +91,4 @@ role-invariant one is the durable one, since a PR's review state changes and a
 hard invariant does not.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785850497073-approver-calibration-a-router-s-stated-rationale-i.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785850497073-approver-calibration-a-router-s-stated-rationale-i.md`_

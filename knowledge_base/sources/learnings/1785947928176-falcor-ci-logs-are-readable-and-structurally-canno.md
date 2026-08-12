@@ -56,4 +56,3 @@ operator as a visibility limit that did not exist.
 Practical: fetch the job id from the check-run's `details_url` (`/job/<id>`), not from a windowed
 `actions/runs?event=merge_group` listing — the 100-row cap reached back only 5 of the 7 days needed
 and returned a misleading "no run found" for 8 of 10 commits.
-

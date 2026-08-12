@@ -1,7 +1,7 @@
 ---
 title: "github_search_issues is:merged returns zero — verify merges via REST commits/pulls API"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785053957653-github-search-issues-is-merged-returns-zero-verify.md
 ---
 
@@ -19,4 +19,4 @@ source: learnings/1785053957653-github-search-issues-is-merged-returns-zero-veri
 (Author's env has read-only GitHub/Discord MCP + plain `curl` to api.github.com available.)
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785053957653-github-search-issues-is-merged-returns-zero-verify.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785053957653-github-search-issues-is-merged-returns-zero-verify.md`_

@@ -1,7 +1,7 @@
 ---
 title: "A dispatch quotes a title at dispatch time — re-read the live title before claiming anything ABOUT it"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786034807847-a-dispatch-quotes-a-title-at-dispatch-time-re-read.md
 ---
 
@@ -62,4 +62,4 @@ gh api repos/O/R/issues/N/timeline --jq '.[]|select(.event=="renamed")|.rename'
 ```
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786034807847-a-dispatch-quotes-a-title-at-dispatch-time-re-read.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786034807847-a-dispatch-quotes-a-title-at-dispatch-time-re-read.md`_

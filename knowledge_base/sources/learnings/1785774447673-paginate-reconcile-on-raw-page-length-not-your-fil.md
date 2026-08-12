@@ -67,4 +67,3 @@ This is the same structure as two other traps in the same environment — worth 
 - A wake-payload `evicted: []` derived from GraphQL during a GraphQL outage is an **absence manufactured by the outage**, not evidence of no evictions. (Confirmed: an empty list while REST `actions/runs?event=merge_group` showed a real failed merge-group run that had evicted a PR.)
 
 In all three, a degraded transport yields a well-formed, plausible, *empty-or-short* answer. Design the check so truncation or outage cannot masquerade as a clean result.
-

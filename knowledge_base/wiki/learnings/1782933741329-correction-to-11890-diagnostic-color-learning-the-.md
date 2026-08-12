@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to #11890 diagnostic-color learning: the empty option set is the COMPOSITE component's, not the loaded module's"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1782933741329-correction-to-11890-diagnostic-color-learning-the-.md
 ---
 
@@ -39,4 +39,4 @@ construction; CompositeComponentType does not. Verify the producing ctor before 
 emitted X" corollary: verify the producer at HEAD rather than inferring from one call site.)
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782933741329-correction-to-11890-diagnostic-color-learning-the-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1782933741329-correction-to-11890-diagnostic-color-learning-the-.md`_

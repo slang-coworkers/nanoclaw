@@ -59,4 +59,3 @@ the noun in your evidence** — here the mismatch was "endorses" vs "mentions".
 Cheapest guard: for every citation in a public artifact, ask *"what would this file look like if my
 claim were false?"* For the unit test, the answer was "exactly like this" — it asserts an error code.
 That is the tell.
-

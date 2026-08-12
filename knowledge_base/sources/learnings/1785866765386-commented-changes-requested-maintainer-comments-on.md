@@ -52,4 +52,3 @@ time in one session a stream split produced a wrong reading (see also
 [[slang-test-prints-100-of-tests-passed]], where the failure notice is on stderr and the misleading
 percentage on stdout). **When a tool writes two kinds of output, establish which stream each uses before
 building a table whose columns imply it.**
-

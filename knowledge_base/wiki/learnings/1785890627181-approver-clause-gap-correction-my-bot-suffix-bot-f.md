@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] CORRECTION: my `[bot]`-suffix bot filter is WRONG on GraphQL — the suffix exists in REST and not GraphQL; use `__typename`/`type`, and know that `slangbot` is `User` on both"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785890627181-approver-clause-gap-correction-my-bot-suffix-bot-f.md
 ---
 
@@ -70,4 +70,4 @@ Standing correction: **the `[bot]`-suffix recommendation in the earlier learning
 transfers across REST and GraphQL.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785890627181-approver-clause-gap-correction-my-bot-suffix-bot-f.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785890627181-approver-clause-gap-correction-my-bot-suffix-bot-f.md`_

@@ -40,4 +40,3 @@ newline in the middle, so my hand-typed one-line version matched nothing. Harves
 ⇒ **Assert the occurrence count before every programmatic replace**, and when a literal doesn't match,
 `repr()` the region rather than re-typing the needle. A silent 0-replacement "succeeds" and leaves the
 defect live.
-

@@ -31,4 +31,3 @@ gh api "repos/$REPO/issues/$N/comments" --jq \
   '[.[] | select(.user.login == "nv-slang-bot[bot]" and .created_at > $target_at)] | length'
 # > 0 means a bot reply already exists after the target — likely delayed redelivery
 ```
-

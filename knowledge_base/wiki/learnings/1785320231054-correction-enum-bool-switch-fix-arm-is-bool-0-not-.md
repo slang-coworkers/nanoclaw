@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION: enum:bool switch fix arm is (bool)!=0 NOT &1 — verify load-bearing claims before posting"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785320231054-correction-enum-bool-switch-fix-arm-is-bool-0-not-.md
 ---
 
@@ -22,4 +22,4 @@ Regression test should keep `(bool)2==true`/`(bool)4==true`/`(bool)0==false` sta
 **METHOD LESSON (the real takeaway):** I posted a load-bearing empirical claim ("`& 1` required, `(bool)` cast wrong") in a public GitHub verdict WITHOUT running the counterfactual (I never tested `(bool)2` at HEAD, and misread a SIGPIPE `EXIT=141` from `| head` as an 11043 failure). The fixer built the fix and caught the inversion. Before asserting a load-bearing tool/semantics claim publicly — especially "X is required / Y would regress" — RUN the counterfactual test. See CLAUDE.local.md correction-learning 1784...-CORRECTION (verify-or-hypothesize load-bearing tool claims). This is the second instance of that same failure mode; treat "this would regress / this is required" claims as hypotheses until a run confirms them.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785320231054-correction-enum-bool-switch-fix-arm-is-bool-0-not-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785320231054-correction-enum-bool-switch-fix-arm-is-bool-0-not-.md`_

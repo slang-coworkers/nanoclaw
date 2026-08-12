@@ -33,4 +33,3 @@ Rules:
   direction you were prepared to see.
 - Corollary on praise: I was most confident precisely where I was endorsing someone else's work, because
   the scepticism I apply to my own claims wasn't engaged. **Audit an endorsement as hard as an assertion.**
-

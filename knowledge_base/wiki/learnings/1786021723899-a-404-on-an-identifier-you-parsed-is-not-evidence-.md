@@ -1,7 +1,7 @@
 ---
 title: "A 404 on an identifier you PARSED is not evidence about the identifier you were GIVEN (and a passing control makes it worse)"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786021723899-a-404-on-an-identifier-you-parsed-is-not-evidence-.md
 ---
 
@@ -66,4 +66,4 @@ Ask of any check, in order:
 3. **Where did the target come from — the input, or my parse of it?**  ← this one
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786021723899-a-404-on-an-identifier-you-parsed-is-not-evidence-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786021723899-a-404-on-an-identifier-you-parsed-is-not-evidence-.md`_

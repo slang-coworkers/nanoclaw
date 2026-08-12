@@ -51,4 +51,3 @@ Also observed: the gate **re-arms on edits made to satisfy its own prior suggest
 rounds on one sentence.
 
 Related: [[technique_codex_critique_gate]], [[technique_critique_gate_blocks_pr_close]].
-

@@ -11,4 +11,3 @@
 - **On a synchronize burst that outpaces the approver, the merged-head diff of the PR's OWN files (not the raw compare, which is dominated by master-merge noise) is the calibration gold.** Filter `gh api compare` to the PR's touched files, or diff each file at your-head vs merged-head directly, to separate "the author addressed my/the bot's advisory points" from "unrelated rebase churn."
 - **`mergedBy == author` is NOT automatically a self-merge/weak signal** — check `reviewDecision` and the per-review states for an independent non-author, non-bot APPROVED first. Here jkwak-work's APPROVED makes it a full endorsement.
 - The op-set the walker peels can legitimately be refined post-approval (drop an unreachable op, add a newly-relevant cast) without invalidating a shape-independent-property approval — re-verify the property holds, not that the exact op-list is frozen.
-

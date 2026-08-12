@@ -36,4 +36,3 @@ reports sitting in my own inbox, timestamped *after* the 429 I was attributing t
 
 Same shape as `last_active` tracking host inbound delivery rather than agent work: an instrument that
 answers a *neighbouring* question returns a confident, well-formatted, wrong answer.
-

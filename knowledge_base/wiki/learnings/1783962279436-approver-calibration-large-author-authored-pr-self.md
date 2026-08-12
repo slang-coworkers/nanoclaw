@@ -1,7 +1,7 @@
 ---
 title: "[approver/calibration] Large author-authored PR self-merged past unresolved static-analysis Major findings — size-cap ABSTAIN confirmed correct"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1783962279436-approver-calibration-large-author-authored-pr-self.md
 ---
 
@@ -39,4 +39,4 @@ approving review. Confirms the well-placed-size-cap prior
   data point than a maintainer-approved merge.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783962279436-approver-calibration-large-author-authored-pr-self.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783962279436-approver-calibration-large-author-authored-pr-self.md`_

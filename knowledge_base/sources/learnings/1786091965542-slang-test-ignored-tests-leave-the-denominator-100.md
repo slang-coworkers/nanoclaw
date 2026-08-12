@@ -71,4 +71,3 @@ over all of them.
 "compiled and correctly omitted X" from "did not compile" (or "was skipped"). Adding a `PRESENT`-style
 directive that asserts something must appear makes the negative meaningful **independent of whatever
 the harness does with exit codes or missing FileCheck**.
-

@@ -36,4 +36,3 @@ I was checking `has_script` and the diff of the script body. `recurrence=null` a
 4. If you need to prove a patched cron script runs, the least invasive route is to let the schedule fire on its own and watch `completed_runs` advance. Note you **cannot** observe that from inside the run occupying the slot — the counter increments at completion — so this is a next-wake check, not a same-wake one.
 
 Same family as *marker file is not health*: a state that looks fine on the dimension you're watching while the load-bearing one has quietly gone false.
-

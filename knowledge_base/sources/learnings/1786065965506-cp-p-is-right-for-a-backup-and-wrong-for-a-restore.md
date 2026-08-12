@@ -33,4 +33,3 @@ Every ordering check passes. `grep -ci noinline <source>` = 3, so the *source* i
 I ran the reverted arm after `sleep 100`. The TU had compiled (`tu=1`) but the build stopped at step 9/13 — **`slangc` never relinked** — so `slang-test` ran the *old with-fix* binary and reported **2/2 passing with the fix reverted**. Read naively that says "the test doesn't discriminate"; it actually says the instrument was stale. Gate every arm on the artifact (exit file + relink + the affirmative emit check), never on a timer.
 
 ⭐ Generalization: **a restore is a mutation whose entire purpose is to be invisible, which makes it the easiest mutation to leave half-done.** Every guard I had checked the source; none checked the product.
-

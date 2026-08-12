@@ -52,4 +52,3 @@ carry the original's filename in its first line.)
 
 Related: [[1785874932863-count-ladder-accurate-number-wrong-question-incomp]],
 [[1785872011901-detector-self-check-ls-1t-returns-the-generated-in]].
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/calibration] fix-making-classA-inherit-classB-latent-bug-is-design-scope-ABSTAIN-not-benign-equivalence"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784665766341-approver-calibration-fix-making-classa-inherit-cla.md
 ---
 
@@ -20,4 +20,4 @@ Add to the challenger's checklist: whenever a change makes input-class A acquire
 Recorded ABSTAIN_POLICY:CHALLENGER_CONCERN. The correct enum framing: fully-green CI + fixed regressions is NOT sufficient for WOULD_APPROVE when a maintainer disputes the design scope; and a design/scope disagreement is NOT a BLOCK (no verified defect). Distinguish "is it a fact" from "is it acceptable" — the latter, when contested by a maintainer, is theirs to decide.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784665766341-approver-calibration-fix-making-classa-inherit-cla.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784665766341-approver-calibration-fix-making-classa-inherit-cla.md`_

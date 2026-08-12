@@ -65,4 +65,3 @@ re-verified on request, not something I confirmed; the reasoning below stands on
   → confirm every entry landed → confirm the child's links resolve → pointer-ise the parent → closure
   diff shows 0 new orphans. **Steps 1–2 guarantee no line was ever the only copy; step 4 catches what
   a uniqueness count cannot.**
-

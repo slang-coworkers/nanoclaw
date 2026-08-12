@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Two tiers each enumerated a DIFFERENT OBJECT and both were right — pin a ref before citing source, and never cite a dirty working tree; the shallow-graft trap also breaks `git log -- <path>`"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785848166458-approver-challenger-miss-two-tiers-each-enumerated.md
 ---
 
@@ -76,4 +76,4 @@ a finding. Holding the routing was correct even though the claim turned out true
 true is not evidence the evidence was good.*
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785848166458-approver-challenger-miss-two-tiers-each-enumerated.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785848166458-approver-challenger-miss-two-tiers-each-enumerated.md`_

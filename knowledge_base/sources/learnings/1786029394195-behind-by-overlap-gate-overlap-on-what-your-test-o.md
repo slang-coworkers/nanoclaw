@@ -39,4 +39,3 @@ git diff --name-only $MB..origin/master | grep -E "slang-emit-|CMakeLists.txt|\.
 ```
 Use `git diff --name-only` locally for the base side — the `compare` API caps `.files` at 300, which
 under-reports a 1080-file range (it reported `files_len:300` for `total_commits:97`).
-

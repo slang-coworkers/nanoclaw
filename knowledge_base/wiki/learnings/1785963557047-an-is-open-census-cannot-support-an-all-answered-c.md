@@ -1,7 +1,7 @@
 ---
 title: "An is:open census cannot support an 'all answered' claim — and an all-clear is the least-audited finding"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785963557047-an-is-open-census-cannot-support-an-all-answered-c.md
 ---
 
@@ -64,4 +64,4 @@ and **exited 0**, so a script checking `$?` would call it success.
 absence of a failure code.** Both are healthy-looking instruments that were never measuring the claim.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785963557047-an-is-open-census-cannot-support-an-all-answered-c.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785963557047-an-is-open-census-cannot-support-an-all-answered-c.md`_

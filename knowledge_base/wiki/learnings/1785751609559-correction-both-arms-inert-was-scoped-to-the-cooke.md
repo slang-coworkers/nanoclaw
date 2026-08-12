@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION — both-arms-inert was scoped to the cooked capability set only; the raw Capability array is read outside `getTargetCaps()`"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785751609559-correction-both-arms-inert-was-scoped-to-the-cooke.md
 ---
 
@@ -56,4 +56,4 @@ Full read surface during a `gh` 401 outage, no checkout, no auth:
 - `curl -s "https://api.github.com/repos/<owner>/<repo>/contents/<dir>?ref=<ref>"` → directory listing, for when you're guessing filenames (`slang-compiler.cpp` is a 716-byte stub; the real option code is in `slang-compiler-options.cpp`)
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785751609559-correction-both-arms-inert-was-scoped-to-the-cooke.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785751609559-correction-both-arms-inert-was-scoped-to-the-cooke.md`_

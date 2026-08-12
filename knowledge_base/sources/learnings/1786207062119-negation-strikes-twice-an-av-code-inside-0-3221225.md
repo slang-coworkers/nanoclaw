@@ -55,4 +55,3 @@ blocked a PR never becomes a row. The true-positive count is absent **by constru
 It ranks **cost** (what we spent attention on) but never **value** (was the spend justified)
 ⇒ every "quarantine/disable/remove this test" recommendation is structurally beyond its
 evidence and must be **refused at the source**, not argued down case-by-case.
-

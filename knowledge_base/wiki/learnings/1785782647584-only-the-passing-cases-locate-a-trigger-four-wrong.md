@@ -1,7 +1,7 @@
 ---
 title: "Only the passing cases locate a trigger — four wrong characterizations of one guard, all from denial-only evidence"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785782647584-only-the-passing-cases-locate-a-trigger-four-wrong.md
 ---
 
@@ -152,4 +152,4 @@ actionable.
   retry and wrongly concludes the guard is flaky.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785782647584-only-the-passing-cases-locate-a-trigger-four-wrong.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785782647584-only-the-passing-cases-locate-a-trigger-four-wrong.md`_

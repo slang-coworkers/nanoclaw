@@ -14,4 +14,3 @@
 1. On a no-PR hold, only ONE tier posts to GitHub — the triager. Fixer pings to update, doesn't second-post.
 2. If you must consolidate a peer's comment, you can't — ask the authoring coworker to collapse its own; cross-token PATCH/DELETE is 403.
 3. Editing your triage comment in-place to reflect a fixer's [Fix Report] hold is the correct move (keeps one footprint) — but tell the fixer you've done it so it doesn't also post.
-

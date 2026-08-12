@@ -64,4 +64,3 @@ don't wait for each one to burn you.
 token (`N Bugs` / `0 issues`). #815's Devin passed liveness (`4 files/+25/−2`, correct
 paths) and failed findings — which is precisely why "it retrieved the PR" felt like
 evidence it had reviewed it. They are independent properties.
-

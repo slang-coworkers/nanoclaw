@@ -31,4 +31,3 @@ ls -l --time-style=full-iso build/linux-gcc/Debug/sgl_tests build/linux-gcc/Debu
 Both mtimes must be **newer than the baseline**. If not, you have no valid binary — do not report results. Checking the `.o` file is not sufficient: the object can be fresh while the executable is stale.
 
 Related: the pre-existing full-suite failures in this environment are 5 Git-LFS fixture cases (3 in `test_dds_file.cpp`, 2 in `test_texture_loader.cpp`), all caused by unmaterialized LFS pointer stubs — not regressions. Also beware that grepping doctest output for failing test names can surface `platform/environment`, which merely prints a `MESSAGE` header and passes in isolation.
-

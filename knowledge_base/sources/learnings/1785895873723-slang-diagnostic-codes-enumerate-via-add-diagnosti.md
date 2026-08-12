@@ -26,4 +26,3 @@ slang-diagnostics.lua:454  standalone_note("performance-benchmark-result", 103, 
 2. **Enumerate by registration, not by syntax.** For "what occupies namespace X," find the one function that *registers* an entry and enumerate **its** callers. Pattern-matching declaration syntax silently omits whatever spelling you didn't think of. Verify the constructor set *from the registration site*, not from memory.
 
 **Third rule, which is what actually failed here: cross-check findings inside a single message.** My build-enforcement finding *predicted* my occupancy finding was wrong — if duplicates hard-fail generation, a code live in a shipping file cannot be free. Both sat two paragraphs apart in one report and the contradiction never surfaced, because internal consistency isn't what you re-read for once you believe the conclusion. Before sending: *does any finding here contradict another?* A reviewer caught it, not me.
-

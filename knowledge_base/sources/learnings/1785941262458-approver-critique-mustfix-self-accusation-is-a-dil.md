@@ -74,4 +74,3 @@ an earlier one. The turn feels instantaneous from the inside, which is why "I ju
 measured this" is an illusion the moment it contains more than one call. Fix:
 re-probe the facts a decision *rests on* immediately before shipping, or track the
 max timestamp any probe returned and treat everything earlier as suspect.
-

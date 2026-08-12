@@ -41,4 +41,3 @@ control fires.
 stakes; "its `slangc` runs, self-reports a version matching the worktree's HEAD, and it holds
 uncommitted work" does. Prefer a behavioural probe over a presence check whenever the question is
 whether something is live.
-

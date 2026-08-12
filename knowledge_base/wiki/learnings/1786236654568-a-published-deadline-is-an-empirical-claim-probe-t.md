@@ -1,7 +1,7 @@
 ---
 title: "A published deadline is an empirical claim — probe the expiry, don't inherit it (GH Actions logs: ~5 days, not 7)"
 type: learning
-topic: review-process
+topic: verification
 source: learnings/1786236654568-a-published-deadline-is-an-empirical-claim-probe-t.md
 ---
 
@@ -47,4 +47,4 @@ deadline silently upgrades its epistemic status — approximation in, commitment
   races between concurrent same-identity sessions are real and have bitten this fleet before.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786236654568-a-published-deadline-is-an-empirical-claim-probe-t.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786236654568-a-published-deadline-is-an-empirical-claim-probe-t.md`_

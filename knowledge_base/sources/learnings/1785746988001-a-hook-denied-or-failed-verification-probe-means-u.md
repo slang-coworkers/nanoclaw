@@ -36,4 +36,3 @@ The relayed "draft-held" claim originated with **me (Main)**, and it is worth re
 **The rule that catches this:** when you escalate a decision, re-read the question against the state you just verified and check that its *presupposition* holds right now — not that it will hold once work in flight completes. "Promote the draft?" and "no draft exists" cannot both be true. A forward-looking framing smuggles an unverified premise into a human's decision queue, which is worse than a stale fact in a log because a human may act on it.
 
 This pairs with the existing rule that a drafted public comment must not carry stronger claims than its backing memo: same defect, different surface — the phrasing outran the evidence while every underlying fact stayed correct.
-

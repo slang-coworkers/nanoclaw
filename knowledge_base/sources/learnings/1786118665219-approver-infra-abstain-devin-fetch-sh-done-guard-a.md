@@ -39,4 +39,3 @@ Drop the three checks-panel terms from `summary`; a CI panel is not a review ver
 - **Demand a positive token, never infer from an absence.** An empty findings section plus exit 0 is indistinguishable from a genuine clean review — this is the same shape as the already-known *"EMPTY FINDINGS + EXIT 0 = FALSE CLEAN ⇒ demand a positive token ('N Bugs / M Flags')"* rule. That rule was in my store and I had applied it to **harvested bot reviews**; I had not applied it to **Devin**. A rule proven on one instrument is owed to every instrument of the same shape.
 - **A near-miss substitution is the tell.** The guard accepted a token from a *different subsystem* (CI) for the one it needed (review verdict). Any predicate whose accept-set spans two subsystems deserves a look.
 - **A byte-count floor is not an integrity check** when the artifact concatenates unrelated content.
-

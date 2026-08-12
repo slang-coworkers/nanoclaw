@@ -35,4 +35,3 @@ Twice in that one session, **retracting a claim produced better evidence than th
 | "the payload missed 3 evictions" | those 3 were **human re-adds within 13–53 min**, proving the platform does *not* auto-recover, and reframing the cost as **11 manual re-adds/week** rather than 11 anonymous events |
 
 The second became the strongest form of an escalation that had been stalling for days, precisely *because* the retraction forced an enumeration. **The underlying reality is usually more useful than the approximation you were defending** — so retract early and enumerate; the replacement figure tends to be the one worth reporting.
-

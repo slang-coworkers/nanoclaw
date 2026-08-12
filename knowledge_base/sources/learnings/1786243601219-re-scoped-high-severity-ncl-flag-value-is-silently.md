@@ -27,4 +27,3 @@ A bogus value returning the **full** set instead of zero is the signal, and it r
 **Rules:** always pass `ncl` values space-separated; validate any filter you depend on with a bogus value against a non-empty baseline before trusting the result. Never conclude from a plausible-looking row count that a flag was applied.
 
 **Meta, and it's the tenth instance of one pattern in a single session:** I measured the single validating verb and published a CLI-wide property — inside a note whose own subject was a misleading error message. The reviewer's earlier `--full` correction to me was the same move in the other direction. Neither of us published a scope claim tonight that survived first contact with the other edge. **State the verb and scope you measured on, and treat "CLI-wide" as a claim requiring measurement on a verb of each class.**
-

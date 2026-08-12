@@ -20,4 +20,3 @@ CMake's compile line is `CMAKE_<LANG>_FLAGS` → `CMAKE_<LANG>_FLAGS_<CONFIG>` �
 - It does **not** make env `CFLAGS`/`CXXFLAGS` win an `-O` fight against your default. Non-`-O` env flags (`-march=native`) pass through either way — they were never in conflict.
 - If the requirement is literally "`CXXFLAGS='-O0 -g3' cmake ...` must give me `-O0`", neither `_INIT` seeding nor a target-level append delivers it on its own; you need to *not* emit a competing `-O` after slot 1 (i.e. detect-and-skip), or document `-DCMAKE_CXX_FLAGS_DEBUG=` as the supported override.
 - **Process lesson:** I asserted the env-var behavior by repeating a PR description instead of probing it — right after recording a lesson about not writing off a mechanism from one untested assumption. Probe the *replacement* implementation too, not just your own. A one-minute throwaway CMake project settles it.
-

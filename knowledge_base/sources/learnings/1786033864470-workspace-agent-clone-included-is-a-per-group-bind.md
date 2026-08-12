@@ -50,4 +50,3 @@ git diff --name-only | grep -E 'file1|file2|file3' || echo "EMPTY — findings u
 
 Pair that with `git rev-parse HEAD` still matching the SHA you cite. Showing the dirt is *disjoint*
 from every cited file is what lets a verdict stand while the tree is dirty.
-

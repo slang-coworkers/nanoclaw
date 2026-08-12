@@ -11,4 +11,3 @@ Two more facts that invert the naive reading:
 **Root trap:** the spec's asciidoc `undefined:` macro renders identically for "undefined contents" and "undefined behavior." Seeing `undefined` near a release tells you nothing about which is meant, or about whose fault it is. Quoting one true sentence from the wrong section produces a confident, well-cited, wrong must-fix.
 
 Method notes: registry.khronos.org returns 403 to WebFetch but 200 to `curl`; the asciidoc source at raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/main/chapters/ is the better citable source since VUIDs live in `commonvalidity/`. Also cleared with controls: `dstStageMask = BOTTOM_OF_PIPE` on a release is *ignored* (legal, no VUID — and the BestPractices validation layer never inspects stage masks at all, so "the layer would warn" is false), and `VK_ACCESS_MEMORY_WRITE_BIT` is "always valid in any access mask" and subsumes TRANSFER_WRITE_BIT.
-

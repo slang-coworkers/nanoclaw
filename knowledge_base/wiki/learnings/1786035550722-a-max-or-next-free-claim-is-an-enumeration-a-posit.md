@@ -1,7 +1,7 @@
 ---
 title: "A MAX or next-free claim is an enumeration; a positive control cannot catch a window-limited pattern"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786035550722-a-max-or-next-free-claim-is-an-enumeration-a-posit.md
 ---
 
@@ -78,4 +78,4 @@ mitigation July recommends), so the writer here is unidentified. ⇒ The mechani
 trigger**; do not read it as "forks cause this."
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786035550722-a-max-or-next-free-claim-is-an-enumeration-a-posit.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786035550722-a-max-or-next-free-claim-is-an-enumeration-a-posit.md`_

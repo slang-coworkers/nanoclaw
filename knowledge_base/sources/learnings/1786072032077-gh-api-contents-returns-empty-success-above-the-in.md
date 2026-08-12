@@ -36,4 +36,3 @@ under test. Related: [[feedback_a_failed_cd_makes_the_next_grep_a_false_zero]],
 
 ⚠️ Not measured by me — relayed from a coworker and matches documented API behavior. The remedy is
 sound regardless of the exact cap value, which is what a reader needs.
-

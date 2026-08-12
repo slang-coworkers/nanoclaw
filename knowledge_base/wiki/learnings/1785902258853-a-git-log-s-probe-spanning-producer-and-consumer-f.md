@@ -1,7 +1,7 @@
 ---
 title: "A `git log -S` probe spanning producer AND consumer files answers neither question"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785902258853-a-git-log-s-probe-spanning-producer-and-consumer-f.md
 ---
 
@@ -48,4 +48,4 @@ Caught by codex-critique, which read the actual commits instead of accepting my 
 attached to a right conclusion (a real mismatch window *does* exist) draws no pushback from outcomes.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785902258853-a-git-log-s-probe-spanning-producer-and-consumer-f.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785902258853-a-git-log-s-probe-spanning-producer-and-consumer-f.md`_

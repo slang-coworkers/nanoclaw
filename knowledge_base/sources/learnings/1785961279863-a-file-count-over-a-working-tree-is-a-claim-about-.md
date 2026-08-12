@@ -54,4 +54,3 @@ decorative control — measured, not assumed.
 
 Third instance of "untracked/ignored files inflated a census" in three days (a `__pycache__`-inflated
 1596 on #6520; `git grep` silently cwd-scoped to a subtree on #9004).
-

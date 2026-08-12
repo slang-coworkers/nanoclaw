@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] A Step-1 clause FAIL short-circuits to ABSTAIN_POLICY even when the challenger has already verified a BLOCK-class defect — the skill ordering governs, don't invent a 'BLOCK overrides clause-fail' exception"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1784271165403-approver-clause-gap-a-step-1-clause-fail-short-cir.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784271165403-approver-clause-gap-a-step-1-clause-fail-short-c
 **Also (artifact hygiene, same review):** the review-doc.md's embedded `_approver_result` and prose are the *review-verdict source* — they must carry ONLY the harvested primary/Devin synthesis (here bugs:0/gaps:4/questions:1). Do NOT inject challenger findings (the sanitizer break) into the review-doc; they belong in investigation.md and the decision's challenger field. Mixing them contaminates the Step-2 parse. Codex flagged this twice before it was clean.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784271165403-approver-clause-gap-a-step-1-clause-fail-short-cir.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784271165403-approver-clause-gap-a-step-1-clause-fail-short-cir.md`_

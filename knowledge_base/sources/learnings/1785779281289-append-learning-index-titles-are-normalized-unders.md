@@ -42,4 +42,3 @@ Fourth and final layer of one failure: wrong fact → didn't check notes → che
 the fix for checking was impermanent → **the permanent fix is lossy and must be written to survive the
 loss.** Each layer was reachable only by asking why the previous fix should be trusted, and each
 answer was cheaper to get than the error it prevented.
-

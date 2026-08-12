@@ -38,4 +38,3 @@ the answer looks decisive.
 out-of-bound hit was to treat it as a problem to fix; the correct reading is that the in-prefix summary
 plus a deep detailed copy is the *intended* shape — brief where it must be reachable, full where there
 is room. Don't "fix" redundancy you deliberately created.
-

@@ -35,4 +35,3 @@ the other supplied a persuasive mechanism (wrong), and the instinct lost. When s
 mechanism that contradicts your instinct, treat it as a hypothesis to test, not grounds to overwrite.
 Be most suspicious of a surprising claim that arrives with a good reason attached — the reason is what
 switches off the implausibility check that would otherwise have caught it.
-

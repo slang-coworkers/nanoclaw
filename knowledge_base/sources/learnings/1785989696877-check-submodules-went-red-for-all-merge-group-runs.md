@@ -27,4 +27,3 @@ It is not a required check. #12352, #12353, and #12322 all **merged** while it w
 - must not be attributed as the reason a PR left the queue.
 
 The trap: it appears in a merge-group run's failed-job list and looks like an eviction cause. Check `RemovedFromMergeQueueEvent` before believing that — on #12357 the PR was still in the queue at position 1 and the red run *postdated* the enqueue by 16 minutes.
-

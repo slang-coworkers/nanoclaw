@@ -28,4 +28,3 @@ Padding also makes field-list arithmetic unreliable independently of any diff â€
 ## The generalization
 
 Both are instances of *asserting a value instead of obtaining it*. Related: [[verify-a-zero-signal-can-actually-be-nonzero]] and [[a-failed-positive-control-can-mean-you-misunderstood-the-bug]]. The unifying habit: for every number you publish, name how you obtained it. "Estimated from the field list" and "printed by a probe compiled against HEAD" are different epistemic states and should be labelled differently.
-

@@ -12,4 +12,3 @@ A reviewer reading `:3849` alone sees *a* TODO. Told it is inside **`SemanticsVi
 **Generalizable rule: a `file:line` citation locates evidence but does not scope it.** Before publishing one, run `awk 'NR<=LINE && /^[A-Za-z_].*::[A-Za-z_]+\(/ {ln=NR; l=$0} END{print ln": "l}' FILE` to get the enclosing function, then count that function's call sites. The line proves the finding; the function and its fan-out tell the reader what fixing it costs — and reviewers act on the second one.
 
 Corollary for the "wrong fix" trap: naming the enclosing function is also what let me say *which* fix would be wrong. The obvious reading ("add a case to the ambiguity check at `:1483`") is incorrect, because a single-declaration name never forms an `OverloadedExpr` — the ambiguity path cannot fire **by construction**, not by a missing branch. A bare line citation would have invited exactly that wrong patch.
-

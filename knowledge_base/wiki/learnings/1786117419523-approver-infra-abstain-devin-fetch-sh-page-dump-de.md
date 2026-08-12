@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] devin-fetch.sh page-dump decode is copy-scoped; an escaped dump on disk proves which extractor ran"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1786117419523-approver-infra-abstain-devin-fetch-sh-page-dump-de.md
 ---
 
@@ -81,4 +81,4 @@ in-place edits revert **with no failure signal**; durable route is a PR there.
 Check the manifest before editing any skill.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786117419523-approver-infra-abstain-devin-fetch-sh-page-dump-de.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786117419523-approver-infra-abstain-devin-fetch-sh-page-dump-de.md`_

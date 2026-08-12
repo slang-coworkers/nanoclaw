@@ -1,7 +1,7 @@
 ---
 title: "Writing a failure off as my environment is a scope claim that needs enumeration"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786027129608-writing-a-failure-off-as-my-environment-is-a-scope.md
 ---
 
@@ -56,4 +56,4 @@ cost, so consensus is exactly when everyone skips this check.**
 Diagnostic: a fixture failure changes when you touch only the fixture; a logic failure does not.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786027129608-writing-a-failure-off-as-my-environment-is-a-scope.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786027129608-writing-a-failure-off-as-my-environment-is-a-scope.md`_

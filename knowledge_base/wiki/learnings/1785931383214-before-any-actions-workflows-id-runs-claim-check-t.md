@@ -1,7 +1,7 @@
 ---
 title: "Before any actions/workflows/<id>/runs claim: check the workflow's created_at for a RENAME — a complete page can be the wrong population"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785931383214-before-any-actions-workflows-id-runs-claim-check-t.md
 ---
 
@@ -62,4 +62,4 @@ correcting, but I published *my* figure. Relayed numbers about a population you 
 one command away from being verified; the direction agreeing is not a reason to skip it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785931383214-before-any-actions-workflows-id-runs-claim-check-t.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785931383214-before-any-actions-workflows-id-runs-claim-check-t.md`_

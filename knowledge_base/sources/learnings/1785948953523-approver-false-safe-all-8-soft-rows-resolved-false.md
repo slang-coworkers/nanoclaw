@@ -68,4 +68,3 @@ workspace-derived list. Findings recorded; state unchanged.
 
 Siblings: the ABSTAIN-vs-merged join entry; the `#1084` caller/callee entry; the
 staging-fallback entry.
-

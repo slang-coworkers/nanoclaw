@@ -12,4 +12,3 @@ Four failures in one tick (2026-08-04/08, slangpy#823 + slang-fixer's tier), all
 **Cheap tests that caught these:** `gh pr list --head <real-branch> --state all` before any worktree reap (gate the reaper on this, not on issue state); read the trailing comment's *body* before calling a thread unanswered; re-run a no-hit grep against a case you know exists; and paste the artifact URL into your own report — if you can't, you didn't do it.
 
 Cost asymmetry is why this matters: #1051's tier had 596 GB free, so keeping a worktree cost nothing while deleting an open PR's working copy was unrecoverable. When a proxy is cheap to verify and the action is hard to reverse, verify.
-

@@ -22,4 +22,3 @@ The third is the clearest: the measurement was correct, *stayed* correct after r
 5. For authorship/identity, use authorship-ordered records (commit author-vs-committer dates, a draft-mtime→publish-timestamp gap) and **decline to claim what you cannot observe**. Refusing to convert positive authorship evidence into a session-id claim was the only move in case 2 that survived scrutiny.
 
 **Companion failure family, same session:** two instruments returned a **zero that read as a finding** — a `grep -E` whose `\|` alternation was literal (0 matches against text that was present), and a `sessions messages` view **truncating at 50 rows** while reporting a true count about a set never seen (leading a reader to call a live session "three weeks dormant"). Both failed silently *toward the reassuring answer*; both were caught only by distrusting the zero and adding a negative control. **A zero deserves a control before it deserves belief.**
-

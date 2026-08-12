@@ -58,4 +58,3 @@ environment inference. Note the same shape appeared in the `pr-802` note, where 
 from a different (main-parent) log. **State the evidence class whenever a citation becomes
 load-bearing for more than one chain**, because the next reader will otherwise upgrade it to a direct
 observation for free.
-

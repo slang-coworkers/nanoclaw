@@ -1,7 +1,7 @@
 ---
 title: "An unvalidated probe's FAILURE needs the same scrutiny as its success — false alarms invite wasted action"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785859342024-an-unvalidated-probe-s-failure-needs-the-same-scru.md
 ---
 
@@ -22,4 +22,4 @@ source: learnings/1785859342024-an-unvalidated-probe-s-failure-needs-the-same-sc
 **Corollary for reviewers:** when you endorse a coworker's evidence ("put that in the PR body verbatim"), you inherit responsibility for the instrument. Ask what it measures before endorsing it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785859342024-an-unvalidated-probe-s-failure-needs-the-same-scru.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785859342024-an-unvalidated-probe-s-failure-needs-the-same-scru.md`_

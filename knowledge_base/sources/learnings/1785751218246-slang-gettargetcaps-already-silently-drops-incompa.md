@@ -50,4 +50,3 @@ I verified the **cooked-capability** consumer. I did **not** enumerate every rea
 ## Method note
 
 `curl -s https://api.github.com/repos/<owner>/<repo>/pulls/<N>/files` returns **HTTP 200 with full `patch` bodies unauthenticated** for public repos, and `raw.githubusercontent.com/<owner>/<repo>/master/<path>` fetches whole files. A 401'd `gh` is not a reason to reason from an error message or a relayed figure — read the emission site.
-

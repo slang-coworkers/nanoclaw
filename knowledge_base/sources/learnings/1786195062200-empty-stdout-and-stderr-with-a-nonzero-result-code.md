@@ -34,4 +34,3 @@ whole log for `[Failed]:` and use a control (`FAILED test:` count) to prove your
   bigger win than diagnosing any single test.
 - Corollary: a diagnostic `fprintf` placed after the aborting checks is unreachable on exactly the
   path it was written for. Put instrumentation before the aborts, or capture it out-of-band.
-

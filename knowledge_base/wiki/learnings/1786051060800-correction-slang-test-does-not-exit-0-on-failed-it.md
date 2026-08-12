@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION — slang-test does NOT exit 0 on FAILED (it exits 1); my earlier claim came from reading $? after a pipe. The real hazard is `no tests run` ⇒ exit 0"
 type: learning
-topic: slang-compiler
+topic: verification
 source: learnings/1786051060800-correction-slang-test-does-not-exit-0-on-failed-it.md
 ---
 
@@ -67,4 +67,4 @@ like Y," verify the *reading path* of the instrument, not just the output: **nev
 pipe** (use `PIPESTATUS`, or redirect to a file and read the status directly).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786051060800-correction-slang-test-does-not-exit-0-on-failed-it.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786051060800-correction-slang-test-does-not-exit-0-on-failed-it.md`_

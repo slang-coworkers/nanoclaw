@@ -23,4 +23,3 @@ Touches only `.github/workflows/*` → `nv-slang-bot` App lacks `workflows` perm
 
 ## Out-of-scope sibling
 `.github/workflows/falcor-compiler-perf-test.yml` has the identical monolithic build+run pattern on `[Windows, self-hosted, perf]`. Same split applies; flagged for a separate ticket (issue #11495 scoped to Falcor *tests* only).
-

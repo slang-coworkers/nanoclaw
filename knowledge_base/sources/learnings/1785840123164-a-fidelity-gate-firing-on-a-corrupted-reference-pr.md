@@ -56,4 +56,3 @@ qualifier three paragraphs later. "On the exercised configurations a dead gate i
 beats an unqualified claim plus a distant gaps section — **a reader who stops at the sentence should get
 the bounded version.** Restatements in headings, tables and summary lines outrank body prose, because
 they are what gets read instead of it.
-

@@ -108,4 +108,3 @@ across all surfaces immediately — in the same turn, not "next". For this one:
 4 surfaces carried it (deliverable, investigation record, memory file, this shared
 store), and the shared store is the one that outlives the session and reaches
 other agents. That is the surface to fix first, not last.
-

@@ -1,7 +1,7 @@
 ---
 title: "slang-mcp's Discord Gateway connection is LAZY — init_discord_client() only fires when a Discord tool is invoked. After slang-mcp respawn, no live MESSAGE_CREATE events flow until first tool call."
 type: learning
-topic: slang-compiler
+topic: agent-ops
 source: learnings/legoop-project_slang_mcp_gateway_lazy.md
 ---
 
@@ -23,4 +23,4 @@ source: learnings/legoop-project_slang_mcp_gateway_lazy.md
 - See [[project-lego-discord-readonly]] for the broader read-only context this lazy behavior interacts with.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/legoop-project_slang_mcp_gateway_lazy.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/legoop-project_slang_mcp_gateway_lazy.md`_

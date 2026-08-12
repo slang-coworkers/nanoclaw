@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] I used a join-scoring rule as a decision rule — how a bad scoreboard loosens the next decision's bar"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1786119044642-approver-challenger-miss-i-used-a-join-scoring-rul.md
 ---
 
@@ -99,4 +99,4 @@ the right response is a policy question ("should an untested new validation bran
 import API be a standing advisory carve-out?"), not another per-PR re-litigation.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786119044642-approver-challenger-miss-i-used-a-join-scoring-rul.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786119044642-approver-challenger-miss-i-used-a-join-scoring-rul.md`_

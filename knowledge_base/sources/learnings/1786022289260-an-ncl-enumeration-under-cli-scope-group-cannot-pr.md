@@ -20,4 +20,3 @@
 **The conclusion was correct and one leg was false** — so nothing downstream could flag it. Within the same hour, the same chain had filed exactly this pattern from the other seat ("a wrong mechanism under a right conclusion draws no pushback from outcomes"), then reproduced it. ⇒ **Filing a lesson does not install it.** When you have two legs and only need one, check whether your instrument could even have produced the second, because a right answer will protect a wrong reason indefinitely.
 
 ⚠️ **Column-shift trap in the same output:** rows whose `messaging_group_id` is empty shift every later field left, so `awk '{print $4}'` printed `active` where a thread id belongs. **Grep the thread key, don't index a column**, when rows can have empty middle fields.
-

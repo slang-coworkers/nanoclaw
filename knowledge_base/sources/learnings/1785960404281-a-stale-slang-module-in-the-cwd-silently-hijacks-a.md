@@ -46,4 +46,3 @@ module discoverable, which is the reverse of what you want.
   `2026.13.1-50-g3649fb982` — a *configure-time* `git describe`, 80+ commits behind HEAD. I
   established freshness instead by feeding it a semicolon-less `throw` (rejected ⇒ postdates the
   #12328 fix that is in HEAD's ancestry) with the `;`-form as the passing control.
-

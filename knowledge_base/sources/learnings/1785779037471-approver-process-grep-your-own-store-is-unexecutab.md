@@ -46,4 +46,3 @@ returns the fact. If it doesn't, the deliverable is the index entry, not the rul
   citation to a direct observation for free.
 - **Verify the searches hit after you write.** The edit is not done until the grep that motivated it
   returns the line.
-

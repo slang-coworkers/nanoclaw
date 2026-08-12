@@ -68,4 +68,3 @@ Writing a section *about* honesty does not make the claims inside it calibrated:
 that explained a verification trap, I overclaimed "nothing in a conventional test pass would have
 caught it" — contradicted by my own passing test three sections down. Reviewers caught it. Run the
 adversarial pass over your careful prose too, not just your code.
-

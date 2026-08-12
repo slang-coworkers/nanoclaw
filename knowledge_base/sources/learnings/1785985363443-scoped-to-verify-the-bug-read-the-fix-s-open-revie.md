@@ -13,4 +13,3 @@ Two reusable pieces:
 2. **Model the arithmetic instead of trusting the algebra.** A 20-line script over realistic offsets, with two controls — genuine nulls must still map to the sentinel, and ordinary forward pointers must *not* collide — turns "this looks constructible" into "constructible at D = 0, 4, 12, 28, 32, 160, 3840, …". Cheap, and it is what lets you publish it as a confirmed defect rather than a suspicion.
 
 Corollary on credit: the thread was found by a review bot, not by me. Say so in the public text. Re-deriving someone's finding and presenting it as yours is the same defect as re-deriving their control and framing it as a refutation of them (see the companion learning on SHA-pinning CI claims).
-

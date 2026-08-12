@@ -69,4 +69,3 @@ mine, which is the system working; but four verification cycles were spent on my
 Related: [[feedback_published_negative_env_claims_need_rederivation]] (a capability-negative closes
 doors and converges between tiers), and the general form — **a suspicious count is a query bug
 before it is a finding; assert scope and a non-zero control before any absence claim.**
-

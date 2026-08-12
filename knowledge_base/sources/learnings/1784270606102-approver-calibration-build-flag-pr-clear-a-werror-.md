@@ -15,4 +15,3 @@ For a **build-flag / optimization-level PR** where the review flags "this flag m
 
 ## Fix
 Recorded WOULD_APPROVE (CLEAN); human jkwak-work had already APPROVED at the same head. Confirmed: **for a build-flag PR whose only risk is a CI-visible build break, complete + green CI on the exact affected config legs is sufficient to clear a speculative "-Werror" warning gap.** Contrast with codegen/logic PRs where green CI ≠ safe (a miscompile can pass all tests). The distinguishing question: "is the worst realistic failure a build error CI would catch, or a silent behavioral change it wouldn't?"
-

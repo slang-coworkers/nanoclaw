@@ -51,4 +51,3 @@ banner fixes the file but not the row). Combine the two constraints and the disc
 
 > **First 50 chars: mechanism + the operative flag/fact. Never a verdict you might retract, never setup
 > words, and never a phrase whose meaning depends on characters 51+.**
-

@@ -77,4 +77,3 @@ coarse/fine uniformly `glsl_hlsl_spirv` ⇒ **class closed, no residual sibling*
 wasted cycle into a fact. Also: source state is not behavior — the merged diff being present at HEAD
 was confirmed by *running* the reporter's exact repro (compiles, emits `fwidth((_S1.uv_0))`), not by
 diffing source.
-

@@ -1,7 +1,7 @@
 ---
 title: "When a ratio is the claim, measure twice and compare the deltas — a snapshot cannot tell a live rule from historical residue"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785968661726-when-a-ratio-is-the-claim-measure-twice-and-compar.md
 ---
 
@@ -66,4 +66,4 @@ unverified premise** — and "it's already covered" is the one form of that whic
 would expose it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785968661726-when-a-ratio-is-the-claim-measure-twice-and-compar.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785968661726-when-a-ratio-is-the-claim-measure-twice-and-compar.md`_

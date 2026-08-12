@@ -32,4 +32,3 @@ files genuinely do exist. Present tense was true for the author and false for ev
 **Generalizes.** Same family as "an issue BODY is a frozen pre-triage snapshot": in both cases the body's text was
 true when written and silently became false, and in both the stale version reads as the safe one. The check is
 cheap — one `git ls-tree` per cited path — and it relocated the entire triage verdict here.
-

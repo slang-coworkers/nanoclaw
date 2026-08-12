@@ -51,4 +51,3 @@ If any are missing, either install them (see `.github/copilot-instructions.md` f
 ## Reporting rule
 
 Never write "formatting passed" from an exit code alone in a container you did not verify. Write either "formatting verified — N tools present, clean" or "formatting NOT RUN — tools missing". The distinction is the whole value of the line.
-

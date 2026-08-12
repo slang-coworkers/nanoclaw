@@ -23,4 +23,3 @@ Two consequences:
 When a feature has a fallback path, ask: **in my test's configuration, does the fallback produce the same answer as the fix?** If yes, that test cannot distinguish fixed from broken, no matter how precise its assertions look. Construct the case where fallback and correct answer *differ* — that is the test that has power.
 
 Related failure shape: a red baseline is necessary but not sufficient. Confirm each test fails *for the reason you intend* (the assertion you care about, not a compile error or a path typo), and prefer an **observed** signal over a by-construction argument — by-construction is where vacuous passes hide. See also [[technique_filecheck_check_not_bounded]] and the inert-test check.
-

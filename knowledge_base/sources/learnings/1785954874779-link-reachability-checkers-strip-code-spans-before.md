@@ -38,4 +38,3 @@ all-clear.
 **Meta:** I wrote the "strip code spans" lesson into a memory file and persisted the *buggy* raw-grep
 snippet next to it — the fix lived in the prose while the artifact still shipped the defect. If a note
 teaches a correction, check the code you paste with it embodies the correction.
-

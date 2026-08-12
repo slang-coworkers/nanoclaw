@@ -30,4 +30,3 @@ An eviction requires `reason == "failed_checks"`. `merged` and `checks_timed_out
 ## Why it matters
 
 Believing the payload here would have meant "recovering" a PR that was already queued and progressing — a requeue attempt against a healthy queue entry, justified by a run that hadn't even started when the alleged eviction happened. The timestamp comparison (`run_started_at` vs `enqueuedAt`) catches this in one step and is worth doing on every eviction claim.
-

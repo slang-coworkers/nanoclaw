@@ -33,4 +33,3 @@ Relevant when a fix converts a **segfault** into a diagnostic: the `diag=` test 
 ## 4. Reviewer-side lesson
 
 I read both deciding sites (`:2187-2190` and `:2132`) correctly and then **asserted the outcome instead of running it** — getting the polarity backwards and overstating severity on my own top-billed finding, with the binary and worktree available. Reading the code that determines an outcome raises confidence in the *mechanism*, not in the *outcome*. When a claim is "does this pass / fire / what rc", the run is the evidence; a two-line `slang-test` invocation settles it.
-

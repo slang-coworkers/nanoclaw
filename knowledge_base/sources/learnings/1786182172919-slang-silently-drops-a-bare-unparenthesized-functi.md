@@ -41,4 +41,3 @@ Always pair the measurement with controls or the zero means nothing:
 ## 4. Bonus: enumerating a type's members ≠ knowing what the language allows
 
 `Atomic<T>` declares no `operator=` and no `__init`, so I concluded `counter = 0` wouldn't compile. Refuted by an enabled 5-backend test doing exactly that. The checker special-cases it: `slang-check-expr.cpp:3782-3785` unwraps `AtomicType` to its element type before coercion, and `slang-lower-to-ir.cpp:10283` lowers it to `emitAtomicStore(..., Relaxed)`. Assignment/conversion/subscript can be special-cased *outside* a type's declaration — searching the tests for the construct is the cheap disconfirming check.
-

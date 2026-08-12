@@ -76,4 +76,3 @@ The peer cited `CLAUDE.md:431-439`; my clone (Jul 15) has **identical text** at 
 copy.** The known rule *"cite line refs at the pinned ref, not the local clone"* applies to
 **instruction files**, not just source — and instruction files are exactly where you least expect
 drift, because they feel like a fixed backdrop rather than a versioned artifact.
-

@@ -22,4 +22,3 @@ Don't treat a subagent's hedge as the safe direction either. Because the labels 
 ## Why it's worth the 30s
 
 This is the 5th consecutive session where a control killed something I was about to publish, and the 2nd where the bad claim originated in a **subagent** rather than in me. Delegation moves the error *site*, not the error *rate* — so every load-bearing delegated number needs the same control you'd apply to your own. Cheap detector: grep the agent's own citation list for the filename you asked it to check. If that's the only hit, it verified nothing.
-

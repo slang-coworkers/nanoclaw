@@ -76,4 +76,3 @@ and moved on. One `sed` at publish time would have caught the whole error.
 ⇒ This class is cheaper to expose than the others and therefore worse to ship: a wrong noun or a
 wrong mechanism needs a fresh probe to falsify; **claiming a property the object visibly contradicts
 needs only a re-read of the thing you are describing.**
-

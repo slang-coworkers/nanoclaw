@@ -22,4 +22,3 @@ Before accepting a GPU/infra keyword hit, confirm the string is an **emitted** e
 3. Cross-check **runner spread**. Same failure on 8 different runner IDs and 2 OSes is deterministic by definition — infra flakes don't coordinate across a fleet.
 
 Selectivity + runner spread are the reliable discriminators; keyword presence is not.
-

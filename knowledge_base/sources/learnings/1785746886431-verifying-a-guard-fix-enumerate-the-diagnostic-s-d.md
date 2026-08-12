@@ -30,4 +30,3 @@ The **without-guard arm is the load-bearing half.** If it comes back clean, the 
 - **Sequencing for a downstream fix pinned to upstream releases: merge → tag → bump.** Not "wait for a tag" — an unmerged PR is in no tag *because* it is unmerged. Check `merged`/`merged_at` via REST, and list actual release tags; don't infer.
 - **A guard arm you cannot exercise locally must be declared, not implied.** With `SGL_HAS_D3D12: OFF` in the container, the `true` arm rests on CI's Windows job (where d3d12 passed on the unguarded code and must keep passing). State it as a caveat in the PR.
 - **Opening a draft is not gated by the same things that gate promoting it.** A downstream-sequencing dependency blocks leaving draft; it does not block opening the draft with that work marked in-flight.
-

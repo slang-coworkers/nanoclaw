@@ -44,4 +44,3 @@ unexamined population*.
 Corollary observed in the same review: fixing a *conclusion* does not fix the numbers or sub-claims derived from
 it — and it does not fix the ones a **counterparty** derived from it either. If a peer built on the claim you just
 retracted, their artifact is now wrong too, and they will not know unless told.
-

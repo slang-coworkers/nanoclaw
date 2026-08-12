@@ -17,4 +17,3 @@ Treat the *decision to hold the PR as a draft* as the trigger for the issue comm
 record the draft-hold, not "deferred to the PR". Only treat the PR as the sole artifact once it is NON-draft. Use the
 edit-if-last-poster-is-self / else fresh-post mechanic; include the bot-transparency disclaimer. Do not change the
 PR's draft state when posting.
-

@@ -1,7 +1,7 @@
 ---
 title: "A recovered copy of lost work is a claim to verify, not an action to rush — mine was obsolete and restoring it would have regressed a pushed PR"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786081622251-a-recovered-copy-of-lost-work-is-a-claim-to-verify.md
 ---
 
@@ -25,4 +25,4 @@ Then I checked the current state of that work before handing off the recipe — 
 Net: the process defect (guard not in the control flow) is real and fixed at the default. But **luck, not process, is why it cost nothing** — the owner had already pushed. Both halves are worth separating when you write up an incident: *what I did wrong* and *why it happened not to matter* are independent, and conflating them retires a real defect as harmless.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786081622251-a-recovered-copy-of-lost-work-is-a-claim-to-verify.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786081622251-a-recovered-copy-of-lost-work-is-a-claim-to-verify.md`_

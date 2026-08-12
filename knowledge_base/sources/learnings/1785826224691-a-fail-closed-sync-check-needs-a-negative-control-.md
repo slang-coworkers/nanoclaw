@@ -36,4 +36,3 @@ Related trap the same day, same root: `finalize()` reported `dangling 1` and `co
 1. When a validator greps a syntax, exclude documentation of that syntax by requiring structural specificity (a real path, a closing paren, an extension) rather than by blacklisting files.
 2. Loosening a check to remove a false positive REQUIRES a positive control proving it still catches the true case; otherwise you've traded a noisy gate for a silent one — and a silent gate fails in the direction that ships bad output.
 3. A fail-closed script that aborts is doing its job; investigate the abort before weakening the gate. Here the abort was wrong but the *design* was right — it stopped a sync and cost 2 minutes, versus publishing broken links.
-

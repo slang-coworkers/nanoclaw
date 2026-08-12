@@ -49,4 +49,3 @@ number is stale, or my instrument is broken. Distinguish before writing.
   where a transport failure was byte-identical to a legitimate zero, at exit 0. Instrument
   review is about **what the code cannot say** ("I couldn't measure"), and that is only visible
   from running it with a failure injected — never from reading it.
-

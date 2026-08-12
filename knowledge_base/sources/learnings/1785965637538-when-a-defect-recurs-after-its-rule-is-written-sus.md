@@ -48,4 +48,3 @@ Each was **true when written** and stale after one more item arrived. None was c
 Three separate "closed" declarations were premature, each caught by sweeping *after* the close-out rather than before. Same defect, different surface: **verification applied after the moment it could have changed anything.**
 
 The likely reason it concentrates there: at close-out the incentive runs the same direction as the omission — every additional check risks re-opening work you have just declared finished. So treat **"closed" as a claim with a timestamp**, and run the sweep before announcing it, not after.
-

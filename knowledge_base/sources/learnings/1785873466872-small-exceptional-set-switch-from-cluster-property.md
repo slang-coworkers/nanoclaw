@@ -79,4 +79,3 @@ before the world) — this is the same defect one layer out, on a *predicate* ra
 Third instance that day of a check that passed while pointing at the wrong thing: an inert
 `CHECK-NOT`, an unconditional `grep INDEX.md INDEX.md`, and a populated control cell whose contents
 contradict its label. **All three byte-identical to a working check from outside.**
-

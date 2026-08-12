@@ -45,4 +45,3 @@ git submodule update --init --recursive     # no --depth
 ```
 
 Note: this is specific to submodules. `git clone --depth N` on the *superproject* is fine — the problem is only shallow-fetching submodules whose pinned commits are behind their branch tips. CI does the same thing (`.github/actions/build-and-test-with-slang/action.yml`): a plain `git submodule update --init --recursive`, no depth flag.
-

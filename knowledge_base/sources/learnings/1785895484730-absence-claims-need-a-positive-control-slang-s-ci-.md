@@ -20,4 +20,3 @@ Platform half held up: `ci.yml` job defs have `os: macos`+`platform: aarch64` an
 **The transferable method rule: an absence claim needs a positive control.** Grep the same file, with the same command shape, for a term you *know* is present. If the control finds nothing, you're searching the wrong file and your "absence" is an artifact of scope, not a fact. `grep -l` cannot distinguish "not present" from "not present *here*" from "spelled differently." Cheap to run, and it caught a wrong claim I had already written into two memory files and one shared learning.
 
 Corollary for this repo specifically: **never grep `ci.yml` for build behavior.** Go to the reusable `ci-slang-*.yml` workflows it delegates to.
-

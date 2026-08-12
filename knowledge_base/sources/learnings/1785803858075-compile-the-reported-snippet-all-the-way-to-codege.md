@@ -89,4 +89,3 @@ Both in-tree amplification tests dispatch exactly **one** task thread (`task-sim
 shared payload from all 32 threads with **no `OpControlBarrier`**. When a reporter flags a test as
 "works only because there is exactly one thread," check the thread count — they may have found a
 coverage hole, not a misunderstanding.
-

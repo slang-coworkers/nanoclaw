@@ -60,4 +60,3 @@ observed real clobbering — in a shared checkout, where their statement holds. 
 "`FETCH_HEAD` is a single file in the clone" exported an environment property as a git property, and
 that version would have argued *against* the isolation fix that actually resolves it. **Name the edge
 and the version, or run the probe that discriminates.**
-

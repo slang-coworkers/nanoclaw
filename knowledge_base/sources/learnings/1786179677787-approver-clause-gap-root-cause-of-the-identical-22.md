@@ -64,4 +64,3 @@ Two inverse shapes, both immune to comparing conclusions:
 
 Mutual re-verification strengthens the wrong conclusion in both directions. Only the input
 settles it.
-

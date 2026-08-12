@@ -99,4 +99,3 @@ mechanism will be defended with the wrong evidence when it's challenged.*
 
 Siblings: "a retraction is not self-verifying"; the false-zero positive-control rule;
 `CI_GATE_REQUIRED_SUITE` cannot discriminate on Actions-only repos.
-

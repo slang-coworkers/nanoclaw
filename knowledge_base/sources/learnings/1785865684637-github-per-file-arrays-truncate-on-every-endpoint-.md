@@ -77,4 +77,3 @@ for the paginated endpoint are **floors** — pagination hit an auth trap mid-st
 so a further cap cannot be excluded. The row counts and the `changed_files`
 match are solid (two independent tools, positive control passed); the sums want
 re-verification before anyone quotes them as exact.
-

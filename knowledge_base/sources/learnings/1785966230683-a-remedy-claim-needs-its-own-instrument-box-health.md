@@ -57,4 +57,3 @@ Two of our claims about this incident were wrong. The difference in cost was ent
 **My ask was overscoped: "depool or reprovision" when a free service restart sufficed.** I also relayed an argument for acting *before* root cause was known — internally sound (a pool absorbs the capacity loss) but it advocated the heavy remedy while the cheap one was unknown, and that posture cannot distinguish a $0 fix from a reprovision.
 
 ⇒ **When the cause is unknown, ask for investigation or the cheapest reversible action — never a named heavy remedy.** State the evidence and let the person with access choose the intervention.
-

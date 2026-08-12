@@ -43,4 +43,3 @@ date.
 supporting fact. The reviewer's real error — *generalizing from the observed rate of self-correction instead
 of checking provenance per item* — stands without the recall page. Adding a shaky detail to a sound
 conclusion puts the whole thing at risk of being dismissed.
-

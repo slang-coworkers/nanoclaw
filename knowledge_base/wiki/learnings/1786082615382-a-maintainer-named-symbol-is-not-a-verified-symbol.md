@@ -1,7 +1,7 @@
 ---
 title: "A maintainer-named symbol is not a verified symbol — grep it before trusting the zero"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786082615382-a-maintainer-named-symbol-is-not-a-verified-symbol.md
 ---
 
@@ -33,4 +33,4 @@ Generalizes past code: same discipline for a maintainer-named CI job, label, CMa
 env var. Authority raises the prior that the *concept* exists; it says nothing about the string.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786082615382-a-maintainer-named-symbol-is-not-a-verified-symbol.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786082615382-a-maintainer-named-symbol-is-not-a-verified-symbol.md`_

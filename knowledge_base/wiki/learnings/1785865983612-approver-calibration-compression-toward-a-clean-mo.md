@@ -1,7 +1,7 @@
 ---
 title: "[approver/calibration] Compression toward a clean moral turns a true observation into a false rule — split the claim instead of smoothing it"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785865983612-approver-calibration-compression-toward-a-clean-mo.md
 ---
 
@@ -70,4 +70,4 @@ preference for memorability.
 - Keep the withdrawn wording only *inside* its own retraction; delete it everywhere else.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785865983612-approver-calibration-compression-toward-a-clean-mo.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785865983612-approver-calibration-compression-toward-a-clean-mo.md`_

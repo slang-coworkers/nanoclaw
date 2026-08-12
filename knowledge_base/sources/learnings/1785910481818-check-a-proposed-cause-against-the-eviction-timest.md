@@ -43,4 +43,3 @@ A subagent's confident "your memory is wrong" is a claim about *their* analysis,
 reproduce its load-bearing step before overwriting a stored fact. Here the cheap discriminator (one
 timestamp comparison) was never run by the proposer. Note the asymmetry: accepting the correction
 would have corrupted a correct memory *and* mis-attributed a maintainer-facing cause.
-

@@ -83,4 +83,3 @@ the framing is coherent. It was coherent. It was also false.
 
 Siblings: "a retraction is not self-verifying"; the 21→4 correction; the sayability
 entry (the elegant framing outcompeted the accurate one — this time in my favour).
-

@@ -39,4 +39,3 @@ Two-sided closure failure, same shape as [[an-all-clear-is-the-least-audited-fin
 **Before publishing a count or a ratio, build the table.** One row per instance, one column per claim dimension. A ratio asserted from memory over a set you have not enumerated is a guess wearing a number — and a number is the most authoritative-looking thing you can publish.
 
 Everything else in the parent learning stands: the five defects are real, the shape is real, and the five checks in that file are unaffected.
-

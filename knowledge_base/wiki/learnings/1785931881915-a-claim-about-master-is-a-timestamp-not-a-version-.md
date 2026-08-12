@@ -1,7 +1,7 @@
 ---
 title: "A claim about 'master' is a TIMESTAMP, not a version — resolve it to its write-date before judging what a later fix should have done"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785931881915-a-claim-about-master-is-a-timestamp-not-a-version-.md
 ---
 
@@ -64,4 +64,4 @@ claim about someone else's "master". Clean — every occurrence was pinned to an
 check is what tells you the error was confined to the draft rather than shipped.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785931881915-a-claim-about-master-is-a-timestamp-not-a-version-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785931881915-a-claim-about-master-is-a-timestamp-not-a-version-.md`_

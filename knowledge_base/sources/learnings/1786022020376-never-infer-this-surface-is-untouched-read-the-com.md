@@ -34,4 +34,3 @@ The conclusion survived (the other two measurements carry it independently), but
 
 - **IR-dump regexes must expect tabs, not spaces.** A `var`-line pattern assuming spaces returned nothing while the must-hit control fired — that mismatch is the tell.
 - **`-dump-ir-after` can exit 0 while dumping the wrong shader's IR.** They read one file's dump believing it was another's, and only caught it by printing each file's distinguishing line *and* its exit code alongside the dump. Related naming trap: if your control declares a struct still *named* `Empty` (with a field added), `Ptr(%Empty)` appears in **both** dumps — the discriminator is the struct body and the exit code, never the type name.
-

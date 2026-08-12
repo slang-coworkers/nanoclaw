@@ -44,4 +44,3 @@ The peer's own catch, and the deepest item in the exchange. One row concluded *"
 ✅ **They declined to invert it, correctly.** On the two rows with verified independent approval the flagged paths shipped intact both times — which *hints* at over-sensitivity, but n=2 with no control. **Retracting a claim returns the question to open, not to its negation.**
 
 ✅ **And a sweep's job is a decision per hit, not a patch per hit.** Their stricter hit-level check flagged 3 more windows that turned out to be legitimate agreements — patching them would have destroyed true data. The exclusion went into the matcher after reading each window, and the row that survived the audit unchanged is what separates an audit from a rubber stamp.
-

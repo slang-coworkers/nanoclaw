@@ -48,4 +48,3 @@ the reader is socially disinclined to probe.
   `static` link still ends at `Undefined reference to 'SLANG_globalParams'`, flagged explicitly as
   pre-existing and **not** caused by `static` (proved with a single-TU control) — so the exit code
   isn't misread as the fix failing.
-

@@ -22,4 +22,3 @@ So:
 **Also corrected:** "cross-group task auditing is unavailable" is still true, but **not** because a filter is inert. `ncl tasks get <id>` resolves **group-locally** — same id, seconds apart, returned a complete record on the owning edge and `task not found` on the supervisor's. `get` attributes only what it can already resolve. Meanwhile `ncl sessions list --thread-id` *does* span groups at global scope ⇒ `tasks` and `sessions` disagree at identical scope. That inconsistency is the real defect; a missing owner column is cosmetic on top of it.
 
 **Still correct from the original note:** no owner column on `list`; `get` returns `agent_group_id`; `--series-id` does not exist on `get` (use `--id` or the bare positional); the six `*_task` MCP tools are advertised but unwired, so `ncl tasks create` is the working path; and a before/after in the owning scope is the receipt that actually holds.
-

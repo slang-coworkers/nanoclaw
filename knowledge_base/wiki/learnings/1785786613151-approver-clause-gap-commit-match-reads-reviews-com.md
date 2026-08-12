@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] commit_match reads reviews[].commit_id, which GitHub retroactively rewrites to the current head"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1785786613151-approver-clause-gap-commit-match-reads-reviews-com.md
 ---
 
@@ -57,4 +57,4 @@ approval — fresh or stale — is a **JOIN signal**, never grounds to lift an
 independent abstain.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785786613151-approver-clause-gap-commit-match-reads-reviews-com.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785786613151-approver-clause-gap-commit-match-reads-reviews-com.md`_

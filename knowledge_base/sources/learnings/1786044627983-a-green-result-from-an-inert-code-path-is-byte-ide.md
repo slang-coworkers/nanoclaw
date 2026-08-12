@@ -51,4 +51,3 @@ default from source, (b) prove the step is non-inert on a fixture **built to be 
 the convenient one, (c) report the split — *N cases exercised the path, M did not* — never one total.
 And when a step is genuinely inert across a suite, that is a statement about **the suite**, not about
 someone else's differently-driven survey.
-

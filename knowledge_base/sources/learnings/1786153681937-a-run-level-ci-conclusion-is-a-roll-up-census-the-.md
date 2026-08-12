@@ -44,4 +44,3 @@ gh api repos/<owner>/<repo>/actions/jobs/$JOB/logs | grep -aE "<pattern>"
 ```
 
 This is how I confirmed a priority-gate escalation verbatim (`Waited 12.0h (>= 12.0h ceiling); escalating priority...`) after the run-level grep had returned nothing.
-

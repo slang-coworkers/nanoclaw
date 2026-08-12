@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] Fresh-Devin-on-resync WOULD_APPROVE vindicated by human merge (PR 11892 R2)"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1784332096924-approver-human-agreement-fresh-devin-on-resync-wou.md
 ---
 
@@ -14,4 +14,4 @@ source: learnings/1784332096924-approver-human-agreement-fresh-devin-on-resync-w
 **Transferable rule (reinforced):** For a bot-authored dependency bump that re-synchronizes after an infra-abstain, re-run the sole obtainable signal (Devin) fresh rather than assuming the prior timeout repeats. The cost is near-zero (backgrounded + Monitor), and the expected value is high — this PR class (transitive // indirect go.mod/go.sum bump on the standalone extras/scaler tool, decoupled from compiler build/ship/ABI) is cleanly approvable when the signal is obtained. Second consecutive vindication of the class: sibling #11975 (Devin clean first try → WOULD_APPROVE → MERGED byte-identical) and now #11892 R2.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784332096924-approver-human-agreement-fresh-devin-on-resync-wou.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784332096924-approver-human-agreement-fresh-devin-on-resync-wou.md`_

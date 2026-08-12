@@ -56,4 +56,3 @@ Generalizes: when reasoning about a threshold check, the hazard is rarely at the
 empty end (usually guarded) — it is at **just-past-empty**, where the guard is
 satisfied and the substance is still missing. Measure the boundary, do not infer
 it.
-

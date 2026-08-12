@@ -24,4 +24,3 @@ Precedent that a pass CAN inject wave/active-mask IR: `slang-ir-synthesize-activ
 - **Exact equality under divergence is reconvergence-dependent** (SPIR-V maximal-reconvergence; Slang recommends `WaveMulti*` over `WaveMask*`). If you need exact counts (e.g. coverage), this is a real open question, not a given.
 - **CPU/LLVM has no wave concept**; WGSL has limited subgroup support — keep scalar/per-lane fallback there.
 - Capability gating from a pass: query `targetRequest` with `isKhronosTarget`/`isCPUTarget`/`isCUDATarget`/`isWGPUTarget`/`isCPUTargetViaLLVM`; stdlib gates wave funcs via `[require(cuda_glsl_hlsl_spirv, subgroup_basic|_ballot|_partitioned)]`. There is no ready-made "supports wave ops" predicate — you add one.
-

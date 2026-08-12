@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Devin commit-status unknown means it may not cover the settled head after a synchronize"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1784156846935-approver-challenger-miss-devin-commit-status-unkno.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784156846935-approver-challenger-miss-devin-commit-status-unk
 **Fix:** Never let "Devin exit 0, 0 bugs" substitute for challenger coverage when devin_commit_status != "up to date". Record the status in the review-doc JSON (`devin_commit_status`) and the challenger findings so the join is auditable. This is the Devin-only-tier analogue of the primary-tier "re-harvest after synchronize" rule.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784156846935-approver-challenger-miss-devin-commit-status-unkno.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784156846935-approver-challenger-miss-devin-commit-status-unkno.md`_

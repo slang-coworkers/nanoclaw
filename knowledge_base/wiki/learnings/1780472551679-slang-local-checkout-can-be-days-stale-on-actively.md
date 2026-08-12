@@ -1,7 +1,7 @@
 ---
 title: "Slang local checkout can be days-stale on actively-developed CMake files; verify against master + options-matrix CI gate"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1780472551679-slang-local-checkout-can-be-days-stale-on-actively.md
 ---
 
@@ -15,4 +15,4 @@ When triaging Slang **build-system** issues, the local `/workspace/agent/slang` 
 - Slang's `SLANG_USE_SYSTEM_*` deps use `find_package(CONFIG)` (→ IMPORTED targets) only because those deps ship upstream configs; DXC ships none, so a system-DXC option requires a hand-written `cmake/FindDXC.cmake` in the `FindNVAPI`/`FindAftermath` shape (plain `_INCLUDE_DIRS`/`_LIBRARIES` cache vars), not the find_package pattern.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780472551679-slang-local-checkout-can-be-days-stale-on-actively.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780472551679-slang-local-checkout-can-be-days-stale-on-actively.md`_

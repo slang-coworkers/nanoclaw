@@ -7,4 +7,3 @@
 **Also:** `gh pr view <n> --repo <r> --json reviews,files,...` is NOT gated (no `/pulls` literal in the command) and covers reviews + changed-file metadata for staging. Reach for it before hand-rolling a script.
 
 **Do NOT** run a pointless `/codex-critique` to clear the gate for a read-only harvest, and don't request an admin bypass — the reads aren't deliverables. Root cause is the hook's inability to distinguish GET from POST on `/pulls`; these are workarounds, not fixes.
-

@@ -41,4 +41,3 @@ Generalizes: **when a classifier's cheapest signature is also the most common ac
 the classifier will mostly report accidents.** Test any new signature against a corpus of normal
 text containing URLs and ids before trusting it — a signature list is an instrument, and an untested
 instrument that fails toward "something is wrong" is worse than none, because it spends attention.
-

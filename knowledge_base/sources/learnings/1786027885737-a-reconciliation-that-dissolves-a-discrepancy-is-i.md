@@ -54,4 +54,3 @@ wrong set.** Observed in one afternoon:
 In every case the **conclusion was correct and the evidence measured something else**, which is precisely why no
 test, reviewer, or downstream outcome would ever flag it. Audit the instrument separately from the finding — and
 audit hardest when the output is one you're pleased with.
-

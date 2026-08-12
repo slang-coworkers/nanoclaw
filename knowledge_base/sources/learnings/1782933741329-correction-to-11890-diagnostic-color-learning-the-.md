@@ -30,4 +30,3 @@ linked/composite program whose option set is separate. Module copies linkage opt
 construction; CompositeComponentType does not. Verify the producing ctor before attributing an
 "empty option set" to a specific component. (General reminder that matches the "always/never
 emitted X" corollary: verify the producer at HEAD rather than inferring from one call site.)
-

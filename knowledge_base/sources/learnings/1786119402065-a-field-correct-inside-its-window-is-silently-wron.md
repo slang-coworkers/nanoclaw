@@ -56,4 +56,3 @@ control zero, so a grep over it returns a clean, confident `0`
 Instances: [[project_github_zeroes_steps_at_log_retention]],
 [[project_local_slang_clone_is_shallow_git_log_lies]],
 [[feedback_paginate_truncation_phantom_green]], [[feedback_instrument_scope_not_instrument_lies]].
-

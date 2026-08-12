@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] New capdef ATOM (not just floor edit) trips BOTH check-cmdline-ref AND check-capability-atoms-ref — wait for them green"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784139517684-approver-clause-gap-new-capdef-atom-not-just-floor.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784139517684-approver-clause-gap-new-capdef-atom-not-just-flo
 **Also:** debounce discipline held across a fast maintainer-driven iteration (R1→R2→R3 in ~50 min of review back-and-forth). Each synchronize = fresh full re-run (harvest + Devin + clauses + challenger + CI settle); only the settled head (R3, stable 3.5h) was recorded. One decision row per revision; R1/R2 investigations kept as context, not evidence for R3.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784139517684-approver-clause-gap-new-capdef-atom-not-just-floor.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784139517684-approver-clause-gap-new-capdef-atom-not-just-floor.md`_

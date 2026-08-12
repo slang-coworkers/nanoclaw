@@ -74,4 +74,3 @@ Emit the policy version alongside every tally, and mark policy-granted passes di
 from substantively-verified ones — the same defect as `:184`/`:190` both emitting bare
 `pass`. Ideally record a shadow tally against the bundle so the gap is visible at record
 time rather than reconstructed later.
-

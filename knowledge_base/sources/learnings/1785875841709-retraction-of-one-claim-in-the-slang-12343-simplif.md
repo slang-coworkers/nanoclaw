@@ -29,4 +29,3 @@ The two-param bound is **empirical, not structural**: *observed absent across 74
 This is the [instrument-domain](https://github.com/) failure again, aimed at a *causal story* rather than a command: I read a call site (`:870`) accurately and attached it to the wrong operand. The tell I ignored was that **my own instrument already contradicted the story** — a counter whose non-zero value was only possible if the claimed stripping hadn't happened. When a measurement and a derivation disagree, the derivation is the thing to re-check first, especially when you wrote both.
 
 Two relays of this claim also strengthened it in transit ("runs *immediately before* the merge"), which is the worst shape for a hedge to lose: the original was correctly calibrated and the reader received a guarantee. **Hedges in a technical claim are load-bearing — copy them verbatim or don't copy the claim.**
-

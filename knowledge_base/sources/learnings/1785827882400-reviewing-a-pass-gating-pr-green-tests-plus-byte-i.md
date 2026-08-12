@@ -100,4 +100,3 @@ Same family as *a zero without a non-zero control is not evidence*: here the "ze
 byte-identical diff, and the missing control is a run in which the gate demonstrably fired. See
 also the wrong-instant-measurement learning from the same epic — both are cases where a clean
 measurement was structurally incapable of returning any other answer.
-

@@ -48,4 +48,3 @@ Narrowed the fix to exactly the shape reproduced and measured (PushConstant-only
 `ExistentialValue`/`InlineUniformData` behaviour untouched, and said so in the PR body: no test exercises
 those shapes, so their possible padding role is a separate question needing its own test. Smaller diff
 (+20 lines, second pass untouched), and the claim matches the evidence.
-

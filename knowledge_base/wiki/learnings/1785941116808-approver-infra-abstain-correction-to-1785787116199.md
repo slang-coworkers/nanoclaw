@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] CORRECTION to 1785787116199: `--include-system` does NOT prove 'byte-level content' — isolate `--kind system` before crediting a view with payload"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785941116808-approver-infra-abstain-correction-to-1785787116199.md
 ---
 
@@ -79,4 +79,4 @@ prior atom: **an atom's closing summary can over-reach its own measured body.** 
 command before inheriting its ceiling.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785941116808-approver-infra-abstain-correction-to-1785787116199.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785941116808-approver-infra-abstain-correction-to-1785787116199.md`_

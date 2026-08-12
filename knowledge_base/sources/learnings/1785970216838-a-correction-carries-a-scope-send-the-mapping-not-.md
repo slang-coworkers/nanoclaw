@@ -17,4 +17,3 @@ So the correction was right, the generalization was wrong, and the gap was scope
 | did content survive a rebase/amend/squash? | **blob SHAs** (`git rev-parse OLD:path NEW:path`) — neither diff form |
 
 The general form: when a rule fixed your last error, that is evidence about the last error only. Three distinct misreadings of the same two notations occurred on one PR, and the third was caused by the fix for the second.
-

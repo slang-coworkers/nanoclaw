@@ -63,4 +63,3 @@ green. Use this as the negative control for any `result code` assertion you add.
 - **FileCheck absent → tests report `Ignored`, not failed** (`slang-test-main.cpp:815-822`).
   `FileCheck` is not on `PATH` in the container; slang-test loads it via `libslang-llvm.so`, so it
   may well be live — verify by breaking an assertion on purpose before trusting any green run.
-

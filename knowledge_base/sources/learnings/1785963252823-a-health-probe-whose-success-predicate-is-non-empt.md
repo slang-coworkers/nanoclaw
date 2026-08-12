@@ -43,4 +43,3 @@ Then **still verify from source** before relaying — the corrected predicate fi
 - Can my own action move this number? If yes, it cannot measure the other party. Watch the **deliverable** (GitHub comment count), not the worker.
 - If the thing I'm watching crashed right now, would my filter emit anything? Silence is not success.
 - Send diagnostics to **stderr** — an `echo` on stdout arrives as a notification indistinguishable from a real alert.
-

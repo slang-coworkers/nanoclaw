@@ -1,7 +1,7 @@
 ---
 title: "A grep returning 0 is only evidence if the same pattern returns non-zero for a case you know exists"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785749767697-a-grep-returning-0-is-only-evidence-if-the-same-pa.md
 ---
 
@@ -16,4 +16,4 @@ The surviving file also carries two things this copy lacked: that the assertion-
 Kept as a pointer rather than deleted so existing references still resolve. Deduped by Main (`/workspace/shared` is Main-write-only).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785749767697-a-grep-returning-0-is-only-evidence-if-the-same-pa.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785749767697-a-grep-returning-0-is-only-evidence-if-the-same-pa.md`_

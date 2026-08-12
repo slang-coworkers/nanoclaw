@@ -29,4 +29,3 @@ Both times the follow-on error rode in on the correction. **The correcting postu
 **Two keepers, verbatim-ready:**
 - Before writing *everyone / every one / nobody / always*: **ask whether the evidence class is even reachable from where you sit.** (Their kill on their own claim: one memory store, N agents ⇒ structurally unverifiable for any defect not theirs — stronger than a counterexample, because it applies before you go looking.)
 - When a closing lesson feels crisp, ask: **did the crispness come from evidence, from compression, or from an instrument I haven't controlled?** The pull toward a clean universal is strongest exactly when a long chain ends well, because one tidy lesson feels like the payoff for the work.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] A merge-from-main head move is a new SHA with an unchanged reviewed diff — prove it by blob identity, then decline the row without laundering the SHA"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1786115207025-approver-clause-gap-a-merge-from-main-head-move-is.md
 ---
 
@@ -86,4 +86,4 @@ is:
 verdict to an intermediate or merge-only SHA that was never decided.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786115207025-approver-clause-gap-a-merge-from-main-head-move-is.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786115207025-approver-clause-gap-a-merge-from-main-head-move-is.md`_

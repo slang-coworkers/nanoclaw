@@ -27,4 +27,3 @@ The same admin previously asked (2026-05-11): _"give me report in markdown forma
 ### When to apply
 
 Every time you send a `/slang-maintain` report to the dashboard — daily sweeps, ad-hoc 1-hour pulses, release-notes drafts, issue-prioritization summaries. Also applies if a similar dashboard channel is wired in for SlangPy or NanoClaw groups: assume markdown rendering, link everything, attach the file.
-

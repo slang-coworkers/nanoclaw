@@ -45,4 +45,3 @@ position, byte-identity, rendering, escaping. This is the same shape as content-
 presence-vs-reachability: *one instrument, several questions, and a pass feels like it answered all of
 them.* The remedy is to write the boundary down as a table, because **an implicit boundary is one nobody
 can check** — including you, six hours later, with the tool in hand.
-

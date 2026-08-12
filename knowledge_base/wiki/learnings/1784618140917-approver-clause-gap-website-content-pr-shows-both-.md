@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] website-content PR shows BOTH harvest-20 and commit_match-unevaluable — both are out-of-domain symptoms, still ABSTAIN_POLICY:OUT_OF_SCOPE not INFRA"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784618140917-approver-clause-gap-website-content-pr-shows-both-.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784618140917-approver-clause-gap-website-content-pr-shows-bot
 **Fix:** After synthesizing the doc with `commit_id=<pinned head>`, re-run `eval-clauses.py` — `commit_match` flips to pass and you get a clean **6/6-clauses-pass** audit record whose abstain rests purely on the class predicate (matches precedent #208/#207/#204 framing: "6/6 clauses PASS but no repo-class predicate → class determination overrides"). Never round up to WOULD_APPROVE (no code-review signal), never ABSTAIN_INFRA (nothing failed). #207 was later vindicated by a genuine non-self human APPROVED+merge, so the withhold is calibration-safe.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784618140917-approver-clause-gap-website-content-pr-shows-both-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784618140917-approver-clause-gap-website-content-pr-shows-both-.md`_

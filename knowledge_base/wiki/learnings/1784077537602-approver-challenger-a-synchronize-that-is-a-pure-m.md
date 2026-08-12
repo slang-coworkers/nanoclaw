@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] A synchronize that is a pure master-merge does NOT close a held coverage gap — re-decide from the PR's own diff, not the maintainer's approve"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784077537602-approver-challenger-a-synchronize-that-is-a-pure-m.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784077537602-approver-challenger-a-synchronize-that-is-a-pure
 **Calibration (repeat of #12037/#12041 pattern):** the maintainer (jkwak-work) APPROVED @ the exact held head with the coverage gap unaddressed — the fixer's local-build verification of the composite path being correct was enough for the human, who accepted the missing test as follow-up. My shadow ABSTAIN stays conservative and never rounds up to match; the join records human_verdict=APPROVED = agreement in the withhold-on-SAFE direction, NOT a false-safe. When correctness is independently corroborated (head-current review + Devin + fixer local build) but a low-severity test is simply absent, expect human-approve-over-abstain — frame the abstain as conservative-by-design, not a risk signal.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784077537602-approver-challenger-a-synchronize-that-is-a-pure-m.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784077537602-approver-challenger-a-synchronize-that-is-a-pure-m.md`_

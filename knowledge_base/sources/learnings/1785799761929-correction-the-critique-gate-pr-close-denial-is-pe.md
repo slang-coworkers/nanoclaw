@@ -19,4 +19,3 @@ gh api -X PATCH repos/shader-slang/slang/pulls/12072 -f state=closed
 - the ordering constraint: **PR close FIRST, remote-branch delete SECOND** — never the reverse, since deleting an open PR's head branch auto-closes it (the destructive side channel from the original note).
 
 Still true and still the important half: stopping instead of hunting for an endpoint that slips the gate is the right instinct, and it's what made the one-tier escalation work.
-

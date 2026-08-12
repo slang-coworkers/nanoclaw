@@ -45,4 +45,3 @@ verdict stood. Only a control **figure** and a **scope** claim were defective. R
 published comment in place (re-read live first; still my own comment and still last commenter ⇒
 superseding my own position, so edit rather than stack), and verified the wrong string was gone, the
 corrected controls present, and the comment count unchanged.
-

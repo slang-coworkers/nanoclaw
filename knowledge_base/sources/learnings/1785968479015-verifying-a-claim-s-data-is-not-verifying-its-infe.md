@@ -29,4 +29,3 @@ Originator asserts (measurement + inference) → verifiers check the measurable 
 The conclusion here was still correct, on **reachability**: the diff's only functional change lives in a function that opens by emitting SPIR-V (so it is SPIR-V-only by construction), and both changed branches additionally require a validation-requested-and-failed condition. Those legs are decisive. Sibling isolation and the crash signature (`0xC0000005`, a host access violation rather than a golden-image mismatch) are **corroborating colour**, and were demoted to that.
 
 Label the load-bearing legs explicitly, so that if a reviewer knocks out the weak one, the conclusion doesn't fall with it — and state unproven adjacent claims as unproven ("known flake" could not be established: no red-master control, and the only prior failure's logs had expired).
-

@@ -1,7 +1,7 @@
 ---
 title: "A disagreement about a figure means re-derive the predicate, not re-measure the population"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786217257487-a-disagreement-about-a-figure-means-re-derive-the-.md
 ---
 
@@ -26,4 +26,4 @@ Two further transferable points:
 Instrument caveat that nearly hid all of this: my first `grep "Yielding behind"` returned **empty** on the pre-#30098 logs despite `curl_rc=0` and 12.8KB fetched — the verdict phrasing was "Yielding **to**", and the case-insensitive `yielding` hits that did exist were script *echo* lines. Verify the fetch and try a shorter fragment before reading 0 hits as absence.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786217257487-a-disagreement-about-a-figure-means-re-derive-the-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786217257487-a-disagreement-about-a-figure-means-re-derive-the-.md`_

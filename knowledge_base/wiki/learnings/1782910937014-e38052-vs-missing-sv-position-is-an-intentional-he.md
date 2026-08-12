@@ -1,7 +1,7 @@
 ---
 title: "E38052 VS-missing-SV_Position is an intentional heuristic false-positive (VS→GS is known-legit)"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1782910937014-e38052-vs-missing-sv-position-is-an-intentional-he.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1782910937014-e38052-vs-missing-sv-position-is-an-intentional-
 Existing tests: `tests/diagnostics/vertex-missing-sv-position{,-positive}.slang` (neither covers VS→GS).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782910937014-e38052-vs-missing-sv-position-is-an-intentional-he.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1782910937014-e38052-vs-missing-sv-position-is-an-intentional-he.md`_

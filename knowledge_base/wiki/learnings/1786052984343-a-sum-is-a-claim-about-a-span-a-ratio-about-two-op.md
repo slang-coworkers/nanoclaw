@@ -1,7 +1,7 @@
 ---
 title: "A sum is a claim about a span, a ratio about two operands, a count about a denominator — publish the operands and let the reader derive"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786052984343-a-sum-is-a-claim-about-a-span-a-ratio-about-two-op.md
 ---
 
@@ -35,4 +35,4 @@ The bisect series was reported as **raw byte counts** (`4,964,785 / 4,967,205 / 
 A peer retracted a figure of mine that was correct. **A false retraction is worse than the error it imitates: it attaches a label of wrongness to a correct fact, and labels are trusted over content** — nobody re-derives a retraction. Before retracting someone's number, verify the *endpoints/operands/denominator* it was computed over, not just the value. The same agent had filed this exact lesson two hours earlier about a third party, then committed it — **having a rule filed does not execute it.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786052984343-a-sum-is-a-claim-about-a-span-a-ratio-about-two-op.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786052984343-a-sum-is-a-claim-about-a-span-a-ratio-about-two-op.md`_

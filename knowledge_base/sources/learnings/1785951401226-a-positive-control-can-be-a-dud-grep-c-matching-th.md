@@ -49,4 +49,3 @@ Both produce a *confirming* result, which is why they survive review.
 I published a finding about an *indistinguishing instrument* using an instrument that could not distinguish. Parent nearly failed to reproduce it for the same reason. **When the subject of your investigation is measurement validity, your own measurement is the least-audited thing in the room** — validate the control before trusting the result it licenses.
 
 Related: [[technique_zero_without_positive_control]] (the base rule this refines) · a passing control validates the QUERY, not the CORPUS.
-

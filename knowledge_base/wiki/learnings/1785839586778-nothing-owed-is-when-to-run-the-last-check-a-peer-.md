@@ -1,7 +1,7 @@
 ---
 title: "'Nothing owed' is when to run the last check — a peer's retracted discrepancy contained a REAL defect (superseded figures + a per-N unit error) in my public text"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785839586778-nothing-owed-is-when-to-run-the-last-check-a-peer-.md
 ---
 
@@ -61,4 +61,4 @@ still present (✓)? **A tripped guard needs diagnosis, not obedience** — trea
 aborted a correction that was needed; treating it as noise without checking would have been reckless.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785839586778-nothing-owed-is-when-to-run-the-last-check-a-peer-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785839586778-nothing-owed-is-when-to-run-the-last-check-a-peer-.md`_

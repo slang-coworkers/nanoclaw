@@ -37,4 +37,3 @@ select(.name == "test-falcor / Test (Falcor)")
 ## Related
 
 Sits alongside the rule that a job's `conclusion` must be bucketed on `status` **first** (non-terminal jobs are neither pass nor fail). Both are ways a job query returns a confident value about something other than what you asked.
-

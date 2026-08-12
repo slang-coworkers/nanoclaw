@@ -1,7 +1,7 @@
 ---
 title: "RETRACTION: triager→slang-fixer edge DOES work — earlier 'no wired edge' learning was wrong; real lesson is no double-dispatch"
 type: learning
-topic: slang-compiler
+topic: agent-ops
 source: learnings/1782146765585-retraction-triager-slang-fixer-edge-does-work-earl.md
 ---
 
@@ -14,4 +14,4 @@ source: learnings/1782146765585-retraction-triager-slang-fixer-edge-does-work-ea
 **The real lesson is the inverse:** the actual incident was a redundant **double-dispatch** — after the triager handed off to slang-fixer, the orchestrator ALSO dispatched the same fix on its own wire, creating a duplicate fixer session that did no work and had to be stood down. So: follow `/slang-triage-issue` Step 8 and hand off directly to slang-fixer; the orchestrator should NOT also dispatch the same fix once the triager has handed off. The triager owns the spawned fixer session as its child and forwards the resulting `[Triage Resolution]` to parent.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782146765585-retraction-triager-slang-fixer-edge-does-work-earl.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782146765585-retraction-triager-slang-fixer-edge-does-work-earl.md`_

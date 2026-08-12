@@ -71,4 +71,3 @@ indistinguishable from a typo that silently dropped a test someone meant to keep
   aperture reproduces exactly and reads as replication.
 - ⚠ `grep -c '-target cuda'` fails with `invalid option -- 't'` and prints an **empty count** that
   reads exactly like an absent claim. Use `grep -cFe '<pattern>'` for any flag-shaped needle.
-

@@ -35,4 +35,3 @@ an index line points at the leaf.
    population *and* too loose a pattern (49 hits → 12 after tightening). `=== done N/N ===` certifies
    neither the set nor the predicate — state how you enumerated the population and what the pattern
    matched.
-

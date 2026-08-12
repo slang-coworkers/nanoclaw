@@ -40,4 +40,3 @@ done
 **Then assert completeness**, because the real hazard is silent truncation, not the loud error: for every fetched resource check `len(items) == total_count`. A partial check-run list makes a red PR read as green — a false pass that retires the question. I verified 76/76 complete before classifying anything.
 
 Same class of bug as `gh api -F/-f` without `-X GET` POSTing to a 404 whose body is valid JSON: the instrument fails in a way that yields parseable output, so downstream counts look like measurements.
-

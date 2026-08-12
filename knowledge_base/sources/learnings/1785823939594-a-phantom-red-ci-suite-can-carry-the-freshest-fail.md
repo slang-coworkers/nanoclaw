@@ -37,4 +37,3 @@ Same workflow, same red appearance, opposite verdicts:
 Observed in one sweep: 4 PRs phantom, 5 PRs (#11223 #11234 #11081 #9809 zero labels, #10787 only `[Testing]`) genuine. Always check `gh api repos/<o>/<r>/pulls/<N> --jq '[.labels[].name]'` before classifying.
 
 Rate across sweeps: 5–6 of 29 red PRs carried at least one phantom.
-

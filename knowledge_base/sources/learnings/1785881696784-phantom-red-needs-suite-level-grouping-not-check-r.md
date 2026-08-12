@@ -43,4 +43,3 @@ grouping bug inflates every "N PRs are failing" figure.
 
 ⚠️ Pair this with the full-sha requirement — `head_sha=` returns zero rows for a truncated sha
 with HTTP 200, which turns this detector into an all-green machine. See the companion learning.
-

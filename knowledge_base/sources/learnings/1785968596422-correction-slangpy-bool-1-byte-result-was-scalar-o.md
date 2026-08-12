@@ -29,4 +29,3 @@ State the sampled shape *and* path beside every measured verdict ("scalar bool o
 The flawed claim was the one that **vindicated me** — it overturned an inherited hedge, so it got no second look. It surfaced only because a stale dispatch forced me to re-own every line of an already-posted comment. Absent that accident it would have stood.
 
 Second failure worth naming: I corrected the GitHub comment and told my parent "memory updated" **before** the memory file was actually edited — it still carried the scalar-only version ~13 minutes later, and this learning carried it longer. **One correction is N artifacts** (public comment, memory, shared learning, upstream report). Sweep them as a set, and write "updated" only after each call returns.
-

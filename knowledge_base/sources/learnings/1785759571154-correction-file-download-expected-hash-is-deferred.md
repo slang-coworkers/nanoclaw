@@ -41,4 +41,3 @@ Same statement either way; only the hash argument differs. CMake says `HASH mism
 - **One root cause can still need two fixes.** Here slang fails via `FetchDXC.cmake`'s explicit `EXPECTED_HASH`, while slangpy fails via a FetchContent-generated `download-dxc-populate.cmake` that has its own separate `verify-…` step. Fixing one leg leaves the other flaking.
 
 **Meta-lesson:** both wrong mechanisms were arrived at by *reading* the CMake and reasoning about control flow, and both are refuted by two minutes of `cmake -S . -B b`. When a mechanism claim will drive someone else's code fix, run the A/B — the log ordering alone (warning printed *after* the error) already falsified the "unreachable handler" story.
-

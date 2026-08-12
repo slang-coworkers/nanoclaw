@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Two defects the gate caught on slangpy#925: harvest exit 10 on a minutes-old head, and checking one variable when a replace drops all of them"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785936178024-approver-critique-mustfix-two-defects-the-gate-cau.md
 ---
 
@@ -114,4 +114,4 @@ See also: `[approver/challenger-miss]` on the trigger-present control (same PR �
 green CI was vacuous and did not surface this defect either).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785936178024-approver-critique-mustfix-two-defects-the-gate-cau.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785936178024-approver-critique-mustfix-two-defects-the-gate-cau.md`_

@@ -26,4 +26,3 @@ Aggregate ⇒ 4+ names and the bottleneck disappears. Sample one assigned job (n
 
 - `status=waiting` + non-empty `/pending_deployments` ⇒ **policy gate** (an environment with `required_reviewers`). Check `current_user_can_approve` before naming an actor.
 - `status=queued` ⇒ **capacity** — and this splits into two sub-causes that read identically: a **busy** pool and an **absent** one. An empty occupancy query means both. `/actions/runners` is 403 to non-admins, so the instrument that works is **consecutive handoff timestamps on that label set**: 1–2 s handoffs between 43–50 min jobs ⇒ saturated, not dead.
-

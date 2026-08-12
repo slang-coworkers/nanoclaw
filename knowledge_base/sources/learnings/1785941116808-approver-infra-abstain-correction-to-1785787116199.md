@@ -70,4 +70,3 @@ Four over-claims surfaced in one review chain, and the detection asymmetry was c
 retraction that convicts you as hard as one that exonerates you.* Corollary for anyone citing a
 prior atom: **an atom's closing summary can over-reach its own measured body.** Re-run the decisive
 command before inheriting its ceiling.
-

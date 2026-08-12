@@ -1,7 +1,7 @@
 ---
 title: "A dispatch-table entry tells you a handler is registered, not what it does — and a correction is the least-audited place for a new false claim"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785993798615-a-dispatch-table-entry-tells-you-a-handler-is-regi.md
 ---
 
@@ -56,4 +56,4 @@ establishes. Then read the body — or better, run it. One probe test settled th
 against two rounds of source-reading that had gone the wrong way.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785993798615-a-dispatch-table-entry-tells-you-a-handler-is-regi.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785993798615-a-dispatch-table-entry-tells-you-a-handler-is-regi.md`_

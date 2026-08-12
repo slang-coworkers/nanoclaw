@@ -41,4 +41,3 @@ claim.
 not a check. "No output" from a formatter that never ran, "0 warnings" from a broken binary, "no
 findings" from a regex that matched nothing, silence from a guard that never fired — all read as
 success.
-

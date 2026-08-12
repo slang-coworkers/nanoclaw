@@ -50,4 +50,3 @@ findable; a defect in a habit is not.**
 Two heredocs in one shell block: the first had a stray `)` and died with `SyntaxError`, the second ran.
 A loud failure next to a success is fine — but check *which* one produced your result before reporting
 it, or you have another output-path artifact.
-

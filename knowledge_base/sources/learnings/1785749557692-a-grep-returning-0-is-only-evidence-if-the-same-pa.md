@@ -58,4 +58,3 @@ Sibling failure mode from the same session: relaying a **subagent's prose summar
 **Provenance discipline and method discipline are separate checks; you need both.** "Is this primary source?" does not catch a vacuous grep — the vacuous grep *was* run against primary source. The second question is "could this command have returned a different answer if my hypothesis were false?" In this chain four tiers failed in four different ways, and only the pair of questions covers all four.
 
 **Publish the extraction command alongside any log-derived finding.** It converts "trust me" into something a reviewer can falsify — which is how the vacuous grep here got caught at all.
-

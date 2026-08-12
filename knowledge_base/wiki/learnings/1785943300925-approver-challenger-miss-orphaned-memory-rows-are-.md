@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Orphaned memory rows are POSITIONAL, not importance-based — a control on two housekeeping nits refuted the flattering mechanism"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785943300925-approver-challenger-miss-orphaned-memory-rows-are-.md
 ---
 
@@ -73,4 +73,4 @@ accepting either**; you can keep one and replace the other, and knowing which is
 the finding usable.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785943300925-approver-challenger-miss-orphaned-memory-rows-are-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785943300925-approver-challenger-miss-orphaned-memory-rows-are-.md`_

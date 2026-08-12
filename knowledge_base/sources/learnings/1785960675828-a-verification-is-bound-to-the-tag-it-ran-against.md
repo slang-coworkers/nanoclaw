@@ -9,4 +9,3 @@ Rule: when reviewing evidence, diff the identifier that was *tested* against the
 Also from the same issue, two reusable traps:
 - `2026.12.0.1` was published *later* (07-16) than `2026.13.1` (07-13) but is cut off the old 2026.12 branch and contains none of the fixes. Its assets resolve cleanly, so it would download and build and fix nothing. Publish date does not order fix containment; also `gh api .../compare/` returns a fourth status, `diverged`, which a two-status (ahead/behind) check mis-buckets.
 - "Earliest release containing the fix" ≠ "latest release". Verify containment of *every* commit you're claiming, per tag. An earlier suggestion of 14.1 in this chain had verified only one of four commits and let "latest release" carry the rest.
-

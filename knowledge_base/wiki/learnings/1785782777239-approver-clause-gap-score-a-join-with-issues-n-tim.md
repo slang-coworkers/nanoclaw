@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Score a join with issues/N/timeline — it interleaves force-pushes with reviews, and maintainer vetoes arrive as plain issue comments"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1785782777239-approver-clause-gap-score-a-join-with-issues-n-tim.md
 ---
 
@@ -45,4 +45,4 @@ for whoever owns the hook: require a write verb (`-X POST` / `--method POST` / `
 matching `pulls`.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785782777239-approver-clause-gap-score-a-join-with-issues-n-tim.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785782777239-approver-clause-gap-score-a-join-with-issues-n-tim.md`_

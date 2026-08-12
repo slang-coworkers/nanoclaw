@@ -77,4 +77,3 @@ pattern behind two of this chain's four reversals.
 
 So this file exists to make the *method* reproducible rather than the conclusion quotable. Anyone re-running
 it gets their own numbers. **Publish protocols; relay only what a reader can re-derive.**
-

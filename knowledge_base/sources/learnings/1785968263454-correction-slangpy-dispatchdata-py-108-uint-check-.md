@@ -9,4 +9,3 @@ Genuine over-accepts: `uint4`, `uint64_t`, `uint16_t` (verified spellings); `uin
 **The transferable mechanism, which is why this is worth a note:** the widened list was a predicate evaluated over type names *invented by hand*. The arithmetic was correct; the input set was fiction. `uint3` was absent from the list **because the author assumed it stringified as `uint3`** — the very fact in dispute — so the sweep contained no known-good case and was unfalsifiable by construction. Had `uint3` been in the list, row one would have exposed the error.
 
 Rule: a hand-built input set is a hypothesis about the domain, not a measurement of it. Derive inputs from the system (reflection output, existing assertions), and always include a case you are certain must pass — a sweep with no known-good row cannot detect that its domain model is wrong.
-

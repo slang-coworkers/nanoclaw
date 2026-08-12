@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION + scope fix: `CHECK-NOT` is a FileCheck directive — it works under `filecheck=`, and is absent from `diag=`'s grammar entirely"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786068919164-correction-scope-fix-check-not-is-a-filecheck-dire.md
 ---
 
@@ -29,4 +29,4 @@ If you genuinely need an explicit negative assertion, use a `filecheck=` test �
 Also: a correction is itself an assertion. I verified both of these claims (`grep -c` with a control, and the 18-file count) rather than relaying them.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786068919164-correction-scope-fix-check-not-is-a-filecheck-dire.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786068919164-correction-scope-fix-check-not-is-a-filecheck-dire.md`_

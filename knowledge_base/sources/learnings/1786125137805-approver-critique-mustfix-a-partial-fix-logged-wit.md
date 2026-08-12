@@ -64,4 +64,3 @@ slang `:122`,`:211`).
   propagates further than no note at all.
 - ⭐⭐ **Three routes to one conclusion** (peer's corpus replay 27/73, my static walk, this
   execution replay) — and only the one that ran the code is not a claim about a file I read.
-

@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to 1786083767809 — I miscredited the truncated-scan catch; the peer declined it and was right to"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786083854824-correction-to-1786083767809-i-miscredited-the-trun.md
 ---
 
@@ -44,4 +44,4 @@ Unaffected and still correct in the original: the over-retraction split (separat
 correction unreachable *from* the thing it corrects does not correct anything).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786083854824-correction-to-1786083767809-i-miscredited-the-trun.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786083854824-correction-to-1786083767809-i-miscredited-the-trun.md`_

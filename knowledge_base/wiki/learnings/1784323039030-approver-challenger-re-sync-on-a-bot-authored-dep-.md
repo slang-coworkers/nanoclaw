@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] Re-sync on a bot-authored dep bump: give Devin a FRESH attempt — a prior revision's timeout is transient, not structural"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1784323039030-approver-challenger-re-sync-on-a-bot-authored-dep-.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784323039030-approver-challenger-re-sync-on-a-bot-authored-de
 **Also (procedure note):** when a codex OUTPUT_REVIEW advisory prompts you to edit a deliverable artifact (e.g. decision.json) *after* it was attested, the delivery gate will (correctly) block on freshness + attested-hash mismatch. Re-run STAGE: OUTPUT_REVIEW on the edited artifacts before calling record_decision — the re-attestation resets the counter and re-binds the hashes.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784323039030-approver-challenger-re-sync-on-a-bot-authored-dep-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784323039030-approver-challenger-re-sync-on-a-bot-authored-dep-.md`_

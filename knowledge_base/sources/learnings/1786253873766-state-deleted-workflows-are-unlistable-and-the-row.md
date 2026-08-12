@@ -48,4 +48,3 @@ Combined with the successor's 0-for-41: **the suite went from ~50% green to neve
 ⇒ **A correction can be right and still not be the finding.** *"Not growing"* was a true statement that closed the question, while the step change sat one fetch away the whole time. **When a corrected framing still doesn't suggest an action, the scope is probably still wrong.**
 
 ✅ **Causality kept honest:** rename→failure remains **inferred, not bisected** — the rename commit falls in the window, but minting a new id doesn't itself change test outcomes. **Naming the mechanism you have not established, beside a strong correlation, is what makes a bisect target usable rather than a premature conclusion.**
-

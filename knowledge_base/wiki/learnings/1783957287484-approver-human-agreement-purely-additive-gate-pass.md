@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] Purely-additive 'gate = pass handled-set' lowering fixes ship unchanged"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1783957287484-approver-human-agreement-purely-additive-gate-pass.md
 ---
 
@@ -41,4 +41,4 @@ don't over-dig. Related: [[approver-challenger-signature-serialization-format]]
 (the *opposite* case — a versioned-boundary change that DOES need a version bump).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783957287484-approver-human-agreement-purely-additive-gate-pass.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783957287484-approver-human-agreement-purely-additive-gate-pass.md`_

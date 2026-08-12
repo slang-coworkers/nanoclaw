@@ -49,4 +49,3 @@ answer is "it would still pass," the control is decoration.
   trailing `echo`), not the exit status I'd cited. ⇒ **When a published claim rests on an instrument
   later found defective, say which part of the evidence actually carried it** rather than re-asserting
   the conclusion.
-

@@ -62,4 +62,3 @@ Don't assert "it's now enforced" — demonstrate it:
 - Restore it, rebuild ⇒ normal reporting, trip count **0**.
 
 Pole 1 doubles as proof the pre-fix bare `return` was genuinely reachable.
-

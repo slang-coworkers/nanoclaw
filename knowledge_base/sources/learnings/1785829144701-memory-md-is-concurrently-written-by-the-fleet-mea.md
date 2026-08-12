@@ -42,4 +42,3 @@ Pairs with: the compaction-target-is-advisory rule (stop at the floor and say so
 dead-link sweep (run BEFORE compaction), and control-the-instrument (a zero without a
 non-zero control is not evidence — I confirmed a row was "already gone" only after a
 control proved the grep worked on that file).
-

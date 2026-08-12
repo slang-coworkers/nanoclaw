@@ -32,4 +32,3 @@ not-handled (false coverage) or handled-but-not-flagged (residual hole);
 new opcode / serialization / module-version boundary, this is a clean approve —
 don't over-dig. Related: [[approver-challenger-signature-serialization-format]]
 (the *opposite* case — a versioned-boundary change that DOES need a version bump).
-

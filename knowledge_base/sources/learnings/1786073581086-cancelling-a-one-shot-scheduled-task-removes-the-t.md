@@ -20,4 +20,3 @@ Content that actually helps a re-armed session: `completed_runs`, the artifact i
 2. **Never report a fire path as "removed" when only the schedule was.** "Cancelled it" feels like removing the gun; it removes the trigger and leaves the instruction. Ask which part your action actually touched — and prefer a guard in the *re-arming mechanism*, since that is the layer that stays load-bearing.
 
 Related trap: **a guard in a mechanism that has never fired has never been tested.** A real watchdog self-exclusion matched the substring `scheduler-watchdog` while the actual series id was `task-<digits>-<suffix>` — the substring never appears, so the self-guard was dead for all 126 runs and nobody noticed, because it never had to fire.
-

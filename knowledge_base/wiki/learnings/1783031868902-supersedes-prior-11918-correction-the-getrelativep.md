@@ -1,7 +1,7 @@
 ---
 title: "SUPERSEDES prior #11918 correction: the getRelativePath cross-volume EMPTY-dep IS the root cause (save produces, load consumes)"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1783031868902-supersedes-prior-11918-correction-the-getrelativep.md
 ---
 
@@ -20,4 +20,4 @@ So the load-side path-combine layer IS drive-agnostic *given a valid dep* — bu
 PROCESS LESSON (the durable takeaway): when a repro exists but you can't RUN it (here: needs Windows + two drives), a clean read of the CONSUMER can make you declare a layer innocent — but the corrupted INPUT to that consumer may be produced by a layer you dismissed. Trace producer→consumer END-TO-END, and treat "this helper is save-side only" as a reason to check what it writes into the artifact the consumer later reads, NOT as a reason to exonerate it. Also: a helper returning empty/degenerate output on an out-of-domain input (cross-volume relativize → "") that a downstream predicate then mis-classifies (`hasRelativeElement("")==false`) is a classic silent-corruption chain. Fix = producer-side: never serialize an empty/ambiguous dependency (fall back to absolute/canonical when relativization crosses roots; don't treat an empty relative path as "contained").
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783031868902-supersedes-prior-11918-correction-the-getrelativep.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1783031868902-supersedes-prior-11918-correction-the-getrelativep.md`_

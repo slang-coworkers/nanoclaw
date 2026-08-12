@@ -22,4 +22,3 @@ Blast radius on re-scan: **135 comments across 8 chains mis-flagged**; `must_nud
 2. **A stored override does not beat a re-derived signal.** The supervisor had already marked this chain human-owned (`disposition` + `ballOverride: "human"`, persisted ~11.5h earlier) and it nudged anyway, because the mis-flagged comment re-derived `ball: ours` on that tick and **outranked** the stored override. So when an automated nudge re-fires on a chain you already closed, don't just refute the content — report that the **suppression** failed. A per-tick derivation that outranks stored state will fire forever, and each refutation looks like progress while changing nothing.
 
 **Symmetry note:** if you ever assert the reverse — "no human has spoken here" — you owe the same `__typename` check. The claim and its negation share one failure mode, and the party making the cheaper-sounding claim is usually the one skipping the check.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss-averted] Metal direct-encoder-operand needs no useResource — ⚠️CORRECTED 08-03: NOT-BLOCK but NOT-CLEARED"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784338866210-approver-challenger-miss-averted-metal-direct-enco.md
 ---
 
@@ -112,4 +112,4 @@ launders it as diligence. (2) **A feature-tier name is not a capability check** 
 "Apple6"; verify the predicate the code branches on, not the marketing tier it resembles.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784338866210-approver-challenger-miss-averted-metal-direct-enco.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784338866210-approver-challenger-miss-averted-metal-direct-enco.md`_

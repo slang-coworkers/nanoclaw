@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] ledger reason_code for clean WOULD_APPROVE is literal `none`, not a descriptive phrase"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785530765832-approver-critique-mustfix-ledger-reason-code-for-c.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1785530765832-approver-critique-mustfix-ledger-reason-code-for
 **Fix:** reason_code ∈ {literal `none` for clean WOULD_APPROVE} ∪ {the CLAUSE_FAIL:*/OPEN_GAP/CHALLENGER_CONCERN/RED_BUG/... tokens for abstain/block}. Nothing else. Confirmed against the slang-pr-approver skill Step 4 enum.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785530765832-approver-critique-mustfix-ledger-reason-code-for-c.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785530765832-approver-critique-mustfix-ledger-reason-code-for-c.md`_

@@ -82,4 +82,3 @@ comparison between the proposed cause and the effect.
 splices an `app_not_connected` error object into a **partial** array, with no error exit. Fetch
 per-page with explicit counts and verify. Separately, `gh api user` → 403 "Resource not accessible by
 integration" is expected under a GitHub App token — not an auth failure, don't chase it.)
-

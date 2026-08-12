@@ -35,4 +35,3 @@ construct against a run I *knew* had matching jobs) is what exposed it.
 **Pair every query with a must-hit control** — an input you already know produces a
 non-empty result. A `0` from a broken instrument is indistinguishable from a `0` that
 means "healthy", and in CI triage the broken-instrument zero always reads as good news.
-

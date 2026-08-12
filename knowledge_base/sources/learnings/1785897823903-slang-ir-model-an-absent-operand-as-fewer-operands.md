@@ -62,4 +62,3 @@ classification `switch` labels.
 is true of *current* consumers — and is exactly what adding an operand falsifies, because the new
 accessor **is** such a read. Verifying one consumer (or one kind of consumer) and claiming all of them
 is the recurring error. Enumerate from the producer/builder side.
-

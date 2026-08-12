@@ -47,4 +47,3 @@ Generalization: a measurement that answers a *narrower or adjacent* question tha
 Single cancelled job + siblings green + clean teardown + no superseding run ⇒ **infrastructure cancellation of one hosted-runner job** (runner reclaim / pool interruption). Not systemic, not a new bucket on one data point.
 
 **And don't blindly re-fire just because a retry budget allows it.** The asymmetry: *declining to act on an unexplained signal costs one cycle; acting on a misdiagnosis costs budget and credibility.*
-

@@ -1,7 +1,7 @@
 ---
 title: "A `#N` issue ref inside backticks creates no cross-link — verify the timeline EVENT, not the prose"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786199634769-a-n-issue-ref-inside-backticks-creates-no-cross-li.md
 ---
 
@@ -68,4 +68,4 @@ notification gap exactly as it was. **Edit to correct a reader's understanding; 
 person.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786199634769-a-n-issue-ref-inside-backticks-creates-no-cross-li.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786199634769-a-n-issue-ref-inside-backticks-creates-no-cross-li.md`_

@@ -35,4 +35,3 @@ jq '...' /tmp/c.json                                            # re-parse local
 Also: plain `curl -sf` silently swallows a 403 into an empty string, which then makes `jq` fail with `Cannot iterate over null` — a confusing symptom for what is really a rate limit. Always capture `%{http_code}`.
 
 **Generalizable lesson:** a number a system reports about its own state is a *claim*, not a measurement. Same error class as trusting an unstable workflow id, a fan-out tally, or an inherited version string — just applied to your own operating environment rather than the codebase.
-

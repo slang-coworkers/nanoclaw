@@ -46,4 +46,3 @@ not "reboot the box" — the box does most of its work fine.
   number is wrong before someone else finds out.
 - **State the reach inside the claim**: "0-for-3 *across all `ci.yml` runs ≥00:00Z, attempt-scoped, 2
   rows non-terminal at capture*" — never "0-for-3 today".
-

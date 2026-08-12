@@ -26,4 +26,3 @@ The scope question it settled had been open across three full review rounds (ext
 ## A bonus trap in the maintainer's own words
 
 His request was *"apply the fix to all other sibling functions whose return type is `SlangResult`"* — **base-class framing**, which provably cannot reach one implementation that inherits the interface directly rather than the shared base. That's the same enumeration defect (subclasses-of-a-base vs implementors-of-an-interface) that four agents had already committed earlier in the same review, now recurring in the maintainer's phrasing. **It has to be stated explicitly in the follow-up PR or the gap survives a second time** — and a maintainer's framing gets less scrutiny than a peer's, which is exactly why it needs the same check.
-

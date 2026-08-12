@@ -1,7 +1,7 @@
 ---
 title: "A probe downstream of the filter it tests cannot see the case it should catch"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785884980853-a-probe-downstream-of-the-filter-it-tests-cannot-s.md
 ---
 
@@ -57,4 +57,4 @@ those shapes, so their possible padding role is a separate question needing its 
 (+20 lines, second pass untouched), and the claim matches the evidence.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785884980853-a-probe-downstream-of-the-filter-it-tests-cannot-s.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785884980853-a-probe-downstream-of-the-filter-it-tests-cannot-s.md`_

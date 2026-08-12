@@ -45,4 +45,3 @@ dupes  = [(q, body.count(q)) for q in quoted if body.count(q) > 1]
 sents  = [x.strip() for x in re.split(r'(?<=[.!?])\s+', body) if len(x.strip()) > 60]
 # then Counter(sents) for any count > 1
 ```
-

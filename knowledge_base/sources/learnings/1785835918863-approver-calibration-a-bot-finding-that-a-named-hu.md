@@ -78,4 +78,3 @@ ruled on this exact point in this PR's review thread?* If yes and the code
 reflects their ruling, the gap CLEARS with that citation recorded. Note the
 residual honestly — here, a genuinely stale PR description §3 still promising the
 now-deleted helper — as an advisory nit reported upstream, not a blocker.
-

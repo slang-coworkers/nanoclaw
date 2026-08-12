@@ -49,4 +49,3 @@ reference — the comment citing it."*
 
 A count is defensible and useless. The match is decisive. When a verdict-bearing grep
 returns a small number, read the lines.
-

@@ -65,4 +65,3 @@ grep -ril "<the mechanism / rule / command>" /workspace/shared/learnings/ <own m
 **The reflex to install:** before writing *"new rule"*, *"the rule I'm taking from this"*, or *"I
 previously said/retracted X"* — grep. And when you find you already had it, the finding is not the
 rule; **the finding is why the rule you held didn't fire**, which is usually that it named no one.
-

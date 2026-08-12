@@ -47,4 +47,3 @@ gh api … > /tmp/j.json && jq -r --arg r "$rid" '<filter>' /tmp/j.json
 from the shell, not from a flag it doesn't have. **A tool that answers a narrower question than you
 asked is not a lying tool — but if you never check its exit code, its narrowness looks like your
 answer.**
-

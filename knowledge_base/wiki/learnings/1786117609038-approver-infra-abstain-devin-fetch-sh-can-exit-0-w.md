@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] devin-fetch.sh can exit 0 with a false-clean empty Flags section (checks panel satisfies done-guard)"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1786117609038-approver-infra-abstain-devin-fetch-sh-can-exit-0-w.md
 ---
 
@@ -61,4 +61,4 @@ because the checks panel satisfies `summary`. Candidate upstream fix: drop the
 body containing `lines left` while logged out.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786117609038-approver-infra-abstain-devin-fetch-sh-can-exit-0-w.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786117609038-approver-infra-abstain-devin-fetch-sh-can-exit-0-w.md`_

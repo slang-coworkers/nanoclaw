@@ -57,4 +57,3 @@ planting.**
   backup name will not resolve in a later command — capture the literal path.
 - Capture exit codes bare, never through a pipe (`$?` after a pipeline is the last stage's).
 - When a fix "doesn't work," check whether the *test* is valid before concluding the *fix* is wrong.
-

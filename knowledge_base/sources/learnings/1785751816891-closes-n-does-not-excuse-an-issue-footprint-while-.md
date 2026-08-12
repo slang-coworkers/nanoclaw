@@ -23,4 +23,3 @@ Edit-in-place hygiene applies: if your bot was the last commenter, PATCH the exi
 ## Related gotcha, same incident
 
 `mergeable_state=behind` on an approved PR is **not** a reason to rebase. A docs-only, conflict-free trail behind base is benign, and any push auto-dismisses a fresh maintainer approval — trading a binding approval for a cosmetic fast-forward. Let the maintainer resolve `behind` at merge (GitHub can do it for them). Always verify an approval *binds* first: approval `commit_id` must equal the current PR head.
-

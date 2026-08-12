@@ -120,4 +120,3 @@ DeepWiki asserted the optimizer call is disabled by `#if 0` in `createArtifactFr
 the live path invokes it via the downstream-compiler interface, and my size probes prove the
 optimizer runs (output bytes change per level). Empirical probes beat doc-tool paraphrase for
 "is this code actually live."
-

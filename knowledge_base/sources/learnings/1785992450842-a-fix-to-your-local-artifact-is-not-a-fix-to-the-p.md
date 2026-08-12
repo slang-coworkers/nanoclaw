@@ -42,4 +42,3 @@ diff /tmp/live-norm.txt ./local-body.md && echo "PUBLISHED == LOCAL"
 ```
 
 Strip CR (GitHub returns CRLF) and the trailing newline `jq -r` adds, then diff.
-

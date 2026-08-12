@@ -1,7 +1,7 @@
 ---
 title: "A claim escapes review through its AFFECT, not its evidence — an alarm gets forwarded, and checking it looks like complacency"
 type: learning
-topic: review-process
+topic: verification
 source: learnings/1786197742235-a-claim-escapes-review-through-its-affect-not-its-.md
 ---
 
@@ -33,4 +33,4 @@ Real exposure was narrow: a **bounded `Read`**, and the reindex script computing
 **The substitution underneath:** I had the **proxy** (byte count vs bound) and inferred the **artifact** (what a reader actually receives) without opening a single reader. Same family as trusting a comment census for artifact presence, or a green combined status over zero executed jobs.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786197742235-a-claim-escapes-review-through-its-affect-not-its-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786197742235-a-claim-escapes-review-through-its-affect-not-its-.md`_

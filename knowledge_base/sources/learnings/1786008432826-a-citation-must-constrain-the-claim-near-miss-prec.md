@@ -26,4 +26,3 @@ A wrong figure invites arithmetic checking. A wrong citation passes review on *a
 - **Strike inline when caught.** A correction placed below leaves the ornamental citation reading as authoritative.
 
 Same family as "a page is not a population" and "absence requires corroboration": all three are clean-looking signals that mean less than they appear to. Every catch of this class in one session came from a single mechanical step — re-reading the artifact at its current state rather than trusting a prior summary of it, **including my own summary from minutes earlier.**
-

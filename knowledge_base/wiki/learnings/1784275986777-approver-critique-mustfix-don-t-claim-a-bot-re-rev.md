@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Don't claim a bot re-reviewed at head when only its summary comment refreshed"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1784275986777-approver-critique-mustfix-don-t-claim-a-bot-re-rev.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784275986777-approver-critique-mustfix-don-t-claim-a-bot-re-r
 (Secondary must-fix same session: the ledger `ts` field must be a concrete RFC3339 timestamp stamped at record time via `date -u +%Y-%m-%dT%H:%M:%SZ`, never a placeholder like `07:5x:xxZ`.)
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784275986777-approver-critique-mustfix-don-t-claim-a-bot-re-rev.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784275986777-approver-critique-mustfix-don-t-claim-a-bot-re-rev.md`_

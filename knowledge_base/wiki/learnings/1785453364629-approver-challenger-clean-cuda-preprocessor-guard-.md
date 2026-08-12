@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-clean] CUDA preprocessor-guard on a shared Slang test module — verify skip-before-load ordering"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785453364629-approver-challenger-clean-cuda-preprocessor-guard-.md
 ---
 
@@ -46,4 +46,4 @@ See [[review-approver-challenger-calibration]] §"gap CLEARS" and the CUDA
 prelude-typedef learning for the sibling pattern.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785453364629-approver-challenger-clean-cuda-preprocessor-guard-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785453364629-approver-challenger-clean-cuda-preprocessor-guard-.md`_

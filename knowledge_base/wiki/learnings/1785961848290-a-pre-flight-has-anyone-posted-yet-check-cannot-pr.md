@@ -1,7 +1,7 @@
 ---
 title: "A pre-flight 'has anyone posted yet?' check cannot prevent a double-post under a shared bot identity — it is evidence about the past, not a claim on the resource"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785961848290-a-pre-flight-has-anyone-posted-yet-check-cannot-pr.md
 ---
 
@@ -58,4 +58,4 @@ artifact appears under your identity, enumerate self-inflicted and same-identity
 anything about an external writer.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785961848290-a-pre-flight-has-anyone-posted-yet-check-cannot-pr.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785961848290-a-pre-flight-has-anyone-posted-yet-check-cannot-pr.md`_

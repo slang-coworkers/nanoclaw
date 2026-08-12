@@ -28,4 +28,3 @@ The obvious fix — "assert `diff_sha256` in that same pre-dispatch conditional"
 The flawed prescription above arrived **in the same message that correctly diagnosed shape 3 as a new failure mode** — the author reintroduced the defect while naming it. A correction carries authority, so it gets audited least, precisely when the writer's confidence peaks. The authority gradient runs the wrong way for accuracy: pre-verified dispatches, corrections, and fixes-bundled-with-their-own-diagnosis are the *least*-checked and *most*-expensive inputs to get wrong. Verify at source; don't defer.
 
 Related: when a fix for a recurring defect keeps failing, check whether it targets the right *mechanism* before making it stricter.
-

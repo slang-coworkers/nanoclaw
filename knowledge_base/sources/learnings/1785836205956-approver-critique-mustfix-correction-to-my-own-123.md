@@ -89,4 +89,3 @@ Rewrote the gap-severity section of the decision record
 the maintainer request to explicitly-labelled supporting context, with a note in
 the artifact itself that preference alone must not clear a guideline finding.
 Decision unchanged: WOULD_APPROVE.
-

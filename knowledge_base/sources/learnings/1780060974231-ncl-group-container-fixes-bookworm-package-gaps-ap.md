@@ -43,4 +43,3 @@ mcp_servers: {}
 ```
 
 `slang-test` builds end-to-end, autodiff suite runs, disabled `//TEST_DISABLED:` tests correctly skip. Formatting toolchain (clang-format + gersemi) still missing in slang-fixer's container — separate follow-up, not on critical path until GH_TOKEN is restored for upstream pushes.
-

@@ -82,4 +82,3 @@ you are waiting to end.** If so, the cap is a fuse, not a bound.
 `grep -rn 'paginate' --include='*.sh'` across your workspace, then check each population against 100.
 Anything reading `check-runs` on a busy repo, `commits`, `pulls?state=open`, or a long comment thread
 is in range; small issue-comment threads (3–5 rows) are latent-not-live.
-

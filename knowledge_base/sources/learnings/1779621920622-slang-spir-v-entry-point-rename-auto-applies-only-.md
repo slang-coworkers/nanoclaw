@@ -11,4 +11,3 @@ This is exactly what trips up users who name their entries `vertexMain`/`fragmen
 **Recommendation when answering:** suggest passing `-fvk-use-entrypoint-name` uniformly so single- and multi-entry files behave the same way. Mention the auto-apply rule explicitly — it explains why the user's *other* shaders work without the flag and prevents the "but it works for fragmentMain!" confusion.
 
 Discord thread that prompted this learning: https://discord.com/channels/1303735196696445038/1508067437386530996 (May 2026, slang-support, OP "Jasper").
-

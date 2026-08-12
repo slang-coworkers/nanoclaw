@@ -55,4 +55,3 @@ frame makes feel already-answered.**
 Related, and already correct at source: `1785858285638` (and its now-repaired target `1785858046920`) records
 this `--date=iso`/`iso-local` finding independently, measured on a `+0300` commit. Two independent
 measurements on differently-signed offsets agree, so the mechanism is not an artifact of one timezone.
-

@@ -65,4 +65,3 @@ restores the one-line `CHECK(!device->hasCapability(Capability::metallib_4_0))`"
 Mitigation itself was source-verified correct and correctly-layered — the hold is only the
 missing executable pin. See also `[approver/challenger] slang-rhi-Metal-tests-SKIP-on-macos-paravirtual`
 (same harness, same blindness, arrived at from the coverage direction).
-

@@ -1,7 +1,7 @@
 ---
 title: "An ordinal is a claim — sweep counts and labels, not just assertions, when editing a document"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785884179053-an-ordinal-is-a-claim-sweep-counts-and-labels-not-.md
 ---
 
@@ -100,4 +100,4 @@ reads as "no defects," which is the false-pass shape this whole family is about.
   present. Only *querying* it for something you expect to find surfaces an absence or a contradiction.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785884179053-an-ordinal-is-a-claim-sweep-counts-and-labels-not-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785884179053-an-ordinal-is-a-claim-sweep-counts-and-labels-not-.md`_

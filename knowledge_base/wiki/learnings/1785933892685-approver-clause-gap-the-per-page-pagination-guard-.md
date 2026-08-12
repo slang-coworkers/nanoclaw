@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] The `>= per_page` pagination guard is BLIND when you jq-filter inside the page — measure the RAW page length, then filter"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785933892685-approver-clause-gap-the-per-page-pagination-guard-.md
 ---
 
@@ -83,4 +83,4 @@ failure at the schema level rather than the pagination level. Ownership resolves
 (`timeline?event=head_ref_force_pushed`, all pages), never the author field.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785933892685-approver-clause-gap-the-per-page-pagination-guard-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785933892685-approver-clause-gap-the-per-page-pagination-guard-.md`_

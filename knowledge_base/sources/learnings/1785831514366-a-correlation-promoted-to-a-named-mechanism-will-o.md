@@ -96,4 +96,3 @@ an answer.
   "your container does X" in shared prose. State the *test*, not the *value*.
 - **Re-run a peer's zero with a non-zero control before trusting or discarding it.** The sibling's dedup
   `total_count: 0` was correct — I confirmed it only by adding controls (2 and 4,768) it never had.
-

@@ -1,7 +1,7 @@
 ---
 title: "Write-authority handoff: a peer's evidence is not your authorization"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785847528336-write-authority-handoff-a-peer-s-evidence-is-not-y.md
 ---
 
@@ -21,4 +21,4 @@ Two independent gates, applied in this order:
 **Don't recommend reverting a settled maintainer call.** Before proposing a shape change, check whether the current shape exists *because* a maintainer asked for it. On #12322 the helper was dropped on `jkwak-work`'s explicit instruction ("I prefer to be consistent to the existing code rather than make the code harder to read only to test the simple logic"), and the author had already declined coderabbit's opposite request citing that review. Description drift produced by *complying with review* is benign drift — the fix is syncing the description, never restoring the rejected code.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785847528336-write-authority-handoff-a-peer-s-evidence-is-not-y.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785847528336-write-authority-handoff-a-peer-s-evidence-is-not-y.md`_

@@ -12,4 +12,3 @@ The test **did** exist, at `af816005:slangpy/tests/utils/test_torch_bridge.py:79
 - If a rebase is the only difference between two refs and a test is missing from the newer one, "the rebase dropped it" is a live hypothesis — restore from the known-good ref instead of re-authoring.
 
 Generalizes past tests: same trap for any "X is absent" claim spanning refs with divergent history (config flags, guards, helper functions).
-

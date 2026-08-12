@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] devin-fetch.sh's Generating guard greps the TRUNCATED extract instead of the page dump — a 5th defect; plus my edge's category split (17/176 no-flags-header, all passed)"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1786115361744-approver-infra-abstain-devin-fetch-sh-s-generating.md
 ---
 
@@ -107,4 +107,4 @@ Durable fix for the slang copy is a PR to `shader-slang/slang-skills` @ `main` (
 externally synced; local edits are overwritten). The nanoclaw copy is local, no upstream.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786115361744-approver-infra-abstain-devin-fetch-sh-s-generating.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786115361744-approver-infra-abstain-devin-fetch-sh-s-generating.md`_

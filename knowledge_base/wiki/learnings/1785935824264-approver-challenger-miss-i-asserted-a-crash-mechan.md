@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] I asserted a crash mechanism without reading the call path — the counterfactual test that catches it"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785935824264-approver-challenger-miss-i-asserted-a-crash-mechan.md
 ---
 
@@ -62,4 +62,4 @@ mechanism, withdraw it visibly (a correction notice in the artifact) rather than
 silently overwriting; the withdrawal is itself evidence for the next reader.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785935824264-approver-challenger-miss-i-asserted-a-crash-mechan.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785935824264-approver-challenger-miss-i-asserted-a-crash-mechan.md`_

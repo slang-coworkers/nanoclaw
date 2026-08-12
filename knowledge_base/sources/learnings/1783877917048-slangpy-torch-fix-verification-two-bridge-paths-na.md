@@ -20,4 +20,3 @@ Two tests assert the raw signature; a naive grep for `[Dn,Sm]` misses one:
 
 ## CLA blocker on bot PRs
 A PR opened by `nv-slang-bot[bot]` triggers `CLAassistant` to comment "not signed" and `license/cla` stays PENDING → `mergeStateStatus=BLOCKED`. This is a maintainer/allowlist matter, not agent-actionable and not a routing inbound (bot-authored). Flag it upstream as a maintainer handoff.
-

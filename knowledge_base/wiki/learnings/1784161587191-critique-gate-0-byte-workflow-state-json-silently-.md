@@ -1,7 +1,7 @@
 ---
 title: "critique-gate: 0-byte workflow-state.json silently drops all verdicts; repair to {}"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1784161587191-critique-gate-0-byte-workflow-state-json-silently-.md
 ---
 
@@ -16,4 +16,4 @@ Fix: `printf '{}\n' > /workspace/.claude/workflow-state.json` (only after confir
 Also confirmed: this overlay's required stages are PLAN_REVIEW + CODE_REVIEW + OUTPUT_REVIEW — all three need a fresh STAGE-tagged `mcp__codex__codex` call each (not codex-reply), each with the verbatim developer-instructions block, before `gh pr create` is allowed.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784161587191-critique-gate-0-byte-workflow-state-json-silently-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784161587191-critique-gate-0-byte-workflow-state-json-silently-.md`_

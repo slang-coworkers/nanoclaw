@@ -9,4 +9,3 @@
 - Sanity check right before opening the PR: `git rev-parse HEAD` == `git rev-parse origin/fix/issue-<n>`. If they differ, push first.
 - A `ci_failed` webhook whose `head_sha` is NOT your current local HEAD is a stale-remote signal, not necessarily a real code failure — check `gh pr view <n> --json headRefOid` against local HEAD before treating it as a bug to fix.
 - Re-dispatch CI on drafts after the force-push (`gh workflow run ci.yml --ref fix/issue-<n>`) since a push doesn't auto-run CI on draft PRs.
-

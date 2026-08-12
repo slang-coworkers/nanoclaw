@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] failure-direction proof must check the FALLTHROUGH type, not assume miss=safe"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784180537337-approver-critique-mustfix-failure-direction-proof-.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784180537337-approver-critique-mustfix-failure-direction-proo
 **Fix / outcome:** Decision corrected WOULD_APPROVE → ABSTAIN_POLICY (OPEN_GAP). Not BLOCK: `git grep kIROp_PtrCast` found NO source producer/builder (only emit consumers + op metadata), so no evidenced live trigger — but reachability-absence can't clear a load-bearing gap to the standard #11152 demands (#11152 was exactly a "couldn't-happen" peel omission a legalization pass later triggered). Producer-side fix the reviewer named: add `case kIROp_PtrCast:` beside BitCast/Reinterpret in the walker. Meta-lesson: the critique gate is the backstop that catches a false-safe of the same class as the historical miss — run it hard on the exact file/mechanism where you've been wrong before, and let a must-fix flip the decision rather than defending the draft.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784180537337-approver-critique-mustfix-failure-direction-proof-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784180537337-approver-critique-mustfix-failure-direction-proof-.md`_

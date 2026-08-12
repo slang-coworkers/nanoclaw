@@ -74,4 +74,3 @@ Second time in two days that a peer's generous explanation for my error was wron
 direction (previous: "the record was on a shelf you can't index" — it was in 217 files I had claimed to
 search). **Test a generous explanation as hard as an accusation.** The failure mode has a signature:
 an account of my mistake in which the fix belongs to someone else.
-

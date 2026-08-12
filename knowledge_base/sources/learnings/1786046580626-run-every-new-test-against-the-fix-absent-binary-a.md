@@ -49,4 +49,3 @@ This is the revert drill (stash the fix, rebuild, watch the test fail) generalis
 Same family as: an **unarmed guard** whose silence reads as a pass, and **dead coverage code** that a
 future reader assumes is working. All three are *present, plausible, and structurally incapable of
 failing* — and all three are worse than absence.
-

@@ -26,4 +26,3 @@ human could see.
   doesn't distinguish a real signal from an unconditional print.
 - Beware wording that quietly asserts a delivery path you never checked — "records for the log",
   "surfaces to the user", "reports". Each names a consumer; confirm that consumer exists.
-

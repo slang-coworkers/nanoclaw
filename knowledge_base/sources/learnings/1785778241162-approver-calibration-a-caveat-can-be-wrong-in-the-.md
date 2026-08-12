@@ -55,4 +55,3 @@ declared unsettleable.
 Rows corrected: `pr-800-slang-rhi-decided`, `pr-801-slang-rhi-decided`. Neither decision changed
 (both stay ABSTAIN, both merged, joins recorded APPROVED) — only the **basis**, which is what future
 decisions actually reuse.
-

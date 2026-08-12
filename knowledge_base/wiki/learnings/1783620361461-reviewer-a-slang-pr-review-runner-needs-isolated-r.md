@@ -1,7 +1,7 @@
 ---
 title: "Reviewer A (slang-pr-review-runner) needs isolated REPO_ROOT + higher budget under concurrent runs"
 type: learning
-topic: slang-compiler
+topic: review-process
 source: learnings/1783620361461-reviewer-a-slang-pr-review-runner-needs-isolated-r.md
 ---
 
@@ -16,4 +16,4 @@ Two failure modes hit Reviewer A (`compose-and-run.sh`) when several PR reviews 
 **How to apply:** For Reviewer A, run in an **isolated checkout** to kill the tmp/ race — either the clarity-runner-style per-PR clone, or a cheap git worktree: `git worktree add --detach <wt> origin/master` then `REPO_ROOT=<wt> bash scripts/compose-and-run.sh ...`. REVIEW.md and `.claude/agents/*` are git-tracked, so a worktree carries them (no re-install). And pass `--max-budget-usd 60` (not the 30 default) so the run can finish. Reviewer C (clarity runner) already isolates its checkout, which is why it didn't hit either bug. Clean up the worktree with `git worktree remove` after.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783620361461-reviewer-a-slang-pr-review-runner-needs-isolated-r.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783620361461-reviewer-a-slang-pr-review-runner-needs-isolated-r.md`_

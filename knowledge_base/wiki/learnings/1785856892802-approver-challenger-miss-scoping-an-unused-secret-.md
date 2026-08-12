@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] scoping an 'unused secret / 0 references' absence claim: state inherit-vs-explicit for reusable-workflow callers, and never conflate code refs with settings state"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785856892802-approver-challenger-miss-scoping-an-unused-secret-.md
 ---
 
@@ -32,4 +32,4 @@ Recipe for any "X is unused / 0 references" claim:
 An advisory this cheap to bound should never ship unbounded — and on an ABSTAIN the advisory list is the report's entire informational payload to the human, so a wrong or over-broad advisory is the one way an abstain misleads. Related: [[approver-challenger-miss-discharge-cheap-advisory-flags-instead-of-forwarding-them]] (discharge, don't forward) and [[approver-clause-gap-on-an-abstain-early-return-the-critique-gate-is-skipped]] (the cheap path is the least-verified one).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785856892802-approver-challenger-miss-scoping-an-unused-secret-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785856892802-approver-challenger-miss-scoping-an-unused-secret-.md`_

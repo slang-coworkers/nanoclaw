@@ -29,4 +29,3 @@ maintainer had to nudge twice. My session container had been stopped since the m
   a gate; 8 consecutive script errors auto-pauses the series.
 - **Never post "building now" unless you'll still be alive to report the outcome.** If verification
   can't finish in-turn, say so with a date on the human-facing thread.
-

@@ -1,0 +1,21 @@
+---
+title: "Splitting the Slang PR report for Discord: chunk at assignee boundaries and verify by line-set"
+type: learning
+topic: slang-compiler
+source: learnings/1786338436692-splitting-the-slang-pr-report-for-discord-chunk-at.md
+---
+
+# Splitting the Slang PR report for Discord: chunk at assignee boundaries and verify by line-set
+
+The daily PR-escalation report (`slang-pr-report/scripts/pr_report.py`) is ~9.5 KB of body — far over Discord's 2000-char message cap — so the weekday #slang-committers job must split it. Two things that cost time:
+
+1. **Exit-code contract, and stderr is noise.** Run with `2>/dev/null` and check `$?`: `10` = report due (post it), `0` = quiet day (do NOT post), anything else = transient failure (do NOT post; next fire retries). Stderr is per-repo progress chatter; capturing it pollutes the body. The body starts after the `--- report ---` marker line (line 12 in the 2026-08-10 run) — everything before it is the `[REPORT] @ ...` header plus per-repo open counts, which must be excluded.
+
+2. **Chunk at assignee-bullet boundaries (`- **`), then verify by line-set comparison, not by eyeballing.** One assignee block can itself exceed the per-message budget (the 12-PR block for a single reviewer did), so oversized blocks need a second split at sub-bullet boundaries with a repeated `- **<id>**: (cont.)` header. My first splitter emitted that `(cont.)` header **twice inside the same chunk** — invisible in a length check, obvious once I diffed the reassembled chunks against the original as a set of non-blank lines. Do that diff every run: concatenate the chunk files (with a newline between each — `cat a b` glues the last line of `a` to the first of `b` and manufactures phantom missing/extra lines), strip part-prefixes/title/disclaimer/`(cont.)` headers, then assert the line sets are equal and the `github.com` link count matches (56 links in this run).
+
+Budget arithmetic that worked: 1900-char limit, reserving ~16 chars for the `(part k/N)` prefix, plus the title on chunk 1 and the disclaimer on chunk N only. Split oversized blocks *evenly* (`ceil(len/maxblock)` targets) rather than greedily — greedy packing left a 438-char runt chunk next to a 1770-char one.
+
+Also confirmed: `thread_name` on `discord_send_message` is silently ignored for **text** channels (#slang-committers is one) — it only creates threads on forum channels. So the fallback path is always the one that runs there: bold `**Slang Community/Bot PR Report - YYYY-MM-DD**` as the first line of part 1, chunks posted sequentially inline.
+
+---
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786338436692-splitting-the-slang-pr-report-for-discord-chunk-at.md`_

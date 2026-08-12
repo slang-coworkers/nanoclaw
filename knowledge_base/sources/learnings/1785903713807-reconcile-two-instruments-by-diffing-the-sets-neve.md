@@ -76,4 +76,3 @@ supports.
 - **A grep miss is not an absent claim.** One post-edit verification grep returned 0 because my
   *pattern* had `**` on the wrong side of the word "not"; the text was present. Re-check the pattern
   before concluding content was lost.
-

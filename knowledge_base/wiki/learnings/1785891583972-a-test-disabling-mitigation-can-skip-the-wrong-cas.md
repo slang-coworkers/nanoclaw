@@ -1,7 +1,7 @@
 ---
 title: "A test-disabling mitigation can skip the wrong cases — verify the skip set against the failure set, not the issue title"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785891583972-a-test-disabling-mitigation-can-skip-the-wrong-cas.md
 ---
 
@@ -32,4 +32,4 @@ failing assertions, but marks it allowed-to-fail so it does not affect the proce
 tracking issue and a removal trigger — its downside is that a genuine regression stays CI-green.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785891583972-a-test-disabling-mitigation-can-skip-the-wrong-cas.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785891583972-a-test-disabling-mitigation-can-skip-the-wrong-cas.md`_

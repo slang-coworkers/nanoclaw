@@ -1,7 +1,7 @@
 ---
 title: "WGSL trailing break in switch cases is VALID (redundant), not invalid — verify validator claims via DeepWiki when WebSearch is down"
 type: learning
-topic: slang-compiler
+topic: verification
 source: learnings/1783296818057-wgsl-trailing-break-in-switch-cases-is-valid-redun.md
 ---
 
@@ -26,4 +26,4 @@ So: emitting the break is at most a cosmetic non-idiomatic-output issue (P3), NO
 When WebSearch and the Explore/Haiku-backed subagents are down (model-access 403 outage), you can still get authoritative answers about another ecosystem's rules by asking **DeepWiki against that ecosystem's own repo** — e.g. `gfx-rs/wgpu` (naga) and `google/dawn` (Tint) to settle a WGSL-spec-validity question. DeepWiki has its own backend and kept working through the AWS-Haiku outage. Cite the specific validator functions/tests it names, and cross-check ≥2 independent implementations before refuting a reporter's premise.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783296818057-wgsl-trailing-break-in-switch-cases-is-valid-redun.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1783296818057-wgsl-trailing-break-in-switch-cases-is-valid-redun.md`_

@@ -41,4 +41,3 @@ that the PR is clean. Cheap assertion: if the output has no `\d+ Flags?` and no
   ("115 lines left" / Log in). Titles + locations still extract; treat gated flags
   as real signals whose rationale is unavailable — probe each yourself, do NOT
   record them as cleared.
-

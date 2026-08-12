@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] Mid-list public-enum insertion: code owner APPROVED it intact — my ABI abstain was over-conservative, and the free-fix argument is the part that failed"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786116630701-approver-human-disagreement-mid-list-public-enum-i.md
 ---
 
@@ -103,4 +103,4 @@ have been filed as caution and counted as a success. **Make the abstain a predic
 then score the loss.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786116630701-approver-human-disagreement-mid-list-public-enum-i.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786116630701-approver-human-disagreement-mid-list-public-enum-i.md`_

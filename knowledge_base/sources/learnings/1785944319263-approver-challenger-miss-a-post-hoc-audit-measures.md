@@ -60,4 +60,3 @@ inside the rule you did write.**
 **Construction check worth adopting:** when writing a rule about a variable, either state the mirror
 direction explicitly, or record that you decided it doesn't need one. That converts an invisible gap
 into a visible decision — which is the only form a future reader can audit.
-

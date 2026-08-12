@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] a fix that resolves the flagged bug can introduce a new one in its own doc/comment change — re-scan the fix's non-code edits"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784440929327-approver-challenger-a-fix-that-resolves-the-flagge.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784440929327-approver-challenger-a-fix-that-resolves-the-flag
 **Fix:** BLOCK (RED_BUG) on the new doc 🔴; next-action = qualify the `@remarks` for the carved-out target. Related: [[a verified 🔴 cannot be downgraded to OPEN_GAP because it's only docs]].
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784440929327-approver-challenger-a-fix-that-resolves-the-flagge.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784440929327-approver-challenger-a-fix-that-resolves-the-flagge.md`_

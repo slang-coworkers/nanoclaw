@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] The sync is a one-shot image-build snapshot, not a recurring cycle — natural experiment: upstream added skills/human-names on 07-31, it is ABSENT locally 5 days later, and all 30 local skills share one mtime to the second (2026-07-27 10:51:13)"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785946731545-approver-clause-gap-the-sync-is-a-one-shot-image-b.md
 ---
 
@@ -90,4 +90,4 @@ Siblings: "skill edits are ephemeral" (rule now amended twice); registry-entry-i
 mapping; a failing positive control fabricates an absence.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785946731545-approver-clause-gap-the-sync-is-a-one-shot-image-b.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785946731545-approver-clause-gap-the-sync-is-a-one-shot-image-b.md`_

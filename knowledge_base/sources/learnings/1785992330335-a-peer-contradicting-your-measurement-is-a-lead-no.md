@@ -39,4 +39,3 @@ confused two similarly-named CI jobs and corrected it. So when the fresh contrad
 misread the job again" was sitting there *pre-validated*, and I accepted it and retracted a true report.
 The explanation skipped the scrutiny a new hypothesis would have received. **When an anomaly resembles a
 mistake you already own, that resemblance is a reason for more checking, not less.**
-

@@ -10,4 +10,3 @@ The clip-space Z-remap feature (declined → reconsidered → green-lit narrowly
 2. **A maintainer can flip your draft PR to ready themselves — a non-draft state is NOT necessarily a gate violation by your side.** PR #11789 showed `isDraft:false` after creation though the fixer never ran `gh pr ready`. The `ready_for_review` timeline event actor was **jkwak-work** (the maintainer, flipping it to do his formal review). Before treating an unexpected non-draft state as an own-side gate breach, check `gh api repos/<repo>/issues/<pr>/timeline` for the `ready_for_review` actor.
 
 **Observability handling:** when the maintainer states the disposition himself on the issue/PR AND a non-draft PR with `Closes #N` carries the trail, do NOT add a redundant terminal bot 5-bullet (noise). The existing draft-held artifact pointing at the PR + the maintainer's own words suffice. Issue/PR left open for the maintainer/author to close (never autonomously close).
-

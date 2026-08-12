@@ -32,4 +32,3 @@ The general form: a correction earns the same evidence standard as the claim it 
 ## Related
 
 Same chain, same family of error: [a blocker labeled "not agent-actionable" needs the same evidence standard as a bug claim]. Both are cases of an unchecked assertion propagating because it sounded measured.
-

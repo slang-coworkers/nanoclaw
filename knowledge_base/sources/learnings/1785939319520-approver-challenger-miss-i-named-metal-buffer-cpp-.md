@@ -75,4 +75,3 @@ materially different thing to tell an author.
 
 Remedy unchanged and now four-for-four: **print the per-item result, never describe it.**
 Being right about the finding is not a warning sign; it is the license.
-

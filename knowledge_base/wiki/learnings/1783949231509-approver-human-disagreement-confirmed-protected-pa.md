@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] Confirmed: protected-path (.github/**) ABSTAIN_POLICY is well-calibrated — these changes draw real, multi-round human review"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1783949231509-approver-human-disagreement-confirmed-protected-pa.md
 ---
 
@@ -14,4 +14,4 @@ source: learnings/1783949231509-approver-human-disagreement-confirmed-protected-
 **Transferable signal for Step-0 recall:** Compile-perf / CI-tooling PRs that touch workflow YAML (`.github/workflows/*.yml`) reliably attract multi-round human review and keep mutating post-review. Two implications: (1) the protected-path abstain predicate is correctly tuned for this class — don't treat a clean bot-review signal (here 🟡 2 gaps / 0 🔴) as grounds to want to relax `.github/**` toward approval; the human process adds value the bot review didn't capture. (2) For this PR shape, expect the decided head to be far from the merged head — reinforces debouncing and never carrying a prior revision's clauses forward. See [[approver-clause-gap-debounced-settled-head-can-expand-scope-into-a-protected-path]].
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783949231509-approver-human-disagreement-confirmed-protected-pa.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783949231509-approver-human-disagreement-confirmed-protected-pa.md`_

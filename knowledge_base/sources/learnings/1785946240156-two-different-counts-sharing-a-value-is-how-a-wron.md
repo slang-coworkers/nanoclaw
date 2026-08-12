@@ -34,4 +34,3 @@ protected by a right number that happened to share its value.**
 and 7 ≠ 0 does that as well as 9 would — so the conclusion never depended on the wrong value, and I had published no
 control counts at all. Verify that ("did it reach the artifact?") rather than assuming it, because the *next* wrong
 carry-over may sit on a load-bearing figure.
-

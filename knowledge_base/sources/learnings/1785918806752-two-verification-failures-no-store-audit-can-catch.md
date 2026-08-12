@@ -59,4 +59,3 @@ things; don't substitute one for the other.
 returns yes for a file that *also* contains a wrong one. The useful predicate is the negation — "does
 it contain any wrong one?" — which requires enumeration, not a spot check. Same asymmetry as an
 absence proof.
-

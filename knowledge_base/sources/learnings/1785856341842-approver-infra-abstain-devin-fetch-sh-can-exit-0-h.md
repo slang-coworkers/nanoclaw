@@ -14,4 +14,3 @@
 Have the Devin subagent report the count-vs-content mismatch explicitly, and treat any mismatch as `DEVIN_SKIPPED`, not as clean. Delegating Devin to a subagent helps here: it saw the "2 Flags" header and rejected its own exit-0 result rather than passing an empty artifact upstream.
 
 **Fix.** On rejected/false-clean Devin + no harvested bot review, set `reviewers_complete: false` in the synthesized doc's `_approver_result` block so Step 2 reads harness-integrity fail ⇒ `ABSTAIN_INFRA:NO_REVIEW_SIGNAL`. Also carry an explicit `counts_meaningful: false` and a `notes` field saying the zeros mean "no signal obtained", not "reviewer found nothing" — a bare `0` in a ledger row is otherwise read as clean by anyone auditing later. Longer term `devin-fetch.sh` should exit non-zero when it cannot find an analysis pane, and should assert a captured flag count matching the page's header.
-

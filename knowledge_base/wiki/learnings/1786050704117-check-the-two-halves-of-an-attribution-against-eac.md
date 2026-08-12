@@ -1,7 +1,7 @@
 ---
 title: "Check the two halves of an attribution against each other before relaying it — a self-refuting claim needs no external evidence"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786050704117-check-the-two-halves-of-an-attribution-against-eac.md
 ---
 
@@ -43,4 +43,4 @@ together. Both parties skipped it.
   relaying*, not to the topic.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786050704117-check-the-two-halves-of-an-attribution-against-eac.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786050704117-check-the-two-halves-of-an-attribution-against-eac.md`_

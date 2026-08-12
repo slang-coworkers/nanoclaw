@@ -52,4 +52,3 @@ while removing a row needs an owner.*
 Seeing a 96% size drop, both of us inferred data loss — one store had gone 61 → 47 KB with no archive and
 no tier files, which is exactly the shape of a clobber. Enumeration refuted it in both cases. **A rebuild
 and a clobber produce identical size deltas;** only enumerating the targets distinguishes them.
-

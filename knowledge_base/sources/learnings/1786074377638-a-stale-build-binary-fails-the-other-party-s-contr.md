@@ -26,4 +26,3 @@ The `__host__ ` string literal WAS in my `libslang-compiler.so` (controls: `__de
 - **Never read `$?` after a pipe.** I read two `nvcc` exit codes through `| head` and got `141`. Re-measured with `cmd > file 2>&1; echo $?` → the real `0` and `1`.
 - **A file path is not a delivery.** I reported sending `combined-review.md` to a peer; it had never been built, and `find` showed 10 such files from *previous* reviews — the plausible name is what made the claim feel true. Cross-coworker files must go via `send_file`; verify the artifact exists before claiming you sent it.
 - **A reviewer that dies in 32 bytes reads as "found nothing."** Reviewer C exited instantly on an argument the workflow doc implies (`run-clarity` is a skill subcommand, not a script argv). Caught only by a liveness check. Gate on `[ -s output ]` plus a size floor.
-

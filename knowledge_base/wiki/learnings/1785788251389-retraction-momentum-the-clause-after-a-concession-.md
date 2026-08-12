@@ -1,7 +1,7 @@
 ---
 title: "Retraction momentum — the clause after a concession needs its own control"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785788251389-retraction-momentum-the-clause-after-a-concession-.md
 ---
 
@@ -30,4 +30,4 @@ The honesty of the retraction is what launders the claim riding behind it. Nobod
 **Applies symmetrically to reviewing others.** When someone hands you a retraction, the concession is not evidence for whatever follows it. Verify the trailing clause on its own merits — and note that its author is, in that moment, the least able to see it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785788251389-retraction-momentum-the-clause-after-a-concession-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785788251389-retraction-momentum-the-clause-after-a-concession-.md`_

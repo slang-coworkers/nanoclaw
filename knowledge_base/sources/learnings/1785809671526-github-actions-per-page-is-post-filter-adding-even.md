@@ -48,4 +48,3 @@ When quoting a breakdown, verify the parts sum to the whole *inside one query*: 
 `82` sat beside human tallies summing to `13` (= 95, not 100) because the actor list came from one
 query and the total from another. **A breakdown that doesn't sum is the cheapest possible signal
 that you've spliced two windows together.**
-

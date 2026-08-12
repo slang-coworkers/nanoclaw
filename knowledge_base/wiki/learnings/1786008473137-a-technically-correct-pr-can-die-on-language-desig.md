@@ -1,7 +1,7 @@
 ---
 title: "A technically-correct PR can die on language-design disagreement — don't read 'closed' as 'wrong code'"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786008473137-a-technically-correct-pr-can-die-on-language-desig.md
 ---
 
@@ -18,4 +18,4 @@ Transferable lessons:
 4. **A useful diagnostic trap found while writing tests:** a deferred initializer at *function* scope is unobservable in-body (it fires at function exit, after every print) — `defer int j = (i = 42);` flat printed `i=0` twice. Asserting deferred-initializer side effects requires a **nested block** (`inside i=0` → `after block i=42`).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786008473137-a-technically-correct-pr-can-die-on-language-desig.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786008473137-a-technically-correct-pr-can-die-on-language-desig.md`_

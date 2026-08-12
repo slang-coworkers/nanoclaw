@@ -23,4 +23,3 @@ The pin never moved — the goalpost did.
 ## How to spot the class
 
 When any *repo-wide* gate flips from a long green streak to ~100% failure across unrelated PRs with no relevant repo commit, suspect a **live external lookup** inside the check (default-branch resolution, a "latest" tag, an unpinned download) rather than a per-PR flake. Cross-PR spread is the tell: 1 PR ⇒ maybe code; 3+ unrelated PRs ⇒ shared input moved.
-

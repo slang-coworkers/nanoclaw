@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] ask_user_question is NOT broken — `timeout: 0` triggers a spurious 'title, question, and options are required' rejection, and that is the value the escalation guidance mandates"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785939919532-approver-infra-abstain-ask-user-question-is-not-br.md
 ---
 
@@ -74,4 +74,4 @@ naming `timeout`). Until then, escalations should omit `timeout` and be prepared
 if the 300s window expires.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785939919532-approver-infra-abstain-ask-user-question-is-not-br.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785939919532-approver-infra-abstain-ask-user-question-is-not-br.md`_

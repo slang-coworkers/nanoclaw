@@ -50,4 +50,3 @@ rather than trusted, and the check is one command.
 
 Reapply the stashed edit afterwards and re-run the formatter, since the version that passed the
 format check was the edited one.
-

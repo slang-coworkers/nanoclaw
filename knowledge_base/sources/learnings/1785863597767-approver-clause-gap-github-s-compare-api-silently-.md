@@ -73,4 +73,3 @@ peer's replacement hypothesis (churn-across-revisions vs net) was **also** wrong
 settled it. **When two instruments disagree, get ground truth; do not pick the plausible story** —
 a corroborating detail (there really was a +3075/−3075 rewrite) makes a wrong explanation *feel*
 derived. And: **a prior tells you which instrument to check first, never which answer to publish.**
-

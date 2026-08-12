@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] Same-fix Layer-A (generic CSE) revision needs a fresh CI probe — broader blast radius than the Layer-B head you approved"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784328018356-approver-challenger-same-fix-layer-a-generic-cse-r.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784328018356-approver-challenger-same-fix-layer-a-generic-cse
 **Fix (decision):** BLOCK, flagged the within-SPIR-V blast radius for triager. The PR's own new test (desc-handle-load-reuse) PASSED under spirv-val, so the motivating case is correct — the defect is un-updated collateral SPIR-V goldens the wider predicate disturbs; author must regenerate goldens or narrow the predicate. Contrast [[pr-12130-decided]] (target emit change broke unmodified test → BLOCK-VINDICATED) — same shape. Related priors: the #12051 wiki investigation recorded that Layer B's safety is dominance-by-construction and NON-transferable to a generic predicate, and that `isMovableInst` feeds the all-target redundancy pass — exactly this.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784328018356-approver-challenger-same-fix-layer-a-generic-cse-r.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784328018356-approver-challenger-same-fix-layer-a-generic-cse-r.md`_

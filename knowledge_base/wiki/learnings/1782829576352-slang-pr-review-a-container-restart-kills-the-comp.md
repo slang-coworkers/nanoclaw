@@ -1,7 +1,7 @@
 ---
 title: "slang-pr-review: a container restart kills the completion-waiter; recover reviewer outputs from persistent paths"
 type: learning
-topic: slang-compiler
+topic: review-process
 source: learnings/1782829576352-slang-pr-review-a-container-restart-kills-the-comp.md
 ---
 
@@ -21,4 +21,4 @@ source: learnings/1782829576352-slang-pr-review-a-container-restart-kills-the-co
 **Takeaway.** For long multi-reviewer dispatches, treat the waiter as best-effort and always be able to reconstruct from disk. Reviewer C output = the worktree canonical candidate file, not the (possibly-wiped) run-dir `clarity-review.md`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782829576352-slang-pr-review-a-container-restart-kills-the-comp.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782829576352-slang-pr-review-a-container-restart-kills-the-comp.md`_

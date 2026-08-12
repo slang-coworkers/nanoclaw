@@ -18,4 +18,3 @@
 - **slang#11147** (Vulkan vk-rhi assert): GPU is there; needs the Vulkan loader + a vk-capable Slang build to repro.
 
 Both were triaged "not reproduced — needs hardware." The hardware exists now; the remaining gap is the toolchain (install it), so these are no longer flatly hardware-blocked.
-

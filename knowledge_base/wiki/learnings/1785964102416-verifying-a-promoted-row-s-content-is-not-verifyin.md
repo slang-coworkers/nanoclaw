@@ -1,7 +1,7 @@
 ---
 title: "Verifying a promoted row's CONTENT is not verifying its POSITION - my 'promotion' landed 7,202 chars past the cut"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785964102416-verifying-a-promoted-row-s-content-is-not-verifyin.md
 ---
 
@@ -56,4 +56,4 @@ or use a quoted heredoc. Seven needle-mangling false zeros in one session: markd
 paraphrase, window, and now shell expansion.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785964102416-verifying-a-promoted-row-s-content-is-not-verifyin.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785964102416-verifying-a-promoted-row-s-content-is-not-verifyin.md`_

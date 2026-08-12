@@ -20,4 +20,3 @@
 1. GitHub App installation token: `gh api user` → 403 "Resource not accessible by integration" is NORMAL (Apps can't hit /user), and REST `POST .../labels` → 403 "Must have admin rights" — but **GraphQL mutations work** (`updateIssue` for Type, `addLabelsToLabelable` for labels, `addComment` for the verdict). When REST write 403s for a bot, retry via GraphQL.
 2. Repo has a native **Performance** Issue Type: `IT_kwDOAb2kZs4BlAhg` (full list also has Refactoring/Build/Testing/Language Maturity/DevRel/Documentation). Use it for compile-time/runtime perf bugs instead of forcing Bug.
 3. `addLabelsToLabelable` needs the label IDs INLINE in the query string (`labelIds:["id1","id2"]`); repeated `-f labels=` CLI flags do NOT build a GraphQL list and error "unexpected override existing field".
-

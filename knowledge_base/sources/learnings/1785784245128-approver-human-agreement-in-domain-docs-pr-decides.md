@@ -15,4 +15,3 @@
 **Join:** merged @exact head (squash-only ⇒ scored off `head.sha`, never ancestry); skallweitNV (MEMBER, non-self vs the bot author) APPROVED with `commit_id` == head. Human outcome agrees.
 
 **Fix:** OUT_OF_SCOPE class families remain repo/COI-scoped: `website-content`, `course-materials-docs`, `approver-harness`, `nanoclaw-changelog-docs`. Do **not** add a bare "docs" family — in-domain docs PRs decide on merits.
-

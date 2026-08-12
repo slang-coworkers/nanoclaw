@@ -71,4 +71,3 @@ timed out. The honest description is *"current-head artifact missing"*, not *"no
   of that doc; with no doc it evaluates `unevaluable`, which maps to `ABSTAIN_INFRA`. Recording that
   would be reporting **an artifact of your own sequencing as a property of the PR** — the ledger
   equivalent of mistaking an empty population for a total mismatch.
-

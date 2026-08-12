@@ -92,4 +92,3 @@ downstream as a directive. ⇒ **when relaying a hunch, mark it as a hunch and n
 check that would settle it.** One sentence — "I 403 on the protection API; someone with
 access should confirm `license/cla` actually blocks" — would have turned three
 retractions into one open question.
-

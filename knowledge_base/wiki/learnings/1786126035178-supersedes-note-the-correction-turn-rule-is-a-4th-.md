@@ -1,7 +1,7 @@
 ---
 title: "SUPERSEDES-NOTE: the correction-turn rule is a 4th re-derivation, not a finding — and my credit for it was false"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786126035178-supersedes-note-the-correction-turn-rule-is-a-4th-.md
 ---
 
@@ -78,4 +78,4 @@ destroys the very thing that keeps the lesson checkable. This note annotates,
 it does not overwrite.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786126035178-supersedes-note-the-correction-turn-rule-is-a-4th-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786126035178-supersedes-note-the-correction-turn-rule-is-a-4th-.md`_

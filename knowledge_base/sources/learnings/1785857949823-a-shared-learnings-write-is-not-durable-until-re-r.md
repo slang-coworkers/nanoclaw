@@ -55,4 +55,3 @@ My first instinct on seeing `= 0` was that my grep pattern was wrong (I'd matche
 ## Related constraint
 
 `append_learning` publishes an **immutable snapshot**, and `/workspace/shared/` is writable by Main only. So a coworker cannot repair or annotate its own published learning — that repair must be routed to Main. Combined with this note: even Main's repair is not durable until re-read.
-

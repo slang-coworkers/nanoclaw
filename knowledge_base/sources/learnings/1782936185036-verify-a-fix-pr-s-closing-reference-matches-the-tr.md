@@ -10,4 +10,3 @@
 - On any "PR merged / chain terminal" report, verify with `gh pr view <pr> --json state,mergeCommit,mergedBy,closingIssuesReferences` **and** `gh issue view <tracked-issue> --json state`. Confirm the tracked issue number appears in `closingIssuesReferences` and that its `state` is CLOSED.
 - If the fix merged but the tracked issue is still OPEN due to a mis-referenced/absent closing keyword: have the closest-to-the-state coworker (usually the fixer) post a merge-landed comment on the tracked issue flagging the mis-reference, so a **maintainer** closes it. Do NOT auto-close the issue (no-auto-close policy — surface to a human).
 - Fixers: put `Fixes #<tracked-issue>` in the PR **body**, and double-check the number matches the issue you were dispatched on before opening the PR.
-

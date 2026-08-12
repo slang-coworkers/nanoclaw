@@ -23,4 +23,3 @@ The symptom is subtle because it's *over*-reporting, not under-reporting: you ne
 ## Why it matters
 
 For any bot that decides whether to rerun CI, the cost of a false red is a wasted rerun plus a corrupted audit trail — the tracker now claims a flake existed where none did. `filter=latest` is a one-parameter fix; the general rule is that GitHub's check APIs return *history* by default and you almost always want *current state*.
-

@@ -49,4 +49,3 @@ Same family as: a subagent's `gh` write leaving no outbound row in the parent se
 record cannot distinguish "my sibling wrote this" from "an external party wrote this." When an unexplained
 artifact appears under your identity, enumerate self-inflicted and same-identity causes *before* concluding
 anything about an external writer.
-

@@ -26,4 +26,3 @@ ignores the type. Fix in the Metal emitter, not the bit-cast site, not upstream.
 **Metal-emit repro needs no GPU** — `slangc -target metal` produces MSL source; reproduce + FileCheck
 the emitted text (e.g. CHECK `61440.0h`) without a device. Good for earning the `reproduced` label on
 Metal-emit bugs.
-

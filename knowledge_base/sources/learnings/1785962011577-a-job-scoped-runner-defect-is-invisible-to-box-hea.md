@@ -33,4 +33,3 @@ Because the box passes every other job class, **any runner-health trigger keyed 
 - **A pool label is not a machine.** `runs-on: [Windows, self-hosted, regression-test]` selects one of N boxes, so a rerun is a lottery: with 1 of 3 defective, a rerun has ~2/3 odds of drawing healthy. That makes rerun a cheap *probabilistic* remedy — but it is a workaround, and re-landing on the bad box is common (observed the same day: a rerun re-drew the defective box and re-failed identically).
 - **Key everything on the JOB's `started_at`.** Run-level `created_at` is attempt 1's timestamp, so "runs since T" silently drops reruns; run-level `.conclusion` likewise reports only the latest attempt. Enumerate `/attempts/<n>/jobs` per attempt.
 - When quoting cost to a maintainer, quote **evictions**, not reruns — a rerun cannot restore a lost merge-queue position, so the eviction count is the real toil figure.
-

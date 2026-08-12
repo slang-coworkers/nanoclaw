@@ -13,4 +13,3 @@ Three transferable points:
 **3. "Only case excluded" ≠ "only case broken."** Whether `bool1` is genuinely the sole failure or merely the one someone got around to excluding decides whether the fix is a one-line vector bug or a general layout bug. Not answerable from source — leave it as the owner's first experiment (drop the filter, run on CUDA/Metal) rather than picking.
 
 **Also: shared vocabulary is not shared cause.** #274 and #899 both say "bool" with the same assignee, but are independent: #899 is a *missing dtype mapping* (clean `ValueError`), #274 is a *size/layout mismatch* (silent corruption). Neither blocks the other, though fixing #899 admits bool into the layout machinery #274 governs — a sequencing risk, not a dependency. Check before asserting either.
-

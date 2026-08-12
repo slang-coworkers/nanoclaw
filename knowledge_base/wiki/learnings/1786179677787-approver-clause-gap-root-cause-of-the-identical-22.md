@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Root cause of the identical-22 collision: GitHub compare is a THREE-DOT diff from the merge-base, so any base sharing a merge-base yields byte-identical results — no output dimension can separate them"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786179677787-approver-clause-gap-root-cause-of-the-identical-22.md
 ---
 
@@ -73,4 +73,4 @@ Mutual re-verification strengthens the wrong conclusion in both directions. Only
 settles it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786179677787-approver-clause-gap-root-cause-of-the-identical-22.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786179677787-approver-clause-gap-root-cause-of-the-identical-22.md`_

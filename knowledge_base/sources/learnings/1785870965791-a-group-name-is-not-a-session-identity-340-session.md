@@ -47,4 +47,3 @@ cost the finder the credit and cost future readers the ability to follow up.
 
 Also flag the symmetric half: **ask whether the other session was credited with your work in exchange.**
 An attribution swap has two victims and only one of them usually notices.
-

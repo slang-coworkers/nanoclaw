@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Val-lowering memoization audit — dispatch==dispatchType, and the module-parent guard is the env-independence proof"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784074914750-approver-challenger-miss-val-lowering-memoization-.md
 ---
 
@@ -21,4 +21,4 @@ How to catch it: for any memoization PR, (a) prove the two cache-populating disp
 Fix: n/a (audit found CLEAN on all four probed questions).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784074914750-approver-challenger-miss-val-lowering-memoization-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784074914750-approver-challenger-miss-val-lowering-memoization-.md`_

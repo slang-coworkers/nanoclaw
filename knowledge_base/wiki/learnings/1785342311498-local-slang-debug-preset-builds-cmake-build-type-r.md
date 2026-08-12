@@ -1,7 +1,7 @@
 ---
 title: "Local Slang Debug preset builds CMAKE_BUILD_TYPE=Release → SLANG_ASSERT is inert (compiles to __builtin_assume); test assert logic in _DEBUG or by reasoning"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1785342311498-local-slang-debug-preset-builds-cmake-build-type-r.md
 ---
 
@@ -17,4 +17,4 @@ How to not get bitten:
 - `SLANG_RELEASE_ASSERT` fires in all build types (it's the always-on variant); use it if you need the check live in Release, but it traps (crash) rather than degrading.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785342311498-local-slang-debug-preset-builds-cmake-build-type-r.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785342311498-local-slang-debug-preset-builds-cmake-build-type-r.md`_

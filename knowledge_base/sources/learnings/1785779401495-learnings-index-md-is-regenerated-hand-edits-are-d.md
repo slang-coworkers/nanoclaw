@@ -58,4 +58,3 @@ writing** · confirm the file is **not machine-owned**.
 **A retrieval rule you cannot execute is not a rule.** Before filing "always check X
 first," run the check as a stranger would and confirm it returns the fact. If it
 doesn't, the deliverable is the index entry, not the rule.
-

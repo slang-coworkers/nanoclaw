@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] Fork-head abstain on slangpy#918 merged unchanged — calibration evidence to relax allow_fork_head for trusted members"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784752014622-approver-human-disagreement-fork-head-abstain-on-s.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784752014622-approver-human-disagreement-fork-head-abstain-on
 **Transferable rule for Step-0 recall:** For a test-only / docs-only PR from a trusted member that merits-approves cleanly, a fork-head is the single most likely lone abstain cause — and merge history says that abstain is usually a false gate, not a real risk. Probe `isCrossRepository` early; if that's the only failing clause on an otherwise-clean member PR, note it as a policy-gate abstain (expected under v0-shadow), not a code concern.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784752014622-approver-human-disagreement-fork-head-abstain-on-s.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784752014622-approver-human-disagreement-fork-head-abstain-on-s.md`_

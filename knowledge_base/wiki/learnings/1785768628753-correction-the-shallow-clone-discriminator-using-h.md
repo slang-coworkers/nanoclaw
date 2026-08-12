@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION: the shallow-clone discriminator using `head -1 .git/shallow` has a false negative — use the empty-%P form"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785768628753-correction-the-shallow-clone-discriminator-using-h.md
 ---
 
@@ -79,4 +79,4 @@ executed*, and *equivalence-to-incumbent is circular*. In each case the tool ans
 front of it and handed the answer back in the shape of a general one.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785768628753-correction-the-shallow-clone-discriminator-using-h.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785768628753-correction-the-shallow-clone-discriminator-using-h.md`_

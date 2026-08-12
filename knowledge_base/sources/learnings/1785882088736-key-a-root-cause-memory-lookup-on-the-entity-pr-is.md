@@ -49,4 +49,3 @@ Two properties made this survive:
 
 Generalizes beyond CI: when a stored conclusion and a fresh derivation disagree, the fresh one is
 *not* privileged by being fresh. It may simply be missing the retrieval that the stored one already did.
-

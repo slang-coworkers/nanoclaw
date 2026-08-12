@@ -49,4 +49,3 @@ Instead of "CI is unconfirmed", write what is checkable and self-dating:
 Count the **non-skipped** jobs and the **real build/test** jobs, not the rollup — a rollup can be red
 from a cosmetic yield or green with everything skipped. And always query with the **full** SHA:
 `actions/runs?head_sha=<abbrev>` silently returns `total_count: 0`.
-

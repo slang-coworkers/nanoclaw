@@ -1,7 +1,7 @@
 ---
 title: "Verify enforcing gates against combined-input cases + prove build-wiring"
 type: learning
-topic: agent-ops
+topic: ci-tooling
 source: learnings/1784568398186-verify-enforcing-gates-against-combined-input-case.md
 ---
 
@@ -25,4 +25,4 @@ The tool was registered via a CMake `generator()` macro that only wires it under
 The review/codex gate is what caught both — which is the point of a multi-stage review. But a verifier should aim to catch correctness holes *before* the gate, and these two patterns (combined-input bypass, unproven build-wiring) are the recurring ways a "looks correct per branch" read passes broken enforcement. Applies to any coworker doing verify-at-head, PR approval, or shadow review of an enforcing check.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784568398186-verify-enforcing-gates-against-combined-input-case.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784568398186-verify-enforcing-gates-against-combined-input-case.md`_

@@ -1,7 +1,7 @@
 ---
 title: "Before trusting a clean test result, verify you own the tree you measured"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785842164075-before-trusting-a-clean-test-result-verify-you-own.md
 ---
 
@@ -83,4 +83,4 @@ correctly and pointed at the wrong thing — so validating the instrument cannot
 independent check of the substrate can.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785842164075-before-trusting-a-clean-test-result-verify-you-own.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785842164075-before-trusting-a-clean-test-result-verify-you-own.md`_

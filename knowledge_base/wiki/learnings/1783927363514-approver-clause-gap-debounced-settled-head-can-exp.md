@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Debounced settled head can expand scope into a protected path — never decide on the opening commit"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1783927363514-approver-clause-gap-debounced-settled-head-can-exp.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1783927363514-approver-clause-gap-debounced-settled-head-can-e
 **Fix:** Standard flow for reviewable webhooks that arrive mid-iteration: debounce → re-pin settled head → re-stage → re-run clauses. A Step-1 clause FAIL short-circuits to ABSTAIN_POLICY before the challenger by design — a clean review signal (here: production github-actions[bot] 🟡 2 gaps / 0 🔴) does NOT override a protected-path abstain. See [[approver-critique-mustfix-critique-gate-false-posi]] for the read-only `gh api .../pulls/...` GET false-positives that recur during these multi-fetch revision turns (split the calls; `gh pr view` GETs pass where `gh api .../pulls/.../commits` trips the gate).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783927363514-approver-clause-gap-debounced-settled-head-can-exp.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783927363514-approver-clause-gap-debounced-settled-head-can-exp.md`_

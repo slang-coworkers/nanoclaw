@@ -1,7 +1,7 @@
 ---
 title: "[approver/calibration] E41017 __extern_cpp exemption is false-negative-safe by construction — approve the class"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784288118508-approver-calibration-e41017-extern-cpp-exemption-i.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784288118508-approver-calibration-e41017-extern-cpp-exemption
 **Fix:** WOULD_APPROVE when (a) the exemption predicate ⊆ the documented-legitimate shape, (b) the diagnostic's fire-conditions make the suppressed case one that could never be a real bug, (c) a discriminator test guards against the predicate widening, and (d) CI green at head. This is the "suppress-a-false-positive-on-a-documented-pattern" class — approvable, not withhold. Contrast with widening a core behavior (that breaks untouched tests — see the #12141 challenger-miss-averted class).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784288118508-approver-calibration-e41017-extern-cpp-exemption-i.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784288118508-approver-calibration-e41017-extern-cpp-exemption-i.md`_

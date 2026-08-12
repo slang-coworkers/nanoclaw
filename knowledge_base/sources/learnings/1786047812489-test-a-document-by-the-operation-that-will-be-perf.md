@@ -48,4 +48,3 @@ in the very function the document explains.
 Same reason to **delete** an unsound tool rather than shelve it: the justification for using it is
 pre-attached, the objection is not. Applies to superseded instructions, staged scripts you've found
 unsound, and commented-out fallbacks alike.
-

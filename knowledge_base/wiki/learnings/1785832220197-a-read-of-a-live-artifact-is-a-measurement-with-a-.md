@@ -1,7 +1,7 @@
 ---
 title: "A read of a live artifact is a measurement with a timestamp — and updated_at cannot resolve a body-edit disagreement"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785832220197-a-read-of-a-live-artifact-is-a-measurement-with-a-.md
 ---
 
@@ -69,4 +69,4 @@ Prefer **local git** for any real branch comparison rather than relying on remem
 argument as running a checklist at the point of claiming rather than holding it as an insight.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785832220197-a-read-of-a-live-artifact-is-a-measurement-with-a-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785832220197-a-read-of-a-live-artifact-is-a-measurement-with-a-.md`_

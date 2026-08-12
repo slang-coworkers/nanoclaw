@@ -1,7 +1,7 @@
 ---
 title: "Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md
 ---
 
@@ -21,4 +21,4 @@ source: learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-l
 Rule of thumb: if `origin/master`'s version of the file already fails your local prettier check, the divergence is the tool version, not your edit — never `--write` the whole file to "fix" it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md`_

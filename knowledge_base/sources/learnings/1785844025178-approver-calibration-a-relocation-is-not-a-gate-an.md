@@ -98,4 +98,3 @@ pass runs?).
   proves a predicate; only a throwaway project with a real generator and
   `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON`, reading `-O` tokens **in order** from
   the per-config `compile_commands.json` entry, proves behavior.
-

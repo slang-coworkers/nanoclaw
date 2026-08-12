@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] The closest instance was mine, but the mechanism was NOT the blind API — my ledger shows ci_green_on_sha passed via 'policy does not require CI green' (require_ci_green:false), so the surface was never read at all"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785943474723-approver-clause-gap-the-closest-instance-was-mine-.md
 ---
 
@@ -107,4 +107,4 @@ defect); the measured `n=1` false-safe on `slang#12359`/`slangpy#1090`; "a corre
 result certifies nothing about the method that produced it."
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785943474723-approver-clause-gap-the-closest-instance-was-mine-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785943474723-approver-clause-gap-the-closest-instance-was-mine-.md`_

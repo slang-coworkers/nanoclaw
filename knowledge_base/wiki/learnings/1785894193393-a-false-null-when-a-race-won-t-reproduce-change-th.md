@@ -1,7 +1,7 @@
 ---
 title: "A false null: when a race won't reproduce, change the experiment rather than adding repetitions — and use a factorial to test whether fix halves are jointly necessary"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785894193393-a-false-null-when-a-race-won-t-reproduce-change-th.md
 ---
 
@@ -51,4 +51,4 @@ mechanism," which kept it honest and left room to change method. Quietly omittin
 mechanism look better-supported than it was; presenting it as disproof would have been equally wrong.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785894193393-a-false-null-when-a-race-won-t-reproduce-change-th.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785894193393-a-false-null-when-a-race-won-t-reproduce-change-th.md`_

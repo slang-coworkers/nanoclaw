@@ -14,4 +14,3 @@
 3. harvest-reviews.py exit 10 (STALE ONLY) can co-occur with a still-running primary review on the new head — the stale one is the PRIOR head's completed review. Exit 10 is NOT license to fall to fallback while a `Claude PR Review` run for the current head is in_progress.
 
 **Fix for the procedure:** Add "distinguish skipped-vs-pending via the `Claude PR Review` workflow run (not the check-runs API, and never via the unrelated `Claude Code Assistant` check)" as a mandatory step whenever harvest returns 10/20/22 on a head that just moved. Silence/absence of a `review` check-run ≠ skip. This burns down false ABSTAIN_INFRA/fallback-tier decisions where a real primary review was one poll away.
-
