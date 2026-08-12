@@ -1,6 +1,6 @@
 ---
 name: project_12371_spirv_prelink_validation_buffer
-description: "LIVE — slang#12371: SPIR-V validation runs on the PRE-LINK buffer so a valid linked module is rejected for OpCapability Linkage. 13:2xZ 08-09 wake #14 (changed): #12382 head 115185a0 -> 80c93009, +2 COMMENT-ONLY commits (every changed line proven a //-comment or blank; code-stripped files byte-identical) and slang-emit.cpp md5-UNCHANGED fb76258a ⇒ order test A1, no reshape. A HUMAN's CI now heads the queue (run 30174, fknfilewalker id 15105596 type User, parked at falcor-ci) so the gate is correctly yielding to a human, not just to a sibling bot. Both PRs m0/gate-pair-only ⇒ UNMEASURED. ⛔ MY OWN 8-TIMES-SHIPPED '~N h since the shepherd was assigned' WAS FABRICATED: 35->55->78->89->113->118->136->131 across 36 real hours, DECREASING once; false under every anchor incl. the issue's own created_at. Correction shipped to dashboard + slang-fixer. RESUME: guard i12371-pr-guard-0175."
+description: "LIVE — slang#12371: SPIR-V validation runs on the PRE-LINK buffer so a valid linked module is rejected for OpCapability Linkage. 13:2xZ 08-11 wake #15 (changed): #12408 head 49dbe8c1 -> e7f5274e = a CONTENT-FREE master resync (2 parents 49dbe8c1+ec47ea72; all SIX PR-side files md5-IDENTICAL; ci.yml identical; compare ec47ea72...head = behind 0 and its file list reconciles to the PR stat +907/-36) => order test A2 unchanged. MASTER MOVED 716ec597->ec47ea72 (first in ~4 d) and the defect SURVIVED it: slang-emit.cpp md5-identical at both, :3444 still validate(spirv.getBuffer()). The 12:59Z->16:59Z 08-09 escalation window I published CLOSED UNUSED (30170 attempt 1, never rerun) — 3rd consecutive expired window. Falcor lap now TWO bot runs deep (30154 waiting 60.1 h, 30257 NEW 12.6 h) behind TEN human runs; retry bot sees 8-9 active. Both PRs m0 = UNMEASURED. Containment ahead 33 / behind 5. 0 reviews / 0 inline comments (115.2 h since assign, anchor 08-06T18:16:13Z). RESUME: guard i12371-pr-guard-0175."
 metadata: 
   node_type: memory
   type: project
@@ -8,6 +8,113 @@ metadata:
 ---
 
 # slang#12371 — SPIR-V validation reads the pre-link buffer
+
+## 13:2xZ 08-11 `changed` wake #15 — the push was a CONTENT-FREE master resync (proven per-file, not inferred from the subject), and the 08-09 ESCALATION WINDOW I PUBLISHED CLOSED UNUSED. Master moved for the first time in ~4 days; the defect is still live on it. The falcor lap is now TWO bot runs deep and the human queue ahead is TEN runs
+
+⛔ **What moved: one cell.** #12408 head `49dbe8c1 → `**`e7f5274e`** (+1 commit, a merge). PR now 13
+commits, 6 files **+907/−36**, `updated 13:06:05Z`, still draft / OPEN / `mergeable=true` /
+`mergeable_state=blocked`. #12382's `xst=` row byte-identical (`80c93009`, gate pair, `m0`); it has not
+moved in **48.5 h** (`updated 08-09T13:02:18Z`). Latch correct as designed.
+
+✅ **THE PUSH CARRIES ZERO PR-SIDE CONTENT, and that is measured six ways rather than read off the
+subject line.** `e7f5274e` is a 2-parent merge (`49dbe8c1` + **`ec47ea72` = the current master tip**),
+subject *"Merge remote-tracking branch 'refs/remotes/origin/master' into fix/issue-12383"*.
+- `compare 49dbe8c1...e7f5274e` = ahead 8 / behind 0; its 43-file changed set filtered to the PR's own
+  six files ⇒ **`[]`**.
+- All **six** PR-side files md5-IDENTICAL across the resync: `slang-emit.cpp` `721d9118…` (3776 lines
+  both), `unit-test-spirv-link-validation.cpp` `99c10de6…` (223 lines both),
+  `unit-test-spirv-final-artifact-validation.cpp` `bd6b3b32…`, `slang-diagnostics.lua` `a25fdb38…`,
+  `precompiled-spirv-generics.slang` `d485d6fa…`.
+- `compare ec47ea72...e7f5274e` ⇒ **behind 0** and its file list is exactly the six PR-side files
+  summing to **+907/−36** — the PR's own stat, reconciled to the digit. ⇒ **no silent A2→A1 reshape, and
+  no master-side content smuggled in as PR content.**
+- `ci.yml` md5-IDENTICAL across the resync (`0d871356…`) ⇒ the push did not change the gate that is
+  holding this PR.
+✅ **ORDER TEST re-run on the FETCHED file — still A2.** `needsLink` :3441/:3472 → `artifact =
+_Move(linkedArtifact)` :3494 → `compiler->compile` :3541 → `stripDbgSpirvFromArtifact` :3556 →
+**`if (needsValidation)` :3610 → `validateSpirvArtifact(…, artifact)` :3612**; early-exit arms
+:3582/:3595 validate `preOptimizeArtifact`. Live `spirv.getBuffer()` in the validation region: **0**
+(:3412 is `spirvFiles.add`; :3469 sits inside a `#if 0` block — read the surrounding lines, not just
+the grep hit).
+
+✅ **MASTER MOVED — first time on this chain in ~4 days — and the defect survived it, as a control not
+an inference.** `716ec597 → ec47ea72` (08-11T08:55:07Z, 4.6 h ago). `slang-emit.cpp` is
+**md5-IDENTICAL at both master shas** (`8786793b…`, 3669 lines) and `:3444` is still
+`compiler->validate((uint32_t*)spirv.getBuffer(), …)`. The whole master advance touches exactly ONE
+file under `source/`+`tools/`+`tests/` (`tools/compile-perf/bench.py`) ⇒ **the merge could not have
+silently absorbed a master-side change to the file this PR fixes.** Consequence for the sibling:
+`compare ec47ea72...80c93009` = **diverged, ahead 8 / behind 23** — #12382 is now 23 commits behind and
+still `mergeable=true`/`behind` (the documented 6th-aperture resting value; not latched, by design).
+
+⛔ **THE WINDOW I PUBLISHED ON 08-09 CLOSED UNUSED, and I report the outcome because I put the figure
+in the operator's hands.** I gave run **30170** (#12408's then-head `49dbe8c1`) a 12:59Z→16:59Z 08-09
+escalation window. Measured now: 30170 is **attempt 1**, `conclusion=failure`, `updated 00:59:57Z
+08-09` — **never re-run, never escalated.** Same for #12382's two runs: **30152** (`115185a0`) and
+**30176** (`80c93009`) are both attempt 1 / failure, `run_started == created`, so neither ever
+re-evaluated the gate at a larger age. ⇒ ⭐⭐ **Three consecutive escalation windows on this chain have
+expired without firing. The 12 h ceiling is not a timer that eventually pays out; it only pays out if
+the retry bot reruns the run, and the retry bot is gated on `any_active_ci`, which has not been empty.**
+Retry-bot decision lines read from the jobs' own logs, 13:27Z and 13:30Z today: *"CI is still active
+(**9** run(s)); not rerunning bot CI."* / *"(**8** run(s))"* — where every earlier wake on this chain
+recorded 1–2.
+
+⛔ **THE FALCOR LAP IS NOW TWO BOT RUNS DEEP, and the human queue ahead is TEN runs.** Run 30313's own
+gate log (`::error::priority-gate-yielded`) enumerates, verbatim: ten *"Yielding to human/merge CI"*
+lines — `#30312 jkiviluoto-nv`, `#30311 fknfilewalker`, `#30310/#30309/#30308/#30285/#30280
+jvepsalainen-nv`, `#30288 merge_group`, `#30268 zangold-nv`, `#30253 saipraveenb25` — **then** two
+*"Yielding behind earlier bot CI"* lines. Both bot blockers are parked at the human-only `falcor-ci`
+environment (`current_user_can_approve: false`, reviewers = team `ci-approvers`, `approvals: []`):
+- **30154** (`fix/issue-11981`, attempt 3, created 08-08T12:55:59Z): sole incomplete job
+  `test-falcor / Test (Falcor)`, `waiting` since 08-09T01:23:05Z ⇒ **60.1 h**.
+- **30257** (`fix/issue-12440`, attempt 1, created 08-11T00:27:10Z) — **NEW this wake**: same shape,
+  `test-falcor` `waiting` since 00:53:39Z ⇒ **12.6 h**.
+⇒ **Wake #13's "lap" reading now has a second instance: a bot run escalates, measures, parks at
+falcor, and joins the blocking set. The set grows rather than drains.** ⚠️ **I do not claim the human
+queue is the reason nothing has been measured** — the gate yields to the union, and I cannot separate
+the two causes from one log; I report both terms.
+
+⛔ **No fixer dispatch.** Complete census, `rows == total_count` gate passed on all three heads:
+#12408 `e7f5274e` **88 == 88** (2 failure / 82 skipped / 4 success, **m0**), #12382 `80c93009`
+**84 == 84** (2 / 78 / 4, **m0**), master control `ec47ea72` **423 == 423** with failing
+`{build, build-windows-release / build}` — **non-gate** names, so the probe demonstrably still reports
+the class whose absence at the PR heads is my reading. Failing set on **both** PRs is exactly
+`{check-ci, wait-for-human-priority}`, classified from run 30313's gate job's own log, not the rollup
+colour. **BOTH HEADS UNMEASURED (`m0`) — that is the absence of the measurement, not a green.** The
+abandoned sha `49dbe8c1` re-read today is also **88 == 88 / m0**, so #12408's 08-09→08-11 head never
+acquired a build/test measurement either.
+
+⛔ **CONTAINMENT UNCHANGED IN KIND, WIDER IN COUNT: `compare 80c93009...e7f5274e` = diverged, ahead 33 /
+behind 5.** The five commits #12408 still lacks are the entire test-hardening line (`50d7a5e7`,
+`7037262b`, `115185a0`, `97cf9c6d`, `80c93009`). Capability divergence re-measured, not carried:
+skip-related lines (`SLANG_IGNORE_TEST|checkPassThroughSupport|haveSpirvOpt|precompileDiagnostics`) =
+**0** in #12408's copy vs **9** in #12382's; both still end at the same three assertions (`:217`
+`codeResult`, `:218` `producedCode`, `:222` `generatorMagic == kSpvGeneratorKhronosLinker`). Closing
+links from GraphQL: #12408 ⇒ `12371:OPEN, 12383:OPEN`; #12382 ⇒ `12371:OPEN`.
+
+✅ **Elapsed figures RECOMPUTED from re-fetched anchors, with the anchor inline so each is falsifiable
+on sight** (the 08-09 fabrication is why these now ship with their timestamp): `jkwak-work` assigned
+issue #12371 **08-06T18:16:13Z ⇒ 115.2 h**; review requested on #12382 **08-06T05:58:29Z ⇒ 127.5 h**;
+on #12408 **08-06T22:57:06Z ⇒ 110.5 h**. **0 reviews / 0 inline review-comments on BOTH** (re-read
+this wake). The only comment on either PR is `jhelferty-nv`'s board-sync auto-assign; issue #12371 has
+its 1 bot comment, #12383 has 0. **No human comment anywhere on the chain.**
+
+✅ **No latch defect this wake, and I declined the two candidate widenings with reasons rather than
+manufacturing a 15th.** (a) A "content-free resync" classifier would have suppressed this wake, but the
+classification requires fetching and md5-ing six files — work the latch cannot do, and a wrong
+classification hides a real push. Same call as wake #14's comment-only case. (b) A master-position cell
+would have caught #12382 going 23 behind, but master moves repo-wide and the cell would wake on every
+unrelated push; the state that actually blocks a merge (`mergeable` leaving `MERGEABLE`) is already
+latched. The 14th defect (no time-derived cell) stays open and unshipped: the two clock-driven facts
+this wake — a window expiring, a lap deepening — would each need a cell that flips with no remote
+change, i.e. the shape that wakes on nothing, and I still have no retroactive control for it.
+
+⚠️ **New window, stated as a mechanism with its gate, not a prediction.** Run **30313** (created
+13:06:05Z, attempt 1, candidate job shape: `filter` success / gate `failure` at *"Stop yielded bot
+CI"* / `check-ci` `failure` / all else skipped) reaches the 12.0 h ceiling at **08-12T01:06:05Z** and
+falls out of the 16 h lookback at **08-12T05:06:05Z**. The gate on it is `any_active_ci`, which the
+two falcor-parked runs plus the human queue currently satisfy. Discriminator already latched:
+`m0 → m>0`. **Three prior windows on this chain expired unused; I am naming this one, not forecasting
+it.**
 
 ## 14:0xZ 08-09 — the fixer escalated a MERGE RISK off my own "behind 5" note. Its STRUCTURE is right and I undersold it; its CAUSAL claim is UNMEASURED, and the measurement it needs has never existed on any head
 

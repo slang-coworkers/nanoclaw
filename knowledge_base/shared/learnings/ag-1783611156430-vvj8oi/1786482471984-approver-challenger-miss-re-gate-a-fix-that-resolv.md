@@ -1,0 +1,15 @@
+---
+author_agent_group: ag-1783611156430-vvj8oi
+author_session: sess-1786477327664-spdydc
+written_at: 2026-08-11T21:07:51.984Z
+---
+
+# [approver/challenger-miss] Re-gate: a fix that resolves the SPECIFIC prior failure can still be OPEN_GAP — re-enumerate ALL new jobs, the failure SET shifts
+
+**Symptom:** slang-rhi#831 R1 (@eb1f6ce166da) was ABSTAIN_POLICY(OPEN_GAP): 2/4 new `lavapipe` CI jobs red — 2 texture-copy round-trip test failures (linux-x86_64) + an AS SIGSEGV (linux-aarch64). The author pushed a substantive root-cause fix (R2 @fd72d68f3cbe, grew 4→9 files, real Vulkan backend code): `getTextureRowAlignment` now returns the format block size (was 1) because `VkBufferImageCopy.bufferRowLength` is in texels; `calcAligned2`→`calcAligned` at the non-power-of-two call sites; guard errors in `vk-command.cpp`; a `SoftwareDevice` SKIP on the AS-validation test. The tempting re-gate shortcut is "did they fix what I flagged? yes → approve."
+
+**Root cause / the trap:** re-gating by checking whether the *prior specific failures* are resolved is the wrong frame. On R2 the linux-x86_64 texture-copy failures WERE fixed (verified: `calcAligned` is the correct choice for non-pow2 block alignment, e.g. `calcAligned(4,3)=6`; `calcAligned2` asserts `isPowerOf2` — the switch is a real fix, not a mask), but the failure SET SHIFTED: linux-aarch64 now SIGSEGVs in a **different, unguarded** AS test (`cmd-query-acceleration-structure-get-result-without-wait.vulkan`, `test-cmd-query.cpp:388` — the PR guarded only `acceleration-structure-creation-with-validation`, not this one), and BOTH Windows lavapipe configs fail `vkCreateInstance: Found no drivers!` (one of them, windows-x86_64-Debug, had PASSED in R1 — a regression). Net: 3/4 red on R2 vs 2/4 on R1 — *more* red even though the fix was genuine and correct.
+
+**How to catch it (the class):** Per the revision-chain rule, treat each revision as a full fresh decision — but concretely, for a CI-coverage PR that means **re-enumerate the complete `check-runs` set at the new head and read the conclusion of every job the PR adds, by name**; never diff against "the jobs that failed last time." A root-cause fix can (a) fix config A while (b) leaving config B red for an *unrelated* reason and (c) *regressing* config C. Also: guarding one instance of a failure class (one AS test SKIP) rarely covers the class — grep for sibling tests with the same trigger (all AS/RT tests on a software device). And a software-Vulkan matrix that spans arch×OS will surface arch-specific crashes and OS-specific driver-discovery failures independently — "green on one config" is not "green."
+
+**Fix / decision:** `ABSTAIN_POLICY:OPEN_GAP` again (human must look) — genuine progress is not completion; the PR's stated purpose (green lavapipe CI) is unmet while 3/4 of its own jobs are red. Score the fix as correct-but-incomplete, not as "addressed." (Diff's own logic had no verified bug → not BLOCK; the red is in the coverage the PR introduces, exposing pre-existing/env issues.)

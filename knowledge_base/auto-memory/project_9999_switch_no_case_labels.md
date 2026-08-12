@@ -71,3 +71,46 @@ core module rebuilt WITH the fix: 1525 switch sites in *.meta.slang/prelude -> 0
 ⇒ **The core-module check is the one a reviewer would ask for and it retires the worst blast radius** (a label-less switch in the prelude would pollute every user compile). **The `grep -c E41000 = 0` across all sweeps upgrades "only one affected test" from an inference over one directory to a measurement over the suites.** And stating the `-warnings-as-errors` hard-error exposure plainly rather than softening it is the right call for the PR body.
 
 ⚠️ **Self-caught transient worth noting: `empty-switch.slang` briefly held reverted `-Xslang` flags WITH the explanatory comment still present — a self-contradictory state that failed 4/4 — and they re-ran to confirm consistency rather than trusting the file snapshot.** ⇒ **A file whose comment and code disagree is evidence of an interrupted edit, not of a decision.**
+
+## ⛔⭐⭐⭐ 2026-08-11 05:12Z — THE FIXER'S "DRAFT ⇒ WON'T AUTO-CLOSE" IS FALSE, AND #12454 ALSO LINKS AN ALREADY-CLOSED ISSUE
+
+They closed the chain stating *"the PR is held as a draft, so it won't auto-close #9999."* **Queried GitHub's parsed result rather than reading the body:**
+```
+closingIssuesReferences on #12454  ->  [ {9999}, {12236} ]
+#12454  open, draft=true, head ee14fe9153, base master
+#12236  state=CLOSED since 2026-07-31T21:38:35Z, closed by PR #12245 (744eb9ed48)
+```
+⇒ ⭐⭐⭐ **DRAFT STATUS SUPPRESSES NOTHING. The link is populated NOW; the keyword fires when the PR MERGES, whether or not it was ever a draft.** So #9999 auto-closes on merge — **while their own report says every green number is Linux-debug-only and all 37 build/test jobs were skipped on both dispatches.** That is an issue closing on evidence that never compiled on Windows or macOS.
+
+⇒ ⛔ **AND IT LINKS #12236, ALREADY CLOSED.** Their own triage comment on #12236 says verbatim *"Scope: `Fixes #12236` only… #9999 is intentionally left untouched."* **Merging #12454 would re-close a closed issue and imply it fixed something it didn't.**
+
+⇒ ⭐⭐⭐ **ROOT CAUSE: THEY INFERRED THE LINKAGE FROM THEIR INTENT INSTEAD OF QUERYING THE PARSED RESULT.** This is the trap `slang-triager` published on #12441 **in both directions**: `Fixes half of #12441` *looks* linked and is not; a paragraph reading *"neither PR resolves #12441"* *is* a live closing sequence. ⇒ ✅ **ONLY `closingIssuesReferences` ANSWERS "IS THIS LINKED" — neither the body text nor the draft flag is readable by eye, and both mislead in opposite directions.** One GraphQL query.
+
+✅ **My routing position (sent):** drop `#12236` (stale — belongs as prose, not a keyword), and demote #9999 to a non-keyword `Refs #9999` so a human closes it after real CI. **Given their own Linux-debug-only caveat, demotion is the honest option** — and it matches the triager's deliberate absent-linkage decision on #12467/#12468, where auto-close would have closed a live half.
+
+⚠️ **Worth noting what I did NOT reopen: the fix and the review round hold up.** ⭐ **Their surviving-mutant finding is the strongest self-check in the report** — reducing the `SeqStmt` walk to `stmts[0]` passed every original case, so they reproduced it (applied → FAIL → restored byte-identically) and added the empty-stmt-then-real-stmt case. **A test suite that a one-line mutant survives is decorative, and only mutation shows it.** ⭐⭐ **And their reviewer-independence accounting is the number I would want on every review: 3 reviewers, but Reviewer C died on an API 400 while its wrapper reported `success` (96-byte artifact), and Devin's "no findings" is the PR body reflected back verbatim ⇒ a clean-looking 3-of-3 is really 1-of-3.**
+
+## ✅⭐⭐⭐ 05:29Z — BOTH DEFECTS FIXED, AND THE FIXER FOUND THE REAL MECHANISM: THE PR **TITLE**, WHICH DEFEATS MY OWN RULE
+
+I published *"only `closingIssuesReferences` answers is-this-linked."* **They found the exposure my rule cannot see, and I verified all of it:**
+```
+repos/shader-slang/slang:  allow_squash=true  allow_merge_commit=FALSE  allow_rebase=FALSE
+                           squash_merge_commit_title=PR_TITLE   squash_merge_commit_message=PR_BODY
+=> the squash commit IS  title + "\n\n" + body
+their old title: "Fix #9999: ..."   <- would have fired at merge NO MATTER WHAT THE BODY SAID
+now:  "Diagnose switch body with no case labels (shader-slang/slang#9999)"
+      closingIssuesReferences totalCount = 0, nodes = []
+```
+⇒ ⭐⭐⭐ **A CLOSING KEYWORD IN THE COMMIT MESSAGE CLOSES AN ISSUE WITHOUT EVER APPEARING IN `closingIssuesReferences`.** So my rule was **necessary and insufficient**: the field is *corroboration*, and the **load-bearing instrument is a simulated-squash scan of the artifact that will actually exist at merge** — `.title + "\n\n" + .body`, all nine keyword spellings × `#N` / `owner/repo#N` / full URL. They ran it over 16.5 KB: **0 matches.**
+
+⇒ ⭐⭐ **AND THE INSTRUMENT IS MERGE-SETTINGS-DEPENDENT, which they spelled out and I would have missed: on a merge-commit or rebase repo the SOURCE COMMIT SUBJECTS reach master too and must also be scanned.** Here `allow_merge_commit=false` + `allow_rebase=false` is why codex's call **not** to force-push a commit-subject rewrite was right — that commit never reaches master, so rewriting it would have dismissed review work for zero benefit. **The title was the entire exposure.**
+
+✅ **#12236 kept its three plain mentions, and they measured rather than preferred:** in `PR #12236 fixes…` the reference **precedes** the verb, which is not closing syntax — confirmed `totalCount=0` with that exact quote live. ⇒ **I was wrong to call it a linkage defect; removing the number would have cost the maintainer's authorizing quote and the sibling-fix explanation for nothing.** ⭐ **"Reference before verb" vs "verb before reference" is the actual parse rule, and it is invisible unless you query.**
+
+## ⭐⭐ THREE OF THEIR OWN ERRORS, AND THE SECOND IS THE ONE I WANT PROPAGATED
+
+1. *"A draft won't auto-close"* — flatly false, and they had said it **publicly on #9999**, so they corrected the comment in place rather than only in chat.
+2. ⭐⭐⭐ **They re-queried after the body edit, got `totalCount=2`, concluded a second source must exist, and went hunting — landing on the commit subject. It was `0` on re-query; the edit HAD worked.** ⇒ **"MY FIX DIDN'T WORK" IS ITSELF A CLAIM — RE-MEASURE IT BEFORE HUNTING DEEPER.** A stale read of your own successful edit manufactures a phantom second cause, and the hunt *feels* like diligence. **(They found the real title exposure anyway, so a true finding came out of a false premise — which is exactly why the premise went unaudited.)**
+3. **They mangled a maintainer's verbatim quote** to defeat that imagined parse, then reverted it. ⇒ **Making a quotation less faithful to dodge something that was never happening is a bad trade twice over.**
+
+⇒ ✅ **Net: my rule stands as corroboration, theirs is the primary. Recorded in that order.** Nothing further owed; PR is with `jhelferty-nv` / `skiminki-nv`, still two CI yields and no hosted build signal, and that limitation is stated in the PR body above the green numbers and on the issue.

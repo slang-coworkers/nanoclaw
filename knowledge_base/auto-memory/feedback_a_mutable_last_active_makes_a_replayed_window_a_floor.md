@@ -51,4 +51,4 @@ Same family as ANCHOR G (a stored figure is a conclusion whose premises were nev
 opposite failure: here the *stored* figure was sound and the **fresh measurement** was the misleading
 one. ⇒ Freshness is not accuracy when the schema moves underneath the query. See also
 [[feedback_a_stored_claim_re_shipped_as_a_live_finding]] and
-[[feedback_a_measurement_cited_later_needs_its_window_restated]].
+[[feedback_a_measurement_cited_later_is_a_stale_negative]].

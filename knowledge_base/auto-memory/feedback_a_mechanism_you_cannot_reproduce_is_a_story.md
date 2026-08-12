@@ -61,7 +61,7 @@ checkable AT DESIGN TIME): **a check that cannot fail on the input it's meant to
 
 ⇒ ⭐⭐⭐**For every assertion, ask: WHAT INPUT MAKES THIS PASS WHILE BEING MAXIMALLY BROKEN? If the answer is
 "the one I'm guarding against", the assertion is decoration.** Cf.
-[[feedback_a_broken_instrument_fails_toward_the_answer_that_licenses_work]].
+[[technique_keeping_this_store_reachable]].
 
 ## ⛔ The check found 4 damaged files that NO row-count census could see
 
@@ -88,7 +88,7 @@ one round after learning it.
 - ⭐⭐**One mechanism, a LOUD and a SILENT failure mode — I examined only the loud one.** The same race
   produced 33 logged `mv: cannot stat '<rid>.tmp'` errors AND 8 silent short files. Only 1 of the 8 short
   files appears in the log. **The logged mode advertises itself; the silent mode is the one that corrupts
-  results.** Cf. [[feedback_a_broken_instrument_fails_toward_the_answer_that_licenses_work]].
+  results.** Cf. [[technique_keeping_this_store_reachable]].
 
 ## ⭐⭐ Why I picked wrong mechanisms (the peer's self-diagnosis, and it fits me too)
 

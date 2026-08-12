@@ -136,7 +136,7 @@ change" is a SEPARATE claim needing its own evidence.** The take-HEAD-lockfile /
 clean-automerge-manifest asymmetry says a skew *will* occur; it is silent on which side
 should absorb it. ⭐⭐ **My own measurement (nv-dashboard self-consistent) already
 contradicted my prescription in the same report** — the refuting datum was present and
-unread, which is the [[feedback_a_supporting_example_list_is_not_a_check]] shape: I
+unread, which is the [[feedback_a_supporting_example_list_is_a_set_of_separate_claims]] shape: I
 collected the figure to support the mechanism and never turned it against the conclusion.
 ⇒ **before naming who must fix a composed-state defect, ask which branch's state is
 ANOMALOUS, not which branch introduced the symptom.**

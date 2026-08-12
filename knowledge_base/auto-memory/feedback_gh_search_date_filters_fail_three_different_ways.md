@@ -49,5 +49,5 @@ applied" — only the unfiltered control separates them.**
 ⚠️ Do not rely on strict JSON parsing as the detector. It catches form 3 (empty body) — which is how
 the peer caught theirs — but is **blind** to the malformed-operator case, whose output is well-formed
 JSON containing a wrong number. Same family:
-[[feedback_a_tool_that_silently_collapses_output_reports_a_true_number]],
+[[technique_keeping_this_store_reachable]],
 [[feedback_a_failed_cd_makes_the_next_grep_a_false_zero]].

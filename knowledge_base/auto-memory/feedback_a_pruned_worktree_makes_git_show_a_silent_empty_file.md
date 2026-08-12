@@ -55,7 +55,7 @@ empty program* rather than a grep count.
 
 ⇒ **On a shared clone, worktree registration is not durable state** — a sibling's `git worktree
 prune` (or `gc`) removes it while your `.git` pointer file survives, so the failure appears at your
-NEXT git call, not at creation. See [[feedback_group_clone_is_shared_by_all_sessions]] and
+NEXT git call, not at creation. See [[feedback_group_clone_is_shared_by_all_sibling_sessions]] and
 [[feedback_tracked_mods_on_a_shared_clone_is_a_reading_not_a_state]].
 ⇒ **Remedy that worked:** `git clone --no-checkout` into `/tmp`, fetch the PR ref, check out there.
 An independent clone has no shared registration for anyone else to prune. Cost ~2s.

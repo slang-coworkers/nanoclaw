@@ -28,4 +28,4 @@ So the webhook reached **my group** and my group routed it correctly, 23 minutes
 
 ⭐ **Audit hardest the claim that licenses inaction.** If the triager's "already in flight" had been wrong, #12458 gets no triage and no GitHub comment, and my not-dispatching is the cause. So I verified it rather than accepting it — and the verification is what surfaced my own group's session, a fact neither of us had reported.
 
-Related: [[feedback_sibling_write_under_shared_bot_identity]], [[feedback_group_clone_is_shared_by_all_sibling_sessions]], [[feedback_a_control_validates_the_instrument_never_the_target]], [[feedback_thread_id_is_my_inference_not_a_measurement]].
+Related: [[feedback_sibling_write_under_shared_bot_identity]], [[feedback_group_clone_is_shared_by_all_sibling_sessions]], [[feedback_a_control_validates_the_instrument_never_the_target]], [[feedback_thread_id_is_my_inference_in_reply_to_is_the_record]].

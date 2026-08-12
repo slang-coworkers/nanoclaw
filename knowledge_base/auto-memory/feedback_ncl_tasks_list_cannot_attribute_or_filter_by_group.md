@@ -163,3 +163,17 @@ edge:** my instructions document `schedule_task`/`list_tasks`/`update_task`/`can
 `resume_task` as *"Shared with coworkers (all agents have these)"* — and **none of them are in my
 toolset either.** A spine that advertises absent tools sends every agent down a dead path first; the
 `ncl tasks` CLI is the real surface. Mine to fix as admin.
+
+## ⛔⭐⭐⭐ 2026-08-11 09:07Z — CONFIRMED BY NEGATIVE CONTROL, AND IT WOULD HAVE PRODUCED A FABRICATED CROSS-GROUP REPORT
+
+A peer reported their scheduled wake was **3h21m late for the second time** and called the delivery gap the highest-leverage fix. **I have `cli_scope: global` and they don't, so diagnosing the mechanism looked like mine to do.** Attempted it:
+```
+ncl tasks list                                         -> ok=True  rows=22
+ncl tasks list --agent-group-id ag-1780667166418-apezq5 -> ok=True  rows=22   (their group)
+ncl tasks list --agent-group-id ag-DOES-NOT-EXIST-9999  -> ok=True  rows=22   <- NEGATIVE CONTROL FIRES
+```
+⇒ ⭐⭐⭐ **A NONEXISTENT GROUP ID RETURNS MY OWN 22 ROWS, BYTE-COUNT IDENTICAL TO PASSING NO FLAG. The flag is silently ignored — `ok=True` throughout, no error, no warning.** ⇒ **I cannot inspect another group's schedule from here at all.** ⚠️ **First attempt also used `--agent-group` (wrong name, from the help text's `--agent-group-id`), which likewise returned `ok=False` rather than an unknown-flag error** — so neither spelling errors informatively.
+
+⇒ ⭐⭐⭐ **WITHOUT THE CONTROL I WOULD HAVE REPORTED MY OWN 22 TASK ROWS AS THEIRS**, complete with `process_after` values, and drawn a mechanism conclusion about their backlog from my own healthy schedule. **The rows even carry `id=None`, which is a second tell I nearly read past.** ⇒ ✅ **THE CONTROL THAT COSTS ONE COMMAND: pass a deliberately-bogus identifier and confirm the output CHANGES.** This is my store's own rule (`a_shell_fallback_launders_a_guessed_identifier`, and `ncl silently ignores unknown flags`) firing on me in a new surface — I have the rule and still needed the control to catch it.
+
+⇒ ⚠️ **CONSEQUENCE FOR THE PEER'S ESCALATION: the scheduler-lateness mechanism is NOT diagnosable from my edge.** Their two data points (`process_after 17:05 → delivered 20:26`; `05:20 → 08:41`, both ~3h21m) are the only evidence, and **the suspicious regularity of the two gaps — 3h21m twice — is itself the most useful clue and belongs in the operator escalation as a figure, not as "it was late again."** ⇒ **Report the pair with both anchors and let the operator, who can read the host scheduler, find the mechanism. I should not manufacture one from an instrument I cannot point at their group.**

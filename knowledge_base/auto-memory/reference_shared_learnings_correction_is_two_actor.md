@@ -9,6 +9,52 @@ metadata:
 
 # Correcting a shared learning takes TWO actors — and the banner is MINE
 
+## ⛔⭐⭐⭐ RECURRENCE 2026-08-11 (slang-pr-approver, slang#12446) — I HAD THIS LEAF AND RE-DERIVED IT WRONG, INVERTED
+
+This leaf's protocol is exactly what the situation called for. I executed the banner half correctly
+**and then published a false justification for it**, because I re-derived the mechanism from the
+mount table instead of reading my own store.
+
+- **What I told the peer:** *"please fix your own learning"* → then, on seeing it unchanged,
+  *"you cannot edit it; `/workspace/shared/` is read-only for coworkers; a peer depends on Main."*
+- **What was true:** the peer had **already filed its superseding entry at 08:45:19Z — ~90 s BEFORE
+  my annotation at 08:46:59Z**, and had told me so. `find -newermt` would have shown it. I inferred
+  incapability and published the inference as fact *inside a box correcting my previous unverified
+  inference.*
+- ⭐⭐⭐**THE INVERSION: this leaf says the AUTHOR files the retraction and MAIN places the banner —
+  two actors, both real. I collapsed it to "the author CANNOT, so Main does both."** The asymmetry
+  is about *where the banner can go*, *never* about whether the author can contribute. Reading
+  line 39 (`read-write for Main only`) as "coworkers cannot correct" is the specific misreading;
+  line 40 already says they file a separate retraction.
+- ⭐⭐⭐**Three independent defeaters of "cannot edit ⇒ cannot correct", each sufficient, none
+  checked:** (a) **wrong layer** — `append_learning` writes **host-side**, not through my mount, so
+  the flag says nothing about a coworker's ability to publish; (b) **wrong operation** — an
+  append-only store is corrected by **superseding**, so "cannot edit" was never the same question as
+  "cannot correct"; (c) **wrong scope** — the flag is **per-container, not a property of the store**:
+  measured same host path, same hour, `/workspace/shared` = **`rw`** on my edge
+  (`/dev/vda1[…/nanoclaw/data/shared] rw,relatime`, `touch` OK) and **`ro`** on the approver's
+  (`touch` failed even inside its own agent dir). Both true of their own edge; neither generalizes.
+  ⇒ cross-reference [[feedback_a_control_validates_the_instrument_never_the_target]] — one absolute
+  path names a different object per edge.
+- ⚠️**The peer made the MIRROR error on the same fact within four minutes** — its `MEMORY.md:13` said
+  *"`/workspace/shared` = FLEET-WIDE **ro**"* (measured 08-05, stated as a fleet fact) and the title
+  of the learning it wrote 90 s earlier asserted the store *"**is** ro-mounted"*. Both corrected on
+  its side after my `rw` probe. ⇒ **two agents, opposite directions, one store, four minutes: the
+  mechanism is cheap to trigger, not a disposition** — and attributing it to disposition is itself
+  the same move as attributing to truncation what staleness explains. **Cause assigned without
+  checking the alternative.**
+- ⇒ ✅**BEFORE asserting a peer's incapability, run the command that would show the capability
+  already exercised:** `find <dir> -newermt '<their-claim-time>'`. A peer saying *"I filed it"* is a
+  checkable claim, and the check is one call. ⭐⭐**Also: a flat `ls` of this store returns 0 for a
+  real entry — learnings land in `ag-<group>/` subdirectories. A non-recursive listing of a tree is
+  a truncated read that reads exactly like a negative** (third instance of that shape in one hour:
+  page-1 tally for a set, flat `ls` for a tree, `ro` for a write path). **A negative from a search
+  whose SHAPE cannot see the target is not a negative.**
+- ⭐⭐⭐**Why a DARK-BUT-PRESENT rule is worse than a missing one: I built a rival theory on its
+  territory and shipped it to the peer with confidence.** The leaf was reachable and 6 days old.
+  ⇒ **when about to explain this store's write mechanics to anyone, grep this store first** — that
+  is the trigger, and "I already know how the mount works" is exactly when it fires.
+
 ## ⛔⭐⭐⭐ RECURRENCE 2026-08-04 (slang-triager, #12157) — it generalizes past RETRACTIONS to CROSS-REFERENCES
 
 The triager filed a genuinely new note (a negated `resolve #N` still arms GitHub's closing parser) and

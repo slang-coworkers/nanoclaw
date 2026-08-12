@@ -2,6 +2,7 @@
 ⛔**ANCHOR A (08-06, 4th instance) — TRIGGER: ANY claim about a file or a build, and UNCONDITIONALLY before saying a PEER is wrong about one** (a SELF-directed causal claim has no peer to trigger the check, so it is the more dangerous case — a peer published "another ninja in the same `build/`" without pinning which filesystem its `.ninja_log` lived on; right conclusion, unasked question).** Then **`findmnt -no SOURCE,TARGET --target <path>` FIRST** — I overturned a peer's TRUE report with a clean mtime control run on **a different clone** (mine `/dev/vda1[…/groups/main]`, its `/dev/vdb[/prod-groups/slang-triager]` — a device **not present on my edge**). ⭐⭐⭐**MY METHOD WAS RIGHT AND POINTED THE OTHER WAY ON ITS EDGE: a valid discriminator run on the wrong tree manufactures a confident inversion.** Cost: two upstream messages asserting a true finding was false. Full derivation, the ancestor-commit refutation, both mtime sets, and the "cause unidentified, effect measured" terminal position: [[feedback_unrecognized_file_content_is_not_evidence_of_an_editor]].
 ⛔**ANCHOR E (08-06) — A TELL YOU DESIGNED BUT DID NOT BUILD IS WORTH ZERO AND READS AS COVERAGE.** I specified "every claim names its source thread" for cross-session credit-merging, a peer *rated* it, and ~2 turns later I merged two `slang-fixer` sessions' reports into one thread-less reply — the exact error. ⇒ ⭐⭐⭐**Build the tell in the turn you design it, or record that you did not.** ⭐⭐**With N sessions behind one destination name, attribution is a MISSING-KEY problem, never a care problem** — fix with a key, not attention. Full: [[feedback_a_pending_tell_does_not_catch_the_error_it_was_designed_for]].
 
+⛔**ANCHOR H (08-11) — A TRIAGE MEMO IS A REPORT, NOT MY CUE TO DISPATCH THE FIXER.** In `orchestrator → triager → fixer`, the triager owns the fixer handoff (my grandchild, not my direct edge). #12487: triager sent "memo attached; rollup in the thread" (msg 6); I read the memo and `send_file`'d it to `slang-fixer` on the canonical thread BEFORE reading the rollup (msgs 8/12) that said "ready-for-fix → forwarded to slang-fixer." Triager had already dispatched (real session on edge `epsn3s`); my direct Main→fixer send would mint a PHANTOM 12487 session on a different messaging group, same thread_id ⇒ duplicate branch/PR. ⇒ ⭐⭐⭐**Read the triager's ROUTING line before acting; only route if it explicitly asks. Reach the fixer THROUGH the triager, never a direct Main→fixer dispatch on a chain it owns.** Tell: two running sessions in one fixer ag for one issue on two messaging groups — stand down the one on MY edge. [[feedback_triage_memo_is_not_my_cue_to_dispatch_the_fixer]].
 ⛔**ANCHOR F (08-07) — A REPAIR MECHANISM KEYED ON "LOOKS UNFINISHED" RE-RUNS COMPLETED SIDE EFFECTS.** A spent one-shot stays `pending` / past-`process_after` / `runs=0` **forever** (runs increments on COMPLETION), byte-identical to an orphan — and my `scheduler-watchdog` re-arms exactly that shape, so **my own repair task was the live path to the second maintainer nudge I had just forbidden a peer from sending.** ⇒ ⭐⭐⭐**Ask what a SUCCESSFUL run leaves on the row you inspect; if "nothing", the row cannot drive the repair.** ⭐⭐⭐**Its self-exclusion guard keyed on a substring absent from its own real id — dead for 126 runs, untested because it never had to fire.** ⚠️**And the cross-group route I published the same hour was OVER-GENERALIZED:** `ncl sessions list --thread-id system:tasks:<series>` works only for tasks with a **per-series** session; **5 of my 13 series sit on a shared legacy session (`thread_id` NULL) and return `[]` — IDENTICAL to a fabricated id**, so my negative control could never catch the split. A peer reproduced the `[]` and blamed its own `cli_scope`; **I reproduced it on my own `global` edge, so scope was not the cause — the route's domain is the TARGET ROW's provisioning era.** ⇒ ⭐⭐⭐**Publishing a route without its domain hands a peer my untested generalization as an instruction, and their self-blame is the predictable result.** [[feedback_a_spent_one_shot_stays_pending_and_invites_a_rerun]], [[feedback_ncl_tasks_list_cannot_attribute_or_filter_by_group]].
 
 ⛔**ANCHOR B (08-06; ⚠HOLE FOUND 08-11) — ⭐⭐⭐BARE PROSE OUTSIDE A `<message>` BLOCK IS DELIVERED.** `"Holding."` / `"No response."` / `*(silence)*` are FULL MESSAGES that wake the peer; the ONLY non-delivering form is the internal block. ⚠**HOLE: that silent form BREAKS when its content names the tags literally** — scanner isn't markdown-aware, backticks don't escape, so an inline closing tag ends the wrapper and the next sentence ships. ⇒ **placeholders, never the real characters.** Bidirectionally invisible. ⭐⭐**Quote a malformed payload VERBATIM, undiagnosed — boundary alignment was the proof and a paraphrase destroys it.** Derivation in the leaf. **The leaf said this, marked SETTLED, but was UNLINKED from this index — so I re-derived it wrong, diagnosed the resulting no-op loop as the PEER'S config defect, and spent operator attention on a fix to an artifact that already mandated the rule.** ⇒ ⭐⭐⭐**A DARK RULE IS WORSE THAN A MISSING ONE — I built a RIVAL THEORY on its territory.** ⭐⭐**Before proposing a fix to another agent's config, grep your own store: a peer-blaming diagnosis IS the trigger for a retrieval check.** ⚠️`ls *.md` **misses dotfiles** — a glob's silence about a hidden file is indistinguishable from absence; use `find -iname`. Full: [[feedback_zero_output_is_not_available_scratchpad_still_delivers]].
@@ -37,35 +38,36 @@
 | index | what lives there |
 |---|---|
 | **Rules** — corrections, confirmed approaches, instrument defects. Read a shard before publishing a claim, measuring, or routing. | |
-| [[index-feedback-1]] | `a_401_body_piped_to_grep_…` … `a_control_returning_zero_…` |
-| [[index-feedback-2]] | `a_control_validates_the_i…` … `a_documented_invariant_wi…` |
-| [[index-feedback-3]] | `a_downgrading_correction_…` … `a_line_grep_cannot_find_a…` |
-| [[index-feedback-4]] | `a_line_range_read_inherit…` … `a_package_name_match_is_n…` |
-| [[index-feedback-5]] | `a_parallel_fetch_lets_a_f…` … `a_rerun_changes_triggerin…` |
-| [[index-feedback-6]] | `a_rerun_in_flight_is_not_…` … `a_siblings_memo_is_untrus…` |
-| [[index-feedback-7]] | `a_size_figure_names_a_fil…` … `a_visibility_gate_is_not_…` |
-| [[index-feedback-8]] | `a_waiting_metric_names_an…` … `an_injected_clock_cannot_…` |
-| [[index-feedback-9]] | `an_inline_label_must_not_…` … `coworker_respawn_drops_ve…` |
-| [[index-feedback-10]] | `coworkers_cannot_edit_sha…` … `gh_api_writes_zero_bytes_…` |
-| [[index-feedback-11]] | `gh_auth_status_misleading` … `missing_artifact_not_outa…` |
-| [[index-feedback-12]] | `my_environment_is_a_scope…` … `orphaned_zero_validates_t…` |
-| [[index-feedback-13]] | `pace_the_fanout_the_retry…` … `signature_grep_passed_vs_…` |
-| [[index-feedback-14]] | `six_errors_one_mechanism_…` … `two_closures_cannot_share…` |
-| [[index-feedback-15]] | `two_endpoints_for_one_bu…` … `zero_test_jobs_is_not_ze…` (tail shard — **repacking MINTS new shards and MEMORY.md's table does not follow**, so shard N+1 is unreachable and its rows read as ORPHANED until a row is added here. Fired again 08-10: adding 2 leaves repacked feedback 14→15 and orphaned the new tail's row. ⇒ after every leaf, `ls index-<fam>-*.md | wc -l` against `grep -c` this table, then rewrite labels from `sed -n 3p`.) |
+| [[index-feedback-1]] | `a_401_body_piped_to_grep_ic_is_a_false_zero_that_refutes` … `a_consumer_merged_before_its_producer_fails_silently`
+| [[index-feedback-2]] | `a_control_built_from_the_matchers_own_assumption_is_blind` … `a_dispatch_is_a_clearance_and_decays`
+| [[index-feedback-3]] | `a_doctest_tally_counts_device_skipped_cases_as_passed` … `a_latch_its_own_failure_path_can_write_is_not_a_latch`
+| [[index-feedback-4]] | `a_latchs_field_set_is_its_blind_spot` … `a_null_from_an_instrument_with_no_field_is_an_unasked_question`
+| [[index-feedback-5]] | `a_null_guard_inside_a_truthiness_branch_is_dead` … `a_repeated_turn_error_is_a_fleet_signal_not_a_chain_signal`
+| [[index-feedback-6]] | `a_reply_to_an_invisible_review_is_evidence_of_one` … `a_shared_conclusion_stops_the_mechanism_audit`
+| [[index-feedback-7]] | `a_shared_identity_breaks_unanswered_as_badly_as_already_answered` … `a_turn_error_is_evidence_about_the_turn_not_the_work`
+| [[index-feedback-8]] | `a_uniform_outcome_invites_one_mechanism_for_a_set_that_failed_three_ways` … `an_error_toward_confirmation_evades_the_audit_that_catches_findings`
+| [[index-feedback-9]] | `an_identifier_that_does_not_distinguish_its_members` … `contributor_pr_offer_brief`
+| [[index-feedback-10]] | `control_the_instrument_not_the_reasoning` … `fix_can_invert_into_overrejection`
+| [[index-feedback-11]] | `four_states_where_the_decisive_check_feels_unnecessary` … `load_measurements_decay_publish_with_timestamp`
+| [[index-feedback-12]] | `main_cannot_approve_install_packages` … `no_parent_traversal_in_includes`
+| [[index-feedback-13]] | `no_reaction_acks_to_coworkers` … `run_the_programs_own_predicate_not_a_stdlib_lookalike`
+| [[index-feedback-14]] | `running_an_experiment_is_not_reading_it` … `the_two_tier_index_reproduced_its_own_unreachability_bug`
+| [[index-feedback-15]] | `the_unit_of_what_my_side_said_is_the_agent_group` … `voiding_evidence_returns_to_unknown_not_to_the_prior_claim`
+| [[index-feedback-16]] | `waiting_and_queued_are_two_different_blocks` … `zero_test_jobs_is_not_zero_tests_ran` (tail shard — **repacking MINTS new shards and this table does not follow**, so shard N+1's rows read as ORPHANED until a row is added here. 3rd firing 08-10/11. ⇒ after every leaf: `ls index-<fam>-*.md \| wc -l` vs `grep -c` this table — a mismatch means a shard was minted **and every label above is then guaranteed stale too**; rewrite them from `sed -n 3p`.) |
 | **Chains** — per-issue/PR state. Open the specific chain before touching its issue. | |
-| [[index-project-1]] | `10027_vector4_import_abort_pending` … `11877_operator_overload_fastpath` |
-| [[index-project-2]] | `11878_e30051_alias_handoff` … `12052_stranded_mergequeue_operator_escalation` |
-| [[index-project-3]] | `12054_msvc_release_opt_ref_icf` … `12143_macos_release_signing_version_extraction_bug` |
-| [[index-project-4]] | `12145_gbufferrttexgrads_d3d12_access_violation` … `12283_llvm_jit_coff_ordered_sections_windows` |
-| [[index-project-5]] | `12284_cross_module_overload_silent_break_warning` … `12375_downstream_sibling_sweep_followup` |
-| [[index-project-6]] | `12376_fossil_oob_relative_ptr` … `6319_dup_sysval_pr11885` |
-| [[index-project-7]] | `6471_combined_sampler_register_space` … `9999_switch_no_case_labels` |
-| [[index-project-8]] | `9999_switch_without_cases_diagnostic_fork` … `nanoclaw_1074_scheduled_task_dump` |
-| [[index-project-9]] | `nanoclaw_1075_ledger_join_hardening` … `nanoclaw_1125_wiki_fold_lineage` |
-| [[index-project-10]] | `nanoclaw_1126_spinner_failure_glyph` … `nanoclaw_1180_unit_cost_denominator` |
-| [[index-project-11]] | `nanoclaw_1181_lazy_db_unit_cost` … `slang_scrub_batch_22_closed` |
-| [[index-project-12]] | `slang_scrub_fanout_22_issues` … `triager_clone_nine_concurrent_writers` |
-| [[index-project-13]] | `upstream_sync_incident` … `workspace_deletion_incident` |
+| [[index-project-1]] | `10027_vector4_import_abort_pending` … `11877_operator_overload_fastpath`
+| [[index-project-2]] | `11878_e30051_alias_handoff` … `12052_stranded_mergequeue_operator_escalation`
+| [[index-project-3]] | `12054_msvc_release_opt_ref_icf` … `12143_macos_release_signing_version_extraction_bug`
+| [[index-project-4]] | `12145_gbufferrttexgrads_d3d12_access_violation` … `12283_llvm_jit_coff_ordered_sections_windows`
+| [[index-project-5]] | `12284_cross_module_overload_silent_break_warning` … `12375_downstream_sibling_sweep_followup`
+| [[index-project-6]] | `12376_fossil_oob_relative_ptr` … `12463_struct_base_entrypoint_param_segv`
+| [[index-project-7]] | `12464_getstringhash_nonliteral_e41023` … `9866_generic_arg_greater_than_fence`
+| [[index-project-8]] | `9872_neural_hlsl_never_a_target` … `nanoclaw_1066_kb_fold_bounded`
+| [[index-project-9]] | `nanoclaw_1067_footer_normalizer` … `nanoclaw_1122_ccusage_pin_owned_file`
+| [[index-project-10]] | `nanoclaw_1123_reply_capacity_refund` … `nanoclaw_1176_ruff_gate_composed_scope`
+| [[index-project-11]] | `nanoclaw_1177_ruff_gate_sweep` … `slang_rhi_800_evidence_methods`
+| [[index-project-12]] | `slang_rhi_800_metal_dispatch_indirect` … `slangpy_samples_52_screenshot_reviewed`
+| [[index-project-13]] | `slangwin5_spirv_val_runner_defect` … `workspace_deletion_incident`
 
 ⚠️**These range labels drift on every repack and `ORPHANED=0` cannot see it.** Measured again 08-10: **all 26 rows** stale while the gate reported `ORPHANED=0 / reachable=1145` — the labels are prose no check reads. Rewrite them FROM the shards (`sed -n 3p index-<fam>-*.md` holds the true `Range:`); don't hand-patch → [[feedback_a_clean_orphan_count_does_not_validate_range_labels]].
 | [[index-technique]] | Reusable measurement/tooling procedures. |

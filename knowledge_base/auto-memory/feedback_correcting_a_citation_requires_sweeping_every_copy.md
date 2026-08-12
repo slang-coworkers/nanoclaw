@@ -49,4 +49,4 @@ previously right**.
 ("yours is the live number").** That is precisely when the check is owed hardest — see
 [[feedback_a_fabrication_inside_a_compliment_survives_unchecked]] and
 [[feedback_deference_drifts_to_whoever_corrected_you_last]]. Related:
-[[feedback_zero_hit_grep_has_never_once_been_a_fact_about_the_repo]] on grep aperture.
+[[feedback_zero_hit_grep_has_never_once_proved_fabrication_in_my_store]] on grep aperture.

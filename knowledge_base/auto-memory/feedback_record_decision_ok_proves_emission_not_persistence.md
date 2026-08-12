@@ -52,7 +52,7 @@ Two calls, identical args, same environment — **only the second was denied**:
 | seq=19 | `08-10T11:28:51.840Z` | `11:28:53.119Z` (+1.3s) |
 
 ⇒ **silence on 08-03 was not success.** Same family as
-[[feedback_exit_zero_empty_is_not_a_negative_result]] and the standing rule that a check's
+[[feedback_exit_zero_empty_is_not_a_measured_zero]] and the standing rule that a check's
 *failure* must be distinguishable from its *negative result*. Reporting rule the approver
 adopted and I endorse: **say "emitted", never "recorded"**, until a read-back confirms the row.
 
@@ -243,6 +243,38 @@ consistently wrong. **Use `rg --multiline` for any phrase filter over authored p
 about the var (sweeps, corrections, escalation notes), not denial events ⇒ the wider filter buys
 recall at the cost of the co-occurrence error this leaf already documents. **19 prefixed ids is
 the floor with its method named** (multiline phrase filter, prefixed-id regex).
+
+## 7th hit — `slang#12464` @ `c5ff51285a64` · **the dropped set is NOT all abstains**
+
+**08-11T06:50Z, `slang-pr-approver`, `WOULD_APPROVE`/`CLEAN`, branch-1 text verbatim.** Union
+re-derived at 06:5xZ with the multiline filter rather than quoted: **28 atoms / 21 prefixed ids**
+(new since the 6th-hit section: `slang#12464`, `slang-rhi#826`). Of the 28, **23 are approver-
+authored** (`…-vvj8oi`, `…-d49n0a`) and **5 are mine** — self-exclusion applied, per ANCHOR F.
+Approver-authored window `08-10T11:34Z → 08-11T06:16Z` = **18.7 h ⇒ ~1.2 atoms/hour**, a floor.
+
+⛔**I had been treating this as an abstain problem. It is not.** Attributed by reading each atom,
+not by counting mentions:
+
+| verdict | PRs whose append was denied |
+|---|---|
+| `WOULD_APPROVE` | **slang#12450** @ `20e0d6b4923a`, **slang#12464** @ `c5ff51285a64` |
+| `BLOCK` | **slangpy#925** @ `3627a9a032f3`, **slang#12455** @ `656583bb2adb`, **slang-rhi#826** @ `7453b287db06` |
+| `ABSTAIN_*` | the remainder |
+
+⇒ ⭐⭐⭐**Under enforcement, 5 of these would have changed an outcome** — 3 BLOCKs that would
+have held a merge, 2 approvals that would have released one. The 6th-hit section called #12455
+"the first `BLOCK`… every prior dropped decision was `ABSTAIN_POLICY`" — **that was wrong**:
+slangpy#925's BLOCK predates it by ~11 h (`…-d49n0a/1786367856109…:13`, 13:17Z). I wrote "every
+prior" from the atoms I had read, not from the set.
+
+⚠️**And the verdict-token grep cannot produce this table.** `grep -hoE "\b(WOULD_APPROVE|BLOCK|ABSTAIN_POLICY|ABSTAIN_INFRA)\b"`
+over the 28 atoms gives `ABSTAIN_POLICY 25 / BLOCK 8 / ABSTAIN_INFRA 6 / WOULD_APPROVE 3` — a
+**mention count**, not a decision count. `slang-rhi#826`'s atom alone mentions `ABSTAIN_INFRA` 3×
+while its denied decision was `BLOCK:RED_BUG`; `slang-rhi#821`'s mentions `BLOCK` only inside the
+sentence explaining *why it was not a BLOCK*. ⇒ **the token is in the prose for a dozen reasons;
+only reading the atom says which verdict was denied.** Same class as the co-occurrence direction
+already documented — a true number about a set I did not choose. (Checked the obvious
+contamination too: 0 of 28 atoms quote the closed enum inline, so that is not the source.)
 
 ✅**New, cheap, and better than the id count for the operator: the RATE, from atom mtimes.**
 `for f in $FILES; do date -u -r "$f" +%Y-%m-%dT%H:%MZ; done | sort` → 13 atoms 15:09Z–23:02Z,

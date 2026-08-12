@@ -77,7 +77,7 @@ the synthesis rule, unexplained" cell. Verbatim lines killed it: genuine synth l
 ⚠️**Every other instance in this family is a false NEGATIVE, so "grep wider" reads as the fix and is
 exactly backwards here.** The general form is neither wider nor narrower:
 ⭐⭐**name the distinction, build the pattern to exactly that boundary, then print a representative
-match and READ it.** See [[feedback_a_tool_that_collapses_output_reports_a_true_number_about_an_unseen_set]]
+match and READ it.** See [[technique_keeping_this_store_reachable]]
 if present; otherwise this leaf carries it.
 
 ## Direction-of-harm weighting

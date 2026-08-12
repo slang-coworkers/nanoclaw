@@ -13,7 +13,7 @@ provenance`, author **`szihs`** (human), base **`nv-dashboard`**, branch
 merge-base == base tip). `ci` + `label` both green (ci was `pending` at first read, `pass` 2m14s at
 publish). Reviewed 08-06, comment **`5200778885`** — posted via **`gh api .../issues/N/comments`**
 after `gh pr comment` failed `GraphQL: Resource not accessible by integration (addComment)`
-(see [[feedback_gh_pr_comment_graphql_blocked_use_rest]] if written; the REST fallback works).
+(see [[feedback_gh_pr_comment_graphql_fails_where_rest_succeeds]]; the REST fallback works).
 
 **ROUTING: handled INLINE by Main — ~23rd instance** ([[project_nanoclaw_pr874_webhook_route_approver]]).
 NanoClaw platform-infra fork; no `nanoclaw-pr-approver` exists and slang/slangpy approvers are
