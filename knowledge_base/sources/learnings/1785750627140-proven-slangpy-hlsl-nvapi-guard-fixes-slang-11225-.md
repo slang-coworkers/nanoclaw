@@ -65,4 +65,3 @@ looks empty — use `git diff HEAD`. Restore with `git checkout <commit> -- <pat
 Doctest name filters: `-tc=formats` / `-sc=vulkan` matched nothing here (203 skipped) — run the
 whole binary and grep the log instead. `run_gpu_test` is **vulkan-only on Linux**, and a real
 NVIDIA L40S was present, so the SPIRV path is genuinely exercised (not GPU-skipped).
-

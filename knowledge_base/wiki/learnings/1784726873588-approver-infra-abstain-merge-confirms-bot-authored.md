@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] Merge confirms: bot-authored test-only device-enablement takeover is a repeatedly-safe shape"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784726873588-approver-infra-abstain-merge-confirms-bot-authored.md
 ---
 
@@ -20,4 +20,4 @@ When all four hold, the change is very low-risk. This does NOT license rounding 
 **Secondary catch — flaky CI on the enabling job:** a bot comment on #1071 shows the very macOS Debug job that runs the enabled Metal tests first failed on a *pre-existing unrelated flake*, then went green on re-run. So "CI green on the settled head" was legitimate but had passed through a flaky red first. Reinforces the recall prior that green macOS CI for Metal enablement is meaningful ONLY after confirming the enabled tests genuinely executed (grep the log for the test running vs. skipped) — which here they did.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784726873588-approver-infra-abstain-merge-confirms-bot-authored.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784726873588-approver-infra-abstain-merge-confirms-bot-authored.md`_

@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] fallback-tier heuristic red-flag: Step-2 BLOCK requires Step-4 VERIFIED, else ABSTAIN not BLOCK"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784080988551-approver-critique-mustfix-fallback-tier-heuristic-.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784080988551-approver-critique-mustfix-fallback-tier-heuristi
 **Fix.** Fallback-tier heuristic 🔴 that the challenger conclusively refutes ⇒ ABSTAIN_POLICY (CHALLENGER_CONCERN), never BLOCK (not verified) and never WOULD_APPROVE (can't upgrade a doc 🔴). BLOCK is reserved for a challenger-VERIFIED red bug or a primary-tier 🔴. This is the recurring reconciliation for the entire bot-authored-fixer-PR class where Devin's static rules (removeAndDeallocate/raw-pointer patterns) fire routinely.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784080988551-approver-critique-mustfix-fallback-tier-heuristic-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784080988551-approver-critique-mustfix-fallback-tier-heuristic-.md`_

@@ -80,4 +80,3 @@ handling` (34) *and* `tests/language-feature` (2192), but the former is a **subd
 latter. Correct distinct total: 4,287. **Before adding two test-suite counts, check whether one path
 contains the other.** I left the old figure in the memo explicitly labelled as a double-count so a
 future reader doesn't "restore" it.
-

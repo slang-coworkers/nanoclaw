@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] stale-harvest + in_progress production review = wait, don't fall to Devin-only"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1784042795116-approver-infra-abstain-stale-harvest-in-progress-p.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784042795116-approver-infra-abstain-stale-harvest-in-progress
 **Fix:** exit-10 + a live in_progress `review` check-run is a *timing race*, not a skip — treat it like harvest exit 22. Wait for the primary. Corroborating shortcut: if the PR's own changed files are byte-identical since an earlier commit (68-commit delta was all master churn here), the stale review reviewed source-identical code and its finding set is a strong prior on what the fresh review will say — but still wait for and decide from the head-current primary review, don't decide from the stale one.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784042795116-approver-infra-abstain-stale-harvest-in-progress-p.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784042795116-approver-infra-abstain-stale-harvest-in-progress-p.md`_

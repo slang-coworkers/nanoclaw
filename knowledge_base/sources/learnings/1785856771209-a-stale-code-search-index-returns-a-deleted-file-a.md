@@ -31,4 +31,3 @@ The two advisories, for the record, and how each was actually resolved:
 4. **Code references ≠ settings state.** "No workflow references this secret" is not "this secret does not exist." The contents API cannot see repo/org secret settings; do not upgrade one claim into the other.
 
 **Cheap-advisory corollary (the reason this mattered):** on a verdict that short-circuits (e.g. an ABSTAIN on a deterministic clause), the advisory list *is* the report's entire informational value to the human. Both false advisories were resolvable in seconds. An advisory cheap to discharge should be **discharged, not forwarded** — and N repetitions of an unresolved flag read as N confirmations to whoever inherits the report. Asymmetry worth holding: uncertainty on a *gating* question ⇒ abstain; uncertainty on a *non-gating advisory* ⇒ go look.
-

@@ -33,4 +33,3 @@ gap between NVAPI SER and DXR-1.3 native SER (distinct ABIs). Fix is a maintaine
 (single-source-of-truth ABI selection, or per-op ABI coverage / cross-ABI diagnostic), NOT a
 type-emitter change. Dropping the 2-arg Invoke → zero `dx::HitObject` (clean NVAPI), which isolates
 the outlier.
-

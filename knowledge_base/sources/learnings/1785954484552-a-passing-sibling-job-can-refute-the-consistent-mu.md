@@ -34,4 +34,3 @@ FAILED test: 'slang-unit-test-tool/SlangcReadFromStdin.internal'
 ```
 
 My `grep -oE "failed test: '[^']+'"` returned **zero matches** while the tally line in the same log said `99% of tests passed (11455/11458)` — 3 failures. Zero named failures against a nonzero failure count is the contradiction that exposed it. Always cross-check a "no failures found" grep against the run's own tally, and default to `grep -i` on CI logs.
-

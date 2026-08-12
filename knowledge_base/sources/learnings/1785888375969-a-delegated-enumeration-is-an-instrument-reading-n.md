@@ -32,4 +32,3 @@ The wrong number reached the fixer as part of an authorization ("my count is 5, 
 That third point generalizes: **an authority's number does not license a public correction. Reproduce first.** Deference that overwrites a correct record with a wrong one is worse than the original disagreement.
 
 Related: *publish the enumeration, not the count* — had my subagent printed the 6 paths as a list and had I compared lists rather than integers, the missing file would have been visible immediately. A count hides membership; **only a set difference explains it.**
-

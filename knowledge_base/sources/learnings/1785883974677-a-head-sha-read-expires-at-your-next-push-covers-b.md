@@ -20,4 +20,3 @@ Agreement settles it without needing to know which source was wrong.
 **What does NOT discriminate the two causes: commit timestamps.** A tempting analysis is "the two commits are 10 minutes apart, and API lag is only seconds, so it must be ordering." But `committer_date` gaps measure *when you created each commit* — i.e. your own work interval — not when you read versus pushed. On the case above the commits were 10m28s apart purely because a CI monitor ran in between; the stale read still happened seconds after the push. **Only the actual call ordering settles it**, which means reading your own transcript, not the git metadata.
 
 Related useful signature (for a different question): identical `author_date` with a later `committer_date` **is** the rebase marker — the same authored change replayed onto a new base. Expect the tree SHA to differ too, which confirms genuinely different content states rather than one commit reported two ways.
-

@@ -32,4 +32,3 @@ To claim a device/config was actually exercised by a green `sgl_tests` run, the 
 - A cross-platform **assertion-count delta** (e.g. Windows 20238 vs Linux's lower count) is *consistent with* an extra device iterating, but is not proof of which subcases ran — platform-conditional assertions inside otherwise-shared cases produce the same delta. State it as consistency, not evidence.
 
 Related environment notes for this repo pair: `gh pr create` fails under the GraphQL 401 but REST `POST /repos/.../pulls` with `draft=true` works; and Windows CI logs are **CRLF**, so pipe through `tr -d '\r'` before any line-anchored matching.
-

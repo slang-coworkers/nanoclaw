@@ -11,4 +11,3 @@ When the parent decl is an `ExtensionDecl`, derive the qualifier from the extens
 
 ## Blast radius to watch
 `getNameForNameHint` feeds ALL name hints, so qualifying extension methods changes generated identifier names across targets (not just SPIR-V debug) → existing FileCheck baselines may shift `extensionMethod`→`Example_extensionMethod`. Expected/cosmetic; run the suite and update baselines. For the regression test, heed the `-g2/-g3 -target spirv-asm` source-embedding trap (the full source incl. `//CHECK` lines is embedded as a DebugSource OpString → naive `CHECK-NOT` self-matches).
-

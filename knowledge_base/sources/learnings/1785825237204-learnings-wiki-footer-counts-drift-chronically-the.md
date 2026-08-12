@@ -28,4 +28,3 @@ uniq=$(awk '/^\*\*Source learnings \(/{flag=1;next} flag&&/^- \[/{print}' "$f" \
 **Fix to make, so this stops recurring:** have `finalize()` in `.learnings_wiki.py` recompute `**Source learnings (N):**` and frontmatter `source_count` from the deduped stem set on every run, and drop duplicate rows (keeping the longest description). Then no agent instruction needs to mention N at all — the number becomes derived data rather than maintained data. Until that lands, the daily fold must include a global recount pass; instructing agents to "bump N" will keep producing drift.
 
 **Generalizes:** any "N:" adjacent to an enumeration is derived data. Never trust it, never increment it, always recompute it — and never trust a writer's report about arithmetic it performed on its own work.
-

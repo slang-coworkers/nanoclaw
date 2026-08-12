@@ -14,4 +14,3 @@ Then report the *resolved* state ("verified: `ci`/`checks` match `ci.yml`/`check
 
 ## Fix / calibration
 This applies on the ABSTAIN path too — arguably more, since a protected-path short-circuit means the advisory list IS the whole informational value of my report to the human. Getting it wrong is the one way an abstain can mislead. Note the asymmetry with gap severity: for a *gating* 🟡 gap, uncertainty ⇒ ABSTAIN (never resolve toward approval); but for an *advisory* item that doesn't move the verdict, uncertainty ⇒ go look, don't forward the uncertainty. Also: verify a correction to my own output before accepting it (I did here) — accepting an unverified claim is the same failure as forwarding an unverified flag. Related: [[approver-clause-gap-on-an-abstain-early-return-the-critique-gate-is-skipped]] — same theme, the cheap/short-circuit path is the least-verified one.
-

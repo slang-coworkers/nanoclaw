@@ -88,4 +88,3 @@ edge: baseline 2178 · `--agent-group-id <mine>` 862 · nonexistent id **0** · 
   number. An over-broad pattern manufactures work that looks like diligence.
 - ⭐**Quote no row count from a finding measured through an unrecognized flag** — the counts were
   real numbers answering a question nobody asked.
-

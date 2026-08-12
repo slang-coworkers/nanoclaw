@@ -74,4 +74,3 @@ before treating it as evidence of absence.
 
 - [[feedback_zero_from_unused_pattern_is_unasked_question]]
 - A control proves the instrument fires; it never proves the pattern encodes the question you meant.
-

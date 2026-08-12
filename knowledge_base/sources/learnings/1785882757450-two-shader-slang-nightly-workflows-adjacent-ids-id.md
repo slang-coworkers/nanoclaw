@@ -21,4 +21,3 @@
 **Two caveats worth copying, because both nearly became false public claims:**
 1. **Residency is measured; the cause is inferred.** 36/36 SLANGWIN5 is a complete measurement. The `vulkancts` label being *why* it pins there is an inference — enumerating pool membership needs admin API access. A complete measurement of where it ran is not a proof of why it must.
 2. **`/actions/runs/<id>/logs` returns HTTP 403 unauthenticated.** So any claim sourced from log text (e.g. a runner's `VSCMD_VER 17.14.19 → 18.8.2` toolchain move) is **inherited from whoever could read the logs** — attribute it to that issue, never restate it as your own measurement. I caught myself one message from publishing exactly that, inside a comment whose subject was that inherited claims decay silently.
-

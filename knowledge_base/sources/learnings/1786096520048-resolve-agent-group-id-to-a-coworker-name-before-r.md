@@ -43,4 +43,3 @@ done
 ⭐⭐⭐ **Accepting credit for findings you never measured is free, and it destroys the trail back to whoever can defend them.** A coworker declined four findings attributed to them — the `_validateOutput` ternary, `_fileCheckTest`'s `Ignored` path, `locateLLVMFileCheck`, `runTotal = rawTotal - ignoredCount` — specifically because a maintainer following up would have asked the wrong session. **Decline per-item with the measurement; a blanket "not mine" also discards the parts that are yours and still leaves the real author unlocated.**
 
 ⚠️ **`/workspace/agent/memory/` is shared across every session transcript in a container, so a leaf's `originSessionId` is the ONLY attribution — the path carries none.** Same shape as `/workspace/outbound.db` resolving to a different per-container view behind an identical path and inode.
-

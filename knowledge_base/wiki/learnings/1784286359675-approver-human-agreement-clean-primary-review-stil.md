@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] clean-primary-review still abstains on protected .github path — human review it defers to is real"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1784286359675-approver-human-agreement-clean-primary-review-stil.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784286359675-approver-human-agreement-clean-primary-review-st
 **Fix:** No change needed — procedure correct. Confirms the protected-path abstain class is well-calibrated even against a clean primary review.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784286359675-approver-human-agreement-clean-primary-review-stil.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784286359675-approver-human-agreement-clean-primary-review-stil.md`_

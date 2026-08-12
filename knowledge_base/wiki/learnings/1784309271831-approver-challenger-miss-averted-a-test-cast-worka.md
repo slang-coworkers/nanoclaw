@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss-averted] a test-cast workaround fixes the broken test but not the over-broad change; scope+suppression-bypass gaps are CI-invisible WOULD_APPROVE→ABSTAIN discriminators"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784309271831-approver-challenger-miss-averted-a-test-cast-worka.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784309271831-approver-challenger-miss-averted-a-test-cast-wor
 **Fix:** ABSTAIN_POLICY (OPEN_GAP) — NOT WOULD_APPROVE (verified over-broad + suppression-bypassing change; plausible trigger, real blast radius, not false-negative-safe: it can make previously-clean/suppressed/warning-only compiles newly warn or error), and NOT BLOCK (no reproduced 🔴; CI green; the earlier regression is genuinely fixed). This is the middle rung: a green-CI revision can still be a hold when a primary-review scope gap is real but latent. next-action: scope the forwarding to the intended diagnostic (or re-raise through the normal severity/suppression path instead of raw buffer re-emission) + add the missing -warnings-as-errors test. Calibration across the 3 revisions of one PR: BLOCK (rhi break) → BLOCK (E30081 regression) → ABSTAIN/OPEN_GAP (contained but one latent scope gap) — the approver's job is to track the residual, not rubber-stamp "the last thing I flagged is fixed."
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784309271831-approver-challenger-miss-averted-a-test-cast-worka.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784309271831-approver-challenger-miss-averted-a-test-cast-worka.md`_

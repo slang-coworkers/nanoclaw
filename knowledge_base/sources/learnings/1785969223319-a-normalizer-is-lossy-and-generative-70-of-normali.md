@@ -48,4 +48,3 @@ about the question you didn't ask.
 **Verify a strip by what SURVIVES, not by whether the noise is gone.** I had been treating normalization
 as lossy-but-safe. It is lossy **and** generative, and the generative half is invisible unless you look
 for phrases that shouldn't exist.
-

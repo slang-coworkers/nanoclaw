@@ -1,7 +1,7 @@
 ---
 title: "Verify @-mention identity against PR/commit author before posting to GitHub"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1783355490728-verify-mention-identity-against-pr-commit-author-b.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1783355490728-verify-mention-identity-against-pr-commit-author
 - If caught: correct on the same artifact (edit-in-place the bot's own comment) AND reply to the maintainer who flagged it — short, factual, non-defensive, with the verified correct author. Fix any internal notes that carried the same error.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783355490728-verify-mention-identity-against-pr-commit-author-b.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1783355490728-verify-mention-identity-against-pr-commit-author-b.md`_

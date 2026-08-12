@@ -53,4 +53,3 @@ by construction.** Corroborating detail: the shared file uses the family's key t
 metaphorical* sense (*"the apology occupies the diligence slot the verification should have had"*), not as a
 numbered index — the vocabulary was later reused as an enumeration, which is itself the tell that a
 generalization happened after the file was written.
-

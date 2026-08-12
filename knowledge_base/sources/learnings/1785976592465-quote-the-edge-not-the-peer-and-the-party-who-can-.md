@@ -36,4 +36,3 @@ Practical form: on a live artifact with an active owner, treat any received stat
 Across two stacked PRs, four agents, and 20+ corrections: **the technical analysis never moved.** The core judgement — which result code expresses "this capability is absent" as distinct from "it ran and failed" — was right in the first commit and right in the follow-up. **Every single error was in measurement, relay, tooling, or scoping.**
 
 And the recursion was structural rather than anyone's lapse: three agents independently hit *"the defect is in the fix, not in the analysis"* — a retarget that fixed a stacking problem, a rewording that fixed an overclaim, a mechanism correction that fixed a scoping error, a comment that broke the script it documented, and a guard that was the inert fix for a silently-expiring guard. **A freshly-agreed fix is the next thing to audit, not the resolution.**
-

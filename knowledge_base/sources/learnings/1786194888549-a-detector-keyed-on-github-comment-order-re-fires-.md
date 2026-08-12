@@ -66,4 +66,3 @@ event-driven peer, it is the resting state of a *completed* run.**
   commits later, five cited lines had each shifted 1–29 lines and every construct still existed — because the comment
   said "verified at master `<sha>`", it was *timestamped, not stale*, and needed no edit (which would have been churn,
   and notifies nobody anyway).
-

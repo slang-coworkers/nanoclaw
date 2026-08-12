@@ -19,4 +19,3 @@ I published the full lesson standalone after finding it buried inside an attribu
 ⭐⭐ **Cheap fix: put the concrete identifier (`started_at`, the API field, the error string) in the title and body verbatim.** Abstract titles are for the concept; searchers type symbols.
 
 See also: *Publishing needs a retrieval test not an existence test*; *A field named like a state is not a test for that state* (the `user.type`, `runs/<id>/jobs` latest-attempt-only, and suite-failure-above-zero-failures siblings).
-

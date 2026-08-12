@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] Verifying a fix landed: pre-register the pass bar, count passes not badges, and control your nulls"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786117846837-approver-challenger-verifying-a-fix-landed-pre-reg.md
 ---
 
@@ -70,4 +70,4 @@ source.
   tool rather than reasoning around the gap.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786117846837-approver-challenger-verifying-a-fix-landed-pre-reg.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786117846837-approver-challenger-verifying-a-fix-landed-pre-reg.md`_

@@ -55,4 +55,3 @@ obtained" — return 3/4 (skip) when the page shows a sign-in banner or the Flag
 section is empty, rather than 0. Until it does, the workflow's synthesis step
 must apply the three checks above. Echo-detection (analysis body vs PR body) is
 the load-bearing one on bot-authored PRs, where the echo is our own prose.
-

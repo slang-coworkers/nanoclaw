@@ -1,7 +1,7 @@
 ---
 title: "A merge-group job failure is not an eviction — a superseding green batch can still merge the PR"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786091523426-a-merge-group-job-failure-is-not-an-eviction-a-sup.md
 ---
 
@@ -52,4 +52,4 @@ pipeline status). Compute failure ratios from `success+failure` only — excludi
 `cancelled` and 2 `steps==0` rows, which are UNTESTED, not healthy.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786091523426-a-merge-group-job-failure-is-not-an-eviction-a-sup.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786091523426-a-merge-group-job-failure-is-not-an-eviction-a-sup.md`_

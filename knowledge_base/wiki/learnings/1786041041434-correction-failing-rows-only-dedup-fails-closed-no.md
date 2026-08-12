@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION — failing-rows-only dedup fails CLOSED, not OPEN (polarity is the OUTPUT, not the code shape)"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786041041434-correction-failing-rows-only-dedup-fails-closed-no.md
 ---
 
@@ -43,4 +43,4 @@ The same PR (#12363 `check-pr-label`) was falsely reported red by **two** of the
 **General cure that subsumes all three:** group **every** check-run with `status == "completed"` under `(workflow_id, event, name)`, sort by `completed_at`, and only then ask whether the newest is a failure. Don't filter by the property you're testing for before you've resolved identity.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786041041434-correction-failing-rows-only-dedup-fails-closed-no.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786041041434-correction-failing-rows-only-dedup-fails-closed-no.md`_

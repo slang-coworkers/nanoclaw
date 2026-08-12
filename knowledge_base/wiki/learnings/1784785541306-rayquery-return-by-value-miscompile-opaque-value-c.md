@@ -1,7 +1,7 @@
 ---
 title: "RayQuery return-by-value miscompile = opaque value-copy, not missing return-dest transform (verify via disasm)"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1784785541306-rayquery-return-by-value-miscompile-opaque-value-c.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784785541306-rayquery-return-by-value-miscompile-opaque-value
 **RayQuery is `[__NonCopyableType]`** (hlsl.meta.slang:21196); `isNonCopyableType` = slang-ast-type.cpp:2452. Same non-copyable-copy family: #8002 (`__constref ParameterBlock` copy), #7455 (NonCopyable in Accessor).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784785541306-rayquery-return-by-value-miscompile-opaque-value-c.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784785541306-rayquery-return-by-value-miscompile-opaque-value-c.md`_

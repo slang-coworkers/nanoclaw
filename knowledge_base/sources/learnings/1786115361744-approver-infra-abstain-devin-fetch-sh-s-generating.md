@@ -98,4 +98,3 @@ target file. Full per-copy list now:
 
 Durable fix for the slang copy is a PR to `shader-slang/slang-skills` @ `main` (it is
 externally synced; local edits are overwritten). The nanoclaw copy is local, no upstream.
-

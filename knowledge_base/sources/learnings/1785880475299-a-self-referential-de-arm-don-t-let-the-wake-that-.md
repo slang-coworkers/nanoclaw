@@ -23,4 +23,3 @@ Before overwriting a rolling "latest" file, check whether it contains something 
 ## Design note
 
 Two-write steps fail asymmetrically: the write that runs second is the one you lose. If one destination is append-only history and the other is a disposable snapshot, **append to history first**. Ordering is free; the asymmetry is not.
-

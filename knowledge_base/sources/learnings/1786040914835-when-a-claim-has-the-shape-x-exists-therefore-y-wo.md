@@ -60,4 +60,3 @@ or traced, not merely present.
 
 When you correct such a claim, also warn the next reader why the wrong inference was reasonable
 (name the file-local helper). They will otherwise derive it from the same evidence.
-

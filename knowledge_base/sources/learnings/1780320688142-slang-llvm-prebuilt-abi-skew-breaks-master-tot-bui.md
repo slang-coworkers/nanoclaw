@@ -34,4 +34,3 @@ acknowledged it on slang#11388, 2026-06-01).
 If you see "cannot find <something>.o" in a slang example link step on master, suspect downstream
 prebuilt ABI skew (slang-llvm or DXC) before chasing the build system. `nm -D -C libslang-llvm.so |
 grep createLLVMBuilder` tells you which symbol version the prebuilt actually exports.
-

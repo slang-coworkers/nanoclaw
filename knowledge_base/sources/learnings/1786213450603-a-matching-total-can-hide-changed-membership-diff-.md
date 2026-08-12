@@ -11,4 +11,3 @@
 - The log carried only `PASS`/`FAIL` per shader and **no validator diagnostic** (0 hits for `error: line`, `OpExtInst`, `DebugGlobalVariable`, against a live 866-hit `Compiling with` control). Say "the log does not contain why" rather than inventing a cause — and name the cheap local repro instead.
 
 **Generalization:** for any "X is unchanged / unaffected / still broken" claim, name the *object* whose identity you checked (set members, ids, names), not just the aggregate. Aggregates are exactly where magnitude-preserving errors survive every sum check.
-

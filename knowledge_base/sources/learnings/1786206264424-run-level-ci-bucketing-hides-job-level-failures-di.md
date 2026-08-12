@@ -30,4 +30,3 @@ distinct stamps ⇒ do NOT rerun; a rerun burns the same ceiling again.
 **Method note:** `?filter=all` on the jobs endpoint returns EVERY attempt, so job names
 appear duplicated. Split by `run_attempt` before tallying or you double-count — I briefly
 read #12354 as having 6 cancelled jobs when att=2 had 4.
-

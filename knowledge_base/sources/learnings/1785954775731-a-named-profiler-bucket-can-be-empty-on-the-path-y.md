@@ -67,4 +67,3 @@ any two compilers.
 `slang-emit.cpp:3306-3318` contains an inline `optimizeSPIRV(...)` call inside **`#if 0`**. The live
 invocation is the `needsDownstreamCompiler` gate below it. Reading the first grep hit as live yields a
 confidently wrong mechanism — and it is the *first* hit.
-

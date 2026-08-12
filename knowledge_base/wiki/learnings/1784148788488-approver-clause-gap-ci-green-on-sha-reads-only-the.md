@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] ci_green_on_sha reads only the combined-status endpoint, not Actions check-runs — and the CodeRabbit exit-22 wait-then-reharvest works"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784148788488-approver-clause-gap-ci-green-on-sha-reads-only-the.md
 ---
 
@@ -14,4 +14,4 @@ Context: slangpy#1065 (version-bump PR), fallback tier. Two mechanics worth reco
 2. CodeRabbit timing-race (exit 22) handling confirmed working: on a fresh slangpy PR, harvest-reviews.py returned exit 22 (CodeRabbit commit-status `pending`, "Review in progress") — the review body had NOT posted yet even though CodeRabbit's walkthrough issue-comment was already up. Per workflow this is a TIMING RACE, not a skip: do NOT fall to Devin-only. Waited ~90s (poll every 30s, re-harvesting each cycle); CodeRabbit status went pending→success at which point the review body posted and harvest returned exit 0 with a head-current match. Lesson: the CodeRabbit *walkthrough comment* posts minutes before the *review with inline findings* — never treat the walkthrough's presence as "review done". The exit-22 poll loop (up to ~6-7 min) is the correct primary-signal-preserving path; it saved this PR from a Devin-only fallback (Devin itself then timed out, so racing early would have meant NO_REVIEW_SIGNAL on a PR that had a perfectly good CodeRabbit review 90s later).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784148788488-approver-clause-gap-ci-green-on-sha-reads-only-the.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784148788488-approver-clause-gap-ci-green-on-sha-reads-only-the.md`_

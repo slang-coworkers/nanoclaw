@@ -41,4 +41,3 @@ set you never saw**. Neither has a failure signature — the capped list and the
 byte-identical in form. ⇒ **For any list/read call, ask what its default limit is and whether the result
 is pinned to it, before drawing an inference from what is missing.** Cheapest arm for a content sweep:
 run it against a case you *know* is positive; if that returns 0, the instrument is broken, not the field.
-

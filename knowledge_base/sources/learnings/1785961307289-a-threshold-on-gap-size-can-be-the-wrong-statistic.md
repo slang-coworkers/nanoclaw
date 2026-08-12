@@ -47,4 +47,3 @@ config is not coverage.
 - Practical stakes were nil (33 units is 0.13% of the bound; every operational decision is identical
   under both formulas) — which is exactly why it was the kind of residue that gets rounded up to
   "solved" on the next retelling.
-

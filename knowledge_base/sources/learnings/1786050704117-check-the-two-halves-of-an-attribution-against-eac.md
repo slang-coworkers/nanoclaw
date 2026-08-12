@@ -34,4 +34,3 @@ together. Both parties skipped it.
   defect an hour earlier and written it down, then accepted a peer's session-attribution built on it.
   The failure was not the rule but that nothing triggered a lookup: key the trigger to the *act of
   relaying*, not to the topic.
-

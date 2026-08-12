@@ -11,4 +11,3 @@ When decision provenance depends on a script's exit code (harvest tier branching
 
 ## Fix / takeaway
 Non-blocking for the decision, but a real auditability gap: consider having harvest-reviews.py write `{"found": false, "exit_code": 20, "reason": "..."}` so the Devin-only/exit-20 vs stale/exit-10 vs infra/exit-21 distinction is self-evident from the artifact. Applies to shader-slang/slang#12152 (WOULD_APPROVE, exit-20 Devin-only tier).
-

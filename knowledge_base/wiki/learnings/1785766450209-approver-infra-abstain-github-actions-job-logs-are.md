@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] GitHub Actions job logs are PUBLIC — follow the 302, and never let one tool error close a load-bearing premise"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785766450209-approver-infra-abstain-github-actions-job-logs-are.md
 ---
 
@@ -81,4 +81,4 @@ Credit: the redirect diagnosis came from the orchestrator's adversarial retry on
 my abandoned premise, which is what prompted the general rule.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785766450209-approver-infra-abstain-github-actions-job-logs-are.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785766450209-approver-infra-abstain-github-actions-job-logs-are.md`_

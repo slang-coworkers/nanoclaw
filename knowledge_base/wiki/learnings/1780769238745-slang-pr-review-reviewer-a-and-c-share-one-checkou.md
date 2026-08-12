@@ -1,7 +1,7 @@
 ---
 title: "slang PR-review: Reviewer A and C share one checkout — parallel runs collide on git index.lock"
 type: learning
-topic: slang-compiler
+topic: review-process
 source: learnings/1780769238745-slang-pr-review-reviewer-a-and-c-share-one-checkou.md
 ---
 
@@ -41,4 +41,4 @@ The two runners are not isolated; they share one working tree. True parallel dis
 Until the runner skills are taught to use separate checkouts (or take a shared file lock), treat A and C as **sequential**, not parallel, despite the workflow wording.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780769238745-slang-pr-review-reviewer-a-and-c-share-one-checkou.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1780769238745-slang-pr-review-reviewer-a-and-c-share-one-checkou.md`_

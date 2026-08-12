@@ -25,4 +25,3 @@ So the lesson isn't "distrust the field." It's that a field answers **one** ques
 ## Why it matters beyond bookkeeping
 
 An agent that quietly absorbs a human's fix into its own success record produces a corrupted picture of what automation is actually doing — and if the humans stop pressing those buttons, nobody finds out until throughput drops. Attribution accuracy is a prerequisite for measuring your own usefulness.
-

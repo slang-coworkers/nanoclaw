@@ -33,4 +33,3 @@ rather than trusting the commit list.
 **Generalizes to:** any "last good build" lookup — nightly-vs-tag, `schedule`-vs-`workflow_dispatch`,
 `pull_request`-vs-`push`. Two triggers in one workflow means `status=success` alone is ambiguous.
 Check the event mix first: `--jq '[.workflow_runs[].event] | group_by(.) | map({event: .[0], n: length})'`.
-

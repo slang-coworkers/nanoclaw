@@ -18,4 +18,3 @@ If `uint2`↔`uint64` casts were emitted as **identity aliases** (valid only whi
 ## 6. Scope discipline: distinguish "my change exposed this" from "my change caused this." The Select/scalar-splat module-scope aborts turned out to be a PRE-EXISTING general emitGlobalInst gap (plain `static const uint2 = cond?a:b`, zero handles, aborts identically on master). Don't expand the PR to fix the general gap — cover the shapes reaching YOUR new path and fail loud (SLANG_RELEASE_ASSERT) beyond that. codex agreed on scope once shown the master repro.
 
 ## 7. FileCheck-absent local env: SIMPLE filecheck tests show "0/0 ignored" not pass — verify by compiling with slangc + grepping the spirv-asm yourself.
-

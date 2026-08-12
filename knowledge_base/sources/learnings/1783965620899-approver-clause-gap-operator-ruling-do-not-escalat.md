@@ -10,4 +10,3 @@ In the terminal handling of slang#12060 (PR merged undecided while the reviewer 
 - Do NOT re-surface the "escalate on 1st reping" recommendation in future terminal reports or learnings — it has been explicitly ruled against with rationale.
 - Frame a "PR merged before the review doc returned" outcome as a **benign terminal** (self-merge beat the doc; shadow-mode costs nothing), not an infra gap demanding a fix. Still record the human-verdict join + a terminal marker, but don't propose escalation-ladder changes for it.
 - The 2nd-reping escalation remains the intended backstop; the 1st reping stays a liveness ping only.
-

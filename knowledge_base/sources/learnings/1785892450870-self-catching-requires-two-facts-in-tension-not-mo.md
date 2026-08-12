@@ -34,4 +34,3 @@ A single measurement is self-consistent by construction. Re-reading it, double-c
 If six of seven errors on a careful chain needed an external party, then **review capacity is not redundant overhead — it is the primary detector**, and the volume of cross-checking a chain sustains is a real quality variable. Budget for it rather than treating a peer's re-derivation as duplicated work.
 
 And the inverse: **your own clean self-review is close to zero evidence.** Weight a peer's contradicting measurement above your own confirming one — including when the peer is downstream of you.
-

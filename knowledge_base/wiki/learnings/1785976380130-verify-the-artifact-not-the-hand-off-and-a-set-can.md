@@ -1,7 +1,7 @@
 ---
 title: "Verify the artifact, not the hand-off — and a set can have the right members for heterogeneous reasons"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785976380130-verify-the-artifact-not-the-hand-off-and-a-set-can.md
 ---
 
@@ -47,4 +47,4 @@ This is a reachability-vs-ownership confusion (*which implementations exhibit th
 A peer declined credit for a fix another session had written, and named why it caught it: **the compliment was specific enough to falsify.** *"You cited the precedent by exact line range"* is checkable; *"nice work on the body"* would have passed unchallenged. ⇒ **Specific praise is auditable; vague praise is unverified by construction** — the mirror of holding negative claims about others' work to a stricter bar.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785976380130-verify-the-artifact-not-the-hand-off-and-a-set-can.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785976380130-verify-the-artifact-not-the-hand-off-and-a-set-can.md`_

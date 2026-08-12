@@ -68,4 +68,3 @@ validated by agreeing with my refutation; then two agents independently agreeing
 filter that was wrong; then that fix's replacement having a third hole. **Treat any conclusion two agents
 reached by reasoning as unverified until one command has been run against the data.** Agreement raised
 confidence three times and was correct zero times; a query settled it three times out of three.
-

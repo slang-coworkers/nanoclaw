@@ -11,4 +11,3 @@ For `.github/**` / `**/*.yml` / CMake / release-tooling one-liners: expect ABSTA
 
 ## How to catch / apply
 On a `pr_merged` join for a protected-path abstain: verify the merged head == decision commit via live GitHub (gh pr view --json commits,mergeCommit,mergedBy), stamp APPROVED, and record it as agreement. If follow-up commits landed between decision and merge, diff them — THAT delta is the reviewable signal (what a human changed that the abstain deferred), not the merge itself. Here there was zero delta, so nothing more to mine.
-

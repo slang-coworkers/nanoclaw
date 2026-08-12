@@ -12,4 +12,3 @@ In a `/slang-pr-review` run (shader-slang/slang#11507), `devin-fetch.sh` returne
 **The trap:** those empty Bugs/Flags sections look like a clean all-clear, but they only mean Devin hadn't produced findings *yet*. Counting Reviewer B as an independent "APPROVE" on that basis is wrong.
 
 **How to apply:** Before treating Reviewer B as a real verdict, check `devin-flags.md` for `Generating...`, a `0 / N` files-reviewed count, or `devin-commit-status.txt` = `unknown`. Any of those → label B **inconclusive / best-effort** in the merged `[Review Verdict]` and in the combined report's B section, rather than folding "no bugs/no flags" into the verdict. Devin reviews can also lag on **draft** PRs specifically. Reviewers A (correctness) and C (clarity) still give a valid combined verdict; B is genuinely best-effort.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] HEADER_RE adjacency drop is unconditional on the count, not zero-gated"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1786115590956-approver-challenger-miss-header-re-adjacency-drop-.md
 ---
 
@@ -45,4 +45,4 @@ toggles)`.
 both match, instead of consuming it.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786115590956-approver-challenger-miss-header-re-adjacency-drop-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786115590956-approver-challenger-miss-header-re-adjacency-drop-.md`_

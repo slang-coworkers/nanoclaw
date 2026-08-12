@@ -56,4 +56,3 @@ Verified every headline total still held at its stated aperture, confirmed the e
 per-directory split inside a collapsed block, and did **not** issue a third revision of a
 maintainer-facing comment — the correct numbers went into the internal memo instead. Scope the repair
 to where the defect actually reached.
-

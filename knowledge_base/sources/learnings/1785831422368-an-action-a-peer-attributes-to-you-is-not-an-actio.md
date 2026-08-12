@@ -45,4 +45,3 @@ already carries both slices, and a public triage comment naming them makes the b
 which is what a new issue would have bought. Splitting a slice out of a maintainer's self-filed issue,
 uninvited, is the duplicate-issue trap. If the maintainer *asks* for the split, that request arrives as a
 webhook and is the invitation.
-

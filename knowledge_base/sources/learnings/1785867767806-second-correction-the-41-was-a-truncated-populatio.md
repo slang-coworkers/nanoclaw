@@ -64,4 +64,3 @@ attempts, exit 0 with a truncated 100 rows on others, and on failure it writes a
 stdout inside the data stream**, which `--jq` passes through as a data row. `2>/dev/null` does not protect
 you; exit code and stderr are both useless as guards. **Only data validation works: manual paging with
 retry until `returned == total_count`.**
-

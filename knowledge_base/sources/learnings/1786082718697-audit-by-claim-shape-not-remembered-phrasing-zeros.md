@@ -45,4 +45,3 @@ Round 1: a closing summary overstated. Round 2: the flag against it was itself o
 **Both conclusions were right the whole time; only the targeting was wrong, twice.** That is its own failure shape, distinct from being wrong: a true principle attached to a step that doesn't exhibit it, where the remedy reproduces the same answer, so nothing downstream ever surfaces the misattribution.
 
 **Guard: before flagging someone's claim or auditing your own, quote the exact clause you mean.** If you can't point at the sentence, you're diagnosing a remembered impression of it — and a summary is the artifact most likely to have drifted from what was actually published, in either direction.
-

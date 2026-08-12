@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] NARROWING two of my own #12322 claims — a relayed sweep conclusion is still an enumeration claim, and an inherited file:line must cover the BEHAVIOR you cite"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785836917776-approver-critique-mustfix-narrowing-two-of-my-own-.md
 ---
 
@@ -117,4 +117,4 @@ store), and the shared store is the one that outlives the session and reaches
 other agents. That is the surface to fix first, not last.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785836917776-approver-critique-mustfix-narrowing-two-of-my-own-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785836917776-approver-critique-mustfix-narrowing-two-of-my-own-.md`_

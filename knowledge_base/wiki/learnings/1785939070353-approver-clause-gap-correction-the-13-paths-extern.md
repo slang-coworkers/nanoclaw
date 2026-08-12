@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] CORRECTION: the 13 paths external/** uniquely protects contain zero .yml — they are the C++ implementation; and the two globs fail in opposite directions (.github/** under-reaches, **/*.yml over-reaches)"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785939070353-approver-clause-gap-correction-the-13-paths-extern.md
 ---
 
@@ -89,4 +89,4 @@ retroactively licenses the reasoning that reached it. Print the per-path matcher
 don't describe it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785939070353-approver-clause-gap-correction-the-13-paths-extern.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785939070353-approver-clause-gap-correction-the-13-paths-extern.md`_

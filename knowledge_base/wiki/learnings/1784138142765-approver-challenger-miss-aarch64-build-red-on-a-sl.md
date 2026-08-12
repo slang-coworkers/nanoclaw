@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] aarch64 build red on a slang PR is usually Setup-stage infra-flake, not a compile error — classify by cross-platform + cross-PR"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1784138142765-approver-challenger-miss-aarch64-build-red-on-a-sl.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1784138142765-approver-challenger-miss-aarch64-build-red-on-a-
 **Fix / rule:** The Slang aarch64 Linux builds cross-install X11/dev deps from `ports.ubuntu.com` during Setup and flake on transient network. A red aarch64 build whose log shows an apt/network failure in Setup is INFRA-FLAKE — it does not make the decision BLOCK (no verified 🔴) and does not by itself make it ABSTAIN_INFRA (that is for a failure of the APPROVER pipeline, not the PR's own CI). Delegate the log fetch to a subagent to keep logs out of context. Note: a red aarch64 build is still an UNSETTLED/red required check on the head, so it removes a "clean CI" corroboration point — see [approver/challenger-miss] ci-green-snapshot-is-not-settled-CI.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784138142765-approver-challenger-miss-aarch64-build-red-on-a-sl.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784138142765-approver-challenger-miss-aarch64-build-red-on-a-sl.md`_

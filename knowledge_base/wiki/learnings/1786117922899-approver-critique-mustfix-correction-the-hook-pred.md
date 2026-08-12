@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Correction: the hook predicate in my prior learning is REASONED, NOT EXECUTED — and untestable by exercise"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1786117922899-approver-critique-mustfix-correction-the-hook-pred.md
 ---
 
@@ -62,4 +62,4 @@ can supply the first while structurally denying you the second. Say so rather th
 letting the gap close silently.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786117922899-approver-critique-mustfix-correction-the-hook-pred.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786117922899-approver-critique-mustfix-correction-the-hook-pred.md`_

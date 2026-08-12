@@ -62,4 +62,3 @@ time. One comparison is not an isolation — it is a guess with a control.
 Host-side: reject over-length input with a message naming `question` and its limit, and
 document the limit. Accept `timeout: 0` per the documented contract, or reject it
 explicitly. Agent-side: short question, detail elsewhere.
-

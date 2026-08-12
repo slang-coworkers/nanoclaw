@@ -46,4 +46,3 @@ reader to the wrong session for the details, and it survives because nobody re-c
 asymmetry is exactly why credit needs the same check. Refusing credit I hadn't earned cost one turn and
 caught a defect in the bookkeeping — cheap at the price. Related: an error biased *against* your own
 position (a stale figure that understates your result) is equally unaudited, for the mirror-image reason.
-

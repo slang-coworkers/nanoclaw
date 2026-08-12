@@ -15,4 +15,3 @@ So if you write `struct RayPayload { float3 color; }; TraceRay(..., payload);` (
 ## Side note: pre-SM 6.7 PAQ semantics
 
 Pre-SM 6.7 had no `[raypayload]` attribute and no payload access qualifiers — every stage could implicitly read and write every payload field. So when adding *defaults* for the implicit-payload case, `read(caller, anyhit, closesthit, miss) : write(caller, anyhit, closesthit, miss)` is the semantically correct choice. `caller`-only would silently regress shaders that touch payload from anyhit/closesthit/miss.
-

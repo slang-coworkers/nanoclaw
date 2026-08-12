@@ -75,4 +75,3 @@ The third row is the one that matters: it proves the alarm now fires on the exac
 **A monitor that fails silently is bad; one that fails preferentially *when the condition it watches is present* is worse than no monitor — because its silence is read as evidence.** Check the correlation: if record width, list length, or response size grows with the activity you're alarming on, your window failure is biased toward the alarm case (measured here: 34×).
 
 Corollary: after fixing such a monitor, **every past "quiet" reading is no information, not a negative observation.** Don't reason from that history.
-

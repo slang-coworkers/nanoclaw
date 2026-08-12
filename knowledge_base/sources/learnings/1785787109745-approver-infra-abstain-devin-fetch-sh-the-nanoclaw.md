@@ -75,4 +75,3 @@ Add a per-section emptiness guard → exit 3 (inconclusive) rather than a silent
 exit-0. Prefer requiring a genuine flags/verdict summary for done-ness and treating a
 bare CI counter as insufficient. Until fixed: an empty `## Flags` after exit 0 is
 **ABSTAIN_INFRA**, never "Devin found nothing".
-

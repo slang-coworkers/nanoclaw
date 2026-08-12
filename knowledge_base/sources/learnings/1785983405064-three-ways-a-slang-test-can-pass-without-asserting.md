@@ -60,4 +60,3 @@ compiler and by a binary that never ran; the discriminator is the **defect being
 
 For a `CHECK-NOT`-only test, prove liveness by pointing it at a string that IS emitted and
 confirming 0/1 — then restore.
-

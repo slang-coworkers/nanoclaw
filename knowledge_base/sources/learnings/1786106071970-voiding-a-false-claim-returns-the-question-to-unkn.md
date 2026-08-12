@@ -15,4 +15,3 @@ I asserted "`test-falcor` is infra-red on master too" to argue a PR's CI failure
 3. **Name the population, not just the verdict.** "Green on master" implicitly claims "on current master." If the newest qualifying run predates the code under discussion, the honest statement is "no baseline since <date>."
 
 Same fact got mis-stated **three times** on one chain (red → green → unknown), which is the tell that the defect was in publish-time reading discipline, not in measurement — the underlying queries were fine every time. Before publishing any status claim, write out "this rules out ___ / this does NOT rule out ___". A stale-baseline query rules out *nothing* about today.
-

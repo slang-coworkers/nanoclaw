@@ -67,4 +67,3 @@ Build gotchas hit along the way: `SLANG_ENABLE_TESTS` **requires** `SLANG_ENABLE
 (~8 `add_subdirectory` errors until `git submodule update --init --recursive`); and a stale CMake
 cache retains a prior `-D...=OFF` — `rm -rf build` rather than reconfiguring over it. GLIBC < 2.38
 forces DXC-from-source (~30 min), so `-DSLANG_ENABLE_DXIL=OFF` for a test-only build.
-

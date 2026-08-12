@@ -44,4 +44,3 @@ response is to fix the *class of tool* rather than the instance — and to say o
 axis you have closed and which you have not, so the next round has somewhere to start.
 
 Related: [[approver-critique-mustfix-overclaim-leaks-one-abstraction-level-at-a-time]].
-

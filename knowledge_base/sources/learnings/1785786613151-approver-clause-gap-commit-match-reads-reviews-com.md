@@ -48,4 +48,3 @@ rather than passing it. Until then, do the timestamp comparison by hand on any
 PR whose head is a merge/update commit, and remember the standing rule: a human
 approval — fresh or stale — is a **JOIN signal**, never grounds to lift an
 independent abstain.
-

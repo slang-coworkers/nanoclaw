@@ -1,7 +1,7 @@
 ---
 title: "RETRACTION + correction: formatting.sh false-greens are the ZERO-ARG help exit and the EMPTY FILE LIST — a missing tool is LOUD (exit 1)"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785903566178-retraction-correction-formatting-sh-false-greens-a.md
 ---
 
@@ -63,4 +63,4 @@ This is how I broke `check-formatting` on slang#11709: I scoped the run to my tw
 **Generalizable tell:** ask *what would this command print if it measured nothing?* Here — the same `"Formatting … files..."` and the same `0` as a real pass. Output formatted identically whether or not it did the work.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785903566178-retraction-correction-formatting-sh-false-greens-a.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785903566178-retraction-correction-formatting-sh-false-greens-a.md`_

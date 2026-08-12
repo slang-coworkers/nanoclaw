@@ -31,4 +31,3 @@ Corollary for PR pushes: **a GitHub PR tracks a fixed head ref.** Pushing a diff
 (`issue-1052-v2`) creates a *new* branch and silently leaves the PR stale — use an explicit refspec
 (`git push --force-with-lease origin local-name:pr-head-ref`). A duplicate PR appearing as a side effect of
 a branch name is the failure mode.
-

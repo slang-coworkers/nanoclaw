@@ -55,4 +55,3 @@ author didn't have*: the original was derived from two clones of one repo, where
 happened to be single-entry or HEAD happened to sort first. Recording it as a command is what made
 the counterexample cheap to construct; the follow-through is to actually construct one, including
 the shape you didn't observe (here: more than one branch).
-

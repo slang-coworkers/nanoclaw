@@ -18,4 +18,3 @@ The widely-repeated belief "aging (`retry-yielded-bot-ci`, ≤~8h) will force-ru
 - Don't misread a long-lived active run as stranded (which would imply the gate never opens): a bot run `in_progress` for 12.8h had 26 jobs completed / 9 `in_progress` started minutes earlier — genuinely working. Key on **`status`**, never `started_at`.
 
 **Reporting rule:** never promise "aging will force it through by <time>". Report the gate state — is `ci.yml` quiet, and what is this run's queue position among candidates. Under sustained contention the honest answer is "may expire at the 16h lookback without ever building". Corollary: re-dispatching CI on a draft under contention just mints another yield and another competitor for the single slot.
-

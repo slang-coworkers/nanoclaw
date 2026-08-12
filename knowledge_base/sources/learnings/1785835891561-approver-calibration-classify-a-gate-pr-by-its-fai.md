@@ -77,4 +77,3 @@ For a diff that touches a gate: (1) is the gate new, or only a writer? (2) is th
 write monotone — pure OR, no clear site, count the readers? (3) if monotone, the
 harm is a silent skip ⇒ go get job-log evidence for the specific tests affected,
 with a must-be-non-zero control. Do not substitute the dead-flag probe for step 3.
-

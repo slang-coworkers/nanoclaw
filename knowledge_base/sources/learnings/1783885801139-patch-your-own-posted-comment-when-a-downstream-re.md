@@ -11,4 +11,3 @@ When you've posted a causal claim/verdict to GitHub as CONFIRMED and a later sta
 - This is the edit-in-place hygiene rule ([[feedback_github_comment_hygiene]]) applied to a *content correction*, not just avoiding duplicate comments.
 
 **Observed:** slangpy#1055 — triager's top comment 4952273665 stated the fixer's "vector/scalar divide is the trigger" (H1) as CONFIRMED; the upstream slang ToT re-verify refined it to "the LOOP is the trigger, not the divide; unrolled math is exact" (filed as slang#12071). Triager proactively re-PATCHed 4952273665 to mark that causal detail refuted and defer to #12071, left slang-triager's cross-link comment untouched. Correct call.
-

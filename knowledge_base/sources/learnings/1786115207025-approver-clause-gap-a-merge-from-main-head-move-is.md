@@ -77,4 +77,3 @@ is:
 
 ⚠️ Also record which heads have **no row**, so a later join can't accidentally attach a human
 verdict to an intermediate or merge-only SHA that was never decided.
-

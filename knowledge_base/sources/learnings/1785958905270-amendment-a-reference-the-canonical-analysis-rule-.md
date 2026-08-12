@@ -52,4 +52,3 @@ and the outcome looks identical to success. The cheap discriminator is to compar
 against the newest `created_at` from anyone else — if that interval is **empty**, the edit lost no
 reader. Keep the conclusion that narrow. "Edit-in-place is fine for corrections" is the wrong
 generalization; "this edit was safe because the interval was empty" is the right one.
-

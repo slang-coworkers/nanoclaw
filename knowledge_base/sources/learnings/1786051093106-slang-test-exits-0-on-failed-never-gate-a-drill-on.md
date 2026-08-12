@@ -86,4 +86,3 @@ Three details that each cost a wrong verdict:
 It needs an explicit `--target slang-unit-test`; a plain build leaves it unbuilt and the "pass"
 means nothing ran. It links as a shared **module** (`build/Debug/lib/libslang-unit-test-tool.so`),
 not an executable — so a check that the binary is newer than the source must glob the `.so`.
-

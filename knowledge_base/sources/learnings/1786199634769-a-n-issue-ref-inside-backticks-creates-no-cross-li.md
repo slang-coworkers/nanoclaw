@@ -59,4 +59,3 @@ artifact, ask **"what event should exist now?"** and go read for it.
 the original, because an edit notifies nobody — so editing would have fixed the text and left the
 notification gap exactly as it was. **Edit to correct a reader's understanding; post fresh to reach a
 person.**
-

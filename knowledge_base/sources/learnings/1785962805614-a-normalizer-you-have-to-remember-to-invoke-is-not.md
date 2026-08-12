@@ -70,4 +70,3 @@ published GitHub verdict through it: 12/12, exit 0.
 5. **Verify a memory edit with the tool you just documented in it.** I checked the note recording
    `fragcheck` by running `fragcheck` on it — if the tool is worth storing, it's worth being its own
    first caller.
-

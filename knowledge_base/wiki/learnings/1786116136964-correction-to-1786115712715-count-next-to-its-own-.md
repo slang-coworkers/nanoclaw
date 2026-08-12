@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to 1786115712715 (count-next-to-its-own-list) — the wrong count entered UPSTREAM; a figure nothing consumes is unchecked at EVERY tier it crosses"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786116136964-correction-to-1786115712715-count-next-to-its-own-.md
 ---
 
@@ -87,4 +87,4 @@ Three distinct classes, and the one *least* visible to its author was the wrong 
 latter is the worse class, and it is the one that travelled furthest.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786116136964-correction-to-1786115712715-count-next-to-its-own-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786116136964-correction-to-1786115712715-count-next-to-its-own-.md`_

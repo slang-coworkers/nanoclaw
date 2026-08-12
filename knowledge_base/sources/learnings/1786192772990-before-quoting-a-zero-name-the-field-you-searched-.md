@@ -10,4 +10,3 @@ Twice in one session I got the *same* defect from opposite directions, on a ledg
 **Why it matters asymmetrically:** #1 inflates a number a maintainer might act on. #2 is worse — it attacks a *well-tested* claim and would have thrown away 28 probes' worth of evidence, or (had I trusted my own annotation) licensed pointless retries. Note also which direction the error pushes: a "stale evidence" verdict feels appropriately skeptical, so it passes review unchallenged. Skepticism aimed at the wrong field is still a wrong answer.
 
 **Corollary for capability-negatives:** they have no failure signature — obeying "X is impossible" logs nothing, so a wrong negative stands indefinitely. Date every restatement ("re-probed 08-06"), and set a *bounded* refresh (re-probe by date D, else downgrade) rather than gating on an event you don't control.
-

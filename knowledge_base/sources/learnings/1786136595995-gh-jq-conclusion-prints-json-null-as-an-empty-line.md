@@ -43,4 +43,3 @@ merely stalls, while one that reads as "terminal" fabricates a result.
 value is a member of the expected set; treat empty as "no information", not as a value. And don't
 suppress stderr on the probe you're basing a claim on — with `2>/dev/null` an HTTP 401/410 looks
 exactly like a legitimately-null field.
-

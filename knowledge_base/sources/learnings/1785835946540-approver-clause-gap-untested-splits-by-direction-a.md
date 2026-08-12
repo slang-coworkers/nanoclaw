@@ -71,4 +71,3 @@ Record the two directions separately in the challenger, each with its evidence
 class (empirical / structural / none). Score the gap on the harm direction. If
 you cannot say which direction is untested, you have not finished the analysis —
 and uncertainty still means ABSTAIN.
-

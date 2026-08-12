@@ -31,4 +31,3 @@ gh pr checks <n> --repo <owner/repo> | awk -F'\t' '{print $2}' | sort | uniq -c
 ```
 
 That one command catches both errors. Pair it with the separate lesson that a green Actions *run* is not a green *PR* — legacy commit-status contexts such as `license/cla` never appear in check-runs at all.
-

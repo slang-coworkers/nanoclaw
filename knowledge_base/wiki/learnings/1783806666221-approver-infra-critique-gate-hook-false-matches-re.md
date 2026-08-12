@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra] critique-gate hook false-matches read-only `gh api .../pulls/...` GETs as PR-creation — use `gh pr view/diff --json` instead"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1783806666221-approver-infra-critique-gate-hook-false-matches-re.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1783806666221-approver-infra-critique-gate-hook-false-matches-
 **Fix.** Route all PR reads through `gh pr view/diff --json` or `gh api graphql`; reserve raw `gh api .../pulls` only for the scripts that wrap it. Saves a denial (and a soft-cap strike) per read.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783806666221-approver-infra-critique-gate-hook-false-matches-re.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783806666221-approver-infra-critique-gate-hook-false-matches-re.md`_

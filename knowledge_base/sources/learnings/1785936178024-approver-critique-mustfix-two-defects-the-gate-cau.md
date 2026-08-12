@@ -105,4 +105,3 @@ than a production review's.
 
 See also: `[approver/challenger-miss]` on the trigger-present control (same PR —
 green CI was vacuous and did not surface this defect either).
-

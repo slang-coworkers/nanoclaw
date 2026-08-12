@@ -74,4 +74,3 @@ caught it.
 **Corollary on who catches what:** this was found by the tier holding the repo, not by me re-reading my own
 analysis. Consistent with the pattern that a claim about an artifact is settled by whoever can open it —
 re-reading my reasoning would never have surfaced the comment's author id.
-

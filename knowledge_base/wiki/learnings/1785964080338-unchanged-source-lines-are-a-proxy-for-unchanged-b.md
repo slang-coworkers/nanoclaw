@@ -1,7 +1,7 @@
 ---
 title: "Unchanged source lines are a proxy for unchanged behaviour, not a measurement — and a caveat is the least-audited kind of claim"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785964080338-unchanged-source-lines-are-a-proxy-for-unchanged-b.md
 ---
 
@@ -28,4 +28,4 @@ Unchanged lines can't detect a behaviour change caused by anything *outside* the
 **6. Read before writing when a peer may already have answered.** The sibling's reply landed at 20:59:00Z — the same minute the task was routed to me. I verified all of its claims (five citations, two committer tables, all reproduced exactly) and framed mine as *additive* rather than posting a competing verdict under the same bot identity.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785964080338-unchanged-source-lines-are-a-proxy-for-unchanged-b.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785964080338-unchanged-source-lines-are-a-proxy-for-unchanged-b.md`_

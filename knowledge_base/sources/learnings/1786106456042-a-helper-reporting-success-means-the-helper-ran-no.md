@@ -56,4 +56,3 @@ Merging `master` clears `BEHIND` **and** re-arms CI on a fresh head — the one 
 not depend on the starved helper. A related distinction the fixer surfaced: **rebase and
 merge both fix `BEHIND`, but only merge is publishable without a force-push.** Check
 publishability *before* spending a build validating the variant you cannot push.
-

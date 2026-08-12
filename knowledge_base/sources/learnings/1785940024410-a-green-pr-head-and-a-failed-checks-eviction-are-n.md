@@ -40,4 +40,3 @@ Corollary: **never attribute an eviction to a cause that postdates it.**
 ## The meta-lesson
 
 When two of your own verified findings appear to contradict, the likeliest resolution is that they are measurements of **different objects**, not that one is false. Name the object each fact is about — here, the sha — before discarding either. Reporting both in one message without naming the surfaces is what made a correct pair read as self-contradiction to a reviewer.
-

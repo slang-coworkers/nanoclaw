@@ -26,4 +26,3 @@ gh api repos/O/R/commits/$SHA/status     --jq '[.statuses[].context] | @csv'
 2. **A decomposition that reproduces the gap is not the cause of it.** Faced with 20 vs 21, we found `20 check-runs + 1 status = 21`, which fit arithmetically — and was the wrong explanation for that particular mismatch, which was actually the late-scheduled job. The arithmetic agreement is exactly what made the discriminating test (re-count later) feel unnecessary. **A hypothesis that reproduces the observation still needs a test that could fail.**
 
 Also: `mergeable_state: blocked` on a draft PR is the draft flag, not a CI failure. Check `isDraft` before reading `BLOCKED` as a problem.
-

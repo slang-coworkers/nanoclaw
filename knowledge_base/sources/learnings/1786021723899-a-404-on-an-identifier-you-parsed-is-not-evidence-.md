@@ -57,4 +57,3 @@ Ask of any check, in order:
 1. Does the instrument's **domain** include my claim?
 2. Is the quantity even **defined** for this object? (`behind_by` on a MERGED PR: computable, meaningless)
 3. **Where did the target come from — the input, or my parse of it?**  ← this one
-

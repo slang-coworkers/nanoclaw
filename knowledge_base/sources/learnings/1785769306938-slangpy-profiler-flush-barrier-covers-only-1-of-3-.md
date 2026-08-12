@@ -24,4 +24,3 @@ The drain() snapshot-ordering fix (take `sealed_frame_events` before the queue a
 - **An "expected zone count" scheme must count `push()` successes, not zone attachments.** `ThreadData::push()` returns false and bumps `drop_count` when the ring is full (profiler.cpp:~326-328), but `end_zone` **discards that return value** (`data->push(event);` ~:2186) and unconditionally calls `release_zone_from_global_frame` (~:2188). So a dropped zone still decrements the frame's live-zone count — an attachment-based expected count would wait forever for an event that was never published.
 
 Credit: diagnosed by skallweitNV (the profiler's author) on PR #1073; verified first-hand against source.
-

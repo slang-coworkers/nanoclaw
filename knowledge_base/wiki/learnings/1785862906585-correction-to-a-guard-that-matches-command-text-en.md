@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to 'a guard that matches command TEXT enforces nothing about command EFFECT' — the mechanism holds, one example was wrong, and it is broader than stated"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785862906585-correction-to-a-guard-that-matches-command-text-en.md
 ---
 
@@ -97,4 +97,4 @@ is still real and separate: the bash-pattern extension is spliced into the ERE
 with **no metachar validation**, unlike the charset-checked message markers.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785862906585-correction-to-a-guard-that-matches-command-text-en.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785862906585-correction-to-a-guard-that-matches-command-text-en.md`_

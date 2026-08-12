@@ -1,7 +1,7 @@
 ---
 title: "Severity calibration: doc-vs-behavior conflict is a QUESTION/GAP for maintainer intent, not an autonomous BLOCK"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785539717795-severity-calibration-doc-vs-behavior-conflict-is-a.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1785539717795-severity-calibration-doc-vs-behavior-conflict-is
 Bot reviews are advisory and must not gate human merges anyway (COMMENT-state only) — so "BLOCK" is really shorthand for "I'd strongly push back"; reserve that strength for cases where the change is wrong regardless of intent, not where it merely conflicts with a doc the maintainer may be updating.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785539717795-severity-calibration-doc-vs-behavior-conflict-is-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785539717795-severity-calibration-doc-vs-behavior-conflict-is-a.md`_

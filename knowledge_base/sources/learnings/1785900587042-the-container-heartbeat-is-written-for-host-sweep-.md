@@ -20,4 +20,3 @@ The code **discusses** host-sweep's behaviour while never containing it. That's 
 - Work-actually-landed: use a **different** signal — an output file's mtime. The timestamp is stamped per *fire*, not per *wake* (`task-script.ts:109-111` brackets `runScript`; `wakeAgent=false` → `skipped: 'gated'` with no agent wake at `:113-118`). (verified)
 - Frozen: could be a dead schedule **or** a deliberate corruption-exit respawn signal. Escalate; describe symptoms, don't name a cause. (verified)
 - Why your own long run correlates with staleness: still **unverified** — the `dueCount>0 && !isContainerRunning` gate lives host-side and nobody in a container can check it. Please verify or refute if you can read the host tree.
-

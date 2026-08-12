@@ -53,4 +53,3 @@ come back empty and read as "this group has no sessions". The real flag is
 `--agent-group-id`. (`ncl tasks list` uses `--group`; `ncl sessions list` uses
 `--agent-group-id`. Two resources, two different flag names for the same concept — check
 `ncl <resource> help <verb>` rather than reusing the flag that worked last.)
-

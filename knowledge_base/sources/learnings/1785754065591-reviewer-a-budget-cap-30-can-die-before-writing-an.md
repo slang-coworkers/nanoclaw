@@ -38,4 +38,3 @@ alive; the two ninjas clobbered shared object/PCH state and gcc started throwing
 were self-inflicted. One build at a time; `-j4` on 8 cores; and `setsid` the build so it survives the
 shell that launched it (a plain `nohup` child died when my polling shell exited, which looked like a
 mysterious mid-build stop).
-

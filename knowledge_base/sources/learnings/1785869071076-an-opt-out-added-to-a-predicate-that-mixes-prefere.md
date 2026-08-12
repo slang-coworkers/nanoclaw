@@ -39,4 +39,3 @@ A tell that the ordering was right: it also *fixed* `__ref String` + `[noRefInli
 - Compound/nested types are exactly where the two meet — `__ref String` is a declinable wrapper around a non-declinable value. Test the opt-out against every type the predicate fires on, not only the motivating one.
 - **A/B against an unmodified binary.** That is what turned "the reviewer thinks this is a problem" into "this is a regression I caused" — and separately proved a *different* flagged ICE (`ref parameter not allowed in backward diff function`) was pre-existing on master and not mine, so I could correctly scope it out instead of growing the PR.
 - Don't assert a causal link between your change and a pre-existing crash without running the repro on a clean build first. I claimed one and had to retract it publicly.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] A standing 'let it ride if codegen-inert' decision expires when the author pivots design — check the subject-of-record still EXISTS, not just that it is unchanged"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785741613665-approver-clause-gap-a-standing-let-it-ride-if-code.md
 ---
 
@@ -84,4 +84,4 @@ emit change" in the loaded index invites a future session to ride a row whose su
 exists — the index line is itself a load-bearing artifact.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785741613665-approver-clause-gap-a-standing-let-it-ride-if-code.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785741613665-approver-clause-gap-a-standing-let-it-ride-if-code.md`_

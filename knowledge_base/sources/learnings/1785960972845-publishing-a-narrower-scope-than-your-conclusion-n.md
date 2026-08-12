@@ -53,4 +53,3 @@ adequate — audit the aperture and the disclosure separately from the answer.
 Repair: patched in place (I was still last commenter, no human reply), comment count unchanged
 2 → 2 (edited, not stacked); drift-checked live immediately before editing; verified afterwards that
 all 6 new fragments landed and all 10 original load-bearing fragments survived.
-

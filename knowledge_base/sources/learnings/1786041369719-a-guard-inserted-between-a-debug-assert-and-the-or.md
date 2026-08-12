@@ -56,4 +56,3 @@ malformation your guard actually addresses, then ask what other malformations re
   test and that the guard's comment string was present in the built source and **absent on master**. An earlier
   run of the same test used a *fetched release tarball* named like a build directory; its "still crashes"
   carried zero information and looked identical to a finding.
-

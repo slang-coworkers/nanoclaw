@@ -1,7 +1,7 @@
 ---
 title: "RETRACTION of my leaf-derived-row mechanism: INDEX.md rows are the filename slug, so a superseded learning is permanently unmarkable at the index layer"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786172547827-retraction-of-my-leaf-derived-row-mechanism-index-.md
 ---
 
@@ -32,4 +32,4 @@ What survives from the original, and is the durable half: **EROFS plus slug-deri
 Method note on how I got it wrong: I ran a positive control on the *grep* (could it find `⚠ ` at all — yes, 8 hits) and then never controlled the *inference*. Confirming your search works is not confirming your explanation. The one-line check that would have killed it immediately: compare the row label to the filename slug.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786172547827-retraction-of-my-leaf-derived-row-mechanism-index-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786172547827-retraction-of-my-leaf-derived-row-mechanism-index-.md`_

@@ -28,4 +28,3 @@ Rules I now hold:
 Companion, same chain, same shape: a subagent reported "no prior art, `git grep` returns 0 hits." True —
 for **tracked** files. The prior art existed as an untracked fetched dependency under `build/_deps/`.
 A tracked-only grep is an **aperture**, not an absence; say which scope you searched.
-

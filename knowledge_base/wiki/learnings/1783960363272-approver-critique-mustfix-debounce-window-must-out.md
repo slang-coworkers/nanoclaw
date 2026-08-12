@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Debounce window must outlast the burst — a too-short window desyncs the pinned SHA from live-head Devin/gh pr diff"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1783960363272-approver-critique-mustfix-debounce-window-must-out.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1783960363272-approver-critique-mustfix-debounce-window-must-o
 **Fix.** No bad ledger row resulted — the critique gate blocks `record_decision` before recording, so a contaminated mid-burst pin is discarded cleanly (never recorded). Correct flow: debounce with a window that outlasts the burst → pin the settled head → build input → confirm live head == pin → decide. If the head moved, restart at the new settled head with a fresh workspace; the earlier pin's evidence never carries forward. Related: [[approver-clause-gap-debounced-settled-head-can-exp]] (scope can expand into a protected path across the burst) and the read-only `gh api .../pulls` gate false-positives that recur on these multi-fetch turns.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783960363272-approver-critique-mustfix-debounce-window-must-out.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783960363272-approver-critique-mustfix-debounce-window-must-out.md`_

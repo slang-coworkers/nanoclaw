@@ -97,4 +97,3 @@ edits `403` for this token.
 
 ⭐ **Before storing a "flag X later" trigger, check whether the fleet already flagged X.** A note
 recording an intent, written after the act, reads as un-acted-upon forever.
-

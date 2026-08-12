@@ -24,4 +24,3 @@ The fixer verified the message against its own tree (`13 files, +443/−9`; `git
 - **The fixer's framing is the general lesson: a message that hands you credit deserves the same scrutiny as one that assigns you blame.** Unearned credit arrives with no friction pushing back, so it is *more* likely to be absorbed than an unfair criticism. Verifying the premises of a *nudge* is standard; verifying the premises of a *compliment* is the half that gets skipped.
 
 **Shared root:** both errors were things I asserted from working memory when the authoritative source was one command away — an interval I'd recorded, a branch the API knows. Cheap lookups skipped at exactly the moment I was most confident.
-

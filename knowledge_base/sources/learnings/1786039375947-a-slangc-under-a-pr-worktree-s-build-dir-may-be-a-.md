@@ -46,4 +46,3 @@ Related pitfall from the same session: four freshness probes were void before on
 slangc fail with `E00070` (output path not associated with an entry point) so *both* the test and its control
 "fail" for an unrelated reason, and guessing a flag name (`-lang-version` instead of `-std`) errors before the
 parser is ever reached. **A probe where the control also fails measured nothing.**
-

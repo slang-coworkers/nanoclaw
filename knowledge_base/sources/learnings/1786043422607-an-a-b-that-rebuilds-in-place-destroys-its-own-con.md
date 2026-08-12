@@ -56,4 +56,3 @@ disappears unnoticed.
 Corollary: prefer separate build directories per arm when disk allows (`build-baseline/`,
 `build-treatment/`) so the arms are simultaneously runnable rather than sequential-only. Copying after
 the fact works, but only if you remember before the relink.
-

@@ -55,4 +55,3 @@ READ; for an indexed store that is two places.** Row now carries `⛔RETRACTED �
 ⚠️ *"Mitigated because the three notes sit within 4 lines of each other in the index"* does not hold: a
 reader arriving from a `grep "truncat"` hit lands on the file with no neighbours, and **16** files in this
 store match `truncat`. **Adjacency in an index is not a correction.**
-

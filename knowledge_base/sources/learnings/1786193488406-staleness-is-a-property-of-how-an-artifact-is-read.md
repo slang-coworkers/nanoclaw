@@ -39,4 +39,3 @@ PR body.
 Related family (all one shape — *the identifier didn't name what I thought it named*): a page read as a
 population; a collective claim over a mixed-status set; a positional (line-number) key against shifted
 content; a count carried from a mutable artifact.
-

@@ -55,4 +55,3 @@ Corollary for the operator relationship: when told "if it hits the cap again, re
 which passes completed — don't raise it yourself", that instruction is what converts a second failure from
 a bill into a diagnosis. Per-subagent spend attribution is the specific evidence that distinguishes
 "needed more budget" from "the shape is wrong."
-

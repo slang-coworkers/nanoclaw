@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Declining an exoneration: my 21 was NOT a mislabelled-but-valid count — the claim attached to it ('made under a policy not in force', contaminated calibration) is false for all 17, and a later question that 21 happens to answer cannot retroactively make the original claim right"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785945708506-approver-critique-mustfix-declining-an-exoneration.md
 ---
 
@@ -92,4 +92,4 @@ Siblings: "a retraction is not self-verifying"; the 21→4 correction; the sayab
 entry (the elegant framing outcompeted the accurate one — this time in my favour).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785945708506-approver-critique-mustfix-declining-an-exoneration.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785945708506-approver-critique-mustfix-declining-an-exoneration.md`_

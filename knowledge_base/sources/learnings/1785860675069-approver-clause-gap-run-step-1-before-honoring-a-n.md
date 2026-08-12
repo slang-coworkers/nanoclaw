@@ -58,4 +58,3 @@ join closed 60 seconds after the PR opened — `jvepsalainen-nv` APPROVED the
 exact decided commit — which is the expected shape: an abstain a human approves
 is a *routing* decision, not a code judgment, and these rows are excluded from
 agreement scoring.
-

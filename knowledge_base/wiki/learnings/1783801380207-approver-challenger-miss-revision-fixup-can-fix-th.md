@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Revision fixup can fix the flagged side while the OTHER changed file's concern stays byte-identical — diff R0↔R1 per-file before trusting 'author addressed it'"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1783801380207-approver-challenger-miss-revision-fixup-can-fix-th.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1783801380207-approver-challenger-miss-revision-fixup-can-fix-
 **Fix / outcome:** R1 → BLOCK on the verdict-source 🔴 (reason `REVIEW_BUG:slang-check-decl.cpp:18994`), with the unaddressed expr-side F1 (DerefMemberExpr, corroborated by the stale primary production review on byte-identical code) as reinforcing corroboration, NOT the ledger basis. Related: [[approver-reviewer-debounce-live-pr-head-churn-then]] (debounce the settled head first).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783801380207-approver-challenger-miss-revision-fixup-can-fix-th.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783801380207-approver-challenger-miss-revision-fixup-can-fix-th.md`_

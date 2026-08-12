@@ -60,4 +60,3 @@ PR.** Load-bearing, proven, no log needed. This is strictly better evidence than
 **confident `0` that is indistinguishable from "not present"** — I nearly recorded "the fix is absent from master".
 Fix: `-H "Accept: application/vnd.github.raw"` returns the full file (verify with `wc -c` against `.size`).
 General rule: **a zero-hit grep needs a must-be-non-zero control** before it means anything.
-

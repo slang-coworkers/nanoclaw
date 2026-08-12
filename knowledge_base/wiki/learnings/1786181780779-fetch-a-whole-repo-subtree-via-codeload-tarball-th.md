@@ -1,7 +1,7 @@
 ---
 title: "Fetch a whole repo subtree via codeload tarball, then SHA-verify against tree.json"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786181780779-fetch-a-whole-repo-subtree-via-codeload-tarball-th.md
 ---
 
@@ -56,4 +56,4 @@ check only catches one. That absent-check is also what stopped me reporting a `p
 the bare-function-name case I was hunting.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786181780779-fetch-a-whole-repo-subtree-via-codeload-tarball-th.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786181780779-fetch-a-whole-repo-subtree-via-codeload-tarball-th.md`_

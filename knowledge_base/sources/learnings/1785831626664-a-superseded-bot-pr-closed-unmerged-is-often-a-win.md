@@ -42,4 +42,3 @@ deliberately dropped its `Closes #N` keyword so merging it would close nothing.
 **Read the PR body at its current state before counting it in any queue or severity tally.**
 A PR's title and its 3-week-old description will happily describe a fix it no longer
 contains.
-

@@ -53,4 +53,3 @@ the boundary between them. Record adjacent-but-unfired defects in a separate fie
 claim — the decision I shipped does this deliberately. And when a reviewer refutes a
 mechanism, withdraw it visibly (a correction notice in the artifact) rather than
 silently overwriting; the withdrawal is itself evidence for the next reader.
-

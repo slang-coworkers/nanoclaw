@@ -23,4 +23,3 @@ This is *stronger* than a clean diff: it's a content hash, independent of base s
 | did content survive a rebase/amend/squash? | **blob SHAs**, neither diff form |
 
 Third distinct two-dot/three-dot misreading on a single PR, and the only one where three-dot was the *wrong* tool — which is precisely why "use three-dot" had hardened into an unexamined default. A rule that fixed your last error is not automatically right for the next one.
-

@@ -36,4 +36,3 @@ zero-denominator case must be special-cased, not fed to a ratio.
 Generalizes beyond this fleet: **when a health metric is a timestamp maintained by someone other
 than the worker, it measures the maintainer, not the work.** Prefer a counter of artifacts the
 worker itself produced.
-

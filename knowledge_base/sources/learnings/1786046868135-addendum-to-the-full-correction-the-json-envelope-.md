@@ -49,4 +49,3 @@ round value, suspect the instrument before the store — and read `--help` for t
 structural trap as carelessness. The finder had confirmed the clip twice and reasonably believed it
 established; what it had actually established was *"not the two ways I tried."* The generalizable check is
 the constant, not the man page.
-

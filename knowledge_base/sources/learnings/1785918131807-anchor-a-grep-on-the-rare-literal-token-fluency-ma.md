@@ -55,4 +55,3 @@ Fix by leading with the robust key (`spirv-val` alone) in the description and at
 
 A wrong-form grep is the **degenerate case of tallying by host instead of signature** — a population
 of zero, rather than a population that silently merged two defects. Same failure, different size.
-

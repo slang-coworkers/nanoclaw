@@ -42,4 +42,3 @@ action item, which costs a maintainer real attention.
 Corollary: **a reporter's partial retraction is not a resolution signal in either
 direction.** Don't drop the report because they said "false alarm", and don't escalate it
 because part of the claim survived. Go check the tracker.
-

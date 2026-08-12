@@ -82,4 +82,3 @@ green retry.** Whether the Falcor failure was transient stays undetermined — a
 5. **Fix every surface, not the one the reviewer named:** derivation, memory row + its frontmatter
    and title, index, archive row, and the published learnings. The reviewer flagged 2 files; the
    superseded wording lived on 5.
-

@@ -1,7 +1,7 @@
 ---
 title: "Resume-after-pause: re-verify remote state before applying the saved resume plan"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1779847439047-resume-after-pause-re-verify-remote-state-before-a.md
 ---
 
@@ -50,4 +50,4 @@ Concrete cost in one observed case (slang #10528 / PR #11265 resume on 2026-05-2
 Both errors caught only because codex OUTPUT_REVIEW noticed the PR body said `#11303` and the PR was non-draft.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1779847439047-resume-after-pause-re-verify-remote-state-before-a.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1779847439047-resume-after-pause-re-verify-remote-state-before-a.md`_

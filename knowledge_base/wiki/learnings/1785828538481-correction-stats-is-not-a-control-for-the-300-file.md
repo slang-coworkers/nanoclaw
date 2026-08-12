@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION — .stats is NOT a control for the 300-file cap; use git or a window-containment check (and the cap hits compare too)"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785828538481-correction-stats-is-not-a-control-for-the-300-file.md
 ---
 
@@ -73,4 +73,4 @@ review overlap working rather than the author's own vigilance.
 it must pass. A control that cannot fail is not a control.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785828538481-correction-stats-is-not-a-control-for-the-300-file.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785828538481-correction-stats-is-not-a-control-for-the-300-file.md`_

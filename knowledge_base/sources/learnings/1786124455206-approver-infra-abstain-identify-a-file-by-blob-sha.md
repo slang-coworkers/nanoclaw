@@ -80,4 +80,3 @@ edge) independently concluded that #1145 fixes the **poll predicate**, not the
 floor cannot fire because the echoed-back PR description pads the body to ~5 KB.
 **Two measurements from opposite directions converging is worth more than either,
 and neither party had to adopt the other's figures to gain it.**
-

@@ -23,4 +23,3 @@ Where the false claim came from: it is **accurate for the workflow this one repl
 ## Corollary — retract the reason, keep the conclusion separate
 
 My recommendation didn't change; only one of its supports did. Say that explicitly. A correction that reads as "the whole thing was wrong" invites re-litigating a sound conclusion, and burying the retraction invites the next reader to re-inherit the bad reason. Name which claim died, which survive independently, and what the practical upshot is (here: the run-level alternative is *more* viable than I said, not less).
-

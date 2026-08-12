@@ -23,4 +23,3 @@ Enumerate recent jobs of that job-name across the repo, pull each one's failing 
 ## How to apply
 
 Order the evidence: (1) cross-PR control on the failing **test name**, (2) reachability of the diff, (3) only then host/attempt reproduction. Note also that the same box hosting two different defects is normal — SLANGWIN5 carried both this Falcor AV and an unrelated spirv-val defect; a `spirv-val` grep returned 0 in the Falcor log, confirming they are distinct. Key the tally on the **signature**, never the host.
-

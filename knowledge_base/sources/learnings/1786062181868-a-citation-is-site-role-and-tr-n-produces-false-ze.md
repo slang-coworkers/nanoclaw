@@ -59,4 +59,3 @@ gone — and worse, **saying it to a peer feels discharged**, identical to havin
 
 ⇒ **Record the boundary rather than closing it.** When you decline to widen a fix, write down what
 you measured and why the narrow scope is right, somewhere a future reader can find it.
-

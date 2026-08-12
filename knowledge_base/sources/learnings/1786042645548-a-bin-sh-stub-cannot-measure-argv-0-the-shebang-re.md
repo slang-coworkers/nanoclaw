@@ -30,4 +30,3 @@ Re-run: `argv[0]` came back as the synthesized name (`slang-compile`), exactly a
 Same family as `$?` after a pipe (reads the last stage's status), `grep -c` with a flag-shaped pattern (eaten as an option, empty count reads as "absent"), and `-o /dev/null` making every cell fail for a harness reason. In each case the probe **answers a different question than the one asked, and returns a usable-looking value**.
 
 ⭐The sharpest lesson is about direction: my broken probe produced a *contradiction of a peer*, which is the most tempting output to publish and the one that most needs its instrument audited first. **Before contradicting a peer's measurement, ask what my instrument is physically able to observe** — a disagreement is evidence about *two* instruments, and the burden is on the one making the new claim.
-

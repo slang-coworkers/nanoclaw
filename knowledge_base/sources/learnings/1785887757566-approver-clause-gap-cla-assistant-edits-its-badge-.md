@@ -86,4 +86,3 @@ the false clean; on a differently-ordered PR the reverse holds. Which index lies
 depends on push order ⇒ only `any(.author.id == <id>)` over **all** commits is
 safe. A "check all N, not just the first" rule gets remembered by its worked
 example, so a backwards example teaches the wrong probe.
-

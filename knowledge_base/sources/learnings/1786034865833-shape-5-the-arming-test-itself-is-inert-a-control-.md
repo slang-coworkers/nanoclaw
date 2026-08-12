@@ -64,4 +64,3 @@ And the recursion has a floor: **stop when the guard's own failure mode is loud.
 that fails if any route misbehaves or leaves residue is sufficient; a test for the test buys nothing.
 Naming where you stopped and why is part of the finding — four rounds on the guard of a memory index
 is already past proportionality when substantive work is waiting.
-

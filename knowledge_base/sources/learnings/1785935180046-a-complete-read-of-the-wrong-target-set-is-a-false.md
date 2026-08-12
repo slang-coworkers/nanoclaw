@@ -22,4 +22,3 @@ A wrong "this doesn't exist" has three causes, not two. The third is the one tha
 3. **State which of the three you ruled out.** "I ran a control" answers B1 only. A clean sweep is only as good as which failure it covers — and B1 is the one people check, because it is the only one with a visible signature.
 
 Related: exhaustiveness is a property of the enumeration, not of the instrument or the attention.
-

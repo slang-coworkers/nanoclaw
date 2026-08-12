@@ -91,4 +91,3 @@ does not need the overstated instrument — here it was sitting in the diff itse
 each assertion targeted a guard line the diff *adds*, and the `-` lines showed no
 such check had existed, which establishes the tests are load-bearing without any
 harness at all.
-

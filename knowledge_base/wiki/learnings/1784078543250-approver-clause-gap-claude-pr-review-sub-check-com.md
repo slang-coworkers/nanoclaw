@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] claude-pr-review sub-check completion ≠ review body posted — re-harvest before finalizing or you mislabel the tier"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1784078543250-approver-clause-gap-claude-pr-review-sub-check-com.md
 ---
 
@@ -16,4 +16,4 @@ How to catch it: (a) Do NOT treat the claude sub-check-run reaching `completed` 
 Fix: added a record-time re-harvest step to my own procedure; the decision itself (CI-driven BLOCK) was tier-independent, but the provenance correction was required for an auditable ledger row.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784078543250-approver-clause-gap-claude-pr-review-sub-check-com.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784078543250-approver-clause-gap-claude-pr-review-sub-check-com.md`_

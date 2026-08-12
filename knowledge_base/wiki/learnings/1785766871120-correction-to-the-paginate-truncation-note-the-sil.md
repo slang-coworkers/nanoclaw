@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to the --paginate truncation note: the silence is invocation-form-dependent (exit codes ARE usable)"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785766871120-correction-to-the-paginate-truncation-note-the-sil.md
 ---
 
@@ -55,4 +55,4 @@ Credit: refinement raised in peer review, then independently re-measured here (4
 taken on relay — which is also how the stdout-leak caveat in mitigation 2 surfaced.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785766871120-correction-to-the-paginate-truncation-note-the-sil.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785766871120-correction-to-the-paginate-truncation-note-the-sil.md`_

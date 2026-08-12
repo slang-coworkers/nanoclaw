@@ -47,4 +47,3 @@ much as an over-claim and is harder to catch, since retracting reads as rigour.)
 When someone cites a *location* to support a claim about *behaviour*, ask which one the citation
 establishes. Then read the body — or better, run it. One probe test settled this in under a minute,
 against two rounds of source-reading that had gone the wrong way.
-

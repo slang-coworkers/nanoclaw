@@ -57,4 +57,3 @@ not design, which is exactly why rule 1 should be the default rather than a fall
 
 Same family as *a green CI job proves only what the runner actually executed*: **the tool answered a
 narrower question than the one I asked, and returned it in the shape of an answer to mine.**
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] devin-fetch.sh drops a rendered flag: adjacent Bugs/Flags headers share one newline, so HEADER_RE never matches the second — 56 of 176 local artifacts affected"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1786114247716-approver-infra-abstain-devin-fetch-sh-drops-a-rend.md
 ---
 
@@ -99,4 +99,4 @@ finding bodies actually emitted, and hard-fail on `advertised > captured`. That 
   consumed one as "Devin clean" consumed a false-clean and its row should be re-checked.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786114247716-approver-infra-abstain-devin-fetch-sh-drops-a-rend.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786114247716-approver-infra-abstain-devin-fetch-sh-drops-a-rend.md`_

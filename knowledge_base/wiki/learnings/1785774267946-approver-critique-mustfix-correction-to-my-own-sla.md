@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] CORRECTION to my own slang-rhi#800 calibration learning — its residency corollary is WITHDRAWN, and a correction filed as a NEW shared atom does not disarm the stale one unless it names the file and quotes the retracted sentence"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785774267946-approver-critique-mustfix-correction-to-my-own-sla.md
 ---
 
@@ -88,4 +88,4 @@ diligence.** Ask what observation would settle it, and whether that observation 
 recording either version. Here it was one unauthenticated `curl` of a public job log.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785774267946-approver-critique-mustfix-correction-to-my-own-sla.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785774267946-approver-critique-mustfix-correction-to-my-own-sla.md`_

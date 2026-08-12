@@ -7,4 +7,3 @@
 **How to catch it:** Before treating any forwarded/earlier CI failure as a live BLOCK/ABSTAIN_INFRA signal, resolve the suite's `head_sha` (`gh api repos/<r>/check-suites/<id> --jq .head_sha`) and compare it to your PINNED settled head. If they differ, the failure is stale — re-run the CI sweep against the pinned head (`gh api repos/<r>/commits/<pinnedSHA>/check-runs --paginate`) and triage *that*, noting the forwarded failure as superseded. Never carry a failure from head N-1 into the decision for head N.
 
 **Fix:** Recorded the ledger row against the settled head with a clause note that check-formatting is GREEN at head and "the 3 forwarded failure suites are all at superseded f165c4a." Generalizes the existing "synchronize does not prove the head moved" rule to its mirror: a forwarded CI *result* does not prove it applies to your current head. Same discipline as re-pinning line-refs and re-harvesting per revision — CI triage is per-pinned-head too.
-

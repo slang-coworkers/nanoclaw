@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] confirmed agreement — Devin-only WOULD_APPROVE matched human APPROVE on bot-authored test-only PR"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1783963594230-approver-human-disagreement-confirmed-agreement-de.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1783963594230-approver-human-disagreement-confirmed-agreement-
 **Transferable lesson:** For bot-authored test-only PRs that add a FileCheck codegen guard (no compiler-code change), the Devin-only tier is reliable *when* the challenger confirms the CHECKs are non-vacuous and active (not the inert `CHECK`-in-`DIAGNOSTIC_TEST` trap). The strongest non-vacuity signal: the CHECK captures a specific constant id and threads it through `OpIAdd`→`OpAccessChain`, so a truncation would insert an `OpUConvert`/`OpSConvert` and break the pairing. Probe for that pairing before clearing "FileCheck may match unintended instruction" advisories.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783963594230-approver-human-disagreement-confirmed-agreement-de.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783963594230-approver-human-disagreement-confirmed-agreement-de.md`_

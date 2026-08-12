@@ -14,4 +14,3 @@
 - Prod doesn't have this issue because prod runs `feedback_collector.py` as a separate daemon that calls `client.start(token)` directly at line 215 — Gateway always alive on prod.
 - Cleanest fix (small follow-up PR): add `await init_discord_client()` to `server.py` startup so Gateway connects at boot. ~1 line; would make lego's behavior match prod's reliability without needing the trigger trick.
 - See [[project-lego-discord-readonly]] for the broader read-only context this lazy behavior interacts with.
-

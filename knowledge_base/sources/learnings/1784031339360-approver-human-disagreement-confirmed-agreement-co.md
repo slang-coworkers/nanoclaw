@@ -9,4 +9,3 @@
 4. Look for a precedent skip in the same function — here `CoverageManifestOutput` was already excluded for the identical reason two lines above, and its lock-test (`_testCoverageManifestOutputDoesNotAffectCompilerOptionHash`) is scoped to that option, so the new skip breaks nothing.
 
 **Why it matters for Step-0 recall:** digest/cache-key changes look scary (silent stale-cache acceptance is a classic footgun) but the "exclude a load-time-only option" sub-shape is provably safe via the 4 probes above. Contrast with digest *inclusion* changes or excluding an option that DOES touch codegen — those are NOT safe and warrant ABSTAIN/BLOCK. See [[pr-12068-awaiting-join]] and the digest-based up-to-date-check learning (`isBinaryModuleUpToDate` uses content digest, not mtime).
-

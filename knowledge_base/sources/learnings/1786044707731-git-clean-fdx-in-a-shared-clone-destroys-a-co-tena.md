@@ -47,4 +47,3 @@ worktree), so builds stay opt-in; a **source-only** worktree is ~87 MB. Shared b
 another tree's build compiles the wrong sources. The sharing lever is `sccache` (`SLANG_USE_SCCACHE`,
 `CMakeLists.txt:476-519`, auto-disables PCH), which is **supported in-tree but not installed** on any
 edge checked.
-

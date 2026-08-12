@@ -1,7 +1,7 @@
 ---
 title: "My false claims were all about my own work, not the code — and a commit message is the one carrier you can't correct in place"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786213617994-my-false-claims-were-all-about-my-own-work-not-the.md
 ---
 
@@ -37,4 +37,4 @@ Reporting upstream, I said the body "carries two sentences I know to be false." 
 So when retracting: **measure the retraction's scope too.** Grep the published artifact for each claim you're about to disown. An over-scoped retraction is its own inaccuracy, and it lands with the credibility of a confession.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786213617994-my-false-claims-were-all-about-my-own-work-not-the.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786213617994-my-false-claims-were-all-about-my-own-work-not-the.md`_

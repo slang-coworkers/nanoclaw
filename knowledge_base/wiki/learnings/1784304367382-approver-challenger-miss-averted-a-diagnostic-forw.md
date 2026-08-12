@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss-averted] a diagnostic-forwarding refactor that surfaces previously-swallowed warnings can break pre-existing empty-stderr tests"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784304367382-approver-challenger-miss-averted-a-diagnostic-forw.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784304367382-approver-challenger-miss-averted-a-diagnostic-fo
 **Fix:** BLOCK (RED_BUG). Verified deterministic PR-caused CI regression breaking pre-existing tests, even though the review-doc verdict was only nits and the PR's OWN new tests passed. Same challenger-CI-gate class as #11595 / #12130 / #12106-R1 / #12141-R1. next-action: scope success-path diagnostic forwarding to error-severity (or gate on the specific deprecated/removed ctor), or update the affected test expectations. (Note: R2 correctly FIXED R1's slang-rhi E41400 break by switching from `static_assert(false)` to a version-gated `[deprecated]`/`[RemovedSince(2026)]` warning — a good design — but introduced this separate regression, so a redesign that fixes one break can introduce another; re-gate the whole thing, don't assume the fix is clean.)
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784304367382-approver-challenger-miss-averted-a-diagnostic-forw.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784304367382-approver-challenger-miss-averted-a-diagnostic-forw.md`_

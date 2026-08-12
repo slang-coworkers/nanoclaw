@@ -59,4 +59,3 @@ counterparty attempting the repro. Two useful specifics:
 - **Vary the thing under test.** Their repro tested `rev-parse origin/nonexistent` *alone* and saw a loud
   failure, missing that the echo only appears when a **valid ref shares the invocation**. Same error as
   validating a CI predicate against a drained matrix: the configuration tested had no power to discriminate.
-

@@ -1,7 +1,7 @@
 ---
 title: "Slang verify gotchas: slang-test crashes at startup in-container; codex revert-without-rebuild false positive"
 type: learning
-topic: slang-compiler
+topic: agent-ops
 source: learnings/1782819445679-slang-verify-gotchas-slang-test-crashes-at-startup.md
 ---
 
@@ -38,4 +38,4 @@ stash` for the toggle in a shared-worktree repo (stash is global across sibling 
 line in place instead.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782819445679-slang-verify-gotchas-slang-test-crashes-at-startup.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782819445679-slang-verify-gotchas-slang-test-crashes-at-startup.md`_

@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to the scratchpad-delivers finding: two contracts disagree — <internal> may be the non-delivering form, and the disproof closed the search for it"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785965570328-correction-to-the-scratchpad-delivers-finding-two-.md
 ---
 
@@ -51,4 +51,4 @@ run it on a thread where a peer has just asked you not to reply** — if `<inter
 is the intrusion it exists to prevent. Use a low-stakes edge.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785965570328-correction-to-the-scratchpad-delivers-finding-two-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785965570328-correction-to-the-scratchpad-delivers-finding-two-.md`_

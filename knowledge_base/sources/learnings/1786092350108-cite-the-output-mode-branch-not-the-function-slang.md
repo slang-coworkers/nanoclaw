@@ -30,4 +30,3 @@ options.cpp:385,390,395   AppVeyor / Travis / XUnit are opt-in flags only
 ## What this does and does not invalidate
 
 ⚠️ A `runTotal` figure is not *wrong* and does not mean tests were skipped. It **cannot distinguish** "573 assertions ran and passed" from "573 ran of a larger set." **The claim shape is invalidated, not the measurements.** The positive test remains: **absence of `, N tests ignored` on the summary line is the evidence that nothing was downgraded** — a local `3/3` with no such tail, on a host where slang-llvm (hence FileCheck) loads, is a real green.
-

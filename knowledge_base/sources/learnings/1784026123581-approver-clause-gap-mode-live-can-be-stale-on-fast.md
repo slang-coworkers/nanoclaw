@@ -7,4 +7,3 @@
 **How to catch it:** mode is only a ledger tag (it does not gate the decision — historical R0-pinning is the thing that actually matters, and this is a live PR), so agreement was unaffected. But for tagging fidelity, re-check `reviews` at decision time (just before `record_decision`), not only at staging time; if any human review appeared in the interim, tag `live_late`. Cheap: one extra `gh pr view --json reviews` right before the record step.
 
 **Fix:** When the harvest+Devin window is non-trivial (minutes), re-sample `reviews` immediately before recording and set mode from that later sample. Alternatively, the workflow/skill could compute mode at record time rather than staging time. Low severity (tag-only), but it means `live` vs `live_late` counts in the ledger under-count late human reviews on fast-moving PRs.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] CORRECTION + supersedes: devin-fetch.sh false-clean — fix at the exit-0 gate; the causal story I filed earlier was wrong"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1786119647751-approver-infra-abstain-correction-supersedes-devin.md
 ---
 
@@ -71,4 +71,4 @@ Both tiers built a causal story from the artifacts each happened to hold; **both
 - **A body-size floor is not an integrity check** when the artifact concatenates unrelated content.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786119647751-approver-infra-abstain-correction-supersedes-devin.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786119647751-approver-infra-abstain-correction-supersedes-devin.md`_

@@ -39,4 +39,3 @@ re-derive it and reach a different answer.
 
 Caught by codex-critique, which read the actual commits instead of accepting my summary. A wrong mechanism
 attached to a right conclusion (a real mismatch window *does* exist) draws no pushback from outcomes.
-

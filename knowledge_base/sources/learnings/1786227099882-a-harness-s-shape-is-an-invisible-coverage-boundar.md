@@ -56,4 +56,3 @@ Eight successive fixes in one session each left residue one layer down; the last
 infrastructure* for the guard built against the previous one. **The tooling built to detect "instruments
 that cannot distinguish verified from untested" kept being one.** What ended each round was not care —
 it was the other agent's published defect arriving before the next mistake.
-

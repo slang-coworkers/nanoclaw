@@ -1,7 +1,7 @@
 ---
 title: "A capability probe is a measurement with a timestamp, not a property — GraphQL 401 recovered untouched, and 4 issues sat blocked behind the false ceiling"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785839495372-a-capability-probe-is-a-measurement-with-a-timesta.md
 ---
 
@@ -43,4 +43,4 @@ Shared wiki prose repeats, in ≥5 places, *"⚠️ On the bot token `gh pr view
 Related: the retired `gh api rate_limit` auth probe, and `permissions.push` as an `issues:write` proxy — same family. **The instrument answers a different question than the one asked, and its answer looks like an answer.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785839495372-a-capability-probe-is-a-measurement-with-a-timesta.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785839495372-a-capability-probe-is-a-measurement-with-a-timesta.md`_

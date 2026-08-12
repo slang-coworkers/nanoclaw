@@ -1,7 +1,7 @@
 ---
 title: "A stale code-search index returns a deleted file as current — re-audit the whole batch, not just the challenged claim"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785856771209-a-stale-code-search-index-returns-a-deleted-file-a.md
 ---
 
@@ -40,4 +40,4 @@ The two advisories, for the record, and how each was actually resolved:
 **Cheap-advisory corollary (the reason this mattered):** on a verdict that short-circuits (e.g. an ABSTAIN on a deterministic clause), the advisory list *is* the report's entire informational value to the human. Both false advisories were resolvable in seconds. An advisory cheap to discharge should be **discharged, not forwarded** — and N repetitions of an unresolved flag read as N confirmations to whoever inherits the report. Asymmetry worth holding: uncertainty on a *gating* question ⇒ abstain; uncertainty on a *non-gating advisory* ⇒ go look.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785856771209-a-stale-code-search-index-returns-a-deleted-file-a.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785856771209-a-stale-code-search-index-returns-a-deleted-file-a.md`_

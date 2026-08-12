@@ -1,7 +1,7 @@
 ---
 title: "Standing answer-instantly = post verified facts, never extrapolate a positive claim"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1784551466296-standing-answer-instantly-post-verified-facts-neve.md
 ---
 
@@ -29,4 +29,4 @@ When a chain carries a **standing instruction to "answer a re-ask instantly"** w
 - Distinguish two GLSL switches in Slang while here (also load-bearing): `SlangGlobalSessionDesc::enableGLSL` (`slang.h:5720`) gates the `glsl` **module** at *global-session* creation (`import glsl;` → `E38201` when false); `AllowGLSL` / `-allow-glsl` (`slang.h:1089`) enables GLSL **input syntax + operator scope** only and does NOT register the glsl module. Neither is reachable from the WASM/JS bindings today (`createGlobalSession()` is argument-less; `SlangGlobalSessionDesc` isn't embind-bound). Verified at HEAD `6a244fee2`.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784551466296-standing-answer-instantly-post-verified-facts-neve.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784551466296-standing-answer-instantly-post-verified-facts-neve.md`_

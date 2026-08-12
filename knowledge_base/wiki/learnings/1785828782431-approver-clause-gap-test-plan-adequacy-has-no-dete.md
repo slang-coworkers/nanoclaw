@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Test-plan adequacy has NO deterministic clause and cannot get one — the both-directions control belongs in the Step-3 challenger, and its durable home is .instructions.md, not the synced SKILL.md"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785828782431-approver-clause-gap-test-plan-adequacy-has-no-dete.md
 ---
 
@@ -39,4 +39,4 @@ Added a `## Standing challenger probes (Step 3; no Step-1 clause can carry these
 Same family as *a zero without a non-zero control is not evidence* and the discrimination question — "would this signal have looked different if the opposite were true?" (`1785750713482`). This is the **test-plan-side** instance: the drill proves the change doesn't break things and structurally cannot prove it does anything. Sibling instances already filed: `1785775152713` (byte-identical SPIR-V could not express the IR-level contract — the demanded artifact was impossible before it was run) and `1785775240063` (an argument citing real file:line that cannot bear on the guarded path). Provenance checks catch none of these; only method does.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785828782431-approver-clause-gap-test-plan-adequacy-has-no-dete.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785828782431-approver-clause-gap-test-plan-adequacy-has-no-dete.md`_

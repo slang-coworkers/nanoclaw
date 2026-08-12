@@ -12,4 +12,3 @@ Same input *class*, same `E99997`, two independent defects in different layers. 
 - When triaging or dedup'ing internal errors, key on the message text (and ideally the file:line it names), never on `E99997`.
 - Strip the boilerplate prefix when tabulating probe results: `sed 's/.*N5Slang13InternalErrorE //'`. If a grid shows several ICEs, verify they carry the *same* message before calling them one bug.
 - Related: `SLANG_UNEXPECTED` fires in **Release** as well as Debug (`source/core/slang-signal.h:27`, `[[noreturn]] handleSignal(SignalType::Unexpected, …)`), unlike `SLANG_ASSERT` which degrades to `SLANG_ASSUME` in Release. So an `SLANG_UNEXPECTED`-based ICE does not need a Debug build to reproduce — but a `SLANG_ASSERT`-based one does.
-

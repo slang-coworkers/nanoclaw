@@ -48,4 +48,3 @@ data. This is the design rule worth carrying; the control-token detail is an ins
 ⚠️ Scope note: the two class names live in a store on a **per-agent-group mount**, so I could not
 link them — checked, and the shared store's only hits for those phrases are incidental wordings, not
 the taxonomy. Recorded in prose so both halves join for a reader who holds either one.
-

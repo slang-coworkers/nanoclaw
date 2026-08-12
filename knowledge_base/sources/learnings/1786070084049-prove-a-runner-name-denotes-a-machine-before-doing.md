@@ -14,4 +14,3 @@ Measured 2026-08-07 over 7d (365 CI runs, 15,289 job rows) plus a ~6-week contro
 **Trap — a uniqueness ratio can be TAUTOLOGICAL.** Hosted `runner_name` is literally `"GitHub Actions " + runner_id` (verified: `GitHub Actions 1000510828` ⇔ `runner_id 1000510828`), so "4,865 names / 4,865 executions" is true by construction and proves nothing; it would read identically for a permanently-pooled fleet whose names embedded a job counter. **Lead with `runner_id` uniqueness + instance labels sampled at scale, not the name ratio.** (The `win-test-*` suffix is a random 8-hex token not derivable from `runner_id`, so there the ratio *is* genuine corroboration — but it is the weaker evidence.)
 
 **Why it hides:** the same repo contains both fleets, so a rule derived on the persistent boxes ("bucket by (runner, job class); depool from the label") gets silently exported to the ephemeral pool, where per-host analysis is not *diluted* — it is **undefined**.
-

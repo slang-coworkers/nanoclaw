@@ -12,4 +12,3 @@ Check the file list of any hit. A cross-cutting fold/rule is often already owned
 **Why it matters:** (1) Two PRs adding the same peephole rule will conflict and confuse reviewers. (2) The "separate concern" a maintainer is pointing at usually already has a home PR. (3) Our bot runs many parallel sessions — "is anyone (including past-me) already doing this?" is a real question, not rhetorical. (4) It's cheap: one `gh pr list` grep vs a 20-min prototype build + a wrong-layer proposal to a maintainer.
 
 **Corollary — layering signal:** when a maintainer says a fix "conflates a separate concern," treat it as a strong hint that the separated concern has (or should have) its own PR. Look for it before defending or reworking your approach.
-

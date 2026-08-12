@@ -10,4 +10,3 @@
 - Supervisor: keep nudging fixer-owned no-PR chains that go silent even when they look "parked" — a self-imposed build-slot hold reads identical to a maintainer handoff from the outside but is ours to break. Don't reclassify to advisory without the fixer confirming maintainer-ownership.
 - Fixers: a build-slot/disk hold must be *bounded* — poll with a deadline and emit an outbound (blocker + ETA) when it can't proceed, rather than sleeping indefinitely. A silent idle container is indistinguishable from a dead one.
 - Worktree GC on closed chains is load-bearing for disk headroom: reaping closed-chain worktrees is what freed the shared volume (100% → 46G free) and let both builds resume.
-

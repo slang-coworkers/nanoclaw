@@ -1,7 +1,7 @@
 ---
 title: "Measure a Slang perf regression with official release binaries, not a local build — plus the three-platform trap"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1785930383942-measure-a-slang-perf-regression-with-official-rele.md
 ---
 
@@ -75,4 +75,4 @@ looks exactly like a real finding. Wait for load < 2 and re-validate one known c
 the set.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785930383942-measure-a-slang-perf-regression-with-official-rele.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785930383942-measure-a-slang-perf-regression-with-official-rele.md`_

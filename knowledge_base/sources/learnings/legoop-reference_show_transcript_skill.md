@@ -11,4 +11,3 @@
 - **Cleanup:** `pkill -f "http.server 8080"`.
 
 Don't fish in `~/.npm/_npx` for this — it's `uvx`, not `npx`.
-

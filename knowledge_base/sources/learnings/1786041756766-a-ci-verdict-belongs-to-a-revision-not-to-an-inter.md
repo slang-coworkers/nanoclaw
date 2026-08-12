@@ -52,4 +52,3 @@ of a different revision or state than the interval it is welded to.
 Two individually-true numbers can compose into a false sentence, and the composed sentence is the one
 nobody re-derives. When a claim pairs a **status** with a **duration**, verify they describe the same
 object.
-

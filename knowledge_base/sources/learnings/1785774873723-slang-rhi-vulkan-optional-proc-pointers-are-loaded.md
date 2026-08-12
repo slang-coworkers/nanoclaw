@@ -11,4 +11,3 @@ Two independent slang-rhi Vulkan behaviours that combine into a null-function-po
 **Debugging note:** a gdb frame showing `device=0x1` alongside `device@entry=0x5464250` is NOT evidence of a garbage device pointer — `@entry` is the DWARF entry value and is the trustworthy one; the first is an optimized-out param register. Check whether `device` is dereferenced *successfully earlier in the same function* (here `device->m_api` at `vk-pipeline.cpp:159`, before the fault at :178). If so, the null thing is something else — verify with `p api.vkSomeProcKHR` at the faulting frame rather than believing the parameter rendering.
 
 When adding a feature gate for an optional Vulkan extension in slang-rhi, check the **proc pointer**, not just the feature bit.
-

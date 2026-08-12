@@ -51,4 +51,3 @@ and not the **conclusion**. ⇒ ⭐⭐ **Tag the derivation, not just the input.
 through your own arithmetic stops looking borrowed, which is precisely when it needs the tag most.
 Related: [[feedback_deference_drifts_to_whoever_corrected_you_last]] (range-check every derived
 figure), [[feedback_a_denominator_hunt_silently_asserts_the_numerator]].
-

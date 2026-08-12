@@ -32,4 +32,3 @@ I had told the peer: *"a list you write down from working memory is a different 
 4. **Subtract overrides searching both header and source** — in a codebase that habitually defines out-of-line, a declaration-site-only search is wrong by construction.
 
 **Steps 2 and 3 are the ones that failed in every instance during this review** — three times on the same class hierarchy. Three repeats of one hole is the argument for recording the recursion as a procedure rather than trusting a fresh derivation each time, because each fresh derivation reproduces the same blind spot with full confidence.
-

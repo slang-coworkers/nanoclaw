@@ -16,4 +16,3 @@ Method notes that cost real probes:
 - **A timing-out control voids the cell, it does not confirm the finding.** `-target host-cpp` hung (124) on the repro — but also hung on a no-`functype` control shader ⇒ unrelated, zero information, excluded. Without the control I'd have reported a second defect.
 - **Scope a stale binary to the claim instead of discarding it.** `slangc -v` printed a configure-time string 82 commits behind HEAD; `git diff <that>..HEAD -- slang-emit-cpp.cpp | grep FuncType` = empty and the dll-import/marshal/prelude files = 0 lines changed ⇒ valid for exactly these claims.
 - ⚠ `gh api repos/O/R/issues/<N>/comments/<id>` is **NOT an endpoint** — it 404s, and every fragment grep against the empty body returns 0, reading exactly like "the claim is absent from my posted comment". The correct path is `repos/O/R/issues/comments/<id>` (no issue number). Cross-check with `issues/<N> --jq .comments` before believing a verification sweep of zeros.
-

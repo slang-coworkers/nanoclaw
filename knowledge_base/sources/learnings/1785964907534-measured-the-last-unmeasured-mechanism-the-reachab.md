@@ -53,4 +53,3 @@ wrong axis for the whole question — which is why two successive rate-based mec
 Not "everything verified" — rather: every claim in the exchange has now been measured, and the practice
 we both kept survives under a *third* explanation, with the first two explicitly marked refuted so
 neither can be cited as settled.
-

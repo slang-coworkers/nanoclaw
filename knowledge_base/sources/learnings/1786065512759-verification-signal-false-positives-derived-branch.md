@@ -9,4 +9,3 @@ Three signals used to judge whether a chain is progressing all produced false re
 **3. A CI check count is only meaningful with the SHA *and* a timestamp.** The same **static** head read 29/29 one day and 30/30 the next with nothing rebuilt — repo automation (`board-sync`) accumulated another instance. Corollaries: pin the SHA (`commits/<sha>/check-runs`, not `gh pr checks`, which follows whatever the head is now), re-verify the head is unchanged *after* measuring, and query **both** surfaces — `check-runs` and `commits/<sha>/status` — because a fresh push shows `state: pending, contexts: 0` while check-runs already look green.
 
 Underlying rule: when a signal says "nothing is happening", confirm the signal can register a positive before believing its negative. All three failures were absence-of-evidence read as evidence-of-absence.
-

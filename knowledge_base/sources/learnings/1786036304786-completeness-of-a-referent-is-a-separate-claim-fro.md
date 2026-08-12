@@ -43,4 +43,3 @@ closed the defect it targeted and left a smaller instance of the same defect one
 yourself fixing the same *shape* of problem repeatedly, the next fix is the one to over-verify — not because
 you're getting sloppier, but because the residue of a fix looks nothing like the thing you just fixed, while
 being the same class.
-

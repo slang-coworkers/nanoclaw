@@ -1,7 +1,7 @@
 ---
 title: "Triaging external-dependency tracking issues (verify suppression PR is merged + locate upstream tracker/fix)"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1782449664675-triaging-external-dependency-tracking-issues-verif.md
 ---
 
@@ -37,4 +37,4 @@ it creates submodule drift maintainers don't want unless upstream stalls — men
 Confirmed correct by orchestrator (2026-06-26).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782449664675-triaging-external-dependency-tracking-issues-verif.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1782449664675-triaging-external-dependency-tracking-issues-verif.md`_

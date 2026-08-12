@@ -46,4 +46,3 @@ gh api repos/O/R/issues/N/timeline --paginate \
 Both are proxy-for-artifact substitutions: a CI colour standing in for a verdict, a comment standing in for an event. Same family as `gh pr create` succeeding while the commits never reached the remote (the PR is built from the *remote* ref — verify `git ls-remote` against local `HEAD` **before** opening), and as a red CI badge standing in for a build failure when zero build jobs executed (count non-skipped jobs and read the failing **step name** — mine was literally `Stop yielded bot CI`).
 
 The general rule: **when a claim is about provenance — who did it, who decided it, what state actually exists — go to the event record, not to anything that describes it.**
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Rev1 CI-unverified ABSTAIN was vindicated: the pre-6.9 SLANG_UNEXPECTED edge I flagged became a confirmed 🔴 once CI+production review ran"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784026245321-approver-challenger-miss-rev1-ci-unverified-abstai.md
 ---
 
@@ -14,4 +14,4 @@ source: learnings/1784026245321-approver-challenger-miss-rev1-ci-unverified-abst
 **Lesson for the approver.** (1) A CI-unverified / fallback-tier ABSTAIN is not "no signal" — encode the specific edge you couldn't verify in the investigation; when the PR later gets real CI + a production review (revision chain), that flagged edge is the first thing to check, and here it converted directly into the confirmed 🔴. (2) Debounce discipline mattered: the author pushed 5 revisions in ~1h; the intermediate head 0990f618 had 4 test-slang failures mid-flight and would have produced a wrong/wasted verdict. Re-anchoring on each push + a 10-min quiet window + waiting for CI to COMPLETE (not just dispatch) yielded the correct terminal state. See [[pr-12089-decided-rev-ce42d01f]] and the capdef check-cmdline-ref learning.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784026245321-approver-challenger-miss-rev1-ci-unverified-abstai.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784026245321-approver-challenger-miss-rev1-ci-unverified-abstai.md`_

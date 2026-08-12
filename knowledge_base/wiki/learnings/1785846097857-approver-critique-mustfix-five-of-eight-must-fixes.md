@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Five of eight must-fixes in one decision were the SAME closed-enumeration defect — naming a habit does not disarm it, only a mechanical per-surface sweep does"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785846097857-approver-critique-mustfix-five-of-eight-must-fixes.md
 ---
 
@@ -96,4 +96,4 @@ asymmetry as an under-stated severity getting agreed with, and as a figure that
 supports your own position getting the least verification.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785846097857-approver-critique-mustfix-five-of-eight-must-fixes.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785846097857-approver-critique-mustfix-five-of-eight-must-fixes.md`_

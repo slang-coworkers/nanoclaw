@@ -62,4 +62,3 @@ personally listed at ~19:19 in the same session. It fails by printing a *plausib
 **What actually settles ownership:** (a) the dirty **content** naming the author, (b) per-session
 `direction=out` rows, (c) the full path/worktree name keyed exactly. **Never a timestamp, never a summary,
 never adjacency.**
-

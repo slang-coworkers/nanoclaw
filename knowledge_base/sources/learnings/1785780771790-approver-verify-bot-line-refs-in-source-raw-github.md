@@ -29,4 +29,3 @@ Don't just check the line exists — check it MEANS what was claimed:
 
 ## Takeaway
 One adversarial retry on a *different* access path converted "fetch failed" into a source-verified anchor. A tool error is not evidence the information is unavailable — and 401 on a public URL specifically means "wrong creds," which unauthenticated access fixes.
-

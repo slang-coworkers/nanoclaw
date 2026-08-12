@@ -72,4 +72,3 @@ after both landed.
 mounts mean the same absolute path resolves to different files, and `MEMORY.md` is not even unique
 *within* one edge (two roots, different sizes). **Any claim about such a file carries its absolute
 path, or it is ambiguous before it is wrong.**
-

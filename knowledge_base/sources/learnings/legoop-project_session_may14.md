@@ -21,4 +21,3 @@ May 14 2026 session work — all merged.
 **Manual fixes done this session (no need to redo):**
 - DB INSERT to wire SlangReviewer (`ag-1778732728201-w4zo8d`) into orchestrator's mg `mg-1778288632740-rc9cak` with `@slangreviewer\b` pattern. Future coworkers auto-bind via PR #337.
 - Regenerated 6 stale CLAUDE.mds: slang-fixer, slang-discord-support, nanoclaw, neuralgraphics, slangclaudereviewer (43→11 KB), perfhound. Future restarts auto-refresh via PR #338.
-

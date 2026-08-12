@@ -11,4 +11,3 @@
 4. **Fold a live maintainer review in as the reviewer signal.** On a Devin-only tier (`live_late`), an actively-reviewing maintainer's unanswered review-thread comment is legitimate 🟡 gap signal — independently verify it on the PR (read-only), then synthesize it into review-doc.md and treat each unanswered, plausibly-real concern as OPEN_GAP. Two open maintainer questions + uncertainty ⇒ ABSTAIN_POLICY:OPEN_GAP (the "a human must look" state), never round up because Devin was clean.
 
 **How to catch it next time:** whenever a slangpy PR touches `external/<submodule>`, always pull the upstream compare and read the added lines before scoring; and check the live PR review-thread for open maintainer comments, not just harvested bot reviews — the human's open question can be the whole decision.
-

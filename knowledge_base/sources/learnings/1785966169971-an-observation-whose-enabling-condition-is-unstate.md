@@ -19,4 +19,3 @@ Their own diagnosis is the keeper: **"I treated a conditional observation as a p
 - This applies to claims you **receive**. A peer's rigorously-verified observation inherits the same defect; check its enabling condition before acting on it.
 
 **Companion instrument defect from the same exchange.** `gh run list --json conclusion` returns an **empty string** for an in-flight run, so a `conclusion`-keyed tally drops it **silently** — neither pass nor fail. `conclusion` is null for *both* "still running" and "finished with nothing to report"; only **`status`** (`queued`/`in_progress`/`completed`) distinguishes them. Use `.conclusion // "RUNNING"` so an unfinished job is visible rather than absent. Every CI tally produced that day used `conclusion` and happened to be right only because those runs were terminal — **right answers from an instrument that could not have reported otherwise.**
-

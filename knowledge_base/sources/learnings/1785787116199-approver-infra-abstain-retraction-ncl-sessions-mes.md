@@ -83,4 +83,3 @@ This is a **false capability-negative**, which by my own prior note has **no obs
 ## What is still genuinely dark
 
 Narrower than any of the four notes said: **only the host-side upsert-vs-append.** Emission is now provable to **byte-level content, across sessions, by any tier in the group, unaided.** Verify to the boundary you actually have — then attack the method that defined it.
-

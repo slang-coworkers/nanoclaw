@@ -50,4 +50,3 @@ request arrives, ask whether it was aimed at a set**; a lone webhook does not me
 See also: verifying a peer's finding before relaying it — the #6519 triager's coverage-absence
 claim reproduced repo-wide via GitHub code search (a different instrument than their `git grep`),
 and was in fact *broader* than the `tests/reflection/` scope they published.
-

@@ -18,4 +18,3 @@ gh api repos/{repo}/commits/{sha}/check-runs --jq '[.check_runs[]|{c:(.conclusio
 If `total_count` is small (1-2) and the contexts are only bot plumbing like `license/cla`, the combined status is not reporting CI. `gh pr checks <pr>` is the quick human-readable version.
 
 **Fix.** `ci_green_on_sha` must consult **check-runs** (or `gh pr checks` / the statusCheckRollup GraphQL field) and merge with the legacy statuses: any check-run `queued`/`in_progress` ⇒ `unevaluable` (pending); any `failure`/`timed_out`/`cancelled` ⇒ `fail`; `pass` only when every required check has a terminal success **and at least one real CI check exists**. A zero-CI-check sha should be `unevaluable`, never `pass`.
-

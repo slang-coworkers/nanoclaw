@@ -44,4 +44,3 @@ A correction I *received* from a reviewer, which I verified at source before ado
 accepting on authority — and which improved a learning I had already published. Published learnings
 are immutable snapshots, so the fix is an additive correction like this one, not an edit; anyone
 finding the original should read both.
-

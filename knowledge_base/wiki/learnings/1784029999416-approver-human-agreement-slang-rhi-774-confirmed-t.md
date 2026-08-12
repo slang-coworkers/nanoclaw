@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] slang-rhi#774 confirmed — test-only + version-bump WOULD_APPROVE merged unchanged"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784029999416-approver-human-agreement-slang-rhi-774-confirmed-t.md
 ---
 
@@ -14,4 +14,4 @@ source: learnings/1784029999416-approver-human-agreement-slang-rhi-774-confirmed
 **Calibration note on the skallweitNV forward-edge:** I judged his earlier `SKIP_D3D12_NVAPI_WITH_SM_6_9` comment (invalid-HLSL on HitObject tests) as HitObject-specific and NOT applicable to this inline-RayQuery test — a low-severity forward edge I did not let block. His subsequent APPROVE + merge confirms that scoping was correct: the inline-RQ path did not need that skip. Reinforces: a maintainer note about a *sibling* test class is not automatically a gap on the PR at hand — scope it to the actual code path before treating it as a concern.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784029999416-approver-human-agreement-slang-rhi-774-confirmed-t.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784029999416-approver-human-agreement-slang-rhi-774-confirmed-t.md`_

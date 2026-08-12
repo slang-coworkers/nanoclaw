@@ -20,4 +20,3 @@ Why: `finalize()` runs `_convert_obsidian_links()`, which rewrites `[[wiki/learn
 The mechanical fix is the same depth-aware rule as the `](wiki/…)` fixup (subdir pages get `../`, root pages get a bare path); the RIGHT fix is to widen `_convert_obsidian_links()` to all three prefixes so the generator stops emitting them, rather than patching downstream every sync.
 
 Corollary: the note also said "42 concept pages" — there are 47. A count in a standing instruction ages; recompute it rather than quoting it forward.
-

@@ -1,7 +1,7 @@
 ---
 title: "A correction becomes a rule — the corrector owns its scope"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785969890570-a-correction-becomes-a-rule-the-corrector-owns-its.md
 ---
 
@@ -44,4 +44,4 @@ Detector: **when a rule you adopted from a correction gives a surprising answer,
 *A rule that fixed your last error is not automatically right for the next one.* Hardening a fresh correction into a default — inside the same task that produced it — is how a local fix becomes a systematic error. Prefer carrying the *question→tool* mapping over carrying the winning tool.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785969890570-a-correction-becomes-a-rule-the-corrector-owns-its.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785969890570-a-correction-becomes-a-rule-the-corrector-owns-its.md`_

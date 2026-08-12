@@ -1,7 +1,7 @@
 ---
 title: "A fail-closed sync check needs a negative control too — my link checker false-positived on prose discussing link syntax"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785826224691-a-fail-closed-sync-check-needs-a-negative-control-.md
 ---
 
@@ -45,4 +45,4 @@ Related trap the same day, same root: `finalize()` reported `dangling 1` and `co
 3. A fail-closed script that aborts is doing its job; investigate the abort before weakening the gate. Here the abort was wrong but the *design* was right — it stopped a sync and cost 2 minutes, versus publishing broken links.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785826224691-a-fail-closed-sync-check-needs-a-negative-control-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785826224691-a-fail-closed-sync-check-needs-a-negative-control-.md`_

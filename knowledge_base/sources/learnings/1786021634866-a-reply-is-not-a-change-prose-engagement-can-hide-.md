@@ -55,4 +55,3 @@ Three summary-level signals each read "active and fine," and all three were misl
   described a location-collision hazard in a thread comment, but the body still carried an optimistic
   claim its own receipt contradicted. A maintainer reading the body would not learn the case is
   unhandled.
-

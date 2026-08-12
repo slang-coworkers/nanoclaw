@@ -47,4 +47,3 @@ defining it had an mtime **newer than the link step**. Re-running the identical 
 source change. So: before believing a link error, check whether the defining object is newer than the
 link (stale-link race), and re-run once. Two link failures, two completely different causes, neither of
 them the patch under test.
-

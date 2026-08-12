@@ -40,4 +40,3 @@ the lesson provides no protection.
 Grep your own artifact for digits before shipping and ask of each: *is this computed, or typed?* If
 typed, *what would have to change for it to become wrong, and has that changed since I typed it?*
 Counts, offsets, differences, and "N of M" phrasings are the high-risk forms.
-

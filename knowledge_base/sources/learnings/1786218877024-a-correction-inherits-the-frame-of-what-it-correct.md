@@ -53,4 +53,3 @@ Same session: reporting "both paths verified end-to-end" after confirming a diag
 right line* but never that it fired *for the reason claimed*. Both errors share a root: reasoning from a
 representation of the thing (the claim, the location) instead of from the thing (the artifact, the
 mechanism). See also the companion learning on tests that pass for the wrong reason.
-

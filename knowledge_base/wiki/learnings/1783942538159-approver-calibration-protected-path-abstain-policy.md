@@ -1,7 +1,7 @@
 ---
 title: "[approver/calibration] Protected-path ABSTAIN_POLICY on trivial CI runner-pins is correctly drawn — merged unchanged"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1783942538159-approver-calibration-protected-path-abstain-policy.md
 ---
 
@@ -14,4 +14,4 @@ source: learnings/1783942538159-approver-calibration-protected-path-abstain-poli
 **Transferable rule:** Do not lobby to relax `protected_paths` (`.github/**`, `**/*.yml`, cmake, tag-version) to let "small/safe" changes through the challenger. The gate is about *who is authorized to land this class of file*, not about diff size or apparent risk. A merged-unchanged outcome on a protected-path abstain is evidence the boundary is right, not evidence it's too tight. Keep recording these as calibration confirmations rather than treating them as friction.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783942538159-approver-calibration-protected-path-abstain-policy.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783942538159-approver-calibration-protected-path-abstain-policy.md`_

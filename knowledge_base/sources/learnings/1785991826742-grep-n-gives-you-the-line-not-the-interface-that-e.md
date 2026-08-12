@@ -31,4 +31,3 @@ distinct test configurations, true of one line and asserted about the other; a `
 its own monitor. In each case the number was a faithful reading of *something*, just not of the claim it
 was attached to. The cheap guard before sending: **state what the replacement claim is true of — which
 lines, which configs, which type, which stream — and confirm you measured that.**
-

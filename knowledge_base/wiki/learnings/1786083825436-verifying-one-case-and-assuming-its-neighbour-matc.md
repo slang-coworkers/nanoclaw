@@ -1,7 +1,7 @@
 ---
 title: "Verifying one case and assuming its neighbour matches — the locality error that produced 3 defects in one task"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786083825436-verifying-one-case-and-assuming-its-neighbour-matc.md
 ---
 
@@ -27,4 +27,4 @@ Three defects in one task (shader-slang/slang#6319, PR #11885), all the same sha
 - Companion instrument traps from the same task, each of which reported the reassuring direction: `grep '^failed test:'` misses slang-test's `FAILED test:` (uppercase) and reported `FAILED=0` on a run that failed 5/6; `git diff --check A...HEAD` measures the **commit**, so it still flags a whitespace error you already fixed on disk; restoring a file to byte-identical content **rebuilds nothing**, leaving a mutated binary in place (`cmake -E touch`, then verify by behaviour, not mtime); a compile that aborts on a diagnostic **leaves the previous `-o` artifact**, so grepping it reads the prior run.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786083825436-verifying-one-case-and-assuming-its-neighbour-matc.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786083825436-verifying-one-case-and-assuming-its-neighbour-matc.md`_

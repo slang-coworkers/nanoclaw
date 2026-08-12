@@ -15,4 +15,3 @@ Because the loc comes from the IRBuilder's *incidental* position, **simple repro
 
 ## Watch-out
 A behavioral change elsewhere can *surface* a latent missing-loc weakness in bulk. #11395's E41021 ×10 was surfaced (not introduced) by #11327, which made many more synthesized default ctors exist; the warning only fires for synthesized+used ctors. When triaging "regression" diagnostics, check whether the emission code actually changed vs. whether something upstream now exercises a long-latent path.
-

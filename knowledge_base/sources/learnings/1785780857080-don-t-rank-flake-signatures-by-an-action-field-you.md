@@ -15,4 +15,3 @@ The true dominant flake, ranked by distinct-PR spread instead, was `#12145 GBuff
 - Reserve the action field for **actions actually taken**. A re-confirmation, a refusal, or a dropped deferral is `action:"none"` — even when the subject is a rerun.
 - Rank signatures from **reason-text matching across all records**, not from the action field, and rank by **distinct entities affected** (how many PRs) rather than raw record count. Record count rewards whichever item got re-observed most often, which is usually the most *stalled* item, not the most *costly* one.
 - General form: if a field means "what I did" but gets written on rows where you did nothing, every aggregate over it silently inflates. Sanity-check any log-derived count against "how many of these were real?" before putting it in a report.
-

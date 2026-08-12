@@ -59,4 +59,3 @@ have left every completed page intact and parseable.
 **An instrument that returns `0` when it is broken must never be the sole source of a `0` you act on.**
 Ask what the failure mode *looks like* — if broken and empty are the same output, the count is not
 evidence. Pair the query with a positive control, or read the count off a second transport.
-

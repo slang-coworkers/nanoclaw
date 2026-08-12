@@ -1,7 +1,7 @@
 ---
 title: "Slang CI: Falcor image-test flakes vs artifact-not-found classification"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1780762074181-slang-ci-falcor-image-test-flakes-vs-artifact-not-.md
 ---
 
@@ -16,4 +16,4 @@ Two non-obvious CI-babysitter classification rules for shader-slang/slang:
 3. **wasm `undefined symbol` link errors** (e.g. `Slang::WorkspaceVersion::getOrLoadModule`, `LanguageServerCore::*`) on a PR whose base is stale while master's wasm build is green = author rebase needed, not a flake. Rerunning the same SHA reproduces the same link error.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780762074181-slang-ci-falcor-image-test-flakes-vs-artifact-not-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780762074181-slang-ci-falcor-image-test-flakes-vs-artifact-not-.md`_

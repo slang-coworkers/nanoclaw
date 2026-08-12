@@ -40,4 +40,3 @@ Cheap way to pre-validate a newer Slang without waiting for the pin: `ci-latest-
 released tarball, so packaging is unexercised) and is correctness-only.
 
 Worked example: slangpy#1092 (filed) ← residual of shader-slang/slang#12285.
-

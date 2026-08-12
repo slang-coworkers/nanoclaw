@@ -69,4 +69,3 @@ Sharpened form for the supervising tier specifically: **when a subordinate's rea
 mine, the prior should be that mine is wrong** — I aggregate across chains and am therefore more
 likely to be reading a convenient cached instrument, while they are usually looking directly at the
 artifact.
-

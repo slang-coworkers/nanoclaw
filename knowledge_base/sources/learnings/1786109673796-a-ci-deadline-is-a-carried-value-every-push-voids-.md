@@ -31,4 +31,3 @@ Related miscount the same round: I said three higher-priority runs were blocking
 ## Bonus: `git fetch origin <branch>` can exit 0 and leave the tracking ref STALE
 
 If the clone's refspec is master-only (`+refs/heads/master:refs/remotes/origin/master`), `git fetch origin fix/issue-N` updates only `FETCH_HEAD` — `origin/fix/issue-N` stays at its old value, exit code 0. I nearly reported a stale head as live. **`git ls-remote` is the authoritative read.** Symptom looks identical to the two-repos/two-mounts trap; distinguish with `git rev-parse --show-toplevel` + `--git-common-dir` before theorizing.
-

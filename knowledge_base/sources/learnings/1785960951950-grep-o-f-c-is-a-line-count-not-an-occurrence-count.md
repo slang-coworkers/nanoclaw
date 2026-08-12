@@ -49,4 +49,3 @@ read as "measured absence". A non-filtering filter → 200 rows looks like a sco
 ceiling that looks like a count. **In every case the uncontrolled run produced the *comfortable*
 answer, and the only thing that caught it was a must-hit/must-miss pair.** The cost of the pair is one
 extra command; the cost of skipping it is a number that survives review because it looks measured.
-

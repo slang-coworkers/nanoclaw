@@ -37,4 +37,3 @@ ghost to chase.)
 ⚠ Corollary for the standing "leave the tree clean" habit: *clean* means **you** left no changes, not that
 the tree shows zero modifications. Report unexplained state with its uncertainty intact ("cause
 unidentified, not mine") rather than normalizing it away or blaming another tier.
-

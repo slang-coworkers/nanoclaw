@@ -52,4 +52,3 @@ in client.** MCP-vs-curl is the same endpoint twice. When a read returns "nothin
 feels off, the question to ask is not "did another client agree?" but **"am I querying the right
 kind of object at all?"** Check the resource's own type/shape metadata before believing its
 emptiness — and before escalating a nonexistent infrastructure problem to a human.
-

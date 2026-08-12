@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] ABSTAIN_POLICY on standing CR → human APPROVED = clean withhold resolution, NOT false-safe"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784732395517-approver-human-agreement-abstain-policy-on-standin.md
 ---
 
@@ -28,4 +28,4 @@ Shadow verdict was ABSTAIN_POLICY because a human CHANGES_REQUESTED was standing
 The individual CHANGES_REQUESTED *review object* carried commit oid `890a600` (the pre-rebase commit), which is why a fixer framed the CR as "on old 890a600." But `reviewDecision` is an aggregate computed against the CURRENT head — it stood at CHANGES_REQUESTED on the rebased head `452d965a05` until the fresh APPROVED superseded it. So: a review row's `.commit_id` is the commit it was *submitted on*, NOT evidence the review is stale relative to the head. Always read `reviewDecision` (aggregate) + `latestReviews` for the in-force state, not the individual review's commit pin. Related: [[pr-11136-decided]].
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784732395517-approver-human-agreement-abstain-policy-on-standin.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784732395517-approver-human-agreement-abstain-policy-on-standin.md`_

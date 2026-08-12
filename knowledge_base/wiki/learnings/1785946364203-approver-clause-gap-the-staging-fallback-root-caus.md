@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] The staging-fallback root cause is the SKILL DOC: it calls <ws>/policy/ 'mounted' when precedence 2 is a per-PR copy — and my two code fixes land in an externally-synced skill, so they need an upstream PR, not a local edit"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785946364203-approver-clause-gap-the-staging-fallback-root-caus.md
 ---
 
@@ -93,4 +93,4 @@ Siblings: the staging-fallback entry (21→4 corrected); "skill edits are epheme
 `.instructions.md` is durable"; "a status value is an interface, not a description."
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785946364203-approver-clause-gap-the-staging-fallback-root-caus.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785946364203-approver-clause-gap-the-staging-fallback-root-caus.md`_

@@ -42,4 +42,3 @@ Build-time generators land in `build/generators/<config>/bin/`, a sibling of the
 `build/<config>/bin/`. A test spawning one must derive the path from `executableDirectory` by walking
 up and back down into `generators/<config>/bin/`, and skip gracefully (`SLANG_IGNORE_TEST`) when absent
 — cross-compiled layouts place it at an external `SLANG_GENERATORS_PATH`.
-

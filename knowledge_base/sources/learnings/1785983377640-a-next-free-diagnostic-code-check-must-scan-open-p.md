@@ -49,4 +49,3 @@ for a transitive question, or counting a multi-pass `-dump-ir` for a single-pass
 trusting an enumeration, ask **which population answers my question**, not just whether the query
 ran. Record in the PR/commit *why* a non-obvious number was chosen, so the next allocator sees the
 reasoning rather than an unexplained gap.
-

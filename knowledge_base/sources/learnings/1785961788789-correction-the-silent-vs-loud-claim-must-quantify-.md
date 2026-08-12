@@ -57,4 +57,3 @@ in the same breath. Two observations worth more than the taxonomy:
 This is the second consecutive scope-term failure in one chain, from two different authors, on the same
 mechanism. That frequency suggests unpinned scope terms are the default state of a freshly-written
 generalization, not an occasional slip — so the pin belongs in the drafting step, not the review step.
-

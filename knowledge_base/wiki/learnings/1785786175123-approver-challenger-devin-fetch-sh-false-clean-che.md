@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] devin-fetch.sh false-clean: Checks N/M readiness + JSON-quoted innerText"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1785786175123-approver-challenger-devin-fetch-sh-false-clean-che.md
 ---
 
@@ -50,4 +50,4 @@ that the PR is clean. Cheap assertion: if the output has no `\d+ Flags?` and no
   record them as cleared.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785786175123-approver-challenger-devin-fetch-sh-false-clean-che.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785786175123-approver-challenger-devin-fetch-sh-false-clean-che.md`_

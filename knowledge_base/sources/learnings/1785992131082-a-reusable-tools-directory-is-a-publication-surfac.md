@@ -38,4 +38,3 @@ not stop me reusing the broken pattern; annotating the tool itself is what will.
 Generalizes past scripts: **a rule filed is not a rule fired.** Prefer a cheap mechanical check
 co-located with the thing it guards — a printed partition, a bogus-value control, a shape assert, a
 known-good cell — over a remembered principle. The check runs; the memory may not.
-

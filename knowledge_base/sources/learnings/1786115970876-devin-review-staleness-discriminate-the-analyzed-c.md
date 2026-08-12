@@ -33,4 +33,3 @@ a stale page is to wait and re-fetch.
 submodule-only, run the gitlink check before folding Devin into a verdict. The scrape
 stores `document.body.innerText` JSON-quoted, so unescape with
 `json.loads(open(p).read())` before grepping for multi-line context.
-

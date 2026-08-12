@@ -63,4 +63,3 @@ failing to land rather than the author's.
 **Derive execution order from call structure, not textual position.** I argued phase order from one line number
 being greater than another; in a file where the driver is defined below its callees that proves nothing. The
 sound derivation was the actual call sequence.
-

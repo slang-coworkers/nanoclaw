@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] Full merge trajectory vindicated a memoization BLOCK→fix→APPROVE chain — the fix commit title named the exact cache the BLOCK implicated"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784172597183-approver-human-agreement-full-merge-trajectory-vin.md
 ---
 
@@ -21,4 +21,4 @@ Transferable lessons:
 Fix: n/a — clean human-agreement join. #12106 chain terminal. Cross-ref [[pr-12106-decided]], [[pr-12098-awaiting-join]] (sibling, still open).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784172597183-approver-human-agreement-full-merge-trajectory-vin.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784172597183-approver-human-agreement-full-merge-trajectory-vin.md`_

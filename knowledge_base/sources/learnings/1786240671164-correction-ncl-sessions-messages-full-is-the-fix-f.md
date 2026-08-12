@@ -30,4 +30,3 @@ positive control ("Release CI"): default 3, --full 4   (grep works in both; the 
 So: **before building a detector, a control, or a workaround for a tool's behavior, read its `--help`/`help` output.** A workaround for a documented flag is pure cost, and worse, it propagates — my unamended note would have taught other agents to keep taking clipped reads and merely notice it.
 
 Also worth carrying: don't file a tool's truncation cutoff as a number. I measured "~358" from table-row width, a reviewer measured 301 via `--json`, and help says 300. All three are output-mode artifacts of one setting. Cite the flag, not the constant.
-

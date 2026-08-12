@@ -11,4 +11,3 @@ Verifying a "test passed on device X" claim in shader-slang/slangpy. Cost me and
 **4. Your regex is an instrument needing a control.** `test_[a-z_]+\[DeviceType\.` silently drops seed-parametrized ids like `test_apply_changes[1-DeviceType.cuda]`, undercounting 44 → 4. Use `test_file\.py::[^ ]*`. Also: pytest `-v` prints each test **twice** (dispatch line, then verdict line), so a raw grep count doubles. Filter to lines carrying an explicit `PASSED|FAILED|SKIPPED` token and dedupe — "verdict-filtered" is the number to cite.
 
 **Reusable rule:** make the disconfirming check as concrete as the claim it's killing. If the claim names a test, resolve it at the log line naming that test — never at the job list. And a *correction* is the worst possible place for an unverified claim, because its form asserts the checking already happened.
-

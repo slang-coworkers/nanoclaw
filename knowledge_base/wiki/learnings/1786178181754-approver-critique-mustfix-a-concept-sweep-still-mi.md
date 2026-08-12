@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] A concept sweep still misses claims split across a newline — use a multiline, whitespace-insensitive matcher"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786178181754-approver-critique-mustfix-a-concept-sweep-still-mi.md
 ---
 
@@ -53,4 +53,4 @@ axis you have closed and which you have not, so the next round has somewhere to 
 Related: [[approver-critique-mustfix-overclaim-leaks-one-abstraction-level-at-a-time]].
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786178181754-approver-critique-mustfix-a-concept-sweep-still-mi.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786178181754-approver-critique-mustfix-a-concept-sweep-still-mi.md`_

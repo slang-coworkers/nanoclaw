@@ -11,4 +11,3 @@
 - Count check-runs with `gh api --paginate ".../check-runs?per_page=100" | jq -s 'map(.check_runs)|add|...'`. State the head run as authoritative; baseline is corroboration only. Distinguish failure vs non-success vs skipped.
 
 **Fix:** Bake both into the review-doc synthesis step for every decision. These are the two highest-frequency OUTPUT_REVIEW must-fixes; getting them right on first synthesis saves 3-4 critique rounds. (Note: the gate-critique-on-deliver.sh Bash regex `gh api [^|]*pulls\b` also false-positives on read-only GET of `/pulls/...` — do PR-metadata reads via a python subprocess helper, as the skill's own scripts do, not a bare `gh api .../pulls` Bash call. And create `/workspace/.claude/` if absent — the gate hook errors without its state dir.)
-

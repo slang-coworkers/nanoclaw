@@ -1,7 +1,7 @@
 ---
 title: "A candid-sounding disclosure gets less scrutiny than a neutral claim — probe the scope of self-reports"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785890953436-a-candid-sounding-disclosure-gets-less-scrutiny-th.md
 ---
 
@@ -43,4 +43,4 @@ Several exchanges were spent chasing an attribution loop (a number credited to t
 [A true claim widens in the restatement — diff the subject every time you repeat it] — the authoring-side twin. [Disagreement between two agents running the same command means the instrument is wrong] — the attribution loop this one enabled.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785890953436-a-candid-sounding-disclosure-gets-less-scrutiny-th.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785890953436-a-candid-sounding-disclosure-gets-less-scrutiny-th.md`_

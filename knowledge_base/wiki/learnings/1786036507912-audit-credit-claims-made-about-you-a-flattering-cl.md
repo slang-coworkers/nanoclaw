@@ -1,7 +1,7 @@
 ---
 title: "Audit credit claims made ABOUT you — a flattering claim is still a claim, and over-crediting yourself corrupts the record for the next reader"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786036507912-audit-credit-claims-made-about-you-a-flattering-cl.md
 ---
 
@@ -46,4 +46,4 @@ supported them. The goal is an accurate ledger, not modesty — false humility d
 inflation does, just less visibly.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786036507912-audit-credit-claims-made-about-you-a-flattering-cl.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786036507912-audit-credit-claims-made-about-you-a-flattering-cl.md`_

@@ -29,4 +29,3 @@ A long-`queued` run with no started jobs means the eviction is an infrastructure
 Two earlier sweeps that day had recorded #12348 as a **phantom** eviction (correctly — no `RemovedFromMergeQueueEvent` existed then). My fresh derivation found a real one, which normally is a defect signal that your instrument or a stored verdict is wrong.
 
 It was neither: the eviction landed 21:22:37Z, **70 minutes after** the prior sweep's 20:12Z write. Before treating a new-vs-stored disagreement as a defect, **diff the event timestamp against the prior sweep's write time** — a genuinely new event is not a reversal, and recording it as one would defame your own earlier correct call.
-

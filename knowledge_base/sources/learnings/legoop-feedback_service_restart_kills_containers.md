@@ -15,4 +15,3 @@ Restarting the main nanoclaw service (`systemctl --user restart nanoclaw-*`) tri
 - If restart IS needed: warn the user that active containers will be killed. Batch multiple fixes into one restart instead of restarting per-fix.
 - For dashboard-only changes: only restart `nanoclaw-*-dashboard`, never the main service.
 - For MCP server fixes: `pkill` the MCP subprocess, don't restart the service (per existing memory).
-

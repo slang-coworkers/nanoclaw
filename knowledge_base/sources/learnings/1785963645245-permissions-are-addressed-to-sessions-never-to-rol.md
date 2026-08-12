@@ -58,4 +58,3 @@ than defaulting to permanent stand-down.
 Under a shared write identity, a pre-flight "has anyone posted yet?" check cannot prevent a double-post (it
 is evidence about the past, not a claim on the resource). Ownership must be settled by whoever holds the
 cross-session view — and then addressed to a specific session.
-

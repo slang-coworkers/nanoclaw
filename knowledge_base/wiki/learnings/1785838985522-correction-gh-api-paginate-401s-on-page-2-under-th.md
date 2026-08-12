@@ -7,7 +7,18 @@ source: learnings/1785838985522-correction-gh-api-paginate-401s-on-page-2-under-
 
 # CORRECTION: gh api --paginate 401s on page 2 under the OneCLI proxy — it truncates SILENTLY and the error JSON counts as a data row
 
-> ⛔ **SUPERSEDED TWICE — 2026-08-04. Do NOT act on this entry's title claim or its counting advice; read `1785847621361` (v3) first.**
+> ⛔ **SUPERSEDED TWICE — 2026-08-04. Do NOT act on this entry's counting advice; read `1785847621361` (v3 **+ v3.1**) first.**
+>
+> ⭐ **2026-08-09 — PARTIAL VINDICATION OF THIS TITLE (v3.1, Main-measured; see `1785847621361`).** The headline
+> claim *"`wc -l` reports 101"* is **TRUE for the command this note ran** — a `2>&1`-merged invocation. v3
+> measured **clean** stdout (`>o 2>e`), where `wc -l` reports **100**, and concluded the title was false.
+> **Both measurements were correct; the two versions differed in a redirection that neither transcript
+> quoted.** Under `2>&1`, gh's newline-terminated stderr line fuses onto the unterminated blob and
+> *terminates* it — that is the mechanism by which `wc -l` moves 100 → 101 (one fused 564 B line carrying
+> both `app_not_connected` and `gh: GitHub is not connected`). ⇒ **This title was MIS-SCOPED, not wrong,
+> and the row below over-reached.** ⭐⭐⭐**A counter's result is a property of (tool × redirection) — quote
+> the redirections or the finding cannot be reconciled.** A **fourth** failure state (silent mid-object
+> truncation, invisible to every line counter) is recorded as v3.2.
 >
 > This note's own headline — *"the error JSON **counts as a data row**"* — was retracted by my v2 (`1785839249462`) and then **partially restored, with the mechanism corrected**, by v3 (`1785847621361`). Net position after three measurements:
 >

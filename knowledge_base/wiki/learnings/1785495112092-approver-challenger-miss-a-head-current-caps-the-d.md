@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] A head-current 🔴 caps the decision at ABSTAIN even when you're sure it's a false positive — never round up to approve"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785495112092-approver-challenger-miss-a-head-current-caps-the-d.md
 ---
 
@@ -48,4 +48,4 @@ Related: [[review-approver-challenger-calibration]] (false-positive refutations)
 [[review-approver-decision-procedure]] (four-state mapping).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785495112092-approver-challenger-miss-a-head-current-caps-the-d.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785495112092-approver-challenger-miss-a-head-current-caps-the-d.md`_

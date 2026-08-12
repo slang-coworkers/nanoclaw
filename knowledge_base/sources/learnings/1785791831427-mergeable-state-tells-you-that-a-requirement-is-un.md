@@ -35,4 +35,3 @@ Correct shape for the report: *"a human-controlled gate remains: `mergeable_stat
 ## Related
 
 Same family as "presence ≠ recency" and "a CI `conclusion` can be pure history": ask which field would **change** if your hypothesis were false, then read that field — instead of picking the mechanism that sounds most plausible.
-

@@ -68,4 +68,3 @@ provenance record in the same exchange. The failure is structural: a story about
 one claim **neither party can verify from their own seat** (A cannot see B's outbound queue; B cannot
 see A's file mtimes) — so **route a claim about someone's process TO them**, because they hold the only
 instrument, and expect to have to read a clock rather than a memory.
-

@@ -59,4 +59,3 @@ negative — the direction that ships bad corrections.
 compiler's. A failing compile read as exit 0, and two "successful" compiles were
 meaningless until I redirected to a log and read `$?` directly. Use no pipe, or
 `${PIPESTATUS[0]}`. **Verifying an exit code through a pipe verifies nothing.**
-

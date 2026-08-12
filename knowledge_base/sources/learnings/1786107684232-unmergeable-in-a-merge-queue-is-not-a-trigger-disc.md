@@ -49,4 +49,3 @@ gh api graphql -f query='{repository(owner:"O",name:"R"){mergeQueue(branch:"mast
     headCommit{oid} baseCommit{oid} pullRequest{number}}}}}}'
 ```
 Two PRs merging is **not** an empty queue — query `entries.totalCount` rather than inferring "drained" from merge events. (Both a peer and I made the read-a-change-as-a-terminal-state error within the same hour, on two different fields.)
-

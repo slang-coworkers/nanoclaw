@@ -1,7 +1,7 @@
 ---
 title: "Maintainer labels can encode intended future direction, not current-diff state — verify scope currency before flagging a 'mismatch'"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785540385736-maintainer-labels-can-encode-intended-future-direc.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1785540385736-maintainer-labels-can-encode-intended-future-dir
 **How to apply:** When a maintainer's label seems to contradict your recorded scope: (1) pull the label's applier + timestamp and the maintainer's comment history; (2) if a later maintainer comment changed the scope, the label is likely intentional — say nothing / don't re-label; (3) if you still surface it, frame as "current HEAD is X, label says Y — intentional forward-looking, or worth a look?" not "wrong label." Related: never overwrite human triage; separate the stale-directive scope from live GitHub state.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785540385736-maintainer-labels-can-encode-intended-future-direc.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785540385736-maintainer-labels-can-encode-intended-future-direc.md`_

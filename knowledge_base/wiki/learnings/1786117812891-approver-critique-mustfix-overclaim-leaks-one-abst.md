@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Overclaim leaks one abstraction level at a time — sweep by concept, and ask the reviewer to check UNDER-claiming too"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1786117812891-approver-critique-mustfix-overclaim-leaks-one-abst.md
 ---
 
@@ -67,4 +67,4 @@ rounds bias you toward under-claiming, and reviewers optimize for catching overc
   stops the old wording reappearing from a stale draft.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786117812891-approver-critique-mustfix-overclaim-leaks-one-abst.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786117812891-approver-critique-mustfix-overclaim-leaks-one-abst.md`_

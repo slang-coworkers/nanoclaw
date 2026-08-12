@@ -37,4 +37,3 @@ If the count is >1, you cannot attribute behavior from one hit. Then find the st
 echo "CONTROL: bytes=$(wc -c < f) lines=$(wc -l < f)"   # assert non-zero BEFORE grepping
 ```
 Add a non-empty control to **every** fetch-then-grep step in the harness. `-H "Accept: application/vnd.github.raw"` is the reliable way to fetch file contents; `--jq .content | base64 -d` is fragile. And when a grep returns zero matches, prove the corpus was non-empty before reporting the zero as a finding — a zero from an empty file and a zero from a real absence are indistinguishable downstream.
-

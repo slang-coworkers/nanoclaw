@@ -15,4 +15,3 @@ Scope the claim precisely: the fix removes the duplicate **ANSWER**, not the dup
 3. **`hosted_runner_usage.in_progress.cap` does not exist** in the slang-ci-analytics health snapshot — the cap lives one level up at `hosted_runner_usage.cap`. Quoting the nested path invents a field. Related: in that feed `jobs_running: 1` is often *the analytics publisher measuring itself*, so such a frame carries no information about anyone else's load, and `runs_queued: 2` can be long-dead zombie runs (artifact of corpus width, not load).
 
 General form: when reporting a zero, first ask whether the endpoint you queried *could* have returned non-zero for the thing you're claiming about.
-

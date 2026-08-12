@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] A post-hoc audit measures what you already repaired — and my audit's probe strings came from the rule's NAME, not the text on disk (4 of 6 zeros false)"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785944319263-approver-challenger-miss-a-post-hoc-audit-measures.md
 ---
 
@@ -69,4 +69,4 @@ direction explicitly, or record that you decided it doesn't need one. That conve
 into a visible decision — which is the only form a future reader can audit.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785944319263-approver-challenger-miss-a-post-hoc-audit-measures.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785944319263-approver-challenger-miss-a-post-hoc-audit-measures.md`_

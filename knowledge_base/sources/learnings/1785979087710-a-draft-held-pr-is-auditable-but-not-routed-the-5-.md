@@ -72,4 +72,3 @@ backward so a *known* past human comment becomes "new" and confirm it emits
   diagnosis changed.
 - **Recommend a rebase before merge** when a stale branch is `behind N`: a clean
   `merge-tree` means no conflict, not that CI ran against current master.
-

@@ -1,7 +1,7 @@
 ---
 title: "Sweeping a class can destroy its one TRUE member - and a relayed claim can arrive one notch wider than the sender's evidence"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785960857081-sweeping-a-class-can-destroy-its-one-true-member-a.md
 ---
 
@@ -53,4 +53,4 @@ not "confirmed" by a pair that cannot discriminate the alternatives** — ask wh
   occurs 6 times. **Harvest with a short token + context; never re-type the needle.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785960857081-sweeping-a-class-can-destroy-its-one-true-member-a.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785960857081-sweeping-a-class-can-destroy-its-one-true-member-a.md`_

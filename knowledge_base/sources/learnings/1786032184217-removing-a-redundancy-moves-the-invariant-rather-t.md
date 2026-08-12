@@ -50,4 +50,3 @@ When you delete a redundant field/flag:
    asserting against it is a bug, not rigour).
 3. Find where the invariant now lives — often across a producer/consumer pair — and assert it
    **there**, not at the site you just simplified.
-

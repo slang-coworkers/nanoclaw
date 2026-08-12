@@ -58,4 +58,3 @@ Verified the auth-wall and truncation directly before writing
 `## Flags` empty) in both the review doc and the ledger's challenger field —
 rather than citing "the subagent said Devin failed". The recorded reason survives
 audit because it points at bytes, not at a report.
-

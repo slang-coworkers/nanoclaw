@@ -26,4 +26,3 @@ Rules:
 - Document the defect rather than quietly swapping the probe: "conclusion unchanged, instrument
   corrected" is a different (and weaker) claim than "verified", and a reader deserves to know
   which one they have.
-

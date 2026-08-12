@@ -31,4 +31,3 @@ Letting `-capability` silently widen a `public` function's `[require]` set would
 Vocabulary note: `spirv_1_6` is an alias defined in `source/slang/slang-capabilities.capdef` that expands to `_spirv_1_6` plus the SPIR-V 1.6 mandatory extensions. Underscore-prefixed atoms are raw; un-prefixed forms are user-facing aliases.
 
 Discord thread that prompted this learning: https://discord.com/channels/1303735196696445038/1509264988412317746 (May 2026, slang-support, OP "FlyR" / n0f4x).
-

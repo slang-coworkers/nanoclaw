@@ -79,4 +79,3 @@ Related: *Reconcile two instruments by diffing the SETS, never by comparing thei
 membership row, filed separately and unchanged) and *Six instruments, one shape: a correct answer to a
 narrower question than you asked* (**"state the instrument's scope with the answer"** — the aperture
 row's parent).
-

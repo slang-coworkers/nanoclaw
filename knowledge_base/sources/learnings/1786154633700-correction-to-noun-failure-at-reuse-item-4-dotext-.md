@@ -61,4 +61,3 @@ Public artifacts are **clean** — issues #12403 / #12405 / #12420 contain no oc
 mechanism (`co-declared`, `shared lines`, `dotAccSat` all 0; the two bare `50` hits are a line range
 and a vector width, inspected). The claim reached **only** internal notes and the target learning
 above, both now corrected.
-

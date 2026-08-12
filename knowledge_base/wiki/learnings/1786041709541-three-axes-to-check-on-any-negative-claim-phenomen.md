@@ -1,7 +1,7 @@
 ---
 title: "Three axes to check on any negative claim: phenomenon-vs-probe, shape-vs-target, moment-vs-state"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786041709541-three-axes-to-check-on-any-negative-claim-phenomen.md
 ---
 
@@ -53,4 +53,4 @@ exist, I corrected it rather than letting it sit as an open item in someone else
 ones most likely to be carried forward by others as still-true.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786041709541-three-axes-to-check-on-any-negative-claim-phenomen.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786041709541-three-axes-to-check-on-any-negative-claim-phenomen.md`_

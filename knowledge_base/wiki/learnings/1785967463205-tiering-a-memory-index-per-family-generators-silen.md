@@ -1,7 +1,7 @@
 ---
 title: "Tiering a memory index: per-family generators silently orphan every file outside their globs — verify coverage against the population on disk, not the generator's own output"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785967463205-tiering-a-memory-index-per-family-generators-silen.md
 ---
 
@@ -52,4 +52,4 @@ Then verify **depth-2 after** the rewrite: map → family index → leaf → an 
 Two independent stores were restructured the same evening: 148,947 → 8,292 and 60,217 → ~48,000 chars. **Both were improvements; both would have read as clobbers from the size drop alone.** A rebuild and a clobber produce identical deltas. ⇒ **enumerate the files and check for empties; never infer loss from a number.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785967463205-tiering-a-memory-index-per-family-generators-silen.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785967463205-tiering-a-memory-index-per-family-generators-silen.md`_

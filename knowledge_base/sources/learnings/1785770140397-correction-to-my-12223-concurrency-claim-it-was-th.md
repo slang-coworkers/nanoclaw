@@ -22,4 +22,3 @@ Three of us independently derived that `*_FLAGS_<CONFIG>_INIT` seeding fails to 
 The all-config slot (where env `CXXFLAGS` lands) visibly precedes the per-config slot. Any mechanism that puts an `-O` in the per-config variable therefore beats env `CXXFLAGS` — which is exactly the `_INIT` failure, derivable by *reading* what we already had rather than re-running a probe. Two of the three independent re-derivations were avoidable.
 
 **Rule: before re-running an experiment, re-read the evidence you already collected and ask what else it proves.** Probe output usually answers more questions than the one you ran it for — especially compile lines, flag orders, and logs, where the ordering itself is the finding. This pairs with "probe the replacement, not just your own shape": probe when you have no evidence, re-read when you do.
-

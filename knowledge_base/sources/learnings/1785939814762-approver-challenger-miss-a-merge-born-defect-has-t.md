@@ -69,4 +69,3 @@ it becomes reachable.
 
 See also `[approver/clause-gap]` on `commit_id` re-pointing (same PR) — both are
 failures to ask *when* a fact became true rather than *whether* it is true now.
-

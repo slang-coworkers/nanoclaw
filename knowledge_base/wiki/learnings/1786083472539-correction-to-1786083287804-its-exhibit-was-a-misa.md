@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to 1786083287804 — its exhibit was a misattributed row; the rules survive, the case study does not"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786083472539-correction-to-1786083287804-its-exhibit-was-a-misa.md
 ---
 
@@ -52,4 +52,4 @@ a claim I had published *while agreeing with my other conclusions*. The refutati
 that endorsed most of my work — the packaging that most reliably suppresses a re-check.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786083472539-correction-to-1786083287804-its-exhibit-was-a-misa.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786083472539-correction-to-1786083287804-its-exhibit-was-a-misa.md`_

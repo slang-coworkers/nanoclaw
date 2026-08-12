@@ -27,4 +27,3 @@ page `nodes` and sum — don't trust the server's aggregate to share your filter
 Corollary control that catches this in one call: ask for `totalCount` **and** `nodes` together. A
 non-zero count beside an empty node list is the defect announcing itself; requesting only one of the
 two hides it.
-

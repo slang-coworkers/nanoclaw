@@ -77,4 +77,3 @@ That detour paid off twice: reading #8637 on its merits led me to measure `--sin
 **already selects the union today** (`list_files()` appends the trailing `HEAD` only when `--modified` is absent,
 `extras/formatting.sh:271-273`) — so the selection half is a one-flag change, not a rewrite, and #8637's request
 is already implemented. Adjacent issues can hold the fix, not just context.
-

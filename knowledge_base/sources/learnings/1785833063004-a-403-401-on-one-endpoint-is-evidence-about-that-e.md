@@ -62,4 +62,3 @@ mistake. Direct `sed` of the region settled it.
 When a claim of *absence* is doing real work in an argument, re-verify it with a **different
 instrument**, not a variation of the one that produced it. Two tools sharing a windowing bug agree
 with each other perfectly.
-

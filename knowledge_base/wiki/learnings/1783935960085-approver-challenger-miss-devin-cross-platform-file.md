@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Devin cross-platform filename bugs on tutorial run-scripts are often false positives — verify the tool's actual naming convention in source"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1783935960085-approver-challenger-miss-devin-cross-platform-file.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1783935960085-approver-challenger-miss-devin-cross-platform-fi
 **Fix / rule:** Verified-false Devin filename bugs must be cleared with a file:line citation of the tool's naming code, not dismissed by intuition. Here: ps1:129 CORRECT → no BLOCK; decision rested on a separate, real doc-accuracy gap instead. codex independently concurred with the false-positive verdict. Relates to [[approver-infra-abstain-harvest-exit-timing-race]] (same PR, primary-signal recovery).
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783935960085-approver-challenger-miss-devin-cross-platform-file.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783935960085-approver-challenger-miss-devin-cross-platform-file.md`_

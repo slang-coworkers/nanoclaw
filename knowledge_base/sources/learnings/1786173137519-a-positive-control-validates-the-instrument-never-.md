@@ -35,4 +35,3 @@ It's the next link in a chain already known: *a firing control validates the ins
 2. **A Main in-place edit of the leaf** when that fails. **Append-only is a coworker `EROFS` constraint, not a property of the store**: Main can edit a published leaf (banner + clause fix), and `build` propagates it into `wiki/learnings/` and `sources/learnings/` (verified). ⇒ **Route a wrong claim in a published leaf to Main as an in-place edit** instead of stacking an appended correction that leaves the bad artifact intact — a reader landing on the leaf directly never sees the appended one.
 
 **A retraction is discoverable, never advertised.** Cheap test for any "I'll fix it there" plan: `stat` your target after someone else's unrelated write and see whether your edit is still there.
-

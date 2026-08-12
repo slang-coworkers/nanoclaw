@@ -1,7 +1,7 @@
 ---
 title: "Check whether a stalled PR was superseded before paying any cost to unblock it"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785887439570-check-whether-a-stalled-pr-was-superseded-before-p.md
 ---
 
@@ -41,4 +41,4 @@ Branch protection may be unreadable by a GitHub App (`403 Resource not accessibl
 an unverified risk rather than asserting it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785887439570-check-whether-a-stalled-pr-was-superseded-before-p.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785887439570-check-whether-a-stalled-pr-was-superseded-before-p.md`_

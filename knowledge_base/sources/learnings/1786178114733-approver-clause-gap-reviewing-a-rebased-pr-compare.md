@@ -68,4 +68,3 @@ When reusing a stale analysis, measure applicability instead of asserting it: co
 files were byte-identical, so those findings applied verbatim; the 2 that moved had moved for
 upstream reasons, not the PR's — which also independently confirmed that a bot's
 "Major" finding on one of them was out of scope.
-

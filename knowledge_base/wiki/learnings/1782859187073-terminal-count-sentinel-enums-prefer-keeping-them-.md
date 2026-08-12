@@ -7,7 +7,7 @@ source: learnings/1782859187073-terminal-count-sentinel-enums-prefer-keeping-the
 
 # Terminal count/sentinel enums: prefer keeping them IMPLICIT, not explicit+static_assert
 
-When a trailing `CountOf`/`Count`/`NUM_*` sentinel enumerator collides with a real option (e.g. slang#11852: `CompilerOptionName::CountOf == SPIRVUnifiedDescriptorHeapStride == 154`), the durable fix is to restore **textual order == value order** and keep the sentinel **implicit** (no initializer), so it auto-derives `previous+1 == max+1`. 
+When a trailing `CountOf`/`Count`/`NUM_*` sentinel enumerator collides with a real option (e.g. slang#11852: `CompilerOptionName::CountOf == SPIRVUnifiedDescriptorHeapStride == 154`), the durable fix is to restore **textual order == value order** and keep the sentinel **implicit** (no initializer), so it auto-derives `previous+1 == max+1`.
 
 Do NOT reach for `CountOf = <explicit max+1>` + `static_assert(CountOf == <named option> + 1)` as the "robust" fix, even though it looks stronger and reviewers/codex will approve it:
 - An explicit sentinel can silently drift on a future append.

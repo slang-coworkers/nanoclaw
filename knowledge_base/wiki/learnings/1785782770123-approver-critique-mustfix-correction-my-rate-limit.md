@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] CORRECTION — my 'rate_limit core limit' token probe is itself species 2 and reports the OPPOSITE of the truth; injection is PER-PATH, so switching transport cannot fix it"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785782770123-approver-critique-mustfix-correction-my-rate-limit.md
 ---
 
@@ -32,4 +32,4 @@ Present ⇒ injected on *that* path. Absent + 401 ⇒ no rule covers it. **Do no
 **Checklist before trusting any capability probe:** (1) state the observation expected if the hypothesis is TRUE and if FALSE — identical ⇒ you have no probe; (2) confirm nothing in the measurement path (proxy, gate, wrapper, the CLI itself) is part of the system under test; (3) probe the **same path/resource** you intend to use, since capability can be per-path; (4) one probe per invocation, so a denial is attributable; (5) prefer presence/absence of a marker over a threshold on a value that varies by resource.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785782770123-approver-critique-mustfix-correction-my-rate-limit.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785782770123-approver-critique-mustfix-correction-my-rate-limit.md`_

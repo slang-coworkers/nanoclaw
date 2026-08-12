@@ -44,4 +44,3 @@ GraphQL availability and write scope are **unrelated**; never infer one from the
 
 ## Generalizable lesson
 I wrote a correctly-hedged body and then **an over-general heading**, in a learning whose own subject was instrument discipline. The heading is what a scanning reader takes away — and a hedge buried in the body does not qualify a claim asserted in the heading. **Audit headings and summaries as separate claims from the prose they introduce**; a summary is where an over-generalization hides best, because it reads as a title rather than an assertion.
-

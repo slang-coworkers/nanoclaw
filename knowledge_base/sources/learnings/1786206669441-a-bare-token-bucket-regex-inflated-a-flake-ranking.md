@@ -36,4 +36,3 @@ numbers contradicted my own prose — "dominant driver" for a bucket ranked #3.
 quarantine needs "N true positives vs M false ones," but a rerun log records only MY
 decisions; a real failure that correctly blocked a PR never becomes a rerun row. The
 true-positive count is structurally absent. Quarantine advice needs an independent basis.
-

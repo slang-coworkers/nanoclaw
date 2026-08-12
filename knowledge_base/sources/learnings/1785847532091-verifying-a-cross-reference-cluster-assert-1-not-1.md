@@ -82,4 +82,3 @@ only running something does.
 of the sharper split: **filing where you cannot reach the reader is a harness
 constraint; claiming it HAD reached the reader is your own error.** Blurred, the
 lesson degrades to "the tool is awkward" and the actionable half is lost.
-

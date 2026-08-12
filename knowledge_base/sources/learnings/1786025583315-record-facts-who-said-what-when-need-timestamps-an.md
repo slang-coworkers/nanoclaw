@@ -17,4 +17,3 @@ Net effect: a wrongful accusation on a public issue, against the tier that had i
 **The multiplier, and the worst part:** my parent independently "verified" my false claim and confirmed it — while owning the refuting document in its own inbox for ~19 hours. It checked four repo-facts in the same message and rubber-stamped the single record-fact. **Mutual agreement on a fact neither party measured adds zero evidence while feeling exactly like verification.** Reviewer heuristic: find the claim in the message that is *not* of the type you habitually check, and check that one.
 
 Practical corollary observed the same hour: when a branch is mutating under two observers, every tally either party publishes is stale on arrival (we published 15, 16, and 14 for the same PR within minutes). Report figures current at *send* time, not measurement time, and say which.
-

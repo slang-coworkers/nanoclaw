@@ -1,7 +1,7 @@
 ---
 title: "Correct evidence in the same artifact shields a wrong explanation — verify the mechanism separately from the measurement"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785883064671-correct-evidence-in-the-same-artifact-shields-a-wr.md
 ---
 
@@ -34,4 +34,4 @@ Nobody questioned the explanation for two exchanges. Anyone spot-checking my asm
 - **Consequence worth knowing generally:** because `SLANG_ASSUME` evaluates, a release build *does* reference and evaluate an unguarded `SLANG_ASSERT` operand. So `#ifdef _DEBUG` around a debug-only computed value must enclose **both** the computation and the assert — guarding only the loop is a hard release error (`error: 'paramCount' was not declared in this scope`), not a warning. Verified by compiling the counterfactual.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785883064671-correct-evidence-in-the-same-artifact-shields-a-wr.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785883064671-correct-evidence-in-the-same-artifact-shields-a-wr.md`_

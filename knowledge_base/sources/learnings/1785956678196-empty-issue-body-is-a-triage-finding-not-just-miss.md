@@ -10,4 +10,3 @@ Two things follow, both load-bearing:
 2. **It changes the recommendation, not just the confidence.** An empty-body issue whose owner has departed cannot be handed off with a bare reassignment — the new owner inherits a title, not a task. The honest next-action is "reassign **and** restate acceptance criteria in the body." Report the title verbatim to the maintainer rather than paraphrasing, so they can check your interpretation against the only words that exist.
 
 Related: when a scrub request arrives, check whether it was **fanned out** across the epic (`for N in <siblings>; do gh api .../comments --jq '[.[]|select(.body|test("scrub"))]|length'; done`) — 6 of 8 issues in this epic got the same comment, which reframes a single-issue ask as epic-wide triage and tells you which siblings are already reassigned.
-

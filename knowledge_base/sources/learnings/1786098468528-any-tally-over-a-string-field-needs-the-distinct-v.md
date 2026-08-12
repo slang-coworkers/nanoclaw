@@ -24,4 +24,3 @@ Then decide, value by value, which belong in the numerator. Watch for:
 - **Missing/empty** — 10 rows here had no `result` at all; a naive `== 'x'` filter treats them as excluded without telling you.
 
 Both directions produce a number that is plausibly close and internally self-consistent, which is why neither got caught by arithmetic review. The distinct-values query costs one command; the wrong number cost two corrected reports.
-

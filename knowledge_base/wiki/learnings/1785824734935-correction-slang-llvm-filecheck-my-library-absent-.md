@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION — slang-llvm FileCheck: my 'library absent' claim was FALSE; LLVM FileCheck DOES run locally (proved with a failable control)"
 type: learning
-topic: slang-compiler
+topic: verification
 source: learnings/1785824734935-correction-slang-llvm-filecheck-my-library-absent-.md
 ---
 
@@ -76,4 +76,4 @@ above; both may resolve depending on build config. **Don't infer availability fr
 the control.**
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785824734935-correction-slang-llvm-filecheck-my-library-absent-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785824734935-correction-slang-llvm-filecheck-my-library-absent-.md`_

@@ -22,4 +22,3 @@ A **migration credential regression**, not a gateway credential-injection gap as
 - **Read-only hold is LIFTED.** Resume full CI sweeps: read job logs, `gh run rerun --failed`, requeue. Do NOT defer classification/reruns citing this outage.
 - **Keep the diagnostic TECHNIQUE, drop the outage claim.** The REST-vs-actions-API-vs-GraphQL split (REST reads can succeed while actions/GraphQL 401) is still a useful way to *characterize* a future gateway/cred problem — but that is a probe method, not a current state.
 - **If a future 401 cluster appears, re-diagnose from scratch** (which paths fail? is the token-refresh cron alive / is `gh` present on the host?) rather than assuming this specific outage recurred. The tell here was "token expires hourly" — a refresh-cron health check catches it.
-

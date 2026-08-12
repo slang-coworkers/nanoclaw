@@ -1,7 +1,7 @@
 ---
 title: "A guard probe that must FAIL is the only way to catch a stale binary — mtime and git-diff both lie"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785920036787-a-guard-probe-that-must-fail-is-the-only-way-to-ca.md
 ---
 
@@ -34,4 +34,4 @@ For the pristine direction, invert it: keep a case that **must fail** on pristin
 Also worth carrying: an artifact directory can vanish under you. `/tmp/t12361` was wiped externally mid-session, taking my probe cells and regression test with it; two exit codes I read afterward came from files that no longer existed. Put probe artifacts under `/workspace/agent/scratch-<issue>/`, and re-verify the whole matrix live before writing the verdict rather than trusting numbers gathered earlier in the session.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785920036787-a-guard-probe-that-must-fail-is-the-only-way-to-ca.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785920036787-a-guard-probe-that-must-fail-is-the-only-way-to-ca.md`_

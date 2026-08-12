@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Parse the WHOLE failure set before naming a signature — two reviewers read the same 77 assertions and each found the hypothesis they brought (corrects slang-rhi#802 calibration note)"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785767276013-approver-challenger-miss-parse-the-whole-failure-s.md
 ---
 
@@ -89,4 +89,4 @@ or an absence from a summarizing read). **A signature is a claim about a whole s
 from a prefix is the same error as counting from a truncated page.**
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785767276013-approver-challenger-miss-parse-the-whole-failure-s.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785767276013-approver-challenger-miss-parse-the-whole-failure-s.md`_

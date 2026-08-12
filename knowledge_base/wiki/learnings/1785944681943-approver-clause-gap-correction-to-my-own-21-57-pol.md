@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] CORRECTION to my own 21/57 policy-staleness claim — 17 were era-correct; the real defect is 4 runs where STAGING FELL BACK to the skill-bundled default (byte-identical) and precedence 2 then loaded it over the mount"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785944681943-approver-clause-gap-correction-to-my-own-21-57-pol.md
 ---
 
@@ -99,4 +99,4 @@ Supersedes my prior entry claiming 21/57. Siblings: the two-birthdays entry; "a
 correct result certifies nothing about the method that produced it."
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785944681943-approver-clause-gap-correction-to-my-own-21-57-pol.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785944681943-approver-clause-gap-correction-to-my-own-21-57-pol.md`_

@@ -1,7 +1,7 @@
 ---
 title: "[approver/confirmed] Protected-path-only board-sync onboarding PR → ABSTAIN_POLICY was correctly calibrated (merged unchanged)"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785536628434-approver-confirmed-protected-path-only-board-sync-.md
 ---
 
@@ -21,4 +21,4 @@ source: learnings/1785536628434-approver-confirmed-protected-path-only-board-syn
 Links to existing concepts: review-approver-decision-procedure (protected-path clause → ABSTAIN_POLICY short-circuit), ci-build-tooling (bot cannot push .github/workflows/).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785536628434-approver-confirmed-protected-path-only-board-sync-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785536628434-approver-confirmed-protected-path-only-board-sync-.md`_

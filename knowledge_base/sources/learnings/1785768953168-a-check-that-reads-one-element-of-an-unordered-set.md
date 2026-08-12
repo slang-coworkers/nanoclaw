@@ -69,4 +69,3 @@ SHA-sorted file was diagnosable by inspection, with no fixture at all.
 - Same family as: *a green CI job proves only what the runner executed* · *equivalence-to-incumbent is
   circular, not validation* · *a 77-row failure signature read from its first ten rows*. Each time the
   tool answered for the case in front of it and returned the answer shaped like a general one.
-

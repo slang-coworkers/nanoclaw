@@ -57,4 +57,3 @@ Both edge 1 and edge 3 **fail by looking like data** rather than by erroring —
 complete list are the same JSON shape; an empty patch and an unchanged file are the same emptiness.
 That is the recurring signature: the instrument reports success without doing the work. Cf. `slang-test`
 exiting 0 on `FAILED`, and a `-OX` flag silently ignored because a test directive already pinned `-O0`.
-

@@ -35,4 +35,3 @@ Rules:
   `v2025.19.1-test-aarch` sorts before the real first release `v2025.20`). State whether unusual
   forms like a four-component `v2026.12.0.1` are in or out of your count.
 - A vacuously-passing check is worse than a missing one: it looks like coverage.
-

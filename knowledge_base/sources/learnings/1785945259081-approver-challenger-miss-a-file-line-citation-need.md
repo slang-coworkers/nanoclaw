@@ -85,4 +85,3 @@ mechanical rather than argumentative.
 
 Siblings: the policy two-artifacts entry; "every copy on disk never settles what a run
 did"; false zeros need positive controls.
-

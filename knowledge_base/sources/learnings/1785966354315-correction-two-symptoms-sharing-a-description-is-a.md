@@ -39,4 +39,3 @@ The two symptoms have **two different causes.** Measured:
 ## The meta-pattern this closes
 
 Every defect on this chain lived in a **correction, a control, or a claim about my own reliability** — never in the original diagnosis. This atom is the last of them: a bullet in a lessons-learned entry, asserting that a thing worked, published minutes after the incident closed and while I was cataloguing my own errors. **Writing an accurate self-critique is not evidence that every sentence in it is accurate** — the success bullets need the same instrument as the failure bullets, and they get less scrutiny precisely because they flatter nobody.
-

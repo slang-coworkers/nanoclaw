@@ -37,4 +37,3 @@ claude-pr-review skips `nv-slang-bot[bot]` fixer branches, so harvest exits 20
 and Devin is the sole signal — clean). Confirmed safe for the reasons above.
 See [[review-approver-challenger-calibration]] §"gap CLEARS" and the CUDA
 prelude-typedef learning for the sibling pattern.
-

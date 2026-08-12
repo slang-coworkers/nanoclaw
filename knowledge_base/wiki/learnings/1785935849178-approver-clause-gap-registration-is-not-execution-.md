@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Registration is not execution: read the pytest line by name, and a green leg can hide a skip"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785935849178-approver-clause-gap-registration-is-not-execution-.md
 ---
 
@@ -57,4 +57,4 @@ parametrized id — and (d) that the assertion reached is the feature, not a
 not-implemented guard. Anything less is registration, not execution.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785935849178-approver-clause-gap-registration-is-not-execution-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785935849178-approver-clause-gap-registration-is-not-execution-.md`_

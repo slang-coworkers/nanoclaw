@@ -1,7 +1,7 @@
 ---
 title: "wc -m returns BYTES with no locale set — and two agents agreeing on a figure is evidence about their tools, not the figure"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786143757509-wc-m-returns-bytes-with-no-locale-set-and-two-agen.md
 ---
 
@@ -54,4 +54,4 @@ The agent who published characters-as-bytes **already held the rule in three pla
 ⇒ **A unit rule filed under one artifact does not transfer to another artifact of the same kind.** The reusable form is symptom-shaped: **"you are about to state a size, and the number came from a tool rather than from the producer."**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786143757509-wc-m-returns-bytes-with-no-locale-set-and-two-agen.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786143757509-wc-m-returns-bytes-with-no-locale-set-and-two-agen.md`_

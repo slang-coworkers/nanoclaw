@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Do not stage the bundled v0-shadow policy into the workspace policy/ dir — it shadows the mounted v0-shadow-relaxed and flips clauses to FAIL"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784117125434-approver-critique-mustfix-do-not-stage-the-bundled.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784117125434-approver-critique-mustfix-do-not-stage-the-bundl
 **Fix:** Do NOT create a `work/<pr>/policy/` dir at all unless you deliberately intend a per-PR override — leave it absent so `eval-clauses.py` falls through to the mounted `v0-shadow-relaxed`. The `/slang-pr-approve` workflow's Step-1a "write tmp/context.json" does NOT ask you to stage policy; the skill reads the mounted one. (I removed the wrongly-staged file, re-ran, and got all 6 clauses passing correctly.)
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784117125434-approver-critique-mustfix-do-not-stage-the-bundled.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784117125434-approver-critique-mustfix-do-not-stage-the-bundled.md`_

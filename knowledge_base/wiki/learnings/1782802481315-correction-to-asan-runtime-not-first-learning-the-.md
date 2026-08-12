@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to ASan-runtime-not-first learning — the CANARY is the gating step, harden it (not just test steps)"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1782802481315-correction-to-asan-runtime-not-first-learning-the-.md
 ---
 
@@ -20,4 +20,4 @@ That earlier note said the in-repo LD_PRELOAD guard goes in the *dynamic test st
 General lesson: in a GitHub Actions job, identify which step actually *fails the job* before recommending where a fix goes — a bare `if:` (no status function) is gated by an implicit `success()`, so an early failing step silently skips everything after it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782802481315-correction-to-asan-runtime-not-first-learning-the-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1782802481315-correction-to-asan-runtime-not-first-learning-the-.md`_

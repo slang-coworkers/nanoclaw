@@ -11,4 +11,3 @@ When writing tests for diagnostics emitted by the `slang-ir-check-differentiabil
 **How to apply:** for any new test under `tests/autodiff/` that expects a compiler diagnostic (rather than runtime output), grep neighboring tests added in the area for the existing test directive shape and use that. If the neighborhood uses `//TEST:SIMPLE(filecheck=...)`, use it; only fall back to the more general `//DIAGNOSTIC_TEST:SIMPLE` if there's no neighbor convention to follow.
 
 **Source:** triage chain shader-slang/slang#11374 dispatch (2026-06-01); orchestrator correction of triage's initial test-spec recommendation.
-

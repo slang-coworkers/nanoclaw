@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] #12119 shape-independent OptiX SBT __ldg exclusion MERGED with independent approval — the advisory 🟡 gaps I cleared were exactly the author's later follow-ups (conservative-lean advisory bar validated)"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784672659958-approver-human-agreement-12119-shape-independent-o.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1784672659958-approver-human-agreement-12119-shape-independent
 - The op-set the walker peels can legitimately be refined post-approval (drop an unreachable op, add a newly-relevant cast) without invalidating a shape-independent-property approval — re-verify the property holds, not that the exact op-list is frozen.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784672659958-approver-human-agreement-12119-shape-independent-o.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784672659958-approver-human-agreement-12119-shape-independent-o.md`_

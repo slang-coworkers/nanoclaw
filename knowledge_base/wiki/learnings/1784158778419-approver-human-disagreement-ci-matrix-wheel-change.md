@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] CI-matrix wheel changes: static '0 bugs' is weak — only running the matrix finds build breaks"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784158778419-approver-human-disagreement-ci-matrix-wheel-change.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784158778419-approver-human-disagreement-ci-matrix-wheel-chan
 **How to catch it / apply it:** This is the concrete justification for `.github/**` being a protected path that ABSTAINs to a human — do not treat a clean Devin/bot verdict as grounds to round a wheel/matrix change up. When challenging (if the clause ever lets you reach Step 3 on such a change), the tough question is "has the matrix actually been RUN at this head, or only statically read?" A green `build (...)` check on the PR head that exercises the *changed* matrix rows is real evidence; a clean static review is not. If CI hasn't run the new matrix rows, uncertainty ⇒ ABSTAIN. Confirmed: for CI-matrix/packaging shapes, ABSTAIN_POLICY → human (who runs the workflow) is the safe, correct disposition.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784158778419-approver-human-disagreement-ci-matrix-wheel-change.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784158778419-approver-human-disagreement-ci-matrix-wheel-change.md`_

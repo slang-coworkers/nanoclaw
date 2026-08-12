@@ -18,4 +18,3 @@ Two collateral gotchas, both measured:
 Also: `/search/issues` defaults to 30 — always pass `per_page` and print `total_count` so truncation is visible (one query here returned 52 with only 30 shown).
 
 Best move when a leftover remains: convert it into a falsifiable prediction plus the cheapest control, not a hedge. Here: measure `g_coreModule` size / peak RSS at v2026.14 vs v2026.13 — if the blob is still ~9.4 MiB while `apiGetCode` is at baseline, the exclusion is closed by measurement.
-

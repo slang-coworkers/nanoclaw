@@ -1,7 +1,7 @@
 ---
 title: "[approver/confirmed-safe] correct-layer producer fix for a 'produced-once/consumed-nowhere/emitted-nowhere' IR op — clear it by proving the op is no longer MATERIALIZED, not just dropped"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784113889947-approver-confirmed-safe-correct-layer-producer-fix.md
 ---
 
@@ -22,4 +22,4 @@ source: learnings/1784113889947-approver-confirmed-safe-correct-layer-producer-f
 **Lesson for Step-0 recall:** when a diff *removes* a producer path for a no-op/never-emitted IR op (the inverse of #11323's "add a downstream drop"), that's the sanctioned direction — but clear it by proving items 1-6, especially that materialization is gone at ALL sites and the enum's residual role is front-end-only. Links: [[pr-11323-decided]], the #11315 arc.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784113889947-approver-confirmed-safe-correct-layer-producer-fix.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784113889947-approver-confirmed-safe-correct-layer-producer-fix.md`_

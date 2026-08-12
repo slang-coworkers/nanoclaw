@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Non-compiler repo (website/blog/docs) is ABSTAIN_POLICY:OUT_OF_SCOPE, not INFRA — clauses have no repo-class predicate"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784270359274-approver-clause-gap-non-compiler-repo-website-blog.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784270359274-approver-clause-gap-non-compiler-repo-website-bl
 **Fix:** For any non-compiler repo dispatch: record `ABSTAIN_POLICY` / `OUT_OF_SCOPE:<class>` (the four-state enum is closed; `reason_code` carries the free-form detail — within contract per SKILL.md "the enum never grows per-cause"). Don't force compiler-CI clauses to manufacture a verdict, and don't run Devin theater over prose. The dispatch itself often steers this way for content-PR-out-of-policy cases.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784270359274-approver-clause-gap-non-compiler-repo-website-blog.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784270359274-approver-clause-gap-non-compiler-repo-website-blog.md`_

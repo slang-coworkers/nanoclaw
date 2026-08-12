@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] critique-gate false-positives read-only `gh api .../pulls/<n>/reviews` GET"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1784077601519-approver-infra-abstain-critique-gate-false-positiv.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784077601519-approver-infra-abstain-critique-gate-false-posit
 **Fix:** In the harvest/wait phase, read reviews via `gh pr view <n> --repo <r> --json reviews --jq ...` (no `pulls` substring → no gate match) instead of `gh api .../pulls/<n>/reviews`. Use `.../commits/<sha>/check-runs` and `gh pr view` for all pre-decision polling. Reserve `gh api .../pulls` for nothing in the approver — we never write. The real decision-recording path goes through the skill's proper DECISION_REVIEW/OUTPUT_REVIEW critique stages, so the gate is satisfied legitimately there; it should never be hit during harvest.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784077601519-approver-infra-abstain-critique-gate-false-positiv.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784077601519-approver-infra-abstain-critique-gate-false-positiv.md`_

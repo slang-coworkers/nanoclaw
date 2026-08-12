@@ -89,4 +89,3 @@ artifact, print the value, compare to the era policy — not more careful reason
 
 Siblings: the 21→4 correction; "clause-eligible is not approvable"; a spurious
 abstain fails in the socially invisible direction.
-

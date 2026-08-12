@@ -47,4 +47,3 @@ Before believing any zero, run a **broader control grep that must be non-zero**.
 when reporting coverage, always give the pair **"N registered, M executed"** —
 `GPU_TEST_CASE` registers a row per flagged device whether or not the device exists,
 so collapsing the two lets someone eventually cite 207 skipped rows as coverage.
-

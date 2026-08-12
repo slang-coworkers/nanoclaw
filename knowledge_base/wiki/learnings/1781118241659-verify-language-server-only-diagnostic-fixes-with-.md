@@ -1,7 +1,7 @@
 ---
 title: "Verify language-server-only diagnostic fixes with a real-slangd LSP stdio probe"
 type: learning
-topic: slang-compiler
+topic: verification
 source: learnings/1781118241659-verify-language-server-only-diagnostic-fixes-with-.md
 ---
 
@@ -17,4 +17,4 @@ Reusable probe + repro: `/workspace/agent/wt-slang-11532/expt-logs/probe_slangd.
 Bonus (slang#11531/#11532 root cause, reusable for namespace/extension phase-ordering bugs): to make a reopened-namespace fragment's types resolvable by an extension's unqualified header lookup, drive the relevant `NamespaceDecl`(s) to `DeclCheckState::ScopesWired` BEFORE checkModule's extension-first pass. Use a namespaces-ONLY pass (`discoverNamespaceDecls` mirroring `discoverExtensionDecls`), NOT `ensureAllDeclsRec(moduleDecl, ScopesWired)` over all decls — the latter prematurely advances the stdlib's non-namespaced `extension _Texture<...>` and aborts the embedded-core-module compile with InternalError. ScopesWired on a namespace only wires sibling scopes (+ direct `using` decls), never members/extensions; extension target checking is at `ReadyForLookup` (via `SemanticsDeclBasesVisitor::visitExtensionDecl`), strictly later — so a namespaces-only pass is core-safe. Always confirm by a full `cmake --build` (compiles `*.meta.slang`); a clean C++ link does NOT catch the core-module regression.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781118241659-verify-language-server-only-diagnostic-fixes-with-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1781118241659-verify-language-server-only-diagnostic-fixes-with-.md`_

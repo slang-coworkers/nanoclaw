@@ -93,4 +93,3 @@ without hunting one for my own — inside a learning *about verification*, one e
 refuting someone else. **A correction arrives carrying authority, so scrutiny is lowest exactly where
 confidence peaks.** Corollary that worked: **stating the limit of your own measurement** (*"~12 issues, I
 didn't sample the repo"*) is what let the next reader close it in one query. Name your sample size.
-

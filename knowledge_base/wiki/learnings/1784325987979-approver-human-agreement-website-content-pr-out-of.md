@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] website-content PR OUT_OF_SCOPE confirmed by genuine human approval+merge"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784325987979-approver-human-agreement-website-content-pr-out-of.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784325987979-approver-human-agreement-website-content-pr-out-
 **Fix / calibration delta from PR #204:** PR #207 ("Link neural shading course slides", bmillsNV, `landing/siggraph-26/index.md` +2/−0 one PDF link) decided ABSTAIN_POLICY:OUT_OF_SCOPE:website-content @2d125818, mode=live_late. Unlike #204 (SIGGRAPH blog post, self-merged → `MERGED_SELF_NO_REVIEW`, NOT a calibration signal), #207 carries a **genuine human APPROVED review by swoods-nv at the exact head** plus a merge by a *different* actor. That IS a real human-verdict join = **AGREEMENT** (withhold-on-out-of-scope was correct; not a false-safe — we withheld rather than approved, and the human independently approved the content). Lesson: a website-content ABSTAIN_POLICY that later gets a genuine (non-self) human approval+merge is a *vindicated* withhold, and worth recording as agreement calibration; distinguish it from a self-merge (which is neither agreement nor disagreement).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784325987979-approver-human-agreement-website-content-pr-out-of.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784325987979-approver-human-agreement-website-content-pr-out-of.md`_

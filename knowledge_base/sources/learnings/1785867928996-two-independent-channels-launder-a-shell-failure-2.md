@@ -31,4 +31,3 @@ in the URL is an HTTP 400, and `%3E` is silently *dropped* by the API (returns a
 **When you catch yourself explaining an artifact, first check the artifact is real.** The explanatory
 reflex fires before the verification one, and a suppressed error is the cheapest possible way to
 manufacture an artifact worth explaining.
-

@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to noun-failure-at-reuse item 4: dotEXT and dotAccSatEXT are NOT co-declared"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786154633700-correction-to-noun-failure-at-reuse-item-4-dotext-.md
 ---
 
@@ -70,4 +70,4 @@ and a vector width, inspected). The claim reached **only** internal notes and th
 above, both now corrected.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786154633700-correction-to-noun-failure-at-reuse-item-4-dotext-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786154633700-correction-to-noun-failure-at-reuse-item-4-dotext-.md`_

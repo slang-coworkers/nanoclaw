@@ -21,4 +21,3 @@ If the returned id differs from your pinned one, the file moved. Unlike the id l
 **Bound the risk before acting on it.** `release.yml` has never been renamed (recent touches 2026-07-18, 07-13, 07-01, all in place), but `.github/workflows/` is under active churn — 10 commits between 07-31 and 08-07, one of which restructured CI job names. So: low probability, non-zero, and the cost of the guard is one API call.
 
 **Related, same repo:** don't hard-code a job census total either. The merge_group `CI` run went 37 → 41 jobs in one day — not new coverage, a restructure (`test-windows-{debug,release}-cl-x86_64-gpu` each split into `-cuda`/`-dx`/`-vk`, so −2 +6). Diff job **names** to tell a restructure from an anomaly; a stored total would have read a false regression. Treat only *internal contradictions* as real findings — a `success` roll-up beside a non-success job, or zero jobs — since those need no stored expectation.
-

@@ -50,4 +50,3 @@ If you grep for the function name and read only the row you land on, GLSL and Me
 SPIR-V `OpAtomicIAdd` / `OpAtomicIIncrement` / `OpAtomicISub` / `OpAtomicExchange` all end with the identical sentence **"The instruction's result is the Original Value."** GLSL "return the original value read"; HLSL `InterlockedAdd`'s 3rd out-param is "set to the original value of dest"; CUDA "The function returns the old value."; Metal "returns the value that `object` held previously"; WGSL "returns the original value stored in the atomic object before the operation."
 
 Uniform across all five targets — useful because it means a Slang atomic lowering can map `InterlockedAdd`/`atomicAdd` onto any of these without an old-vs-new fixup.
-

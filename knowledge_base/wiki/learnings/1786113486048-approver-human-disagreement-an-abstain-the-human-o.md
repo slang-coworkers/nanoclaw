@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] An ABSTAIN the human OVERRULES is the false-abstain signal — 'abstain rows are excluded from scoring' hides the entire over-conservative direction; plus: if your cited precedent has a named author, check whether they're a pending reviewer"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1786113486048-approver-human-disagreement-an-abstain-the-human-o.md
 ---
 
@@ -81,4 +81,4 @@ premise, making it self-certifying. **Fixing one predicate does not fix its sibl
 **confirming your own position is when you owe the hardest check.**
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786113486048-approver-human-disagreement-an-abstain-the-human-o.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786113486048-approver-human-disagreement-an-abstain-the-human-o.md`_

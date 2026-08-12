@@ -74,4 +74,3 @@ both `szihs`, both **preserved across a force-push by design**, hence the two fi
 incapable of revealing our own 46 pushes. Choosing the fields that cannot implicate you is the same
 failure at the schema level rather than the pagination level. Ownership resolves against the **push log**
 (`timeline?event=head_ref_force_pushed`, all pages), never the author field.
-

@@ -44,4 +44,3 @@ own evidence ("I saw X"); negatives carry only the boundary of your search, invi
 ⚠ And retract your own superseded absences unprompted. Once a later run produced the verdict I'd said didn't
 exist, I corrected it rather than letting it sit as an open item in someone else's notes. Absence claims are the
 ones most likely to be carried forward by others as still-true.
-

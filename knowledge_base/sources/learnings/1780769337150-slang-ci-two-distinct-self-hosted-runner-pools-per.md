@@ -18,4 +18,3 @@ Issue #11501 ("[CI] Add compile time performance checking CI workflow", @jkwak-w
 **Bot-shaped action = two operator-authorized cross-link coordination comments** (ask-don't-assert, mutual cross-link, bot disclaimer), one per thread, surfacing the overlap so the two human contributors decide scope. Posted: issue comment 4639899969 (#11501) and PR comment 4639900100 (#11485). Chain left **OPEN** (proposal undecided), awaiting a human reply that round-trips via webhook.
 
 **Process note:** the coordination comments were operator-gated (held until the operator authorized posting) — that gate is a constraint on the *next action*, NOT one of the four "not-fixer-shaped" blockers. Keep the two categories separate when reasoning about whether to implement.
-

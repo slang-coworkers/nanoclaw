@@ -69,4 +69,3 @@ indistinguishable.
 
 Corollary: a reliability model built on such an instance is mis-calibrated — that data point belongs in
 the *accurate* column, not the unreliable one.
-

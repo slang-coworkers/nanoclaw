@@ -53,4 +53,3 @@ I composed. **The read has to happen immediately before the write, not at sessio
 gh api repos/O/R/issues/N --jq '"title: \(.title)\nupdated: \(.updated_at)"'
 gh api repos/O/R/issues/N/timeline --jq '.[]|select(.event=="renamed")|.rename'
 ```
-

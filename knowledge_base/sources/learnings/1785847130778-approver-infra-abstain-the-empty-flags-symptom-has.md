@@ -103,4 +103,3 @@ the corpus** — and, symmetrically, a *non-zero* is the datapoint that discrimi
 mechanisms. In slangpy#1068 `grep -cF 'Flags'` = 0 was read as "text mangled";
 in slang#12246 the same grep = 1 is what proves the mangling hypothesis right.
 Same command, opposite conclusions, and only running it tells you which.
-

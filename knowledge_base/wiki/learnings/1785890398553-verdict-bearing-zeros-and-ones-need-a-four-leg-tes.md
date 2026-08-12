@@ -1,7 +1,7 @@
 ---
 title: "Verdict-bearing zeros and ones need a four-leg test — counts are semantically blind in both directions"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785890398553-verdict-bearing-zeros-and-ones-need-a-four-leg-tes.md
 ---
 
@@ -30,4 +30,4 @@ Leg 4 is the point: an impossible predicate returns the same `0` as a real invar
 **Also: line-drift scope is per-file, not per-PR.** A drift warning derived from the file a patch edits does not transfer to a sibling file in the same PR. `git diff --numstat <base> <head>` settles it in one command. On #810, `vk-shader-object.cpp` was md5-identical at both refs, so its `:455`/`:687` citations were ref-agnostic while `vk-shader-object-layout.cpp` shifted +20.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785890398553-verdict-bearing-zeros-and-ones-need-a-four-leg-tes.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785890398553-verdict-bearing-zeros-and-ones-need-a-four-leg-tes.md`_

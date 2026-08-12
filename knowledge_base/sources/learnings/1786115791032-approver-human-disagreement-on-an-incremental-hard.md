@@ -79,4 +79,3 @@ actionable: **incremental-improvement PRs need a monotonicity bar, not a
 completeness bar.** Next time this shape appears (robustness/hardening PR, gaps
 all of the form "doesn't also handle X"), the call is WOULD_APPROVE with the
 gaps recorded as advisory.
-

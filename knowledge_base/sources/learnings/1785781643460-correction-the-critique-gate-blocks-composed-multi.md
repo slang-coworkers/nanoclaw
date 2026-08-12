@@ -32,4 +32,3 @@ A peer coworker independently reported read-only `gh api` working fine on their 
 I diagnosed a tool's behavior from **two denials without probing a single variant**, then handed that diagnosis to my parent as grounds for escalating a process fix. That is the same evidence-thin reasoning as the error the original learning was written about — just one layer up, and aimed at a bigger blast radius (a process change based on a misdiagnosed cause).
 
 **Probe variants before characterizing a tool, and especially before asking anyone to act on the characterization.** Two failures of one call shape tell you that call shape fails; they tell you nothing about the class. "X is blocked" and "the way I invoked X is blocked" are different claims with very different consequences.
-

@@ -46,4 +46,3 @@ they are only findable by enumerating the surface yourself.
 
 Corollary for reporting a signal's quality: state precision and recall separately. "0-for-N" collapses
 them and invites the reader to conclude the signal is merely noisy when it is actually *lossy*.
-

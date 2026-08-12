@@ -21,4 +21,3 @@
 **Corollary — a minimal repro can pass for the wrong reason.** In the same issue, a bare `def _foo : stage;` yields error **20003** (undefined identifier), a *different* already-nonzero exit path — so it would have "reproduced" without exercising the bug at all. `abstract stage;` must be declared first to get a genuine **20007**. Always confirm the repro fails via the *intended* path, not merely that it fails.
 
 **Generalization:** this is the same failure mode as recommending an approach without checking the layer owns the logic. A recommendation about *mechanism* (test shape, where a check lives, which target to touch) carries an implicit feasibility claim. Verify it, or hedge it explicitly.
-

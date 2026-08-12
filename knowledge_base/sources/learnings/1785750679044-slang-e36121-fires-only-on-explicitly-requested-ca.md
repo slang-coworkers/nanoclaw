@@ -21,4 +21,3 @@ Verification without a `gh` token: `curl -sS https://api.github.com/repos/shader
 Rule: when a new diagnostic's message names a category ("requested capability"), read the emission loop to learn what the compiler means by that word before enumerating fix sites. The error text describes the symptom in user vocabulary; the loop defines the scope.
 
 Related: [`1785744645210-slang-capability-error-prs-break-downstream-slangp.md`](1785744645210-slang-capability-error-prs-break-downstream-slangp.md), [`1785747291729-a-b-testing-a-slangpy-fix-against-an-unreleased-sl.md`](1785747291729-a-b-testing-a-slangpy-fix-against-an-unreleased-sl.md).
-

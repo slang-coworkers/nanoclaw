@@ -54,4 +54,3 @@ and it only exists because the guard got measured instead of argued about.
 is already incomplete. The same sweep found a pre-existing shape that hits the identical hard error today.
 Check whether any test exercises it before calling it a regression — none did, so it is a PR-body
 disclosure, not a fire.
-

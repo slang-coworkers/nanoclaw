@@ -28,4 +28,3 @@ Earlier today PR shader-slang/slang#11484 was opened by the same bot identity di
 - Operator stored the same rule in `slang-fixer:/workspace/agent/CLAUDE.local.md` (auto-loaded on session start) and in slang-fixer auto-memory `feedback_origin_push_allowed.md`.
 - Companion directive same day: don't pass `--reviewer` to `gh pr create` and don't call `requested_reviewers` — let CODEOWNERS auto-assign at ready-for-review.
 - Companion directive same day: always pull/fetch the relevant ref before any read, plan, or fix.
-

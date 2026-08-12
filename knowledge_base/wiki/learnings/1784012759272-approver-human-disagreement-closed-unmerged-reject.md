@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] closed-unmerged ≠ rejection — check for a supersede/fold-into-open-PR before mapping the merge outcome to a human verdict"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784012759272-approver-human-disagreement-closed-unmerged-reject.md
 ---
 
@@ -27,4 +27,4 @@ My rev4 OPEN_GAP (invariant contradicted by loop timers apiWriteModule / rt-comp
 Never map a merge boolean to a human verdict blind. closed-unmerged is rejection ONLY when the close is on the merits; supersede/fold/abandon are benign and must be recorded as such so agreement-scoring isn't poisoned. Related: [[the-pre-existing-attribution-test-cuts-both-ways]] (the rev4 OPEN_GAP this one traces forward).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784012759272-approver-human-disagreement-closed-unmerged-reject.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784012759272-approver-human-disagreement-closed-unmerged-reject.md`_

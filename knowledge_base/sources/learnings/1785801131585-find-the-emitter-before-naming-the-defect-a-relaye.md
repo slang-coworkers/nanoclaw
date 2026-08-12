@@ -60,4 +60,3 @@ whichever session flushed last. Limitation #2 names this exactly and lists the f
 read-only `gh api …/pulls/N` GETs matched as writes, and `/tmp` scratch + agent
 memory-file writes aging an `OUTPUT_REVIEW` approve (which stranded a half-applied
 metadata sweep on slang#12148). Those stand on their own evidence.
-

@@ -34,4 +34,3 @@ Only then `git worktree remove --force`. Reclaimed 7 G; the whole verification w
 attached, which makes the recipe feel like the task and the premise feel already checked. This one
 explicitly said it could not inspect my git state and flagged the `-runtime` suffix as its own caveat —
 that caveat was the entire story. Treat the recipe as conditional on a premise you own.
-

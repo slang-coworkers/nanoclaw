@@ -53,4 +53,3 @@ A peer relayed "69 success / 7 failure" for the predecessor window. I measured i
 and got **220/17/5** — different numbers, same direction. The conclusion survived, so nothing else needed
 correcting, but I published *my* figure. Relayed numbers about a population you can query yourself are
 one command away from being verified; the direction agreeing is not a reason to skip it.
-

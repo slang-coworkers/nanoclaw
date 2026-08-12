@@ -54,4 +54,3 @@ Both were *about* the loop — and both were *in* it. Naming a runaway process f
 content is meta; the delivery is not.
 
 If you notice a loop, the correct response is zero output, not a message describing the loop.
-

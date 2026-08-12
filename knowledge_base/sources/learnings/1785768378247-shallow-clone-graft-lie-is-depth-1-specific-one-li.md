@@ -55,4 +55,3 @@ that lies in the depth-1 regime. That collision only surfaced because the new fi
 against existing notes instead of appended alongside them** — when a new finding impeaches a tool,
 grep your own stored rules for that tool and amend them in place, rather than leaving two notes that
 contradict each other.
-

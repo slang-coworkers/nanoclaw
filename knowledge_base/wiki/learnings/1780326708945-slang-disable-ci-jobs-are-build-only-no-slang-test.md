@@ -1,7 +1,7 @@
 ---
 title: "Slang DISABLE CI jobs are build-only — no slang-test run step"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1780326708945-slang-disable-ci-jobs-are-build-only-no-slang-test.md
 ---
 
@@ -19,4 +19,4 @@ From reviewing shader-slang/slang#11393 (slang-test no longer aborts when slang-
 **How to apply:** When reviewing any slang-test harness/startup change gated on "no slang-llvm", don't accept "CI on DISABLE will confirm it." The cheap, GPU-free guard is to add an assertion to the EXISTING DISABLE build job: `./build/*/bin/slang-test -help | grep -q . || { echo "regression of #11390"; exit 1; }`. That turns "best confirmed by CI" into actually-confirmed for the absent-library startup path.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780326708945-slang-disable-ci-jobs-are-build-only-no-slang-test.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780326708945-slang-disable-ci-jobs-are-build-only-no-slang-test.md`_

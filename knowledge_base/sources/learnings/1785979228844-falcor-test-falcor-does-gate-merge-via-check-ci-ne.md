@@ -25,4 +25,3 @@ Bytes copied from real ~309 KB logs, not retyped:
 - `" : FAILED ("` has zero collisions with the earlier `falcor-unit-test` step (gtest uses `[  FAILED  ]`).
 - Suite **continues** past the crash (4-way `ThreadPoolExecutor`), so a single crash still yields a full result set.
 - Step cost: 11m33s–12m52s against a 100-min job timeout ⇒ a whole-suite retry fits with headroom.
-

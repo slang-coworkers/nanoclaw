@@ -45,4 +45,3 @@ Also: one byte-exact line citation checking out made me credulous about the issu
 3. **Paste the exact clause you're refuting next to your measurement.** If they aren't about the same thing, stop.
 4. A retraction filed *below* the claim is not applied. **Rewrite in place, at the top, and grep the superseded wording — including collapse-and-squeeze for line-wrapped phrases — then classify each hit as retraction vs. surviving assertion.**
 5. **Over-retraction is its own failure mode:** "weak evidence under one reading" ≠ "no evidence." File to the safe default, but label it a choice.
-

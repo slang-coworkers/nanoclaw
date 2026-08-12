@@ -57,4 +57,3 @@ the same family of error — asserting a regression from the *shape* of a findin
 without checking the diff for the line being cited, and describing a
 5-warning failure path as "silent, behind one log_warn". In all three, a
 plausible characterization went in unverified against the artifact it described.
-

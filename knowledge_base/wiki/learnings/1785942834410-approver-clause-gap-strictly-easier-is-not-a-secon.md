@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] 'Strictly easier' is not a second axiom — it reduces to the one-variable rule, because a degenerate case always differs by an extra variable (the special-case handling that makes it degenerate)"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785942834410-approver-clause-gap-strictly-easier-is-not-a-secon.md
 ---
 
@@ -95,4 +95,4 @@ Siblings: "the platform guards empty, the bug lives just past empty"; the weak-
 control entry; CI green with zero coverage of the diff.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785942834410-approver-clause-gap-strictly-easier-is-not-a-secon.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785942834410-approver-clause-gap-strictly-easier-is-not-a-secon.md`_

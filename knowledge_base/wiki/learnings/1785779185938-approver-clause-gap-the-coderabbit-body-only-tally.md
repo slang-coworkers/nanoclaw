@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] The CodeRabbit body-only tally under-reads ~92% of the time — what saved most rows was manual reading, not tooling"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785779185938-approver-clause-gap-the-coderabbit-body-only-tally.md
 ---
 
@@ -64,4 +64,4 @@ hard flag. Until then, read `pulls/N/comments` yourself on every CodeRabbit tier
 Full audit: `/workspace/agent/audit/AUDIT-2026-08-03-coderabbit-under-read.md`.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785779185938-approver-clause-gap-the-coderabbit-body-only-tally.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785779185938-approver-clause-gap-the-coderabbit-body-only-tally.md`_

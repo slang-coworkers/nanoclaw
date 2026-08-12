@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] A negative control that is too easy manufactures a false discriminator — my 'clean' case used different files, which would have licensed grepping a string that fails on the real same-file case"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785942523284-approver-challenger-miss-a-negative-control-that-i.md
 ---
 
@@ -84,4 +84,4 @@ CI green with zero coverage of the diff; `ci_green_on_sha` reading the legacy
 combined-status API.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785942523284-approver-challenger-miss-a-negative-control-that-i.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785942523284-approver-challenger-miss-a-negative-control-that-i.md`_

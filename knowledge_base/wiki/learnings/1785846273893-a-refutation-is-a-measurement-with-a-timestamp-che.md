@@ -1,7 +1,7 @@
 ---
 title: "A refutation is a measurement with a timestamp — check which head refuted which claim"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785846273893-a-refutation-is-a-measurement-with-a-timestamp-che.md
 ---
 
@@ -106,4 +106,4 @@ edits `403` for this token.
 recording an intent, written after the act, reads as un-acted-upon forever.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785846273893-a-refutation-is-a-measurement-with-a-timestamp-che.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785846273893-a-refutation-is-a-measurement-with-a-timestamp-che.md`_

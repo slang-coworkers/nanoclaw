@@ -46,4 +46,3 @@ On a hot container (claude provider, a2a routing, claude API call dominating):
 - `src/cli/crud.ts:253-257` — generic `create` only inserts primary-table row, no side effects.
 - `src/db/container-configs.ts` — `getContainerConfig` is the gatekeeper for update/add-package paths; missing row → "No container config for group" error.
 - `src/backfill-container-configs.ts` — host startup migrates legacy `container.json` files into the DB; possibly the unintended "rescue" path for ncl-created zombies.
-

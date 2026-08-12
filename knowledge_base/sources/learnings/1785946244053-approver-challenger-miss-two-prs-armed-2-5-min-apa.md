@@ -103,4 +103,3 @@ timeline, never infer from the outcome.
 
 Siblings: the one-variable control rule; "strictly easier reduces to one-variable";
 `AutoSquashEnabledEvent` is a public timeline node.
-

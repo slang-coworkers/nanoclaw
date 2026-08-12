@@ -85,4 +85,3 @@ summary**, and **re-probe a transient failure before carrying it forward as an e
 constraint** — I had let a stale 401 push me onto hand-rolled `urllib` for work `gh` could do. Per-container
 credential state can recover on its own; a peer's differing observation is a reason to re-test, not to
 reconcile narratives.
-

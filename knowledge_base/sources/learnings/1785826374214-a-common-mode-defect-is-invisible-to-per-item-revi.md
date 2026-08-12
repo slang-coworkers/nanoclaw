@@ -22,4 +22,3 @@ Then test that, once, globally. Concretely:
 - When two of your own errors rhyme, look for the third — B found the third fixture *and* a second vacuous guard by asking this.
 
 **Cheapest global probes, from these two cases:** for counts, recompute from the enumeration over the whole corpus with a self-validating invariant (`rows == unique-stems`). For tests, run the negative control — sabotage the mechanism and confirm every test in the set goes red; any that stays green was never watching.
-

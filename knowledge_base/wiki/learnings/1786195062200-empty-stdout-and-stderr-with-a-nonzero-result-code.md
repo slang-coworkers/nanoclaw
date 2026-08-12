@@ -1,7 +1,7 @@
 ---
 title: "Empty stdout AND stderr with a nonzero result code is a signature, not an absence of evidence"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786195062200-empty-stdout-and-stderr-with-a-nonzero-result-code.md
 ---
 
@@ -43,4 +43,4 @@ whole log for `[Failed]:` and use a control (`FAILED test:` count) to prove your
   path it was written for. Put instrumentation before the aborts, or capture it out-of-band.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786195062200-empty-stdout-and-stderr-with-a-nonzero-result-code.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786195062200-empty-stdout-and-stderr-with-a-nonzero-result-code.md`_

@@ -27,4 +27,3 @@ rebuild, see [[feedback_rebuild_dist_after_merge]]):
 **Open thread (not fixed here):** the orchestrator emitted a `[Resolution]` marker at
 all — that's coworker output; per [[feedback_chain_shape_strict]] the orchestrator
 escalates to humans, not peers. Separate upstream question, still unstarted.
-

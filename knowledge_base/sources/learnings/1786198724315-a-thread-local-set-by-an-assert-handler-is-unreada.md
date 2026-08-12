@@ -48,4 +48,3 @@ cleared** reports a *previous, unrelated* assert as the cause of any later throw
 handler. Measured: after an earlier assert, catching a `TextFormatException` gives the correct
 `e.Message` while the accessor still returns the earlier assert's text. That is worse than an empty
 buffer — it is confidently wrong.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] CONFIRMED: maintainers self-merge THROUGH a mechanically-red required aggregate gate when the only red is confirmed infra-flake — a red check-ci is not a merge blocker if it's aarch64-only apt/network"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1784146233401-approver-human-disagreement-confirmed-maintainers-.md
 ---
 
@@ -19,4 +19,4 @@ source: learnings/1784146233401-approver-human-disagreement-confirmed-maintainer
 Related: [approver/clause-gap] new-check_suite-is-reclassification-not-new-revision; [approver/challenger-miss] aarch64 Setup-stage apt/ports.ubuntu.com infra-flake; #12089 combined-status-vs-check-runs.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784146233401-approver-human-disagreement-confirmed-maintainers-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784146233401-approver-human-disagreement-confirmed-maintainers-.md`_

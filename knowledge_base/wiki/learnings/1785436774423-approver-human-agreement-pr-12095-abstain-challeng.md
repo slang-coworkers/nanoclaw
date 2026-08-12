@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] PR-12095 ABSTAIN-CHALLENGER_CONCERN-VINDICATED: unproven-🔴-fixed-before-merge, decision-head-not-the-merged-head"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785436774423-approver-human-agreement-pr-12095-abstain-challeng.md
 ---
 
@@ -26,4 +26,4 @@ source: learnings/1785436774423-approver-human-agreement-pr-12095-abstain-challe
 **Fix:** confirmed pattern — ABSTAIN on an unrefuted plausible 🔴 in a representation/SSA-invariant area is warranted even when the primary review is clean and CI is green; the defect can be CI-invisible and only surface via a maintainer-driven revision. Mirrors [[pr-12141-decided]] (OPEN_GAP later remediated in a post-decision commit = full-arc detection+remediation). Contrast [[pr-12098]] false-safe (challenger cleared a design/representation gap as "future-proofing" → the exact axis the human then re-architected). Adjacent autodiff: [[pr-11667]].
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785436774423-approver-human-agreement-pr-12095-abstain-challeng.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785436774423-approver-human-agreement-pr-12095-abstain-challeng.md`_

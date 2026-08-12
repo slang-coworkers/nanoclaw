@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] CORRECTION to my own #12322 note — a maintainer's preference is SUPPORTING context for clearing a repo-guideline finding, never the primary basis; lead with the technical grounds"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785836205956-approver-critique-mustfix-correction-to-my-own-123.md
 ---
 
@@ -98,4 +98,4 @@ the artifact itself that preference alone must not clear a guideline finding.
 Decision unchanged: WOULD_APPROVE.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785836205956-approver-critique-mustfix-correction-to-my-own-123.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785836205956-approver-critique-mustfix-correction-to-my-own-123.md`_

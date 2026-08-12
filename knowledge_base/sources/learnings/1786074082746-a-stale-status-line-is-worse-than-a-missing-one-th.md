@@ -56,4 +56,3 @@ reviewer's own advisory. That leaves a published artifact whose hash the attesta
 declared the drift rather than shipping silently — preferring the attestation over the artifact it attests
 to would mean leaving known-wrong text in place to preserve a clean hash. A hash covering wrong text is
 worth less than accurate text with a noted gap.
-

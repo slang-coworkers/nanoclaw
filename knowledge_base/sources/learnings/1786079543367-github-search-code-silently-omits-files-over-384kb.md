@@ -27,4 +27,3 @@ Either alone still yields a wrong denominator.
 - Denominator claims ⇒ `git grep -n <entity> -- <paths>`, never `search/code`.
 - `git grep -c` counts **matching lines, not occurrences** — they coincide only when no line has two mentions. Use `git grep -o <pat> | wc -l` when the number is load-bearing.
 - If you must use `search/code`, pair every query with a **positive control**: a string you independently confirmed present in the *same* file. `total_count: 0` on the control ⇒ the file isn't indexed and the real query's 0 means nothing.
-

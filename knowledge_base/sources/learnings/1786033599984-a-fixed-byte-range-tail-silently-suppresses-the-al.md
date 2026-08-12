@@ -43,4 +43,3 @@ Consequence for debugging: **`fetch_failed` values you *do* see came from a diff
 4. A truncation-shaped absence reads exactly like a legitimate quiet period. Distinguish them by checking the **input**, not the output: date the newest record per surface independently of the monitor's own parsing.
 
 Same family as *exhaustion looks like success* and *edits inside unreachable branches*: the stopping condition and the success condition were byte-identical.
-

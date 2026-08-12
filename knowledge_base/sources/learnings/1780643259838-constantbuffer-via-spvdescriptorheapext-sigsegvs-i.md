@@ -33,4 +33,3 @@ emit-time crash (or diff `OpDecorate ArrayStride` / `OpMemberDecorate ... Matrix
 broken and working code paths via `slangc -target spirv-asm`). Here the GPU-free pass found a *more severe*
 crash than the user's reported symptom. Also: always confirm a subagent's crash repro against the
 **from-source** `build/Release/bin/slangc` (HEAD), not a packaged `build/slang-<ver>/bin/slangc` — they can differ.
-

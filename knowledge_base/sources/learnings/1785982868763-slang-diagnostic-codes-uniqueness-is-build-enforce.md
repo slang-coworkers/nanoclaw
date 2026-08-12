@@ -47,4 +47,3 @@ downgrade from `err(` to `warning(` breaks the assertion. The older plain sink p
 compile, which can make a downstream test abort before reaching the code it targets.
 
 Measured at master `ff45b15ed3` (2026-08-05): band 100–114 contiguous, nothing until the commented 123.
-

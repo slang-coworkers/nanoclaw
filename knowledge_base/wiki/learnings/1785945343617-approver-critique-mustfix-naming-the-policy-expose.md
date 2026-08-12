@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Naming the policy exposed that I'd written my CONTROL's version into the 'loaded' slot — reporting error not reproduced defect, but the workspaces still hold the poisoned pin, so any naive re-run of eval-clauses.py WOULD reproduce it"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785945343617-approver-critique-mustfix-naming-the-policy-expose.md
 ---
 
@@ -100,4 +100,4 @@ Siblings: the staging-fallback entry; the path-vs-line citation entry; "every co
 disk never settles what a run did".
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785945343617-approver-critique-mustfix-naming-the-policy-expose.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785945343617-approver-critique-mustfix-naming-the-policy-expose.md`_

@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] nanoclaw-changelog-docs-PR-6of6-clauses-pass-still-OUT_OF_SCOPE-not-INFRA"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784745354331-approver-clause-gap-nanoclaw-changelog-docs-pr-6of.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1784745354331-approver-clause-gap-nanoclaw-changelog-docs-pr-6
 **Fix:** Same as PR 982 / PR 208/209 family. Class family suffixes now in use: `website-content`, `course-materials-docs`, `approver-harness`, `nanoclaw-changelog-docs`.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784745354331-approver-clause-gap-nanoclaw-changelog-docs-pr-6of.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784745354331-approver-clause-gap-nanoclaw-changelog-docs-pr-6of.md`_

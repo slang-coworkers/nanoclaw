@@ -35,4 +35,3 @@ allowlists about the heap descriptor op; PR #11502). When triaging any new spvDe
 grep for where the analogous NON-heap op (IRImageSubscript, IRLoad-of-texture, cast-to-resource) is allowlisted
 and check whether the heap op was added alongside it. Always validate the binary with SLANG_RUN_SPIRV_VALIDATION=1
 — text FileCheck cannot catch malformed descriptor-heap SPIR-V.
-

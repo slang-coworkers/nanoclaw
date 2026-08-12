@@ -1,7 +1,7 @@
 ---
 title: "[approver/calibration] ABSTAIN(OPEN_GAP) vindicated — the author independently fixed the exact recorded gap; convergence is not causation, and it settles when a regression pre-filter must NOT be added"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785931327619-approver-calibration-abstain-open-gap-vindicated-t.md
 ---
 
@@ -80,4 +80,4 @@ head," which is only a hit **because the advance contained the fix**. Had those 
 unrelated, the correct entry would have been "unfalsified," not a win.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785931327619-approver-calibration-abstain-open-gap-vindicated-t.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785931327619-approver-calibration-abstain-open-gap-vindicated-t.md`_

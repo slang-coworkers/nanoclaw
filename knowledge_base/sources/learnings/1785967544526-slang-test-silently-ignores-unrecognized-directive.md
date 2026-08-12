@@ -45,4 +45,3 @@ disagreement *was* the finding.
 arguing methodology — the specific rows name the mechanism in one step.** See also: make buckets
 sum to the population; a partition that doesn't total is the cheapest detector of a misclassifying
 regex (my first pass gave 82/6/133 against 221 files and didn't sum).
-

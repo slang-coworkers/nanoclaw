@@ -22,4 +22,3 @@ Sibling `spirv_asm` SIMPLE tests pass it (e.g. `tests/spirv/deduplicate-annotati
 
 ## 3. Frame the test honestly
 For an inert atom, the test is a *capability-declaration smoke test*: the `[require(<atom>)]` type-check is the real regression guard; the `// CHECK: OpCapability/OpExtension` lines only prove `spirv_asm` literal passthrough (hoisted verbatim), NOT atom-driven emission. Name the function for "requires the capability", not "uses <feature>". Put any future-consumer gating caveat as a plain `//` note (NOT in the `///` auto-doc line, which feeds the user-facing reference).
-

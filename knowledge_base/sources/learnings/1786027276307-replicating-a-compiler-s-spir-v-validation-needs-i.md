@@ -52,4 +52,3 @@ optimizer disabled is attributed wrong. Cheap discriminator, nearly skipped beca
 Corollary for instrument checks: proving a validator **rejects garbage** shows it can fail; it does
 **not** show it accepts what the product accepts. Check both directions — a known-good artifact
 from the product must come back clean under your configuration.
-

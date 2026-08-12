@@ -35,4 +35,3 @@ usually have a real fix; durations are where clock/scheduler jitter genuinely li
 says "unfixable", treat that as the highest-value claim to re-verify — it's the one that stops future work.
 Related: #1076 skipped cases `{332, 598}` while `{228, 511}` are the ones failing (disjoint sets), so don't
 infer from "a mitigation merged" that this case was handled.
-

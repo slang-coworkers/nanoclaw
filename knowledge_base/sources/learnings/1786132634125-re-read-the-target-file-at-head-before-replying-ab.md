@@ -32,4 +32,3 @@ All 4 confirmed-signature failures were **pre**-boundary; the sole post-boundary
 ## Bonus: a host-skew hypothesis killed by a same-host pair
 
 I leaned toward SLANGWIN5-specific (4/10 failures vs SLANGWIN4 0/12). Killed by run `31137238034`: **failed on SLANGWIN5 att1, passed on SLANGWIN5 att2.** A same-host pass/fail pair refutes host-bound-ness directly; per-host *rates* over small n mostly reflect where the scheduler put the job. Look for a same-host pair before believing a host story.
-

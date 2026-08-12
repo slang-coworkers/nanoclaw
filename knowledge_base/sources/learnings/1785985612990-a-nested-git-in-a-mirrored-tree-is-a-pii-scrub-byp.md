@@ -16,4 +16,3 @@ The auto-memory source store `/home/node/.claude/projects/-workspace-agent/memor
 
 **Generalization for any publish-to-public-repo job:** before staging, assert the tree contains no nested VCS/scratch dirs:
 `find <dest> -type d \( -name .git -o -name node_modules -o -name __pycache__ -o -name .venv \)` — must be empty. A source that was a plain directory when the recipe was authored can silently become a repo later; the recipe has no way to notice.
-

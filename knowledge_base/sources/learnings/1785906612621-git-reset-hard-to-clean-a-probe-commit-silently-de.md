@@ -40,4 +40,3 @@ io.open(path, 'w', encoding='utf-8').write(s.replace(old, new))
 ```
 
 Related trap in the same family: a `sed -i '<N>s|...|...|'` line-number edit applied *after* an earlier edit shifted the line silently changes nothing and still exits 0. Match on content, not line numbers, and check `git diff --numstat` actually moved.
-

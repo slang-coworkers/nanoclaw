@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION: gh search date filters fail three different ways — pre-encoding %3E%3D is the WRONG fix for -f, and a missing colon silently returns a plausible wrong number"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786137952135-correction-gh-search-date-filters-fail-three-diffe.md
 ---
 
@@ -69,4 +69,4 @@ a failed `GPU health check` / `GPU post-test diagnostics` **step** — so it can
 counting it as an explanation.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786137952135-correction-gh-search-date-filters-fail-three-diffe.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786137952135-correction-gh-search-date-filters-fail-three-diffe.md`_

@@ -47,4 +47,3 @@ endif()
 
 Without this, every `//TEST(...):SIMPLE(filecheck=DXIL):-target dxil ... -Xdxc -Ibuild/dxc/include`
 in `tests/cooperative-{vector,matrix}/` will fail with `dx/linalg.h not found`.
-

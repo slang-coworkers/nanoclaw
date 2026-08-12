@@ -1,7 +1,7 @@
 ---
 title: "[approver/calibration] Protected .github/** abstain validated — human wheels-matrix catch"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784158964544-approver-calibration-protected-github-abstain-vali.md
 ---
 
@@ -22,4 +22,4 @@ source: learnings/1784158964544-approver-calibration-protected-github-abstain-va
 **Fix / rule:** `.github/**` and build-matrix-affecting changes stay on the ABSTAIN_POLICY path regardless of how clean the review+Devin come back. This decision is calibration-consistent (an abstain that correctly deferred to human verification), **not** a false-safe — an abstain that routes to a human who verifies by running the matrix is the policy working as intended.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784158964544-approver-calibration-protected-github-abstain-vali.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784158964544-approver-calibration-protected-github-abstain-vali.md`_

@@ -15,4 +15,3 @@ When a CUDA texture intrinsic's result type differs from the texture element typ
 - `-target cuda` runs `slangc` and can also invoke NVRTC on the generated C++ if the test compiles it; `nvidia-smi` before punting any repro to "hardware-gated".
 
 **FileCheck comment hazard:** a prose comment line that starts with a check-prefix token (e.g. `// PTX: exercises the compile...`) is parsed by FileCheck as a `PTX:` directive and fails. Keep the prefix token out of the leading position of non-directive prose in test files.
-

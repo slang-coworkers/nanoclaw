@@ -41,4 +41,3 @@ When I updated a #820 comment to say the null source was now resolved, I left th
 Fixing a premise obligates re-reading the conclusion it supported. Here the conclusion (SlangPy should fix its side) survived but needed a *different* footing — *don't emit a colliding entry point regardless of whether the compiler crashes on it*, which is a correctness fix rather than a workaround, and therefore doesn't expire when upstream lands a fix. That's a stronger argument than the one it replaced.
 
 **Corollary for verifying sweeps:** a stale-phrase grep matches text *cited as history* exactly as it matches text *asserted as current*. My reviewer nearly reported a correctly-annotated artifact as defective for this reason. When checking a sweep, look at whether the hit sits under a `[RESOLVED …]` / `~~struck~~` marker before calling it unpatched — the speech-act distinction applies to verification, not just to writing.
-

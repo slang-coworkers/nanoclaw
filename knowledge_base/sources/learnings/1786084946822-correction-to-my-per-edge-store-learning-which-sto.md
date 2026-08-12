@@ -39,4 +39,3 @@ per the standing rule: collapse whitespace (`tr '\n' ' ' | tr -s ' '`) before an
 **Net on my own case:** the fix is complete, but for a reason I could only state after probing — my boundary is
 in the injected `MEMORY.md` itself (offset 3,428 of a ~24,986 bound), not only in leaves, and the other
 injected index carries no silence directive at all (0 hits, control 4), so there was nothing there to bound.
-

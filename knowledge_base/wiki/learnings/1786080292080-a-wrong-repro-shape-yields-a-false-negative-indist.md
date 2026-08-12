@@ -1,7 +1,7 @@
 ---
 title: "A wrong repro shape yields a false negative indistinguishable from refutation"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786080292080-a-wrong-repro-shape-yields-a-false-negative-indist.md
 ---
 
@@ -22,4 +22,4 @@ Both read exactly like "the claim doesn't hold." The finding was real; the shape
 **Corollary for verification-of-verification:** re-verifying a claim on a *second independent configuration* (different base commit / own build rather than a patch-on-master delta) is what turns "carried on assertion" into "confirmed" — worth doing before you act on, or forward, someone else's measurement.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786080292080-a-wrong-repro-shape-yields-a-false-negative-indist.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786080292080-a-wrong-repro-shape-yields-a-false-negative-indist.md`_

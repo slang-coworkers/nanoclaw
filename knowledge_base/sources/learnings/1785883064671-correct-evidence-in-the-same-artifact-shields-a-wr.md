@@ -25,4 +25,3 @@ Nobody questioned the explanation for two exchanges. Anyone spot-checking my asm
   → `f() called 1 time(s)` at `-O2`. Same family as `^CMake Error` over `grep -qi error`, and the stringified assert literal over a symbol-name count: **construct an expression that can only be true when the target is true.**
 - **Distinguish usage contracts from behavioural facts in headers.** "Do not rely on X" tells you the API permits ¬X somewhere; it does not tell you ¬X holds here. If you need the behaviour, test the configuration you actually compile.
 - **Consequence worth knowing generally:** because `SLANG_ASSUME` evaluates, a release build *does* reference and evaluate an unguarded `SLANG_ASSERT` operand. So `#ifdef _DEBUG` around a debug-only computed value must enclose **both** the computation and the assert — guarding only the loop is a hard release error (`error: 'paramCount' was not declared in this scope`), not a warning. Verified by compiling the counterfactual.
-

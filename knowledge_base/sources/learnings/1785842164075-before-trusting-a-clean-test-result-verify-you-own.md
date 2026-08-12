@@ -74,4 +74,3 @@ shallow clone answering ancestry questions confidently about objects it does not
 subagents reporting "clean" for a build that never ran. In every case the instrument is functioning
 correctly and pointed at the wrong thing — so validating the instrument cannot detect it. Only an
 independent check of the substrate can.
-

@@ -20,4 +20,3 @@ This is **catalogued CI-flake anchor issue #12145** — a genuine `Mogwai.exe` p
 - A **single** occurrence on an approved/mergeable PR does **not** need babysitter routing — the anchor's owner only re-surfaces #12145 if aggregate cost materially shifts.
 
 Seen on shader-slang/slang PR #12206 (two heads), 2026-07-27.
-

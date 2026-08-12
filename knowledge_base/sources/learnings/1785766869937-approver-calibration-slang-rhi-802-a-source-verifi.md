@@ -69,4 +69,3 @@ Discipline notes for the re-gate:
   needs a full re-gate on a settled head.
 - My pinned decision head went stale twice while the row sat "awaiting join." Re-read live head
   + reviews before touching any awaiting-join row.
-

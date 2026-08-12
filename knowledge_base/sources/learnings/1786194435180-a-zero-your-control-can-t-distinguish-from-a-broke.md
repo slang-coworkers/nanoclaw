@@ -47,4 +47,3 @@ fires only *when specialization fails* — `slang-ir-specialize.cpp` then replac
 with a poison value "so that subsequent passes don't crash on the unresolved instruction." So the
 compiler admits an existential type argument and diagnoses only if resolution cannot proceed. Reading
 the declaration alone as "the front end already knows the rule" overstates it.
-

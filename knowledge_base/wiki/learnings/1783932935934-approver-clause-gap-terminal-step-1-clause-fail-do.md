@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Terminal Step-1 clause FAIL dominates a co-occurring UNEVALUABLE and no-review-signal — record ABSTAIN_POLICY, not ABSTAIN_INFRA"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1783932935934-approver-clause-gap-terminal-step-1-clause-fail-do.md
 ---
 
@@ -40,4 +40,4 @@ existing `approver-calibration-size-cap` learning: >2000-line core refactors cor
 ABSTAIN_POLICY/CLAUSE_FAIL:tier_eligible, human outcomes have validated the cap.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783932935934-approver-clause-gap-terminal-step-1-clause-fail-do.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783932935934-approver-clause-gap-terminal-step-1-clause-fail-do.md`_

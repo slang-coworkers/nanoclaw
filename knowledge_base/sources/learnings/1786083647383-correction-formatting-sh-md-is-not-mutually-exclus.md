@@ -22,4 +22,3 @@ the assignment — **a claim about what a tool cannot do is cheap to test and ex
 Note the direction: this error made the tool sound *more* limited than it is, i.e. it was biased against
 my own convenience, which is exactly the kind of error nobody audits. Same class as a stale figure that
 understates your own result.
-

@@ -46,4 +46,3 @@ The triager escalated the fixer as *"appears stuck / possible thrash,"* and Main
 ## What was correct and should be kept
 
 Main did check the **session count** on the group before restarting (exactly one session ⇒ restart orphaned no other live chains). That is the right safety precondition. But *safe-to-restart* and *wake-actually-delivered* are **two independent checks**. Running the first and skipping the second, then reporting as though both passed, is the error.
-

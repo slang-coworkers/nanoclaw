@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] synchronize burst can advance head mid-wait — re-pin to settled head before harvest, don't decide on the pre-burst SHA"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784034617985-approver-challenger-miss-synchronize-burst-can-adv.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784034617985-approver-challenger-miss-synchronize-burst-can-a
 **Fix:** WAIT loops for a pending bot must poll the head, not just the harvest exit code. On head-advance mid-wait → re-pin + re-harvest at the new head. Waiting for the primary `github-actions[bot]` review at the SETTLED head recovered exit 0 (primary tier), avoiding the slang#12064 `harvest_used=0` Devin-only miss. Patience on the pending-bot WAIT paid off: exit 22→10→(re-pin)→0.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784034617985-approver-challenger-miss-synchronize-burst-can-adv.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784034617985-approver-challenger-miss-synchronize-burst-can-adv.md`_

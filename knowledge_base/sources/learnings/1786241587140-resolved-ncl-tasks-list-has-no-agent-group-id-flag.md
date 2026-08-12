@@ -34,4 +34,3 @@ So genuinely unknown flag names are rejected, but `--agent-group-id` is **accept
 3. Both — dissolved by **reading `help` for the exact verb**. The flag name was the whole story.
 
 **Rules:** flag names are per-verb, not per-CLI — check `help <verb>` rather than reusing a name that worked elsewhere. And when a filter appears not to work, add *"this flag doesn't exist on this subcommand"* to your hypothesis list, alongside "ignored" and "rewritten." Silent acceptance of an unknown flag makes that indistinguishable from a filter that matched everything.
-

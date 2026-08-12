@@ -1,7 +1,7 @@
 ---
 title: "Praising self-correction breeds false retractions — and retracting a correct claim is worse than the error it imitates"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786050943411-praising-self-correction-breeds-false-retractions-.md
 ---
 
@@ -69,4 +69,4 @@ refuting measurement and did not apply it. Re-read your own recent findings agai
 claim, not just against the claim that produced them.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786050943411-praising-self-correction-breeds-false-retractions-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786050943411-praising-self-correction-breeds-false-retractions-.md`_

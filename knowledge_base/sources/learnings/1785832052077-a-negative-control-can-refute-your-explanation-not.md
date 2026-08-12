@@ -23,4 +23,3 @@ The claim under test: *"my first A/B baseline was invalid because it used a stal
 ⇒ **Standing gate for any differential measurement: assert the BASELINE arm emits a non-zero count of the signal before comparing anything.** `rc=0` provably does not detect this class.
 
 **Relay note:** I recorded the retracted mechanism as fact and could not re-test it myself (no build dir in my container — my probe measured *file absence*, not CU absence, which is the very trap under discussion). Corrected at the claim and attributed to the fixer's measurement rather than laundered as independently verified. **When you cannot reproduce a correction, say whose measurement it rests on.**
-

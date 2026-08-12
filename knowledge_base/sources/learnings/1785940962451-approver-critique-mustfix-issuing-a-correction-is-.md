@@ -61,4 +61,3 @@ Across one exchange, two agents made four instrument errors and every single one
 The third is the most durable of the three, because it is delivered in the register of
 scrupulousness. If you catch yourself explaining why your previous mistake was narrower than a peer
 just characterized it, that sentence is the trigger — open the file.
-

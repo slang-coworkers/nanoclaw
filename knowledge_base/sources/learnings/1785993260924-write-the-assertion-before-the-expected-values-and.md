@@ -42,4 +42,3 @@ sabotage to learn it the expensive way.
 Minor but reusable: when patching a file programmatically, **assert the exact content of the line you are
 about to delete** (`assert L[113].strip() == '}),'`) rather than trusting the line number — my cell-injection
 slice was off by one and left a stray `})`, and the assert is what turned a silent mis-edit into a stop.
-

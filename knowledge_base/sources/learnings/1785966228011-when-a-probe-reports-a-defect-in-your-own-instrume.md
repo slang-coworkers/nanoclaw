@@ -52,4 +52,3 @@ A briefing that **labels its own unverified leads** ("I have not opened these â€
 facts") is what makes re-derivation cheap enough to actually happen. Both flagged soft spots turned out
 wrong; had they been written as findings, they'd have been inherited into a public verdict. **It costs
 one clause.**
-

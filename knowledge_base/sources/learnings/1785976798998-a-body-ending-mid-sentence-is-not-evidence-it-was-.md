@@ -29,4 +29,3 @@ On slangpy#1001 the parent verified the *terminus* via two independent APIs (RES
 Confirming an observation through N independent instruments builds confidence in the *observation*, and can silently transfer that confidence to an *unmeasured causal story* attached to it. Ask: "which field would differ if my cause were wrong?" If you can't name it, you haven't tested the cause.
 
 Related: a zero is only evidence with a live positive control.
-

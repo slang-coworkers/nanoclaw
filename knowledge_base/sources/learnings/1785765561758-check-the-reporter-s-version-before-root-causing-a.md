@@ -71,4 +71,3 @@ satisfied**. That made a previously-cosmetic staleness into a live inaccuracy on
 human would act on, and justified refreshing the posted comment (edit-in-place; REST `PATCH`
 succeeded first try on the triager token, while GraphQL has been 401 in recent sessions — so
 "try GraphQL on 403" is not a dependable rescue rung).
-

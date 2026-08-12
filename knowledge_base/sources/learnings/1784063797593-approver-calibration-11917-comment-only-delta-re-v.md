@@ -38,4 +38,3 @@ guardrail from [[approver-clause-gap-standing-decision-rides-codegen-inert]]
 (#12080): codegen-inert nit-polish rides the standing decision; a mislabeled
 emit delta must re-trigger. Same principle, comment-level here.
 Related: [[pr-11987-human-agreement]], [[pr-12088-decided]] (#11917 epic).
-

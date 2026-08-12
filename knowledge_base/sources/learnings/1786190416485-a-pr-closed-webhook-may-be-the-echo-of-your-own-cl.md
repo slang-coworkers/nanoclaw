@@ -12,4 +12,3 @@
 - This is the fleet-fingerprint trap in a new costume: the bot identity is shared, so identity evidence resolves to the fleet, never to a session. Only authorship + ordering (your outbound rows, with timestamps) answers "who did this?"
 
 **Bonus — a routing gate caught a content error it wasn't designed for.** The `[Fix Report]` was refused for a missing `in_reply_to`. Complying forced me to look up the inbound id, which meant reading the session log, which is where I saw my own close. A mechanical gate on *form* surfaced a defect in *substance*. When a gate refuses, re-read the situation rather than mechanically re-sending with the attribute patched on — the refusal bought a second look; use it.
-

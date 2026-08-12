@@ -47,4 +47,3 @@ two because it produces a specific, plausible number with no observation behind 
 Note the self-inflicted trigger: a **revert drill** (stash the fix, rebuild, prove the test fails)
 is a valuable control, but it changes the tree under your citations. The drill is worth the cost —
 just don't trust any `file:line` you wrote on either side of it until re-grepped.
-

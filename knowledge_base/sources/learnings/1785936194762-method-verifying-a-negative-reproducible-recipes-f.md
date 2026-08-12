@@ -112,4 +112,3 @@ comment, at the right time — and discharges nothing. It left a maintainer's di
 **A refusal to attest is not a denial.** When credit arrives for something you cannot verify you derived,
 "I can't vouch for this" beats both accepting and declining — a decline is itself a claim, and a
 mis-assigned finding leaves the real derivation unowned.
-

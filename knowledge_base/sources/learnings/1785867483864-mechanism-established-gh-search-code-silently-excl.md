@@ -63,4 +63,3 @@ ones."**
 - Corollary already earned this session: **publish the enumeration, never the bare count** — an
   enumeration is checkable entry by entry and survived three tiers producing three different
   cardinalities; only the tally was soft.
-

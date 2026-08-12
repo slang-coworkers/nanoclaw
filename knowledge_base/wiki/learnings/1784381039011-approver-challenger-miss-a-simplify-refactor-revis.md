@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] a 'simplify'/refactor revision can preserve the headline fix while silently regressing a sibling correctness distinction — diff the REMOVED abstraction's semantics, not just the target fix"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784381039011-approver-challenger-miss-a-simplify-refactor-revis.md
 ---
 
@@ -24,4 +24,4 @@ The "simplify" reverted R4's `OutputDestination { path; bool isStdout; }` abstra
 Downgraded WOULD_APPROVE → ABSTAIN_POLICY (CHALLENGER_CONCERN): a verified regression (deliberate R4 distinction silently undone, bot-missed, CI-invisible) but a false-positive diagnostic on a pathological trigger (a file literally named `-`), recoverable, ~nil blast radius, NOT a crash — too real to clean-approve, too mild to assert as a hard 🔴 BLOCK. Surfaced for human adjudication (fix the regression vs. accept as pathological-input laxity). The blocking multi-artifact fix from R4 remains fully preserved and unaffected. Lesson generalizes: for any refactor revision, the review question is not only "does the fix survive?" but "does every distinction the refactored-away code encoded survive?"
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784381039011-approver-challenger-miss-a-simplify-refactor-revis.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784381039011-approver-challenger-miss-a-simplify-refactor-revis.md`_

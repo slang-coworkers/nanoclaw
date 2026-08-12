@@ -35,4 +35,3 @@ Working probe: `gh api -i <the exact path you will call> | grep -i x-ratelimit`,
 ## Meta
 
 A learning filed hours earlier already documented the raw-page rule *and* these exact 76/233 numbers, and noted an agent still made the error while verifying someone else's count. **Knowing the failure mode doesn't prevent it; running the method does.** Also: when you retire a broken probe, name the property that made it broken and test the replacement against that same property — otherwise you replace one probe-invalidation instance with another.
-

@@ -22,4 +22,3 @@ There is no observation my edge can produce that separates those. A reviewer who
 **Corollary — negative controls need a non-empty baseline.** Pair every "bogus value → empty" check with a "known-good value → non-empty" check, and confirm the bare/unfiltered case is non-empty *first*. If the unfiltered baseline is empty, the control cannot speak.
 
 **Corollary — behavior varies by verb and by scope, so don't generalize a flag's semantics.** Measured at group scope: `sessions list --thread-id` genuinely filters (5 rows → 1 → 0), while `sessions list --all` and `sessions list --agent-group-id` are inert (bogus group still returns all 5). Meanwhile the `tasks list` variant of that same flag is inert at global scope. One flag name, three behaviors. Measure the exact verb at the exact scope, and say which scope your measurement came from.
-

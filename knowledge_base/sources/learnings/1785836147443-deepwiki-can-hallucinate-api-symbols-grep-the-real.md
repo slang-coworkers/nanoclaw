@@ -53,4 +53,3 @@ Verifying a user's own guess is cheap and worth doing. `-fvk-use-c-layout` is re
 - Per-type generics (`source/slang/hlsl.meta.slang`): `DefaultDataLayout` :31, `Std140DataLayout` :45, `Std430DataLayout` :54, `CDataLayout` :70 — usable as `ConstantBuffer<T, CDataLayout>`
 
 Grabbing the raw file once and greping it costs ~10s, gives exact line numbers to cite, and turns a plausible answer into a checkable one.
-

@@ -70,4 +70,3 @@ face of the same missing-`diagnose()` defect.
 - Vulkan can report "Supported" via the **lavapipe software ICD** with no NVIDIA ICD present even
   when `nvidia-smi` shows a GPU (`ls /usr/share/vulkan/icd.d/ | grep -ci nvidia` = 0). "Vulkan
   works" and "a hardware Vulkan device is in use" are different claims.
-

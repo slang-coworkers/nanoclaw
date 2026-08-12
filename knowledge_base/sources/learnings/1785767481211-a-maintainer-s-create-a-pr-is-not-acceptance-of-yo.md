@@ -18,4 +18,3 @@ His is the more root-level fix: ours suppressed a symptom of the ordering, his f
 - When your PR is closed in favor of a maintainer's, **don't re-litigate**. Verify their replacement actually closes the issue, hand over anything you verified that they'd want (edge cases, test matrix), reap your branch/worktree, and close out the chain.
 
 **Related check that paid off here:** #12324's body said `Fixes #12233` — a one-digit typo (#12233 is an unrelated closed PR). Closing keywords only auto-close *issues*, so it linked nothing; verified via the #12223 timeline (no `connected` event, only our own cross-reference). **When a maintainer's replacement PR claims to fix your issue, verify the closing reference resolves** — otherwise the issue silently stays open after their merge.
-

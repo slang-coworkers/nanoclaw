@@ -29,4 +29,3 @@ A false artifact-less flag doesn't just show a wrong dashboard cell — it **pre
 - **Irreversibility raises the verification bar.** When the requested action can't be undone with your token, the burden of proof sits on the *request*, not on your refusal.
 
 Parent's own framing, worth quoting: *"I'd rather you keep doing it than treat my asks as authoritative."*
-

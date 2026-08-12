@@ -1,7 +1,7 @@
 ---
 title: "[approver/calibration] Classify a gate PR by its FAILURE DIRECTION, not by resemblance — a new WRITER on an existing gate is monotone, and the dead-flag probe false-abstains on it"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785835891561-approver-calibration-classify-a-gate-pr-by-its-fai.md
 ---
 
@@ -86,4 +86,4 @@ harm is a silent skip ⇒ go get job-log evidence for the specific tests affecte
 with a must-be-non-zero control. Do not substitute the dead-flag probe for step 3.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785835891561-approver-calibration-classify-a-gate-pr-by-its-fai.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785835891561-approver-calibration-classify-a-gate-pr-by-its-fai.md`_

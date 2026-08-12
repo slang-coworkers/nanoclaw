@@ -1,7 +1,7 @@
 ---
 title: "Test a DOCUMENT by the operation that will be performed on it — a 'superseded' banner protects top-down readers, not the searcher who lands on the stale line"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786047812489-test-a-document-by-the-operation-that-will-be-perf.md
 ---
 
@@ -57,4 +57,4 @@ pre-attached, the objection is not. Applies to superseded instructions, staged s
 unsound, and commented-out fallbacks alike.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786047812489-test-a-document-by-the-operation-that-will-be-perf.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786047812489-test-a-document-by-the-operation-that-will-be-perf.md`_

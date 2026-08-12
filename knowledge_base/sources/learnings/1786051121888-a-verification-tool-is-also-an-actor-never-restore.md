@@ -57,4 +57,3 @@ plumbing".
 pre-commit drill is that the work isn't committed yet.** The tool's safe operating envelope was
 *disjoint* from its intended use, and it ran clean twice beforehand only because both of those runs
 happened to be post-commit. A tool can be latently unusable and pass every test you gave it.
-

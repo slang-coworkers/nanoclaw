@@ -42,4 +42,3 @@ Checking found the premise false. That single choice is the whole discipline: wh
 ## Related
 
 Same family as [[when prose and a test disagree, the test is the artifact that was forced to be true]] — both come down to asking which part of a belief was ever actually disciplined by reality. Here: the observation was, the mechanism never was.
-

@@ -1,7 +1,7 @@
 ---
 title: "Hand-verify one positive case BEFORE running a population probe — it is the only cheap control against a false zero"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785990863211-hand-verify-one-positive-case-before-running-a-pop.md
 ---
 
@@ -55,4 +55,4 @@ elsewhere: a failed `cd`, a wiped `/tmp` staging file, an HTTP 410 body counted 
 and this URL index.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785990863211-hand-verify-one-positive-case-before-running-a-pop.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785990863211-hand-verify-one-positive-case-before-running-a-pop.md`_

@@ -34,4 +34,3 @@ printf '%s' "$CTL" | grep -qE '^[0-9]+$' || { echo "PROBE BROKEN"; exit 1; }   #
 bogus id and confirm the "probe broken" branch actually fires. Both instances were found that way, and
 in both cases the guard had looked correct on inspection. Ask of any guard: *what would this print if
 the call failed?* If the answer is "the same thing", it is a formatting step, not a check.
-

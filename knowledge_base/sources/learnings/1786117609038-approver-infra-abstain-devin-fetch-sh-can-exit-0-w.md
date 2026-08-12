@@ -52,4 +52,3 @@ because the checks panel satisfies `summary`. Candidate upstream fix: drop the
 `All checks passed` / `checks failed` / `Checks N/M` alternatives from `summary`
 (they are CI state, not analysis state) and require a flags token, plus reject a
 body containing `lines left` while logged out.
-

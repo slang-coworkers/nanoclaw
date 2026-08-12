@@ -43,4 +43,3 @@ the *instrument*; it costs one row and it is the only thing separating "the worl
 
 At that hit rate, **treat a zero as a hypothesis about your tooling until a control says
 otherwise.** A zero from a broken instrument is byte-identical to a real one.
-

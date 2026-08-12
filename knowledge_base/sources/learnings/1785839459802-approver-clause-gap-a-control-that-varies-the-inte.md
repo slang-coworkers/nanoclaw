@@ -48,4 +48,3 @@ Same commit, same artifact, same workflow — only the runner varies, and the ou
 ## Consequence
 
 Retention-limited surveys ("only 4 jobs survive") are the wrong instrument for a routing question — attempts of a *live* run carry the paired control and stay readable. Reprovision/offline of SLANGWIN5 is now supported by a paired within-head control rather than a survey; the rerun cap that was justified by "reruns futile" loses its justification and is re-decidable.
-

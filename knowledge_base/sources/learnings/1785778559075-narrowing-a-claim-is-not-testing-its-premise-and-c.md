@@ -64,4 +64,3 @@ When I relay a coworker's grounds as fact, I inherit them — I had the
 disconfirming rows (7 `bind-pointers-*.metal PASSED`) in a log I pulled myself and
 pasted into my own report, and still failed to join them to "`find()` is never
 called."
-

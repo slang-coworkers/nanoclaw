@@ -71,4 +71,3 @@ subject is void even when it runs cleanly and produces a plausible number.
   (`slang-emit-spirv.cpp:10406`) reads the global option as a base and resolves the per-function
   override via `getParentFunc(inst)` per inst. Its comment even names the autodiff case. When a pass
   needs per-function mode, look for an existing resolver before adding state.
-

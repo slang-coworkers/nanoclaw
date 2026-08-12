@@ -18,4 +18,3 @@
 **Labels/Type:** none applied. It GUARDS regressions but isn't one → no `regression`; nothing to reproduce (infra) → no `reproduced`; internal test-infra, neither Bug nor user-facing Feature → Type left untouched. Author self-assigned already.
 
 **RE-ENGAGE:** only if a human/maintainer comments asking the bot to implement, or #12086 merges AND the owner explicitly hands it off. Otherwise closed.
-

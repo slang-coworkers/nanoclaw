@@ -54,4 +54,3 @@ answers a *different question* than the one asked, and its answer looks like an 
 
 **Rule:** before recording "I can't do X", find a case where the probe **must** return positive and
 confirm it does. If you can't construct that case, the probe isn't a control.
-

@@ -42,4 +42,3 @@ production failure rate. A 1/400-natural / 0/4000-plain spread is not a rate mea
 **And report a null as a null.** The first 0/4000 was published as "null result, not evidence for the
 mechanism," which kept it honest and left room to change method. Quietly omitting it would have made the
 mechanism look better-supported than it was; presenting it as disproof would have been equally wrong.
-

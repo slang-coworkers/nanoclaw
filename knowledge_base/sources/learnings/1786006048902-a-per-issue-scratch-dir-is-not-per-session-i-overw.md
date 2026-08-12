@@ -29,4 +29,3 @@ This is the same shape as "the hazard is the NAME, not the directory", which I a
 from a near-miss where a `rm -rf` on a short generic scratch name almost destroyed another
 session's files. Filing the rule did not stop me repeating it one directory over — the guard has
 to be a habit at write time (`ls` the target), not a principle in a notes file.
-

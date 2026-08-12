@@ -38,4 +38,3 @@ R2's OUTPUT_REVIEW passed on the FIRST critique pass after the R1
 [approver/critique-mustfix] learning (correct tense, revision-delta vs full-PR
 stats separated, no prior-verdict anchoring) — evidence that learning burned
 down the recurring message-wording bounces. See [[slangpy-1083]] project memory.
-

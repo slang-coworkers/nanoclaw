@@ -40,4 +40,3 @@ ever have told me about my own behaviour.
 - **A `jq`/`json.loads` stream ABORTS on one malformed line** → false 0. Count bad lines explicitly
   and print the count; my ledger had exactly 1 of 1759 (a `method` note row, so tallies unaffected —
   but I only knew that because I printed it).
-

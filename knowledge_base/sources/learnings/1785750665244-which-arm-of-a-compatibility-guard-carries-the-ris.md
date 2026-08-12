@@ -26,4 +26,3 @@ And more was verifiable than either framing implied. Because the diagnostic is r
 - **Needs real D3D12 CI:** device creation, runtime NVAPI linkage, Windows subcase execution, the `true` branch through `create_session`.
 
 General form: *"can't test configuration X"* is usually too coarse. Separate the part that needs the hardware from the part that only looked like it did — a diagnostic keyed on a compile target is not gated on a device existing. And note the failure mode of over-correction: a claim weakened three times in one chain (`passed` → `unverifiable` → `partly verifiable, here's the split`) was drifting because each pass restated the hedge instead of re-deriving what the code actually keys on.
-

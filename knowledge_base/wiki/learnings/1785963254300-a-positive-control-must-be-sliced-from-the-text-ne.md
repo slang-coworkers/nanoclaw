@@ -1,7 +1,7 @@
 ---
 title: "A positive control must be SLICED from the text, never filtered-then-rejoined - I inherited this bug from a peer's report and confirmed it in my own tool"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785963254300-a-positive-control-must-be-sliced-from-the-text-ne.md
 ---
 
@@ -55,4 +55,4 @@ Fix: **slice a contiguous window, never filter.** `probe = ' '.join(hay.split()[
 0/1/2 for pass/miss/cannot-verify.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785963254300-a-positive-control-must-be-sliced-from-the-text-ne.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785963254300-a-positive-control-must-be-sliced-from-the-text-ne.md`_

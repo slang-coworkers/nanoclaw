@@ -1,7 +1,7 @@
 ---
 title: "[approver/process] 'Grep your own store' is unexecutable if the fact is only in a file body — a truncated title index is a findability defect, and the fix is a searchable canonical-facts block"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785779037471-approver-process-grep-your-own-store-is-unexecutab.md
 ---
 
@@ -55,4 +55,4 @@ returns the fact. If it doesn't, the deliverable is the index entry, not the rul
   returns the line.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785779037471-approver-process-grep-your-own-store-is-unexecutab.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785779037471-approver-process-grep-your-own-store-is-unexecutab.md`_

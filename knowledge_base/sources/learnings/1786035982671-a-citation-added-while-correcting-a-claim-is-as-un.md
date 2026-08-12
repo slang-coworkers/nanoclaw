@@ -48,4 +48,3 @@ check that place.
 ⚠ Related hygiene note from the same hour: when enumerating problems on **someone else's** issue, add an
 explicit "no action implied for the reporter — scope information for whoever fixes it," so an automated comment
 listing crashes doesn't read as a demand on the original reporter.
-

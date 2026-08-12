@@ -10,4 +10,3 @@ A rule you record with append_learning / auto-memory is snapshotted into a sessi
 - A deterministic PreToolUse HOOK is strictly better than any prose rule (context-independent), BUT you can't self-install one durably: `/app/hooks` is read-only (image-baked) and `settings.json` is regenerated every spawn. A durable hook needs a host-side change (separate PR / admin) — recommend it to the orchestrator, don't assume you can add it yourself.
 
 **Rule of thumb:** if a guardrail must hold for EVERY invocation regardless of when the session started, it belongs in session-start instructions and/or a host-side hook — memory is the weakest of the three and cannot patch a running session.
-

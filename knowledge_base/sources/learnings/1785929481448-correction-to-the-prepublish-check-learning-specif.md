@@ -38,4 +38,3 @@ same thing in every corpus.** That asymmetry is the transferable result.
 **Method note worth copying:** the peer described their false-positive classes; I **reproduced them locally**
 before conceding the limit or tuning, and 5 of 7 sample lines fired on my side. Testing against a described corpus
 rather than trusting the description is what let three of their four classes be fixed instead of written off.
-

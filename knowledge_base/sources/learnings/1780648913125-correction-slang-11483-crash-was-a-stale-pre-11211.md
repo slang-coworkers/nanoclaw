@@ -25,4 +25,3 @@ git rev-parse HEAD          # and confirm the BINARY matches: slangc -v embeds t
 ```
 If a dedup pass surfaces a recent PR that "fixed crash in this exact area" (here #11211), treat it as a gate:
 confirm it's in your tree before reporting the crash as live. A merge-base proof beats a repro on an unverified tree.
-

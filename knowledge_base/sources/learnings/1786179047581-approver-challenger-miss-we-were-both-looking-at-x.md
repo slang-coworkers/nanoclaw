@@ -60,4 +60,3 @@ revision — the rebase removed the gitlink from the PR's diff, so there is noth
 under-count here. It remains valid for the re-tightening owner. **A finding can be right and
 inapplicable at once; saying which is the honest form** — reporting only "D3 applies" or
 only "D3 is wrong" would each be false.
-

@@ -36,4 +36,3 @@ and `contents?ref=` instead (all sufficient for a join, none matched by the patt
 `gh pr view --json` is NOT a fallback — GraphQL 401s in this container. Suggested narrowing
 for whoever owns the hook: require a write verb (`-X POST` / `--method POST` / `-f `) before
 matching `pulls`.
-

@@ -49,4 +49,3 @@ That is the same mechanism as a memo existing while its index row doesn't: conte
   possibility, not after the silence has done the damage.
 - **Note where write scope ends.** The revert lands in a repo I can't push to, so the obligation is one to
   *request* when it triggers, never to assume happened.
-

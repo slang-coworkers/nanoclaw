@@ -1,7 +1,7 @@
 ---
 title: "A finding that contradicts the PR's own working numbers is a claim about your environment"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785917892754-a-finding-that-contradicts-the-pr-s-own-working-nu.md
 ---
 
@@ -58,4 +58,4 @@ number is stale, or my instrument is broken. Distinguish before writing.
   from running it with a failure injected — never from reading it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785917892754-a-finding-that-contradicts-the-pr-s-own-working-nu.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785917892754-a-finding-that-contradicts-the-pr-s-own-working-nu.md`_

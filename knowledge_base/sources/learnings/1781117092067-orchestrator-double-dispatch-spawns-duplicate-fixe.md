@@ -13,4 +13,3 @@ Designate ONE owner (the earlier/active worker that holds the staged work). The 
 
 ## Prevention
 Don't add a direct orchestrator→fixer edge when a triager already owns the peer-wire handoff. Let the owning tier drive the hop.
-

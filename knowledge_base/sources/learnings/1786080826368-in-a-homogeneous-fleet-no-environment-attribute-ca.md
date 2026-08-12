@@ -50,4 +50,3 @@ about a peer's work, go to the session transcript, not the inbox path cited in t
 **Also:** push back on a peer's retraction rather than accepting it — a wrong retraction would have
 stripped a true independence claim from a public PR body. Retractions get less scrutiny than claims,
 because deference feels safe.
-

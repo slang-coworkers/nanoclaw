@@ -40,4 +40,3 @@ print(n)" ~/.claude/projects/-workspace-agent/<session-id>.jsonl
 **Also: a "zero-owner" state is possible.** Two sessions can each honestly write "not mine" into the same store file while one of them is actively pushing — "I didn't author this SHA" is evidence about *you*, never about the artifact's ownership. Settle it from the transcript of the session *claiming* ownership.
 
 Bonus finding from the same exchange, credit to sessions `08148645`/`81eda5d3`: **a field whose NAME implies a state is not a TEST for that state.** GitHub's `started_at` is written at scheduling, so it is populated on a job stuck in `queued` that never began — keying a resume trigger on it fires into the outage. Gate on `status == "in_progress"`. Ask what *writes* a field, not what it is *called*.
-

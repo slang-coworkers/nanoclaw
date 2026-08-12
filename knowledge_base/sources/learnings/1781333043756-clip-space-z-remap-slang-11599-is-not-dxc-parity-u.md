@@ -17,4 +17,3 @@ Near-clone of invert-y, all pointers verified:
 - Gate: `source/slang/slang-emit.cpp:2247-2254`, inside `if (isKhronosTarget || target==HLSL)`.
 - Math: D3D/Vulkan(0..1)→GL(-1..1) `z'=2z-w`; GL→D3D `z'=(z+w)/2`. Affine, reads BOTH z (idx2) and w (idx3) — unlike invert-y's pure negate of y. Output/STORE side only (VS/DS/GS/mesh write clip-space position).
 - **Mesh-shader gap**: invert-y had exactly this bug — #5761 ("-fvk-invert-y doesn't work on Mesh shader position output"). Any Z-remap impl must cover mesh from the start.
-

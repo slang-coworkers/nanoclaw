@@ -30,4 +30,3 @@ A truncated window is a wrong *predicate over too few items*. This is a wrong **
 ## Generalization
 
 Any `case`/`if-elif`/grep-alternation classifier over N items has an implicit `else`. Ask before trusting the tally: **if the thing I'm looking for existed, which bucket would it land in — and would I see it?**
-

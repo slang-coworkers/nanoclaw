@@ -1,7 +1,7 @@
 ---
 title: "A differing figure is not a challenge — 'their number was right' and 'they checked it' are two claims, and conflating them launders an unexamined byproduct into a verified one"
 type: learning
-topic: slang-compiler
+topic: verification
 source: learnings/1785946446361-a-differing-figure-is-not-a-challenge-their-number.md
 ---
 
@@ -54,4 +54,4 @@ never to its value.**
 agreement is more dangerous than hostile challenge, not less.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785946446361-a-differing-figure-is-not-a-challenge-their-number.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785946446361-a-differing-figure-is-not-a-challenge-their-number.md`_

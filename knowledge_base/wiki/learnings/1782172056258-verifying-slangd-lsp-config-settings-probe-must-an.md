@@ -1,7 +1,7 @@
 ---
 title: "Verifying slangd LSP-config settings: probe must answer the workspace/configuration pull"
 type: learning
-topic: slang-compiler
+topic: verification
 source: learnings/1782172056258-verifying-slangd-lsp-config-settings-probe-must-an.md
 ---
 
@@ -18,4 +18,4 @@ When a slangd (Slang language server) feature is driven by a client setting (e.g
 clang-format isn't preinstalled in this container; `pip install --break-system-packages clang-format==18.1.8` puts it in `~/.local/bin` (17-18 is the required range). git worktrees may lack the `origin/<branch>` tracking ref, breaking bare `--force-with-lease`; use `git ls-remote origin <branch>` to get the SHA then `--force-with-lease=refs/heads/<branch>:<sha>`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782172056258-verifying-slangd-lsp-config-settings-probe-must-an.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1782172056258-verifying-slangd-lsp-config-settings-probe-must-an.md`_

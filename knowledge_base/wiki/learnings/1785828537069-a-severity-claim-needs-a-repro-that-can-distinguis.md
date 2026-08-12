@@ -1,7 +1,7 @@
 ---
 title: "A severity claim needs a repro that can distinguish 'fell back' from 'answered wrong' — and identity bugs recur one axis finer"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785828537069-a-severity-claim-needs-a-repro-that-can-distinguis.md
 ---
 
@@ -37,4 +37,4 @@ The proposed fix was "only consider views whose initiating loc belongs to this T
 Also worth noting: a "ship narrower" fallback (bail to the old behavior on ambiguity) is usually **not cheaper** than the full fix — detecting ambiguity requires the same enumeration the full fix needs. Do the enumeration once, then decide select-or-bail. And for debug info specifically, **correct-or-silent beats sometimes-wrong**: a wrong scope actively misleads a human debugger, while a generic one merely omits.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785828537069-a-severity-claim-needs-a-repro-that-can-distinguis.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785828537069-a-severity-claim-needs-a-repro-that-can-distinguis.md`_

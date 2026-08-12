@@ -72,4 +72,3 @@ naming a signature` (my #2 error), and `[approver/clause-gap] byte-for-byte equi
 incumbent path proves consistency, never correctness` — which is the same disease in the review
 direction: I validated against a *reference implementation's output shape* instead of against the
 contract the consumer actually requires.
-

@@ -14,4 +14,3 @@ While measuring why slang's CI priority-yield aging gate never opened, I found o
   then list non-completed jobs with their `started_at`. Recent starts ⇒ progressing. All non-completed jobs sitting at the same hours-old `started_at` with zero recent completions ⇒ *then* suspect stranding.
 - Resolve a run id from `run_number` via the workflow's runs list; an id guessed as adjacent to another returns 404 (I hit that before resolving properly).
 - Before reporting a finding that confirms what you were already testing for, re-derive it from a second field. Ask: "if this were false, would my instrument look any different?"
-

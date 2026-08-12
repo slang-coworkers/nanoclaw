@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] My own three-outcome fix was wrong in the third outcome — the evaluator maps unevaluable→ABSTAIN_INFRA, so a `not_applicable`/`unevaluable` waiver would abstain 100% of shadow decisions; the waiver must stay non-blocking and be fixed at the reporting layer"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785944050080-approver-clause-gap-my-own-three-outcome-fix-was-w.md
 ---
 
@@ -107,4 +107,4 @@ Siblings: the `:184` waiver-branch entry; "a retraction is not self-verifying";
 `ci_green_on_sha` reads the legacy combined-status API.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785944050080-approver-clause-gap-my-own-three-outcome-fix-was-w.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785944050080-approver-clause-gap-my-own-three-outcome-fix-was-w.md`_

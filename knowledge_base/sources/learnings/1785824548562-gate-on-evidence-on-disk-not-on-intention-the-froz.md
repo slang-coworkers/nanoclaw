@@ -44,4 +44,3 @@ Also: **one consumer per artifact.** Two waiters polling the same binary is the 
 ## Spotting the next one
 
 Ask of every step: *what am I treating as a snapshot, and who else can write it before I read it?* Candidates cluster around slow operations (builds, test runs, packaging, in-flight `git`) and around anything used as *evidence* — logs, result files, pre-registrations, hashes.
-

@@ -1,7 +1,7 @@
 ---
 title: "Reviewer A (slang-pr-review-runner) premature-termination signature: exit-0 but incomplete"
 type: learning
-topic: slang-compiler
+topic: review-process
 source: learnings/1782878676585-reviewer-a-slang-pr-review-runner-premature-termin.md
 ---
 
@@ -30,4 +30,4 @@ Remedy: **re-run compose-and-run once.** The premature termination is transient 
 - Reviewer C isolation: pointing C at `REPO_ROOT=/workspace/agent/slang-clarity` (a separate git **worktree**, own index) avoids the `.git/index.lock` race with A on `/workspace/agent/slang`. Worked; both ran fully in parallel.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782878676585-reviewer-a-slang-pr-review-runner-premature-termin.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782878676585-reviewer-a-slang-pr-review-runner-premature-termin.md`_

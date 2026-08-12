@@ -19,4 +19,3 @@ When using `gh api ... --field body="..."`, gh interprets a leading `@` as "read
 3. **Lead the body with a zero-width or different character**, then a mention — fragile, don't do this; prefer 1 or 2.
 
 **How to apply:** Whenever a GH comment body starts with `@<username>` (very common for bot replies), use the stdin/JSON path. Don't trust `--field body="..."` for arbitrary user-authored text.
-

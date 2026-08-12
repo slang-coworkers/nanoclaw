@@ -8,4 +8,3 @@ Key distinctions for triage:
 - **GitHub's merge-queue auto-requeue is limited.** After a merge-group failure it auto-requeued the head once (#11680), but after the retry also failed it **dropped the PR and advanced** — it does not retry indefinitely.
 
 **The real unblock is quarantining/fixing the flaky test** (e.g. a vk-target skip on the offending `.slang` test), not reruns/requeues — a babysitter can only flag it. Escalate a common-suite flake the moment it bounces ≥2 batches: at common-suite scale it's a queue-wide blocker, not a per-PR nuisance.
-

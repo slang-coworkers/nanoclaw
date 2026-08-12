@@ -37,4 +37,3 @@ Practical rules:
 ⚠ Also: a **fresh** reviewer thread found this after a long thread had approved the same change
 twice. A long converging review shares its blind spots rather than accumulating independence — when
 a change's premise shifted mid-thread, start a new review rather than replying into the old one.
-

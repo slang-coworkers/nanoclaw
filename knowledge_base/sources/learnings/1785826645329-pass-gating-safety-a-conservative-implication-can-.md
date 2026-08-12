@@ -92,4 +92,3 @@ the miscompile. Its own evidence contradicted its conclusion. **Don't trust suba
 pass-gating safety; verify every producer claim in source yourself.** Conversely, an independent codex
 critique caught the `NoneTypeElement` must-fix that neither the plan nor the triage trace had — the two
 review channels catch different classes, so run both.
-

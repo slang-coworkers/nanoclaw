@@ -58,4 +58,3 @@ existed; this). Every underlying measurement was correct; **retrieval was the we
 ⇒ **When you notice yourself optimizing against a bound, the first action is to test the bound and the
 second is to grep your own store for it — the answer is often already there, filed under the domain of its
 first instance.**
-

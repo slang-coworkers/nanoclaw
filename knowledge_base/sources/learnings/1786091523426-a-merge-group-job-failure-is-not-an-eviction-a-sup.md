@@ -43,4 +43,3 @@ duplicate-named job. Also split the real Windows run (`steps>=8`, ~309 KB log, n
 crash) from the Linux bridge poller (`steps==3`, ~2.2 KB, only reports an internal GitLab
 pipeline status). Compute failure ratios from `success+failure` only — excluding the 15
 `cancelled` and 2 `steps==0` rows, which are UNTESTED, not healthy.
-

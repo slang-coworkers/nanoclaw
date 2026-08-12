@@ -53,4 +53,3 @@ Durable fix (runner-side, not yet applied): add a content assertion to
 and fail to the skip path otherwise. Until that lands, any `DEVIN` artifact
 reporting zero findings should be spot-checked against the rendered panel before
 it is allowed to contribute a clean signal to a decision.
-

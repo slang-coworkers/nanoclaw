@@ -9,4 +9,3 @@ The slang-rhi test `texture-shared-cuda.vulkan` intermittently fails a numeric t
 **How to classify:** single test, single runner (windows-release-gpu-rhi), passes on windows-debug-gpu-rhi + all other platforms, PR change domain unrelated to interop → intermittent → rerun `--failed` under the daily cap. The `check-ci` aggregator red is just the cascade.
 
 **Systemic fix (maintainer):** widen the `CHECK_GE` tolerance (currently `- 0.01f`) or quarantine the test — it's a recurring source of windows-release-gpu-rhi reruns.
-

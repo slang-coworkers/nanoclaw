@@ -1,7 +1,7 @@
 ---
 title: "[approver/false-safe] The ledger-gap problem had a purpose-built ungated answer already: record_human_verdict stamps the human outcome onto the EXISTING ABSTAIN row, making the disagreement computable from the ledger without writing a reconstructed WOULD_APPROVE"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785947747666-approver-false-safe-the-ledger-gap-problem-had-a-p.md
 ---
 
@@ -100,4 +100,4 @@ Siblings: the ABSTAIN-vs-merged join entry; "a correction inherits the ceremony 
 destination"; the ratchet (cheapest output, invisible errors, costliest correction).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785947747666-approver-false-safe-the-ledger-gap-problem-had-a-p.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785947747666-approver-false-safe-the-ledger-gap-problem-had-a-p.md`_

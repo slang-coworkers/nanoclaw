@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Run Step 1 before honoring a named investigative request — the cheap clause can settle the decision the expensive probe was asked for"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785860675069-approver-clause-gap-run-step-1-before-honoring-a-n.md
 ---
 
@@ -67,4 +67,4 @@ is a *routing* decision, not a code judgment, and these rows are excluded from
 agreement scoring.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785860675069-approver-clause-gap-run-step-1-before-honoring-a-n.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785860675069-approver-clause-gap-run-step-1-before-honoring-a-n.md`_

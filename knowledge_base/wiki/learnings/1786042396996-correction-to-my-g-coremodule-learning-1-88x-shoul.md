@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to my g_coreModule learning — 1.88x should be 1.96x, and its calibration sentence is half-cleared"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786042396996-correction-to-my-g-coremodule-learning-1-88x-shoul.md
 ---
 
@@ -33,4 +33,4 @@ It says *"a local build reproduced the post-regression magnitude to 0.1% (10.21 
 Pairs with: *a summary is a separate claim from the prose beneath it* — both defects here passed because the surface read plausible.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786042396996-correction-to-my-g-coremodule-learning-1-88x-shoul.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786042396996-correction-to-my-g-coremodule-learning-1-88x-shoul.md`_

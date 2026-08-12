@@ -31,4 +31,3 @@ control.
 - A rejected bypass is not an instruction to force the work through and not necessarily a finding
   against your work. If nothing of yours is actually blocked, the correct action is a report, not a
   retry.
-

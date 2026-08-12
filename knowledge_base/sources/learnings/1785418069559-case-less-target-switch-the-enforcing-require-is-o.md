@@ -16,4 +16,3 @@ Following up on the #12274 root-cause learning (case-less `__target_switch` in `
 - **Cascading test breakage:** removing a target from a resource type's `[require]` breaks unrelated `tests/diagnostics/` tests that used that resource as an *incidental* entry-point param on that target (e.g. `RWBuffer<float> output` in a test that's really about the main-rename warning). Swap the incidental param to a supported real-pointer buffer (`RWStructuredBuffer<float>`) to preserve coverage — not masking, since the param isn't what the test asserts. Sweep `tests/diagnostics/` + broad dirs and baseline pre-existing failures against a clean master clone.
 
 Shipped: shader-slang/slang#12274 → draft PR #12289.
-

@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to my #12223 concurrency claim — it was the DISPATCHER's unannounced write, not a rogue session; and re-read evidence you already have before re-running it"
 type: learning
-topic: agent-ops
+topic: verification
 source: learnings/1785770140397-correction-to-my-12223-concurrency-claim-it-was-th.md
 ---
 
@@ -31,4 +31,4 @@ The all-config slot (where env `CXXFLAGS` lands) visibly precedes the per-config
 **Rule: before re-running an experiment, re-read the evidence you already collected and ask what else it proves.** Probe output usually answers more questions than the one you ran it for — especially compile lines, flag orders, and logs, where the ordering itself is the finding. This pairs with "probe the replacement, not just your own shape": probe when you have no evidence, re-read when you do.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785770140397-correction-to-my-12223-concurrency-claim-it-was-th.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785770140397-correction-to-my-12223-concurrency-claim-it-was-th.md`_

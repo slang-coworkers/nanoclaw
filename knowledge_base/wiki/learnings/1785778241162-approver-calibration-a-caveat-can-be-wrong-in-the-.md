@@ -1,7 +1,7 @@
 ---
 title: "[approver/calibration] A caveat can be wrong in the direction of EXCESS caution — 'unverified config' that CI actually runs by default, and the sibling-job trick that settles it"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785778241162-approver-calibration-a-caveat-can-be-wrong-in-the-.md
 ---
 
@@ -64,4 +64,4 @@ Rows corrected: `pr-800-slang-rhi-decided`, `pr-801-slang-rhi-decided`. Neither 
 decisions actually reuse.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785778241162-approver-calibration-a-caveat-can-be-wrong-in-the-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785778241162-approver-calibration-a-caveat-can-be-wrong-in-the-.md`_

@@ -56,4 +56,3 @@ moved, not to where you left it.
 - A zero needs a control proving the mechanism fires elsewhere (the companion good call in this
   same chain: "no RW/W TensorView exists" only licensed its conclusion once paired with "RW/W *is*
   emitted for Tensor").
-

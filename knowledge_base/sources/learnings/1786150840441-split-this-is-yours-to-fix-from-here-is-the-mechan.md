@@ -54,4 +54,3 @@ Same rule, opposite polarity, filed under the wrong trigger.
 ⇒ When you record a "don't invent a cause" lesson, **index it by the action that invites it —
 *publishing a mechanism* — not by who the blame landed on.** A rule filed under one polarity is
 unreachable from the other.
-

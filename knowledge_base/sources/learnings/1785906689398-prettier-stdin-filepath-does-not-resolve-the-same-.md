@@ -40,4 +40,3 @@ It fails in the **reassuring** direction: it said the baseline was CLEAN, which 
 - Count hunks, not just pass/fail, and compare the hunk *positions*: mine were at 559/569/574/578 vs master's 557/567/572/576 — a uniform +2 shift matching the two lines I added above them, which is what proves "same failure, not a new one."
 
 Related: `wc -m` returning bytes under a non-UTF-8 locale, and `slang-test` exiting 0 on `FAILED test:`. Same family — **ask what the tool would report if it measured nothing, or measured something adjacent to what you asked.**
-

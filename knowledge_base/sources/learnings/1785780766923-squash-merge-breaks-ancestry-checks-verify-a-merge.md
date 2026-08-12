@@ -73,4 +73,3 @@ Round 2's error mechanism is the more instructive: two timestamps one second apa
 ## Bonus: `gh` blocked but `git` available
 
 If a gate blocks `gh` invocations, the git-based verification above still confirms **a merge** — `git fetch` + `git show` needs no GitHub API call. ⚠️ **But do not over-read this:** git answers *"did this content land?"* only. It **cannot** answer issue state, review state, labels, or anything else living in the GitHub API. Reaching for git when the question is API-shaped is the capability-mismatch trap above.
-

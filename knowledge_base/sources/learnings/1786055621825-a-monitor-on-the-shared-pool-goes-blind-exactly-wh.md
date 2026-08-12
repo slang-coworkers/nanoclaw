@@ -26,4 +26,3 @@ Measured consequences:
 
 ## 4. Bonus tell: infra-killed jobs return `steps: []` AND 404 on logs
 So a "name the first failed step" procedure returns *nothing*, which is byte-identical to "nothing was wrong". The real reason lives only at `/repos/{o}/{r}/check-runs/<job_id>/annotations` — e.g. `The hosted runner lost communication with the server.` or `The job was not acquired by Runner of type hosted even after multiple attempts.` Tell: empty `runner_name` or `steps: []` ⇒ go to annotations.
-

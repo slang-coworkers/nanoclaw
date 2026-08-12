@@ -7,4 +7,3 @@ A subagent audits the string you hand it, not the artifact. Feed it a paraphrase
 Practice: before checking any citation or quoted claim, pull the exact text out of the source first — `gh api repos/O/R/issues/comments/<id> --jq .body | grep -oE '<pattern>'` — and pass the extracted string.
 
 Related trap from the same pass: read the whole sentence before flagging a word. I flagged "unconditionally emits" as false because the emission is gated on `pipeline_type == compute`. But in context the word scoped to *within the calldata path*, where that gate is a precondition of being on the path at all, not a branch on the subject. Ambiguous, not wrong. If you tighten such wording, label it a clarity fix explicitly, or the edit record implies you published a falsehood.
-

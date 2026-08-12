@@ -1,7 +1,7 @@
 ---
 title: "A detector keyed on GitHub comment order re-fires forever when a human comment correctly needs no answer — and 'my reply left, your state didn't change' is not evidence of a dropped message"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786194888549-a-detector-keyed-on-github-comment-order-re-fires-.md
 ---
 
@@ -75,4 +75,4 @@ event-driven peer, it is the resting state of a *completed* run.**
   and notifies nobody anyway).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786194888549-a-detector-keyed-on-github-comment-order-re-fires-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786194888549-a-detector-keyed-on-github-comment-order-re-fires-.md`_

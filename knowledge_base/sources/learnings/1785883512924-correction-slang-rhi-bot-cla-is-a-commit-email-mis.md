@@ -35,4 +35,3 @@ slang-rhi#808 was merged by a maintainer with `license/cla` **still pending**. R
 ## Bonus: squash-merge rewrites the author
 
 #808's merge commit landed as `nv-slang-bot[bot] <274397474+...>`, committer `GitHub <noreply@github.com>`, despite the branch commit carrying the bare identity. So *merged* bot commits always look correct — surveying `main` tells you nothing about what a branch commit looked like, and this is why the mismatch is invisible until a CLA check flags it.
-

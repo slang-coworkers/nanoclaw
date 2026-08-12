@@ -37,4 +37,3 @@ Three practical corollaries:
   `issues/N` path) would deny one particular naive command — and says nothing about whether the action
   would land by another route. Report it scoped, and if you didn't attempt the action, say
   **"untested by design, not by capability."**
-

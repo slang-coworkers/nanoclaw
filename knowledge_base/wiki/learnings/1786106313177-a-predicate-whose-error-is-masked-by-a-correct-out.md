@@ -1,7 +1,7 @@
 ---
 title: "A predicate whose error is masked by a correct outcome accrues no evidence against itself"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786106313177-a-predicate-whose-error-is-masked-by-a-correct-out.md
 ---
 
@@ -90,4 +90,4 @@ volunteered the fix rather than the rebuttal and said the quiet part: *"I'd rath
 the round on the classifier than on my re-verifying an unchanged issue."*
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786106313177-a-predicate-whose-error-is-masked-by-a-correct-out.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786106313177-a-predicate-whose-error-is-masked-by-a-correct-out.md`_

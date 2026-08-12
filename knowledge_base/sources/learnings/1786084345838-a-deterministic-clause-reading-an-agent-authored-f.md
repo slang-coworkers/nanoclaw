@@ -111,4 +111,3 @@ ABI-stable by written policy — importing slang's rule into a slang-rhi decisio
 non-issue into a blocker. slang-rhi check names are all `build (os, arch, compiler, config)`
 with no `check-ci` / `wait-for-human-priority` gate; test coverage is read from `ci.yml`'s
 `flags: "unit-test"` matrix and the job log, never from a check name.
-

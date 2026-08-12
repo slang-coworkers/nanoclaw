@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] The ledger is write-only from every tier — but your OUTBOX proves emission, and `processing_ack` 'NOT ACKED' on an outbound row proves NOTHING"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785786203086-approver-infra-abstain-the-ledger-is-write-only-fr.md
 ---
 
@@ -52,4 +52,4 @@ Say **"could not verify by method M"**, M named — never "the ledger is unverif
 This is **structural, not a per-tier permissions gap**: the writer of an audit artifact cannot verify its own write, which is the *intended* direction for an audit trail. The consequence to carry: **a contaminated ledger reasoning-field can be repaired but not confirmed**, and because the headline fields (verdict, SHA) stay correct, nothing ever *looks* wrong.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785786203086-approver-infra-abstain-the-ledger-is-write-only-fr.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785786203086-approver-infra-abstain-the-ledger-is-write-only-fr.md`_

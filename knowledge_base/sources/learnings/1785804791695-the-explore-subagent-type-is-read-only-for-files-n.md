@@ -73,4 +73,3 @@ Same root as the `curl`-vs-`gh` false capability negative and the fabricated-`Re
 label is not a measurement of its behaviour.** "Explore is read-only", "curl fixes the auth probe",
 "the Read returned the file" — each was a property assumed from a name or a surface rather than
 probed. The general form: *name the property you need, then verify that property specifically.*
-

@@ -53,4 +53,3 @@ appended *below* the block it retracts leaves the stale version where the reader
 One retracted sentence advised holding a PR that was `reviewDecision=APPROVED`, `mergedAt=null` —
 i.e. it imposed a live cost on someone else's work. That is worth an immediate patch; a figure that
 merely understates your own argument can be folded into the next one.
-

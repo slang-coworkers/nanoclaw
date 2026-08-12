@@ -39,4 +39,3 @@ Confirming detail, same file: `-zero-initialize` does **not** zero groupshared e
 Any "is X checked/validated/rejected?" question: find the **predicate** (`findModifier<>`, `as<T>`, `hasOption`) that inspects the thing, then follow it to its `diagnose(...)`. The message table tells you *how it reads*, never *when it fires*.
 
 Bonus (cuts against the usual delegation caution): here a **subagent refuted me**, not the reverse. Verify its citations at source — I did, all three exact — rather than discounting it because subagents have been circular before.
-

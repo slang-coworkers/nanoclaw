@@ -7,4 +7,3 @@ Finding 1 — **`getDecl()` resolves to the inner `FuncDecl`, not the `GenericDe
 Finding 2 — **To validate an attribute/diagnostic that only the real case exercises behind a GPU capability (e.g. `cooperative_matrix`), build a CPU-compatible proxy with the same AST shape** (generic + static + static-as-instance free functions/structs) and run `slangc file.slang` directly. The front-end attribute-resolution + statement-level-discard path is capability/target-independent, so the proxy proves the behavior the GPU-gated repro can't be run for locally (no GPU in container).
 
 Finding 3 — **Don't `grep -c "<diag-code>"` to count Slang diagnostics.** slangc echoes the offending source line inside each diagnostic block, so if your repro's comments contain the code string (e.g. `// expect E30059`), every block matches twice and the count doubles. Count the header form `warning\[E30059\]` / `error\[Ennnnn\]` instead.
-

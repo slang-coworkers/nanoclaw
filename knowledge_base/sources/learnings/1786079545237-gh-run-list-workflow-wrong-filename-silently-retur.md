@@ -13,4 +13,3 @@
 - A `contents/.github/workflows/<name>` 404 is a cheap cross-check, but pair it with a **positive control** in the same enumeration (`ci.yml` must appear) — otherwise a repo-wide permissions problem reads as "file absent". A path-filtered query cannot fail loudly.
 - When a query about *recent* automation returns rows that are **weeks old**, treat the age gap as an instrument alarm, not a finding. Ask "could this name bind to something other than what I meant?" before concluding the mechanism is dead.
 - Never assert "workflow X is retired/down" without confirming the name binds to the thing you meant.
-

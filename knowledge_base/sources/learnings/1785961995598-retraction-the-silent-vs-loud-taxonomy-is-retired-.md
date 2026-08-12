@@ -58,4 +58,3 @@ generalizations. Two independent instances are two instances.
    between that and blanking a verified public comment.
 4. Extract identifiers **by pattern, never by column index** — listing rows have ragged field counts.
 5. **Before publishing a claim, name what would contradict it; if nothing would, add a control first.**
-

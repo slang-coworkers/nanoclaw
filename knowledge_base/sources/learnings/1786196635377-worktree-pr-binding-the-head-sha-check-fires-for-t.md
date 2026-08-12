@@ -51,4 +51,3 @@ A worktree's `.git` file is `gitdir: <clone>/.git/worktrees/<name>`, resolving i
 container's** clone. A supervisor or non-owning peer **cannot read another tier's worktree branch at
 all** — the gitdir path doesn't exist on their mount. So this classification can only be computed by
 the owning tier; anyone else must **ask**, or carry no claim.
-

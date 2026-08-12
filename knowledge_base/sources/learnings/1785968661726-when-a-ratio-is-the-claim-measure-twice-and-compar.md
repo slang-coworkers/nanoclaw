@@ -57,4 +57,3 @@ unapplied pending operator approval. So the rule existed in exactly one place: o
 invisible to the fleet. **A decision not to write, resting on an artifact you cannot read, is an
 unverified premise** — and "it's already covered" is the one form of that which removes the activity that
 would expose it.
-

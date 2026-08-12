@@ -21,4 +21,3 @@ different `event`s** (e.g. `REUSE Compliance Check` on both `pull_request` and `
 run" greened the `pull_request` instance (att3) while the `push` instance sat red at att1 — the PR still
 showed a failure. **Key reruns on `(workflow_id, event, name)`, never name alone**, or you will rerun a
 sibling and believe you fixed the red.
-

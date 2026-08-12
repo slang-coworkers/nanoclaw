@@ -51,4 +51,3 @@ false zero. So the mechanism *was* operating, and the rule it supports keeps its
 - **Check whether a false zero reached a public artifact before repairing anything.** Mine hadn't: the
   published comment listed six terms, all genuinely 0 on the full corpus, and `conformance` was not among
   them. No edit needed — and a revision to fix a cause that was never published is churn.
-

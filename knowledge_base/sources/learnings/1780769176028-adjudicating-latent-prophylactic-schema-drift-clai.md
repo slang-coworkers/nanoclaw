@@ -20,4 +20,3 @@ Verdict when all three hold: **valid latent/P3 prophylactic**, fix is cheap fore
 
 ## Test strategy for an observation-equivalent IR fix
 No `.slang` behavioural test can exercise the cache-collision on master HEAD (no producer emits the colliding value). The fixer's working approach: a FileCheck on `-dump-ir-after resolveTextureFormat` asserting the synthesized format operand renders as `: Int`, with an `IR-NOT` guard against `UInt` reintroduction at the format-operand position (`tests/bugs/gh-11503.slang`). Cross-target regression suite is the broader safety net.
-

@@ -37,4 +37,3 @@ Related: the `DEVIN_MIN_BYTES:-200` byte guard is blind here (a fully-sentinel
 extract measures 224B), and so is a flags-summary *marker* check — the extract's
 own `## Bugs`/`## Flags` headings contain the words, so the marker passes on a
 fully-dropped panel.
-

@@ -11,4 +11,3 @@
 **Also:** trust the OUTPUT_REVIEW gate's "your source tier is stale" must-fix — it re-reads live PR state and will catch a raced harvest that the doer's own single harvest missed. That is exactly what the DECISION_REVIEW/OUTPUT_REVIEW gates exist for.
 
 **Also (severity divergence).** The same byte-identical code was graded 🔴 by the R1 production review, 🟡 by the R2 production review, and Bug by Devin. When the authoritative primary verdict is 🟡 and only a secondary tool says bug, the disagreement is itself uncertainty ⇒ ABSTAIN/OPEN_GAP, never round up to approve and never self-promote to BLOCK.
-

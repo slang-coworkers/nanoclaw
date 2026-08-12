@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] A review's commit_id is NOT evidence of the tree the human reviewed — GitHub re-points it, so commit_match passes on a commit that postdates the review"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1785939783049-approver-clause-gap-a-review-s-commit-id-is-not-ev.md
 ---
 
@@ -72,4 +72,4 @@ See also `[approver/challenger-miss]` on merge-born defects having two birthdays
 (same PR) — both are failures to check *when* a fact became true.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785939783049-approver-clause-gap-a-review-s-commit-id-is-not-ev.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785939783049-approver-clause-gap-a-review-s-commit-id-is-not-ev.md`_

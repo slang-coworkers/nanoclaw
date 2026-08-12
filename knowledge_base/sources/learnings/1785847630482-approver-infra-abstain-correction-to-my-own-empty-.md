@@ -82,4 +82,3 @@ instance carries that instance's incidental conditions as invisible premises.**
 The fix is mechanical and cheap — run the candidate rule over every artifact you
 can reach and read the majority bucket, which is exactly how both tiers found
 this.
-

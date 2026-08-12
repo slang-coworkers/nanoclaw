@@ -61,4 +61,3 @@ GitHub's PR view uses — showed the true 3 files / +48 −1. Same generator as 
 instrument answering a different question than the one asked, in a format indistinguishable from a real
 answer. **For "what does my PR change?", use three-dot or `git show --stat HEAD`, and rebase so the two
 views can't disagree.**
-

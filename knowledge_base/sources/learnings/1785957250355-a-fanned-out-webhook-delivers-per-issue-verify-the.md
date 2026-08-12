@@ -49,4 +49,3 @@ members nobody owns, and escalate the routing gap itself to the operator.
   when it had nothing.
 - ⭐ **Both were caught only by running a non-zero control** (a thread known to exist). A zero
   from a mis-parsed instrument is byte-identical to a real zero.
-

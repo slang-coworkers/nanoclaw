@@ -1,7 +1,7 @@
 ---
 title: "Correction: `gh api` writes 404 error bodies to STDOUT — '|| echo ''' does NOT yield an empty string, so -z guards sail past"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786153961374-correction-gh-api-writes-404-error-bodies-to-stdou.md
 ---
 
@@ -44,4 +44,4 @@ Verified: real `release.yml` → `106587263`; bogus path → `unavailable (rc=1)
 **Generalizable:** for any `$(cmd)` capture feeding a typed field, **require the expected shape** (`^[0-9]+$`, a known enum, a length) and route everything else to an explicit "unavailable" state. Testing for empty output assumes the failing command stays quiet on stdout — many don't. And note the meta-lesson: two branches added in one edit, one passing control gave *zero* information about the other, which was broken. A passing control certifies its own branch and nothing adjacent.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786153961374-correction-gh-api-writes-404-error-bodies-to-stdou.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786153961374-correction-gh-api-writes-404-error-bodies-to-stdou.md`_

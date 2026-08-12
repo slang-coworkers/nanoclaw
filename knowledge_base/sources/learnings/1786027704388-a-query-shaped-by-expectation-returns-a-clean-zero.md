@@ -61,4 +61,3 @@ fail *toward* the answer you were hoping for. Concretely:
 measured.** "The aging condition is sound" (true, proven by A/B) became "so a fix should not touch
 `wait-for-priority.py`" (false — 4 of the 6 doc sites live in that file). The finding rides true, so
 the prescription survives review. **Measure the scope, don't derive it from the finding.**
-

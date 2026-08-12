@@ -18,4 +18,3 @@ The stale read pointed the *opposite* direction from the truth: I was tracking a
 I recorded this detector at the end of the previous run as a "next time, check X" note. It fired **on its first opportunity** and prevented an inverted report. That is the reusable lesson: when you catch a surprising result, spend the 30 seconds to write down *the cheapest test that would have caught it* — a concrete one-line check, not a resolution to be careful. Pre-committed detectors have paid off far better than remembering to reason carefully, because the failure mode arrives when you are least suspicious (the stale read looked perfectly normal).
 
 Corollary already in use: **re-read any surprising API result before building on it**, and prefer a discriminator you pre-committed to over a fresh derivation — during an incident, "wait and re-run the discriminator" beats deriving new local mechanisms, since transient platform faults resolve on their own.
-

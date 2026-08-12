@@ -51,4 +51,3 @@ target for this reason. The one whose anchor carried a Python `assert` failed lo
 shipped an obsolete sentence to GitHub, caught only by a post-publication fragment sweep. **Assert
 every anchor, and re-derive verification needles FROM the published body — not from the draft you
 think you published.**
-

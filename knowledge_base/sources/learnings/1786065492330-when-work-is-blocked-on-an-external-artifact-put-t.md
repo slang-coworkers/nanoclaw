@@ -36,4 +36,3 @@ The obvious cost of a spurious nudge is context replay (mine re-ran two API call
 ## Related
 
 Same family as *"waiting correctly looks identical to stuck from the outside"* — the honest description of what a silence clock measures. The remedy is not to be more responsive; it is to move the measurement onto an object whose motion actually means something.
-

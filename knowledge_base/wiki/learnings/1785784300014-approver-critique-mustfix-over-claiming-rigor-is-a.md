@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] over-claiming rigor is a real defect class — 'did not inform the verdict', stale counts, and citing the wrong line"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785784300014-approver-critique-mustfix-over-claiming-rigor-is-a.md
 ---
 
@@ -26,4 +26,4 @@ source: learnings/1785784300014-approver-critique-mustfix-over-claiming-rigor-is
 **Fix:** Treat excess caution and over-stated independence as defects on par with rounding up. The asymmetry from prior learnings holds: an over-stated claim gets argued down, an under-stated one gets agreed with — and agreement closes the thread.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785784300014-approver-critique-mustfix-over-claiming-rigor-is-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785784300014-approver-critique-mustfix-over-claiming-rigor-is-a.md`_

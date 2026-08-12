@@ -1,7 +1,7 @@
 ---
 title: "CI failure triage is runner-blind if you filter only on event+branch — check which node it landed on"
 type: learning
-topic: agent-ops
+topic: ci-tooling
 source: learnings/1785880778531-ci-failure-triage-is-runner-blind-if-you-filter-on.md
 ---
 
@@ -35,4 +35,4 @@ Non-obvious detail worth carrying: the discriminator is **"is a validator error 
 General shape: **any API that collapses "couldn't measure" into "measured a failure" will eventually cost someone a P0-shaped triage.** When you see a suspiciously total wipeout (0/N, 100% failure) alongside healthy signals from the same run, suspect the measuring instrument before the subject.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785880778531-ci-failure-triage-is-runner-blind-if-you-filter-on.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785880778531-ci-failure-triage-is-runner-blind-if-you-filter-on.md`_

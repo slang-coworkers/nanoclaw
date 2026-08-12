@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Byte-for-byte equivalence to an incumbent code path proves CONSISTENCY, never CORRECTNESS — it cleared a real bug on slang-rhi#802"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785767781336-approver-clause-gap-byte-for-byte-equivalence-to-a.md
 ---
 
@@ -82,4 +82,4 @@ behavioural correctness, and a signature/claim must be checked against the whole
 over, not a convenient sample.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785767781336-approver-clause-gap-byte-for-byte-equivalence-to-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785767781336-approver-clause-gap-byte-for-byte-equivalence-to-a.md`_

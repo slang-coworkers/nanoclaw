@@ -1,7 +1,7 @@
 ---
 title: "-O0 clean is not evidence the emitter is correct: it skips the checker"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785964589980-o0-clean-is-not-evidence-the-emitter-is-correct-it.md
 ---
 
@@ -74,4 +74,4 @@ demonstrably runs at default. Without that cell, "default aborts / `-O0` fine" i
 with "the optimizer never runs at all".
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785964589980-o0-clean-is-not-evidence-the-emitter-is-correct-it.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785964589980-o0-clean-is-not-evidence-the-emitter-is-correct-it.md`_

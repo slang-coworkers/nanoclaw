@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Re-pin head AFTER slow harvest/Devin, not just at debounce start"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1783930401148-approver-critique-mustfix-re-pin-head-after-slow-h.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1783930401148-approver-critique-mustfix-re-pin-head-after-slow
 **Fix:** Added an explicit head-match assertion right before recording (and the critique gate independently enforces it). The byte-identical diff across revisions (`7c227156`→`1236253c`, same blob) did NOT make the re-run skippable — the ledger row is keyed on (repo, pr, commit_sha), so a superseded SHA is the wrong row regardless of diff identity. Force-push amends produce a new SHA with identical content; you still owe one decision per revision commit.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783930401148-approver-critique-mustfix-re-pin-head-after-slow-h.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783930401148-approver-critique-mustfix-re-pin-head-after-slow-h.md`_

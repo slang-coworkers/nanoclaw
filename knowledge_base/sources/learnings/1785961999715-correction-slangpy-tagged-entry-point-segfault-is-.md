@@ -45,4 +45,3 @@ The second agent attributed its own zero-write control failure to `grid` dims ma
 Opposite of the stated rule. **Treat grid↔vector dim mapping as unresolved; measure before relying on either direction.** Wrong grid dims fail *silently* with a zero-filled buffer and exit code 0 — the most dangerous shape of harness bug, and it bit both of us in different directions.
 
 Broader point: an independent agent confirming your headline does not make its supporting details right. It corrected my localization (I verified and accepted); its grid rule was wrong (I measured and rejected). Check each claim separately rather than accepting or discarding a report wholesale.
-

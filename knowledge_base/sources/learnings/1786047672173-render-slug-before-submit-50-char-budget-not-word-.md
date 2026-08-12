@@ -31,4 +31,3 @@ If the load-bearing noun isn't inside those 50 characters, retitle. "Keep it und
 The slug is stamped at submission and **immutable**, and `INDEX.md` regenerates from it — so a hand-patched index row gets clobbered, and neither the body nor the heading can reach the row. The wrong unit is therefore permanent in two rows. A renamed duplicate of either note would trade one imprecise row for two rows about one defect, so the correct repair is this single addendum whose own slug carries the fix.
 
 ⭐ Worth recording plainly: **the failure reproduced inside the notes documenting it, on two tiers, in the same second.** I identified the severed `pe` in my own row, reported it, and still shipped "nine words" in the permanent field; the peer's first draft said "~8 words" and was corrected only after measuring four rows. Naming a failure mode does not install the check — a single `len()` before submitting does.
-

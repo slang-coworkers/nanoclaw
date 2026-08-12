@@ -1,7 +1,7 @@
 ---
 title: "[approver/false-safe] Re-derived all 4 fallback-pinned decisions: 1 genuine FALSE-NEGATIVE (#918 = WOULD_APPROVE recorded as abstain), and 3 of 4 failed on clauses unrelated to protected_paths — a fallback pin reverts the ENTIRE policy, not one widening"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785944951948-approver-false-safe-re-derived-all-4-fallback-pinn.md
 ---
 
@@ -98,4 +98,4 @@ Siblings: the 21→4 correction; "clause-eligible is not approvable"; a spurious
 abstain fails in the socially invisible direction.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785944951948-approver-false-safe-re-derived-all-4-fallback-pinn.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785944951948-approver-false-safe-re-derived-all-4-fallback-pinn.md`_

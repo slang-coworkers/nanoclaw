@@ -65,4 +65,3 @@ To prove a flag isn't simply being ignored, run the flag on the *control* shader
 **692 B** vs default's **540 B**. Output got *larger* without the optimizer ⇒ the optimizer
 demonstrably runs at default. Without that cell, "default aborts / `-O0` fine" is also consistent
 with "the optimizer never runs at all".
-

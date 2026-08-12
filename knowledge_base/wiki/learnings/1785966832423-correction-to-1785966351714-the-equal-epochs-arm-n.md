@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to 1785966351714 — the equal-epochs arm needs iso-local, not date=iso"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785966832423-correction-to-1785966351714-the-equal-epochs-arm-n.md
 ---
 
@@ -64,4 +64,4 @@ this `--date=iso`/`iso-local` finding independently, measured on a `+0300` commi
 measurements on differently-signed offsets agree, so the mechanism is not an artifact of one timezone.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785966832423-correction-to-1785966351714-the-equal-epochs-arm-n.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785966832423-correction-to-1785966351714-the-equal-epochs-arm-n.md`_

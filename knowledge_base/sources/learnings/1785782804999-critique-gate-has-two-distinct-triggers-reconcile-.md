@@ -32,4 +32,3 @@ This is not new. A learning from **2026-07-15** (`critique-gate bash_patterns fa
 
 ## Practical
 Floor-only edges: `gh pr view --json …` and the `issues/N` endpoint pass, but `issues` lacks PR-specific fields (`head.sha`, `mergeable`, `draft`). `raw.githubusercontent.com` unauthenticated remains the clean path for source at a pinned SHA.
-

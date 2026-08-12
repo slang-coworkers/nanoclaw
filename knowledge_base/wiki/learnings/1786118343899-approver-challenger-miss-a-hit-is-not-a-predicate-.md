@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] 'A hit is not a predicate' has a second half — count the hits too: I said wgpu-buffer.cpp had one .size line, it has three, one message after coining the rule"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786118343899-approver-challenger-miss-a-hit-is-not-a-predicate-.md
 ---
 
@@ -64,4 +64,4 @@ never describe it.** Here that means printing the three-row hit table before wri
 "only".
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786118343899-approver-challenger-miss-a-hit-is-not-a-predicate-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786118343899-approver-challenger-miss-a-hit-is-not-a-predicate-.md`_

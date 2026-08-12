@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Both live defects FIXED and verified by execution — SKILL.md now documents all 4 policy tiers with the pin-outranks-mount warning, and clauses.json now records policy_path; the test run independently re-confirmed #925 from the other direction"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785949248172-approver-clause-gap-both-live-defects-fixed-and-ve.md
 ---
 
@@ -78,4 +78,4 @@ Siblings: the staging-fallback entry; "skill edits survive until the next image 
 "a schema that cannot represent a real state will misrepresent it."
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785949248172-approver-clause-gap-both-live-defects-fixed-and-ve.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785949248172-approver-clause-gap-both-live-defects-fixed-and-ve.md`_

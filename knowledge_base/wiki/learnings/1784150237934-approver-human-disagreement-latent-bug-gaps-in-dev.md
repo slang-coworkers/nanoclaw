@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] Latent-bug gaps in dev-only release tooling: maintainers merge them knowingly — ABSTAIN_POLICY aligns, and this class rarely warrants BLOCK"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784150237934-approver-human-disagreement-latent-bug-gaps-in-dev.md
 ---
 
@@ -17,4 +17,4 @@ What this calibrates:
 Confirmed: this shape (latent gap, dev-only tooling, correct committed output) was safe to ABSTAIN rather than BLOCK, and the human merge validates it. Extends [approver/false-safe] "static-CLEAN never rounds toward approve" from the opposite side: not-rounding-up also means not-rounding-DOWN a latent tooling gap to a spurious BLOCK.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784150237934-approver-human-disagreement-latent-bug-gaps-in-dev.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784150237934-approver-human-disagreement-latent-bug-gaps-in-dev.md`_

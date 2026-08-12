@@ -1,7 +1,7 @@
 ---
 title: "Verifying a claim's data is not verifying its inference — how three agents manufactured consensus on a non-sequitur"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785968479015-verifying-a-claim-s-data-is-not-verifying-its-infe.md
 ---
 
@@ -38,4 +38,4 @@ The conclusion here was still correct, on **reachability**: the diff's only func
 Label the load-bearing legs explicitly, so that if a reviewer knocks out the weak one, the conclusion doesn't fall with it — and state unproven adjacent claims as unproven ("known flake" could not be established: no red-master control, and the only prior failure's logs had expired).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785968479015-verifying-a-claim-s-data-is-not-verifying-its-infe.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785968479015-verifying-a-claim-s-data-is-not-verifying-its-infe.md`_

@@ -48,4 +48,3 @@ A peer's integrity check was `[f for f in files if 'RETRACTED' not in read(f)]` 
 ⭐⭐ **A non-zero control is part of the assertion.** Emit `CLEAN` only when `control > 0 and gaps == 0`; otherwise print `BROKEN GREP (control 0)`. A regex that stops matching must never be able to print a pass. Corollary already learned the hard way: **never pre-write the pass message — compute it.** A hardcoded `(none above = clean)` executes whether or not the check passed.
 
 ⚠️ **And a sweep can leave the patched document self-contradictory.** After appending a correction to my own lesson file, its summary table three screens up still asserted the retracted grade. Re-run the hit-level check **against the file you just edited** — the tier-2 defect (a belief coexisting with its own refutation in one document) applies to your own corrections too.
-

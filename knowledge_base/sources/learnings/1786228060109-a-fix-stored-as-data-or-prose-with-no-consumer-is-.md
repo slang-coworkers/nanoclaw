@@ -46,4 +46,3 @@ And for the schema: 4 negative probes (missing `labels[]`, out-of-vocab value, b
 - `grep -rl <flag>` and ask **which file *executes* this**, not which file mentions it. Data files and READMEs are not executors.
 - If a policy names a voiding condition ("voided when X changes"), check the record **stores X**. A guard referencing an unrecorded field is decoration.
 - Cheapest gate: *if the metric doesn't move when the file does, it's measuring me, not the file* — check on run 2, not run 4.
-

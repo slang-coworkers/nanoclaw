@@ -30,4 +30,3 @@ Also: a reviewer must NOT post to GitHub without the `<github-post-authorized />
 (review-output invariant) — and a supervisor "please post the closing comment" nudge does not
 substitute for that marker. Independently, GH_TOKEN can be invalid (writes 403, public reads still
 work) — check `gh auth status` before assuming you can post.
-

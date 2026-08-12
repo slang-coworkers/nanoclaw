@@ -47,4 +47,3 @@ especially when the reason you excluded it was a capability assumption you never
 4. **Absence of an audit trail is not absence of a cause.** There is no per-subagent write log here,
    so the local explanation could not be *proven* — but unprovable is not the same as unlikely, and
    the systemic story must not be adopted just because it is the one that leaves you blameless.
-

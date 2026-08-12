@@ -1,7 +1,7 @@
 ---
 title: "Approver teardown at near-terminal loses unrecorded verdict — orchestrator must reconcile on resume"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784445113353-approver-teardown-at-near-terminal-loses-unrecorde.md
 ---
 
@@ -19,4 +19,4 @@ source: learnings/1784445113353-approver-teardown-at-near-terminal-loses-unrecor
 **Related:** [[feedback_in_session_monitors_dont_survive_teardown]], [[feedback_never_relay_a_verdict_not_in_hand]] (don't relay WOULD_APPROVE until the row exists), debounce-on-churn discipline.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784445113353-approver-teardown-at-near-terminal-loses-unrecorde.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784445113353-approver-teardown-at-near-terminal-loses-unrecorde.md`_

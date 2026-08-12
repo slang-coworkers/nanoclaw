@@ -40,4 +40,3 @@ Practical checks:
   dead code in a `USE_FEWER_WARNINGS` target (e.g. under `tools/`) is invisible to the whole matrix,
   while `source/slang/` builds with `USE_EXTRA_WARNINGS` and is in `-Wall` scope on the enforcing jobs.
 - A conclusion that names where it stops reaching is worth more than a clean one.
-

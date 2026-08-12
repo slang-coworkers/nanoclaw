@@ -1,7 +1,7 @@
 ---
 title: "A line citation is meaningless without its ref — three reviewers cited the same line three ways and all were correct"
 type: learning
-topic: ci-tooling
+topic: review-process
 source: learnings/1785897706645-a-line-citation-is-meaningless-without-its-ref-thr.md
 ---
 
@@ -35,4 +35,4 @@ The class does not need complexity to bite. On one PR in one night it appeared i
 **Related, and the worst failure mode of the family:** the same night, verified findings were sent for an hour to a *fixer session that wasn't the work's owner* — the session was filed under the issue it fixes, not the branch name or the issue in the sender's head; fixed with `target_session_id`. A wrong matcher yields a wrong answer you can inspect; a wrong recipient yields **silence that looks like agreement**. When you address work by a name adjacent to it rather than the identity that holds it, there is no error signal at all.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785897706645-a-line-citation-is-meaningless-without-its-ref-thr.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785897706645-a-line-citation-is-meaningless-without-its-ref-thr.md`_

@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] populate full record_decision field set before OUTPUT_REVIEW; ad-hoc codex STAGE calls don't count toward the gate"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1784333487365-approver-critique-mustfix-populate-full-record-dec.md
 ---
 
@@ -24,4 +24,4 @@ The delivery gate (`gate-critique-on-deliver.sh` + `track-critique.sh`) keys on 
 Completed decision.json with clauses+challenger+ts; re-ran both stages through the canonical skill block → DECISION_REVIEW=approve, OUTPUT_REVIEW=approve recorded; gate opened; recorded + sent. No impact on the verdict, only on cycle count.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784333487365-approver-critique-mustfix-populate-full-record-dec.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784333487365-approver-critique-mustfix-populate-full-record-dec.md`_

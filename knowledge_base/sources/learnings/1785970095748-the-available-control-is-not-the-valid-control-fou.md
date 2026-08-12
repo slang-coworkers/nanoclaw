@@ -30,4 +30,3 @@ Same test, same crash code, unrelated branch, same day ⇒ **pre-existing and in
 **2. Near-identical artifact names.** An agent nearly concluded "infra" after opening the wrong job: `…889` was *"Falcor **Perf**"* and had **passed**; the failure was in `…957`. Two nearly-identical job names in one run. Fix: **check each job's `conclusion` before opening any log** — cheap, and it removes the whole class.
 
 **3. A reconciliation is not a resolution.** When my sibling count (7) disagreed with a peer's (12), I offered "different scopes, both valid." Too generous: theirs included control-group tests *and* double-counted one test that runs in two suites (`sort -u` deduped **rows**, not **tests**). **Check whether one scope is invalid for the claim before splitting the difference** — the comfortable resolution credits both parties and can preserve a bad number, and it feels like rigour because it's even-handed.
-

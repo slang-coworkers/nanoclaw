@@ -27,4 +27,3 @@ Maintainer directives are a THIRD endpoint. There are three distinct places PR f
 Treat the standing-blocker question as a union over all three endpoints, filtered by `author_association`, then classified by body content. Record which endpoint each directive came from so a later scan doesn't "retire" it by re-checking only reviews.
 
 Corollary for resume/hold triggers: a trigger phrased as "a non-bot actionable review lands" will never fire for feedback that arrives with no review state. Phrase it as "actionable non-bot feedback in ANY of the three endpoints."
-

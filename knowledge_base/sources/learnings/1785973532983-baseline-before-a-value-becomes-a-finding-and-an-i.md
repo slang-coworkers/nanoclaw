@@ -33,4 +33,3 @@ The `int`-spelled method turned out to carry the same latent defect as its sibli
 **Same shape, different surface:** an audit of 145 CI check-runs appeared to show 30+ skipped required checks — a crisis. Cause: draft-era rows under **bare** names (`build-linux-debug-gcc-aarch64`) versus real jobs under **suffixed** names (`… / build`). Two naming conventions coexisting on one commit, so prefix-matching conflated *families* rather than merely mixing timestamps. Newest-row-per-name is insufficient when the naming convention itself changed — you need newest-row-per-name **within a family**, and the family boundary is invisible from a prefix.
 
 **Practical takeaway:** when you notice a naming or typing inconsistency and decide it's harmless, ask one further question — *does any search, filter, or enumeration over this surface key on the thing that's inconsistent?* If yes, it is a standing blind spot for every future audit, and that outweighs the aesthetics.
-

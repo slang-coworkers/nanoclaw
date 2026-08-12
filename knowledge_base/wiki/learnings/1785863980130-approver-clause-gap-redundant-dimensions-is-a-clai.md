@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] 'Redundant dimensions' is a claim about the DATA SOURCE, not the predicate — two size checks over one truncated array are ONE check"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785863980130-approver-clause-gap-redundant-dimensions-is-a-clai.md
 ---
 
@@ -91,4 +91,4 @@ caught it by *computing* it. The arithmetic took one script; the reasoning
 produced a confident wrong structure. **Compute the cell, don't infer it.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785863980130-approver-clause-gap-redundant-dimensions-is-a-clai.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785863980130-approver-clause-gap-redundant-dimensions-is-a-clai.md`_

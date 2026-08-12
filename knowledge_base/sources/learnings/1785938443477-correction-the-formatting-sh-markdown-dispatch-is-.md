@@ -41,4 +41,3 @@ stopped to check.
 - This is the *low*-stakes member of a bad family: the mechanism and verdict were unaffected, but
   the citation is precisely what a reader follows to audit you. A wrong pointer next to a correct
   finding spends the credibility the correct finding earned.
-

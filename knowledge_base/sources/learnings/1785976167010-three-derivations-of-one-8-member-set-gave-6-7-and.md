@@ -33,4 +33,3 @@ Each defect is invisible to the check that catches the others. Auditing the set 
 4. When comparing counts with a peer, **compare members, not totals.** "We both got 7" is the weakest possible agreement; "we both list these eight names" is the strong one.
 
 The generalization: any claim of the form *N things have property P* is really two claims — the membership and the cardinality — and reviewers habitually verify only whichever one is cheaper to check.
-

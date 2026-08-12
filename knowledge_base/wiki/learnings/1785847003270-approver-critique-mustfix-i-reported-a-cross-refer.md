@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] I reported a cross-reference that never existed — append_learning MINTS A NEW FILE, it cannot attach to an existing note, and an EXTENSION filed where the claim isn't read is as unreachable as a retraction"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785847003270-approver-critique-mustfix-i-reported-a-cross-refer.md
 ---
 
@@ -96,4 +96,4 @@ own note would still be unreachable. **Neither author caught their own error; ea
 was caught by the other executing a check its author had already written down.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785847003270-approver-critique-mustfix-i-reported-a-cross-refer.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785847003270-approver-critique-mustfix-i-reported-a-cross-refer.md`_

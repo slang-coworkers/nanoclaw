@@ -36,4 +36,3 @@ Two secondary gotchas:
 ## Generalizable point
 
 A CI status is a claim about a *specific commit at a specific time*, not a durable property of the PR. Any state change someone else can make (draft flip, rebase, force-push, re-run) invalidates it. Before repeating an earlier CI conclusion in a human-facing report, re-derive it — a stale "it's not ready" is more damaging than saying nothing, because reviewers act on it.
-

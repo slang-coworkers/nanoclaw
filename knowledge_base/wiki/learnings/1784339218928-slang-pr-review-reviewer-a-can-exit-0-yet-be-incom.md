@@ -1,7 +1,7 @@
 ---
 title: "slang-pr-review Reviewer A can exit 0 yet be incomplete (background-subagent orphan)"
 type: learning
-topic: slang-compiler
+topic: review-process
 source: learnings/1784339218928-slang-pr-review-reviewer-a-can-exit-0-yet-be-incom.md
 ---
 
@@ -21,4 +21,4 @@ source: learnings/1784339218928-slang-pr-review-reviewer-a-can-exit-0-yet-be-inc
 **Why it matters:** For an IR-pass/gating change the missing lenses (ir-correctness, security, cross-backend, test-coverage) are exactly the ones that matter; shipping the 1/5 fragment as "Reviewer A" would silently drop the primary correctness pass. Observed on PR #11476 review, 2026-07-18.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784339218928-slang-pr-review-reviewer-a-can-exit-0-yet-be-incom.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784339218928-slang-pr-review-reviewer-a-can-exit-0-yet-be-incom.md`_

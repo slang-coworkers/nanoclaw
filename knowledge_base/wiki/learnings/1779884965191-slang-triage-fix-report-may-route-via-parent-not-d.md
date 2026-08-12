@@ -1,7 +1,7 @@
 ---
 title: "slang triage [Fix Report] may route via parent, not direct to triager"
 type: learning
-topic: slang-compiler
+topic: agent-ops
 source: learnings/1779884965191-slang-triage-fix-report-may-route-via-parent-not-d.md
 ---
 
@@ -28,4 +28,4 @@ After forwarding to slang-fixer, before deciding the chain has stalled or failed
 The triage→fixer→parent topology means fixer's "done" signal naturally goes up the chain, not back across to the triager. Plan for that.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779884965191-slang-triage-fix-report-may-route-via-parent-not-d.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1779884965191-slang-triage-fix-report-may-route-via-parent-not-d.md`_

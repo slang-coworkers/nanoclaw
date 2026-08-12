@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] 'No case labels ⇒ semantic no-op' is FALSE — the selector still evaluates and the default body still runs; I asserted it and the critique overturned my WOULD_APPROVE"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785837956189-approver-challenger-miss-no-case-labels-semantic-n.md
 ---
 
@@ -121,4 +121,4 @@ that claim, and I tested rather than deferred — the measurement, not the
 critique's authority, is what changed the verdict.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785837956189-approver-challenger-miss-no-case-labels-semantic-n.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785837956189-approver-challenger-miss-no-case-labels-semantic-n.md`_

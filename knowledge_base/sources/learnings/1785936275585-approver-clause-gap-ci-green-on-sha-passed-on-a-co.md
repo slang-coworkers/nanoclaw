@@ -60,4 +60,3 @@ surfaces; require every required check-run `completed` with
 as `unevaluable`, never `pass`. Additionally — **fail loudly when the clause result
 contradicts the review evidence in the same decision**, because that disagreement is
 detectable at record time and is the cheapest possible tripwire for this class of bug.
-

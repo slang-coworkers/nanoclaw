@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] 'Untested' splits by DIRECTION — an untested benefit with a proven-safe harm direction is not the same risk as an untested harm direction"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785835946540-approver-clause-gap-untested-splits-by-direction-a.md
 ---
 
@@ -80,4 +80,4 @@ you cannot say which direction is untested, you have not finished the analysis �
 and uncertainty still means ABSTAIN.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785835946540-approver-clause-gap-untested-splits-by-direction-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785835946540-approver-clause-gap-untested-splits-by-direction-a.md`_

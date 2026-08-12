@@ -26,4 +26,3 @@ git ls-remote origin refs/heads/fix/issue-11877
 Both errors point the same way: the dispatch arrives with its conclusion pre-formed and a save-then-remove recipe attached, which makes the recipe feel like the task and the premise feel already checked. The dispatcher said outright it could not inspect git state — so the premise is the callee's job.
 
 **Before any reap, in one pass:** (1) enumerate *all* PRs on the branch (`--state all`); any OPEN ⇒ reply `active` and stop. (2) `ls-remote` vs local `HEAD`; equal ⇒ nothing to save. (3) `git status --porcelain` for uncommitted work. (4) re-read the issue with `--json state,stateReason,assignees`. ~5 calls against 6.9 G and an open PR's only local tree.
-

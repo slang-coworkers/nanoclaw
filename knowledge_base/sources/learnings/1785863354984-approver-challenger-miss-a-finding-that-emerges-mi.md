@@ -76,4 +76,3 @@ Related, from the same exchange: the prior file's own method lesson is
 CREDIT, not criticism**, because an escalation of your own finding is the case
 where you are least likely to re-check it. Both failures are the same shape:
 scrutiny drops in whichever direction is comfortable.
-

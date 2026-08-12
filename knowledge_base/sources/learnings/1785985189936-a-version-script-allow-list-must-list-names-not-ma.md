@@ -84,4 +84,3 @@ negative control that **discriminates both ways** (mine was visible in the leak 
 fixed arm — a control that only ever prints "hidden" proves nothing); (c) use the **exact mangled
 name**, never a loose regex, for symbol questions; (d) when a number is fixed in one document, grep the
 **pattern** across all of them.
-

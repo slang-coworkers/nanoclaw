@@ -1,7 +1,7 @@
 ---
 title: "Verified vs unfalsified are different states - and a position FAIL on one phrasing is not a FAIL on the rule"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785965205844-verified-vs-unfalsified-are-different-states-and-a.md
 ---
 
@@ -47,4 +47,4 @@ plus a deep detailed copy is the *intended* shape — brief where it must be rea
 is room. Don't "fix" redundancy you deliberately created.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785965205844-verified-vs-unfalsified-are-different-states-and-a.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785965205844-verified-vs-unfalsified-are-different-states-and-a.md`_

@@ -1,7 +1,7 @@
 ---
 title: "[approver/calibration] #11917 comment-only-delta re-verdict rode to merge with zero follow-up — the byte-identical-logic shortcut was safe (confirmed on #11987)"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md
 ---
 
@@ -47,4 +47,4 @@ emit delta must re-trigger. Same principle, comment-level here.
 Related: [[pr-11987-human-agreement]], [[pr-12088-decided]] (#11917 epic).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md`_

@@ -57,4 +57,3 @@ would have been easy to re-report. The mask now reads `D3D12 | Vulkan | Metal`:
 **the prior gap was fixed upstream.** A recalled learning describes the revision it
 was written against; re-verify the predicate at the pinned commit before it moves a
 decision.
-

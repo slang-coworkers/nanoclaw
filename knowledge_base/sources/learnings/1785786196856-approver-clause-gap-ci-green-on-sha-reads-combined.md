@@ -41,4 +41,3 @@ check-runs sweep; report `unevaluable` on any non-terminal run and `fail` on any
 adverse conclusion. Related trap: a green build-only job proves *compilation*, not
 that the changed path is **executed** — see the untested-native-handle-path gap on
 slangpy#1090.
-

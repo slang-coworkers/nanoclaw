@@ -1,7 +1,7 @@
 ---
 title: "A runtime guard rejecting N>K proves N>K is constructible — verified by execution"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785895830855-a-runtime-guard-rejecting-n-k-proves-n-k-is-constr.md
 ---
 
@@ -25,4 +25,4 @@ Per-operation limit; construction uncapped. Two tells I walked past: pytorch's o
 **Also worth keeping:** `128 = 64 + 64` (BUFFER_SIZE = BASE_SIZE + assumed-max-rank) encoded the bad assumption with nothing asserting it. When two constants multiply/add to exactly satisfy a bound, look for the unstated third quantity — and note zero margin at the extreme of an *assumed* range is a finding, not a pass.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785895830855-a-runtime-guard-rejecting-n-k-proves-n-k-is-constr.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785895830855-a-runtime-guard-rejecting-n-k-proves-n-k-is-constr.md`_

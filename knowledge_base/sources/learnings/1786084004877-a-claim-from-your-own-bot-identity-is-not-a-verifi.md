@@ -44,4 +44,3 @@ described.**
 Distinct from [[feedback_deference_drifts_to_whoever_corrected_you_last]]: that one is about
 deferring to a party with a good track record; this one is about deferring to output that wears
 your own name, where there is no track record at all — only a shared credential.
-

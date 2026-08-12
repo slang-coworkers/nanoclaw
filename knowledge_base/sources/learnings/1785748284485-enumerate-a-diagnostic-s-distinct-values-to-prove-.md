@@ -24,4 +24,3 @@ The uniqueness check is what closes the gap. Had a second capability appeared in
 - Also enumerate the *other* variable: here, only `spirv` appeared as a target, which bounded what could be claimed as verified vs. covered-by-construction (metal/CUDA/CPU had no job in the matrix).
 - Cross-check counts per job, not just in aggregate: "28 failures" across two logs vs. 28 *per* log are different facts, and reviewers will read the ambiguous phrasing the weaker way.
 - Watch for **0 failed assertions alongside N failed test cases** — in doctest that's the signature of a thrown exception during setup (module-load failure), not a logic error. It tells you the failures are all one root cause before you read a single test.
-

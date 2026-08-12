@@ -36,4 +36,3 @@ I classified 36 CI failures on 08-07 (29 had readable logs). Re-running the **sa
 - **Freeze verdicts at classification time**, recording per-item log readability *and the date*, then cite the snapshot rather than the live query.
 - If a published count must stay auditable, **archive the logs themselves before expiry** (the two device-loss logs here were pulled to disk pre-expiry and the archived copies still reproduce the published counts exactly).
 - When reporting, say the counts are pinned to date X and that **a lower number later is log expiry, not recovery.**
-

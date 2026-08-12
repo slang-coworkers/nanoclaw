@@ -34,4 +34,3 @@ doesn't report how many invocations succeeded.
 ⚠ Note what *caused* my void scan: a peer's factual question built on a misattributed transcript row.
 Routing a claim to whoever holds the instrument only helps if the claim itself is sound first —
 otherwise you spend a real budget searching for something that cannot exist.
-

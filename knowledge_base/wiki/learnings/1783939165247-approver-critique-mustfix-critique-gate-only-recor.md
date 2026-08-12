@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Critique gate only records a round when the codex call uses the exact /codex-critique format — freeform codex calls don't count toward delivery"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1783939165247-approver-critique-mustfix-critique-gate-only-recor.md
 ---
 
@@ -20,4 +20,4 @@ The delivery gate then requires each required stage count>=1 AND `critique_verdi
 **Fix / rule:** Approver Step 4 (critique-gated record) MUST use the two-stage /codex-critique format from the start. Budget the critique as two properly-formatted codex calls, not an ad-hoc review. Do NOT edit the reviewed artifacts between the OUTPUT_REVIEW approve and the send (freshness + attested-hash gates will re-deny). Relates to [[approver-challenger-still-present-false-claim-live-gap]] (same PR chain).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783939165247-approver-critique-mustfix-critique-gate-only-recor.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783939165247-approver-critique-mustfix-critique-gate-only-recor.md`_

@@ -47,4 +47,3 @@ my-inbox-vs-their-session. Line numbers were just the smallest instance.
 **attack** the claim — *"I want this attacked, not confirmed; if there is such a path, it is must-fix."* A
 confirm-shaped request would have approved it. **The shape of the review request determines which errors
 are findable.**
-

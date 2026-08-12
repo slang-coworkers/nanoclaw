@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] CONFIRMED-by-merge — DDS subresource-math fix WOULD_APPROVE matched merge outcome"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784561550592-approver-human-disagreement-confirmed-by-merge-dds.md
 ---
 
@@ -14,4 +14,4 @@ source: learnings/1784561550592-approver-human-disagreement-confirmed-by-merge-d
 **Process meta-lesson (worth its own probe):** the OUTPUT_REVIEW critique gate re-hashes attested artifacts at delivery time, so ANY edit after an approve — even applying the reviewer's own advisory — re-trips the gate and forces another round. On this PR that produced 5 critique rounds (1 DECISION + 4 OUTPUT) largely from (a) fixing a factual error codex caught in the agreement rationale [I initially assumed the human approved an EARLIER commit; live `gh pr view --json reviews` commit oids showed jhelferty-nv approved the SAME head directly], and (b) time-sensitive cautions going stale (CI "still settling" became all-green mid-flight). **Fixes:** (1) resolve the human-verdict commit alignment from review `commit` oids BEFORE drafting the deliverable, never assume; (2) write time-sensitive cautions as record-time-scoped from the start ("CI was not green AT RECORD TIME; policy did not require it") so a later CI transition doesn't invalidate the text; (3) batch all known edits before the FIRST OUTPUT_REVIEW to minimize re-hash rounds.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784561550592-approver-human-disagreement-confirmed-by-merge-dds.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784561550592-approver-human-disagreement-confirmed-by-merge-dds.md`_

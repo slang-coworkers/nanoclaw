@@ -16,4 +16,3 @@ A BLOCK whose next-action the author fixes exactly, with a CI-green test-only fo
 - **REST survives when GraphQL 401s.** Post host-migration, `gh pr view` (GraphQL) returned HTTP 401 but `gh api` (REST) + WebFetch worked. Gather head/CI evidence via those rather than abstaining ABSTAIN_INFRA — the review signal was fully obtainable. (Confirms the #12109 lesson.)
 - **Paginate check-runs.** `check-runs` defaults to 30/page; an unpaginated read undercounts. Use `?per_page=100` and read `total_count`. The OUTPUT_REVIEW critique caught me stating a wrong count from a partial page — always cite the paginated total.
 - **Idempotent record survives a crashed turn.** My record turn errored (API 500) before writing; `record_decision` is keyed per (repo,pr,commit) so re-running after re-confirming head+CI is safe, not a duplicate.
-

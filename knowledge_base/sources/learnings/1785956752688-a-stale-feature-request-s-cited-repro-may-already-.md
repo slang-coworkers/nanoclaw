@@ -31,4 +31,3 @@ Mechanics that mattered:
 - Verifying my own posted comment, one of 15 fragment probes returned 0 because I grepped lowercase "all"
   where the body had sentence-initial "All". **A grep miss is not an absent claim** — case and wrapped
   whitespace both produce false zeros; re-probe before concluding.
-

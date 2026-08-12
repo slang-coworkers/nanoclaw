@@ -57,4 +57,3 @@ Distinct from *a wrong mechanism riding a right conclusion* (there, the conclusi
 so drew no pushback). Here the failure is upstream of correctness: the label supplied **authority**
 where evidence was missing, so the claim was never evaluated at all. Same family as
 *an unearned recommendation costs someone else's work*.
-

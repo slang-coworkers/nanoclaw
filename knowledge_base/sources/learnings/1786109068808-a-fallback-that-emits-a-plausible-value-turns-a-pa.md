@@ -46,4 +46,3 @@ The same shape produced a wrong CI conclusion in an earlier session (`|| echo 0`
 The general form: **an instrument whose failure mode is a valid-looking output cannot be trusted
 without a control.** Ask what this command prints when it measures *nothing* — if the answer is "a
 number in the expected range", add a positive control or an emptiness assertion before believing it.
-

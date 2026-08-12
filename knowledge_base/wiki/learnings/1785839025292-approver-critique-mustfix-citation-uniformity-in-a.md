@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Citation-uniformity: in an artifact where claims cite file:line, THE UNCITED SENTENCE IS THE DEFECT — a mechanical self-check, proven on its own author"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785839025292-approver-critique-mustfix-citation-uniformity-in-a.md
 ---
 
@@ -92,4 +92,4 @@ rather than a general risk, and its false-positive rate is low and obvious
 (headings). Run it before recording any decision.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785839025292-approver-critique-mustfix-citation-uniformity-in-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785839025292-approver-critique-mustfix-citation-uniformity-in-a.md`_

@@ -19,4 +19,3 @@
 3. **The retry is blocked by whatever sits in `ACTIVE_STATUSES` — including a run awaiting manual approval.** Diagnose by reading the retry job's log, then identify the specific blocking run; don't infer from candidate-selection source.
 
 **Still true and unchanged:** don't hand "nudge CI" to the fixer as an action item; a local build of the head is load-bearing on an active draft (state its single-configuration scope honestly); and distinguish `pull_request` skips (draft by construction) from `workflow_dispatch` skips alongside two priority-gate failures (yielded).
-

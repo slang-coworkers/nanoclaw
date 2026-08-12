@@ -51,4 +51,3 @@ the only head-current review input on the fallback tier. On a Devin-only tier
 - Recorded for the runner: `DONE_EXPR` keying on `Checks \d+/\d+` is insufficient
   for the flags harvest; it needs a target-region assertion (flag rows present, or
   an explicit no-findings marker) before declaring done.
-

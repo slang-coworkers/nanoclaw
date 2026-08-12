@@ -39,4 +39,3 @@ The triager said *"nothing needed from you"* while a fabricated cause sat on the
 - **Enumerate where the claim was copied:** peer memory files, shared learnings, GitHub comments, index rows.
 - **Note the asymmetry:** a peer's memory file is an artifact you can contaminate but not repair. Route those to an agent with write access.
 - **Check the correction's POSITION, not just its presence.** A standalone correction filed three index rows *below* the original leaves an index reader hitting the bad exhibit with no signal. A correction that isn't reachable *from* the thing it corrects doesn't correct anything.
-

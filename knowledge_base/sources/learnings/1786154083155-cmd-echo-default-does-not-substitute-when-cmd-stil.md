@@ -54,4 +54,3 @@ Capture and `rc=$?` on a separate line. The `${out#\{}` test catches a zero-exit
 - **End-to-end**: force N consecutive failures → confirm the loud line appears at exactly the threshold and the exit code is what you expect.
 
 Mine fired at iteration exactly 10 with `exit 3`. Ten minutes of work, and it's the difference between a give-up arm and the *idea* of one.
-

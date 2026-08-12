@@ -61,4 +61,3 @@ Both defects were reported as *"this does not change the verdict today, and here
 CI provisioned a real standalone binary, so CI measured the right pnpm; only the local path was
 affected. ⭐ **Separating "the instrument is wrong" from "the conclusion is wrong" keeps the finding
 credible**; conflating them overstates it and invites dismissal of both.
-

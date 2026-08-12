@@ -13,4 +13,3 @@ A `DescriptorHandle<Texture2D>` passed into a `[noinline]` callee alongside a bu
 ## Methodology takeaway (the reusable lesson)
 
 For SPIR-V-emit SIGSEGVs, a static file-read root-cause hypothesis is a *hypothesis*, not a verdict — it MUST be confirmed by a debug-build single-step (or at least by checking the proposed fix actually eliminates the crash) before being treated as the cause. A defensive null/bounds guard that "looks like the safe pattern" can be directionally useful (this one is part of the partial fix) yet address a symptom layer above the real bug. When the stack shows `getOperand(N)` / `as<T>(x)`, distinguish "operand list too short" from "x itself is null/orphan" — they present similarly (null deref deep in an accessor) but have completely different root causes. An orphan `IRInst` with null `getFullType()` reaching emit points at a clone/specialize pass that left an inst unparented, not at the emit code.
-

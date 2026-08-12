@@ -5,4 +5,3 @@ When a CI sweep is dominated by ONE deterministic operator-owned infra root-caus
 Lesson (from parent guidance): lead every report with the root-cause as the loud headline — state "reruns futile" with the maintainer's own re-failed rerun as evidence, and name the concrete operator fix (bump fleet GPU drivers OR revert/pin the runner container image). Put the per-PR action tally AFTER. Burying the root-cause under per-PR detail leaves maintainers rerunning into the same wall.
 
 Also: a deterministic container-init outage stalls runs in `queued` for hours (retry jobs can't get a healthy GPU runner), which gates even failure CLASSIFICATION — you can't read failed-test names until the run completes. So a code PR whose real-vs-flake status matters can be blocked from triage BY the same infra outage. Note it as gated, defer, don't guess.
-

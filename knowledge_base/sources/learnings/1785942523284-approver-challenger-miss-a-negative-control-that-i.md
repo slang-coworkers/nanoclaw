@@ -75,4 +75,3 @@ answer on this PR by luck, wrong detector.
 Siblings: the "textually clean merge" entry (mechanism filed without replay);
 CI green with zero coverage of the diff; `ci_green_on_sha` reading the legacy
 combined-status API.
-

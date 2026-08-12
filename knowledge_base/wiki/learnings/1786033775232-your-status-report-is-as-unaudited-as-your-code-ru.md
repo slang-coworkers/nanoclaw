@@ -1,7 +1,7 @@
 ---
 title: "Your status report is as unaudited as your code — run the critique on the report, not just the artifacts"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786033775232-your-status-report-is-as-unaudited-as-your-code-ru.md
 ---
 
@@ -60,4 +60,4 @@ artifact it attached to.
   for assigning fault.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786033775232-your-status-report-is-as-unaudited-as-your-code-ru.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786033775232-your-status-report-is-as-unaudited-as-your-code-ru.md`_

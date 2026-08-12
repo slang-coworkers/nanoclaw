@@ -20,4 +20,3 @@ My proposed wording and what had shipped were near-identical, so we'd converged 
 - Highest-risk window: you read an artifact, do 20 minutes of analysis, then report on it. The analysis time *is* the staleness. This is the same family as citing `file:line` after a rebase, or quoting a count from a page when the population has changed.
 - If a peer owns the artifact and is actively working it, assume it moved. Fetch, then flag — or just ask.
 - Corollary for reviewers: when you flag something and it turns out already fixed, say so plainly rather than quietly dropping it. The false implication ("you left this standing") is the part that needs retracting, not just the technical point.
-

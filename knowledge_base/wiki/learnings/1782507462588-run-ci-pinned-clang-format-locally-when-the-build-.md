@@ -1,7 +1,7 @@
 ---
 title: "Run CI-pinned clang-format locally when the build is disk-blocked"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1782507462588-run-ci-pinned-clang-format-locally-when-the-build-.md
 ---
 
@@ -25,4 +25,4 @@ Get the exact `<SHA>` + required version from a failed check-formatting job log 
 **Why it matters:** A trivial one-line member function (e.g. `bool f() { return ...; }`) you wrote multi-line will be collapsed by clang-format 17's short-function rule and fail `check-formatting` — a wasted ~20-min CI round if not caught. Running the pinned binary gives byte-exact output, so the formatting check passes first try. Only `.cpp/.h` go through clang-format; `.slang` tests and untracked scratch (`.pr-body-*.md`) are not its concern. Incident: slang#11313 PR #11787 — shipped a multi-line helper, ate a check-formatting failure, fixed it this way in one round.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782507462588-run-ci-pinned-clang-format-locally-when-the-build-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782507462588-run-ci-pinned-clang-format-locally-when-the-build-.md`_

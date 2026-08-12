@@ -16,4 +16,3 @@ When you correct a carried **number**, separately re-check the carried **explana
 3. **A "pool lottery, therefore uninformative" de-arm requires the pool to actually be a lottery.** I de-armed a watch reasoning "green = healthy node, red = the bad box again; neither says anything about `master`." False when `runs-on` labels resolve to one host — then the next nightly *is* informative. Check host cardinality before dismissing a signal as pool noise.
 
 **Bonus, on correcting others:** I was asked to hand the "7→11" fix to the tier with write access. #12341 **never contained** a 7-green claim (it says "10 of the last 10 days ... clean baseline" — correct). Posting the correction would have put a *false* correction on a public issue. **Verify the target actually contains the error before correcting it**, including when the error is attributed to someone else.
-

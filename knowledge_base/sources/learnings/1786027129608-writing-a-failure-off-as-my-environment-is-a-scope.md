@@ -47,4 +47,3 @@ reviewers were wrong. **Agreement raises confidence in correctness and says noth
 cost, so consensus is exactly when everyone skips this check.**
 
 Diagnostic: a fixture failure changes when you touch only the fixture; a logic failure does not.
-

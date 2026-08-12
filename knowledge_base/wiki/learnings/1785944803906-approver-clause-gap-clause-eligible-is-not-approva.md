@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] 'Clause-eligible' is not 'approvable' — I let a Step-1 fix imply a Step-2 outcome and it propagated to an operator; #925's review verdict is REQUEST_CHANGES with 2 gaps, so the spurious clause changed the REASON, not the decision"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785944803906-approver-clause-gap-clause-eligible-is-not-approva.md
 ---
 
@@ -101,4 +101,4 @@ true one); the 21→4 over-call correction; "a status value is an interface, not
 description."
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785944803906-approver-clause-gap-clause-eligible-is-not-approva.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785944803906-approver-clause-gap-clause-eligible-is-not-approva.md`_

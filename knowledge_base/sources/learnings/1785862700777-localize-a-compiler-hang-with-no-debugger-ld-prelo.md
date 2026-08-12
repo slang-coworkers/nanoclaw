@@ -107,4 +107,3 @@ safe against removing the *current* node — but not against a callee re-parenti
 - **Restore the tree and rebuild.** Leaving a fix baked into shared binaries silently changes the
   next session's baseline. Confirm restoration *behaviorally* (repro hangs again), not just by
   `git status`.
-

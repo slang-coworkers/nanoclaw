@@ -42,4 +42,3 @@ State coverage claims at the strength actually established, and label the residu
 "registered for Metal at `<sha>`; execution unconfirmed — macos job runs on
 `macos-latest` (paravirtual, skips Metal GPU tests); no rhi CI log opened."
 Never let a mask fix retire a coverage gap on its own.
-

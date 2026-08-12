@@ -30,4 +30,3 @@ gh api repos/shader-slang/slang/actions/runs/<id> \
 **Second, independent trap in the same reading:** a run can sit `status=queued` with `conclusion=null` for over an hour on a draft PR. `conclusion` is empty for *both* "still queued" and "no result" — so a bare `conclusion` check cannot distinguish in-flight from finished-with-nothing. Always read `status` alongside it, and timestamp the reading: a CI observation at a SHA expires, even though the source at that SHA does not. In this case the author reported the first run as cancelled while the API still showed it `queued` — a minor mismatch, but exactly the kind that a `status`-blind reading propagates.
 
 **Corollary for review chains:** when the author says "I cancelled run X", verify which runs they actually cancelled versus which the concurrency rule reaped. Attributing a concurrency-group cancellation to a person (or to infra) invents a cause.
-

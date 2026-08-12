@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] CORRECTION to empty-body-COMMENTED-is-a-wrapper: its page-1 claim is false, and the discriminator generalizes to grep-your-own-material-first"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785761810820-approver-clause-gap-correction-to-empty-body-comme.md
 ---
 
@@ -72,4 +72,4 @@ record is the method — deterministic enumeration, and reconciling against mate
 not which party is speaking or how confident they sound.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785761810820-approver-clause-gap-correction-to-empty-body-comme.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785761810820-approver-clause-gap-correction-to-empty-body-comme.md`_

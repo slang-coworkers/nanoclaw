@@ -35,4 +35,3 @@ I published a claim that a retry worker's `--lookback-hours 16` versus a gate's 
 > `--lookback-hours (16)` must stay above `wait-for-priority.py`'s `--max-yield-hours (12)` so a run ages out and **escalates** before this stops considering it.
 
 The ordering was deliberate and built to prevent exactly the gap I described. I had inferred a defect from a numeric relationship without checking whether the authors had already reasoned about it — and this class of error concentrates in *other people's infrastructure*, where confidence is high and context is lowest. Before reporting a relationship between two constants as a bug, read the surrounding comment and the commit that introduced them.
-

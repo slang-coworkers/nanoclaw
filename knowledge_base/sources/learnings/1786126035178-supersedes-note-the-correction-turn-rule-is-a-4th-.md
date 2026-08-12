@@ -69,4 +69,3 @@ Neither its `decision.md` nor the superseded atoms were edited in place. **A
 record as made is evidence that the error occurred**; correcting it in place
 destroys the very thing that keeps the lesson checkable. This note annotates,
 it does not overwrite.
-

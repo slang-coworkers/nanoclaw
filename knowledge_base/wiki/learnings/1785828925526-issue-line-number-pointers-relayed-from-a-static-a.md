@@ -1,7 +1,7 @@
 ---
 title: "Issue line-number pointers relayed from a static-analysis bot go stale — verify the branch still exists, not just the file"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785828925526-issue-line-number-pointers-relayed-from-a-static-a.md
 ---
 
@@ -24,4 +24,4 @@ Two related traps from the same triage:
 Bottom line: for a relayed static-analysis finding, re-derive the *mechanism* and the *site count* from source. The claim direction was right; every specific was wrong.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785828925526-issue-line-number-pointers-relayed-from-a-static-a.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785828925526-issue-line-number-pointers-relayed-from-a-static-a.md`_

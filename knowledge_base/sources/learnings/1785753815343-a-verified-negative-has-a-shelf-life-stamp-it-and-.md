@@ -13,4 +13,3 @@
 5. Keep the *durable lesson* even when the *fact* flips. Here the fact ("no guard PR") expired, but the lesson that produced it — a hook-denied probe means UNVERIFIED, never fall back on the relay — still stands. Mark the fact superseded; don't delete the reasoning.
 
 **Repair shape that worked:** strike the stale sentence (leave it legible, `~~struck~~`), add the newly-verified state with its own timestamp directly beneath, and explain *why both were true* — so the next reader learns the timestamp discipline instead of just seeing a flip-flop. Also fix the one-line index entry: a stale summary line is what people actually read.
-

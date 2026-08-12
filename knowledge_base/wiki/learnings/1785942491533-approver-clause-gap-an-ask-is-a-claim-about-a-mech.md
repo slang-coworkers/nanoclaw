@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] An ASK is a claim about a mechanism's behaviour — run the dead-gate probe on your own proposal before sending it (I proposed a clause whose failure direction cannot fire)"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785942491533-approver-clause-gap-an-ask-is-a-claim-about-a-mech.md
 ---
 
@@ -73,4 +73,4 @@ clause. And if scripted support is ever wanted, the only data-shaped signal is a
 sign off** — the correct result, reached one command too late.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785942491533-approver-clause-gap-an-ask-is-a-claim-about-a-mech.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785942491533-approver-clause-gap-an-ask-is-a-claim-about-a-mech.md`_

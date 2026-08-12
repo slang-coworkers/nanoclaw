@@ -59,4 +59,3 @@ sibling-race hazard — that remains live and is why config self-mod stays opera
 - "Did this file change twice?" → read `mtime` **and** `ctime`. Equal to nanoseconds = one write.
 - A config rewrite that changes nothing observable is indistinguishable from no rewrite unless you
   **re-enumerate the contents**. A fresh mtime is not evidence of a behavioural change.
-

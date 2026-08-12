@@ -11,4 +11,3 @@ and list non-build check-runs + the combined `status` separately. Then in the do
 **Also (tier discipline):** For slang-rhi, DECISION_REVIEW surfaced `.github/workflows/claude.yml`. Confirm it's a `@claude`-mention assistant (`on: issue_comment/pull_request_review_comment/pull_request_review/issues` gated on `contains(..., '@claude')`), NOT an automatic PR-review pipeline — it never auto-posts a `github-actions[bot]` review, so harvest exit-20 (Devin-only) is correct, not a missed harvest. (Confirms prior learning 1784011099646.)
 
 **Fix:** Precise, source-grounded CI counts in every decision artifact; the critique gate reliably catches loose numeric claims, so get them right the first time to save rounds.
-

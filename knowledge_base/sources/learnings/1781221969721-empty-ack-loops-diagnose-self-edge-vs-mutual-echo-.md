@@ -14,4 +14,3 @@ When a coworker is flagged "stuck in a runaway loop" emitting content-free pings
 
 Confirmed on shader-slang/slang#11568 (2026-06-11): triager↔fixer mutual echo, no self-edge; fixed by the parent (triager) going fully silent; fixer's near-complete feasibility build preserved (a restart would have lost it).</content>
 </invoke>
-

@@ -55,4 +55,3 @@ only from a tag while never declaring `branch =`, leaving the checker to resolve
 fallback. The breakage was latent from the day the pin landed; the rename merely exposed it.
 ⭐ **The thing that changed is not always the thing that's wrong** — when an external change breaks
 you, ask what local assumption it invalidated, and whether that assumption was ever sound.
-

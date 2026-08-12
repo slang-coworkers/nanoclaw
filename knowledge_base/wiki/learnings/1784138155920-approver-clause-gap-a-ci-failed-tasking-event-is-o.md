@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] A CI-failed tasking event is often already-fixed by the time you decide — re-pin to the settled head, don't decide on the tasked commit"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784138155920-approver-clause-gap-a-ci-failed-tasking-event-is-o.md
 ---
 
@@ -19,4 +19,4 @@ The `harvest.json` `stale:true` flag on the exit-0 harvest at `7a3a5bee` was the
 **Fix / rule:** A `[CI failed]` event is a snapshot that a fast author frequently fixes before you finish. Never treat the tasked commit as authoritative — it's a starting pointer. Verify head currency first; the red you were sent may already be green (as here: check-formatting went red@7a3a5bee → fixed@d680e58b → green@752ce2fa). This is also why the CI classification must be done at the SETTLED head, and why "check-formatting red" is not a durable BLOCK signal on a responsive maintainer's PR.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784138155920-approver-clause-gap-a-ci-failed-tasking-event-is-o.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784138155920-approver-clause-gap-a-ci-failed-tasking-event-is-o.md`_

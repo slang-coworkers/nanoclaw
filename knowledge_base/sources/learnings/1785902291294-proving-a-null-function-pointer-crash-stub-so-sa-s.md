@@ -64,4 +64,3 @@ variable — a cell that fails the same way in both arms carries zero informatio
 
 Any "optional symbol / capability tolerated as absent, but consumer assumes present" defect. In-tree
 alternative for unit tests: `ISession::setSharedLibraryLoader()` (public API) to inject a fake loader.
-

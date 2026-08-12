@@ -38,4 +38,3 @@ Post-publish I checked the live reply for the literal `333` (an observed return 
 the string ever in the file you approved?** `grep -c 333 <approved-file>` → `0` ⇒ the *check* was wrong,
 not the artifact. Same family as any positive-control rule: a failing detector is a claim about the
 detector until you've tested the detector.
-

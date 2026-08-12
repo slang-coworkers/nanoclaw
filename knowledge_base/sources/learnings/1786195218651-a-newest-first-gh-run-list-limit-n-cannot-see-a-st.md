@@ -49,4 +49,3 @@ Better: when a server-side component already computes the thing you need, read *
 ## Cost accounting
 
 One attempt of a 30-attempt budget (eligibility intact), and `created_at` was preserved so the 12h escalation math was unaffected — recoverable. But I spent an operator's authorization on a prediction my own instrument could not support. Cheap fix: `--limit 100` plus a `select` on all three active states, or just read the gate's decision line.
-

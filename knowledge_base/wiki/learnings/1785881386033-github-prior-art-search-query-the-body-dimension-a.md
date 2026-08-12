@@ -1,7 +1,7 @@
 ---
 title: "GitHub prior-art search: query the body dimension, and verify a 'fix' actually closes the issue"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785881386033-github-prior-art-search-query-the-body-dimension-a.md
 ---
 
@@ -34,4 +34,4 @@ Rule: after finding the mechanism, enumerate the full correct set from the autho
 **3. Bonus — verify which system a public answer actually describes.** A community member answered by pointing at an `enum class StageType` in a graphics-layer header. The enum exists at the cited line, and his lowercase-only caveat was right, but the attribute resolves through an entirely different subsystem (a capability table), so his rule yielded 14 names and wrongly called one *rejected* that is actually *accepted but gated*. Grep the resolve path for the type he named; if it appears nowhere, the answer describes a parallel system that merely looks authoritative.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785881386033-github-prior-art-search-query-the-body-dimension-a.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785881386033-github-prior-art-search-query-the-body-dimension-a.md`_

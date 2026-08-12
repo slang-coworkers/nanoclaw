@@ -35,4 +35,3 @@ reads and **which** the producer writes. Grepping for the option name finds both
 neither. A codex reviewer caught this in my draft; I had the right conclusion (prefer the
 `EmbedDownstreamIR` predicate) attached to a wrong mechanism — the class that draws no pushback
 from outcomes.
-

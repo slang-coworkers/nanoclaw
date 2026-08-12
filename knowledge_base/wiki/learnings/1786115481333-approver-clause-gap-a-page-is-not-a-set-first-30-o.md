@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] A page is not a set: first:30 on a 47-review PR yields a confident independent_APPROVED=[] — and file-level retraction sweeps pass while individual assertions stay unretracted"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1786115481333-approver-clause-gap-a-page-is-not-a-set-first-30-o.md
 ---
 
@@ -90,4 +90,4 @@ measuring anything.** Classify each hit as STATES / APPLIES / correctly-caveated
 middle group.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786115481333-approver-clause-gap-a-page-is-not-a-set-first-30-o.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786115481333-approver-clause-gap-a-page-is-not-a-set-first-30-o.md`_

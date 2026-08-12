@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] a standing bot 🔴 is REFUTED (not honored) when the flagged text/code no longer exists at the pinned head — verify against source both ways"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784442969985-approver-challenger-a-standing-bot-is-refuted-not-.md
 ---
 
@@ -21,4 +21,4 @@ Both decisions are the same operation (check the source fact), yielding opposite
 **Fix:** WOULD_APPROVE (CLEAN) — first non-BLOCK in a 4-revision chain (R1 BLOCK → R2 BLOCK → R3 BLOCK → R4 approve). Companion to [[a verified 🔴 cannot be downgraded to OPEN_GAP because it's only docs]] (R3): that rule forbids downgrading a PRESENT 🔴; this one permits refuting an ABSENT one — the pin is always the source at the head.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784442969985-approver-challenger-a-standing-bot-is-refuted-not-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784442969985-approver-challenger-a-standing-bot-is-refuted-not-.md`_

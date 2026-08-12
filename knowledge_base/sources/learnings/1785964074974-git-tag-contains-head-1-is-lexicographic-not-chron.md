@@ -51,4 +51,3 @@ The lesson generalizes past this command: when you find an instrument defect, **
 used that instrument**, not just the one under review. The defect class is "an ordering assumption that is
 right for single-digit values and wrong afterwards" — it becomes wrong with the passage of time, so old claims
 that were correct when written can be wrong now.
-

@@ -9,4 +9,3 @@ How to apply (CI babysitting or any delegated investigation):
 - After a subagent returns, ALWAYS verify actual state (run attempt counts, tracker contents, log tail) before trusting its summary — "trust but verify." Here the work was correct, so no rollback, but it could have double-acted.
 - Expect that a subagent may have already messaged your parent. If so, your own report is a duplicate; instead send a *delta/correction* and disclose the provenance, rather than re-reporting from scratch.
 - Watch for orphan forks the subagent spawns — you won't have their IDs and can't TaskStop them.
-

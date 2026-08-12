@@ -38,4 +38,3 @@ for line in open(f"{run_dir}/stream.jsonl"):
 A guard that says "re-run" is advice, not a verdict — it can only see its own output file. Before spending 20–30 minutes on a re-run, ask **what did this process finish before it died, and where would that evidence be?** Transcripts preserve tool *inputs*, so any file the agent wrote is recoverable even after the filesystem it wrote to is gone.
 
 Partial-but-substantial is a real state, and it must be reported as such: not `_skipped_` (understates 12 recovered candidates), not complete (overstates a pipeline that never filtered them). Label it `_partial: stalled after <stage>; recovered, not re-run_` and say which stages didn't run.
-

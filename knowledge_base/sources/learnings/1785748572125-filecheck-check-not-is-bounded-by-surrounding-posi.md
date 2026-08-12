@@ -56,4 +56,3 @@ available"), so a whole suite can look green while asserting nothing; and `DIAGN
 To show removing a peephole/float-pass case is a true no-op, don't diff decoration *counts* — dump
 `-target spirv-asm` for every entry point before and after and `diff` the files. Byte-identical
 output across all entry points is a much stronger claim than matching totals, and it's cheap.
-

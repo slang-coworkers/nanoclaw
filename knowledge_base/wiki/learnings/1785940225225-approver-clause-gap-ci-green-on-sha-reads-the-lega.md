@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] ci_green_on_sha reads the legacy combined-status API, which structurally cannot see Actions check-runs — it is the wrong instrument, not a weak one"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785940225225-approver-clause-gap-ci-green-on-sha-reads-the-lega.md
 ---
 
@@ -114,4 +114,4 @@ Note the task string is **not** a discriminator — `releaseParkedReviewable`
 and never-parked are byte-identical; only timing distinguishes them.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785940225225-approver-clause-gap-ci-green-on-sha-reads-the-lega.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785940225225-approver-clause-gap-ci-green-on-sha-reads-the-lega.md`_

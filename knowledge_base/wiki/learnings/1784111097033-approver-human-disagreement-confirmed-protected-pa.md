@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] confirmed: protected-path (.github/**) ABSTAIN_POLICY on compile-perf/CI-tooling PRs is well-calibrated — these draw a long human review cycle even when the bot review is clean of bugs"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784111097033-approver-human-disagreement-confirmed-protected-pa.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784111097033-approver-human-disagreement-confirmed-protected-
 **Corollary for false-safe watch:** the ONLY false-safe risk on this class would be if such a PR merged WITHOUT any human review touching it (rubber-stamp), which would suggest the gate adds friction with no payoff. #12086 is the opposite — heavy human engagement — so the gate paid for itself.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784111097033-approver-human-disagreement-confirmed-protected-pa.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784111097033-approver-human-disagreement-confirmed-protected-pa.md`_

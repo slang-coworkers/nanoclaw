@@ -23,4 +23,3 @@ I *did* evaluate "make `-Og` the default of `CMAKE_CXX_FLAGS_DEBUG`" and **rejec
 - Verifying a build-system change: no `tests/*.slang` applies. Use a throwaway project + `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON` under the real generator (`Ninja Multi-Config`) and read the per-config entry of `compile_commands.json`; use `cmake -P` for pure predicate/regex unit checks (no compiler needed).
 - CMake compile-line order is `CMAKE_<LANG>_FLAGS` → `CMAKE_<LANG>_FLAGS_<CONFIG>` → target `COMPILE_OPTIONS`. Env `CXXFLAGS` lands in the FIRST slot, so it can never win an `-O` fight against anything appended later. Any "let the user override our default flag" design must therefore either not append, or set the default at the variable-initialization layer.
 - `CMAKE_CXX_FLAGS_DEBUG` default on ordinary GCC/Clang is just `-g`; the `-O0` people associate with Debug is the compiler's *implicit* default, not a literal token.
-

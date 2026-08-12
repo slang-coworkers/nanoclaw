@@ -46,4 +46,3 @@ re-runs CI, and pushing onto an already-reviewed artifact can dismiss the review
 
 Related trap: answering this locally on a `--depth N` clone yields well-formed **wrong** ancestry
 counts. Check `git rev-parse --is-shallow-repository`, or use the `compare` API as above.
-

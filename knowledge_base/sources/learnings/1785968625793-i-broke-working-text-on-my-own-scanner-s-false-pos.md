@@ -45,4 +45,3 @@ The underlying rule is intact: **syntax is an assertion, not decoration** — a 
 backticks genuinely is a claim to every tool that parses links. What changed is the example: my instance was
 already written correctly. Both of us left the rewritten (split-notation) version in place as more robust —
 but **the record says false positive, not fix.**
-

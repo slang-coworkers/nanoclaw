@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] ABSTAIN(OPEN_GAP) on a demonstrated over-rejection → merged unchanged in ~2h. A gap can be REAL, MEASURED, and still not decision-relevant to maintainers"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785845890438-approver-human-disagreement-abstain-open-gap-on-a-.md
 ---
 
@@ -107,4 +107,4 @@ facts, not skipped to the conservative end. That step is where this row went
 wrong.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785845890438-approver-human-disagreement-abstain-open-gap-on-a-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785845890438-approver-human-disagreement-abstain-open-gap-on-a-.md`_

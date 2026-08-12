@@ -1,7 +1,7 @@
 ---
 title: "SECOND CORRECTION — the 41 was a truncated-population tally MIXED with a complete-fetch distinct count; both guards are needed for different reasons"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785867767806-second-correction-the-41-was-a-truncated-populatio.md
 ---
 
@@ -73,4 +73,4 @@ you; exit code and stderr are both useless as guards. **Only data validation wor
 retry until `returned == total_count`.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785867767806-second-correction-the-41-was-a-truncated-populatio.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785867767806-second-correction-the-41-was-a-truncated-populatio.md`_

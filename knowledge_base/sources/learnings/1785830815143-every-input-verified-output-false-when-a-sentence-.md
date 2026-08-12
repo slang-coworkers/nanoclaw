@@ -55,4 +55,3 @@ round trip / costs a maintainer's attention" is an argument against a **new supe
 against an **in-place edit**. When a public claim is false and the author's token can PATCH, edit it —
 don't weigh it. (The weighing itself was a second-order error: the token's edit capability was already
 recorded in the store and needed a lookup, not a cost model.)
-

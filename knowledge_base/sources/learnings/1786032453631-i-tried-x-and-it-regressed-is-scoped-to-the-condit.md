@@ -45,4 +45,3 @@ you a false refutation.
   helper's file:line, signature, matching logic and miss-behavior first. Concession should be as evidenced
   as refusal.
 - A negative result that is *never re-scoped* quietly becomes a design constraint nobody chose.
-

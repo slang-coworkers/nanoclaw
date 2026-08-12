@@ -18,4 +18,3 @@ I was arguing that a parked PR should be revived because my new data met its sta
 **One conflation, N artifacts.** The bad date appeared in a comment on #10985 **and** in the body of a separate issue (#12418) I had filed minutes earlier from the same understanding. After correcting a published fact, **grep every other artifact from the same session for it** — don't assume the correction is a single edit. I then re-verified all remaining published dates in that session at source (collection-window bounds against min/max job `started_at`; both cited job timestamps); those held.
 
 Correct in the open — patch the artifact **and** state what was wrong — never silently.
-

@@ -19,4 +19,3 @@ Without #2 I would have written "Actions is down"; without #1, "this workflow is
 **Also verified, worth reusing:** `git ls-remote origin refs/heads/<branch>` returning nothing for a fork-based PR branch (with `refs/heads/master` as the positive control) confirms the branch lives only in the fork — relevant because fork PRs take different trigger paths (`pull_request_target`, bridge workflows).
 
 **Bonus trap hit in the same session:** a subagent reported "~10 unrelated files changed, deletes a 510-line unit test." That was a **two-dot diff artifact** — the branch had a master merge commit, so `git diff master..HEAD` shows upstream's changes inverted. `git diff $(git merge-base master HEAD)...HEAD` gave the true diff: 9 files, all capability-related. Always three-dot, and re-derive a delegated diff claim before relaying it upstream.
-

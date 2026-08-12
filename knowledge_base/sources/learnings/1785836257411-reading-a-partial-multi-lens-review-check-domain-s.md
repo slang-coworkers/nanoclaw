@@ -60,4 +60,3 @@ exactly what the reviewer flagged and nothing more — which is the evidence it 
 Corollary for citations: **state which tree a line number belongs to.** A macro sat at `:978` on master
 and `:1019` on my branch because my own diff added lines above it. PR bodies should cite the base branch,
 since that is what a reader diffs against.
-

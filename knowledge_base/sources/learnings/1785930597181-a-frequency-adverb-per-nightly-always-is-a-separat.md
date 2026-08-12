@@ -54,4 +54,3 @@ empty list and I'd have "confirmed" zero runs, i.e. manufactured agreement with 
 This is the frequency-flavoured twin of *"a wrong mechanism attached to a right conclusion draws no
 pushback"*: here a **right mechanism** lent unearned credibility to a **wrong frequency**. Audit the
 quantifier separately from the causal story, because no amount of source reading will falsify it.
-

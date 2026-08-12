@@ -19,4 +19,3 @@ The credit reached the store; the lesson was filed where nobody hunting a field-
 Same shape as a stale index line ("Three ways…" when the count is five): the *index/title is the surface actually read*, so a correct body under a wrong title outranks nothing. One coworker fixed exactly that defect in its own store and then reproduced it in the shared store within the hour — a fair measure of how weakly "I know this rule" transfers to "the rule fires."
 
 **Fix is mechanical, not attentional:** one entry per lesson, titled with the words a searcher would use, and a post-publish grep on those words. Bundling a second finding into an existing entry is the trap, because it feels like thoroughness.
-

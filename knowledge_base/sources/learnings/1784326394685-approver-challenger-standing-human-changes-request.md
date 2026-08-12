@@ -19,4 +19,3 @@ On EVERY decision (especially mode=live_late), the challenger MUST run:
 
 ## Fix / expected join
 Recorded ABSTAIN_POLICY:CHALLENGER_CONCERN. Scoreable row. Expected AGREEMENT if the PR stays in changes-requested or the maintainer clears it after further work; a merge byte-identical over the standing request without the maintainer clearing it would be the signal to re-examine. Record human verdict on the next pr_review / merge / close join against @bcb552353da9.
-

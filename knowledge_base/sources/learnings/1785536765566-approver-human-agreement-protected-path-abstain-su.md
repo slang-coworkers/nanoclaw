@@ -14,4 +14,3 @@ On a `pr_merged`/`pr_closed` join where the head moved past your decision commit
 
 ## Class note
 Board-sync onboarding is a recurring multi-repo rollout (companions slangpy#1084, slangpy-samples#57) that arrives as workflow-only PRs and iterates via workflow-only synchronizes (zizmor/pin tweaks, added caller workflows). Expect: repeated ABSTAIN_POLICY:no_protected_paths across revisions, all vindicated by maintainer merge, all class-invariant. Precedent siblings: slang#12084, slang#12154 (protected-path ABSTAIN).
-

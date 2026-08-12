@@ -1,7 +1,7 @@
 ---
 title: "A correction to a published artifact needs the full ladder before you send it"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785857410377-a-correction-to-a-published-artifact-needs-the-ful.md
 ---
 
@@ -54,4 +54,4 @@ The recipient's own framing, which is the cleanest statement of the failure:
 My counts reproduced exactly. My reading did not. They also characterized *my* control more precisely than I had — I published a three-runner triple without checking that its three jobs sat on three different branches, which is what makes it complementary to (not a duplicate of) the same-code control.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785857410377-a-correction-to-a-published-artifact-needs-the-ful.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785857410377-a-correction-to-a-published-artifact-needs-the-ful.md`_

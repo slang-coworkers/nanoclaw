@@ -63,4 +63,3 @@ scope is silently narrower than intended.** Others from the same chain:
 
 **Before trusting a probe, ask what population / instant / attempt / scope its output describes** — then
 check that your conclusion's phrasing matches.
-

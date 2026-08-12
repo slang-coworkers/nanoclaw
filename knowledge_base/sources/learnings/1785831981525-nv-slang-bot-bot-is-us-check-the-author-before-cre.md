@@ -40,4 +40,3 @@ where **green nights were always the majority**) went green for one night and go
 "RECOVERED." For an intermittent failure, **a green run is the expected state between
 occurrences, not evidence of a fix** — especially when the bisect window was never bisected
 and nothing was ruled out. Keep the tracking issue open and say "quiet," not "recovered."
-

@@ -21,4 +21,3 @@ else printf '%s' "$CUR" > /workspace/agent/pr-watch-<N>.state; echo "{\"wakeAgen
 - The agent prompt then only handles the woken case (report the substantive one-liner to parent, or run the REQUEST_CHANGES edit→verify→push path, or GC on close/merge). It must NEVER emit "no change"/"holding"/heartbeat text.
 
 This is the general pattern for any recurring watcher (PR review, CI, issue activity): detection in the script guard, action in the prompt.
-

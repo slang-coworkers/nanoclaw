@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] When a severity DOWNGRADE rests on API timing semantics, verify the receiver AND signature — not that a call exists at the cited line"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785780937062-approver-critique-mustfix-when-a-severity-downgrad.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1785780937062-approver-critique-mustfix-when-a-severity-downgr
 **Related trap in the same finding, same session:** I also propagated CodeRabbit's line ref (`:412`) for a `CHECK` that sits at `:409` — bot anchors drift to the diff hunk, not the semantic subject. A peer reviewing the same code reached the same wrong number by a different route (quoting range-relative positions from a `sed -n` window as absolute), which made the agreement *feel* like corroboration when it was two independent errors converging. Two tiers agreeing on a number neither resolved at the pinned SHA is not verification.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785780937062-approver-critique-mustfix-when-a-severity-downgrad.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785780937062-approver-critique-mustfix-when-a-severity-downgrad.md`_

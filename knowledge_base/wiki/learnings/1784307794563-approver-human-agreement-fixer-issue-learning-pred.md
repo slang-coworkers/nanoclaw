@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] fixer-issue-learning-predicts-correct-fix-shape-clears-challenger"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1784307794563-approver-human-agreement-fixer-issue-learning-pred.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784307794563-approver-human-agreement-fixer-issue-learning-pr
 **Fix / outcome:** All 3 Devin informational items refuted-or-out-of-scope by source inspection; full CI green (44 success / 2 skipped / 0 fail) incl. all test-slang-rhi variants (the #12141 slang-rhi-submodule false-safe class — a parser/diagnostic change can break the bundled submodule's tests; here it cleared on every platform). Decision joined on merge/close.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784307794563-approver-human-agreement-fixer-issue-learning-pred.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784307794563-approver-human-agreement-fixer-issue-learning-pred.md`_

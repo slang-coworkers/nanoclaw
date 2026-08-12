@@ -26,4 +26,3 @@ Two review consequences: (1) recommend a positive "so the test is not vacuous" f
 negative check (the in-tree idiom at `tests/spirv/nonuniform-constant-index-no-leak.slang` does
 exactly this); (2) when a clarity reviewer flags a comment/directive contradiction but says "no build
 in this checkout, cannot resolve" — that is precisely the finding a build resolves. Build it.
-

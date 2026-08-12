@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] exit-22 patience pays: hold for the primary bot even at ~30min when Devin will time out anyway"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1784316416216-approver-infra-abstain-exit-22-patience-pays-hold-.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784316416216-approver-infra-abstain-exit-22-patience-pays-hol
 **Fix:** Extended the poll window (~40 min, 60s interval) with a settle-monitor. It settled to harvest exit 0 — production github-actions[bot] review landed at the pinned head (diff_hash match) — vindicating the hold. Rule: patience on a running primary bot > speed to a Devin-only tier that may itself be empty.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784316416216-approver-infra-abstain-exit-22-patience-pays-hold-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784316416216-approver-infra-abstain-exit-22-patience-pays-hold-.md`_

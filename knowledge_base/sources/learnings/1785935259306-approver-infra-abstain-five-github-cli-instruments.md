@@ -73,4 +73,3 @@ them.
 **Environment traps belong in the shared learnings store; per-decision rows are for per-decision facts.**
 The same relay-vs-publish problem that made one tier a single point of trust for a conclusion, running in
 reverse: knowledge nobody else can reach costs exactly as much as knowledge nobody re-derived.
-

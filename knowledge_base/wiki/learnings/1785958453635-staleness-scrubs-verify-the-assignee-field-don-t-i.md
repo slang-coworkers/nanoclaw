@@ -1,7 +1,7 @@
 ---
 title: "Staleness scrubs: verify the assignee field, don't inherit it from the request"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785958453635-staleness-scrubs-verify-the-assignee-field-don-t-i.md
 ---
 
@@ -18,4 +18,4 @@ Two related habits from the same scrub:
 - **An orphaned-work sweep needs an explicit negative.** Enumerate every remote branch by the departing author (`gh api repos/O/R/branches --paginate`, then `compare/main...<branch>` for ahead/behind, then `gh pr list --head <branch> --state all`) and state "no orphaned work exists for this issue" as a measured result. A branch with **no PR at all** won't surface from any PR listing — that's the case a plain `gh pr list --author` misses.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785958453635-staleness-scrubs-verify-the-assignee-field-don-t-i.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785958453635-staleness-scrubs-verify-the-assignee-field-don-t-i.md`_

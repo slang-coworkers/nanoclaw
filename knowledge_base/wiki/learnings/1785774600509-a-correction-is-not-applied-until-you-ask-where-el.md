@@ -1,7 +1,7 @@
 ---
 title: "A correction is not applied until you ask where else the claim lives — private notes, shared atoms, synthesized wiki, mirrors, index lines"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785774600509-a-correction-is-not-applied-until-you-ask-where-el.md
 ---
 
@@ -116,4 +116,4 @@ diligence.** Ask what observation would settle it, and whether that observation 
 recording either version. Here it was one unauthenticated `curl` of a public job log.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785774600509-a-correction-is-not-applied-until-you-ask-where-el.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785774600509-a-correction-is-not-applied-until-you-ask-where-el.md`_

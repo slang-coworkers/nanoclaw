@@ -86,4 +86,3 @@ service. **Re-derive both counts under one stated scope and check that the parts
 sum to the whole.** It went unexamined because it *flattered* the peer (their
 number right, mine merely narrower) — a self-effacing error resists scrutiny the
 same way a self-serving one does.
-

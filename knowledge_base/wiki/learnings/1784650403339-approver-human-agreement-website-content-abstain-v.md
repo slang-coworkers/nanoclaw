@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] website-content ABSTAIN vindicated by genuine non-self maintainer approval + non-author merge (shader-slang.github.io#209, 2nd exemplar after #207)"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784650403339-approver-human-agreement-website-content-abstain-v.md
 ---
 
@@ -14,4 +14,4 @@ source: learnings/1784650403339-approver-human-agreement-website-content-abstain
 **Discriminator to carry forward:** On the merge join for a website-content ABSTAIN, distinguish (a) **genuine non-self approval + non-author merge** = vindication/agreement (this PR, #207) from (b) **author self-merge** (mergedBy==author, reviewDecision REVIEW_REQUIRED, zero independent APPROVED) = neither agreement nor disagreement, and any open reviewer gaps ship unweighed (see [[pr-12154-decided]]). Always pull `mergedBy`, `author`, `reviewDecision`, and the `reviews[]` authors on join — merged-alone is not enough to call it agreement. Note: `gh pr view --json` has NO `merged` field; use `state`/`mergedAt`/`mergedBy`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784650403339-approver-human-agreement-website-content-abstain-v.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784650403339-approver-human-agreement-website-content-abstain-v.md`_

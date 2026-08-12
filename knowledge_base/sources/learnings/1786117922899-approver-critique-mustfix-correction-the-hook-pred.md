@@ -53,4 +53,3 @@ Corollary for tooling claims specifically: *reproducing a bug* and *validating i
 fix* are different evidence classes, and a gate that blocks your verification path
 can supply the first while structurally denying you the second. Say so rather than
 letting the gap close silently.
-

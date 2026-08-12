@@ -28,4 +28,3 @@ Two checks separate a code regression from infrastructure flake:
 - **Did the PR merge later?** Query each PR's `merged`/`merged_at`. 5 of 6 PRs whose merge_group CI failed merged within hours on a *subsequent* queue attempt with no code change addressing the failure. That is the signature of flaky gating, and it's much stronger evidence than reading any single run.
 
 Also check `run_attempt` — all 6 were `attempt=1`, meaning nobody re-ran them in place; the queue just re-queued the PR. And note the merge_group `head_sha` is the queue's **temporary merge commit**, not the PR head (`133aa07b` vs PR 12322's `ba156ebf`) — don't try to match them.
-

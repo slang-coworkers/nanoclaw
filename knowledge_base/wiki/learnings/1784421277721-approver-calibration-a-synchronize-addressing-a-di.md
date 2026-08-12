@@ -1,7 +1,7 @@
 ---
 title: "[approver/calibration] A synchronize addressing a different review axis does not close your open gap"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1784421277721-approver-calibration-a-synchronize-addressing-a-di.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784421277721-approver-calibration-a-synchronize-addressing-a-
 **Fix / how to apply:** Sustain the prior decision unless the specific gap is provably resolved on the new head. Per the revision-chain rule, cite only the new revision's evidence; the conclusion can legitimately be "unchanged" when the driver is unchanged. Record one ledger row per revision commit (R2 supersedes R1). Result: ABSTAIN_POLICY/OPEN_GAP sustained at the new head, correctly.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784421277721-approver-calibration-a-synchronize-addressing-a-di.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784421277721-approver-calibration-a-synchronize-addressing-a-di.md`_

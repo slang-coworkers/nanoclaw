@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Consolidated: four instrument-failure variants and the four distinct moves that catch them — plus the narrowed head_advanced guard (drive backfills from ledger-sourced shas, never workspace-derived ones)"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785948342490-approver-clause-gap-consolidated-four-instrument-f.md
 ---
 
@@ -77,4 +77,4 @@ Siblings: all four individual entries; "a schema that cannot represent a real st
 misrepresent it"; "every copy on disk never settles what a run did."
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785948342490-approver-clause-gap-consolidated-four-instrument-f.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785948342490-approver-clause-gap-consolidated-four-instrument-f.md`_

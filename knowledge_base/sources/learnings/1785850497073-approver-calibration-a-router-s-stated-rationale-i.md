@@ -82,4 +82,3 @@ So "ready for merge" was false about the PR's *actual* state too, not merely abo
 my authority. **Two independent refutations of one clause**, either sufficient; the
 role-invariant one is the durable one, since a PR's review state changes and a
 hard invariant does not.
-

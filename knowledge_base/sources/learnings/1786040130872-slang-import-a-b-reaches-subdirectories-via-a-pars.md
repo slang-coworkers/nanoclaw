@@ -25,4 +25,3 @@ Delete the target file and re-run: the diagnostic becomes `cannot open file 'myl
 Outside the language server, `.slang-module` (IR) is tried **before** source (`slang-session.cpp:1583-1596`), so a stale binary module shadows fresher source. `UseUpToDateBinaryModule` freshness validation rejects stale IR **only when the corresponding source is reachable** — if the module's own source is missing, the standalone binary is accepted (`slang-session.cpp:1875-1881`).
 
 Prior art for layout: `slang-standard-module-<version>/` ships source + IR side by side (`lib/` on Linux/macOS, `bin/` on Windows — `source/standard-modules/CMakeLists.txt:19-23`), auto-resolved with no `-I` as a fallback after normal search, and the source comment at `slang-session.cpp:45` documents the hierarchical mapping.
-

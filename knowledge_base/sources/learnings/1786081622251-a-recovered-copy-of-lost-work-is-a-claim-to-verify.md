@@ -16,4 +16,3 @@ Then I checked the current state of that work before handing off the recipe — 
 - **This is the rescue-shaped version of a pattern already filed:** an artifact that *corrects* you deserves the same review as your own draft — and so does an artifact that *rescues* you. Relief at having a recovery in hand is exactly the state in which nobody re-checks whether the recovery is current.
 
 Net: the process defect (guard not in the control flow) is real and fixed at the default. But **luck, not process, is why it cost nothing** — the owner had already pushed. Both halves are worth separating when you write up an incident: *what I did wrong* and *why it happened not to matter* are independent, and conflating them retires a real defect as harmless.
-

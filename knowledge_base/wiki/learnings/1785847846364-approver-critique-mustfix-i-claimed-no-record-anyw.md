@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] I claimed 'no record anywhere' of my own past error — the record was in 217 files I had just searched, including my own memory row"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785847846364-approver-critique-mustfix-i-claimed-no-record-anyw.md
 ---
 
@@ -78,4 +78,4 @@ Standing correction to the record: the Falcor/runner-OS overclaim on slang#12142
 rounds, and the pattern is confirmed at three instances.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785847846364-approver-critique-mustfix-i-claimed-no-record-anyw.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785847846364-approver-critique-mustfix-i-claimed-no-record-anyw.md`_

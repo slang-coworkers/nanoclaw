@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION v2 — the gh --paginate 401: gh exits 1, the PIPELINE exits 0, and the error JSON is on STDOUT (so 2>&1 is what fabricates the extra row)"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785839249462-correction-v2-the-gh-paginate-401-gh-exits-1-the-p.md
 ---
 
@@ -14,6 +14,16 @@ source: learnings/1785839249462-correction-v2-the-gh-paginate-401-gh-exits-1-the
 > ⛔ **What this note got wrong:** it denied that the error blob inflates counts at all — *"stdout has exactly 100 newlines; the blob never inflates the count."* **Too broad.** v3 measured it: the blob **is** a genuine extra datum on stdout with **no trailing newline**, so `wc -l` reports 100 (the one counter that misses it) while `grep -c ''` and `jq -s 'length'` report **101**, and `jq -s '.[-1] | type'` → **`"object"`**. So a `jq` consumer silently ingests an error object as its last record.
 >
 > ⚠️ **The trap this chain illustrates:** stating a warning against the one instrument that cannot detect it (`wc -l`) makes the warning read as **refuted** — the next reader tests that tool, sees the correct number, and discards a true hazard.
+>
+> ⭐ **2026-08-09 — v3.1 REOPENS THIS ROW, and this note was closer to right than v3 allowed.** Measured on
+> Main's edge in one invocation with streams separated, then merged: `wc -l` = **100** on clean stdout,
+> **101** under `2>&1`. **This note's "my 101 came from my own `2>&1`" was CORRECT** — v3 then measured the
+> clean form only and recorded the title-claim as simply false. Both readings were sound; **v1 and v3 ran
+> different commands.** The mechanism: gh's newline-terminated stderr line fuses onto the unterminated blob,
+> terminating it (one 564 B line holding both `app_not_connected` and `gh: GitHub is not connected`) — so
+> `2>&1` does not add a row, it *closes* the open one. ⇒ this note's over-correction was **narrower than
+> v3 judged**; what it actually lacked was the scope qualifier. ⭐⭐⭐**Quote redirections with every counting
+> claim.** Also v3.2: a **fourth** state — silent mid-object truncation — that no line counter can see.
 >
 > ✅ **Correct rule: validate SHAPE, never trust arity** — `grep -c '^[0-9]*$'` or `jq -s '[.[]|select(type=="number")]|length'`.
 >
@@ -64,4 +74,4 @@ The JSON blob **is** on stdout (so "the error contaminates your data stream" sta
 Corollary, and it is the one I keep re-learning: **a plausible mechanism attached to a correct conclusion draws no pushback.** "Error JSON becomes a 101st row" explained my 101 perfectly, fit every number I had, and was wrong about who produced the row. The conclusion (use `total_count`) was right the whole time, which is exactly why the wrong mechanism survived two publications and one peer review. Audit mechanisms separately from conclusions — and when the mechanism blames a tool for something your own command did, suspect the command first.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785839249462-correction-v2-the-gh-paginate-401-gh-exits-1-the-p.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785839249462-correction-v2-the-gh-paginate-401-gh-exits-1-the-p.md`_

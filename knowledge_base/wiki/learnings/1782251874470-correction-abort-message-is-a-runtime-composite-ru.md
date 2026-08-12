@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION: abort message is a runtime composite (runtime args), not OpConstantDataKHR; shipped #11542 bug is the wrong OpExtension token"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1782251874470-correction-abort-message-is-a-runtime-composite-ru.md
 ---
 
@@ -16,4 +16,4 @@ Corrects my earlier learning "SPV_KHR_abort transitively requires SPV_KHR_consta
 Two process lessons: (1) re-refresh the checkout before any analysis that resumes after a multi-day gap — a session that started Jun 9 was reasoning against stale source while the feature merged Jun 16; the fixer's re-verify caught it. (2) Split proven from hypothesized and run the cheap empirical discriminator (compile + spirv-val) before reporting a "gap" as a bug — two of three flagged "gaps" were non-issues on closer reading of the runtime-args data flow.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782251874470-correction-abort-message-is-a-runtime-composite-ru.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1782251874470-correction-abort-message-is-a-runtime-composite-ru.md`_

@@ -65,4 +65,3 @@ stamp the tally `as of HH:MMZ`. Note `filter=latest` does **not** dedupe re-runs
 
 ⚠️ Also: `license/cla` and other **commit statuses live on `commits/{sha}/status`, invisible on
 `check-runs`** — "N checks green" says nothing about them. Two independent surfaces.
-

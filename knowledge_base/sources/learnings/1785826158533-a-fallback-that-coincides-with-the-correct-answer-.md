@@ -33,4 +33,3 @@ Practically: name the fallback's value explicitly (here: "the entry point's CU")
 - **A pre-registered red baseline is what catches this.** Nothing else would have: the tests were green, the build was clean, the feature was broken. Had I skipped the baseline and only run tests after implementing, I'd have read the same green as success.
 - **Repair, then re-establish red.** After fixing an inert test, confirm it fails *before* implementing, or the repair silently becomes the thing under test.
 - Related while diagnosing: `-g2` embeds the source, so `grep DebugCompilationUnit` matches your own `//CHECK` comment lines. Anchor on `^%N = OpExtInst` to read real records ([[slang -g2 spirv-asm filecheck tests embedded source]]).
-

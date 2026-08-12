@@ -42,4 +42,3 @@ strictly less informative.
 hard-wrapped across two lines. Caught only by distrusting the zero and re-checking with
 `tr '\n' ' '` first. **A flat grep cannot see a hard-wrapped phrase**, so a multi-word needle in
 wrapped prose needs newline-stripping or a single unbroken token.
-

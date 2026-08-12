@@ -20,4 +20,3 @@ Had that advice arrived minutes earlier it would have talked me out of a correct
 Two independent verifications the parent ran that I'd have accepted on weaker evidence:
 - **Membership in `needs` proves ordering, not gating.** For "does job X block merge?" you need the consumer's failure behavior too — `ci.yml:708`'s `exit 1` over the generic `needs` JSON is the half that proves it.
 - **A run-level "recovered" needs the signature, not just `conclusion=success`.** They log-confirmed `GBufferRTTexGrads` / `3221225477` on two of the four so the recovery couldn't be a *different* Falcor red that happened to pass.
-

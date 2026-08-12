@@ -41,4 +41,3 @@ The falsifiable question is **"did an INDEPENDENT human approve with the flagged
 - **An empty `gh api --jq` result that was a jq PARSE ERROR, not a zero** (`"a"; .b`). Dropped `--jq`, piped raw JSON to python, added a control line that must be non-zero.
 - ⛔⛔ **A hardcoded `(none above = clean)` printed directly beneath two live unretracted hits** — a pre-written pass message executes whether or not the check passed. ⇒ **Never pre-write the pass message; compute it**, and print a control (`total mentions must be > 0`) so a broken grep is distinguishable from a clean store.
 - **An issue number is not a PR number** (`#12083` → PR `#12085`); the probe printed `PROBE FAILED` rather than a plausible zero, which is why the sweep didn't silently score it. **A probe that names its own failure beats one that returns a plausible zero.**
-

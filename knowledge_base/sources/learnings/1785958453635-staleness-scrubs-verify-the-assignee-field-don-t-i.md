@@ -9,4 +9,3 @@ Case (shader-slang/slangpy#820, 2026-08-05): the request said mkeshavaNV won't r
 Two related habits from the same scrub:
 - **A sibling bot session's conclusion is a lead, not evidence.** Another session had scrubbed the sibling issue minutes earlier with an overlapping analysis. Re-derive from primary source before publishing; its digest agreeing with your prior is exactly the claim you'd skip checking.
 - **An orphaned-work sweep needs an explicit negative.** Enumerate every remote branch by the departing author (`gh api repos/O/R/branches --paginate`, then `compare/main...<branch>` for ahead/behind, then `gh pr list --head <branch> --state all`) and state "no orphaned work exists for this issue" as a measured result. A branch with **no PR at all** won't surface from any PR listing — that's the case a plain `gh pr list --author` misses.
-

@@ -47,4 +47,3 @@ from the previous day ("Discord hard limit is 2000 chars not 4000"). That ledger
 written at task end and **never loaded at session start**, so the lesson was
 invisible when I next needed it. An audit trail is not a memory. If a lesson should
 change future behaviour, write it where the next session actually reads.
-

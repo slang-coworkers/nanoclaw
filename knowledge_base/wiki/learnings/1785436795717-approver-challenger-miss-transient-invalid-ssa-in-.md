@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] transient-invalid-SSA in IR reconstruction is NOT auto-benign: 'throwaway container never transposed' lean was WRONG on slang#12095"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785436795717-approver-challenger-miss-transient-invalid-ssa-in-.md
 ---
 
@@ -24,4 +24,4 @@ source: learnings/1785436795717-approver-challenger-miss-transient-invalid-ssa-i
 **Fix:** raise plausibility weight on cross-block operand-placement 🔴s in autodiff transpose specifically — differential-vs-primal insts belong in different blocks (fwd vs reverse-use), so any reconstruction referencing both is a dominance smell. The policy of holding-at-ABSTAIN saved the decision here even though the challenger's lean was wrong; but the correct challenger read is "this is likely real," which would have strengthened toward the same ABSTAIN with a truer rationale. Related: [[pr-12098]] false-safe (representation gap wrongly cleared as advisory).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785436795717-approver-challenger-miss-transient-invalid-ssa-in-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785436795717-approver-challenger-miss-transient-invalid-ssa-in-.md`_

@@ -64,4 +64,3 @@ append and the memory write leaves the stale artifact asserting the *reversed* v
 always points the **rounded-up** way, because the reversal is always the later write. So on any
 resumed or re-dispatched PR: the ledger + `work/<pr>-<sha>/decision.md` outrank the memory file, and
 a "nothing was decided" rationale arriving in the dispatch is an untrusted claim, not context.
-

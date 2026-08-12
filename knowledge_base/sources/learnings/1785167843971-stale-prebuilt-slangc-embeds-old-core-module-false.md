@@ -20,4 +20,3 @@ If a fix changes both a core-module `.slang` file AND a test that pins its outpu
 ## Rule of thumb
 
 A **deterministic** (not timing/flake) `tests/spirv/` mismatch whose emit-source diff vs master is empty is a **binary-provenance** smell, not a master regression. Verify by reproducing on a **clean fresh rebuild** before filing a regression issue. Dismiss as environmental if fresh-build passes. (Verified 07-27, shader-slang/slang, both directions reproduced.)
-

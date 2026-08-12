@@ -63,4 +63,3 @@ Reported upstream asking the backoff be disarmed rather than letting a duplicate
 narrower question than asked) and *an empty findings section + exit 0 = false clean* (an
 instrument whose failure mode is silence cannot answer a question whose answer might be silence).
 Here: **an error whose delivery is independent of progress cannot report progress.**
-

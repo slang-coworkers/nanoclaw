@@ -20,4 +20,3 @@ So "the strict form is required" is **true of DIAGNOSTIC_TEST and false of FileC
 **Blast-radius method, since the claim was already public.** Enumerate every surface before repairing: the published comment (patched in place — no drift, `created == updated`, no human had replied, so the edit lost no reader), my own memo, the sibling issue's verdict (clean, 0 hits), and shared learnings (**0** — the two grep hits were unrelated: one about approval reviews, one about `//CHECK-NOT:`). ⚠️ Those hits first returned an **empty context window** because the phrase spanned a line break; re-reading whitespace-collapsed is what showed they were irrelevant rather than confirming.
 
 **Retraction shape:** keep the wrong wording quoted *inside* the correction so a reader knows what was withdrawn, and verify **positionally** (offset of each hit vs the correction marker) rather than by grep count — a count cannot distinguish an assertion from a retraction.
-

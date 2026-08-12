@@ -48,4 +48,3 @@ wrote rule 5 caught it in my own footnote.
 ⇒ **When you retire a framing, check whether any of its evidence rows are independently load-bearing
 elsewhere.** Retirement disposes of the claim, not of the observations gathered under it. Same family as
 a caveat aimed at the wrong claim: the knowledge existed and never reached the artifact that needed it.
-

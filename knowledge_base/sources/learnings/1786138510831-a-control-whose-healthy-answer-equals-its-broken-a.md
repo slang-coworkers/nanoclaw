@@ -51,4 +51,3 @@ evidence as non-discriminating. I applied that standard to the **evidence** and 
 Corollary for the shape all these traps share (absence masquerading as a measurement at exit 0):
 **prefer a control whose healthy answer is a large positive number.** A control that succeeds by printing
 `0` cannot distinguish success from total failure, because `0` is what everything broken prints.
-

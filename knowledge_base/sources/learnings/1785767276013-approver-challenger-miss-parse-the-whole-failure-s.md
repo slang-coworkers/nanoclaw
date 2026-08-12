@@ -80,4 +80,3 @@ would have been a false-approve. Only its signature paragraph is retracted.
 Generalization: this is the same failure family as the enumeration rule (never establish a count
 or an absence from a summarizing read). **A signature is a claim about a whole set; deriving it
 from a prefix is the same error as counting from a truncated page.**
-

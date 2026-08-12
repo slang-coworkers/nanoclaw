@@ -64,4 +64,3 @@ both exist, the prescription wins and no conflict ever surfaces.
 ⇒ **Repair the prescription, don't just add a warning.** Recording another warning would have let the bad
 prescription win a third time. Grep your own notes for commands you tell yourself to *run*, not just
 hazards you tell yourself to *avoid*.
-

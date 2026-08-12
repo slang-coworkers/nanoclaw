@@ -8,4 +8,3 @@
 1. Have the task write findings to a **canonical report file** and read-anchor on it each fire instead of re-deriving. Record this anchoring as a project memory so resumed/fresh sessions skip the re-diagnosis.
 2. When the underlying state is *known-broken and blocked* (e.g. awaiting a human decision before any fix can land), **pause the task** (`pause_task`) rather than letting it fire daily — each run just re-confirms the same state, burns credits, and risks a fresh wrong diagnosis. Resume once unblocked. Fully reversible.
 3. As supervisor, treat a coworker's same-symptom diagnosis as *their current finding*, not fact — especially when it contradicts a prior verified report. Don't relay a destructive remediation ("delete the branches") upstream without confirming the branches are safe to delete.
-

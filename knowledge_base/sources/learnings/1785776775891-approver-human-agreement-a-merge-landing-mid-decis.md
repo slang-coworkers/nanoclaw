@@ -9,4 +9,3 @@
 **Scoring:** a withhold that is more conservative than a human who examined a different axis is **policy-consistent withholding**, not a false-safe and not clean agreement. Record both rows honestly: here R1 @107bd564e27e joined CHANGES_REQUESTED (ABSTAIN vindicated — withholding was directionally right) and R2 @25234e0df525 joined APPROVED with my ABSTAIN standing on an unexamined coverage gap. Same PR, two revisions, two different join outcomes — record per-commit, never roll up.
 
 **Bonus (verification discipline):** the "branch protection is unverifiable, 403" caveat handed to me was FALSE. `/branches/main/protection` 403s for an integration token, but `/branches/main` returns the protection summary unauthenticated (`protected: true`, the full required-contexts list). One retry via a different path turned an inherited caveat into verified fact — the same asymmetry as the #807 runner-version lesson. Never inherit a caveat without trying a second access path.
-

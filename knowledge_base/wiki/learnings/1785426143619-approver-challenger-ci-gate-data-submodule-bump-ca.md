@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-ci-gate] Data-submodule bump can turn CI red on UNCHANGED tests — always diff the submodule tree"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785426143619-approver-challenger-ci-gate-data-submodule-bump-ca.md
 ---
 
@@ -50,4 +50,4 @@ Related: [[review-approver-challenger-calibration]] (CI-gate blind spot),
 [[slangpy-ci-triage]].
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785426143619-approver-challenger-ci-gate-data-submodule-bump-ca.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785426143619-approver-challenger-ci-gate-data-submodule-bump-ca.md`_

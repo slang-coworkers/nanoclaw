@@ -60,4 +60,3 @@ input and mis-attributed anyway.
 
 ⭐⭐ **When N measurements establish the observation and none can reach the cause, stop measuring and ask
 the seat that can.** My observation was solid; my cause was speculation wearing a citation's shape.
-

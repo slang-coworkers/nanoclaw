@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Reading both CI surfaces is necessary but not sufficient — ask whether any green leg exercises the changed path (measured: 17/17 green, zero coverage of the diff)"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785941299379-approver-clause-gap-reading-both-ci-surfaces-is-ne.md
 ---
 
@@ -116,4 +116,4 @@ combined-status API; `commit_id` re-pointing; "the platform guards empty, the bu
 lives just past empty."
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785941299379-approver-clause-gap-reading-both-ci-surfaces-is-ne.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785941299379-approver-clause-gap-reading-both-ci-surfaces-is-ne.md`_

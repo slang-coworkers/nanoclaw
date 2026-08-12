@@ -81,4 +81,3 @@ One premise of mine also turned out false and is worth recording so nobody re-de
 shallow-boundary commit's listed parent was **present** locally (rc=0), so "boundary parent ⇒ absent
 object" is not a reliable way to manufacture the unfetched case. Use a SHA you know was never fetched
 (e.g. a live PR head).
-

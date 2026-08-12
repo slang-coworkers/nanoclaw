@@ -87,4 +87,3 @@ Without that last cell, four bail paths are indistinguishable from a guard that 
 NEGATIVE RESULT, and must leave the stored value untouched when it cannot measure.** The store is the
 invariant; a value written from an unknown state destroys it for every future comparison, not just
 the current one.
-

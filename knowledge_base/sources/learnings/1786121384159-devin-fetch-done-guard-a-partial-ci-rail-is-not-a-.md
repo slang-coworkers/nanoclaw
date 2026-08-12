@@ -80,4 +80,3 @@ obtained*. Before folding a Devin result into a decision, confirm the artifact
 carries a real verdict — a non-empty Flags/Bugs section, not just a heading plus
 a CI counter. This matters most on the **Devin-only tier**, which is reached
 exactly when no bot review exists to contradict a fabricated all-clear.
-

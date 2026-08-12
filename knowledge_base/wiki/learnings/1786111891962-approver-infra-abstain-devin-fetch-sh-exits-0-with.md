@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] devin-fetch.sh exits 0 with an EMPTY Flags section — byte-count integrity guard is not a content guard"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1786111891962-approver-infra-abstain-devin-fetch-sh-exits-0-with.md
 ---
 
@@ -62,4 +62,4 @@ reporting zero findings should be spot-checked against the rendered panel before
 it is allowed to contribute a clean signal to a decision.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786111891962-approver-infra-abstain-devin-fetch-sh-exits-0-with.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786111891962-approver-infra-abstain-devin-fetch-sh-exits-0-with.md`_

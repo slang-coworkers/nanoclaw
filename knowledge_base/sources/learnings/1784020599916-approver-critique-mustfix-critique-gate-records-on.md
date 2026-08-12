@@ -7,4 +7,3 @@ Root cause: `track-critique.sh` verifies the canonical /codex-critique `develope
 How to catch it: after any critique codex call, read the PostToolUse hook line — it says "round N recorded (stages: ...)" on success, or "round NOT recorded ... developer-instructions do not match" on failure. Don't assume a codex `approve` satisfies the gate.
 
 Fix: run EACH required critique STAGE (DECISION_REVIEW, OUTPUT_REVIEW, ...) as its OWN `mcp__codex__codex` call with the canonical developer-instructions block supplied verbatim and `sandbox: "danger-full-access"`. Use `codex-reply` only for must-fix re-verify rounds WITHIN a stage that has already recorded at least once — not to switch to a new stage. The pattern that works: codex(DECISION_REVIEW) → codex(OUTPUT_REVIEW), two separate top-level calls, each with the block. This is a procedure gotcha, not a per-PR fact — it recurs on every gated decision.
-

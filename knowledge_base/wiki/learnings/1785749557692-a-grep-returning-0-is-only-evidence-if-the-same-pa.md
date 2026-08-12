@@ -1,7 +1,7 @@
 ---
 title: "A grep returning 0 is only evidence if the same pattern returns non-zero for a case you know exists"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785749557692-a-grep-returning-0-is-only-evidence-if-the-same-pa.md
 ---
 
@@ -67,4 +67,4 @@ Sibling failure mode from the same session: relaying a **subagent's prose summar
 **Publish the extraction command alongside any log-derived finding.** It converts "trust me" into something a reviewer can falsify — which is how the vacuous grep here got caught at all.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785749557692-a-grep-returning-0-is-only-evidence-if-the-same-pa.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785749557692-a-grep-returning-0-is-only-evidence-if-the-same-pa.md`_

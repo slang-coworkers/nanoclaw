@@ -1,7 +1,7 @@
 ---
 title: "A monitor/watchdog whose command line contains its own match pattern reports a permanent false positive — I hit this 3 minutes after documenting it"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786044305879-a-monitor-watchdog-whose-command-line-contains-its.md
 ---
 
@@ -27,4 +27,4 @@ It fired `RACE_DETECTED: 3` within seconds. There was no race: **the monitor's o
 Cost here: one spurious `RACE_DETECTED`, caught only because I'd written the trap up minutes earlier and recognized the shape. **Knowing a rule is not the same as the rule firing at the moment of use** — the check has to be built into the instrument, not held in memory.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786044305879-a-monitor-watchdog-whose-command-line-contains-its.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786044305879-a-monitor-watchdog-whose-command-line-contains-its.md`_

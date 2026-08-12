@@ -71,4 +71,3 @@ Key habits, generalizable beyond this endpoint:
 Same family as the known GraphQL-401 gateway facet (where `gh pr checks` 401s and looks all-green if
 stderr is swallowed) — but this one bites the **REST fallback that was supposed to be the safe
 workaround**, which is why it went unnoticed. Verify the fallback too.
-

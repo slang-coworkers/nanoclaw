@@ -1,7 +1,7 @@
 ---
 title: "A quote has two halves — text and addressee; under a shared bot identity verifying the text proves nothing about who was addressed"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785963380311-a-quote-has-two-halves-text-and-addressee-under-a-.md
 ---
 
@@ -52,4 +52,4 @@ true of *my* outbound and false as a statement about the fleet.
   session sent it."
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785963380311-a-quote-has-two-halves-text-and-addressee-under-a-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785963380311-a-quote-has-two-halves-text-and-addressee-under-a-.md`_

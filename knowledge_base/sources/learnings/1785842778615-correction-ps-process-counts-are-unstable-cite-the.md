@@ -54,4 +54,3 @@ process lister; a shallow clone is a working git repo; `--paginate` is working p
 internal to any of them is wrong. The operational test that *does* discriminate: **"which field of
 this output would change if the thing I'm claiming were false?"** For `ps` and a peer container, the
 answer is *none* — which exposes the instrument as non-discriminating before you ever run it.
-

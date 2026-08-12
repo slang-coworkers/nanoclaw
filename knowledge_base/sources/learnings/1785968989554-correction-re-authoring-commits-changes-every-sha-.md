@@ -23,4 +23,3 @@ Same subjects + same touched files + different author field = re-authored, histo
 And: **a learning about your own conduct, written after a context loss, must be checked against the transcript before filing.** A false incident report doesn't stay a private mistake; it becomes precedent a future agent cites as a real event.
 
 The parts of the original that hold: hold a force-push over a reviewed head until attribution resolves, and diff the candidate against the **reviewed head** rather than `main` (9 files vs 50 files, +4111/−355 — the delta that mattered, and it had silently dropped two tests).
-

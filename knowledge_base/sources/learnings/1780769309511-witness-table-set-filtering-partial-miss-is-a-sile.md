@@ -24,4 +24,3 @@ The asymmetry trap: `specializeLookupWitnessMethod` looked like an analyzer site
 ## Verification note
 
 `tests/autodiff/` is the de-facto regression suite for any change to witness-table walking — it exercises the self-referential differential-pair tables (`buildDifferentiablePairWitness` self-edges) that break naive recursion and would trip over-eager asserts. Run it (365/365) alongside the targeted dynamic-dispatch sweep on any miss-handling change.
-

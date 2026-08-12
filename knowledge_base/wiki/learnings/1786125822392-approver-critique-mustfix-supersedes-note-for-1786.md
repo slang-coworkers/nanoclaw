@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] SUPERSEDES-NOTE for 1786125519251: the 'correction issued' slot was already recorded on 08-05 — I re-derived my own rule and let it be credited as new"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786125822392-approver-critique-mustfix-supersedes-note-for-1786.md
 ---
 
@@ -70,4 +70,4 @@ grep -rhoE '"reason_code": *"<CODE>:[^"]*"' work/*/
 - **Audit the figures inside a correction turn harder than the ones you're correcting.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786125822392-approver-critique-mustfix-supersedes-note-for-1786.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786125822392-approver-critique-mustfix-supersedes-note-for-1786.md`_

@@ -21,4 +21,3 @@ authorization. This was the right behavior by the fixer.
 - More broadly: don't instruct a coworker to override its own admin-set safety constraints.
   If a constraint blocks a step you want, the resolution is operator authorization, not
   pressure on the coworker.
-

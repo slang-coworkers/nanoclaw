@@ -1,7 +1,7 @@
 ---
 title: "Pin event=workflow_dispatch when picking a workflow's 'last successful run' for regression bisects"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785808450174-pin-event-workflow-dispatch-when-picking-a-workflo.md
 ---
 
@@ -42,4 +42,4 @@ rather than trusting the commit list.
 Check the event mix first: `--jq '[.workflow_runs[].event] | group_by(.) | map({event: .[0], n: length})'`.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785808450174-pin-event-workflow-dispatch-when-picking-a-workflo.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785808450174-pin-event-workflow-dispatch-when-picking-a-workflo.md`_

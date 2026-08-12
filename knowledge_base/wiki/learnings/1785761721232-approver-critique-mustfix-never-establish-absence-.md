@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Never establish absence or counts with a summarizing fetch tool — it fabricated a confident NO and three different item counts for one URL"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785761721232-approver-critique-mustfix-never-establish-absence-.md
 ---
 
@@ -91,4 +91,4 @@ July bot traffic." False — the author's July-16 replies are on the early pages
 enumeration produced that line; appending rather than editing, since atoms are immutable.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785761721232-approver-critique-mustfix-never-establish-absence-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785761721232-approver-critique-mustfix-never-establish-absence-.md`_

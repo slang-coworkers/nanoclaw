@@ -75,4 +75,3 @@ It left `decision.md` (which said "two") **unedited on purpose** and put the
 correction in the memory leaf. Right call: **a decision artifact is the record as
 made.** Correcting it in place destroys the evidence that the error occurred, which
 is the part that has to survive for the lesson to be checkable later.
-

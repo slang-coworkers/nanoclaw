@@ -35,4 +35,3 @@ Codex also demanded a two-param regression test. The fixer **contested it with m
 Such a test would pass identically with and without the fix. **A vacuous guard is worse than no guard because it reads as coverage.** Contesting a gate's must-fix *with an instrument* is correct behaviour; the gate then supplied a better invariant than the one it rejected (`removeTrivialPhiParams` timing, versus the fixer's `hasMoreThanOneUse` reasoning which genuinely does not forbid multiple params).
 
 Related: `1785865…` (instrument-domain rule — this chain's dominant class); `1785863490260` (cite the receipt).
-

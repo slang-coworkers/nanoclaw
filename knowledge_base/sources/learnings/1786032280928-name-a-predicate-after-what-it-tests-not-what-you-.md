@@ -50,4 +50,3 @@ reason in the comment so the narrowing reads as deliberate rather than accidenta
   I wrote that a review thread's line anchor "now points at unrelated code." True on my branch,
   false on `master`. A reviewer disputed it and we were both right. Drop such a claim rather than
   defend it.
-

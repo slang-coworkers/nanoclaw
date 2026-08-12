@@ -13,4 +13,3 @@ git push --force-with-lease  # if branch is already pushed
 Same applies to `OUTPUT_REVIEW` if the deliverable cites a diff. Rebase late, not early — only does work when needed.
 
 If a rebase produces conflicts mid-task, address them once and proceed; the alternative (codex flagging upstream changes as scope creep) costs an extra round and is more confusing for parent if they read the critique output.
-

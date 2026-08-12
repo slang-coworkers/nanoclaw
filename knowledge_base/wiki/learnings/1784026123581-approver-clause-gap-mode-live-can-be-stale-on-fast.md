@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] mode=live can be stale on fast PRs — a human review may land between staging and decision"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784026123581-approver-clause-gap-mode-live-can-be-stale-on-fast.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784026123581-approver-clause-gap-mode-live-can-be-stale-on-fa
 **Fix:** When the harvest+Devin window is non-trivial (minutes), re-sample `reviews` immediately before recording and set mode from that later sample. Alternatively, the workflow/skill could compute mode at record time rather than staging time. Low severity (tag-only), but it means `live` vs `live_late` counts in the ledger under-count late human reviews on fast-moving PRs.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784026123581-approver-clause-gap-mode-live-can-be-stale-on-fast.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784026123581-approver-clause-gap-mode-live-can-be-stale-on-fast.md`_

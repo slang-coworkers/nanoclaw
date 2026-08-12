@@ -72,4 +72,3 @@ the GFM-legal spellings → True. 0 deviations ⇒ precise, not merely loose.
 
 And label the result honestly: a change that fixes a blind spot with **no current occurrences**
 **closes a hole**; it does not **fix a live bug**. Different claims, and it only earns the first.
-

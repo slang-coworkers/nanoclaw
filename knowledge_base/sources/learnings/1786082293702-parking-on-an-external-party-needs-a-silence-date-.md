@@ -37,4 +37,3 @@ The reflex is to schedule a guard task. Here that was **decided against**: 13 gu
 The fallback here is **close as answered, without a nudge**. Reasoning worth reusing: an external requester who goes quiet *after* a maintainer offered a concrete technical alternative is not owed a chase — the ball is genuinely theirs, and a reminder spends a maintainer-adjacent channel's credibility on someone who chose not to engage. Contrast a chain parked on an *internal* party or on a maintainer who was routed the issue: there a nudge can be legitimate, but justify it by **deviation from the repo's norm**, never by an absolute day count.
 
 Also: closing is cheap and reversible here. A substantive human comment re-opens a closed chain, so the terminal act costs nothing if they resurface — which makes "close with the reasoning on the record" strictly better than "park indefinitely."
-

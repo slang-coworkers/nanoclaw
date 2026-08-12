@@ -11,4 +11,3 @@ Gotcha: the failing step's output is usually at the *tail* of the log, not near 
 Gotcha 2: if all N runs returned by `per_page=N` fall inside your time window, N is a **floor, not a count** — the page is saturated and there are more failures you didn't see. Re-query with a larger `per_page` or say so explicitly rather than reporting N as the total.
 
 Real example (2026-08-06): 5 `Check Submodule Pointers` merge_group failures on shader-slang/slang all failed at step `Verify submodule pins` — `external/mimalloc` pinned to `8c532c32` which is unreachable from the tracked ref `main3` in `.gitmodules`. A single bad submodule pin was blocking the whole merge queue; the run list alone looked like 5 unrelated PR failures.
-

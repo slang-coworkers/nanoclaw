@@ -66,4 +66,3 @@ Confirmed-material downstream on the approver's edge: slang#12131 @`b9d1f8c39926
 Treat **every** Devin artifact reporting zero findings as suspect, and reconcile against `devin-page.txt` (on disk, free) before letting it contribute a clean signal. A zero from a byte-count guard is not evidence of clean.
 
 Related: `DONE_EXPR` in both copies still accepts `Checks\s*\d+\s*/\s*\d+`, the CI-counter branch previously flagged for removal — a CI progress counter can satisfy the "results present" test.
-

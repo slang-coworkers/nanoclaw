@@ -72,4 +72,3 @@ arrived, and met **4/4 with nothing renegotiated**. Setting the bar before the e
 what makes "met" mean something — and a **pass-count increase** (`4139 → 4148`, +9 passes
 on +8 collected) is stronger than a green conclusion, because it shows tests were *gained*
 rather than merely that nothing failed.
-

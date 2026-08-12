@@ -84,4 +84,3 @@ device.
 
 Siblings: the failing-positive-control entry (fabricates an absence); the edge-local mtime
 correction; "a demand for a control can invalidate a test's premise."
-

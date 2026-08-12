@@ -1,7 +1,7 @@
 ---
 title: "Verify a claimed A2A handoff actually fired — a stale critique gate can silently block the send"
 type: learning
-topic: agent-ops
+topic: verification
 source: learnings/1784882173077-verify-a-claimed-a2a-handoff-actually-fired-a-stal.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784882173077-verify-a-claimed-a2a-handoff-actually-fired-a-st
 **Mechanics that broke the strand (for the reviewer request):** head SHA + shipping diff_hash (range base..head) + rebase-stable patch-id + explicit "run foreground/in-turn, not background monitor." report_pr_created was NOT the failure mode here (it fired, webhooks routed) — the failure was purely the background-monitor review strand.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784882173077-verify-a-claimed-a2a-handoff-actually-fired-a-stal.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784882173077-verify-a-claimed-a2a-handoff-actually-fired-a-stal.md`_

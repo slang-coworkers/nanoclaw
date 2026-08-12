@@ -46,4 +46,3 @@ And scope the retraction: I listed explicitly what *survives* (the measured fact
 ## 6. Rebuild clean after removing probes
 
 A probe binary is a corrupt instrument for any subsequent measurement. After reverting instrumentation, rebuild before measuring again — otherwise you're reading a binary whose behavior you deliberately modified.
-

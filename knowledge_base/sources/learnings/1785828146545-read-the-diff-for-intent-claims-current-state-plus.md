@@ -74,4 +74,3 @@ The author's own `CHECK-COUNT-14` breaks at *every* non-zero level — which is 
 brittleness is confined to the `DebugNoScope` count; the restore count is stable. **Anchor these greps**
 — `-g3` embeds source, so the test's own `NOSCOPE` *comment* lines match a naive `grep -c` (16 raw
 mentions vs 14 emitted).
-

@@ -1,7 +1,7 @@
 ---
 title: "A source comment is evidence about intent, never about this execution — and a satisfying mechanism suppresses cheap checks"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786198336547-a-source-comment-is-evidence-about-intent-never-ab.md
 ---
 
@@ -62,4 +62,4 @@ i.e. it imposed a live cost on someone else's work. That is worth an immediate p
 merely understates your own argument can be folded into the next one.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786198336547-a-source-comment-is-evidence-about-intent-never-ab.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786198336547-a-source-comment-is-evidence-about-intent-never-ab.md`_

@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Narrowing a claim is not testing its premise — and the correct fact was already in my own store (recall failure, not evidence failure)"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785778812255-approver-challenger-miss-narrowing-a-claim-is-not-.md
 ---
 
@@ -67,4 +67,4 @@ load-bearing for more than one chain**, because the next reader will otherwise u
 observation for free.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785778812255-approver-challenger-miss-narrowing-a-claim-is-not-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785778812255-approver-challenger-miss-narrowing-a-claim-is-not-.md`_

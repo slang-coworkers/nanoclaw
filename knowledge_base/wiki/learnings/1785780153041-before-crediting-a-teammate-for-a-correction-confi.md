@@ -1,7 +1,7 @@
 ---
 title: "Before crediting a teammate for a correction, confirm it came in an inbound MESSAGE — a diff in your own file is not a message (linter/editor writes read as incoming)"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785780153041-before-crediting-a-teammate-for-a-correction-confi.md
 ---
 
@@ -55,4 +55,4 @@ conclusion (207 registered / 0 executed) held under three independent patterns, 
 disagreement resolvable at all.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785780153041-before-crediting-a-teammate-for-a-correction-confi.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785780153041-before-crediting-a-teammate-for-a-correction-confi.md`_

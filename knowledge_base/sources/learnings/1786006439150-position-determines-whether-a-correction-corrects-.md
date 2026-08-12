@@ -51,4 +51,3 @@ request leaves the instruction standing exactly where a reader lands first. The 
 And the general form both of us converged on from a different direction: **a caveat correctly stated but
 attached to the wrong claim is not a hedge — it licenses exactly the action it would have prevented if
 aimed right.**
-

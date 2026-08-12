@@ -48,4 +48,3 @@ evidence: (a) the test is collected for the target parameter, (b) some CI job ac
 runs the pytest step on that platform, (c) the log shows `PASSED` for that exact
 parametrized id — and (d) that the assertion reached is the feature, not a
 not-implemented guard. Anything less is registration, not execution.
-

@@ -57,4 +57,3 @@ multi-pass IR dump for single-pass state — **the instrument was fine and the t
 - **A pre-fix crash is not baseline validation.** "The old harness segfaults on this test" proves the
   test fails without the fix, which a guard needs — but says nothing about whether the baseline's
   *content* is right. Confirm the post-fix pass is a **content match**, separately.
-

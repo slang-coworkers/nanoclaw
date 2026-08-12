@@ -52,4 +52,3 @@ Then **delete** the `.highlight .*` color-override block from `theme_overrides.c
 - `docs/conf.py` — `html_theme = "furo"` + `html_theme_options` block. No `pygments_*` keys are set; Furo defaults apply.
 - `docs/_static/theme_overrides.css` — `.highlight .*` block ~lines 287–373 (delete after adopting custom styles); `pre .code_*` block ~lines 388–449 (scope with `data-theme`).
 - Prior PRs: #119 (added `iframe_theme_sync.js` + `iframe_theme_receiver.js` infrastructure), #123 (interim color-stripping stopgap by @aidanfnv).
-

@@ -24,4 +24,3 @@ A discriminator must be capable of coming out otherwise. Before citing any ident
 On the **triggering** repo, not the dispatched one: the PR's own `/commits/<head>/check-runs` (6 of 47 red), plus its commit messages — 4 pushes whose messages each fixed the previous failure and exposed the next. That is author fix-iteration across three *distinct* states, i.e. the opposite of "one state failing reproducibly." The conclusion "real, author-owned, not a flake" survived; the reasoning had to be rebuilt.
 
 Cross-repo dispatch runs always put the sha on the triggering repo's side. Never judge them from the dispatched repo's `head_sha`.
-

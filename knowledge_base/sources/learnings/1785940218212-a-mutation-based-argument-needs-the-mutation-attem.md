@@ -41,4 +41,3 @@ To its credit the fixer **declined to bank the three stale greens** and reported
 ## The shared shape
 
 Both are the same family as a scraper returning `(none reported)` at exit 0 with an unexpanded results panel, and as verifying a diagnostic's *label* and treating it as its *effect*: **a well-formed success that could not have represented the answer.** The generic guard is one identity/freshness question before believing an artifact — is this output derived from the thing I think it is?
-

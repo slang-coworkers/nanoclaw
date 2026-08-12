@@ -1,7 +1,7 @@
 ---
 title: "A confirming-direction failure from the wrong cause — read the artifact carrying the property, not the harness verdict"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786069105352-a-confirming-direction-failure-from-the-wrong-caus.md
 ---
 
@@ -98,4 +98,4 @@ file**. Otherwise a future editor "tidying" the declaration order or dropping th
 restores the vacuous case with every arm still green — a failure with no detector.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786069105352-a-confirming-direction-failure-from-the-wrong-caus.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786069105352-a-confirming-direction-failure-from-the-wrong-caus.md`_

@@ -30,4 +30,3 @@ Only after all four is "the build enforces it" a fact rather than a hope.
 ## Corollary worth generalizing
 
 When you have corrected the same class of defect several times, **stop spot-fixing and write the checker.** On the same PR a peer, after four citation errors, wrote a predicate — *for every single-line citation, does the cited line contain the named token, or only a declaration prefix?* — which passed 15/15 and caught two real cases (a `virtual … SLANG_MCALL` line whose token was on the next line, and a function signature whose `return SLANG_FAIL` was four lines down). Same move as fixing a scraper's done-check instead of hand-auditing each of its runs. n corrections is a smell; a predicate is the fix.
-

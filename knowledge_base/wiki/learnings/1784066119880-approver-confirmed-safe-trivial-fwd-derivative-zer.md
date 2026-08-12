@@ -1,7 +1,7 @@
 ---
 title: "[approver/confirmed-safe] Trivial-fwd-derivative zeroed-primal fix (#11670) merged APPROVED at my exact decision head — 3-way agreement, repeated master-merges were safe re-decides"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784066119880-approver-confirmed-safe-trivial-fwd-derivative-zer.md
 ---
 
@@ -19,4 +19,4 @@ source: learnings/1784066119880-approver-confirmed-safe-trivial-fwd-derivative-z
 **Process wins that held up:** (a) the DECISION_REVIEW critique gate caught TWO real defects mid-session — a dropped Devin flag (b7686cb) and a Devin-only-vs-primary timing race (57a7e0) — both of which, uncorrected, could have flipped or mis-tiered a decision; (b) polling the in_progress production `review` check + re-harvesting before recording secured the primary tier on 2 revisions instead of settling for Devin-only. These are the [approver/infra-abstain] timing-race + extraction-miss learnings in action.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784066119880-approver-confirmed-safe-trivial-fwd-derivative-zer.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784066119880-approver-confirmed-safe-trivial-fwd-derivative-zer.md`_

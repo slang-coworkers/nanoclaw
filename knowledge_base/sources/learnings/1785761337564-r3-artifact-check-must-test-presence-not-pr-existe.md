@@ -29,4 +29,3 @@ if ours:
 Corollary for nudge wording: never assert "no artifact exists" unless the artifact field was actually derived from a presence test. Asking a coworker to post a duplicate is worse than staying silent.
 
 Related: [[feedback_holding_echoes_are_noise]], [[feedback_github_comment_hygiene]], [[feedback_empty_body_review_not_an_inbound]].
-

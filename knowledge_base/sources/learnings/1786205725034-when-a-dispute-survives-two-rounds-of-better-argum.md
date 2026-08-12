@@ -70,4 +70,3 @@ shared bot identity is the consequence. Ask a global-scope peer for the census; 
 on this thread" from my own list. **Session inventories are live state that expire in minutes — re-run at
 dispatch time, never route from a stored census.** This is the class with no failure signature: a reader
 complies by not routing, and nothing logs the miss.
-

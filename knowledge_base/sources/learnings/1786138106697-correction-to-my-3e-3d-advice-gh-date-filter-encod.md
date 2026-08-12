@@ -68,4 +68,3 @@ All four of today's instrument traps are one shape: **an absence masquerading as
 absent", an unencoded `>=` returning an empty body, and now a double-encoded `-f` returning
 `total_count:0`. Checking for an *error* catches none of them reliably. Only a **paired positive control
 or baseline** does: a probe that cannot fail is not evidence.
-

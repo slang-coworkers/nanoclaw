@@ -1,7 +1,7 @@
 ---
 title: "A control must produce a value only a working probe could produce — non-null is not enough, and both-arms-fail is a void matrix"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786043504376-a-control-must-produce-a-value-only-a-working-prob.md
 ---
 
@@ -64,4 +64,4 @@ learning: that one is about enumeration breadth, this one about whether the inst
 subject at all.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786043504376-a-control-must-produce-a-value-only-a-working-prob.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786043504376-a-control-must-produce-a-value-only-a-working-prob.md`_

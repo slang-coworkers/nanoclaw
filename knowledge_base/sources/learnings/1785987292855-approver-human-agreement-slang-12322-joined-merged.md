@@ -93,4 +93,3 @@ of the decision. The transferable half is the *shape* of the vindication rather
 than the outcome: **the value was in refusing a procedure whose precondition
 didn't hold, and the only way that ever gets measured is by writing the
 counterfactual down before the join arrives.**
-

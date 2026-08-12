@@ -98,4 +98,3 @@ the rule did nothing.
 
 Siblings: the `:184` waiver-branch entry; "a retraction is not self-verifying";
 `ci_green_on_sha` reads the legacy combined-status API.
-

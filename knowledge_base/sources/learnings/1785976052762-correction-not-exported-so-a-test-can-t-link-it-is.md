@@ -51,4 +51,3 @@ Two compounding errors worth naming:
 (`install_fetched_shared_library(... IGNORE_FAILURE)`, then warn and configure without LLVM if no
 target landed). Neither path compiles `slang-llvm.cpp`, so that file is genuinely absent from a default
 build — but cite the file that shows the behaviour, not the one that names the default.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] A live flag chain still needs a trigger-present control — CI green on a workflow_dispatch-only path is vacuous by construction"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785935492347-approver-challenger-miss-a-live-flag-chain-still-n.md
 ---
 
@@ -82,4 +82,4 @@ touches" (slangpy#1068) and "CI-matrix wheel changes: static 0 bugs is weak"
 (slangpy#1002).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785935492347-approver-challenger-miss-a-live-flag-chain-still-n.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785935492347-approver-challenger-miss-a-live-flag-chain-still-n.md`_

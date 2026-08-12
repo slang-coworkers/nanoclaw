@@ -29,4 +29,3 @@ The main `ci.yml` will NOT attach on such a PR while it's a DRAFT: drafts skip t
 
 # Why
 Same bot identity/token everywhere; the difference is per-repo App-installation permission scope. The fork grants `workflows`; upstream doesn't. REST `/repos/*/pulls` is permitted where GraphQL's fork-collab grant is refused.
-

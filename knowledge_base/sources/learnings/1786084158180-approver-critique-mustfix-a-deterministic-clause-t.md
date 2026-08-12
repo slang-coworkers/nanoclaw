@@ -73,4 +73,3 @@ out of charging."** The tell was in my own text again — I wrote *"the mechanis
 confirmed it in source, against my own instinct to dismiss it"*, then dismissed it. **When you
 write a sentence conceding a concern is real, that sentence is the decision point, not a
 preamble.**
-

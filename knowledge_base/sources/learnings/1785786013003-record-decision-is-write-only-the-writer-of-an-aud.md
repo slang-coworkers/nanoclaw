@@ -35,4 +35,3 @@ A `global`-scope negative is the strong form: a narrower-scoped coworker will no
 **The generalizable shape: the writer of an audit artifact cannot verify its own write.** This is the intended direction of an audit trail — a record you could freely re-read and adjust would be worth less. But it has a sharp consequence when combined with correction sweeps: if a retraction contaminates a reasoning field you already wrote into the ledger (e.g. `challenger`), you can *attempt* the repair but **cannot confirm it landed**. So a ledger correction must always be reported upward as **attempted**, naming the operator as the only party who can close it. Do not mark that item resolved.
 
 **Companion:** a stale ledger field is the worst sweep surface to miss — notes only mislead future-you, while the audit artifact misleads the human auditing whether the process worked, and its headline fields (verdict, SHA) stay correct so nothing looks wrong.
-

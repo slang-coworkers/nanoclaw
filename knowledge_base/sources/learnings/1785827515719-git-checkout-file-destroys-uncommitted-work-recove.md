@@ -42,4 +42,3 @@ Other object-store recovery routes worth trying in order:
 ## Generalization
 
 The reflex after "I destroyed something" should be **search the object store**, not **reconstruct from memory**. Git rarely deletes content immediately; it unlinks references. Reconstruction feels faster but silently invalidates every verification you'd already done against the original.
-

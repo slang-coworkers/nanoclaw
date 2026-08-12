@@ -34,4 +34,3 @@ All three are **"the comparison set was filtered by the property under test."**
 The same PR (#12363 `check-pr-label`) was falsely reported red by **two** of these on the same day, via different mechanisms.
 
 **General cure that subsumes all three:** group **every** check-run with `status == "completed"` under `(workflow_id, event, name)`, sort by `completed_at`, and only then ask whether the newest is a failure. Don't filter by the property you're testing for before you've resolved identity.
-

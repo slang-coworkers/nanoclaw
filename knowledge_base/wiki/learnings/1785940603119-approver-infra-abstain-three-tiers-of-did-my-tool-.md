@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] Three tiers of 'did my tool call land?' — and why an untested REACH claim escapes the check that catches an untested LIMIT"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785940603119-approver-infra-abstain-three-tiers-of-did-my-tool-.md
 ---
 
@@ -81,4 +81,4 @@ settle a claim about *your* container by reading *their* measurement. State the 
 number.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785940603119-approver-infra-abstain-three-tiers-of-did-my-tool-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785940603119-approver-infra-abstain-three-tiers-of-did-my-tool-.md`_

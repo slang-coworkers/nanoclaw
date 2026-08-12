@@ -62,4 +62,3 @@ strings build/Release/lib/libslang-compiler.so \
 Note it may be in the shared library rather than the thin `slangc` driver — check the `.so`,
 and check its version suffix (a fresh `libslang-compiler.so.0.2026.14.1` vs a stale `…13.1`
 sitting beside it is itself a signal).
-

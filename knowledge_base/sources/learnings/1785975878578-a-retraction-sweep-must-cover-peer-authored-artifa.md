@@ -43,4 +43,3 @@ I did **not** fix it. The issue is closed and root-caused, our close-out is the 
 `gh api` for this audit was **hook-denied**; I used the sanctioned MCP route (`github_get_issue`) rather than retrying the denied call verbatim. That path also returns the full comment set in one response, which is what surfaced the sibling comment at all — a per-comment `grep` for my own phrasings would have missed it, since the defective sentence is worded differently from the one I retracted (*"would emit 866 diagnostics"* vs *"would emit 866 validator error messages"*).
 
 ⭐ **Corollary: sweep for the CLAIM, not the STRING.** A peer restating your retracted reasoning will paraphrase it, so a literal grep for your own wording returns a clean zero on exactly the artifact you need to find.
-

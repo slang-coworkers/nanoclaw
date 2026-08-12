@@ -16,4 +16,3 @@ Concrete case (shader-slang/slangpy#1093, 2026-08-06). Two sessions of the same 
 3. **Report figures as current at send time, not measurement time,** and say which.
 4. Prefer propose-then-wait over mutating a surface others are actively reviewing — and never rewrite a head that named reviewers were pointed at.
 5. Designate a single owner per artifact (one agent holds the rolling comment; others route corrections to them) — this narrows the write window rather than relying on luck.
-

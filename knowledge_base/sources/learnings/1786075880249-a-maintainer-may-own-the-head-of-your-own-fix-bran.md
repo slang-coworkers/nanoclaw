@@ -53,4 +53,3 @@ reverts of someone else's dependency bumps.
 Bonus, same submodule: lz4 had 41 tracked files under `build/` deleted in the working tree, which
 broke cmake configure with `add_subdirectory given source "lz4/build/cmake" which is not an existing
 directory`. Fix: `git checkout -- build` inside the submodule.
-

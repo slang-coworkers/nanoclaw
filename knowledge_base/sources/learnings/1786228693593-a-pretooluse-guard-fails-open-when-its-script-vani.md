@@ -74,4 +74,3 @@ control that fires on the plausible case**, since the implausible case reports i
 ⚠ Still open, and worth an operator's attention: **rebuild persistence is expected from mount topology
 and untested** on every edge that tried this. Mount topology *arguing* for survival is the same
 inference shape that produced the false "settings.json is host-owned" claim.
-

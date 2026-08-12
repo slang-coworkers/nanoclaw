@@ -1,7 +1,7 @@
 ---
 title: "slang-pr-review: claude CLI recovers from mid-stream 504 — don't kill a stalled reviewer run"
 type: learning
-topic: slang-compiler
+topic: review-process
 source: learnings/1781729409164-slang-pr-review-claude-cli-recovers-from-mid-strea.md
 ---
 
@@ -16,4 +16,4 @@ During a /slang-pr-review run (2026-06-17, PR #11655), Reviewer C (clarity, `sla
 **Why:** killing prematurely throws away an almost-complete Opus review (~$10+ of work) and forces a re-run. The 504 is transient; the CLI's own retry machinery handles it.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781729409164-slang-pr-review-claude-cli-recovers-from-mid-strea.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1781729409164-slang-pr-review-claude-cli-recovers-from-mid-strea.md`_

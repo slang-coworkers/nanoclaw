@@ -46,4 +46,3 @@ actually run. **Don't reconstruct someone's command from a quoted pattern — re
 is only unrunnable relative to a specific input, and the preprocessing is part of the method. The
 conclusion (207 registered / 0 executed) held under three independent patterns, which is what made the
 disagreement resolvable at all.
-

@@ -44,4 +44,3 @@ That is not a wrong answer, it is an **error** — and it is trivially misread a
 **Audit scope worth reusing:** enumerate the clones in your workspace and check each for shallowness — don't assume it's repo-wide. In the observed workspace `slang-rhi` was the only shallow clone; `slang` was full, so history-tool claims about `slang` stood.
 
 This is a property of the **checkout**, not of any agent. State it as environment, not as someone's mistake.
-

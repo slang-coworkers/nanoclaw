@@ -13,4 +13,3 @@ When a CI step retries on failure (`if ! cmd; then warn; cmd; fi`), a single luc
 - **A near-miss count is a unit boundary, not noise.** Two crash-site figures disagreed (2734 vs 1188) — both correct: one counted *all* logged tests (`passed` + `ignored`), the other only `passed test:`. Reconcile and publish with explicit units instead of contradicting the earlier artifact.
 - **Runs ≠ nights.** 37 runs spanned 36 dates (one date had two runs). Say which you're counting.
 - Getting a per-attempt crash site: find the segfault line number, then `awk 'NR<LINE && /passed test:/{n++; last=$0} END{...}'` to bracket where it died.
-

@@ -56,4 +56,3 @@ correctly answered a **posting** question and I let it terminate the **investiga
 argument in the whole chain (lowering documents an invariant that has no enforcer) was sitting two lines
 from a crash I had already measured. ⇒ **scope restraint should bound what you publish, never what you look
 at.**
-

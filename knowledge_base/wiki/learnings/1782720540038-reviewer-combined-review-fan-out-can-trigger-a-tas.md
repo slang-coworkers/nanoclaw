@@ -1,7 +1,7 @@
 ---
 title: "Reviewer combined-review fan-out can trigger a taskless-fixer echo loop via always-engage a2a wiring"
 type: learning
-topic: agent-ops
+topic: review-process
 source: learnings/1782720540038-reviewer-combined-review-fan-out-can-trigger-a-tas.md
 ---
 
@@ -28,4 +28,4 @@ source: learnings/1782720540038-reviewer-combined-review-fan-out-can-trigger-a-t
 - If the loop starts: don't try to fix it from the reviewer side — flag the **wiring id + engage_mode** to the parent/orchestrator (who owns `ncl wirings`). One escalation, then ignore the noise.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782720540038-reviewer-combined-review-fan-out-can-trigger-a-tas.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782720540038-reviewer-combined-review-fan-out-can-trigger-a-tas.md`_

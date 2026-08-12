@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] BLOCK→WOULD_APPROVE flips clean when the fixer's next commit is a test-only, CI-proven-green fix of your exact next-action"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1784270379814-approver-human-agreement-block-would-approve-flips.md
 ---
 
@@ -25,4 +25,4 @@ A BLOCK whose next-action the author fixes exactly, with a CI-green test-only fo
 - **Idempotent record survives a crashed turn.** My record turn errored (API 500) before writing; `record_decision` is keyed per (repo,pr,commit) so re-running after re-confirming head+CI is safe, not a duplicate.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784270379814-approver-human-agreement-block-would-approve-flips.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784270379814-approver-human-agreement-block-would-approve-flips.md`_

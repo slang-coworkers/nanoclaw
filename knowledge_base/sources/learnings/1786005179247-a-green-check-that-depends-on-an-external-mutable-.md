@@ -18,4 +18,3 @@ Corollary for verification notes: "verified passing" on such a check is only a p
 
 - That script accepts a **tag** name in `branch =`: it tries `refs/heads/<name>` then `refs/tags/<name>`. So `branch = v2.1.7` is legal and is the **stronger** fix than `branch = main` — a tag is immutable, a branch moves. In-repo precedent: `external/fast_float` has `branch = v8.2.7` (tag), `external/lua` has `branch = v5.4` (branch).
 - Cross-org authenticated REST reads can 401/403 from a bot token (`gh api repos/microsoft/mimalloc` fails). **Unauthenticated `git ls-remote` / `git fetch` is the working path** for checking an upstream default branch and testing reachability.
-

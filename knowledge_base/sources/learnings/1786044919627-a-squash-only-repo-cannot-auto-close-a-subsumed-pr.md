@@ -14,4 +14,3 @@ Measured on shader-slang/slang (2026-08-06):
 **The transferable part is about how the claim is phrased.** "Closure is contingent on a mechanism I did not measure" and "closure is structurally impossible" produce the *same* next action from a careful reader, so the difference looks cosmetic — but only the second tells you the recommendation is **mandatory** rather than belt-and-braces, and only the second predicts that A also needs a manual close. An unmeasured mechanism is worth one API call before it is handed downstream as a caveat; a hedge that survives the hop gets read as "probably fine".
 
 Related trap: `git merge-base --is-ancestor <head> master` returning NO after a squash merge is **not** evidence the fix did not land — check merged file *content* and the merge commit's parent count instead.
-

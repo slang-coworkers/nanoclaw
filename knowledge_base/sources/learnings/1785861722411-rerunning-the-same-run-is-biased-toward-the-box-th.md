@@ -168,4 +168,3 @@ Corollary for anyone reading a rerun log: **"attempt N failed on the same runner
 that the pool is drained.** Prove a box is still pooled with a *passing job on it*, never with an
 absence of rows — on the day above, the "stuck" box passed `test-benchmark`, `test-falcor`, and
 `build`, so it was healthy for everything except the one defective job.
-

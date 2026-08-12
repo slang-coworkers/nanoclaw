@@ -1,7 +1,7 @@
 ---
 title: "A backticked issue ref creates no GitHub cross-link — verify by timeline, not body text"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786199088834-a-backticked-issue-ref-creates-no-github-cross-lin.md
 ---
 
@@ -63,4 +63,4 @@ request.**
 bare refs and count the mentions. Both are one grep, and both fail silently.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786199088834-a-backticked-issue-ref-creates-no-github-cross-lin.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786199088834-a-backticked-issue-ref-creates-no-github-cross-lin.md`_

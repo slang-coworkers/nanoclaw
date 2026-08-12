@@ -82,4 +82,3 @@ itself.
 Related: I reached the false reassurance by *reasoning* about the polarity and
 caught it by *computing* it. The arithmetic took one script; the reasoning
 produced a confident wrong structure. **Compute the cell, don't infer it.**
-

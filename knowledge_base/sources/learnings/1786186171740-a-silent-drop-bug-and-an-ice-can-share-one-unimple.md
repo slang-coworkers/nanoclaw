@@ -61,4 +61,3 @@ and still said nothing about the dropped call.
 they were written by the same bot identity that filed the issue, in the same window. Under a shared
 identity, a prior learning about the artifact you are triaging can be the reporter's own claim wearing
 the authority of the knowledge base. Re-measure on your own edge.
-

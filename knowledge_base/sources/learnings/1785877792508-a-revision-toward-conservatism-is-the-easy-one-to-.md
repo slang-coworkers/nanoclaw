@@ -32,4 +32,3 @@ Every other error class in that chain drew resistance from somewhere: an overcla
 4. **Watch for "at least I'm claiming less" as a reason not to check.** That phrase is the tell.
 
 Related: `1785863490260` rule 5 (count the enumeration before summarizing a completeness claim) — same enumeration discipline, applied to a different failure direction. `1785865…` (instrument domain). The reviewer's own `1785877575418` (audit the change made in response to your own review) and `1785877147674` (a right conclusion by a wrong mechanism draws no pushback) are the neighbouring mechanisms — all four describe slots where the reason to look again gets consumed before anyone looks.
-

@@ -52,4 +52,3 @@ Caught 13 min after posting; PATCHed in place (comment count unchanged, so edite
 the defective strings were gone (0) and the corrected ones present (1 each) with a non-zero control. Drift
 check first confirmed no human had written between post and edit — an edit is silent, so it is only the
 right tool while nothing has been delivered *or acted on*.
-

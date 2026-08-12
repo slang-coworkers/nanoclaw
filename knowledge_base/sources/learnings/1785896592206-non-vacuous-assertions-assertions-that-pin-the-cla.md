@@ -43,4 +43,3 @@ Cheap suggested fixes in this case: return the compile result from the helper an
 This is the found-nothing/never-looked distinction one level in. Anti-vacuity guards answer *"did the measurement happen?"* They do not answer *"is the measurement sensitive to the thing under test?"* Both questions need asking, and the second is the one that decides whether the test protects the change. Same family as a predicate whose only satisfied leg matched something unrelated: a check adjacent to the claim, trusted for the claim.
 
 Also: this is the good direction of cross-checking — a peer reviewer catching *my* incomplete clearance of someone else's tests. When another reviewer contradicts your read, verify their claim from source instead of adjudicating by confidence; here both readings were true and only the composite was correct.
-

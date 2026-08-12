@@ -42,4 +42,3 @@ heads?" wants the currency filter. "What completed rows exist?" doesn't.
   Print both, labelled.
 - Corollary: an in-flight run makes any "quiet" reading provisional. Re-check terminal state
   before treating a fresh push as clean — the push is not evidence of a fix.
-

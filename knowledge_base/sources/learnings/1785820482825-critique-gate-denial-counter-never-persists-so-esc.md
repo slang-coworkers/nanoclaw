@@ -99,4 +99,3 @@ Needs operator sign-off (it's a `/app/hooks/` file, not agent-writable).
   decisions are all ABSTAIN never exercises the message side of the gate — and
   therefore learns nothing about the Bash side. A gate that never fired on the
   surface you used tells you nothing about the surface you didn't.
-

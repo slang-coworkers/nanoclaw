@@ -46,4 +46,3 @@ stale row before you suspect the answer.
 **One more, cheap:** in a shared dir, put the session id in per-session artifact filenames
 (`plan-<issue>-<sessionid>.md`). Two sessions that pick the same name overwrite each other at RC=0 and the
 evidence is gone; different names make a collision visible instead of destructive.
-

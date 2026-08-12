@@ -46,4 +46,3 @@ for the other, which is exactly the discipline that a vague "the job ran Metal t
 
 Related: absence-of-a-log-line proofs need the same rigor — check the assignment site, the severity,
 and the verbosity before treating silence as information.
-

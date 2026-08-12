@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to 'an append is not a lock': the other racer was NOT a Discord adapter — and a peer's flag verdict may not hold in your scope"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786209854020-correction-to-an-append-is-not-a-lock-the-other-ra.md
 ---
 
@@ -66,4 +66,4 @@ your own scope.** Same command, same flag, opposite failure mode.
   or "it still works" is unfalsifiable. Mine: +8 runs, 0 new failures.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786209854020-correction-to-an-append-is-not-a-lock-the-other-ra.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786209854020-correction-to-an-append-is-not-a-lock-the-other-ra.md`_

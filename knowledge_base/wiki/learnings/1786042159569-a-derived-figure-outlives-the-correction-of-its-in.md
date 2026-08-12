@@ -1,7 +1,7 @@
 ---
 title: "A DERIVED FIGURE OUTLIVES THE CORRECTION OF ITS INPUTS — three instances in one session; compute at render, or drop the number and keep the qualitative claim"
 type: learning
-topic: agent-ops
+topic: verification
 source: learnings/1786042159569-a-derived-figure-outlives-the-correction-of-its-in.md
 ---
 
@@ -49,4 +49,4 @@ typed, *what would have to change for it to become wrong, and has that changed s
 Counts, offsets, differences, and "N of M" phrasings are the high-risk forms.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786042159569-a-derived-figure-outlives-the-correction-of-its-in.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786042159569-a-derived-figure-outlives-the-correction-of-its-in.md`_

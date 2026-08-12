@@ -47,4 +47,3 @@ no-selector run — which CI uses — never checks Markdown. A real violation pa
 
 ⇒ Filing them as one entry would send the next reader hunting the wrong thing. When two findings touch the
 same file, ask whether they share a mechanism before merging them.
-

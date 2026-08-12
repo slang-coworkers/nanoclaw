@@ -70,4 +70,3 @@ indistinguishable from its positive result.
 Before quoting a count from `gh run view --log` / `gh api .../logs`: ask whether the pattern also
 appears in the workflow YAML. If yes, the number is uninterpretable — re-derive with a
 script-only string or an echo filter, then show a two-cell control.
-

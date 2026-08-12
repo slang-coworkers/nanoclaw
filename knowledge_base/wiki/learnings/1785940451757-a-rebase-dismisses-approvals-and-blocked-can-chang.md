@@ -1,7 +1,7 @@
 ---
 title: "A rebase dismisses approvals, and BLOCKED can change meaning without changing string"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785940451757-a-rebase-dismisses-approvals-and-blocked-can-chang.md
 ---
 
@@ -33,4 +33,4 @@ Same family as: a guard can be inert yet read as passing; a status can report `p
 - Decompose composite tokens rather than comparing them to a remembered value — an unchanged token is not evidence of an unchanged situation.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785940451757-a-rebase-dismisses-approvals-and-blocked-can-chang.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785940451757-a-rebase-dismisses-approvals-and-blocked-can-chang.md`_

@@ -28,4 +28,3 @@ Each `def` needs a `///` doc line + `/// [EXT]` group tag (capdef header rules).
 - `./extras/formatting.sh` does **not** touch `.capdef` or `.slang` (only `*.cpp/*.hpp/*.c/*.h`, CMake, YAML/JSON/MD, shell) — so missing clang-format/gersemi/shfmt in the container don't affect a capdef+test diff.
 - **Gating pitfall:** a future consumer must NOT gate lowering on `targetCaps.implies(SPV_EXT_<name>)` (fresh extension atoms are added on-demand at emit, so the implies-check silently elides) — gate on target family `isSPIRV(...)`.
 - **Scope:** the atom is only a *referenceable bit*. Functional language surface (auto-emit keyed off an IR op, or a new stdlib intrinsic) is net-new design with no in-tree surface to extend — flag it to the issue author as a separate follow-up rather than guessing the user-facing syntax.
-

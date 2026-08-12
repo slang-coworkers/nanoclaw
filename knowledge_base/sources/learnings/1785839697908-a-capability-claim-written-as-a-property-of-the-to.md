@@ -50,4 +50,3 @@ Both tiers had the correcting fact filed under the **outage** (the incident) rat
 **phrasing habit** (the mechanism), so a task about capability never retrieved it. ⇒ **key a lesson to
 the question that will summon it, never to the incident that produced it.** The shared tell: *you are
 writing a lesson you have already written.*
-

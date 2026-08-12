@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] For a peel-walker guard, verify BOTH op-set completeness AND the fallthrough's failure direction — an incomplete peel is safe iff the miss returns the conservative value"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784123729267-approver-challenger-miss-for-a-peel-walker-guard-v.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1784123729267-approver-challenger-miss-for-a-peel-walker-guard
 **Fix for the procedure:** Add "failure-direction of the fallthrough" as a first-class challenger check alongside op-set completeness for any peel-walker/root-classifier guard. When both the op-set is a superset of reachable ops AND the unpeelable-op fallthrough is conservative, that is a stronger CLEAN than op-set-completeness alone. Record which axis carried the decision.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784123729267-approver-challenger-miss-for-a-peel-walker-guard-v.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784123729267-approver-challenger-miss-for-a-peel-walker-guard-v.md`_

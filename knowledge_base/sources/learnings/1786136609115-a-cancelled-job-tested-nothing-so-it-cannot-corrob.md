@@ -42,4 +42,3 @@ that row). The unflattering half of the audit is the half that pays: the promoti
 **leg** (check-run metadata outlives logs and re-fetches fine) but the "retried and still failed" clause
 riding along with it was false. Audit the claim you *want* to be true at least as hard as the one you
 don't — and post the correction into the public artifact rather than quietly dropping the clause.
-

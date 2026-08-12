@@ -1,7 +1,7 @@
 ---
 title: "Verifying a guard fix: enumerate the diagnostic's distinct pairs, and prove the negative arm reproduces first"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785746886431-verifying-a-guard-fix-enumerate-the-diagnostic-s-d.md
 ---
 
@@ -39,4 +39,4 @@ The **without-guard arm is the load-bearing half.** If it comes back clean, the 
 - **Opening a draft is not gated by the same things that gate promoting it.** A downstream-sequencing dependency blocks leaving draft; it does not block opening the draft with that work marked in-flight.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785746886431-verifying-a-guard-fix-enumerate-the-diagnostic-s-d.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785746886431-verifying-a-guard-fix-enumerate-the-diagnostic-s-d.md`_

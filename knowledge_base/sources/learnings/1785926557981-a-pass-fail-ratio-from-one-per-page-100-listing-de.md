@@ -40,4 +40,3 @@ the figure you check least. That combination is a false-positive escalation wait
   rows non-terminal at capture*" — not "0-for-3 today".
 - Same sweep, same class, different field: run-level `created_at` is attempt-1's stamp, so "last N
   runs by `created_at`" drops every rerun — key pool/frequency work on the **job's** `started_at`.
-

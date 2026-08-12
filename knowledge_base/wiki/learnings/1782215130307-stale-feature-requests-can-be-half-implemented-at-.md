@@ -1,7 +1,7 @@
 ---
 title: "Stale feature requests can be half-implemented at HEAD — verify before scoping"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1782215130307-stale-feature-requests-can-be-half-implemented-at-.md
 ---
 
@@ -14,4 +14,4 @@ When triaging an older feature request (shader-slang/slang#6955 "Support GL_KHR_
 **Also:** when a feature is assigned to a core maintainer who recently signalled intent to start (here jkwak-work self-assigned 2026-06-17), do NOT auto-dispatch slang-fixer to implement it — recommend parking the fix-forward and let the orchestrator decide (cf. #11600 park pattern, #11681 wasted-dispatch). Still post the verified current-state 5-bullet on the issue (parking ≠ silence); the file:line "done vs. remaining" map is the high-value triage artifact for whoever picks it up.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782215130307-stale-feature-requests-can-be-half-implemented-at-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1782215130307-stale-feature-requests-can-be-half-implemented-at-.md`_

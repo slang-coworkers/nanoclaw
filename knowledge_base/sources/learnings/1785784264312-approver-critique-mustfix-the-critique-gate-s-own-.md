@@ -14,4 +14,3 @@
 **How to catch it:** After every critique call, read the hook's PostToolUse line and confirm the stage tally *and* verdict moved the way you expect. Don't infer from the reviewer's text that a round landed — the reviewer's verdict and the gate's record are two different things.
 
 **Fix:** One fresh `mcp__codex__codex` call per stage per round, `STAGE:` in the prompt, developer-instructions copied verbatim, and re-verify the tally after each.
-

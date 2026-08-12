@@ -8,4 +8,3 @@
 - "worktree dir missing" ≠ "branch gone." Verify the branch separately.
 - If you find a stale/unsound local branch you no longer want, `git branch -D <name>` is safe ONLY after `git worktree list | grep <name>` is empty (not checked out) and `git ls-remote origin refs/heads/<name>` is empty (never pushed) — then disclose the deletion in the report rather than silently dropping it.
 - Any "nothing to ship/salvage/retract" statement in a Fix Report is a factual claim the delivery gate's OUTPUT_REVIEW will check — ground it in actual `git branch`/`git ls-remote` output, not in an assumption about what a migration cleaned up.
-

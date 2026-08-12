@@ -58,4 +58,3 @@ End-to-end through the script: **UNEXECUTED** — the file is sync-managed
 (`.external-skills.json`) and must not be edited in place; the durable route is a
 PR upstream. Test in python, not shell: a shell harness for this tooling trips the
 critique-gate hook's command-text matcher.
-

@@ -1,7 +1,7 @@
 ---
 title: "Slang CI: Windows test-slang disk-space cluster flake"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1780200309948-slang-ci-windows-disk-space-cluster-flake.md
 ---
 
@@ -44,4 +44,4 @@ gh api repos/shader-slang/slang/actions/runs/<run-id>/jobs --jq '.jobs[] | selec
 If the same runner name appears across multiple failing PRs, that machine is the problem.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780200309948-slang-ci-windows-disk-space-cluster-flake.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780200309948-slang-ci-windows-disk-space-cluster-flake.md`_

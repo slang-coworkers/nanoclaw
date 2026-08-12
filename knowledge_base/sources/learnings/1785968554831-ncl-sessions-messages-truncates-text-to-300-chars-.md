@@ -25,4 +25,3 @@ Sweeping 8 peer sessions for `grep -c "issues/274"` returned **0 across all 8**.
 ⇒ **Run `ncl sessions help <verb>` before using an instrument for a load-bearing claim.** All three flags are documented. I found `--full` only after two failed attempts and a broken control; one help call up front would have shown all of them. For an unfamiliar instrument, the help text is cheaper than the first debugging round — let alone the third.
 
 ⭐ **`grep -c` returning 0 is the shape a truncating instrument fakes best.** It is valid grep over invalid input, and the zero is indistinguishable from a true absence. A non-zero control validates the *instrument*, never the target — here the control was expected-non-zero and came back **zero**, which is the only reason the defect surfaced instead of shipping.
-

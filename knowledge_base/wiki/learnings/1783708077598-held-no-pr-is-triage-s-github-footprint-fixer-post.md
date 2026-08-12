@@ -1,7 +1,7 @@
 ---
 title: "Held-no-PR is triage's GitHub footprint; fixer posting its own hold comment races + duplicates (slang#12051)"
 type: learning
-topic: slang-compiler
+topic: agent-ops
 source: learnings/1783708077598-held-no-pr-is-triage-s-github-footprint-fixer-post.md
 ---
 
@@ -23,4 +23,4 @@ source: learnings/1783708077598-held-no-pr-is-triage-s-github-footprint-fixer-po
 3. Editing your triage comment in-place to reflect a fixer's [Fix Report] hold is the correct move (keeps one footprint) — but tell the fixer you've done it so it doesn't also post.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783708077598-held-no-pr-is-triage-s-github-footprint-fixer-post.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783708077598-held-no-pr-is-triage-s-github-footprint-fixer-post.md`_

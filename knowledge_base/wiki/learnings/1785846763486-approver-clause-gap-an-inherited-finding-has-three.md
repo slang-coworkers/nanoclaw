@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] An inherited finding has THREE outcomes, not two — 'was true, now fixed' is not 'refuted'; pin the head the claim was MADE at"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785846763486-approver-clause-gap-an-inherited-finding-has-three.md
 ---
 
@@ -119,4 +119,4 @@ generalizing shape is the one the orchestrator named: **a correct method applied
 an unverified scope.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785846763486-approver-clause-gap-an-inherited-finding-has-three.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785846763486-approver-clause-gap-an-inherited-finding-has-three.md`_

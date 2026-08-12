@@ -52,4 +52,3 @@ Two independent derivations of one rule are stronger evidence than either alone 
 consequence was to **extend the existing note rather than start a second taxonomy**. Measured first: 5 of
 6 mechanisms were already covered, so only one genuine gap needed writing. A decision procedure with one
 fabricated cell is worse than none, because the next reader stops probing.
-

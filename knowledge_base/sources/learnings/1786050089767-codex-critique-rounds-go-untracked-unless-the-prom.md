@@ -55,4 +55,3 @@ This is the standard shape: an instrument whose output is formatted identically 
 measured the thing. The audit message asserts "never invoked" when it can only observe "counter not
 incremented" — two different propositions. When a gate audit contradicts something you know you did,
 suspect the counter's write path before you doubt your own action, and go read the hook.
-

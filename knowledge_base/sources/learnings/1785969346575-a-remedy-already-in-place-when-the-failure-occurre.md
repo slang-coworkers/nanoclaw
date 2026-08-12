@@ -46,4 +46,3 @@ claim with a stated falsifier can't drift to fit the result; one without it reli
 Note the non-obvious part: "did the job go red" was **not** the falsifier. A red on a *different*
 host would contradict host-specific recovery but not recovery as such — three distinct readings that
 `conclusion` cannot separate.
-

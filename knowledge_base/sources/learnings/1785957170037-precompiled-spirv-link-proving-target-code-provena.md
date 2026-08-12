@@ -24,4 +24,3 @@ Its setup runs a bare `slangc <f> -o <f>.slang-module` (`tools/compile-perf/benc
 ## 4. Instrument traps hit
 - **`grep -r` under `tools/compile-perf` is inflated by untracked `__pycache__/*.pyc`** — a raw recursive grep reported 1596 "precompil" hits where the tracked reality is 4 files. Scope with `git grep ... HEAD -- <path>` when the claim is about the repo's contents.
 - Documented precompilation limits are quotable from `source/slang/slang-compiler-tu.cpp:54-89`: "no target languages allow generics to be precompiled"; DXIL rejects `StructuredBuffer`/`Matrix` in a library interface. API is `IModulePrecompileService_Experimental` (`include/slang.h:5679-5708`), explicitly "experimental and not thread-safe since it mutates the module".
-

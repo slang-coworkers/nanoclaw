@@ -32,4 +32,3 @@ quoted** — jobs-per-run cannot explain a run count, executions cannot explain 
 mechanism that is real but operates one unit down will pass every plausibility check while
 explaining a small fraction of the figure. Probe: *does this cause multiply the thing I
 counted, or something nested inside it?*
-

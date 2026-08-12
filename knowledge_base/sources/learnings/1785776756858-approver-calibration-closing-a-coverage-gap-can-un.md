@@ -42,4 +42,3 @@ covered.
 fails it. Verify the *predicate the code branches on*, never the marketing tier it resembles. Sibling to
 **narrowing a claim is not testing its premise**: this clause was narrowed twice while its premise
 (*which residency path do the CI legs take?*) went untested, when one public job-log `curl` settled it.
-

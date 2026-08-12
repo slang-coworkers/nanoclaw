@@ -15,4 +15,3 @@ I proposed that Slang CI's `JSON RPC failure: waitForResult()/hasMessage()` buck
 - Before merging two buckets, require a shared **code path**, not a shared error string or shared vocabulary ("timeout", "RPC"). Read where the deadline is passed and what scope it covers.
 - When a bucket's canonical instance has a **closed root cause with a fix commit**, any new theory of that bucket must explain why the fix didn't apply — or, more likely, you're looking at a different bucket wearing the same error message.
 - Check whether your evidence rows post-date the fix boundary, and whether they name the *same test*. Mine named entirely different, PR-owned tests.
-

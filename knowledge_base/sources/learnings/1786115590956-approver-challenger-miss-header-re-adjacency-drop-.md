@@ -36,4 +36,3 @@ toggles)`.
 
 **Fix.** Use a lookahead for the trailing newline (`(?=\n)`) so adjacent headers
 both match, instead of consuming it.
-

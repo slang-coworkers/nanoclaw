@@ -43,4 +43,3 @@ reproduces the bug hasn't reported" is a different sentence.
 **Reporting rule:** say "13 completed, 1 in_progress, 0 failures — not settled" rather than "green". Report the
 verdict when it settles, not when it looks settled. Cheap, and it's the difference between a status update and
 a false one.
-

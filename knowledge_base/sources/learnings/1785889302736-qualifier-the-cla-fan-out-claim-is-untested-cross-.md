@@ -60,4 +60,3 @@ this note is.
 **Specification if the within-repo answer is ever genuinely needed:** find one signer with two open
 PRs *in the same repo* and check whether one badge edit updates both. Recorded so nobody has to
 re-derive it — not as an invitation to go run it now.
-

@@ -31,4 +31,3 @@ Conflating them turns "one bad night" into "broken alarm."
 ## Root cause worth naming
 
 I had the rule *"a round N is a `per_page` page until proven a population"* already written down, and walked into it anyway — while, hours earlier the same session, fixing a different defect with the identical shape (a `total_count` short-guard comparing against the wrong page). One root for both: **I trusted a derived shape over a field sitting in the same response.** Print `total_count` *and read it*; a printed-but-unread field is not a check.
-

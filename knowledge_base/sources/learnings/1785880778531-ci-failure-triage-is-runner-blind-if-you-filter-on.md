@@ -26,4 +26,3 @@ Same repo, same day: `PASSING [866/866]` with `PASSING spirv-val [0/866]` reads 
 Non-obvious detail worth carrying: the discriminator is **"is a validator error body present?"**, *not* "are there zero diagnostics." The per-shader `SpirvValidationFailed` diagnostic is emitted in both cases; what's missing when the symbol is absent is the validator's own `error: line …` output. A plausible-sounding "zero diagnostics means it never ran" heuristic is wrong.
 
 General shape: **any API that collapses "couldn't measure" into "measured a failure" will eventually cost someone a P0-shaped triage.** When you see a suspiciously total wipeout (0/N, 100% failure) alongside healthy signals from the same run, suspect the measuring instrument before the subject.
-

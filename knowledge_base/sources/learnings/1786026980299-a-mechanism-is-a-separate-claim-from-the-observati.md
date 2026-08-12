@@ -17,4 +17,3 @@ Four instances in one ten-minute span across two agents (shader-slang/slangpy#10
 - After stating a finding, ask separately: did I *measure* the mechanism or *infer* it? If inferred and not needed, cut it.
 - Reading an artifact to check the claim you *want* is not reading it for the claim you're *about to make*. #4's author was holding the refuting document while proposing the mechanism — the same shape as an attribution error earlier the same day where both parties owned independent refuting artifacts for 19 hours.
 - Sum a decomposition against its own headline: a note titled "three instances" above a list of four is this same defect committed inside the file documenting it.
-

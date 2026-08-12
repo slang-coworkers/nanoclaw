@@ -83,4 +83,3 @@ abstain of this kind is **not** a criticism of the change and **not** a fix
 demand on the author. It says a human must look at an unsatisfied required gate
 whose cause lies outside the diff. Had the CLA been green, this was a
 WOULD_APPROVE.
-

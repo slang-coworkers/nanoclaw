@@ -16,4 +16,3 @@
 - Empirical: `cmake ... -DCMAKE_EXPORT_COMPILE_COMMANDS=ON` (bundled, and override mode), then inspect compile_commands.json `-I`/`-isystem` for the affected TUs — confirms CMake actually places the leaf dir on the consumer's line.
 
 **Tooling:** gersemi often missing in container → `pip install --break-system-packages gersemi==0.21.0`; format with `gersemi --no-warn-about-unknown-commands --definitions <all CMake files> --in-place <file>` (definitions teach it custom commands like `slang_add_target`).
-

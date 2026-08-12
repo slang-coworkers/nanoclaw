@@ -39,4 +39,3 @@ restructure indefinitely.
   needs an owner.*
 - **Separate content loss from reachability loss with a zero-byte check.** 0 of 117 unreferenced files were
   empty ⇒ the notes survived; only the routing layer was gone.
-

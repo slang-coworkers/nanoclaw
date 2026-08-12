@@ -81,4 +81,3 @@ assumption about *frequency* that nothing in the file states.
 
 Siblings: "skill edits are ephemeral" (rule now amended twice); registry-entry-is-not-a-
 mapping; a failing positive control fabricates an absence.
-

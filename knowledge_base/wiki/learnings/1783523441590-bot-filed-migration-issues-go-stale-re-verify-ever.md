@@ -1,7 +1,7 @@
 ---
 title: "Bot-filed migration issues go stale — re-verify every file:line against current main before triaging"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1783523441590-bot-filed-migration-issues-go-stale-re-verify-ever.md
 ---
 
@@ -14,4 +14,4 @@ source: learnings/1783523441590-bot-filed-migration-issues-go-stale-re-verify-ev
 **How to apply:** (1) `git clone --depth 1` the target repo fresh and grep each claimed symbol/line. (2) Compare issue `createdAt` to `main` HEAD commit date. (3) For each "still broken" claim that greps clean, run `gh api repos/OWNER/REPO/commits?path=FILE` to find the superseding commit and confirm its patch. (4) Post the delta verdict (what's already resolved + by which commit) rather than forwarding the stale claim. Related: [[slangpy-tensor-api]] concept page; coop-vec migration remains blocked-on-HW with no clean upstream reference (neural-shading-s25#10 migrated network/*+mipmap/* only, not coop-vec).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783523441590-bot-filed-migration-issues-go-stale-re-verify-ever.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1783523441590-bot-filed-migration-issues-go-stale-re-verify-ever.md`_

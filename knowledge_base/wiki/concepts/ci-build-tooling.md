@@ -3,12 +3,19 @@ title: "CI Build Tooling & Workflow Structure"
 type: concept
 group: ci-tooling
 tags: [ci, build, wasm, falcor, workflows, test-silencing, perf, cmake, slang, capability-atoms, doc-regen, cmdline-ref, shallow-clone, submodules, git-provenance]
-source_count: 46
+source_count: 25
 ---
 
 # CI Build Tooling & Workflow Structure
 
+# CI Build Tooling & Workflow Structure
+
 Concrete facts about how the Slang CI build system is structured: workflow files and their scope, GPU test silencing with expected-failure lists, DISABLE-build-only jobs, Falcor build/test split, compile-time perf-CI, the check-cmdline-ref consolidation, and the bot's workflow-permission constraint. Also the local **checkout** hazards that corrupt every downstream measurement: shallow-clone graft lies, shallow submodule fetches against pinned SHAs, and build trees mutated mid-build.
+
+> **This page is part 1 of 3** of the CI Build Tooling & Workflow Structure synthesis (split 2026-08-11 to stay under the 40 KB read cap). Siblings: [part 2](ci-build-tooling-2.md), [part 3](ci-build-tooling-3.md). The TL;DR below is shared across all parts.
+
+## TL;DR
+
 
 ## Workflow Permission Constraint
 
@@ -20,6 +27,7 @@ Concrete facts about how the Slang CI build system is structured: workflow files
 When a reconciliation is needed on a still-open contributor PR, the clean path is to recommend the author amend their PR in place (they can edit workflows), NOT to ship a competing bot PR ([CI follow-up issue filed by a contributor against their own still-open PR → stand down to plan-only](../learnings/1780769335094-ci-follow-up-issue-filed-by-a-contributor-against-.md)).
 
 **Two barriers stack, and the second is fatal:** the App-token push rejection is only the *technical* barrier. A coworker bot can route around it by pushing to the `slang-coworkers/slang` fork (its App install DOES carry `workflows`) and opening a cross-fork PR into upstream via REST (`gh api -X POST repos/shader-slang/slang/pulls -f head=slang-coworkers:<branch> ...`; `gh pr create`'s GraphQL fails "fork collab can't be granted"). But even with a clean, codex-approved cross-fork PR open, a maintainer will CLOSE it unmerged on **security policy** — jkwak-work on #11989→PR #12001: *"coworker is not allowed to modify [workflow files] for security reasons. I will run an agent locally."* So the `workflows`-permission push rejection is the early tell that a fix "may be disallowed," not merely "route around it" ([Coworker bots may not modify .github/workflows — flag before building](../learnings/1783546220222-coworker-bots-may-not-modify-github-workflows-flag.md), [Cross-fork workflow-file PR opens but is POLICY-CLOSED by maintainer](../learnings/1783546977853-cross-fork-workflow-file-pr-opens-but-is-policy-cl.md)). **Catch this at triage-scoping:** when a fix's change surface is entirely (or requires touching) `.github/workflows/**` or `.github/actions/**`, mark it maintainer-only in the verdict — do NOT spend a fix cycle producing a PR that policy will reject. Still triage/verify/recommend and file any spun-off *code* issues (those ARE landable — e.g. #11989 spun off compiler false-positive trackers #12006/#12007, the actually-useful bot output); if a bot already opened such a PR, annotate it maintainer-only and hand the diff over as a comment rather than iterating ([Workflow-file changes are policy-rejected for coworker bots — catch at triage-scoping](../learnings/1783546996023-workflow-file-changes-are-policy-rejected-for-cowo.md)).
+
 
 ## GPU Test Silencing and Expected-Failure Lists
 
@@ -37,9 +45,11 @@ The established pattern for a newly-failing Vulkan unit test on a no-GPU runner 
 
 **Auto-skip is not belt-and-suspenders enough.** `tools/gfx-unit-test/gfx-test-util.cpp:265-269` already does `SLANG_IGNORE_TEST` when `getRHI()->createDevice()` fails. Yet ~24 Vulkan tests are still listed in `expected-failure-no-gpu.txt` — the auto-skip is insufficient when the loader is present but no ICD → instance creates, `vkEnumeratePhysicalDevices` returns 0 → failure past the skip point ([Slang CI: how GPU-requiring unit tests are silenced on no-GPU / aarch64 runners](../learnings/1780769170873-slang-ci-how-gpu-requiring-unit-tests-are-silenced.md)).
 
+
 ## DISABLE-Configured CI Jobs Are Build-Only
 
 CI jobs configured with `-DSLANG_SLANG_LLVM_FLAVOR=DISABLE` (in `.github/workflows/cmake-options-build.yml`) stop at the build step — they do NOT run `slang-test`. The x86_64 test tiers consume artifacts shipped WITH slang-llvm, so they never exercise the absent-library path either. A PR claiming a slang-test startup/harness fix is "best confirmed by CI on a DISABLE configuration" is making an illusory claim. The cheap, GPU-free guard is to add an assertion to the existing DISABLE build job: `./build/*/bin/slang-test -help | grep -q .` ([Slang DISABLE CI jobs are build-only — no slang-test run step](../learnings/1780326708945-slang-disable-ci-jobs-are-build-only-no-slang-test.md)).
+
 
 ## Falcor CI Build/Test Split
 
@@ -47,11 +57,13 @@ PR #11495 split `falcor-test.yml` so the Slang build moves off the Falcor self-h
 
 **Artifact scoping side effect:** `download-artifact@v4` is attempt-scoped, so `gh run rerun --failed` on a test-only failure will report "Artifact not found." This affects every split workflow in the repo (`materialx-test.yml`, `ci-slang-test.yml`, `falcor-test.yml`). Recovery requires a full rerun or an author push ([Falcor CI build/test split (slang#11495): Approach C over windows-latest — CUDA is the blocker, LLVM-from-GCS is a public bucket](../learnings/1780769330979-falcor-ci-build-test-split-slang-11495-approach-c-.md)).
 
+
 ## Compile-Time Perf-CI
 
 Issue #11501 requests `.slang-repro` capture/replay perf-CI. In-flight PR #11485 (`tools/benchmark/perf-suite/`) already covers the same goal via synthetic stage-stress + MDL/DXR workloads driven by `slangc -report-perf-benchmark`. The recommended convergence is to fold `.slang-repro` into #11485's framework as an additive workload kind — `slangc -load-repro <file> -report-perf-benchmark` — reusing the same `[{name, value, unit}]` JSON output schema and the two-tier CI design ([Slang compile-time perf-CI (#11501) overlaps PR #11485 — converge via workload-kind; infra already in-tree](../learnings/1780769174979-slang-compile-time-perf-ci-11501-overlaps-pr-11485.md)).
 
 Relevant in-tree infrastructure already exists: `-dump-repro`, `-load-repro`, `-load-repro-directory`, `-extract-repro`, `-report-perf-benchmark`, `-report-downstream-time` (all in `source/slang/slang-options.cpp`); self-hosted runner labels `[Windows, self-hosted, benchmark | perf | regression-test | build]`; workflow templates `benchmark.yml`, `falcor-compiler-perf-test.yml`, `push-benchmark-results.yml`, `compile-regression-test.yml`; external results store `shader-slang/slang-material-modules-benchmark` via `push-benchmark-results.yml` ([Slang compile-time perf-CI (#11501) overlaps PR #11485 — converge via workload-kind; infra already in-tree](../learnings/1780769174979-slang-compile-time-perf-ci-11501-overlaps-pr-11485.md)).
+
 
 ## check-cmdline-ref Consolidation
 
@@ -59,9 +71,11 @@ Relevant in-tree infrastructure already exists: `-dump-repro`, `-load-repro`, `-
 
 **Critical: do NOT touch `regenerate-cmdline-ref.yml`.** It is a separate workflow (the `/regenerate-cmdline-ref` comment auto-fix) with a deliberate fork-security split: generate runs untrusted PR code WITHOUT bot secrets; a separate apply job commits via SLANGBOT_PAT. Folding/deleting it would break the auto-fix path and its security model ([slang check-cmdline-ref.yml → ci.yml consolidation (issue #11586) is low-risk; do NOT fold in regenerate-cmdline-ref.yml](../learnings/1781310201311-slang-check-cmdline-ref-yml-ci-yml-consolidation-i.md)).
 
+
 ## Bot Draft PRs and CI
 
 `ci.yml`'s `filter` job is gated `if: github.event_name != 'pull_request' || github.event.pull_request.draft != true`. On a draft PR, `filter` skips, `should-run` is never set, and every build/test job skips. Draft PRs sit with `skipped` CI until a human marks them ready-for-review — the `pull_request` `ready_for_review` event type fires a fresh `draft=false` event, which triggers full CI. `workflow_dispatch` does NOT bypass the filter's draft-gate ([Bot draft PRs get ZERO CI on shader-slang/slang (filter job skips drafts)](../learnings/1781663343829-bot-draft-prs-get-zero-ci-on-shader-slang-slang-fi.md)).
+
 
 ## Example-Grading and Whole-Repo Lint CI
 
@@ -69,17 +83,21 @@ Relevant in-tree infrastructure already exists: `-dump-repro`, `-load-repro`, `-
 
 **`slangpy-samples` CI runs `pre-commit --all-files` — inherited black failure is not your PR's fault.** The `pre-commit` job runs against the whole repo, so every PR's CI status reflects the formatting state of ALL files, not just your diff. When `main` itself is red (e.g. `black` reformats ~8 pre-existing `.py` files), any new PR inherits that red `pre-commit` check even when it touches zero Python. Triage a `github.ci_failed` before assuming it's yours: find which hook+files failed (`gh run view --log-failed | grep -iE "Failed|reformatted|\.py"`), check `git diff --name-only origin/main` (reformatted files not in your diff = inherited debt), and confirm main is already red. Do NOT pull the unrelated black reformatting into a focused PR — document it and move on; local `black --check` can pass while CI's pinned version fails ([slangpy-samples CI runs pre-commit --all-files — inherited black failure is not your PR's fault](../learnings/1783525328477-slangpy-samples-ci-runs-pre-commit-all-files-inher.md)).
 
+
 ## COMPARE_COMPUTE filecheck-buffer Portability
 
 For COMPARE_COMPUTE tests using `filecheck-buffer=CHECK`, always include `-output-using-type` in the test directive. Without it, the output buffer is dumped as raw hex words by the LLVM JIT backend (`-api cpu+llvm`, used in CI) but as decimal by the gcc/genericcpp backend (used locally). Values > 9 (e.g. `30` vs `1E`) expose the mismatch; values ≤ 9 mask it. A local `-cpu` pass does not guarantee CI ([COMPARE_COMPUTE filecheck-buffer: use -output-using-type or CI (cpu+llvm) dumps HEX while local (gcc cpu) dumps decimal](../learnings/1781271132976-compare-compute-filecheck-buffer-use-output-using-.md)).
+
 
 ## Diagnostic Code Collisions on Master-Merge
 
 When you add a new entry to `source/slang/slang-diagnostics.lua` with an explicit numeric code and master advances before your PR merges, another PR can claim the same code. Git auto-merges the `.lua` cleanly (no textual conflict) but the diagnostics code-generator fails, breaking ALL platform `build` jobs uniformly right after a maintainer "Update branch" / "Merge branch 'master'" commit. Diagnosis: `git show origin/master:source/slang/slang-diagnostics.lua | grep -oE '\b55[0-9]{3}\b' | sort -n | tail` to see master's current max; fix by renumbering to the next free code above master's current max ([Diagnostic/enum codes picked against a stale base collide on master-merge and break ALL platform builds](../learnings/1782741439587-diagnostic-enum-codes-picked-against-a-stale-base-.md)).
 
+
 ## Build Volume and Disk Layout
 
 Container disk has two volumes: `/workspace` → `/dev/vda1` (constrained shared host volume, ~5–6G free); `/workspace/agent` → `/dev/vdb` (separate per-agent volume, ~89G free, where the project clone and build tree live). Before declaring a build disk-blocked, run `df -h --output=source,avail,pcent <actual-build-path>` on the build path, not bare `df /workspace` ([Per-agent build volume is /dev/vdb (/workspace/agent), not shared /workspace](../learnings/1780381892104-per-agent-build-volume-is-dev-vdb-workspace-agent-.md)). If `/dev/vdb` is full due to many sibling worktrees, build out-of-source onto `/dev/vda1` by symlinking the worktree's `build/` to `/workspace/build-<issue>` and setting `TMPDIR=/workspace/build-<issue>/tmp` ([Disk-full build workaround: out-of-source build on /dev/vda1 (/workspace) when /dev/vdb (/workspace/agent) is full](../learnings/1781568134178-disk-full-build-workaround-out-of-source-build-on-.md)).
+
 
 ## Compiler Triage Caveats for Build/Fix Work
 
@@ -87,221 +105,34 @@ Container disk has two volumes: `/workspace` → `/dev/vda1` (constrained shared
 
 **Primary-file `using namespace` leaks through `import`.** A `using namespace Foo;` in a module's primary source file is re-exported through `import` (importers see `Foo`'s members unqualified); the same directive in an `implementing`/`__include`d file does NOT leak. The mechanism: primary-file decls are pushed under the `ModuleDecl` scope; `__include`d files get a separate `FileDecl` scope; `importModuleIntoScope` re-exports the module scope's direct-child sibling chain. Before recommending a behavior-changing fix here, grep `tests/` for an existing test that asserts the current behavior — `tests/language-feature/namespaces/namespace-using/b.slang` currently depends on this leak ([Slang: primary-file `using namespace` leaks through `import` (and an existing test asserts the leak)](../learnings/1780476462894-slang-primary-file-using-namespace-leaks-through-i.md)).
 
+
 ## Release-CI failures: trace the exact command; bisect the workflow file's own history
 
 When a GitHub **release** is missing artifacts for one arch/platform but not others, don't assume "transient — just re-run." Trace the exact failing command in the release CI run: moving a CI leg into a no-sudo container can break asset production asymmetrically (e.g. a step that needed root) while leaving other arches green ([Release-asset asymmetry from moving a CI leg into a no-sudo container (verify exact failing command, not disk/transient)](../learnings/1782845136368-release-asset-asymmetry-from-moving-a-ci-leg-into-.md)). When a release run fails at an environment/**Setup** step rather than a compile step, the culprit is almost always a CI-config change — bisect the *workflow file's own git history*, not just the "commits since last successful run" source range, which will mis-blame an innocent PR ([Release-CI Setup failures: bisect the workflow file's own history, not just the source-commit range](../learnings/1782869849186-release-ci-setup-failures-bisect-the-workflow-file.md)).
+
 
 ## Vendored-Submodule FetchContent Is a Hidden Anonymous-GitHub Network Dependency
 
 Slang macOS CI intermittently fails at the **CMake configure** step downloading Vulkan-Headers, even though the headers appear vendored. Root cause (code-proven): TWO independent Vulkan-Headers sources exist — Slang *core* vendors them with no download (`external/CMakeLists.txt` `add_subdirectory(vulkan)` on the `external/vulkan` submodule → `Vulkan::Headers`), while the vendored **slang-rhi** submodule independently network-fetches them via `FetchPackage(vulkan_headers URL .../Vulkan-Headers/archive/refs/tags/v1.4.347.zip)` (a wrapper over CMake `FetchContent`), gated `if(SLANG_RHI_ENABLE_VULKAN)` which is ON for Darwin, building its own `slang-rhi-vulkan-headers` target without reusing `Vulkan::Headers`. It's intermittent because CI sets no `SLANG_GITHUB_TOKEN`, so the fetch is anonymous → rate-limited per source IP → free GitHub-hosted macOS runners share NAT'd IP pools → intermittent 403/timeout. **General pattern:** when a vendored submodule (slang-rhi, glslang, etc.) does its *own* FetchContent for a dependency the parent already vendors, you get a redundant network dependency at configure time — check for token-less anonymous GitHub fetches as an intermittency source. The standard local-redirect escape hatch is `FETCHCONTENT_SOURCE_DIR_<UPPERCASE_NAME>` (here `FETCHCONTENT_SOURCE_DIR_VULKAN_HEADERS=${CMAKE_SOURCE_DIR}/external/vulkan`). **Caution:** the redirect is only safe if the vendored copy's version satisfies the consumer's symbol needs — slang-rhi's Vulkan backend uses bfloat16/float8 extension symbols absent from the older vendored `external/vulkan` (VK_HEADER_VERSION 307), so redirecting *breaks the build* and the network fetch is load-bearing until the submodule is bumped (bump it, or upstream a `if(NOT TARGET Vulkan::Headers)` reuse into slang-rhi). Two Khronos "headers" submodules are easy to conflate — Vulkan-Headers (Vulkan API) is NOT SPIRV-Headers (SPIR-V enums/grammar) ([slang#11985 2nd cause: slang-rhi FetchContent-downloads Vulkan-Headers despite vendored submodule](../learnings/1783619348986-slang-11985-2nd-cause-slang-rhi-fetchcontent-downl.md)). Reading the correct pin depends on the submodule being at its committed gitlink, not a stale working tree — see [Verify submodule pins at the gitlink, not the working tree](../learnings/1783621079268-verify-submodule-pins-at-the-gitlink-not-the-worki.md).
 
+
 ## Windows CI Crash-Dump Routes via the Shared `ci-slang-test.yml`, Not the Linux Container Path
 
 For the Windows counterpart (#12032) of the Linux #10812 core-dump capture, two non-obvious facts: Windows GPU test jobs (`test-windows-*-gpu`, `ci.yml`, self-hosted GCP-T4) run through the **shared os-agnostic reusable workflow `.github/workflows/ci-slang-test.yml`** (defaults `shell: bash`, no artifact-upload step) — NOT a Windows-specific file. The Linux core-dump capture lives in a *different* file, `ci-slang-test-container.yml` (`ulimit -c`, "Capture core dump backtraces" `if: always()`, upload), because Linux GPU tests are *containerized* with a `/var/cores` bind-mount. Windows self-hosted runners aren't containerized, so WER LocalDumps (registry) is the right mechanism, added Windows-guarded (`if: runner.os == 'Windows'`) to the shared file with a `shell: pwsh` step overriding the bash default. **Security posture to preserve:** the Linux capture deliberately uploads ONLY gdb-symbolized backtraces, NEVER raw cores ("raw cores contain full process memory — credentials / sensitive state"); the naive WER snippet in the issue uses `DumpType=2` (full dump) + uploads raw, regressing that posture — correct is symbolize on-runner with `cdb`, upload only `.txt` (needs Debugging Tools + PDBs), or `DumpType=1` mini with a documented caveat, and `if: always()` + `if-no-files-found: ignore` (Linux pattern) over `if: failure()`. Routing note: this is a pure `.github/workflows/**` change, so the bot cannot land it (App token lacks `workflows` perm) — the sanctioned deliverable is a validated `git apply`-able diff as an issue comment, never a PR ([slang#12032 Windows CI crash-dump: routes via ci-slang-test.yml, not the Linux container path](../learnings/1783637017715-slang-12032-windows-ci-crash-dump-routes-via-ci-sl.md)).
+
 
 ## nanoclaw Sync-PR CI Composes All `nv-*` Branches (Merge-Order Dependency)
 
 On the coworker system's own NanoClaw host fork (`slang-coworkers/nanoclaw`), `.github/workflows/ci.yml` on the `nv-*` branches does NOT test a sync PR standalone: on any PR whose base is an `nv-*` branch, CI merges **every sibling nv-* branch** into a composed state ("test the composed state, not standalone"), with `nv-main` **canonical** for `src/*`, `.github/**`, `scripts/**`, `container/agent-runner/**`, `docs/**`, and config (the owned set auto-resolves to nv-main on conflict; a conflict *outside* the owned set fails loudly). **Consequence — merge-ordering dependency:** a refactor that renames/deletes files in the owned set breaks EVERY leaf sync PR's CI until the **nv-main sync PR lands first**. Observed: an "ncl tasks control plane" refactor (`insertTask`→`insertTaskRow`, deletes `scheduling/actions.ts`) reached the sync-PR heads but not the live branch tips, so a leaf PR's composed-state build merged live nv-main's pre-refactor `db.ts` + stale `actions.ts` on top of the leaf's post-refactor `db.ts` → identical tsc errors on every leaf while the nv-main→ PR was green. **Diagnosis rule:** tsc errors naming files ABSENT from both the PR head tree and base tree = the composed-state merge pulled them from a sibling nv-* branch (almost always nv-main) — fetch the file from nv-main to confirm. This is NOT a flake and NOT fixable by re-running the leaf (`gh run rerun --failed` replays the same pinned `github.sha`); **fix = merge the nv-main sync PR first, then re-run the leaves.** These `github.pr_ready_for_review` webhooks aren't in the shader-slang routing table and have no nanoclaw reviewer coworker — Main handles them directly ([nanoclaw sync-PR CI composes all nv-* branches (merge-order dep)](../learnings/1783633650284-nanoclaw-sync-pr-ci-composes-all-nv-branches-merge.md)).
 
 ---
+
 ## Making a Slang CI Check "Required" = Add to `check-ci.needs`, Not Branch-Protection UI (2026-07-20 fold)
 
 `ci.yml` registers exactly ONE aggregate job in branch protection: `check-ci`, whose `needs:` list enumerates every build/test/lint job and fails if any needed job != success ("any job added to `needs` above is gated automatically"). So to make a new check blocking, you don't touch branch-protection settings — you (1) write a `pull_request`-event job that `exit 1`s on violation, then (2) add its name to `check-ci.needs` (precedents: `check-cmdline-ref`, `check-capability-atoms-ref`). Combined with the durable workflows-permission wall: the *script/tool* change (e.g. an `--enforce` exit-1 mode under `extras/`) is bot-committable, but the `ci.yml` job + `check-ci.needs` edit is NOT — deliver it as a maintainer-applied diff and note the split in triage `next-action`. Bonus gotcha (`check-inst-version-changes.sh`): its advisory is only advisory because the script `exit 0`s and its poster runs `on: workflow_run` (no PR-head status); prefer a dedicated cheap job over flipping the existing "Check Version Constants" build step, whose artifact-upload lacks an `always()` guard ([making a slang CI check required = add a job to check-ci.needs](../learnings/1784430693229-making-a-slang-ci-check-required-add-a-job-to-chec.md)).
 
-## Untracking a Checked-In Build Binary Is Safe Only If Nothing Consumes the Tracked Copy (2026-07-21 fold)
+**Source learnings (25):**
 
-For repo-hygiene issues asking to `git rm --cached` a checked-in generated binary + `.gitignore` it (e.g. slang#12167, `extras/scaler/scaler-linux`, a 34.6 MB Go ELF), the load-bearing verification beyond "is it tracked / how big" is: **does any deploy script, CI workflow, or Makefile CONSUME the tracked copy?** If a consumer reads the tracked binary directly, removal breaks that path and the fix is NOT safe as stated. Quick read-only checks from the checkout: `git ls-files <dir>` to confirm tracked; `git cat-file -s $(git rev-parse HEAD:<path>)` for exact byte size; `head -c4 <path> | od -An -tx1` → `7f 45 4c 46` confirms ELF (no `file` binary in the container); grep deploy scripts + `.github/` for the binary name. In #12167 both `deploy/setup-scaler-host.sh` and `deploy/update-scaler.sh` already did `[ ! -f "$BINARY" ]` → error out and print a `go build` command — i.e. they expect a *locally built* binary, not the tracked one — making removal provably safe, and no workflow referenced it. State in the verdict (so a maintainer isn't surprised) that untracking stops **future** bloat only; it does NOT shrink existing history/packs, and a full history purge (git-filter-repo/BFG) rewrites shared history and is disproportionate for a single blob — reject it as out-of-scope unless explicitly requested. Classification: enhancement / repo-hygiene, low severity, P3, component CI/build-infra; apply `reproduced` once tracked-file facts are confirmed at HEAD, leave Issue Type blank (a build-chore is neither a clean Bug nor Feature) ([Untracking a checked-in build binary is safe only if nothing consumes the tracked copy](../learnings/1784595515240-untracking-a-checked-in-build-binary-is-safe-only-.md)).
-
-## Clone Depth: Shallow Checkouts Give Confidently Wrong Answers (2026-08-04 fold)
-
-Shallowness is a property of the **checkout, not of any agent** — every coworker running history tools in an affected clone gets the same false answer, so state it as environment rather than as someone's mistake. Audit **per clone**, not per workspace:
-
-```bash
-for d in /workspace/agent/*/; do [ -e "$d/.git" ] && \
-  printf "%-14s shallow=%s commits=%s\n" "$(basename $d)" \
-    "$(git -C $d rev-parse --is-shallow-repository)" "$(git -C $d rev-list --count HEAD)"; done
-# observed 2026-08-03: slang-rhi = shallow (graft eb8c343, ~203 commits) · slang = full (6,727)
-```
-
-So history-tool claims about `slang` stood; claims about `slang-rhi` needed the API ([audit clones individually — slang-rhi shallow, slang full](../learnings/1785768394345-shallow-clones-fail-three-ways-history-search-stat.md)). A base checkout that is `is-shallow=false` today (e.g. unshallowed during earlier work) proves nothing about the next clone — **run the check, don't inherit the conclusion** ([per-clone, not durable](../learnings/1785768378247-shallow-clone-graft-lie-is-depth-1-specific-one-li.md)).
-
-### The three failure modes
-
-**Mode 1 — history search names the graft root as the introducer.** `git log -S` / `git blame` / `--follow` can only see commits inside the graft, so they report the oldest *reachable* commit as where a line was introduced, with full confidence and no warning. Real cost: the Metal-only skip `SKIP("skipped due to regression in Slang v2025.18.2")` at `tests/test-sampler-array.cpp:29` was attributed to graft root `eb8c343` (slang-rhi #534, "Enable bindless support in CUDA") by exactly the right-looking tool, `git log --follow -S'<string>' -- <path>`. Ground truth from REST: added by **`8da2bf4f` = #533 "Enable CUDA texture access tests"** — 3 files, patch `+2/−0` adding exactly those lines, absent in parent `e5242e04`; the file itself dates to `4ab6f46d`, 2024-08-30 "initial import", and #534's real 11-file list does not contain the file at all. Same author, same day, adjacent PR number, **and the conclusion drawn from it was correct** — wrong only in the identifier, which is the hard shape: nobody re-checks a commit id that supports a conclusion they already agree with ([slang-rhi provenance misattribution via git log -S past the graft](../learnings/1785767576978-workspace-agent-slang-rhi-is-a-shallow-clone-git-l.md), [same trap, verified from both sides against the REST API](../learnings/1785767719938-slang-rhi-clones-are-shallow-git-history-tools-giv.md)). It also retroactively impeached an *older* stored claim resting on `git log -S` in that repo ("Metal `getDescriptorHandle` never landed, confirmed over 200+ commits") — which survived re-verification, but by a different method, not by the original evidence.
-
-**Mode 2 — `--stat` inflation, including on your own HEAD.** At a graft boundary every pre-existing file looks like a fresh addition, so `--stat` reports a whole-tree diff. Both measured against the API:
-
-| commit | local (shallow) | API truth | inflation |
-|---|---|---|---|
-| `eb8c343` (slang-rhi graft root) | 521 files / 125,516 ins / 0 del | **11 files / +232 −114**, 1 parent | ~47× files, ~540× ins |
-| `c09d12c015` (#802 head, `--depth 1` clone) | 623 files / 191,694 ins / 0 del | **2 files / +8 −3**, a *merge* with 2 parents | ~300× files |
-
-A `--depth 1 --branch <ref>` clone writes **the commit you checked out** into `.git/shallow`, making your own HEAD the graft root (`git log -1 --format='%P' <head>` → empty). This variant is nastier than mode 1 because `git show --stat <head>` doesn't look like a history query at all — it looks like the diff of the commit in front of you, the last place anyone suspects missing history — and "623 files changed" reads as a plausible large merge. A reviewer sizing a PR this way reports a 191k-line diff for an 8-line change ([--depth 1 makes YOUR head the graft root, so local diffs lie](../learnings/1785767871401-shallow-clone-your-own-checked-out-head-becomes-th.md)). **Tells:** implausibly many files with **all additions and zero deletions**; empty `%P` on a commit that isn't the true root; and one step subtler, **a merge commit reporting a whole-tree diff**.
-
-The tells are also **asymmetric**, which is what makes `show --stat` the command to distrust: `git diff HEAD~1` fails **loudly** in a depth-1 clone (`fatal: ambiguous argument 'HEAD~1'`) and `git blame` carries its `^` prefix — both *self-report* truncation. `git show --stat HEAD` does neither ([the tells are asymmetric; aim the warning at PR-sizing clones](../learnings/1785768378247-shallow-clone-graft-lie-is-depth-1-specific-one-li.md)).
-
-**Mode 3 — object-not-found manufactures a false negative (the dangerous one).** Modes 1–2 corrupt a claim *about a commit* and each leaves an implausible number to trip on. Mode 3 fabricates a conclusion *about the world* — "that commit doesn't exist," "that branch was deleted" — and not-found looks like a clean result. A real-but-unfetched commit and a completely fabricated SHA are **byte-identical** to local git; there is no weak signal, there is none:
-
-```
-git cat-file -t c09d12c015…   -> fatal: git cat-file: could not get object info   # REAL (#802 head)
-git cat-file -t deadbeefdead… -> fatal: git cat-file: could not get object info   # FABRICATED
-git rev-parse --verify <either>^{commit} -> fatal: Needed a single revision       # identical
-```
-
-Error *wording* misleads in the other direction too: the abbreviated but equally real `8da2bf4f` yields a **different** message (`Not a valid object name`). So inferring existence from message text is wrong both ways — identical errors for real-vs-fake, different errors for real-vs-real. The API disambiguates all three: real full SHA → the commit; fabricated → `HTTP 422 {"message":"No commit found for SHA: …"}`; abbreviated real → resolves ([a real unfetched SHA and a fabricated one are byte-identical to local git](../learnings/1785768516776-shallow-clone-mode-3-a-real-unfetched-sha-and-a-fa.md), [three modes, and mode 3 is the silent one](../learnings/1785768291147-shallow-clone-object-not-found-is-about-your-check.md)). **Rule: in a possibly-shallow clone, object-not-found means "my clone can't see it" until proven otherwise — never that a ref is absent.**
-
-### Scope: mode 2 fires on the GRAFT ROOT at any depth
-
-Two opposite loose phrasings are both wrong. "It's a depth-1 problem" **under-scopes** it; "`--stat` is false past the graft" **over-scopes** it (commits inside the graft diff correctly). Measured on a real shallow `slang-rhi` clone at **depth 203**: `HEAD` = `14e2f74e2` ≠ graft, and `git show --numstat HEAD` = 2 files / +8 −3, **identical to the API, not corrupted** — while `git show --stat eb8c343` (the graft) still reported 521 files against an API truth of 11. **Precise rule: mode 2 fires when the commit you `--stat` IS the graft root, at any depth; `HEAD == graft` is sufficient but not necessary.** A depth-203 clone that reasons "not depth-1, so I'm safe" and then `--stat`s the graft root gets garbage — precisely the false safety the rule was written to prevent. So check *the commit you are about to `--stat`*, not your clone's depth ([mode 2 lies on the graft root at any depth, not just depth-1](../learnings/1785768744942-shallow-clone-mode-2-scope-stat-lies-on-the-graft-.md)).
-
-Where the everyday risk actually lives: `/slang-fix-issue` Step 1 clones `--depth 50`, so a fixer's own commits diff correctly and **nobody needs to re-verify in-flight worktree diffs** — only provenance *behind* the boundary is unreliable there (mode 1). The catastrophic depth-1 form is the **PR-review reflex**, `git clone --depth 1 --branch <pr-head>` to size up someone else's change, which is exactly how the 191k-for-8-lines reading happened.
-
-### ⚠️ The ONE correct discriminator — the `head -1 .git/shallow` form has a false negative
-
-An earlier revision of this cluster circulated this check, and it is **retracted**:
-
-```bash
-# ❌ WRONG — false negative
-[ "$(git rev-parse HEAD)" = "$(cat .git/shallow | head -1)" ] && echo "SILENT REGIME"
-```
-
-`.git/shallow` is **sorted by SHA** and holds **one entry per fetched branch tip**, so a clone that fetches more than one ref writes several lines and HEAD is usually *not* line 1 — the check then reports "safe" while you are squarely in the inflating regime. Reproduced on a constructed fixture (12-file initial import, 5 side branches, 1-line tip change, `clone --depth 1 --no-single-branch`): 6 shallow entries with HEAD on the last line, `head -1` compare → "SAFE" (**wrong**), `%P` → empty (**right**), and `git show --stat HEAD` → 12 files / 13 insertions against a truth of 1 file / +1. Inflation scales with **tree size**, not with the number of shallow entries — the same mechanism that produced 623 files for a 2-file merge on a real repo. Use this instead:
-
-```bash
-[ "$(git rev-parse --is-shallow-repository)" = true ] && [ -z "$(git log -1 --format=%P)" ] \
-  && echo "SILENT REGIME: git show/diff on HEAD will inflate"
-```
-
-It asks the question that actually matters — *is HEAD itself a graft root* — and needs no knowledge of `.git/shallow`'s format or ordering. **The `--is-shallow-repository` guard is load-bearing, not decoration:** in a **full** clone parked on the repository's true root commit `%P` is *also* empty, so the bare `-z` test reports SILENT (a false positive) and the guard suppresses it. (`grep -qx "$(git rev-parse HEAD)" .git/shallow` also closes the gap, but it is the indirect route to the same fact.) Validated across six configurations — depth-1 single-branch (real repo and fixture), depth-1 multi-branch with HEAD on line 1, depth-1 multi-branch with HEAD *not* on line 1, depth-2 single- and multi-branch, and a full clone: the `%P` form agrees with ground truth on all six, the `head -1` form disagrees on the multi-branch case ([use the empty-%P form, not head -1 of .git/shallow](../learnings/1785768517981-shallow-clone-silent-regime-test-head-s-empty-pare.md), [CORRECTION: the head -1 discriminator has a false negative](../learnings/1785768628753-correction-the-shallow-clone-discriminator-using-h.md)).
-
-**Sharpening on how badly the bad check fails.** `--depth` implies `--single-branch`: a plain `git clone --depth 1 --branch <ref>` sets `remote.origin.fetch` to that one ref and writes **exactly one** shallow entry, so HEAD is trivially line 1 and the bad check **agrees ~always** — reaching a multi-entry shallow file requires `--no-single-branch` explicitly, or a later `git fetch --depth 1 origin <other-ref>` (which appends an entry without moving HEAD, flipping the verdict on a coin toss). Since the modal real-world shape is precisely `clone --depth 1 --branch <pr-head>`, anyone reading a measured "false-agreement rate" would conclude they'd have caught this by testing; in the configuration that actually hits them they would **not** have. Two structural smells, both readable without running anything: **a check that reads ONE element of an unordered or arbitrarily-ordered set carries no information when it passes** (`| head -1` on unsorted output, SHA-sorted files, hash-map order, `[0]` on an unordered collection), and **a check whose result an unrelated later operation can flip was never measuring its subject.**
-
-### Working rules
-
-1. **Check depth before trusting any local history or diff answer:** `git rev-parse --is-shallow-repository`, `cat .git/shallow`, empty `%P` on a non-root commit.
-2. **Diff and provenance facts → REST, not local git,** in any repo that might be shallow: `gh api repos/<o>/<r>/commits/<sha>`, `.../compare/<a>...<b>`, `.../commits?path=<p>`. The API sees full history regardless of local depth. `git fetch --unshallow` first if you want local tooling.
-3. **Verify provenance by the PATCH, never by proximity** — the line must be present after the candidate commit and absent in its parent. "Which PR was this author doing that week" is not a check; sibling PRs land the same day.
-4. **Negative existence claims come from state at a ref, never a history search** (`git ls-tree -r <ref>`, `git grep <pat> <ref>`, `gh api "repos/O/R/git/trees/<ref>?recursive=1"`, `contents?ref=`). A history search can only ever say *"not in the commits I could reach."*
-5. **Always name the ref.** "File X doesn't exist" is not a claim; "X doesn't exist at `main` but does at `<sha>`" is — a bare path silently asserts `main`, which makes a true pointer to a PR-branch artifact unfindable as written. Real case: `src/metal/metal-bindless-descriptor-set.{cpp,h}` exists at slang-rhi #802's head and is absent at `main`, so the "not at main" result *pins* the target rather than refuting it.
-6. **When a tool's reliability is impeached, re-derive every LIVE claim that leaned on it** — not just the one that got caught, because nobody re-audits evidence sitting under a conclusion they already accept. Two independent audits each surfaced exactly one at-risk claim; both were in the full clone and dual-sourced, and that is worth recording as a *checked result*, not an assumption.
-7. **Primary detector, cheapest of all:** an implausibly **short** history for an old file ⇒ suspect the **clone**, not the file. Three commits for a two-year-old file is louder than anything in the command output.
-
-**Verification routing that generalizes past git:** an agent with **no local clone** owns API-side truth — its confirmations are *independent* of any coworker's clone state, making it a genuine second source — but it cannot reproduce a local-git pathology and must attribute rather than co-sign such a receipt. An agent **holding the clone** owns local-git behavior and is the wrong verifier for someone else's checkout. Route local-git claims to whoever holds the clone; route existence/provenance claims to REST; and when you can only verify half a mechanism, say which half.
-
-**Two method lessons the cluster earned.** A rule stored as a **runnable command** beats one stored as a claim — a claim gets nodded at, a command gets run against inputs its author never had, which is the only reason the `head -1` false negative was catchable. The follow-through is to deliberately construct the shape you *didn't* observe (here: a clone fetching more than one branch), because a two-clone derivation of one repo silently fixes several variables at once and returns a narrow result shaped like a general one. And when a new finding impeaches a tool, **grep your own stored rules for that tool and amend them in place** rather than appending a second, contradicting note — a stored rule of the form *"review `git show HEAD`, not `git diff base`"* names the exact command that lies in the depth-1 regime, and that collision only surfaced because the finding was checked against existing notes.
-
-## Never `--depth 1` a Submodule Update: Pinned SHAs Aren't Branch Tips (2026-08-04 fold)
-
-The superproject/submodule asymmetry is the whole rule: **`git clone --depth N` on the superproject is fine** (submodule SHAs come from the gitlink and resolve independently), but a shallow *submodule fetch* breaks pinning. `git submodule update --init --recursive --depth 1` fetches only each submodule's **branch tip**, and Slang pins several submodules to commits behind their tips, so the pinned SHA simply isn't in the fetch:
-
-```
-fatal: Fetched in submodule path 'external/WindowsToolchain', but it did not contain
-9dc178a86fcbbf13c94b4cd4cb046f238d26c8da. Direct fetching of that commit failed.
-```
-
-`--depth 1` only *happens* to work when the pinned SHA is the current tip — true for a freshly-tagged repo, false for basically any older pin. This is why CI is unaffected: `.github/actions/build-and-test-with-slang/action.yml` runs plain `git submodule update --init --recursive` with **no depth flag**.
-
-**The failure is partial, not total, and the exit code can still be 0.** `git submodule update` keeps going after the fatal line, leaving a tree that looks populated but isn't — which reads as "the build is just slow" rather than "the checkout is broken" (~35 min lost assuming a long compile; another ~20 min on the same trap, which would have produced a completely meaningless build/test result if not caught). A `+`-marked submodule can be an **empty worktree**: `find external/slang-rhi -type f | wc -l` = **1** (only `external/slang-rhi/.git`), `du -sh external/` = 2.8M across 18 submodules while `.git/modules` was 30M, and `git status` inside it shows every file staged as deleted.
-
-`grep -c '^-'` — the check most scripts use — is **insufficient**, because uninitialized is only one of the two bad states. Use all three:
-
-```bash
-git submodule status --recursive | grep -c '^+'   # wrong commit  -> must be 0
-git submodule status --recursive | grep -c '^-'   # uninitialized -> must be 0
-find external/<a-big-submodule> -type f | wc -l   # must be >> 1
-```
-
-`--recursive` is load-bearing: nested submodules (e.g. `external/vulkan` → Vulkan-Headers) are invisible to a non-recursive `git submodule status`, so the outer path can read as done while a nested clone is still running. And `pgrep -f "git submodule"` self-matches the shell running the check — match `^git submodule update` instead. Idempotent repair: `git submodule deinit -f --all` (plus `rm -rf .git/modules` if worktrees were left empty), then `git submodule update --init --recursive` with no `--depth`. If a build against a specific PR/commit matters, verify the `^+` count is 0 **before** trusting any test result from it ([never use --depth 1 for slang submodules — fetch fails on pinned commits](../learnings/1785748265939-never-use-depth-1-for-slang-submodules-fetch-fails.md), [--depth 1 silently checks out WRONG commits with empty worktrees](../learnings/1785747759562-git-submodule-update-depth-1-silently-checks-out-w.md)).
-
-## Reading a Submodule Pin Move Across a Release Boundary (2026-08-04 fold)
-
-Extending the "verify submodule pins at the gitlink, not the working tree" rule above: converting a PyPI-release bisect into a slang-rhi commit range is the right first move on any slangpy issue whose backtrace has rhi frames, but **"the pin moved" is weaker evidence than it looks and can point the wrong way.** Read the pins over REST — coworker slangpy clones often have **no tags at all** (`git describe` → "No names found"), so `git ls-tree <tag>` yields nothing and an empty result is easy to misreport as "the pin didn't change":
-
-```bash
-gh api "repos/shader-slang/slangpy/contents/external/slang-rhi?ref=v0.36.0" --jq '.sha'
-gh api "repos/shader-slang/slangpy/contents/external/slang-rhi?ref=v0.37.0" --jq '.sha'
-gh api "repos/shader-slang/slang-rhi/compare/<sha1>...<sha2>" \
-  --jq '.commits[] | "\(.sha[0:9]) \(.commit.message|split("\n")[0])"'
-```
-
-On slangpy#1089 the pin **did** move across 0.36.0→0.37.0 (`96fef6f9`→`af6a1168`, 15 commits / 78 files) — yet all 15 commits were adapter/CUDA/WebGPU/test work, and the suspect functions (`getPipelineCacheKey`, `createPipelineWithCache`) were **byte-identical at both pins**; the rhi pipeline-cache code had landed months earlier (slang-rhi#379, 2025-06-02), well before the *older* pin. The real regression was slangpy newly **entering** a latent rhi path: v0.37.0 added `src/sgl/device/persistent_cache.{h,cpp}` (REST 404 at v0.36.0) and began setting `.persistentPipelineCache` in the rhi `DeviceDesc` for the first time. So **always intersect the commit range with the specific functions in the backtrace** before concluding ownership — a non-empty range only bounds the window. Grep the suspect symbols at *both* pins (`gh api .../contents/<path>?ref=<sha> --jq .content | base64 -d | grep -n …`); if they are identical, the regression is a caller-side activation and the fix may still land in rhi while the *cause* is in slangpy. Checking whether a file existed at the older tag (404 vs 200) is a cheap, decisive boundary probe ([a moved slang-rhi pin across a release boundary is not evidence the regression is in rhi](../learnings/1785774865515-a-moved-slang-rhi-submodule-pin-across-a-release-b.md)).
-
-## Concurrent-Ninja Build-Dir Corruption From a False-Reporting Build Subagent (2026-07-23 fold)
-
-An `ar: <x>.cpp.o: No such file or directory` at a static-lib archive step (or other mid-link "No such file") usually means TWO `ninja` processes are running on the SAME build dir — a build subagent backgrounded its `cmake --build` and falsely reported "build still running," so you started your own, and the two ninjas race on the same `.o`/`.a`. Recovery: `pkill -f "ninja -f build-<Config>"` (kill ALL), then relaunch a SINGLE build — ninja self-heals the incremental state, no `rm -rf` needed. Prevention: `pgrep -af ninja` before starting your own build; don't trust a subagent that returns without a clear `BUILD_EXIT=<n>` line (verify via `pgrep`+mtime); launch background builds with `setsid ... ; echo BUILD_EXIT=$? ... & disown` and arm a Monitor on `until grep -q BUILD_EXIT=` (fires on both success and failure) ([build subagent false-report + concurrent-ninja collision corrupts build dir](../learnings/1784775308129-build-subagent-false-report-concurrent-ninja-colli.md)).
-
-**The same family, one step earlier: mutating the tree under a running build produces a bogus `BUILD_EXIT` with no diagnostics.** (This is one instance of a broader invariant — *every shared mutable artifact the async consumer reads must stay frozen for the whole operation* — and the git-operation case is only its loudest direction; see the frozen-artifact section below for the silent one.) Signature — a background build reports non-zero `BUILD_EXIT=` and `build.log` contains **only that single line**: zero ninja progress, no `error:`, no `FAILED:`, even though earlier in the same run the log had normal output (`[41/1284]`). Cause is your own concurrent git operation: a `git reset --hard` / `git checkout` / rebase swaps files under the compiler mid-build, and `rm -f build.log` while the build's redirect still holds the path leaves a truncated or replaced file. Two writers race, the failure signature is lost, and the exit code reflects the yanked tree — **not** the code under test. That `BUILD_EXIT=1` looks exactly like a real compile failure, and the honest-but-empty log invites hunting a nonexistent bug in your patch, or "fixing" working code. Application: stop or stand down any running build subagent **before** any `reset --hard` / `checkout` / `rebase` / `merge`; treat a non-zero exit whose log has **no** `error:`/`FAILED:` line as *inconclusive*, never as a code failure, and re-run on a quiesced tree; write to a uniquely-named log per build (`build-$(date +%s).log`) and keep the exit marker in a **separate** file so nothing can truncate away the diagnostic; and when standing a build agent down, match the specific PID/PGID it launched rather than a blanket `pkill ninja`/`pkill cmake`, which kills sibling worktrees' builds in a shared container. Reporting corollary: an agent that says "I observed exit 1 but never saw a real error line, so I'm not claiming a build result" is behaving correctly — don't pressure a verdict out of a truncated log ([a reset/checkout under a running build yields a bogus BUILD_EXIT with no diagnostics](../learnings/1785776881296-a-reset-checkout-under-a-running-build-yields-a-bo.md)).
-
-### The mirror image: editing source under a running build bakes the fix into the "baseline" — a bogus PASS (2026-08-04 fold)
-
-The `reset`/`checkout`-under-a-build case above fails toward a bogus **failure**, which at least stops you. The same root cause has a mirror that fails toward a bogus **pass**, and that direction is worse. You commit tests-before-fix, kick off a build to prove the **red baseline**, and — to save wall-clock — start writing the implementation while it compiles. Ninja compiles translation units in dependency order over 10–25 minutes, so **if your edited file has not been compiled yet, the build picks up the fixed source**: a "baseline" binary that already contains the fix. The tests pass, you conclude they were inert or vacuous, and the entire red-baseline exercise is destroyed — silently, with a green build and no error anywhere. Caught live editing `source/slang/slang-lower-to-ir.cpp` at build step 400/1451: `grep -c "slang-lower-to-ir.cpp.o" build.log` returned **0**, i.e. the file had not compiled yet and the in-flight build would have consumed the fix.
-
-It is insidious because both obvious symptoms point away from the cause — tests passing at "baseline" makes you blame the tests and start rewriting good ones, and everything being green means nothing prompts you to suspect the binary. Rules: **a build in flight owns the worktree** — no edits to any file it might compile until the exit marker appears, including "just drafting" something you intend to stash; spend the wait on **prose** (the plan, the PR body, the baseline expectations) or work in a *different* worktree; and if you have already edited, check whether your file compiled yet before deciding what to do.
-
-```bash
-grep -c "<yourfile>.o" build.log   # 0 => the in-flight build will consume your edit
-git stash push -m wip -- <path>    # restore pristine, keep the work
-```
-
-Zero ⇒ stash and let the build finish clean; already compiled ⇒ the baseline is compromised, **rebuild from a pristine tree** rather than reasoning about which object files are stale. And **verify what the baseline binary actually contains** before trusting a surprising result: a baseline that passes is a claim about a binary, not about your tests. Generalized: any "measure before / change / measure after" protocol requires the before-measurement to complete on the **unmodified** subject — builds make this easy to violate because they are slow and the edit feels harmless, but for a compiler the file *is* the input to the process ([never edit source while a baseline build is running — it silently bakes the fix into the baseline](../learnings/1785824280820-never-edit-source-while-a-baseline-build-is-runnin.md)).
-
-**The invariant behind both cases: every shared mutable artifact the async consumer reads must stay frozen for the WHOLE operation, not just at kickoff.** Three errors in one session were one mistake — holding a fixed picture of an artifact while something else was concurrently free to change it:
-
-| # | artifact assumed stable | async consumer / mutator | failure direction |
-|---|---|---|---|
-| 1 | branch state / working tree | a running build | bogus **failure** (empty log, non-zero exit) |
-| 2 | source file | a running build (that TU not yet compiled) | bogus **pass** (baseline silently contains the fix) |
-| 3 | the built binary | a test run launched after the build | bogus **pass** (baseline tests measure the fixed binary) |
-
-Direction matters because **a bogus pass licenses destruction**: you conclude your test was inert and start rewriting tests that were working, and the green build gives you nothing to stop you — the response to the false signal deletes the evidence that it was false. Self-erasing errors deserve controls, not care. Two artifacts are easy to miss beyond source and binary. **The diagnostic's own input:** `grep -c "<file>.o" build.log` is only meaningful if that log can't be rewritten, but a rebuild writes the *same* `build.log` path, so after a rebuild the check silently answers about the wrong build — **freeze the log** (`cp build.log build.log.frozen`) as the first action at build-exit and make the rebuild write a *different* path. **A pre-registration:** writing expected results before running is only meaningful if the file cannot be edited afterward; left writable it degrades into a post-hoc rationalization with an early timestamp — `sha256sum` it *while you can still prove nothing was observed* (no results file, build unfinished), store the hash, and `chmod 444` so a later edit must be deliberate.
-
-**Gate on evidence on disk, not on intention.** An intention isn't testable by anything, degrades under time pressure, and leaves no trace when it fails — so convert the rule into a checkable precondition:
-
-```
-1. build-baseline.exit exists            (build finished)
-2. baseline-results.txt non-empty        (results captured)
-3. build-baseline.log.frozen exists      (log snapshotted under a name no rebuild writes)
-4. rebuild writes build-fix.log          (NEVER the baseline paths)
-5. sha256sum -c baseline.sha256 passes   (pre-registration unmodified since before results existed)
-```
-
-Any check failing ⇒ the baseline is untrustworthy; re-establish from a pristine tree rather than reasoning about which parts are stale. **Durability is load-bearing, not tidiness** — if the rebuild destroys the only record of the baseline you end up *reconstructing* the baseline claim, which is precisely the claim the exercise exists to establish independently, and a reconstructed baseline is not a baseline. Also **one consumer per artifact**: two waiters polling the same binary is the same race in miniature, so stop the redundant one. To spot the next instance, ask of every step: *what am I treating as a snapshot, and who else can write it before I read it?* — candidates cluster around slow operations (builds, test runs, packaging, in-flight `git`) and around anything used as **evidence**: logs, result files, pre-registrations, hashes ([gate on evidence on disk, not on intention — the frozen-artifact invariant](../learnings/1785824548562-gate-on-evidence-on-disk-not-on-intention-the-froz.md)).
-
-## Adding a public capability alias regenerates TWO CI-diffed docs (2026-07-27 fold)
-
-When you add or rename a **public** capability atom/alias in `slang-capabilities.capdef`, TWO tracked, CI-diffed docs must be regenerated or the build goes red: (1) `docs/user-guide/a4-02-reference-capability-atoms.md` via `slang-capability-generator` (the one CLAUDE.md documents), and (2) the easy-to-forget `docs/command-line-slangc-reference.md` via `slangc -help-style markdown -h > docs/command-line-slangc-reference.md` — CI diffs it at `.github/workflows/ci.yml` (~line 555) and fails on any difference (hint: `/regenerate-cmdline-ref`), because that file enumerates every non-abstract capability alias in its `-capability` section. Both diffs are additive-only for a pure alias-add; regenerate with a freshly-built local `slangc` and commit both alongside the capdef change. Discovered on #12244 (added `texture_shadow`+`texture_shadowbias`) — a codex PLAN_REVIEW caught that the a4-02 regen alone would ship a PR that goes red in the cmdline-ref check [Adding a public capability alias requires regenerating TWO CI-checked docs, not just a4-02](../learnings/1785207263835-adding-a-public-capability-alias-requires-regenera.md).
-
-Related to the doc-regeneration lesson above, the `check-cmdline-ref` CI job enforces `docs/command-line-slangc-reference.md` with a **byte-exact `diff`** of `slangc -help-style markdown -h`. The generator emits every line with a **trailing space**; hand-stripping that whitespace (e.g. to silence a `git diff --check` warning) makes the committed doc no longer match generator output and flips the job red. Commit generator output verbatim (`... -h > docs/command-line-slangc-reference.md 2>&1`, note the `2>&1`); the trailing-whitespace warning on this generated file is expected and is NOT what CI checks — or comment `/regenerate-cmdline-ref` to auto-fix ([check-cmdline-ref does byte-exact diff — never strip trailing space from the generated doc](../learnings/1785334855546-check-cmdline-ref-ci-does-byte-exact-diff-never-st.md)).
-
-## Contradictions / supersessions
-
-- **Shallow-clone silent-regime discriminator** — the `[ "$(git rev-parse HEAD)" = "$(cat .git/shallow | head -1)" ]` form is **retracted** for a false negative (`.git/shallow` is SHA-sorted with one entry per fetched tip, so HEAD is often not line 1). Use `[ "$(git rev-parse --is-shallow-repository)" = true ] && [ -z "$(git log -1 --format=%P)" ]`; the `--is-shallow-repository` guard is required to suppress a false positive on a full clone parked at the true root commit. Because `--depth` implies `--single-branch`, the bad check agrees ~always in the modal `clone --depth 1 --branch <pr-head>` shape — so a measured "false-agreement rate" *understates* the hazard.
-- **"The `--stat` graft lie is depth-1-specific"** — corrected in place: mode 2 fires whenever the commit you `--stat` **is** the graft root, at any depth (measured on a depth-203 clone whose HEAD diffed correctly while the graft still inflated 521-vs-11). The opposite phrasing, "`--stat` is false past the graft," is also wrong — commits inside the graft diff correctly.
-- **`git log -S` provenance in `slang-rhi`** — a stored attribution of the `test-sampler-array.cpp` Metal skip to `eb8c343`/#534 is retracted; the real introducer is `8da2bf4f`/#533, proven by patch. The impeachment also forced re-derivation of an older `git log -S`-based claim in that repo (which survived, but by a different method).
-- **`grep -c '^-'` as the submodule-health check** — insufficient; a `+`-marked wrong-commit submodule with an empty worktree passes it. Check `^+`, `^-`, and a file count, all `--recursive`.
-- **"The pin moved, so the regression is in the submodule"** — superseded: intersect the commit range with the backtrace's specific functions; byte-identical symbols at both pins mean a caller-side activation.
-- **"Don't mutate the tree under a running build" as a git-only hazard** — widened in place: the rule is *every shared mutable artifact the async consumer reads stays frozen for the whole operation*. `git reset`/`checkout` fails toward a bogus **failure**; **editing source** under the same build fails toward a bogus **pass** (the un-compiled TU picks up the fix), and the pass direction is worse because the response to it — "my tests must be inert" — destroys working tests.
-- **`grep -c "<file>.o" build.log` as a standalone freshness check** — unsound once a rebuild runs, because the rebuild writes the *same* path and the check then answers about the wrong build. Freeze the log at build-exit (`build-baseline.log.frozen`) and point the rebuild at a different filename.
-- **A written-down intention ("I won't touch source during the build") as the guard** — replaced by the on-disk precondition list (exit marker · non-empty results · frozen log · distinct rebuild log · `sha256sum -c` on the pre-registration). An intention isn't testable and leaves no trace when it fails.
-
-**Source learnings (46):**
-- [shallow clones fail THREE ways — history search, --stat inflation, and object-not-found (which manufactures a false negative); audit per clone](../learnings/1785768394345-shallow-clones-fail-three-ways-history-search-stat.md)
-- [/workspace/agent/slang-rhi is a SHALLOW clone — git log/blame/-S provenance is silently wrong past the graft root](../learnings/1785767576978-workspace-agent-slang-rhi-is-a-shallow-clone-git-l.md)
-- [slang-rhi clones are shallow — history tools give confidently wrong provenance (verify by PATCH, not proximity)](../learnings/1785767719938-slang-rhi-clones-are-shallow-git-history-tools-giv.md)
-- [--depth 1 makes YOUR checked-out head the graft root, so `git show --stat <head>` reports the whole tree as added](../learnings/1785767871401-shallow-clone-your-own-checked-out-head-becomes-th.md)
-- [shallow clone: object-not-found is about your checkout, not the world — confirm via REST before asserting a ref is absent](../learnings/1785768291147-shallow-clone-object-not-found-is-about-your-check.md)
-- [the graft lie targets PR-sizing `--depth 1 --branch <pr-head>` clones; the tells are asymmetric (`diff HEAD~1` is loud, `show --stat` is silent)](../learnings/1785768378247-shallow-clone-graft-lie-is-depth-1-specific-one-li.md)
-- [mode 3: a real-but-unfetched SHA and a fabricated SHA are byte-identical to local git; error wording misleads both ways](../learnings/1785768516776-shallow-clone-mode-3-a-real-unfetched-sha-and-a-fa.md)
-- [shallow-clone silent regime: test HEAD's empty `%P`, not `head -1 .git/shallow`](../learnings/1785768517981-shallow-clone-silent-regime-test-head-s-empty-pare.md)
-- [CORRECTION: the `head -1 .git/shallow` discriminator has a false negative — use the empty-`%P` form with the `--is-shallow-repository` guard](../learnings/1785768628753-correction-the-shallow-clone-discriminator-using-h.md)
-- [mode 2 scope: `--stat` lies on the GRAFT ROOT at any depth, not just depth-1; route local-git claims to the clone holder, provenance to REST](../learnings/1785768744942-shallow-clone-mode-2-scope-stat-lies-on-the-graft-.md)
-- [never use `--depth 1` for slang submodules — the fetch gets branch tips, not the pinned commits](../learnings/1785748265939-never-use-depth-1-for-slang-submodules-fetch-fails.md)
-- [`git submodule update --depth 1` silently checks out WRONG commits with empty worktrees; `grep -c '^-'` doesn't catch it](../learnings/1785747759562-git-submodule-update-depth-1-silently-checks-out-w.md)
-- [a moved slang-rhi submodule pin across a release boundary is not evidence the regression is in rhi — intersect the range with the backtrace's functions](../learnings/1785774865515-a-moved-slang-rhi-submodule-pin-across-a-release-b.md)
-- [a reset/checkout under a running build yields a bogus BUILD_EXIT with no diagnostics — treat an error-free non-zero exit as inconclusive](../learnings/1785776881296-a-reset-checkout-under-a-running-build-yields-a-bo.md)
-- [never edit source while a baseline build is running — an un-compiled TU bakes the fix into the "baseline" and the bogus PASS makes you rewrite working tests](../learnings/1785824280820-never-edit-source-while-a-baseline-build-is-runnin.md)
-- [gate on evidence on disk, not on intention — the frozen-artifact invariant (source, binary, log, pre-registration), plus the 5-check baseline precondition list](../learnings/1785824548562-gate-on-evidence-on-disk-not-on-intention-the-froz.md)
-- [untracking a checked-in build binary is safe only if no deploy script/CI/Makefile consumes the tracked copy; untracking stops future bloat only, not history](../learnings/1784595515240-untracking-a-checked-in-build-binary-is-safe-only-.md)
 - [make a slang check "required" by adding a `pull_request` exit-1 job to `check-ci.needs` (not branch-protection UI); the `ci.yml` edit is not bot-pushable (workflows-perm wall) → maintainer diff](../learnings/1784430693229-making-a-slang-ci-check-required-add-a-job-to-chec.md)
 - [DISABLE CI jobs are build-only](../learnings/1780326708945-slang-disable-ci-jobs-are-build-only-no-slang-test.md)
 - [How GPU-requiring unit tests are silenced on no-GPU / aarch64 runners](../learnings/1780769170873-slang-ci-how-gpu-requiring-unit-tests-are-silenced.md)
@@ -315,7 +146,6 @@ Related to the doc-regeneration lesson above, the `check-cmdline-ref` CI job enf
 - [Disk-full build workaround: out-of-source build](../learnings/1781568134178-disk-full-build-workaround-out-of-source-build-on-.md)
 - [Diagnostic/enum codes picked against a stale base collide on master-merge](../learnings/1782741439587-diagnostic-enum-codes-picked-against-a-stale-base-.md)
 - [Per-agent build volume is /dev/vdb (/workspace/agent)](../learnings/1780381892104-per-agent-build-volume-is-dev-vdb-workspace-agent-.md)
-- [A maintainer merging master into your PR branch can silently fix the root cause](../learnings/1781651810617-a-maintainer-merging-master-into-your-pr-branch-ca.md)
 - [DescriptorHandle to ConstantBuffer implicit conversion blocked](../learnings/1782145502619-descriptorhandle-to-constantbuffer-implicit-conver.md)
 - [Primary-file using namespace leaks through import](../learnings/1780476462894-slang-primary-file-using-namespace-leaks-through-i.md)
 - [Release-asset asymmetry from moving a CI leg into a no-sudo container — verify the exact failing command](../learnings/1782845136368-release-asset-asymmetry-from-moving-a-ci-leg-into-.md)
@@ -328,8 +158,3 @@ Related to the doc-regeneration lesson above, the `check-cmdline-ref` CI job enf
 - [slang#11985 2nd cause: slang-rhi FetchContent-downloads Vulkan-Headers despite vendored submodule](../learnings/1783619348986-slang-11985-2nd-cause-slang-rhi-fetchcontent-downl.md)
 - [nanoclaw sync-PR CI composes all nv-* branches (merge-order dep)](../learnings/1783633650284-nanoclaw-sync-pr-ci-composes-all-nv-branches-merge.md)
 - [slang#12032 Windows CI crash-dump: routes via ci-slang-test.yml, not the Linux container path](../learnings/1783637017715-slang-12032-windows-ci-crash-dump-routes-via-ci-sl.md)
-- ['ar: no such .o' at link = two ninjas on one build dir (a subagent false-reported 'still running'); pkill all ninja, relaunch one — state self-heals, no rm -rf needed](../learnings/1784775308129-build-subagent-false-report-concurrent-ninja-colli.md)
-- [adding a public capability alias regenerates TWO CI-checked docs (a4-02 AND command-line-slangc-reference.md), not just a4-02](../learnings/1785207263835-adding-a-public-capability-alias-requires-regenera.md)
-- [`check-cmdline-ref` byte-exact-diffs the generated slangc reference — commit generator output verbatim (trailing spaces included, `2>&1`); don't strip whitespace to satisfy `git diff --check`](../learnings/1785334855546-check-cmdline-ref-ci-does-byte-exact-diff-never-st.md)
-
-_Catalog: [[wiki/index.md]]_

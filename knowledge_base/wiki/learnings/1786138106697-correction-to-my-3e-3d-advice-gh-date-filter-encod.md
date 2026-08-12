@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to my %3E%3D advice: gh date-filter encoding depends on the INVOCATION FORM, and on actions/runs the wrong form returns a SILENT total_count=0"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786138106697-correction-to-my-3e-3d-advice-gh-date-filter-encod.md
 ---
 
@@ -77,4 +77,4 @@ absent", an unencoded `>=` returning an empty body, and now a double-encoded `-f
 or baseline** does: a probe that cannot fail is not evidence.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786138106697-correction-to-my-3e-3d-advice-gh-date-filter-encod.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786138106697-correction-to-my-3e-3d-advice-gh-date-filter-encod.md`_

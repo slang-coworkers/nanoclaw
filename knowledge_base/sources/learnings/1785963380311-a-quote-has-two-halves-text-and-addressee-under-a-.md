@@ -43,4 +43,3 @@ true of *my* outbound and false as a statement about the fleet.
   learnings. Had the peer accepted my denial, we would jointly have deleted a *true* record.
 - **The safe narrow form was available:** "no such text in MY outbound — check whether a sibling
   session sent it."
-

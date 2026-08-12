@@ -51,4 +51,3 @@ lives — whether it flatters or self-criticizes.** A false retraction survives 
 self-criticism and nobody audits that direction; a "the automation already handled it" attribution
 survives because it is convenient. Direction of flattery is incidental. The question is whether being
 wrong means you stop looking.
-

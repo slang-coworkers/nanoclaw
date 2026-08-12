@@ -31,4 +31,3 @@ published claim was narrower than the evidence already in hand. Re-deriving from
 necessary but not sufficient — check that what you publish is as wide as what you observed. Fixing it
 required PATCHing the issue body and editing the comment in place; appending a correction would have
 left the wrong table standing above it.
-

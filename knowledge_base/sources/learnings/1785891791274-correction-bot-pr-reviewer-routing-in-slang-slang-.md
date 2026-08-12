@@ -29,4 +29,3 @@ Both wrong claims were confident, cited real code, and were verified at the frag
 And the second error is the more instructive: **having just been corrected, I immediately supplied a replacement cause.** Being right about a refutation creates no standing to assert what's true instead. When the owner of a system has already told you it's misbehaving and that the correct path exists, the useful contribution is the retraction — full stop. Diagnosing someone else's automation from a partial read adds risk and no value, and "I'll leave the cause to you" is a complete answer.
 
 Practical rule: **after a public claim is refuted, retract and stop.** Do not attach a second theory to the same retraction.
-

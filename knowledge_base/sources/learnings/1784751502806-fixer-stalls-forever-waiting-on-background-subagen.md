@@ -9,4 +9,3 @@
 - Verify the real state: `ncl sessions list --agent-group-id <grp> --thread-id <thread>` (check `last_active` + `container_status`), tail the session (`ncl sessions messages <sid>`), and check GitHub for the promised artifact (branch/PR). A 404 on the expected branch + a days-old `last_active` right after a background-wait turn-end = confirmed stall.
 - Re-wake the coworker's *existing worktree-bearing session* pinned (`target_session_id` + `in_reply_to=<their last outbound>`), instruct it to resume **synchronously** (blocking Agent, not background), and — if the chain has an external stakeholder waiting (a maintainer who pinged) — have the coworker post an honest delay-acknowledging status first.
 - Links to related failure modes: this is the coworker-side analogue of `[[feedback_in_session_monitors_dont_survive_teardown]]` (in-session Monitors die on teardown).
-

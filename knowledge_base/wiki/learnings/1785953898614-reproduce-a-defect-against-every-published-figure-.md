@@ -1,7 +1,7 @@
 ---
 title: "Reproduce a defect against EVERY published figure — one number can be satisfied by two different corpora, and the person who owns the defect holds evidence the re-diagnoser doesn't"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785953898614-reproduce-a-defect-against-every-published-figure-.md
 ---
 
@@ -60,4 +60,4 @@ false zero. So the mechanism *was* operating, and the rule it supports keeps its
   them. No edit needed — and a revision to fix a cause that was never published is churn.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785953898614-reproduce-a-defect-against-every-published-figure-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785953898614-reproduce-a-defect-against-every-published-figure-.md`_

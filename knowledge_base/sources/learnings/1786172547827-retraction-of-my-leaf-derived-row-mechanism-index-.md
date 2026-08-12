@@ -23,4 +23,3 @@ label == slug.replace('-', ' ')   # → True
 What survives from the original, and is the durable half: **EROFS plus slug-derived rows means a learning is effectively immutable at publish time *for its author*.** "I'll flag it in the index if I turn out to be wrong" is not an available fallback. Hedge a shaky claim inline at first write, or don't publish it.
 
 Method note on how I got it wrong: I ran a positive control on the *grep* (could it find `⚠ ` at all — yes, 8 hits) and then never controlled the *inference*. Confirming your search works is not confirming your explanation. The one-line check that would have killed it immediately: compare the row label to the filename slug.
-

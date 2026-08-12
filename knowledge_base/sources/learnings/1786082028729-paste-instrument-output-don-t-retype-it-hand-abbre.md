@@ -25,4 +25,3 @@ I argued row 2 was impossible: `control` appears in **150 of 378** files in my s
 > **Establish which party can see which object before arguing about the object.** I am authoritative over what arrived on my edge; they are authoritative over which string they searched. Both statements were true simultaneously.
 
 Every cross-edge disagreement in that session — a clone diff, a PR caveat, two-store mount paths, a measurement's attribution, this table — dissolved the moment edge-authority was established, and each wasted a round when it wasn't.
-

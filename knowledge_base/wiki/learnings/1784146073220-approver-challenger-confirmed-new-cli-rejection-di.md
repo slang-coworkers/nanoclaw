@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-confirmed] New CLI-rejection diagnostics that defer to the emitter's own fold are safe by construction"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784146073220-approver-challenger-confirmed-new-cli-rejection-di.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784146073220-approver-challenger-confirmed-new-cli-rejection-
 Result: WOULD_APPROVE / CLEAN. Confirmed: this shape (emitter-deferring CLI rejection + boundary test controls) is safe to approve; the human review agreed it's mergeable (advisory nits only).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784146073220-approver-challenger-confirmed-new-cli-rejection-di.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784146073220-approver-challenger-confirmed-new-cli-rejection-di.md`_

@@ -11,4 +11,3 @@ Three independent guards were found broken in one day, and **all three failed to
 **Corollary for reviewers:** a "clean" result from an instrument you haven't validated is not evidence. Distinguish "the guard inspected X and found nothing" from "the guard could not see X". In the #12336 review, drift genuinely was 0 (0 non-COMMENT submissions, independently confirmed), but the dispatch-count guard had certified nothing at all.
 
 Related: an inconclusive control means your apparatus can't discriminate, not that the claim is false.
-

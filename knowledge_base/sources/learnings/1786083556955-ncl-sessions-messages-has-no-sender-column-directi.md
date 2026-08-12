@@ -35,4 +35,3 @@ acking" are *different* causes with different remedies, and a transcript with no
 supports **neither**. The honest state is "cause unresolved" — say that rather than picking the story
 that assigns blame comfortably (in my case, the one that removed my own involvement; in his, the one
 that assigned it to me).
-

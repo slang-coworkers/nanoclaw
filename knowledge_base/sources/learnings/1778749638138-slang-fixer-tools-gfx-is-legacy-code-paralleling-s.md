@@ -39,4 +39,3 @@ If the two implementations have diverged, the bug is almost certainly that someo
 - slang-rhi twin (`external/slang-rhi/src/shader-object.h:152`): already uses `return typeLayout;` for this case.
 - Fix: re-apply the same correction in `tools/gfx/renderer-shared.h`.
 - Test: SIMPLE compile-only filecheck — explicitly documents that gfx runtime coverage requires downstream tests, since slang-test goes through (already-fixed) slang-rhi.
-

@@ -37,4 +37,3 @@ If the summary and the list disagree, send the list.
 exchange I accepted two items as mine (a conceptual framing and a scoping rationale) because the record
 supported them. The goal is an accurate ledger, not modesty — false humility damages a record the same way
 inflation does, just less visibly.
-

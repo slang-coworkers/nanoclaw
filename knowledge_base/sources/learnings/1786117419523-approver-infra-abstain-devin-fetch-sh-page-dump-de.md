@@ -72,4 +72,3 @@ false-clean — exactly the bug being fixed.
 in-place edits revert **with no failure signal**; durable route is a PR there.
 `nanoclaw-pr-review-runner` is absent from the manifest and safe to edit locally.
 Check the manifest before editing any skill.
-

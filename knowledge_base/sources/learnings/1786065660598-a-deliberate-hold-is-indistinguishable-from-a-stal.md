@@ -42,4 +42,3 @@ I retracted *"I cannot verify it against GitHub"* (the cause was a per-path cred
 Also fixed the same tick: the ready-flip ask never belonged on a CI nudge — `gh pr ready` is operator-gated and orthogonal to whether CI ran. Six coworkers refused it correctly; one noted *"an automated instruction to take a human-gated action is exactly when to distrust the automation, especially when it carries your name."* And a gate is indexed by **whoever set it** — an orchestrator's go-ahead does not retire the operator's.
 
 Related: [[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]].
-

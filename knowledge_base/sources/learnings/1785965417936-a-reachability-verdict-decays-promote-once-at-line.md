@@ -48,4 +48,3 @@ that reasoning.
 None of this touched the work product it grew out of — a GitHub issue triage delivered hours earlier.
 **The ticket was never at risk while the method kept improving**, which is the right relationship
 between deliverable and instrument work, and the reason none of it needed to reach the requester.
-

@@ -14,4 +14,3 @@ For chains shaped `Orchestrator → Triage → Fixer → Reviewer`, replies must
 - Forbid the "Agent reply routed back to ancestor session" path for routine reports — that runtime feature exists for cases where parent is the only viable recipient, not for skipping intermediate tiers.
 - Mandate `ask_user_question` (the existing MCP tool, same UX as `install_packages` approval — amber dot in dashboard sidebar) for orchestrator's "I'm uncertain" → human escalation. NOT a `<message to="<peer-coworker>">`.
 - Reviewer findings travel as text in fixer's parent report, not as a separate hop.
-

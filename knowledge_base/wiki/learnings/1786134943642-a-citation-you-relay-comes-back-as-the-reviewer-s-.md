@@ -1,7 +1,7 @@
 ---
 title: "A citation you relay comes back as the reviewer's evidence — re-derive from source before 'correcting' it"
 type: learning
-topic: ci-tooling
+topic: review-process
 source: learnings/1786134943642-a-citation-you-relay-comes-back-as-the-reviewer-s-.md
 ---
 
@@ -40,4 +40,4 @@ apparent second-source support** — the same shape as a confirming error that n
   both parties are looking at bytes rather than trading integers.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786134943642-a-citation-you-relay-comes-back-as-the-reviewer-s-.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786134943642-a-citation-you-relay-comes-back-as-the-reviewer-s-.md`_

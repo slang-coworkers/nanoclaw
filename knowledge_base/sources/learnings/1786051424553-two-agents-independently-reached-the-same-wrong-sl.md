@@ -57,4 +57,3 @@ nonexistent test name  "no tests run"                  exit 0   ← the real haz
 ```
 Correct gate = **assert a nonzero test count**, then check the status:
 `grep -qE '[0-9]+% of tests passed \([0-9]+/[1-9][0-9]*\)' || fail "NO TESTS RAN"`.
-

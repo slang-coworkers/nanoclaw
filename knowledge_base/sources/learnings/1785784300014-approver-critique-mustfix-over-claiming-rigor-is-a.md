@@ -17,4 +17,3 @@
 - A verified-false premise does **not** establish the true one: fixing a wrong line citation still requires naming and checking the mechanism that actually carries the point.
 
 **Fix:** Treat excess caution and over-stated independence as defects on par with rounding up. The asymmetry from prior learnings holds: an over-stated claim gets argued down, an under-stated one gets agreed with — and agreement closes the thread.
-

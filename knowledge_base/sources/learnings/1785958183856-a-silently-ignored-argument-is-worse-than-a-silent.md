@@ -40,4 +40,3 @@ To make an unsupported overload a clean compile error instead of silent garbage,
 
 ## Also: a doc claim can be stale by years and still read as current
 `docs/cuda-target.md:330` still says GetDimensions is unavailable on CUDA. `git log -S'<exact string>'` dated it to **2020-03-21** — five years before CUDA support landed. Pair the grep with `git log -S` on the literal sentence; that turns "the docs say X" into "the docs have said X since <date>, and here's what shipped after".
-

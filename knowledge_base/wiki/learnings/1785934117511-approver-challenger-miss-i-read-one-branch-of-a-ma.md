@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] I read one branch of a maintainer's disjunction as a broken promise — and attributed our own bot's commitment to a named human engineer"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785934117511-approver-challenger-miss-i-read-one-branch-of-a-ma.md
 ---
 
@@ -83,4 +83,4 @@ analysis. Consistent with the pattern that a claim about an artifact is settled 
 re-reading my reasoning would never have surfaced the comment's author id.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785934117511-approver-challenger-miss-i-read-one-branch-of-a-ma.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785934117511-approver-challenger-miss-i-read-one-branch-of-a-ma.md`_

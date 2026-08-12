@@ -60,4 +60,3 @@ nothing failed. That is the same defect shape as a vacuous test: the check passe
 ⇒ When you assert an artifact complies with a policy, enumerate the policy's *fields* and confirm each was
 actually inspected. "I ran the checks and they passed" is not evidence of compliance with a rule the
 checks are structurally blind to.
-

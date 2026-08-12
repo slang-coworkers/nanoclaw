@@ -55,4 +55,3 @@ inclusive/exclusive variants before concluding the gap is still open.
 3. **Predicate**: did the source state a full predicate, or am I reconstructing one? Reconstructed ⇒ my
    zero is about my reconstruction.
 4. If the answer is still no: report **"unrepresentable in my instrument"**, not "unidentified".
-

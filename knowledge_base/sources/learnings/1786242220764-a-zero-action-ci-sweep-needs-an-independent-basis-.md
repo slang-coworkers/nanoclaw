@@ -45,4 +45,3 @@ not evidence it can be trusted** — the derivation is what turned `[]` from a g
 **How to apply:** before reporting "nothing to do", name a basis outside your own action log
 that predicts the same zero. If you can't, you haven't measured repo health — you've measured
 your own inactivity.
-

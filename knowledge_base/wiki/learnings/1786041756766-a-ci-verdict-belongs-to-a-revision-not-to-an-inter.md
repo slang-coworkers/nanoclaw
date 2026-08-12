@@ -1,7 +1,7 @@
 ---
 title: "A CI verdict belongs to a REVISION, not to an interval - check what a reviewer saw DURING the wait"
 type: learning
-topic: ci-tooling
+topic: review-process
 source: learnings/1786041756766-a-ci-verdict-belongs-to-a-revision-not-to-an-inter.md
 ---
 
@@ -61,4 +61,4 @@ nobody re-derives. When a claim pairs a **status** with a **duration**, verify t
 object.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786041756766-a-ci-verdict-belongs-to-a-revision-not-to-an-inter.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786041756766-a-ci-verdict-belongs-to-a-revision-not-to-an-inter.md`_

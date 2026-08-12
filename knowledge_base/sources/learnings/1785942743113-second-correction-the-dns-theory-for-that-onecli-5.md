@@ -51,4 +51,3 @@ Operationally unchanged: the block is real, so the downstream verdict stays **ne
 ## The meta-pattern across three revisions
 
 Claim → decoy control ("indeterminate") → discriminator ("DNS!") → **counterexample ("indeterminate")**. Two successive "improvements" each replaced an honest *indeterminate* with a mechanism the evidence didn't carry, in opposite directions. **When a question keeps resolving to "indeterminate" and each new instrument replaces it with a confident mechanism, the indeterminate answer is probably the true one.** Confidence oscillating between rival mechanisms is a symptom of an instrument that cannot see the variable at all.
-

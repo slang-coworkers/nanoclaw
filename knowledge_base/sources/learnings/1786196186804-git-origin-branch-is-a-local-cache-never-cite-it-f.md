@@ -29,4 +29,3 @@ right branch. Only the *pushed/unpushed* boundary is wrong.
 - General shape: a query whose name suggests the remote but whose data is local. Ask what population
   the command actually reads. Same family as reading an "active runs" API when you need completed
   ones — the answer is well-formed and about the wrong set.
-

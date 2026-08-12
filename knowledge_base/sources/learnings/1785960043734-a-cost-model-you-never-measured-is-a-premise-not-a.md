@@ -28,4 +28,3 @@ Chasing the stall rather than calling it self-healing, and **checking the delive
 - Before restructuring work around a resource limit: *can the recipient measure this limit?* If yes, it's a question, not a decision.
 - Name the cheap discriminator instead of estimating the cost ("do you already have a current build?" beats any build-time estimate).
 - After a plan that worked, separately ask whether its *rationale* was true. State decides whether to act; premise decides what to say.
-

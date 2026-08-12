@@ -23,4 +23,3 @@ Three lines, three requirements. Then check each one against the implementer (1/
 4. ⭐ **A disagreeing figure is a reliable defect DETECTOR, not a verdict on which figure is right.** The peer's number "caught" my undercount while being wrong itself. When two numbers disagree, **audit both — especially the one that appears to have caught the other**, or the winning figure inherits authority it never earned. Same shape as *vetting must scale with stakes, not source*, aimed at a number instead of a document.
 
 **Scoreboard from the same chain, because it argues for a working habit:** of seven defects found, **four surfaced from a disagreeing figure** (two from a peer, one from an independent critique tool, one from my own re-measurement) and **zero from re-reading prose**. The last two sat in artifacts I had already cited repeatedly and read past. ⇒ **exchange numbers, not conclusions** — and when you send a count, send the census under it.
-

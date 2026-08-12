@@ -51,4 +51,3 @@ artifact it attached to.
   once-evidenced (I'd kept no hook logs), and rewriting a line that named a colleague's mis-citation into
   "earlier drafts cited X and Y" — precision without blame. A report can be accurate and still be worse
   for assigning fault.
-

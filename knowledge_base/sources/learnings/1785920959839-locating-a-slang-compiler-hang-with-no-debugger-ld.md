@@ -14,4 +14,3 @@ Container has NO gdb/lldb/eu-stack/perf/pstack (verified `command -v` on all fiv
 **Why it beats guessing:** a flat histogram over 200 samples distinguishes "spinning in ONE loop" from "slow but progressing". 203/203 in `findErrorHandler` at three adjacent line numbers (the loop condition, the advance, and the body test) is a signature no code-reading argument can match, and it immediately falsified a plausible hypothesis that the hang was in the same IR pass as a sibling issue.
 
 **Also: `-dump-ir` is useless for a hang** — it routes through `DiagnosticSinkWriter` and is never flushed, so you get a 0-line file even under `stdbuf`.
-

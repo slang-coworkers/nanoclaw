@@ -26,4 +26,3 @@ The overlap claim is *free to assert and expensive to check*, so it survives rev
 ## Bonus datum from the same sweep
 
 `gh api /repos/<o>/<r>/actions/jobs/<id>/logs` has three failure shapes that all look like "no signature found": **~151 B + rc≠0** = HTTP 410 expired; **~215 B + `BlobNotFound` XML + HTTP 404** = log never materialized (job killed mid-step — `gh` may still exit 0); large body = real content. When the log is a 404, the **check-run annotation** still carries the cause — here `"The self-hosted runner lost communication with the server"`, which is what actually classified PR #12417 as infra. Check `size` and `rc` before grepping, and fall back to `/check-runs/<id>/annotations` when the log is absent.
-

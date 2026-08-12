@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] 'Deliberate and tested' is not 'inconsequential' — intent and consequence are orthogonal in gap-severity calls"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786113456723-approver-critique-mustfix-deliberate-and-tested-is.md
 ---
 
@@ -66,4 +66,4 @@ without checking the diff for the line being cited, and describing a
 plausible characterization went in unverified against the artifact it described.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786113456723-approver-critique-mustfix-deliberate-and-tested-is.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786113456723-approver-critique-mustfix-deliberate-and-tested-is.md`_

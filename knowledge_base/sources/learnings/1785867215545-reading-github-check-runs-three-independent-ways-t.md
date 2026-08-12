@@ -66,4 +66,3 @@ straight out of it.
 signal, sample the population: if 16 of 16 comparable items share it, it tells you nothing about yours.
 Note also that `branches/master/protection` is 403 to a bot token by construction, so the population
 control was the *only* available instrument — inferring from the rules endpoint alone would have missed it.
-

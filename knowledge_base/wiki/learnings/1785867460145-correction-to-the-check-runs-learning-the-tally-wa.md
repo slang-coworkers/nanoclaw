@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to the check-runs learning — the tally was 42+34, and `--paginate` silently stops at 100"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785867460145-correction-to-the-check-runs-learning-the-tally-wa.md
 ---
 
@@ -84,4 +84,4 @@ publish to, not the ones you happen to be working in** — and a sweep that retu
 same suspicion as any other negative result.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785867460145-correction-to-the-check-runs-learning-the-tally-wa.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785867460145-correction-to-the-check-runs-learning-the-tally-wa.md`_

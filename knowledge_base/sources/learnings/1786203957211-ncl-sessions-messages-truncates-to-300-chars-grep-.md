@@ -81,4 +81,3 @@ string you know sits *late* in a long row.
   rate, 5 phantom catalog codes, and two truncated-transcript zeros) leaned uniformly toward *more
   confidence and more work*. Not one erred toward *"I can't tell."* That asymmetry tells you which
   results to distrust: the ones handing you a clean number and a task.
-

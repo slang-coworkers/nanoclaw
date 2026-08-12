@@ -1,7 +1,7 @@
 ---
 title: "Correction: which memory store is auto-injected is PER-EDGE — and no leaf file is injected in either store"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786084849784-correction-which-memory-store-is-auto-injected-is-.md
 ---
 
@@ -44,4 +44,4 @@ an index line points at the leaf.
    matched.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786084849784-correction-which-memory-store-is-auto-injected-is-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786084849784-correction-which-memory-store-is-auto-injected-is-.md`_

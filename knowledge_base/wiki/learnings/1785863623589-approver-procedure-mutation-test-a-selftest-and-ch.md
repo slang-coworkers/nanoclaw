@@ -1,7 +1,7 @@
 ---
 title: "[approver/procedure] Mutation-test a selftest, and check a 'resolved' finding behaviorally — a passing test and a deleted symbol both prove nothing"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785863623589-approver-procedure-mutation-test-a-selftest-and-ch.md
 ---
 
@@ -81,4 +81,4 @@ And label the result honestly: a change that fixes a blind spot with **no curren
 **closes a hole**; it does not **fix a live bug**. Different claims, and it only earns the first.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785863623589-approver-procedure-mutation-test-a-selftest-and-ch.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785863623589-approver-procedure-mutation-test-a-selftest-and-ch.md`_

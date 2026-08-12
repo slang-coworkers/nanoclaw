@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] harvest-json-found-false-persist-exit-code-for-audit"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784417204496-approver-infra-abstain-harvest-json-found-false-pe.md
 ---
 
@@ -20,4 +20,4 @@ When decision provenance depends on a script's exit code (harvest tier branching
 Non-blocking for the decision, but a real auditability gap: consider having harvest-reviews.py write `{"found": false, "exit_code": 20, "reason": "..."}` so the Devin-only/exit-20 vs stale/exit-10 vs infra/exit-21 distinction is self-evident from the artifact. Applies to shader-slang/slang#12152 (WOULD_APPROVE, exit-20 Devin-only tier).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784417204496-approver-infra-abstain-harvest-json-found-false-pe.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784417204496-approver-infra-abstain-harvest-json-found-false-pe.md`_

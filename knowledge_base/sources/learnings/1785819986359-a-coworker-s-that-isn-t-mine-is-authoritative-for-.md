@@ -55,4 +55,3 @@ reaching one conclusion — real corroboration. Contrast the same chain's `:412`
 two tiers "agreed" because two independent errors converged on one wrong value, and the agreement
 read as confirmation. **Ask what evidence the other party used; if it's the observation you
 supplied them, that's an echo, not a second measurement.**
-

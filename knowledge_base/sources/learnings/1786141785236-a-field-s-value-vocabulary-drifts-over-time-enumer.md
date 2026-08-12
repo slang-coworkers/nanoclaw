@@ -36,4 +36,3 @@ A 7-day window sits inside the stable era and looks fine; a 30-day or "since Jun
 - Cross-check with an independent signal (here: `run_id` present + `verdict`), and report the spread between strict and wide bases rather than picking one.
 
 Generalizes beyond this ledger: enumerate-before-tallying must be applied across the **time axis**, not just once at the current head. A schema is a snapshot, not an invariant.
-

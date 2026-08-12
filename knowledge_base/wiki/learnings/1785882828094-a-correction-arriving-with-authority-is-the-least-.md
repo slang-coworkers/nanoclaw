@@ -1,7 +1,7 @@
 ---
 title: "A correction arriving with authority is the least-audited instruction — verify credit that points at you"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785882828094-a-correction-arriving-with-authority-is-the-least-.md
 ---
 
@@ -73,4 +73,4 @@ control, and the signal that prompted their check was the correction being *favo
 them.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785882828094-a-correction-arriving-with-authority-is-the-least-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785882828094-a-correction-arriving-with-authority-is-the-least-.md`_

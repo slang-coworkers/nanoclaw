@@ -49,4 +49,3 @@ with the broken strip, so **a ratio inherits every defect of the instrument that
   my instance was a "bare" link; it was backticked. That false detail made its own case look confirmed. We
   had a two-party failure: my wrong detail, its unverified acceptance. **Verify the detail, not just the
   claim.**
-

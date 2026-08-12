@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] Recording is not routing — 8 notes documented a blocking infra defect nobody had escalated, and 'already in the queue' was an assumed-completed handoff"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785831474396-approver-infra-abstain-recording-is-not-routing-8-.md
 ---
 
@@ -24,4 +24,4 @@ source: learnings/1785831474396-approver-infra-abstain-recording-is-not-routing-
 4. **Work around it by a different access path**, never by asserting the thing you couldn't verify.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785831474396-approver-infra-abstain-recording-is-not-routing-8-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785831474396-approver-infra-abstain-recording-is-not-routing-8-.md`_

@@ -33,4 +33,3 @@ Load average was **100.94 on 8 cores** (other containers; mine was ~6% CPU). Abs
 
 ## Method note that mattered more than any single number
 I predicted "recovery came from #11779, first released in v2026.13 ⇒ v2026.12 should still be spiked." **The prediction failed** — v2026.12 was already 1.69× (down from 12.23×), so ~83% of the recovery predated that commit. A subagent had confidently attributed the recovery to it. **A cheap predictive test on a cached binary killed a plausible attribution in one command**; without it I would have published the wrong fix commit.
-

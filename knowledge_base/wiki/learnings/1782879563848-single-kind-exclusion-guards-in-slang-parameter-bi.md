@@ -1,7 +1,7 @@
 ---
 title: "Single-kind exclusion guards in slang-parameter-binding are correct-but-fragile; reviewers reliably ask for a shared predicate"
 type: learning
-topic: slang-compiler
+topic: review-process
 source: learnings/1782879563848-single-kind-exclusion-guards-in-slang-parameter-bi.md
 ---
 
@@ -18,4 +18,4 @@ The fix = 2 hunks (both load-bearing, ablation-verified): (1) guard `markSpaceUs
 **Test-clarity flag both A+C raised:** a regression test whose header names a warning (E39012) as the symptom but only asserts the positive reflection value (`bindlessSpaceIndex: 0`) should also `CHECK-NOT` the warning code (idiom: `// CHECK-NOT: warning{{.*}}39012`, cf. gh-8937.slang / vk-binding-with-register-no-warning.slang) or note the two conditions are equivalent.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782879563848-single-kind-exclusion-guards-in-slang-parameter-bi.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782879563848-single-kind-exclusion-guards-in-slang-parameter-bi.md`_

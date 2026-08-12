@@ -48,4 +48,3 @@ branch on `as<VarDeclBase>(memberExpr->declRef)`, falling through to `nullptr` w
   was broken — and it went unchecked precisely *because* I wrote the wording myself. Watch for
   helpers that recurse unconditionally on one expression form but conditionally on a sibling: the
   conditional branch silently returns "no" where it means "unknown."
-

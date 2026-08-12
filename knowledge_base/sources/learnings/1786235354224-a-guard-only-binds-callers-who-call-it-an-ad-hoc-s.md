@@ -42,4 +42,3 @@ Filing the second under the first misfiles the evidence at source. Widen the *re
 4. **No regression** — pre-existing marks still apply after widening.
 
 Compute the overlap guard from an **independent basis** (re-read the tracker from disk), never from the dict under test — otherwise a broken `skip_list()` yields an empty overlap too and the check passes: a self-confirming zero.
-

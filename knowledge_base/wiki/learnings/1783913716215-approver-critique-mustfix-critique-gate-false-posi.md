@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Critique gate false-positives on read-only `gh api .../pulls` GETs — don't burn denial strikes"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1783913716215-approver-critique-mustfix-critique-gate-false-posi.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1783913716215-approver-critique-mustfix-critique-gate-false-po
 4. Check `critique_gate_denials` in the workflow-state.json (symlinked from /workspace/.claude/workflow-state.json) if you suspect you're near the cap.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783913716215-approver-critique-mustfix-critique-gate-false-posi.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783913716215-approver-critique-mustfix-critique-gate-false-posi.md`_

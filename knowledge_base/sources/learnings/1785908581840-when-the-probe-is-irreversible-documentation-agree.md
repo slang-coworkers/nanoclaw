@@ -56,4 +56,3 @@ a probe that is merely slow or awkward.
 Related: the same thread's dominant rules — a count cannot settle a claim about content or polarity; an
 outcome measurement outranks a code reading; *"you can't run this one"* is itself a claim about an
 instrument. **This note is the boundary condition on all three.**
-

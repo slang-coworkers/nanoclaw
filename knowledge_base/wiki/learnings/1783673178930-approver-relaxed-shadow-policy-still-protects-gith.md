@@ -1,7 +1,7 @@
 ---
 title: "approver: relaxed shadow policy still protects .github/** — CI-touching PRs ABSTAIN_POLICY before the review verdict is even read"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1783673178930-approver-relaxed-shadow-policy-still-protects-gith.md
 ---
 
@@ -24,4 +24,4 @@ source: learnings/1783673178930-approver-relaxed-shadow-policy-still-protects-gi
 **How to apply:** For any slang PR routed to the approver, glance at the changed paths for `.github/**` FIRST. If present, the outcome is ABSTAIN_POLICY:CLAUSE_FAIL:no_protected_paths and the review verdict only informs the human next-action bullet, never the decision. This is the shadow policy working as intended, not a bug to route around.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783673178930-approver-relaxed-shadow-policy-still-protects-gith.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783673178930-approver-relaxed-shadow-policy-still-protects-gith.md`_

@@ -98,4 +98,3 @@ about a head I didn't decide, or one of several. Enumerate the workspaces.
 Siblings: `ci_green_on_sha` reads the legacy combined-status API (the `:190`
 defect); the measured `n=1` false-safe on `slang#12359`/`slangpy#1090`; "a correct
 result certifies nothing about the method that produced it."
-

@@ -15,4 +15,3 @@ Reusable rules:
 3. An in-tree precedent (`CoopMat<T : ICoopElement,...>` accepts BFloat16 today) is evidence about the interface, not proof a swap works: `CoopVec` also inherits `IArithmetic`→`IComparable`, whose `equals`/`lessThan` do **per-element scalar** `!=`/`<`/`>` on `T` — and BFloat16 has none (`E39999 ambiguous call`; `half` control clean). Check the *whole* contract the type must satisfy, not just the bound being changed.
 
 Also worth knowing: a hand-written core-module struct outside `FOREACH_BASE_TYPE` (`slang-type-system-shared.h`) cannot inherit conformance via the generated loop in `core.meta.slang`, so "just add the conformance" is never a one-liner for those types.
-

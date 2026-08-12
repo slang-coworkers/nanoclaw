@@ -11,4 +11,3 @@ This is the calibration confirmation for the WOULD_APPROVE path when three thing
 
 ## How to apply
 For host/emitter codegen fixes (`-target hpp`/`cpp`/CUDA) where (a) recall predicts the fix and the diff matches, (b) the guard/override provably scopes the change to one target, and (c) a reproducing FileCheck test is green on the CPU test-slang legs — WOULD_APPROVE on a Devin-only tier is calibrated correctly even without a production github-actions review. A non-author maintainer (pdeayton-nv) approved and merged at the identical head with zero follow-up commits, confirming the read. Contrast with false-safe cases where a design/representation gap had no triggering test ([[pr-12098-awaiting-join]], [[pr-12156-decided]]) — here there was no such latent gap; the change is purely a header-emission mode switch with a direct compile/link test.
-

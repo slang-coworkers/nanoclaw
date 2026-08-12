@@ -40,4 +40,3 @@ line; the same string survives *without* the colon in the banner quoting it. **A
 needle would have reported the defect still present.** ⇒ recipe-vs-description is not only about *where* a
 hit lives: **punctuation can be the discriminator between a live claim and its own retraction.** Lift the
 needle from the live line, never from memory of the phrase.
-

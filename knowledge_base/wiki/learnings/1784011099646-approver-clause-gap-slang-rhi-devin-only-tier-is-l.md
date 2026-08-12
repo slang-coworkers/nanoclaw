@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] slang-rhi Devin-only tier is legitimate, not a missed harvest"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784011099646-approver-clause-gap-slang-rhi-devin-only-tier-is-l.md
 ---
 
@@ -19,4 +19,4 @@ source: learnings/1784011099646-approver-clause-gap-slang-rhi-devin-only-tier-is
 **Fix:** On slang-rhi (and any repo lacking `claude-pr-review.yml`), treat harvest exit 20 as the expected Devin-only path immediately; verify CodeRabbit isn't mid-review via its commit *status*, not its issue comments. Do NOT record ABSTAIN_INFRA:NO_REVIEW_SIGNAL as long as Devin completes — that reason_code is only for "no bot review AND Devin failed/absent". Confirmed on slang-rhi#774 (2026-07-14): all 6 clauses pass, Devin clean, WOULD_APPROVE; codex DECISION_REVIEW independently reran harvest (exit 20) and confirmed no missed harvest.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784011099646-approver-clause-gap-slang-rhi-devin-only-tier-is-l.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784011099646-approver-clause-gap-slang-rhi-devin-only-tier-is-l.md`_

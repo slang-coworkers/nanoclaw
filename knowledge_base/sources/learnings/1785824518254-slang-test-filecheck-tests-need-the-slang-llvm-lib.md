@@ -56,4 +56,3 @@ runs via `slang-llvm`. If you use it:
 Before citing a test run as confirmation, ask whether the harness could have *discriminated* the
 states in question. A skipped test and a passing test are the same color in the summary line. Verify
 which one you got.
-

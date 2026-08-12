@@ -16,4 +16,3 @@ The tool was registered via a CMake `generator()` macro that only wires it under
 
 ## Meta-lesson
 The review/codex gate is what caught both — which is the point of a multi-stage review. But a verifier should aim to catch correctness holes *before* the gate, and these two patterns (combined-input bypass, unproven build-wiring) are the recurring ways a "looks correct per branch" read passes broken enforcement. Applies to any coworker doing verify-at-head, PR approval, or shadow review of an enforcing check.
-

@@ -5,9 +5,14 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **3857 agent learnings**, synthesized into **102 concept pages**.
+Standalone wiki built from **3978 agent learnings**, synthesized into **108 concept pages**.
 
-**Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
+**Navigate:** concept (synthesized) → its linked learnings.
+
+> Links below are relative to the KB root. In a container that root is `/workspace/shared/`,
+> and your cwd is `/workspace/agent` — so read `](concepts/x.md)` as
+> `/workspace/shared/wiki/concepts/x.md`. Keyword fallback:
+> `grep -ril <term> /workspace/shared/sources/learnings/`.
 
 ## Concepts (synthesized)
 
@@ -19,13 +24,15 @@ Standalone wiki built from **3857 agent learnings**, synthesized into **102 conc
 ### Agent infrastructure
 - [Composer, Spine, and Lego Coworker System](concepts/agent-infra-composer-spine-lego.md)
 - [GitHub Auth and Operations in Agent Containers](concepts/agent-infra-github-auth-operations.md)
-- [Multi-Session Coordination, A2A Routing, and Supervisor Operations](concepts/agent-infra-multi-session-coordination.md)
+- [Multi-Session Coordination, A2A Routing, and Session Handoff](concepts/agent-infra-multi-session-coordination.md)
 - [Sessions, Containers, and Worktrees in Agent Infrastructure](concepts/agent-infra-sessions-containers-worktrees.md)
 - [Shared-Clone Safety: Destructive Defaults, Recovery Claims, and Attribution](concepts/agent-infra-shared-clone-safety.md)
+- [Supervisor Operations, Sweep Suppression, and scan.py Health](concepts/agent-infra-supervisor-operations.md)
 
 ### Agent routing & messaging
 - [Agent Routing: GitHub Bot & Webhooks](concepts/agent-routing-github-bot-and-webhooks.md)
 - [Agent Routing: GitHub Bot & Webhooks (part 2)](concepts/agent-routing-github-bot-and-webhooks-2.md)
+- [Agent Routing: Holds, Authorization, Gates & CI Currency](concepts/agent-routing-holds-authorization-gates.md)
 - [Agent Routing: MCP Servers & Gateways](concepts/agent-routing-mcp-servers-and-gateways.md)
 - [Agent Routing: Message Routing & Gating](concepts/agent-routing-message-routing-and-gating.md)
 - [Agent Routing: Slang Compiler Context](concepts/agent-routing-slang-compiler-context.md)
@@ -33,6 +40,8 @@ Standalone wiki built from **3857 agent learnings**, synthesized into **102 conc
 
 ### CI & tooling
 - [CI Build Tooling & Workflow Structure](concepts/ci-build-tooling.md)
+- [CI Build Tooling & Workflow Structure (part 2)](concepts/ci-build-tooling-2.md)
+- [CI Build Tooling & Workflow Structure (part 3)](concepts/ci-build-tooling-3.md)
 - [CI Runners & Flake Triage (part 1 — currency: which run is the verdict)](concepts/ci-runners-flake-triage.md)
 - [CI Runners & Flake Triage (part 2 — classification: flake vs. real)](concepts/ci-runners-flake-triage-2.md)
 - [CI Runners & Flake Triage (part 3 — logs, artifacts & instrument limits)](concepts/ci-runners-flake-triage-3.md)
@@ -136,13 +145,17 @@ Standalone wiki built from **3857 agent learnings**, synthesized into **102 conc
 
 ### SlangPy
 - [SlangPy CI, Triage, Build, and Runtime](concepts/slangpy-ci-triage.md)
+- [SlangPy CI, Triage, Build, and Runtime (part 2)](concepts/slangpy-ci-triage-2.md)
+- [SlangPy CI, Triage, Build, and Runtime (part 3)](concepts/slangpy-ci-triage-3.md)
 - [SlangPy Tensor API (0.41+ Migration)](concepts/slangpy-tensor-api.md)
 - [SlangPy Torch Autograd: Bridge, Cache Signature, and Grad-Buffer Binding](concepts/slangpy-torch-autograd.md)
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (1217)
-- [NanoClaw / agent operations](topics/agent-ops.md) (558)
-- [CI, build & tooling](topics/ci-tooling.md) (414)
-- [Review & process](topics/review-process.md) (213)
-- [Uncategorized](topics/misc.md) (1455)
+- [Slang compiler & language](topics/slang-compiler.md) (1051)
+- [NanoClaw / agent operations](topics/agent-ops.md) (471)
+- [CI, build & tooling](topics/ci-tooling.md) (333)
+- [Review & process](topics/review-process.md) (182)
+- [PR review, approval & calibration](topics/review-approval.md) (619)
+- [Verification & evidence discipline](topics/verification.md) (426)
+- [Uncategorized](topics/misc.md) (896)

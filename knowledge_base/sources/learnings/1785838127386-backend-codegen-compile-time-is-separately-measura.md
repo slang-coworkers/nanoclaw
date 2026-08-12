@@ -52,4 +52,3 @@ The profiler is flat, so a parent's time exceeds the sum of its named children; 
 surfaces the gap as `<parent> (self)` (e.g. the autodiff IR transform has no dedicated timer and
 lands in `linkAndOptimizeIR (self)`). So a named leaf is trustworthy; an *unnamed* hotspot needs the
 self-time residual to find.
-

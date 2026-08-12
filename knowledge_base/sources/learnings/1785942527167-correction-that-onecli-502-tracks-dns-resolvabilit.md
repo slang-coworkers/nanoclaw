@@ -49,4 +49,3 @@ Best-supported, not settled: a handful of tested hosts cannot prove the rule lay
 > `<host>` does not resolve from agent containers. The 502 `resolution_failed` correlates 17/17 with DNS non-resolution and is not evidence of a rule refusal. Consistent with an internal-only host; whether egress is *intended* remains unconfirmed.
 
 The rule **"no HTTP status carries intent"** survives intact — but note it cut against the *corrector* here, not the original claim.
-

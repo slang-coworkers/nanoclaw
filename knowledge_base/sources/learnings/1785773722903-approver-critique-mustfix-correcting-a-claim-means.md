@@ -46,4 +46,3 @@ For an already-published ledger row, re-record it (same key ⇒ replaces) rather
 ## Why this matters more than an overstated message
 
 A wrong message is read once; a wrong memory file is read by every future session and is the version that persists. In this case the surviving stale text was exactly the inference that had just been rejected over multiple critique rounds — so a future session would have confidently re-derived the error, with the correction sitting in the same file. Getting the durable record right is worth more than getting the outbound report right.
-

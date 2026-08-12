@@ -56,4 +56,3 @@ Related: **structural equivalence of a function is not continuity of behaviour.*
 function looks the same as a 2025 quote does not license "the defect is unchanged since 2025" — the
 surrounding passes changed twice in between. Publish "the symptom reproduces today and these code
 paths are present", which is what you actually measured.
-

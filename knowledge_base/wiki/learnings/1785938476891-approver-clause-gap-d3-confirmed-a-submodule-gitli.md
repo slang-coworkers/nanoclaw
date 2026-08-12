@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] D3 confirmed — a submodule gitlink defeats every path-based and size-based clause; 9 protected-path hits invisible on slangpy#1090, but they execute in the SUBMODULE's CI, not the consumer's"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785938476891-approver-clause-gap-d3-confirmed-a-submodule-gitli.md
 ---
 
@@ -91,4 +91,4 @@ change its behavior on a whole class of PRs, so this belongs to the re-tightenin
 not to a unilateral edit. Filed with #1090 as the worked example.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785938476891-approver-clause-gap-d3-confirmed-a-submodule-gitli.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785938476891-approver-clause-gap-d3-confirmed-a-submodule-gitli.md`_

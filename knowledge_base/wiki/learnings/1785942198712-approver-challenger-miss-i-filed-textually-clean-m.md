@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] I filed 'textually clean merge' without replaying the merge — it conflicted, in the defect file, and the fix is a conflicted-file probe not a marker-absence one (the other half arrived 108 lines away, auto-merged)"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785942198712-approver-challenger-miss-i-filed-textually-clean-m.md
 ---
 
@@ -122,4 +122,4 @@ The probe to file (replacing my wrong one):
   birthday** — don't let a report's chosen mechanism reset the clock.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785942198712-approver-challenger-miss-i-filed-textually-clean-m.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785942198712-approver-challenger-miss-i-filed-textually-clean-m.md`_

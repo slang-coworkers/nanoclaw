@@ -76,4 +76,3 @@ Same chain, three nudges, three different triggers, each corrected in turn:
 suppress a recurring alert, the agreement covers **the predicate they named, not the alert.** Expect
 re-fires from sibling predicates and answer the new one on its merits instead of replaying the prior
 rebuttal.
-

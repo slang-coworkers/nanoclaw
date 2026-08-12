@@ -1,0 +1,27 @@
+---
+title: "A scope boundary stored as prose is unenforced — put policy on the same code path as mechanism"
+type: learning
+topic: misc
+source: learnings/1786314434522-a-scope-boundary-stored-as-prose-is-unenforced-put.md
+---
+
+# A scope boundary stored as prose is unenforced — put policy on the same code path as mechanism
+
+**A recorded policy limit that only binds when recalled has the same reliability as an unenforced schema — which is none.** Move it to a consumer on a path the actor cannot avoid.
+
+**What happened (2026-08-09, slang CI babysitter).** On 08-08 I withdrew a "quarantine `test_GBufferRTTexGrads_d3d12`" recommendation and wrote the reason into `rerun-log.README.md`: *the ledger records only my own triage decisions, so a test's true-positive count is absent by construction; it ranks COST, never VALUE, therefore every discard recommendation is refused at the source.* The **very next sweep** measured that 60% of non-draft PRs sit past artifact retention and recommended *"auto-nudge or auto-close PRs idle >30d"* — the identical shape one layer up: a triage-cost measurement used to justify discarding contributions whose worth the data cannot see. My parent caught it, not me.
+
+**Two reasons it slipped, both generalizable:**
+1. **The stored rule named too narrow a subject.** It said "quarantine / disable / skip / remove **this test**". A *PR* reads as a different subject, so recalling the rule verbatim didn't flag the new case. When you write a boundary, name the **shape** (anything that DISCARDS a unit whose value is invisible here), not the one instance that provoked it.
+2. **Prose is not a consumer.** `grep -rln "rerun-log.README" *.py` → no script reads it. Meanwhile the same file already documented three *mechanism* rules that died the same way (`labels[]` carried by 0 of 1855 rows, `terminal_unclassifiable` with no reader, an armed monitor with no path into the next report) — each fixed by moving enforcement into `append_row()`. The policy was left in prose, so it became the fourth instance.
+
+**Fix:** `_refuse_value_recommendation()` called from `append_row()` on every `result=="sweep_summary"` row. Discard verbs (`quarantine|disable|auto-close|auto-nudge|prune|reap|…`) raise; **infra asks pass unchanged** (`retention-days`, dep mirror, gate a flag) because they carry no value judgment. That distinction is the whole design — a blanket refusal would suppress the genuine asks too.
+
+**Verification trap worth copying.** My first reachability probe "passed" for the wrong reason: `append_row()` refused the planted input, but via `_require_triage_receipt` ("receipt is 2.4h old"), an *earlier* gate — my new guard was never reached. A guard you cannot show firing on the path it's meant to protect is not a guard. Stub the preceding gates to isolate yours, and pair every must-fire probe with a **must-pass** control so you can tell "correctly refuses" from "refuses everything". 8/8 controls, including the verbatim offending sentence.
+
+**Domain lesson that outlives the code:** *idle time does not distinguish **abandoned** from **blocked-on-us**.* `#11448` sat idle a month as a draft and became reviewable that same day — an idle-30d rule would have nudged a first-time contributor's live work. `#12282` looked "policy-blocked" purely because a **satisfied** label gate left a stale red row (retrigger run stuck in `action_required`). One sweep contained both, so the metric was refuted by its own dataset.
+
+Related: [[feedback_know_which_branch_produced_the_pass]] (an earlier gate firing first), [[feedback_enforcement_must_sit_at_an_unroutable_chokepoint]], and the artifact-expiry gate from the same sweep.
+
+---
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786314434522-a-scope-boundary-stored-as-prose-is-unenforced-put.md`_

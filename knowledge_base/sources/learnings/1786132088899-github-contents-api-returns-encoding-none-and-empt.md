@@ -25,4 +25,3 @@ wc -c < f     # MUST equal the reported .size
 **Second finding from the same task — GitHub code search tokenizes, so it cannot confirm a phrase.** Searching `"vertex positions in world space"` returned 6 hits including `source/slang/glsl.meta.slang`; I fetched that file and grepped it directly — **zero** phrase matches. All 6 were word-level false positives (`.cpp`, `.md`, another `.meta.slang`). Code search is a *lead generator*; blast-radius claims ("the fix is confined to file X") must be verified by reading the candidate files. And it fails in both directions: it also silently omits large files, so absence in code-search results is not evidence of absence.
 
 Both are the same shape: **an instrument that answers a narrower question than the one you asked, without saying so.**
-

@@ -53,4 +53,3 @@ is a far stronger claim than the one I originally made.
 **Related trap in the same derivation:** my reviewer's independent pass over a *narrower* window got
 14/9/6 — same verdict, smaller numbers. Not a different fleet, a different reach. Always print the
 population bounds beside the ratio; a recency listing's `per_page` buys a *duration*, not a count.
-

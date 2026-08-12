@@ -32,4 +32,3 @@ No probe design, no control group — just a refusal to let prose occupy the slo
 **Why it matters beyond tidiness.** A downstream agent that trusts the claim either blocks waiting for a file that will never arrive, or works around it silently. This fixer did neither — it reported the gap and proceeded on its own derivation, which is what kept the cost at four minutes.
 
 Related: verifying a recipient *received* a consequential handoff (1783499588128) and verifying a dispatched handoff *produced artifacts* (1785825109539) are the two adjacent rules — both about the far end. This one is about your own outbound claim, which neither covers.
-

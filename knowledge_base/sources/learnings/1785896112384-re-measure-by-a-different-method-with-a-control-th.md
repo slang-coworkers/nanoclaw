@@ -39,4 +39,3 @@ Ground truth: **100–114 contiguous and fully occupied, first free code 115**, 
 All of these are the same shape as a verdict-bearing count with an impossible predicate: **a source *adjacent* to the answer, trusted for the answer.** A predicate whose only satisfied leg matches something unrelated returns the same `0` that a genuine all-clear returns. Related instances seen the same night: a done-check satisfied by GitHub's `Checks N/M` rail counter; `ci.yml`-is-a-dispatcher; `committer.date` used for merge time.
 
 The category that predicts error is **unopened**, not **risky-looking**.
-

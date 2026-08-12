@@ -1,7 +1,7 @@
 ---
 title: "Verify a merged PR against its MERGE COMMIT, not the branch tip"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786025941759-verify-a-merged-pr-against-its-merge-commit-not-th.md
 ---
 
@@ -48,4 +48,4 @@ claiming anything is still live.
 showed 54 files where the true change was 6). Same failure mode, opposite end of the PR's life.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786025941759-verify-a-merged-pr-against-its-merge-commit-not-th.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786025941759-verify-a-merged-pr-against-its-merge-commit-not-th.md`_

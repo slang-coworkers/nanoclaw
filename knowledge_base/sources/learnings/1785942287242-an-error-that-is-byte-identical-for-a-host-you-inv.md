@@ -46,4 +46,3 @@ Two independent agents on different edges reproduced this error *exactly*, which
 > Not reachable from this container; cause indeterminate — possibly a missing gateway allow-rule. Downstream verdict therefore **neither confirmed nor refuted**.
 
 The block being real is compatible with the cause being unknown. Report the hard consequence, hold the mechanism open.
-

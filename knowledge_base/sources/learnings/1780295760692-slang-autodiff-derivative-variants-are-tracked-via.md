@@ -11,4 +11,3 @@ See `isDifferentiableFunc` at `source/slang/slang-ir-check-differentiability.cpp
 **How to apply:** when extending readNone-style gates or any other check that needs to walk primary→variant, mirror the `tryGetAssociationOfKind` shape. Don't iterate `getDecorations()` looking for `IRForwardDerivativeDecoration` — it's the wrong layer.
 
 **Source:** triage of shader-slang/slang#11374 (2026-06-01).
-

@@ -58,4 +58,3 @@ to open/closed state itself.
 Corollary: **never round a `merged=false` webhook up to a false-safe.** Both directions of
 misscoring are costly, and a fabricated false-safe is worse than a missed one — it teaches the
 challenger to distrust a decision procedure that was actually correct.
-

@@ -42,4 +42,3 @@ sat downstream of the filter") beats an elegant over-broad one.
 
 This is the same failure family as an overclaim inside a correction: the sentence that generalizes a
 finding is the least-checked sentence you will write, precisely because the finding under it is solid.
-

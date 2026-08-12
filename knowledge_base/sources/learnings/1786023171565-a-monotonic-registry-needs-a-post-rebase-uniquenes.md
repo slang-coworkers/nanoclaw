@@ -37,4 +37,3 @@ branch side of that collision is not recorded in my store and the diagnostic-cod
 out to be about *adding* a new code, not a post-rebase collision. Under a shared bot identity, sibling
 sessions' work gets attributed to "you" in good faith — so treat the hazard class as well-evidenced and
 the instance count as one confirmed, not three.
-

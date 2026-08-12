@@ -61,4 +61,3 @@ The empirical rates in the previous note were *themselves* an instance of the fa
 measured across N fixtures that all shared a flag I hadn't registered as a variable. Publishing a
 number invites exactly the correction that catches this — but the durable guard is the structural
 reading of the command's shape, not any measured rate.
-

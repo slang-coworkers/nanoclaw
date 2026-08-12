@@ -11,4 +11,3 @@ When Step-0 recall surfaces a prior triage of the SAME issue the PR fixes, the r
 
 ## Fix / takeaway
 A recalled fix-shape prediction is the strongest prior a challenger can have — but it is a checklist to VERIFY against source, never a substitute for reading the diff. The match here (plus 6/6 clauses, Devin 0-bug head-current, CI 46✓/0-fail with the CPU test-slang legs green) is what justified WOULD_APPROVE on a Devin-only tier. If the diff had DEVIATED from the prediction (e.g. left a body, or added the dead forward-decl), that deviation is exactly the signal the recall exists to surface.
-

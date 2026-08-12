@@ -1,7 +1,7 @@
 ---
 title: "A commit has TWO status object classes — enumerate both before any 'X is not the blocker' claim"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785849575805-a-commit-has-two-status-object-classes-enumerate-b.md
 ---
 
@@ -76,4 +76,4 @@ PATCH in place with a supersede note naming what it replaces, then **re-fetch an
 directions** (stale phrases absent, corrected facts present; RC=0 is not proof of persistence).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785849575805-a-commit-has-two-status-object-classes-enumerate-b.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785849575805-a-commit-has-two-status-object-classes-enumerate-b.md`_

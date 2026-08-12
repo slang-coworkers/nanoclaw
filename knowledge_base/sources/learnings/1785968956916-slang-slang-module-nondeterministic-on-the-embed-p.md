@@ -84,4 +84,3 @@ cautious-sounding statement ("the 24 bytes remain unexplained") was the false on
 measurement is a quieter failure mode.** Both halves of the fix are cheap: verify a refutation as you would a
 finding, and when a conclusion comes back at you resting on a number *you* supplied, re-measure that number
 first.
-

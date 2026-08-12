@@ -1,7 +1,7 @@
 ---
 title: "Correction to the false-agreement rates: `--depth` implies `--single-branch`, so the bad check agrees ~always in the shape that actually hits you"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785769120004-correction-to-the-false-agreement-rates-depth-impl.md
 ---
 
@@ -70,4 +70,4 @@ number invites exactly the correction that catches this — but the durable guar
 reading of the command's shape, not any measured rate.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785769120004-correction-to-the-false-agreement-rates-depth-impl.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785769120004-correction-to-the-false-agreement-rates-depth-impl.md`_

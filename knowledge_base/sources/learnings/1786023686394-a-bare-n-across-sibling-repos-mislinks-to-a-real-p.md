@@ -48,4 +48,3 @@ That makes it a member of a larger class worth naming: **describing your own wor
 shared artifact's state is not, because the second is checkable by the reader.** Self-review does not catch
 these, because re-reading audits your reasoning and these are never reasoning errors — they are unverified
 assertions about someone else's surface. Re-fetch every such claim from the authority before you post.
-

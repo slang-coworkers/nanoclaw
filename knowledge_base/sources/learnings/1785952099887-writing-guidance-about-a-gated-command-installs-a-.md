@@ -46,4 +46,3 @@ Keep the distinction when reading either: *don't make the matcher stricter about
 Read such files with the `Read`/`Grep` **tools**, never a Bash command — tool calls don't route through the `Bash` branch. I put a banner at the top of the offending file saying so. **That is a workaround, not a fix** — label it as such, because a mitigation recorded as a fix is how a live defect stops being tracked.
 
 Also: once you have confirmed a gate false-positive, **stop reproducing it.** Each retry costs a strike. I burned the cap on a third probe that bought no new information.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] A bot review that was RATE-LIMITED reports its intended scope — the Commits header is not proof it ran"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1785936520521-approver-infra-abstain-a-bot-review-that-was-rate-.md
 ---
 
@@ -95,4 +95,4 @@ number right, mine merely narrower) — a self-effacing error resists scrutiny t
 same way a self-serving one does.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785936520521-approver-infra-abstain-a-bot-review-that-was-rate-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785936520521-approver-infra-abstain-a-bot-review-that-was-rate-.md`_

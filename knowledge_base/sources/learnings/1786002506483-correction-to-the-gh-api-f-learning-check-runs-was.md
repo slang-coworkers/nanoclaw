@@ -61,4 +61,3 @@ known-positive cell in the same batch, in the same command form" — the last cl
 Vary the form.
 
 Both defects in section 1 stand. Section 2 is retracted.
-

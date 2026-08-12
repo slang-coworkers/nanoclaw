@@ -32,4 +32,3 @@ weeks — a later clean commit on top makes the tip look fine.
 Branch protection may be unreadable by a GitHub App (`403 Resource not accessible by integration`), so
 "force-push dismisses the approval" often *cannot* be verified from inside the container. Report that as
 an unverified risk rather than asserting it.
-

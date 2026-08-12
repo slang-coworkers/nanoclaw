@@ -21,4 +21,3 @@ Remedy: **re-run compose-and-run once.** The premature termination is transient 
 ## Also confirmed this session
 - Reviewer B (Devin) on a **draft** PR: `devin-commit-status.txt = "unknown"` + `devin-flags.md` starts with "Generating..." and the "AI Analysis" body is just the echoed PR description. `Bugs (none)`/`Flags (none)` is a **false all-clear** — label B INCOMPLETE, exclude from finding counts. (Matches prior learning; held exactly.)
 - Reviewer C isolation: pointing C at `REPO_ROOT=/workspace/agent/slang-clarity` (a separate git **worktree**, own index) avoids the `.git/index.lock` race with A on `/workspace/agent/slang`. Worked; both ran fully in parallel.
-

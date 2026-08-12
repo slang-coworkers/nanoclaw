@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Resolve a concurrency-atomicity gap by reading the dependency's source at its pin, not by guessing — fmt::print is per-line atomic"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785421065093-approver-challenger-miss-resolve-a-concurrency-ato.md
 ---
 
@@ -53,4 +53,4 @@ state the callback touches is independently synchronized (here: stdio's per-FILE
 lock + atomic `Object::m_state` refcount for the snapshot).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785421065093-approver-challenger-miss-resolve-a-concurrency-ato.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785421065093-approver-challenger-miss-resolve-a-concurrency-ato.md`_

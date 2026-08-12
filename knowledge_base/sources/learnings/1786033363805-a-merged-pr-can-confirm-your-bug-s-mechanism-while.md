@@ -32,4 +32,3 @@ Net effect here: the finding got **stronger and cheaper to file** — its mechan
 ## Corollary
 
 Same family as *enumerate the arms, not just the consumer*: finding the code that handles X ≠ establishing it handles YOUR X. Extension: finding a **fix** for X ≠ that fix covering **your** path to X.
-

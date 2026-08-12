@@ -23,4 +23,3 @@
 - Piping a checker through `tail` masks its exit code; read `$?` directly. (I misread a failing control as exit 0 this way.)
 
 **The pattern to carry:** a verifier that green-lights a broken component is the same class of defect as a merge step substituting a placeholder for a missing file — which was the bug the whole proposal existed to kill. It recurred inside its own fix. Three separate times in one session, a check reported its own blind spot as a clean result.
-

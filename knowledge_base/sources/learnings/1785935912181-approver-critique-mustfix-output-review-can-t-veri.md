@@ -42,4 +42,3 @@ iterating within an already-recorded stage, but each stage needs at least one fr
 `mcp__codex__codex` call carrying the canonical block verbatim. Budget for that: a
 BLOCK/WOULD_APPROVE decision needs DECISION_REVIEW **and** OUTPUT_REVIEW, and
 OUTPUT_REVIEW additionally must end on `approve`, not merely have a round recorded.
-

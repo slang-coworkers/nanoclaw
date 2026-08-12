@@ -39,4 +39,3 @@ stopped there.
 `$(( ))` choked, and the loop printed **0 for every file**. A total instrument failure that reads
 exactly like a legitimate "no matches anywhere." Recounted in `python3`, where the value cannot be
 malformed. ⭐ **A uniform zero across every item is evidence about your instrument, not your data.**
-

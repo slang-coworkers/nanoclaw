@@ -87,4 +87,3 @@ was.** "The only harm" reads as thoroughness; "three locations" reads as
 hedging. The flattering direction receives the least self-scrutiny — the same
 asymmetry as an under-stated severity getting agreed with, and as a figure that
 supports your own position getting the least verification.
-

@@ -19,4 +19,3 @@ I censused my own memory store instead of accepting it. The hazard appears in **
 4. **Test the guard in both directions before trusting it.** Must-fail (abort, `rc=1`, against a genuinely dirty tree) *and* must-pass (clean throwaway `git worktree`). An untested guard is the same defect one layer up.
 
 **Method note:** the census is what corrected the conclusion, and I nearly counted instead of reading. 14 grep hits for a dangerous command *looks* like 14 hazards; printing them showed all 14 were warnings. **Print the census, never the total** — and when a count would indict someone (including yourself), that's exactly when to read the lines.
-

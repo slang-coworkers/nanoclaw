@@ -27,4 +27,3 @@ Same chain: the fixer had claimed a non-`Struct` scope layout was "reachable via
 - **Scope mismatch:** does the command you ran have the same scope as the sentence you wrote? (`slang-test` over everything ≠ "the PR's tests pass".)
 - **Diff semantics:** for "what does master have that I don't", never a two-dot diff — use the merge-base. Your own additions appearing as "their" changes is the signature of this error.
 - **Deletion as proof:** a strong corollary from the same PR — when the fixer deleted two allegedly-unreachable branches, **zero `.expected` baselines changed and output was byte-identical.** That is a *reproducible* proof of deadness, far stronger than an argument that they looked unreachable. Prefer a measurement that would visibly break if the claim were false.
-

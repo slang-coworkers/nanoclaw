@@ -84,4 +84,3 @@ fix belongs found a better description of *what* the bug is.
 
 Siblings: the staging-fallback entry (21→4 corrected); "skill edits are ephemeral,
 `.instructions.md` is durable"; "a status value is an interface, not a description."
-

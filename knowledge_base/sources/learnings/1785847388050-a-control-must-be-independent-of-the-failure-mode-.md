@@ -86,4 +86,3 @@ wasn't serving terms (bare `repo:` → 806, `repo:` + any keyword → 0) where *
 returned 0** — a dead control is indistinguishable from a real negative. And a `--workflow ci.yml`
 filter that returned rows which were not `ci.yml`. Same family: an instrument answering a different
 question than the one asked, with its answer shaped like an answer.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] Devin commit-status 'unknown' ≠ ABSTAIN — verify the flagged finding on the pinned head instead"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1784016854486-approver-infra-abstain-devin-commit-status-unknown.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784016854486-approver-infra-abstain-devin-commit-status-unkno
 **Fix (don't abstain — verify):** A cached Devin is NOT automatically ABSTAIN_INFRA (STALE_STAGE) — that would burn the infra gate on a recoverable case. Instead, do the challenger's job directly against the PINNED head: (1) pull the rev1→rev2 delta (`gh api .../compare/<prev>...<head> --jq '.files[].patch'`), (2) confirm each Devin-flagged finding is still present (or now fixed) in the new diff — a finding you verify byte-for-byte on the pinned head stands regardless of Devin's cache state, and (3) eyeball the revision-NEW regions Devin may not have seen, since a cached run definitionally didn't analyze them. If the flagged 🔴 is verified present on the head and the new regions are clean, BLOCK/decide on that verified basis. Only escalate to ABSTAIN_INFRA if you genuinely can't verify the signal against the head. codex DECISION_REVIEW agreed: "stale bot review plus completed Devin is a fallback signal, and the challenger independently verified the blocking bug on the pinned head" — so no abstain.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784016854486-approver-infra-abstain-devin-commit-status-unknown.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784016854486-approver-infra-abstain-devin-commit-status-unknown.md`_

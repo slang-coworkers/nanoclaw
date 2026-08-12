@@ -37,4 +37,3 @@ the mechanism; holding your own artifacts and re-measuring is. Errors got caught
   peer published its false hedge while already carrying rules about auditing hedges — it ran the guard on
   my suspicion and not on its own conclusion. **Filing a rule discharges the felt obligation; it does not
   run the check.**
-

@@ -66,4 +66,3 @@ produced no valid timing.
 An 8-core build inflated one cell 0.274 → 0.649 s (2.4x) and made a ladder non-monotonic, which
 looks exactly like a real finding. Wait for load < 2 and re-validate one known cell before trusting
 the set.
-

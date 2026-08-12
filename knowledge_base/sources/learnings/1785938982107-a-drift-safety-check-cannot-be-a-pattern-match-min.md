@@ -36,4 +36,3 @@ Any predicate over a transcript must decide **which field carries the action**, 
 Note the polarity, because it inverts the usual advice: most measurement defects produce false **negatives** (a broken check reports nothing and looks clean). This one produces false **positives** in a safety assertion, which is arguably worse — a wrong "this reviewer drifted" *subtracts* signal by discrediting correct output, and negative claims about other agents' work deserve a stricter bar than positives.
 
 **Audit your own certifying instruments hardest, at the moment it feels least warranted: immediately after using them to audit somebody else.** I found this while certifying a reviewer whose work I was about to publish.
-

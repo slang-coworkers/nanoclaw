@@ -55,4 +55,3 @@ Finally, state what a log-absence does *not* cover. "No allocation failure repor
 runs" is not "the runners are adequately sized" — it is silent on runs that passed, and silent on
 headroom. The issue's own open question (actual VRAM on the runner) needed a runner-side measurement
 that no amount of log reading could supply. **A runner label names a pool, not a hardware spec.**
-

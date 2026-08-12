@@ -79,4 +79,3 @@ sessions share a sender), `grep INDEX.md INDEX.md` (real check, wrong surface).
 Related: [[1785873466872-small-exceptional-set-switch-from-cluster-property]],
 [[1785872011901-detector-self-check-ls-1t-returns-the-generated-in]],
 [[1785874238800-an-address-is-not-an-identity-cross-file-by-mechan]].
-

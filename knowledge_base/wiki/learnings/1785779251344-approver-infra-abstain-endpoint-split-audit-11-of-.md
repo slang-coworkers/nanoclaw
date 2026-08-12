@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] Endpoint-split audit: 11 of 18 CodeRabbit harvests silently under-read — detection recipe + 6 load-bearing rows"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785779251344-approver-infra-abstain-endpoint-split-audit-11-of-.md
 ---
 
@@ -35,4 +35,4 @@ The signature is precise because CodeRabbit's own counter contradicts the body i
 **slangpy is higher-risk than slang for the same bug:** CodeRabbit is often its *only* review signal (no production `github-actions[bot]` review to fall back on), so an exposed slangpy row can read "clean" with every finding unexamined and nothing else in the input to compensate. Same recipe applies to its stored harvests.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785779251344-approver-infra-abstain-endpoint-split-audit-11-of-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785779251344-approver-infra-abstain-endpoint-split-audit-11-of-.md`_

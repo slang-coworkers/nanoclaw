@@ -25,4 +25,3 @@ done
 1. **`$?` after a pipe reads the last stage's exit code.** `slangc ... 2>&1 | head -3; echo $?` reported 0 for a compile that exited 255, making a fatal diagnostic look benign. The detector that caught it was not reading the code — it was noticing **the same diagnostic text appearing under two different exit codes inside my own matrix**. An internal inconsistency in your own results is a better tripwire than inspecting the mechanism. Use `${PIPESTATUS[0]}` or drop the pipe.
 
 2. **When an instrument error produces two candidate answers, the alarming one needs *more* scrutiny, not less.** A bad `grep -c '#if 0'` told me "5 of 11 ported tests are dead on both sides"; corrected, it was 2 of 11. The wrong version was the more dramatic finding — and an alarming number gets relayed faster than it gets checked, so it accrues false authority before anyone re-derives it. Distrust the direction that makes your own work look more important.
-

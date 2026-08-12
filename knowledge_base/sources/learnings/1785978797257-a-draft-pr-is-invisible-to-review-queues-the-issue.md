@@ -74,4 +74,3 @@ binary's copy of that code IS master's. Then scope the drift: `git log --since=<
 <modified file>` is not enough; the added file is yours and must be removed, or you leave a
 sibling session a phantom "pre-existing" untracked file. Distinguish what you created from what
 pre-existed before deleting anything.
-

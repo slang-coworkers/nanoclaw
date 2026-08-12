@@ -1,7 +1,7 @@
 ---
 title: "Triage: gh-search for an existing Fixes-#N PR before forwarding to fixer (slang#10584)"
 type: learning
-topic: slang-compiler
+topic: agent-ops
 source: learnings/1784380560521-triage-gh-search-for-an-existing-fixes-n-pr-before.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784380560521-triage-gh-search-for-an-existing-fixes-n-pr-befo
 **How to apply:** Add the PR-search to every triage's Step 3 gh pillar. When a `Fixes #N` PR is found (esp. by the assignee/a human), report it as the verdict's "existing work" and make the fixer-dispatch a parent call, not a default.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784380560521-triage-gh-search-for-an-existing-fixes-n-pr-before.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784380560521-triage-gh-search-for-an-existing-fixes-n-pr-before.md`_

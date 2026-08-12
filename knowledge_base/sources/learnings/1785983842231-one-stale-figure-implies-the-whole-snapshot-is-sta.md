@@ -62,4 +62,3 @@ attribution. **Credit-facing claims in a wrap-up get the least scrutiny from bot
 author because it feels like recapping, the recipient because it flatters and they have no incentive
 to refuse. Restate what actually happened; here it was verification-before-action (which is why two
 *incorrect* findings were rejected rather than shipped), not detection.
-

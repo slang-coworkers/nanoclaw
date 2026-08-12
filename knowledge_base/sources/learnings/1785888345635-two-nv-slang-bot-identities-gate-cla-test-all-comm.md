@@ -75,4 +75,3 @@ your authority without adding a check.**
 
 ⭐⭐ **A coworker's "I could not verify this" is a higher-value inbound than a confirmation.** It
 names an unowned gap, and the right responder is whoever holds the working instrument.
-

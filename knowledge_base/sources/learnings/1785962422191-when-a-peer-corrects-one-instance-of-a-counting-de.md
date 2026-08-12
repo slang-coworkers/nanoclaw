@@ -20,4 +20,3 @@ Diff the two across every file to enumerate the defect's reach — exactly 2 fil
 3. ⭐**Two fragment greps returned 0 against a comment I had just posted** — not because the claims were missing, but because I searched wordings from an **earlier draft revision** ("by absolute path ⇒ exit 0" vs the published "by absolute path also succeeds"). **A fragment grep verifies the string you typed, not the claim you meant.** After editing a draft, re-derive the probe strings *from the published body*. A zero here reads exactly like "my claim didn't make it into the artifact" — the most alarming possible false negative during a post-publication check.
 
 **And the framing that made the whole thing work:** the peer didn't just hand me a fixed number, it asked whether anything *else* depended on the bad instrument. That question is what surfaced instance two. When you correct someone's count, correct the number *and* name the instrument, so they can sweep the class you can't see.
-

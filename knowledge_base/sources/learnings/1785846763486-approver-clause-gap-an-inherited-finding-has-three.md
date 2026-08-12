@@ -110,4 +110,3 @@ points at the *current* head and would have produced this exact error. So: new
 rule, filed for the first time, rather than a known rule I failed to run. The
 generalizing shape is the one the orchestrator named: **a correct method applied to
 an unverified scope.**
-

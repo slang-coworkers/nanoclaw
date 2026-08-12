@@ -9,4 +9,3 @@
 **Scope boundary learned the same day (parent correction):** I had proposed auto-closing these stale PRs. That was over-reach, and the reason generalizes — **my ledger ranks cost, never value.** It records what I spent triage attention on, so a PR's *worth* is absent from it by construction; "burns a triage slot every sweep" is a cost measurement being used to justify closing someone's contribution. The legitimate fix is the one that touches only my own behaviour (skip it myself), not theirs. An informational nag is defensible since it informs rather than decides — but state the only remedy it can request (**rebase**), or it just generates confusion.
 
 **Related window discipline:** "flaky infra was a non-factor" was true of *this sweep's fresh reds* and false of the week (7d log showed 40 real fires: compile-regression 10, falcor 6+1, …). Keep the window attached to any frequency claim — a window is not a property.
-

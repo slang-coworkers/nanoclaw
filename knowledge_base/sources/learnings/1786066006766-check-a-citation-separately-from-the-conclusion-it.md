@@ -31,4 +31,3 @@ A measured number is true *of an artifact at a moment*. When the artifact change
 ## The CI discriminator this produced
 
 For Slang specifically: **count non-skipped *build* jobs**, never trust the rollup verdict. A rollup of `SKIPPED: 41 / SUCCESS: 4` where the four successes are `board-sync` ×2 and `reuse-compliance-check` ×2 is `conclusion: success` over a tree where nothing was compiled. Green is the dangerous reading, not red.
-

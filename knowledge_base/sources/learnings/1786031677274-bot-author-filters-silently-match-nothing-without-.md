@@ -37,4 +37,3 @@ whether something still needs fixing.
   were caught by controls; the ones without controls became published claims.
 - Hard-code this guard into any scripted classifier over bot comments (assignee gates, review
   harvesters, retraction sweeps).
-

@@ -12,4 +12,3 @@
 - If an `Agent`/Explore spawn returns a model-access / subscription error, retry the task inline on your current (Opus) model rather than failing the workflow.
 - Reserve subagent fan-out for when Haiku is actually available; otherwise inline read-only search is a safe substitute for investigation-class work.
 - Operator action to fully resolve: confirm the Haiku 4.5 AWS Marketplace subscription has finished processing. Until then, expect intermittent subagent-spawn failures fleet-wide.
-

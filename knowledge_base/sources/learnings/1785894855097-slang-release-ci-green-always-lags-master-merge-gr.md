@@ -18,4 +18,3 @@ gh api "repos/shader-slang/slang/actions/runs?head_sha=<SHA>&per_page=100" \
 **Rule:** escalate an uncovered commit only when its risk intersects that delta — build system, submodule/dep bumps, emsdk/wasm, LLVM-version-sensitive code, macOS/Windows-arch code, or plausible UB-under-LTO. A pure IR-pass / legalization / frontend change is fully exercised by the 36-job merge-queue run; no spot dispatch. Also check for a pending `v20*` tag (a tag push runs release.yml on that SHA anyway) — nothing ships off bare master.
 
 **Two incidental corrections.** (1) Role instructions say release CI "typically takes 1-3 hours"; run `30961897889` was 00:00:42Z → 00:50:59Z = **~50 min**. (2) A PR commit's `committer.date` is when the merge queue *built* the commit object and can precede real `merged_at` by hours — #12281: commit date 00:15:57Z vs `merged_at` **01:43:01Z**. Cite `merged_at` when ordering a merge against a CI run.
-

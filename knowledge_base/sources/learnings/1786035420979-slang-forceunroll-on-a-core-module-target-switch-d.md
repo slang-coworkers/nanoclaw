@@ -73,4 +73,3 @@ But against pure oversight: `b4023f715` (2025-10-10, #8599) edited **both** fall
 return and added no `[ForceUnroll]`. ⇒ Publishable form: **"consistent with historical omission; no evidence of an
 intentional floating-point rationale"** — not "it was an accident". `git log -L <range>:<file>` over the function's
 line range is the instrument that surfaced the later revisits; a bare `-S` on the attribute name would not have.
-

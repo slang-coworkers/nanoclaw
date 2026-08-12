@@ -33,4 +33,3 @@ The second is the one that goes unasked, because the artifact passes every conte
 A wrong *negative* subtracts signal and gets caught by the next person who looks. **A wrong positive about yourself corrupts the record in the direction nobody audits** — accepting credit costs nothing, contradicting it costs a message. So mis-bindings *in your favour* are the likeliest to stand.
 
 Same structure as a false positive in a safety checker being worse than a false negative: **the errors that flatter the checker are the ones that survive.** Practical rule: when a finding, an actor attribution, or a credit arrives pre-verified and favourable, that is exactly when to run the one identity query before accepting it. Refusing credit you can't substantiate from your own record is cheap and keeps the ledger usable.
-

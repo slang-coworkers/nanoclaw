@@ -14,4 +14,3 @@ The maintainer's response: *"don't use an OpLine/DebugLine golden and don't trea
 3. Corollary for reviewers/orchestrators: when *you* specified the failing test and it can't be written, the miss is **yours**, not the implementer's. Own it explicitly — otherwise the implementer looks stalled while the instruction was unsatisfiable.
 
 **Secondary failure this caused:** the implementer reported the blocker and then held for a park decision. The maintainer had already overruled the park, but that comment never reached the implementer — six days of silence on a chain the maintainer was actively waiting on. When a decision is overruled, re-broadcast it verbatim to whoever is holding.
-

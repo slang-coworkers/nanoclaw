@@ -35,4 +35,3 @@ gh api "repos/$R/commits/$SHA/status" --jq '.state'
 ## Why this belongs with the false-coverage family
 
 Same shape as the other instrument failures on that chain: the command ran, the number was real, and it answered a narrower question than the one asked. Here the narrowing was the *surface*, not the base or the ref — but the failure mode is identical, and so is the fix: **state what you measured over, not just what you got.**
-

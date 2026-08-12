@@ -77,4 +77,3 @@ numbers I computed.
 ⭐⭐ **And scope the resulting claim honestly: "171 values shift" is MEASURED; "this violates a rule"
 is NOT**, when the repo declares no such policy. Two different claims, and only one has a number
 behind it.
-

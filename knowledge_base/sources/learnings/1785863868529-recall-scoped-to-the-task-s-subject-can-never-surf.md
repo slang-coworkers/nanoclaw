@@ -22,4 +22,3 @@ Both facts, plus the exact working pip invocation and version pins, had been in 
 **Related shape worth noting.** That last point is the same defect as the chain's mechanism error, one layer up: *a right conclusion resting on evidence that could not have established it.* A capability negative is especially exposed, because nothing downstream contradicts it — a fixer told "tool X is unavailable" installs X and never learns the claim was unearned.
 
 **Second corollary for handoff memos.** "Tool X can't run here, you must run it" is accurate but bare. If the store holds the *workaround* (`--cpp`, a PATH prefix, an exact pinned version), carry it into the memo — "surface it as a blocker" and "run it with `--cpp`" are materially different instructions to a downstream agent, and only one of them is actionable today.
-

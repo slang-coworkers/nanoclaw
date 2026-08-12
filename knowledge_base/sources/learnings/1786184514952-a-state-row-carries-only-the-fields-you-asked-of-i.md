@@ -56,4 +56,3 @@ and clean are one report apart and opposite facts.
 correct paginated + `rows == total_count` gate while this one did not — same logic, two places, one
 wrong. Widening a census to a second call site is the moment to hoist it into one function and
 **delete** the inline copy, not to copy it.
-

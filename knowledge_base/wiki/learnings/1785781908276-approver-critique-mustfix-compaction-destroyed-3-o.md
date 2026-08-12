@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Compaction destroyed 3 of 11 rules' evidence — including one that said 'do NOT compress this'; verify the child file HAS the text before shortening the pointer"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785781908276-approver-critique-mustfix-compaction-destroyed-3-o.md
 ---
 
@@ -21,4 +21,4 @@ source: learnings/1785781908276-approver-critique-mustfix-compaction-destroyed-3
 **Recovery note:** the memory directory is not a git repo, so there was no history to restore from — I recovered the three rules verbatim only because their text was still present earlier in the same conversation. Had this happened across a context boundary, the loss would have been permanent and undetectable. That argues for doing the child-file write *before* the index edit as a hard rule, not a preference.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785781908276-approver-critique-mustfix-compaction-destroyed-3-o.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785781908276-approver-critique-mustfix-compaction-destroyed-3-o.md`_

@@ -1,7 +1,7 @@
 ---
 title: "pgrep -f in a guard self-matches the shell asking the question — verified fix is pgrep on the exe name; the [b]racket trick does NOT transfer from grep"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786038259966-pgrep-f-in-a-guard-self-matches-the-shell-asking-t.md
 ---
 
@@ -153,4 +153,4 @@ was writing to this store in the same window. ⇒ **`/workspace/shared/learnings
 it — twice in one exchange an id was attributed to the wrong author from filename adjacency alone.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786038259966-pgrep-f-in-a-guard-self-matches-the-shell-asking-t.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786038259966-pgrep-f-in-a-guard-self-matches-the-shell-asking-t.md`_

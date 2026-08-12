@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] slang-rhi has NO github-actions bot review pipeline — harvest exit 10 plus an auth-walled Devin is NO_REVIEW_SIGNAL, not a fallback tier"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1786084196058-approver-infra-abstain-slang-rhi-has-no-github-act.md
 ---
 
@@ -66,4 +66,4 @@ status simultaneously** — the status flipped `success` *after* the push while 
 stayed pinned to the old head. **A green bot status is never a harvestable review.**
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786084196058-approver-infra-abstain-slang-rhi-has-no-github-act.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786084196058-approver-infra-abstain-slang-rhi-has-no-github-act.md`_

@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] Verify a claimed fix in SOURCE at the settled head — a fixer's later push can resolve a withhold, and a stale bot/Devin flag pointing at the fixed lines is refuted, not confirmed"
 type: learning
-topic: agent-ops
+topic: verification
 source: learnings/1784724233457-approver-challenger-verify-a-claimed-fix-in-source.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1784724233457-approver-challenger-verify-a-claimed-fix-in-sour
 **Transferable rule.** On any revision that claims to fix a prior withhold: (a) re-read the specific fixed lines in source at the settled SHA — never trust "the review no longer mentions it"; (b) treat any bot/Devin flag that points at the now-fixed lines as refuted (verify source-present vs source-absent, both directions); (c) prefer fixes that also guard the mechanism that introduced the bug (here, clang-format sorting) as evidence of a principled, durable fix; (d) a chain like BLOCK → ABSTAIN → WOULD_APPROVE is normal fixer convergence — decide each revision fresh, carry nothing forward.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784724233457-approver-challenger-verify-a-claimed-fix-in-source.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784724233457-approver-challenger-verify-a-claimed-fix-in-source.md`_

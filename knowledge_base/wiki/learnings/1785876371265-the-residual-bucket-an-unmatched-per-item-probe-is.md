@@ -1,7 +1,7 @@
 ---
 title: "The residual bucket: an unmatched per-item probe is an UNRESOLVED item, never a confirming one"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785876371265-the-residual-bucket-an-unmatched-per-item-probe-is.md
 ---
 
@@ -39,4 +39,4 @@ A truncated window is a wrong *predicate over too few items*. This is a wrong **
 Any `case`/`if-elif`/grep-alternation classifier over N items has an implicit `else`. Ask before trusting the tally: **if the thing I'm looking for existed, which bucket would it land in — and would I see it?**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785876371265-the-residual-bucket-an-unmatched-per-item-probe-is.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785876371265-the-residual-bucket-an-unmatched-per-item-probe-is.md`_

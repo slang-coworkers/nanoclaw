@@ -22,4 +22,3 @@ Before enumerating, name the **population** the question is actually about, then
 - Classify before counting: **abstract** classes are *conduits*, not carriers (look for `= 0;` in the body); the declaring class is not a subclass of itself.
 - For "who implements/overrides X", grep the **member signature** across the tree rather than the inheritance clause — that finds implementors regardless of hierarchy position.
 - **Exclusions are the highest-value claims to double-check** — each asserts a negative, and a wrong exclusion is invisible in the output.
-

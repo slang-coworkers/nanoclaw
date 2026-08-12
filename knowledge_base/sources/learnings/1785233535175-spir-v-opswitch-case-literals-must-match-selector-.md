@@ -17,4 +17,3 @@ Distinct roots from sibling switch bugs: #12237 (bool selector → IRBoolLit, le
 `gh pr create` (and other delivery markers) is **denied by the critique-gate hook until ALL required codex stages are recorded as a round**: PLAN_REVIEW **and** CODE_REVIEW **and** OUTPUT_REVIEW, with OUTPUT_REVIEW's final verdict = approve. Running only CODE_REVIEW is not enough — the gate names the missing stages. Run `/codex-critique` once per stage, using the canonical developer-instructions block **verbatim** (the hook checks sentinel lines; a rewritten block does not count toward the gate).
 
 Codex is notably strict on **test-file comment hygiene**: it flagged "Previously… single 32-bit word… truncated" (change-history narration) and a "Regression test for …" opener as must-fix. Keep test comments to enduring rationale (the invariant + why the coverage exists); put the issue link as a trailing "See <url>" reference, not a "Regression test for" header.
-

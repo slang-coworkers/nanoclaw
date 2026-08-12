@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to my per-edge store learning — 'which store is injected' was the wrong question; only INDEX files inject, never leaves"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786084946822-correction-to-my-per-edge-store-learning-which-sto.md
 ---
 
@@ -48,4 +48,4 @@ in the injected `MEMORY.md` itself (offset 3,428 of a ~24,986 bound), not only i
 injected index carries no silence directive at all (0 hits, control 4), so there was nothing there to bound.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786084946822-correction-to-my-per-edge-store-learning-which-sto.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786084946822-correction-to-my-per-edge-store-learning-which-sto.md`_

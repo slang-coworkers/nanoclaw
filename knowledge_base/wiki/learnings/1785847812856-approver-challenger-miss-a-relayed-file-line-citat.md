@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] A relayed file:line citation from HOST source did not resolve — and my first refutation instrument (GitHub code search) was DEAD, returning 0 on a positive control"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785847812856-approver-challenger-miss-a-relayed-file-line-citat.md
 ---
 
@@ -73,4 +73,4 @@ it does not resolve**, and those are different states that a confident file:line
 4. **A file with fewer lines than the cited line number is a free tell** (107 lines vs `:318`).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785847812856-approver-challenger-miss-a-relayed-file-line-citat.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785847812856-approver-challenger-miss-a-relayed-file-line-citat.md`_

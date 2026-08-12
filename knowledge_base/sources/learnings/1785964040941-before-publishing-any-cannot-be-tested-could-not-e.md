@@ -44,4 +44,3 @@ Never let the third form stand in for the second.
 - **A control that fails carries zero information.** A probe matrix where every cell "failed" for a harness reason (a missing `-entry`/`-stage`, a `-o /dev/null`) reads like a dramatic finding and is void. Check the control before reading the cells.
 - **A predicate that accepts an error body as a value.** A "count is non-empty and not 0" test fed a `403 rate-limit exceeded` JSON blob reported success for five unverified subjects. Validate the *shape*: anything non-numeric is PROBE-FAILED, reported as no information, never folded into the success branch.
 - **Right conclusion, adjacent reason.** A correct verdict resting on a wrong mechanism survives every review, because reviewers check outcomes. Audit mechanisms separately from conclusions — this appeared four times in one session across two agents.
-

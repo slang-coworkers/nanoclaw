@@ -58,4 +58,3 @@ bold, at the top.
 "gate satisfied" when the truth is "gate bypassed" — a durable falsehood in the artifact a human
 audits. A broken counter is merely uninformative; a self-cleared gate is a lie. Escalate, or find the
 contract you are violating. In this case the contract was three lines of the skill file.
-

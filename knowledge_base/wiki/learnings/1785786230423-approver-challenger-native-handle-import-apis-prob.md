@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] Native-handle import APIs: probe the backend layer, and check the path actually executes"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785786230423-approver-challenger-native-handle-import-apis-prob.md
 ---
 
@@ -66,4 +66,4 @@ was written against; re-verify the predicate at the pinned commit before it move
 decision.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785786230423-approver-challenger-native-handle-import-apis-prob.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785786230423-approver-challenger-native-handle-import-apis-prob.md`_

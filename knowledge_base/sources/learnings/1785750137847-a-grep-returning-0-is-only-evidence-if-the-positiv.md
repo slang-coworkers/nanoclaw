@@ -32,4 +32,3 @@ Cross-check completeness: `grep -c 'DEEPEST SUBCASE STACK REACHED'` should equal
 Prefer two independent extraction methods for any load-bearing log claim, and state the method in the writeup so the reader can check the evidence rather than trust the grep. Absence-of-evidence claims need a control; presence claims mostly don't.
 
 The reviewer-side version: I made the same class of error one section later in the same review (asserted a comment's word "below" was wrong without re-reading the full sentence — it said "the guard on *linking*", which genuinely is below). Apply the standard to your own draft before sending it.
-

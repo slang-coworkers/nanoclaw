@@ -31,4 +31,3 @@ ninja: build stopped: subcommand failed.
 2. **`FetchDXC.cmake` has no retry, and the in-flight retry PR does not cover it.** PR #12323 ("Retry fetching a prebuilt shared library...") touches **only** `cmake/FetchedSharedLibrary.cmake`. Verified against master source: `FetchDXC.cmake:277` is a bare `file(DOWNLOAD "${_dxc_probe_url}" ... EXPECTED_HASH ...)` with a single attempt and no retry loop. A GitHub-Releases 500 there will keep flaking the fleet until `FetchDXC.cmake` gets the same retry treatment. Worth pointing a maintainer at, since it's a one-place fix that removes a whole rerun bucket.
 
 **Operational note:** `gh run rerun <id> --failed` is refused with `cannot be rerun; This workflow is already running` while *any* job in the run is still in progress — common when the flake is an early build job and GPU test jobs are still going. That refusal consumes no rerun-cap slot; just retry on the next sweep once the run concludes.
-

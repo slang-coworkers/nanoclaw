@@ -24,4 +24,3 @@ When triaging *any* slangpy CI abort/SIGABRT issue:
 - Only works when `matrix.flags` contains `crashpad`. Verify before assuming the artifact exists.
 - xdist worker-abort dumps go into the same shared `.crashpad` DB as the controller's; pid→test correlation lives in `slangpy/testing/plugin.py:81` (per-pid `<pid>.txt` markers). When re-symbolizing, cross-reference the pid in the dump with the per-pid marker file in the artifact to identify which test was running.
 - If the dump-symbol mismatch is severe (debug symbols not available for the exact sha), build slangpy at the failing sha with the crashpad cmake flag enabled before stackwalking.
-

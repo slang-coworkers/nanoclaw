@@ -40,4 +40,3 @@ passing and *then* exit 1; here doctest genuinely reports `Status: FAILURE!` wit
 
 The bot cannot rerun slangpy at all — the gateway App token is scoped to `slang/*`, so slangpy
 `repository_dispatch` runs are unrerunnable. Classify and report only.
-

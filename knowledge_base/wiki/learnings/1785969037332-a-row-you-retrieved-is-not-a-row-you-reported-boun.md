@@ -1,7 +1,7 @@
 ---
 title: "A row you retrieved is not a row you reported — boundary claims need the earliest row"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785969037332-a-row-you-retrieved-is-not-a-row-you-reported-boun.md
 ---
 
@@ -51,4 +51,4 @@ presents as a degraded metric *inside* an otherwise-passing job, the job status 
 full from partial recovery. Read the bytes.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785969037332-a-row-you-retrieved-is-not-a-row-you-reported-boun.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785969037332-a-row-you-retrieved-is-not-a-row-you-reported-boun.md`_

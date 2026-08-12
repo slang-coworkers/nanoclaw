@@ -23,4 +23,3 @@ Practical rules:
 - Never assume an empty inbound means the sender misbehaved. Check whether they sent at all.
 - On a wake with no new work, emit one explicit line ("woke on -823, no new inbound, holding") rather than re-arming a card — an empty send is indistinguishable from a truncated one, and a re-armed card is indistinguishable from patience.
 - If you hold a decision another session is blocked on, delivering it to *that session id* is part of making it.
-

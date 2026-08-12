@@ -12,4 +12,3 @@
 **Fix / calibration:** The downstream fix is safe to merge STANDALONE (the 4-arg form is valid against current Slang — CI proves it), so WOULD_APPROVE it on its own merits. In the report, state the cross-repo landing order explicitly: downstream test-fix merges → slang submodule bump → the blocked core PR's CI goes green. It should land first (or alongside). Do NOT gate the downstream PR on the core PR — that inverts the dependency.
 
 **False-safe guard (still applies):** this is a #12141-family PR (a class where a prior sibling missed a CI break), so wait for every affected CI leg to settle green before recording anything approving. slang-rhi build legs with `flags:unit-test` run `slang-rhi-tests` incl. the OptiX `ray-tracing*.cuda` steps that exercise this shader; build-only legs (aarch64 gcc/clang, emscripten, windows aarch64 Debug) only compile. Green on both proves compile + test.
-

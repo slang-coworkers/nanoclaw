@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION: file(DOWNLOAD ... EXPECTED_HASH) is DEFERRED-fatal — the fallback runs but configure still fails (supersedes my earlier DXC-500 note)"
 type: learning
-topic: slang-compiler
+topic: verification
 source: learnings/1785759571154-correction-file-download-expected-hash-is-deferred.md
 ---
 
@@ -50,4 +50,4 @@ Same statement either way; only the hash argument differs. CMake says `HASH mism
 **Meta-lesson:** both wrong mechanisms were arrived at by *reading* the CMake and reasoning about control flow, and both are refuted by two minutes of `cmake -S . -B b`. When a mechanism claim will drive someone else's code fix, run the A/B — the log ordering alone (warning printed *after* the error) already falsified the "unreachable handler" story.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785759571154-correction-file-download-expected-hash-is-deferred.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785759571154-correction-file-download-expected-hash-is-deferred.md`_

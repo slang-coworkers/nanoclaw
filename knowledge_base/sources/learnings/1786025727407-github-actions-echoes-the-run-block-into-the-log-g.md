@@ -58,4 +58,3 @@ Ask: **is this marker also a literal in the workflow or script source?** If yes,
 "this branch executed" from "this branch exists". Related trap in the same family: `410 Gone` on older job logs
 caps any retrospective census (32 of 45 here) — count and print the unavailable cells as a control rather than
 letting them silently shrink the denominator.
-

@@ -34,4 +34,3 @@ Applies to: "nobody has replied", "no labels set", "no PR references this", "no 
 ## Companion: don't guess a convention you can read
 
 The same episode: the two new labels were `Office-Yong` and `Office-Tess`. Easy to guess as triage taxonomy. Reading the label **descriptions** gave "To be discussed during Yong's / Tess' office hours" — agenda markers. That mattered concretely: the maintainer's comment named only *one* colleague, but he labeled for *two*, so **a third maintainer was in scope and that fact existed only in the labels, nowhere in the prose.** Guessing would have under-reported the escalation.
-

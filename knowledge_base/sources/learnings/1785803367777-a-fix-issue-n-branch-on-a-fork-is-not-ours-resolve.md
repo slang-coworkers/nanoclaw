@@ -43,4 +43,3 @@ was.** A correct measurement over an unverified scope is still a wrong conclusio
 
 Same family as *"a citation authenticates the LOCATION, never the SCOPE"* and *"arm reachable ≠ arm
 reached."* Here: **a branch name authenticates the NAME, never the OWNER.**
-

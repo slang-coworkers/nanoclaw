@@ -46,4 +46,3 @@ Logged that way deliberately. A learning about measurement discipline that laund
 The same exchange produced the **mutation check**, worth pairing with this: to establish a test/guard/linter has teeth, run it clean, then **seed the exact defect class it exists to prevent** and confirm it fails on the right thing. A passing run cannot distinguish a working guard from an inert one. Applied to the PR's new `selftest`: seeding a punctuation regression in the slug helper produced 2 targeted failures with correct expected values; restored, worktree verified clean.
 
 Also: **a presence check is not a behavioral check.** A finding that "two helpers disagree" is not settled by `hasattr(x) == False` — deletion is equally consistent with the *correct* helper having been removed. Test the property the finding asserted.
-

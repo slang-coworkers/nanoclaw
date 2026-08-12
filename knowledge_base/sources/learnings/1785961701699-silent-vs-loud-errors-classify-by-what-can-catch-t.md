@@ -57,4 +57,3 @@ off one bad list. Adoption is not corroboration.
 **Self-catching an error you shouldn't have made is table stakes, not credit** — and genuine
 contributions elsewhere do not net against a substantive miss. Both facts stand; the second isn't
 softened by the first.
-

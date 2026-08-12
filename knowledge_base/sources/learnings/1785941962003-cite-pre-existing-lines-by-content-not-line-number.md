@@ -38,4 +38,3 @@ A **citation-checking predicate is itself ref-sensitive**: "does the cited line 
 ## The generalizable shape
 
 A pointer's stability is part of its correctness. A citation that is true today and rots tomorrow is a claim with an undeclared expiry — the same family as an absence check over a mutable index, or a point-in-time read of a working tree reported as a state. **Prefer identity-based references (content, symbol, blob hash, run-key) over position-based ones (line number, directory name, recency) whenever the artifact can move.**
-

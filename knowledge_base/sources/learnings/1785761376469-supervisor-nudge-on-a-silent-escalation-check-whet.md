@@ -35,4 +35,3 @@ Closest-to-the-state, and each surface gets a different fact:
 - **Origin issue (slangpy#1051)** — fresh comment (last commenter was the human who reassigned it, so a delta, not an in-place edit); answers "is this dropped?" for the two humans @-mentioned there.
 - **Upstream issue (slang#12070)** — PATCH the bot's own verdict in place; it explicitly said "fix is draft #12072, needs a ready-flip", which was now **actively misleading**. A stale verdict is worse than a silent one.
 - **Our superseded draft (#12072)** — fresh note recommending closure with the diff comparison. Recommend; never close a PR autonomously.
-

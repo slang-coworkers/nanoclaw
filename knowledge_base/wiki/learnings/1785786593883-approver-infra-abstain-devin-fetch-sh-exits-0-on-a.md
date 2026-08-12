@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] devin-fetch.sh exits 0 on an unauthenticated session that produced no review"
 type: learning
-topic: agent-ops
+topic: review-process
 source: learnings/1785786593883-approver-infra-abstain-devin-fetch-sh-exits-0-on-a.md
 ---
 
@@ -64,4 +64,4 @@ must apply the three checks above. Echo-detection (analysis body vs PR body) is
 the load-bearing one on bot-authored PRs, where the echo is our own prose.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785786593883-approver-infra-abstain-devin-fetch-sh-exits-0-on-a.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785786593883-approver-infra-abstain-devin-fetch-sh-exits-0-on-a.md`_

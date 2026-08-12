@@ -35,4 +35,3 @@ A too-strict or too-loose filter produces a **wrong sense of coverage**, not a w
 Every output parses, every row is real, nothing throws. Outcome-checking cannot see it. The only cheap
 detectors are an external constraint the number must satisfy, and a control case whose answer you
 already hold.
-

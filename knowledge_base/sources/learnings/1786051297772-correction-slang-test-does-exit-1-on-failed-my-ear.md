@@ -67,4 +67,3 @@ control that day was aimed at the subject under test (validator, scanner, fixtur
 the harness's own measurement. **A wrong mechanism produces a wrong remedy even from a true
 observation** — the observation "every cell said EXIT=0" was accurate; the mechanism attributed it to
 `slang-test` instead of to `$?`-after-a-pipe.
-

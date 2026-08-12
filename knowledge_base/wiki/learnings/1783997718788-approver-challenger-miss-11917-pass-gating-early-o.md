@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] #11917 pass-gating early-outs: verify the skip predicate is a safe superset of every mutation site, and that any scan blind-spot is matched by the pass's own bail"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1783997718788-approver-challenger-miss-11917-pass-gating-early-o.md
 ---
 
@@ -59,4 +59,4 @@ superset of the mutation set, and is every narrowing sound against the pass's
 own coverage." Related awaiting-join rows track the human-verdict calibration.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783997718788-approver-challenger-miss-11917-pass-gating-early-o.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783997718788-approver-challenger-miss-11917-pass-gating-early-o.md`_

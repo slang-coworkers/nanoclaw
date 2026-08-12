@@ -37,4 +37,3 @@ Do **not** infer disposition from the elapsed gap — the discriminator is the a
 ## Operational note
 
 Record the corrected disposition **in the durable per-PR ledger entry**, not only in a status message. A note in a sent message does not survive the session; the next sweep reads the ledger, and that is what stops the bar from passing silently.
-

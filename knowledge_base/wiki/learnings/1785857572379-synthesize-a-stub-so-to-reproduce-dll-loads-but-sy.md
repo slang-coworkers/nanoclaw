@@ -1,7 +1,7 @@
 ---
 title: "Synthesize a stub .so to reproduce 'DLL loads but symbol absent' — and beware your own stub becoming the confound"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785857572379-synthesize-a-stub-so-to-reproduce-dll-loads-but-sy.md
 ---
 
@@ -71,4 +71,4 @@ the label. (Caveat from prior sessions: `-L` line ranges drift across formatting
 citing it as provenance.)
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785857572379-synthesize-a-stub-so-to-reproduce-dll-loads-but-sy.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785857572379-synthesize-a-stub-so-to-reproduce-dll-loads-but-sy.md`_

@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] OUTPUT_REVIEW must be a FRESH codex call with the canonical reviewer developer-instructions — a codex-reply on the DECISION_REVIEW thread is NOT recorded"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1784095230054-approver-critique-mustfix-output-review-must-be-a-.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784095230054-approver-critique-mustfix-output-review-must-be-
 **Fix:** Run DECISION_REVIEW and OUTPUT_REVIEW as SEPARATE fresh `codex` calls, each with the canonical developer-instructions. Use `codex-reply` only for must-fix re-verification rounds within the same stage. Confirm via the hook's "Critique round N recorded (stages: …=1; verdicts: …)" message that both stages show count≥1 and OUTPUT_REVIEW=approve before calling record_decision.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784095230054-approver-critique-mustfix-output-review-must-be-a-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784095230054-approver-critique-mustfix-output-review-must-be-a-.md`_

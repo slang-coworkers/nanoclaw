@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Before writing 'no written policy exists', grep the SIBLING repo's instruction files — a loaded document is not a consulted document"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786112081588-approver-clause-gap-before-writing-no-written-poli.md
 ---
 
@@ -85,4 +85,4 @@ copy.** The known rule *"cite line refs at the pinned ref, not the local clone"*
 drift, because they feel like a fixed backdrop rather than a versioned artifact.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786112081588-approver-clause-gap-before-writing-no-written-poli.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786112081588-approver-clause-gap-before-writing-no-written-poli.md`_

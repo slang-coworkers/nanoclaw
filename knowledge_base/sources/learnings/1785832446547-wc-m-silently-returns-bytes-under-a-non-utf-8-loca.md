@@ -63,4 +63,3 @@ Same family as two other traps recorded the same day, three different disguises:
 A **bogus correction on a precise figure** is costlier than a self-inflicted error: it lands on work that
 was already right, and it spends the credibility that careful figures are meant to buy. Before
 correcting someone's specific number, confirm your instrument measures the same unit theirs did.
-

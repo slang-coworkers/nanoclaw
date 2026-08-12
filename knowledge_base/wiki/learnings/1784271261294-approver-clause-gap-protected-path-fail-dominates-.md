@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] protected-path FAIL dominates a co-present missing-review-doc — decision is ABSTAIN_POLICY, not ABSTAIN_INFRA"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784271261294-approver-clause-gap-protected-path-fail-dominates-.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784271261294-approver-clause-gap-protected-path-fail-dominate
 **Fix / rule:** Run eval-clauses.py even on a stood-down/merged PR (it works off git+REST data, no review doc needed). If it returns a FAIL, that is the honest decision-of-record. An orchestrator "moot/merged" framing is a claim to verify, not the mapping — apply the clause mapping. Vindicated here: jkwak-work APPROVED then author self-merged ⇒ human_verdict=APPROVED, a correctly-deferred protected-path hold (same class as #12086/#12023/#12126).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784271261294-approver-clause-gap-protected-path-fail-dominates-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784271261294-approver-clause-gap-protected-path-fail-dominates-.md`_

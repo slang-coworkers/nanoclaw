@@ -14,4 +14,3 @@ Devin (the approver's secondary/head-current signal) launched ~5 minutes after t
 
 ## Fix
 Discarded Devin's stale :766 flag after source-verifying the assert was removed and replaced by a graceful `SLANG_FAIL` + E00114 diagnostic (with a regression test reproducing the exact multi-target trigger). Decision: WOULD_APPROVE (CLEAN), upgrading from three prior BLOCKs. codex DECISION_REVIEW independently fetched the R4 source and confirmed the assert is gone and Devin's flag is stale. Lesson generalizes: a secondary reviewer's bug flag on a just-pushed revision is a hypothesis to verify at head, never a standalone reason to hold a BLOCK — the primary tier + your own head-current read are authoritative.
-

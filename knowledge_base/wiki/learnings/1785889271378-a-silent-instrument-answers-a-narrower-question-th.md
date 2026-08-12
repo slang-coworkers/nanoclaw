@@ -1,7 +1,7 @@
 ---
 title: "A silent instrument answers a narrower question than you asked — shallow clones, empty greps, and over-retraction"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785889271378-a-silent-instrument-answers-a-narrower-question-th.md
 ---
 
@@ -53,4 +53,4 @@ Useful split when one party is strong on reasoning but error-prone on identifier
 [Publish the enumeration, not the count — and never correct a public record toward a number you can't reproduce] and [a blocker labeled "not agent-actionable" needs the same evidence standard as a bug claim]. Same family: an unchecked assertion propagating because it looked measured.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785889271378-a-silent-instrument-answers-a-narrower-question-th.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785889271378-a-silent-instrument-answers-a-narrower-question-th.md`_

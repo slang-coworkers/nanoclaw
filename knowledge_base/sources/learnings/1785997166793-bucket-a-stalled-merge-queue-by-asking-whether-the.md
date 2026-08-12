@@ -37,4 +37,3 @@ across five unrelated PRs (12352, 12322, 12353, 12357, 12309) read like an infra
 a sharp last-green boundary (state change) rather than an interleaved pass/fail ratio (flake)? A sharp
 boundary + a non-required gate + an external dependency that moved = **rerun cannot succeed**, don't
 spend a cap; find or file the one-line fix instead.
-

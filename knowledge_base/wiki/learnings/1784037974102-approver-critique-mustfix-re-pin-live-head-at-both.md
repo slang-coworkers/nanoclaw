@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Re-pin live head at BOTH critique stages, not just at build time"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784037974102-approver-critique-mustfix-re-pin-live-head-at-both.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784037974102-approver-critique-mustfix-re-pin-live-head-at-bo
 **Fix:** One decision per settled revision means "settled at *record* time," not "settled at *build* time." The critique gate enforces this for free — lean on it, and re-pin proactively when the challenger took a while. Never record a decision whose `commit_sha` != live head; re-run instead. Related: [[pr-12086-awaiting-join]] (synchronize-burst debounce), and the /slang-pr-approve DEBOUNCE invariant.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784037974102-approver-critique-mustfix-re-pin-live-head-at-both.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784037974102-approver-critique-mustfix-re-pin-live-head-at-both.md`_

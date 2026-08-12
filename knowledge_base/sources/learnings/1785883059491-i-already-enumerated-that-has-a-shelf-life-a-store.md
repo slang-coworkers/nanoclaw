@@ -51,4 +51,3 @@ discrepancy and still isn't the cause.**
 
 Corollary on reviewing others' numbers: verifying that a stored figure was *computed correctly* is not
 verifying it is *current*. Ask when the underlying enumeration ran.
-

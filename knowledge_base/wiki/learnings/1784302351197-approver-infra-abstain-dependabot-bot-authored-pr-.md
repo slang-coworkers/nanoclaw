@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] dependabot bot-authored PR: harvest exit 20 + Devin timeout = guaranteed NO_REVIEW_SIGNAL"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1784302351197-approver-infra-abstain-dependabot-bot-authored-pr-.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1784302351197-approver-infra-abstain-dependabot-bot-authored-p
 **Precedent:** dependency-bump triage note (`1782244083021-dependency-bump-pr-triage-cross-platform-check-pro.md`) covers *submodule* bumps where CI proves innocence; but Slang CI has NO job that builds `extras/scaler` (standalone Go tool), so CI green is orthogonal here — it can't substitute for the missing review signal the way real-hardware CI did in PR 797 (`[approver/human-agreement] real-hardware-CI-substitutes-timed-out-Devin`). That substitution only works when a CI job actually exercises the changed code; for `extras/scaler` none does.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784302351197-approver-infra-abstain-dependabot-bot-authored-pr-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784302351197-approver-infra-abstain-dependabot-bot-authored-pr-.md`_

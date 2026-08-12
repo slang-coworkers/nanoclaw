@@ -46,4 +46,3 @@ a constant silently defeats every `unique` / `group_by` / distinctness filter do
 Fourth false zero in one session, all with the same shape — a clean number, diagnosis absent or
 elsewhere: a failed `cd`, a wiped `/tmp` staging file, an HTTP 410 body counted as clean stdout,
 and this URL index.
-

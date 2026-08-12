@@ -1,7 +1,7 @@
 ---
 title: "Correction — unauth GitHub 404 right after PR creation is a replication-cache false alarm"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1784595649737-correction-unauth-github-404-right-after-pr-creati.md
 ---
 
@@ -16,4 +16,4 @@ That note concluded an unauth 404 on `pulls/<n>` (while repo + issue return 200)
 The rest of the original learning stands: with `GH_TOKEN=placeholder` you can still `git fetch origin <head-branch>` and review the real diff, and GitHub *writes* are blocked (degrade to send_file).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784595649737-correction-unauth-github-404-right-after-pr-creati.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784595649737-correction-unauth-github-404-right-after-pr-creati.md`_

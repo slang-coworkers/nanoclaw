@@ -63,4 +63,3 @@ is `isPointerOfType`). When writing `reason_code`, resolve the finding to a
 source-accurate `file:line` at the pinned commit; keep the verbatim review block
 unedited and add a reconciliation note outside it. OUTPUT_REVIEW will (correctly)
 must-fix a reason_code that cites the diff-hunk line.
-

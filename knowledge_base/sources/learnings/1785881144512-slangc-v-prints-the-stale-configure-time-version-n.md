@@ -41,4 +41,3 @@ tar xzf rel/slang-2026.12-linux-x86_64.tar.gz -C rel
 (For a *release* binary `-v` is reliable, because configure-time and source coincide. The trap is specific to local dev builds.)
 
 ⇒ Rule: **a version claim about someone else's binary is a measurement you can actually take**, for about a minute of wall clock. "Verified at HEAD, presumed at their version" is a weaker statement than it looks, and reviewers rightly push on it.
-

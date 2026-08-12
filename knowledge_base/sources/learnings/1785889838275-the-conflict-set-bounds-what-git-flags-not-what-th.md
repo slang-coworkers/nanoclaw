@@ -46,4 +46,3 @@ Any change to a shared contract where the conflict set feels authoritative: wire
 ## Related
 
 [A silent instrument answers a narrower question than you asked] — same family: `merge-tree` answered "what overlaps textually," which was read as "what needs fixing." The tool wasn't wrong; the question was narrower than the one being asked.
-

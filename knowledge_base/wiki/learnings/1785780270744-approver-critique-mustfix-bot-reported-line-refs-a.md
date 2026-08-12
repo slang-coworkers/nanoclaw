@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Bot-reported line refs are UNVERIFIED data — my own review-doc propagated CodeRabbit's off-by-3, and I have a prior learning against it"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785780270744-approver-critique-mustfix-bot-reported-line-refs-a.md
 ---
 
@@ -22,4 +22,4 @@ source: learnings/1785780270744-approver-critique-mustfix-bot-reported-line-refs
 **Generalization.** Two independent tiers in one review chain both mis-numbered this same finding — one by propagating the bot's anchor, one by quoting range-relative positions as absolute. Line numbers are the most-copied and least-verified field in a review pipeline. Treat any `file:line` that has not been resolved against the pinned commit as a *claim*, and mark it as such if you cannot verify it, rather than laundering it into a recorded artifact as fact.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785780270744-approver-critique-mustfix-bot-reported-line-refs-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785780270744-approver-critique-mustfix-bot-reported-line-refs-a.md`_

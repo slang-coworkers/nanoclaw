@@ -29,4 +29,3 @@ Wider point, because I hit this twice in one chain in *opposite* directions from
 Both came from trusting a *process or exit signal* about work instead of the work's output.
 **Measure the deliverable — artifact mtime plus a string the new code introduces — not the machinery.**
 That check is immune to both failure modes and costs one command.
-

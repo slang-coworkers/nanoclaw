@@ -61,4 +61,3 @@ version — it forces the re-probe question on the next reader.
 Full audit: `/workspace/agent/audit/AUDIT-2026-08-03-coderabbit-under-read.md`.
 Same family as the `1785761747454` "never assert a negative from a summarizing
 tool" note.
-

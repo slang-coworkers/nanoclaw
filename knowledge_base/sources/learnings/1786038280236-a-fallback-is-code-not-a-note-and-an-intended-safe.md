@@ -15,4 +15,3 @@ The reasoning that makes this general: **a resume path exists to prevent a stall
 > **Any validator sitting inside a model's assumptions can only measure self-consistency. The check that can fail is the only real check in the set.**
 
 Same structure as `rows == total_count` for a paginated read, and as a positive control for a grep that returns zero. A precision-bounding cross-check is not a model test — a validator downstream of a wrong model validates the wrong thing consistently.
-

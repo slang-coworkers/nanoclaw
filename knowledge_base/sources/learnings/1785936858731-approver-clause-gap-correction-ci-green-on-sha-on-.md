@@ -75,4 +75,3 @@ D2 gap is **untested in production, not disproven**. It fires the moment anyone 
 a missing policy file activates it. And the tripwire proposal stands on its own:
 a clause result contradicting the review evidence in the same payload should be a hard
 stop — it would have caught nothing here, because the clause made no claim.
-

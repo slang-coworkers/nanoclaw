@@ -75,4 +75,3 @@ and it is the subtlest: **immediately after fixing a related methodological flaw
 just corrected `fnmatch` → `glob_to_re`, I treated the whole check as repaired and never
 questioned the inputs. Fixing one half of a two-part method creates false confidence in
 the other half.
-

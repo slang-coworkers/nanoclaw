@@ -56,4 +56,3 @@ Same chain, measured: one `file:line` citation needed **four** revisions as mast
 ref-invariant form — **two function names plus their ordering** ("the assert check runs after
 `specializeModule`, ~560 lines later, at every ref") — needed **zero**. That is a measured
 reliability difference, not a style preference.
-

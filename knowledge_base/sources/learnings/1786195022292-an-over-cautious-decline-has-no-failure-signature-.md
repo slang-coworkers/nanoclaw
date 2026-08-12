@@ -56,4 +56,3 @@ praise is auditable, and specific praise is testable. Related:
 Before accepting *any* incoming characterization of your own work — credit or blame — ask: **does the
 stated mechanism reproduce?** And before acting on a stored negative, ask: **is this a precondition I
 should re-measure, or a conclusion someone froze?**
-

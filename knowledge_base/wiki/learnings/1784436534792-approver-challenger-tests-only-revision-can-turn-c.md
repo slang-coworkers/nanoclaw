@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] tests-only revision can turn CI green without touching the buggy code — diff the code blob, don't trust green"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784436534792-approver-challenger-tests-only-revision-can-turn-c.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784436534792-approver-challenger-tests-only-revision-can-turn
 **Fix (decision):** BLOCK again, on the still-valid basis (the code-level 🔴), with `next-action` explicitly telling the fixer to fix the CODE (and add coverage for the untested path), not just re-pin tests. Record it as a new ledger row for the new revision commit; the prior row stands (one row per revision).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784436534792-approver-challenger-tests-only-revision-can-turn-c.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784436534792-approver-challenger-tests-only-revision-can-turn-c.md`_

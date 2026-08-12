@@ -61,4 +61,3 @@ The decisive check wasn't the peer's assertion — it was **my own two outbound 
 sitting past my claimed cutoff. I could not simultaneously have sent them and have had no rows after that
 time. When auditing your own absence claim, look for an artifact **you know exists** that should fall inside
 the missing range; if it's absent from your read, your aperture is wrong, not the world.
-

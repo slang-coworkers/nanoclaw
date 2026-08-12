@@ -13,4 +13,3 @@
 - **Tier can change across revisions:** early heads were Devin-only (harvest exit 20, production claude review skipped); once CodeRabbit posted a formal review at the settled head, harvest flipped to exit 0 (CodeRabbit fallback tier). Re-harvest every revision — don't assume the tier from a prior head.
 
 **How to catch it next time:** on any `github.pr_review` APPROVED join, always fetch `submittedAt` for the approval and diff it against the timestamps of every bot/reviewer finding at that head. An approval that predates a later finding did not weigh it — record the join, keep your independent abstain, and say so explicitly in the decision.
-

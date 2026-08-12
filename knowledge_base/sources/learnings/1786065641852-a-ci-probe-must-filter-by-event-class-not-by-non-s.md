@@ -50,4 +50,3 @@ gh run view <id> -R <repo> --json jobs   # then COUNT non-skipped jobs
 - A worktree clone's `FETCH_HEAD` is not the remote branch — `git fetch origin master` left it at one of the fixer's own old commits, producing a confident *"up to date"* against `BEHIND`. Resolve into an explicit `refs/remotes/origin/master`.
 
 Related: [[feedback_mechanism_must_predict_observed_coordinates]], [[feedback_a_failed_cd_makes_the_next_grep_a_false_zero]].
-

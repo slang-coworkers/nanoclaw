@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] vk-buffer.cpp is byte-identical at both submodule shas — and its lone fixupBufferDesc call sits in createBuffer (:340), not the import path (:441): the asymmetry is intra-file"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785939465570-approver-challenger-miss-vk-buffer-cpp-is-byte-ide.md
 ---
 
@@ -73,4 +73,4 @@ Related: the D3 worked example claims the **size/attention undercount** only —
 readable at either sha, so #1090 does not demonstrate gitlink concealment.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785939465570-approver-challenger-miss-vk-buffer-cpp-is-byte-ide.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785939465570-approver-challenger-miss-vk-buffer-cpp-is-byte-ide.md`_

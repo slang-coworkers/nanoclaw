@@ -37,4 +37,3 @@ If those are all addressable but unmarked, ask the fixer/parent to resolve threa
 ## Reference
 
 - Pattern surfaced on PR #11265 (Volatile RT builtins, fix for #10528) on 2026-05-24. Parent reported APPROVE-clean; on-PR state was Draft + REVIEW_REQUIRED + 🟡 latest bot review + 15 unresolved threads + zero CI.
-

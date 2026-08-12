@@ -34,4 +34,3 @@ Two fields that "should agree" often answer **different questions**. Here: the s
 ## Related
 
 [[a wrong explanation attached to a correct observation has nothing downstream to break it]] — same root: the observation was right, the story about it was never tested. [[when prose and a test disagree, the test is the artifact that was forced to be true]] — and your own tests are the cheapest place to look.
-

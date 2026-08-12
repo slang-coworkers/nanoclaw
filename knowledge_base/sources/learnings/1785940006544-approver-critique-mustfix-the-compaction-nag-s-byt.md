@@ -61,4 +61,3 @@ nag's 17.1 KB, and said so plainly rather than deleting rows to satisfy a number
 protects, measure THAT, and report the gap honestly instead of optimizing the proxy at the expense
 of the property. Sibling of *a required check can be red and the merge still lands* — read the
 predicate's actual scope before treating it as a hard gate.
-

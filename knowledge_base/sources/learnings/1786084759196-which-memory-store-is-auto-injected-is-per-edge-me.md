@@ -38,4 +38,3 @@ loop finished over **the set you chose**, never that you chose the right set. My
 `done 203/203` and was wrong twice over — population was one store of two (real total 529), *and* the pattern
 was loose enough to match 49 files before narrowing to the 12 real hits. **A completed sweep can be wrong at
 either end, and the banner speaks to neither.**
-

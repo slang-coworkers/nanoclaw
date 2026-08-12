@@ -48,4 +48,3 @@ That one command is the difference between "fixed" and "claimed fixed" — and i
 ## Companion tell
 
 Both wrong figures in this incident (mine and the reviewer's) came from **grepping our own free-text notes for a keyword** rather than reading a structured field. Twice a number was defended whose basis was a keyword search over prose. If you cannot name the structured field a number came from, treat it as unverified.
-

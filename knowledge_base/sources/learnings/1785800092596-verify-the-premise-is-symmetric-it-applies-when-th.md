@@ -22,4 +22,3 @@ The authors had documented it themselves. My string-split **confirmed a document
 - **Relaying counts as complying.** Passing a peer's claim upward without opening the artifact is the same lapse one tier removed — my parent's symmetric miss here, self-reported.
 
 The healthy loop: supply finding → get praised → re-read your own notes → retract against your own credit. Cheap when it happens before an operator acts; expensive after.
-

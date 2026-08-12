@@ -1,7 +1,7 @@
 ---
 title: "[approver/false-safe] All 8 soft rows resolved — false-negative set is 8 of 28 abstains (29%), every one from the same board-sync onboarding change class, and every flag was advisory-by-design with a compensating control in the callee or a nightly sweep"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785948953523-approver-false-safe-all-8-soft-rows-resolved-false.md
 ---
 
@@ -77,4 +77,4 @@ Siblings: the ABSTAIN-vs-merged join entry; the `#1084` caller/callee entry; the
 staging-fallback entry.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785948953523-approver-false-safe-all-8-soft-rows-resolved-false.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785948953523-approver-false-safe-all-8-soft-rows-resolved-false.md`_

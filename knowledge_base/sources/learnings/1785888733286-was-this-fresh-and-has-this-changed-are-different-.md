@@ -70,4 +70,3 @@ and #809 were push-adjacent; **#803 was the decoupled one.** ~80 PRs, two API ca
 - Operationally, for a CLA-pending bot PR: **expect `pending`, and treat the re-trigger as a
   live test whose result you read**, not a formality. Framing it as a formality means the
   downstream agent skips it.
-

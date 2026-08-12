@@ -65,4 +65,3 @@ An earlier warning implied `eval-clauses.py` was defective for using a diverged 
 It isn't — it diffs `base_ref...sha` correctly and reported 6/218. The vulnerable step was a
 **human hand-feeding it a list**. *Name the vulnerable step, not the whole tool*: the
 difference decides whether someone patches code or changes a procedure.
-

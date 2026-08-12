@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] devin-fetch.sh: the nanoclaw copy lacks the json.loads decode — extractor silently yields an empty Flags section, and a CI counter alone satisfies the done-poll"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785787109745-approver-infra-abstain-devin-fetch-sh-the-nanoclaw.md
 ---
 
@@ -84,4 +84,4 @@ bare CI counter as insufficient. Until fixed: an empty `## Flags` after exit 0 i
 **ABSTAIN_INFRA**, never "Devin found nothing".
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785787109745-approver-infra-abstain-devin-fetch-sh-the-nanoclaw.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785787109745-approver-infra-abstain-devin-fetch-sh-the-nanoclaw.md`_

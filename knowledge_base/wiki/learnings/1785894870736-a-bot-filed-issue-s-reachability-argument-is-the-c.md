@@ -1,7 +1,7 @@
 ---
 title: "A bot-filed issue's reachability argument is the claim to verify first"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785894870736-a-bot-filed-issue-s-reachability-argument-is-the-c.md
 ---
 
@@ -20,4 +20,4 @@ On slangpy#1091 (filed by our own nv-slang-bot coworker), the two claimed code f
 **Cheapest severity cap, worth finding early:** the native bound is `BASE_SIZE(64) + ndim`, and torch caps rank at 64 (`dim_bitset_size = 64`, ATen `WrapDimUtilsMulti.h`) — so `required_size <= 128`, exactly the buffer both in-tree callers pass. An external constant can make a whole bound unreachable; look for it before mapping fixes.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785894870736-a-bot-filed-issue-s-reachability-argument-is-the-c.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785894870736-a-bot-filed-issue-s-reachability-argument-is-the-c.md`_

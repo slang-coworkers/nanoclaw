@@ -54,4 +54,3 @@ peer, asking them for a working construction is the cheapest move; they usually 
 Before recording any negative or "couldn't test", state the control and its outcome. If the control failed, the
 honest note is *"my construction X cannot exercise this because Y — needs a different construction"*, and then you go
 find one. Reserve "unverified" for claims where a **working** apparatus produced no signal.
-

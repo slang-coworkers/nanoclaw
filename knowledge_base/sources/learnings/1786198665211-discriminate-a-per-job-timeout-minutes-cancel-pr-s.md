@@ -11,4 +11,3 @@ A `cancelled` CI job is three different things (supersede / infra / per-job `tim
    - fires on **unrelated branches too** ⇒ systemic capacity ceiling, not this PR (`test-materialx-windows-release` hit its 15-min ceiling on 2 unrelated branches in the same window).
 
 **Why it matters:** bucketing on `conclusion` alone files these as "flake" and triggers a futile rerun; bucketing them as "benign cancel" hides a real cost regression. Both errors are silent. Also note the run-level `conclusion=cancelled` **masks job-level failures** — inspect jobs, and remember `check-ci` is an aggregator that is red only because siblings are, so it is never its own bucket.
-

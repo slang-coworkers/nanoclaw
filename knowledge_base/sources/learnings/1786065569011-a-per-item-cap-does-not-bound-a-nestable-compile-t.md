@@ -43,4 +43,3 @@ didn't change it ⇒ heap growth, not stack overflow.
   259 MB, 141 samples. A implausibly-small number is the tell.
 - `strings` on a thin driver binary returns almost nothing (2050 entries) — diagnostics live in the
   shared library. The must-hit control returning 0 is what exposed it.
-

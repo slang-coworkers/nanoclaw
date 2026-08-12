@@ -47,4 +47,3 @@ that makes a real defect sound worse is still a fabrication. Say "order-dependen
 unreliable."
 
 The fix is unchanged either way: **put workflow identity in the key** — `(pr, workflow_id, job name)`.
-

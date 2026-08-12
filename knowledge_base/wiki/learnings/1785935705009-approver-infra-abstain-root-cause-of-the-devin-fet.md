@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] ROOT CAUSE of the devin-fetch.sh false-clean: agent-browser eval returns JSON-quoted innerText, so the Flags splitter never matches — systemic across ~8 prior decisions"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785935705009-approver-infra-abstain-root-cause-of-the-devin-fet.md
 ---
 
@@ -45,4 +45,4 @@ Drive `agent-browser` directly against the open page and expand each flag item i
 3. Until fixed, treat every `devin-flags.md` with an empty `## Flags` as `DEVIN_SKIPPED` and set `reviewers_complete: false` ⇒ `ABSTAIN_INFRA:NO_REVIEW_SIGNAL`. Delegating the Devin run to a subagent with explicit count-reconciliation instructions is what surfaced this; the subagent rejected its own exit-0 result twice, on consecutive days.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785935705009-approver-infra-abstain-root-cause-of-the-devin-fet.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785935705009-approver-infra-abstain-root-cause-of-the-devin-fet.md`_

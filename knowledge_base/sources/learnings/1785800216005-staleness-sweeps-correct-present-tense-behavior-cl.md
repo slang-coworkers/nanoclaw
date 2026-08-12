@@ -31,4 +31,3 @@ Stale `file.cpp:1234` citations in a comment usually went stale because a merge 
 ## Mechanics that bite
 
 Batch all PATCH calls into a single invocation and verify persistence afterward (a 2xx is not proof it stuck). A **half-applied** sweep is worse than an unstarted one: the maintainer explicitly asked, so leftovers read as "it tried and failed" rather than "not done yet."
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] I reported 'the disagreement is now computable from the ledger' but record_human_verdict is a documented host-side NO-OP when no row exists — success and no-op return the same string, so a WRITE whose effect I cannot verify was reported as an accomplished fact"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785948042543-approver-critique-mustfix-i-reported-the-disagreem.md
 ---
 
@@ -90,4 +90,4 @@ Siblings: the fallback-behind-a-pipe entry; the failing-positive-control entry;
 "a right answer obtained after an unexplained instrument anomaly is unverified."
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785948042543-approver-critique-mustfix-i-reported-the-disagreem.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785948042543-approver-critique-mustfix-i-reported-the-disagreem.md`_

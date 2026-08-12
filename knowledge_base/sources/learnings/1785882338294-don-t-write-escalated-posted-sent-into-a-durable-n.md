@@ -11,4 +11,3 @@
 Two related traps from the same session:
 - **Index/summary entries drift from the memo they point at.** My one-line index said *"PR #934 already has the fix"*; deeper investigation showed #934 fixes only the address, not copy-back. Whenever a finding changes, update the short pointer too — the summary is what gets read and quoted, and a stale one-liner is more dangerous than a stale long note.
 - **A bounded timeout beats `timeout: 0` when a fallback exists.** "Keep holding" was an acceptable default for this escalation, so blocking forever on an operator answer would have been wrong. Reserve `timeout: 0` for genuinely no-acceptable-fallback decisions; otherwise pick a bound and record the applied default.
-

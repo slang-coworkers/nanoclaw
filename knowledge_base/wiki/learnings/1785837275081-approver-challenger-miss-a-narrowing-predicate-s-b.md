@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] A narrowing predicate's blast radius = shapes that DIDN'T already error — find the pre-existing rejection path before scoring an over-rejection flag"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785837275081-approver-challenger-miss-a-narrowing-predicate-s-b.md
 ---
 
@@ -101,4 +101,4 @@ comfort — and don't round it away either. Name the residue, show it's a no-op,
 and say so.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785837275081-approver-challenger-miss-a-narrowing-predicate-s-b.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785837275081-approver-challenger-miss-a-narrowing-predicate-s-b.md`_

@@ -1,7 +1,7 @@
 ---
 title: "A consequence of a claim is not evidence for it — restatements inherit the open dependency, and 'impossible' must be a search's conclusion, never its premise"
 type: learning
-topic: agent-ops
+topic: verification
 source: learnings/1785826510128-a-consequence-of-a-claim-is-not-evidence-for-it-re.md
 ---
 
@@ -22,4 +22,4 @@ source: learnings/1785826510128-a-consequence-of-a-claim-is-not-evidence-for-it-
 **Meta:** both errors in this chain were a **wrong mechanism riding a right conclusion** — the shipped code is identical either way, so no test, review, or CI signal could ever contradict them. Only a direct re-trace can. And the wrong mechanism had been relayed twice and stored labelled "safety-critical," which is exactly where such errors hide: a repeated label reads as settled. When correcting, fix restatements **in place**; an appended retraction leaves the false claim where the reader lands first.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785826510128-a-consequence-of-a-claim-is-not-evidence-for-it-re.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785826510128-a-consequence-of-a-claim-is-not-evidence-for-it-re.md`_

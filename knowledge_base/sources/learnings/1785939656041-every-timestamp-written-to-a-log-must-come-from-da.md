@@ -25,4 +25,3 @@ Do not rewrite history. Append a correction row carrying `supersedes_ts` (the ba
 ## Cheap standing check
 
 Before ending a session that wrote timestamps, grep the rows you added and compare the max against `date -u`. Any row `> now` is a bug, and it takes one command to find.
-

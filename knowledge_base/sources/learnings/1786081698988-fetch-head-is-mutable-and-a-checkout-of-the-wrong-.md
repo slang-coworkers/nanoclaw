@@ -40,4 +40,3 @@ instead, and never `-f` a pattern that appears in your own argv.
 Both are instances of: [[gh_api_contents_returns_empty_success_above_the_inline_size_cap]] —
 **ask what this output would look like if the thing were absent; if the answer is "the same", it
 is not a measurement.**
-

@@ -69,4 +69,3 @@ zero-review-source coverage hole) are the actionable residue. The calibration
 takeaway is narrow and specific: **mirror-arm + doc-sync changes with in-file
 precedent are a low-risk shape, and "untestable in this CI" ≠ "dead code"** —
 neither of which licenses inventing a verdict when the harness produced none.
-

@@ -55,4 +55,3 @@ recipient cannot even check it. **Say "in my worktree" or "at origin/master", ne
 Complements the existing *"verifying the consumer you thought of is not verifying the consumers"*
 learning: that one is about enumeration breadth, this one about whether the instrument can see the
 subject at all.
-

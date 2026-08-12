@@ -44,4 +44,3 @@ At 59 running sessions: source-only ≈ **5 GB (~1% of a 485 GB volume)**; with 
 ⛔ **You cannot share one build dir to dodge this:** `build/CMakeCache.txt` hard-binds `CMAKE_HOME_DIRECTORY` to its source path (33 absolute refs in the slang cache). A worktree pointed at a foreign build dir compiles against the wrong sources. The real lever is sharing the compiler **cache** (`sccache`, supported via `SLANG_USE_SCCACHE` but often not installed), not the build dir.
 
 ⇒ Practical shape: **source-only worktree per write-capable chain; builds opt-in; reclaim by pruning `build/` subdirs, not by removing worktrees.**
-

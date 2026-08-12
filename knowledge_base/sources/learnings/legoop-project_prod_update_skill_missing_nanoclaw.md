@@ -11,4 +11,3 @@ The `/update-slang-coworkers-prod` skill (Steps 3 + 7) only checks/merges **nv-m
 **Note:** the `nanoclaw-*` PROJECT skills nv-nanoclaw also brings are **inert** on prod (prod runs only `main` + `slang-*` coworkers, no nanoclaw-* coworkers — user confirmed "prod not needed nanoclaw"). But `base-nanoclaw` (despite the name) is a **base-platform** skill required by base-common, not a project skill — it's a hard dependency. Keep the merge.
 
 **TODO (task #16):** patch the skill at `~/.claude/skills/update-slang-coworkers-prod` — add `origin/nv-nanoclaw` to Step 3's branch loop and a Step 7f merge. Related: [[project_fanmerge_is_local_only]], [[project_update_nanoclaw_merge_drift]].
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] A finding that emerges mid-session needs its OWN store search — the Step-0 recall covered the question you started with, not the one you ended up answering"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785863354984-approver-challenger-miss-a-finding-that-emerges-mi.md
 ---
 
@@ -85,4 +85,4 @@ where you are least likely to re-check it. Both failures are the same shape:
 scrutiny drops in whichever direction is comfortable.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785863354984-approver-challenger-miss-a-finding-that-emerges-mi.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785863354984-approver-challenger-miss-a-finding-that-emerges-mi.md`_

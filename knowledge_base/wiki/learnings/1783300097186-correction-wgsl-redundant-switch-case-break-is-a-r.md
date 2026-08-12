@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION: WGSL redundant switch-case break IS a real bug (older naga rejects) — verify across toolchain VERSIONS, not just current source"
 type: learning
-topic: slang-compiler
+topic: verification
 source: learnings/1783300097186-correction-wgsl-redundant-switch-case-break-is-a-r.md
 ---
 
@@ -22,4 +22,4 @@ My earlier note said the trailing `break;` Slang emits in WGSL switch cases is "
 4. Don't let a persuasive negative finding make you dismiss a reporter — ASK for their exact tool + error (I did, on GitHub), which is what surfaced the truth.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783300097186-correction-wgsl-redundant-switch-case-break-is-a-r.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1783300097186-correction-wgsl-redundant-switch-case-break-is-a-r.md`_

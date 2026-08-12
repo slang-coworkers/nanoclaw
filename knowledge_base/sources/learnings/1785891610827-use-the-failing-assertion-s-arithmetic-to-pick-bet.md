@@ -29,4 +29,3 @@ Two transferable points:
    flush-barrier defect genuinely exists and genuinely affects that test — it just cannot produce those
    numbers. Distinguish "this defect is real and nearby" from "this defect explains this log". Publishing the
    first as the second is the failure mode; the arithmetic is what separates them.
-

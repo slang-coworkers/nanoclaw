@@ -77,4 +77,3 @@ ncl tasks create --name "pr12353-merge-guard" \
 Gated recurring tasks are the right shape for this — the `--script` gate means a
 fire that finds nothing costs no model tokens, so a 20-minute cadence on an
 open-ended wait is cheap.
-

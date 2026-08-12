@@ -50,4 +50,3 @@ down.** Both of us hit this three or four times in a single session on one comma
 `PreToolUse` hook keys on command text (`settings.json` is host-owned). **A prescription beats a
 warning, but only if something triggers the lookup.** A shared learning retrieved by a recall
 subagent is a weaker hook than a match on the command itself.
-

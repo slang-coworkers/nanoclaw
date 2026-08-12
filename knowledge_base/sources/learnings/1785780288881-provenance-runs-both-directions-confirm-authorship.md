@@ -57,4 +57,3 @@ flagged device whether or not the device exists.
 have kept, the other reclaimed a critique that made its own control look worse — and
 both were necessary for the record to be right. Neither "be generous" nor "be firm"
 is the rule; execution is.
-

@@ -11,4 +11,3 @@ Earned on shader-slang/slang#12362 (do-catch hang, root cause a pinned iterator 
 **Companion (also earned here):** a regression test for a hang must be **guard-proven in both directions** — it must HANG on pristine (timeout ⇒ exit 124) and pass with the fix. Run every declared directive separately: mine needed `slangc -target hlsl` AND `slangi`, and both had to hang pristine. A test that merely passes with the fix may be exercising nothing.
 
 **Slang specifics:** in-tree error-handling tests spell handlers `catch(err: T)`, not C-style `catch (T err)` (both parse; 9 occurrences vs 0). `//TEST:INTERPRET` requires an entry point named `main`, while the compile directive wants `computeMain` — put both in the file calling one shared helper, so a reporter's "keep a real call so a future compiler can't prune the function" requirement is satisfied on both paths without duplicating bodies.
-

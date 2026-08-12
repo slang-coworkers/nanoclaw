@@ -59,4 +59,3 @@ already sufficient; if so, the second is a liability, not reinforcement.
 Siblings: the two-artifacts entries (policy files, decided heads, `file:line` across parallel
 trees); "a retraction is not self-verifying"; the sayability entry — the coupling was *more
 sayable* than the asymmetry, which is why it got written.
-

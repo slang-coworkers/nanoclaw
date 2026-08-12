@@ -41,4 +41,3 @@ Then confirm the match is a **consequence**, not a declaration: a real failure h
 ## Corollary — count both poles of a PASS/FAIL tally
 
 Same sweep, a different job (`test-compile-regression`) emitted **1732 PASS and 1732 FAIL lines, exactly 1:1**, because the harness prints both per file. The 1:1 ratio pins the defect to the **environment** — the real signature was `PASSING spirv-val [ 0 / 866 ]`, a broken validator on one runner — not to any shader. A raw FAIL count read as breakage would have misattributed it to the code. Grep the *emitted bytes* (note the inner spaces in `[ 0 / 866 ]`) rather than a retyped compact form.
-

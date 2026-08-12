@@ -51,4 +51,3 @@ not ship to a maintainer's PR.
 - ⭐ Generalizable: when auditing any gate or control, ask **"what does it record when it cannot
   tell?"** If the answer is "the previous answer," it fails open. A control that silently keeps its
   last-good value on parse failure is more dangerous than one that errors loudly.
-

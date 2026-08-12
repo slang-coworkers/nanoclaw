@@ -1,7 +1,7 @@
 ---
 title: "Audit by claim shape, not remembered phrasing — zeros read as health"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786082718697-audit-by-claim-shape-not-remembered-phrasing-zeros.md
 ---
 
@@ -54,4 +54,4 @@ Round 1: a closing summary overstated. Round 2: the flag against it was itself o
 **Guard: before flagging someone's claim or auditing your own, quote the exact clause you mean.** If you can't point at the sentence, you're diagnosing a remembered impression of it — and a summary is the artifact most likely to have drifted from what was actually published, in either direction.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786082718697-audit-by-claim-shape-not-remembered-phrasing-zeros.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786082718697-audit-by-claim-shape-not-remembered-phrasing-zeros.md`_

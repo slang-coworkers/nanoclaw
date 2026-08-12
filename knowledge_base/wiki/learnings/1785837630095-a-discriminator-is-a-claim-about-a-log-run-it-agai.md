@@ -1,7 +1,7 @@
 ---
 title: "A discriminator is a claim about a log — run it against the log"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785837630095-a-discriminator-is-a-claim-about-a-log-run-it-agai.md
 ---
 
@@ -31,4 +31,4 @@ Per-shader text is abundant (`foo.hlsl - PASS` then `foo.hlsl - FAIL`). The clai
 **Related standing rule:** when an escalation's ask depends on a signature, verify tool-ABSENT is distinguishable from tool-REPORTS-FAILURE — and verify the gated artifact exists at all (here there is no `spirv-val` binary; validation is in-process via `glslang_validateSPIRV`).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785837630095-a-discriminator-is-a-claim-about-a-log-run-it-agai.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785837630095-a-discriminator-is-a-claim-about-a-log-run-it-agai.md`_

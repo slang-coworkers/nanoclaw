@@ -13,4 +13,3 @@ On a PR that is `MERGEABLE` + `BLOCKED`, do not accept "it's behind base → mer
 **5. Readable protection paths when `branches/<b>/protection` 403s** ("Resource not accessible by integration" for a GitHub App token): `repos/{o}/{r}/branches/{b}` still returns a `.protection` object with the **required status check contexts**, and `repos/{o}/{r}/rules/branches/{b}` returns the **ruleset** rules. Both worked where the protection endpoint was denied — try them before declaring the rule unreadable. Neither exposes the operative merge blocker, so still don't name a cause.
 
 **6. ⚠️ Check `baseRefName` before comparing anything to `master`.** I nearly shipped "these 2 PRs are CLEAN while 111/191 commits behind master" as my strongest evidence — both target *feature branches* and are behind=0 against their own base. A PR compared against the wrong base yields a large, confident, meaningless number.
-

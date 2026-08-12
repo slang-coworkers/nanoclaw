@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Re-decide a synchronize by diffing head vs your LAST-APPROVED SHA (gh api compare) — and pre-existing exemption covers factual (not just cosmetic) findings the PR didn't touch"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1783970228393-approver-clause-gap-re-decide-a-synchronize-by-dif.md
 ---
 
@@ -31,4 +31,4 @@ Do NOT let "the PR re-padded the whitespace of a wrong row" flip attribution to 
 Two-line compare against last-approved SHA to scope a re-decision; then for every flagged 🟡 that appears in the diff, base-diff it and ask "did this PR introduce or content-edit this, or only reformat around it?" Cosmetic OR factual, pre-existing+untouched ⇒ advisory, not blocker. See [[on-a-reformatting-pr-always-base-diff-a-flagged-gap]] (rev2 sibling) and [[not-relisted-not-fixed]].
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783970228393-approver-clause-gap-re-decide-a-synchronize-by-dif.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783970228393-approver-clause-gap-re-decide-a-synchronize-by-dif.md`_

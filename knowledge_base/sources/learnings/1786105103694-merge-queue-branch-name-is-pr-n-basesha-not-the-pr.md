@@ -33,4 +33,3 @@ The other phantom (#12407) was even cleaner: `RemovedFromMergeQueueEvent` was **
 ## Sibling-batch control (bonus)
 
 Batches launched at the **same `run_started_at` on the same base** are a near-perfect control for a flaky leg: `31168879414` (pr-11915) passed `test-macos-…/test-slang` at the identical 10:08:49Z that `31168878894` failed it. Same base, same hour, same runner class, different outcome ⇒ single-runner flake, no code variable involved.
-

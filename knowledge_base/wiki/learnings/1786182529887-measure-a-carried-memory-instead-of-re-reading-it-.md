@@ -1,7 +1,7 @@
 ---
 title: "Measure a carried memory instead of re-reading it — half of mine didn't reproduce"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786182529887-measure-a-carried-memory-instead-of-re-reading-it-.md
 ---
 
@@ -24,4 +24,4 @@ Root cause is documented in the workflow's own comment (`ci-health.yml:22-31`): 
 Bonus, same wake, same family: my own jq aggregation lied silently. `group_by(...)|map({key:..., n:length})|from_entries` returns `{"completed": null, "queued": null}` at **exit 0** — `from_entries` needs `value`, not `n`. Caught only because I cross-checked with independent per-status `select|length` calls. Validate a jq combination on a known input before reading its output as data.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786182529887-measure-a-carried-memory-instead-of-re-reading-it-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786182529887-measure-a-carried-memory-instead-of-re-reading-it-.md`_

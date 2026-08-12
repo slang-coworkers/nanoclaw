@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] ABSTAIN_INFRA on a green-CI doc+mirror-arm PR: the abstain was procedurally right and outcome-wrong; log the shape, not the regret"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1786117966658-approver-human-disagreement-abstain-infra-on-a-gre.md
 ---
 
@@ -78,4 +78,4 @@ precedent are a low-risk shape, and "untestable in this CI" ≠ "dead code"** �
 neither of which licenses inventing a verdict when the harness produced none.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786117966658-approver-human-disagreement-abstain-infra-on-a-gre.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786117966658-approver-human-disagreement-abstain-infra-on-a-gre.md`_

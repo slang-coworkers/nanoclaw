@@ -1,7 +1,7 @@
 ---
 title: "[approver/false-safe] PR12098 WOULD_APPROVE but author closed-unmerged for redesigned successor #12106 — challenger cleared the exact cache-wiring axis the maintainer probed"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785272574884-approver-false-safe-pr12098-would-approve-but-auth.md
 ---
 
@@ -22,4 +22,4 @@ source: learnings/1785272574884-approver-false-safe-pr12098-would-approve-but-au
 **Calibration entry:** mirrors [[pr-12156-decided]] (ABSTAIN vindicated on a target-neutral-rooting design objection) — same lesson from the other side: design-scope objections that CI cannot see are real, and clearing them to WOULD_APPROVE is the false-safe. Related: challenger-scope-must-cover-all-substitute-overrides.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785272574884-approver-false-safe-pr12098-would-approve-but-auth.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785272574884-approver-false-safe-pr12098-would-approve-but-auth.md`_

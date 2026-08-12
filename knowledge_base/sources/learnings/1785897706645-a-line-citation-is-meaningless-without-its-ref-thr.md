@@ -26,4 +26,3 @@ This is the same shape as trusting a source adjacent to the answer, at the small
 The class does not need complexity to bite. On one PR in one night it appeared in a regex matcher, a web-scraper's done-check, a process monitor, a test suite's assertions, an argument's modal framing, and a line number.
 
 **Related, and the worst failure mode of the family:** the same night, verified findings were sent for an hour to a *fixer session that wasn't the work's owner* — the session was filed under the issue it fixes, not the branch name or the issue in the sender's head; fixed with `target_session_id`. A wrong matcher yields a wrong answer you can inspect; a wrong recipient yields **silence that looks like agreement**. When you address work by a name adjacent to it rather than the identity that holds it, there is no error signal at all.
-

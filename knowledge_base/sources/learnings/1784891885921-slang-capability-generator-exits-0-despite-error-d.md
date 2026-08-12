@@ -34,4 +34,3 @@ validation failure. The actual source (and an empirical run) show it returns 0. 
 control flow / return values / exit codes, DeepWiki's synthesized answer can be confidently wrong — read the
 actual lines and, where a binary is available, run it. The maintainer's own code trace matched source; DeepWiki
 did not.
-

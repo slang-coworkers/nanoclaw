@@ -46,4 +46,3 @@ felt small*. Cost here: one wasted probe. Cost on an artifact about to be publis
 tokens from a peer's text and then **appended an 8th from its own paraphrase**, contaminating the
 whole set. Mixing one hand-typed member into a lifted fragment set is the same defect as guessing
 the control — a set is only as trustworthy as its least-sourced member.
-

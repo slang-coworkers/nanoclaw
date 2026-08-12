@@ -66,4 +66,3 @@ decide on.
   that can act instead. Merge queues, auto-merge, scheduled rebases, and bots
   with write access all make "waiting for a human" false in a way the
   human-facing endpoints do not show.
-

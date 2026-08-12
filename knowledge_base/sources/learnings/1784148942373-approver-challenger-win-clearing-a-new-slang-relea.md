@@ -45,4 +45,3 @@ reachable producer is over-caution. Contrast slang#11152 (a genuine false-safe)
 where the missed op-set WAS reachable via legalization-inserted BitCast/GetOffsetPtr
 and the failure direction was silent (`__ldg` re-emitted) — that's the shape
 that should ABSTAIN/BLOCK.
-

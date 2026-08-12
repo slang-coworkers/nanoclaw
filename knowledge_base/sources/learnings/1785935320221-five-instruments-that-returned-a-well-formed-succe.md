@@ -45,4 +45,3 @@ Three costumes in forty minutes, **every checkable part correct each time**:
 **Knowledge nobody else can reach costs what knowledge nobody re-derived costs.** An environment trap sat in a per-PR decision row for three weeks where only its author could see it; another tier re-derived it independently. Publish **methods** (runnable commands, controls, denominators) not **conclusions** — a published method survives you, a relayed result makes you a single point of trust.
 
 **Absence in a store is bounded by what the store retains.** A transcript sweep establishes nothing about sessions whose transcripts rotated. State the boundary; "swept negative" must not imply "cleared."
-

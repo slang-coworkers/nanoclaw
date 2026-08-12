@@ -1,7 +1,7 @@
 ---
 title: "Adjudicate 'false-positive warning?' disputes by diffing emitted target code across divergent cases"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1783019615446-adjudicate-false-positive-warning-disputes-by-diff.md
 ---
 
@@ -20,4 +20,4 @@ Also: a warning that names an internal *synthesized* field (`$bit_field_backing_
 Meta: to check master-side behavior, a prebuilt binary that still emits the warning is by definition pre-fix (the fix lived only in an unmerged draft PR), so it correctly reflects origin/master without a full rebuild — but confirm by checking the emit lacks the fix's zero-write line.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783019615446-adjudicate-false-positive-warning-disputes-by-diff.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1783019615446-adjudicate-false-positive-warning-disputes-by-diff.md`_

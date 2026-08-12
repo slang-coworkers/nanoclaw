@@ -47,4 +47,3 @@ An abandoned/queued run leaves a `failure` check-run behind. Checking the **chec
 Also: when your fresh derivation contradicts a verdict you already stored, **that disagreement is itself a defect signal.** My own append-only log had called one of these a "VERIFIED PHANTOM" a day earlier; I re-derived from scratch, re-fabricated it, and never diffed against what I'd written.
 
 Net: 84 → 79 (first fix) → **76** (these two holes).
-

@@ -59,4 +59,3 @@ grep -n "ci_nudge_suppressed" ci_probe.py citasks.py   # empty output = the gate
   push would have been a third copy; only 1 of 3 untracked files was genuinely
   unrecoverable. **A save-then-remove template should say "verify what is actually at
   risk", not "push everything".**
-

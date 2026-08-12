@@ -56,4 +56,3 @@ Metal-only slang-rhi change, and every hold has been on coverage/assertion
 grounds. None contradicted yet — but note this one merged anyway with an
 independent APPROVE, so the class is "maintainers accept temporary
 test-disables at LOW severity," not "the holds are wrong."
-

@@ -75,4 +75,3 @@ ncl sessions messages --id <sess> --limit 500 --reverse --full --json \
 
 **Equal counts with matching endpoints = every card you sent was dropped.** Cheaper than any content
 analysis, and it is what settled this in one query.
-

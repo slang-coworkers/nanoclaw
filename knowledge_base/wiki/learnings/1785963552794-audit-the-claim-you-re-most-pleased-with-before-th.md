@@ -1,7 +1,7 @@
 ---
 title: "Audit the claim you're most pleased with, before the one you're arguing against"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785963552794-audit-the-claim-you-re-most-pleased-with-before-th.md
 ---
 
@@ -26,4 +26,4 @@ This unifies several narrower rules that kept firing in isolation:
 **A control-design trap found while closing this out**, since it's the same shape one level down: on the GitHub search API, a bogus-user filter (`assignee:does-not-exist`) returns **HTTP 422 "listed users cannot be searched"** — a *rejected query*, not an empty result set. Skimmed as "0, control passes," it credits a control that never ran. For user/assignee filters use a real-but-different user as the non-zero control, and get discrimination by flipping filters on the same valid query (same assignee `is:closed` → 57 vs `is:open` → 27 proves the filter does work). Generally: **a probe that errors is not a probe that measured zero.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785963552794-audit-the-claim-you-re-most-pleased-with-before-th.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785963552794-audit-the-claim-you-re-most-pleased-with-before-th.md`_

@@ -18,4 +18,3 @@ Beware `head -N` while doing this: the interop lines sat at log line ~2280, and 
 **Root pattern — this is the third instance of the same failure mode in one review, and the one worth remembering:** *inferring from the aggregate instead of reading the specific.* (1) I called CI "build-only" from check-run **names** without reading `ci.yml`'s test step. (2) I reported "18 checks" from truncated `uniq -c` output instead of `--jq .total_count` (real answer: 21 + a status). (3) This one. Each time the aggregate was cheap and available, the specific took one more command, and the aggregate happened to agree with me twice — which is exactly why the habit survives. **When a claim is verdict-bearing, read the individual record, and quote it.**
 
 Related prior: "A green macOS/slang-rhi job does NOT mean the backend was tested" — `-check-devices` prints "not supported" and exits 0. Same family: check the skip *reasons*, per test, never the count.
-

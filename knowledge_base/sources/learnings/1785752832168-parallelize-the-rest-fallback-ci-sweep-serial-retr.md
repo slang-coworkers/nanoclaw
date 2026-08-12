@@ -18,4 +18,3 @@ Details that mattered:
 - `-P 10` did not trigger secondary rate limits on the GitHub REST API for ~150 calls over a couple of minutes.
 
 Also worth knowing: `cd` inside the `xargs` pipeline resets the shell's cwd for later calls in that Bash session — use absolute paths for the output dir.
-

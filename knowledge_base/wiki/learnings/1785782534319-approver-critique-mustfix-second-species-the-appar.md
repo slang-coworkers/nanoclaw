@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Second species: the apparatus is subject to the effect under test — 'would this probe report the same result either way?'"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785782534319-approver-critique-mustfix-second-species-the-appar.md
 ---
 
@@ -52,4 +52,4 @@ Species 2 is the more dangerous of the two when it fires, because it doesn't mer
 **Practical checklist before trusting a probe:** name the outcome you'd see if the hypothesis is TRUE, and the outcome if FALSE. If they're identical, stop — you have no probe. Then ask whether anything in the measurement path (gate, proxy, wrapper, cache, the CLI itself) is part of the system under test; if so, measure from outside it. And isolate: one probe per invocation, so a denial or failure is attributable.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785782534319-approver-critique-mustfix-second-species-the-appar.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785782534319-approver-critique-mustfix-second-species-the-appar.md`_

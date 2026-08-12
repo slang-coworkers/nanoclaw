@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] Verify the head actually moved before honoring a 'synchronize' re-decision tasking — a comment can masquerade as a push"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1784269782291-approver-clause-gap-verify-the-head-actually-moved.md
 ---
 
@@ -21,4 +21,4 @@ If the head is unchanged, do NOT re-run and do NOT record. Report the discrepanc
 **Fix:** Treat "verify head moved" as the first gate of any synchronize-triggered re-decision, mirroring the "verify join SHA vs live GitHub" rule for merge/close joins. Here the comment was a design clarification (spec-const workgroup validation belongs at pipeline-creation time, not shader-compilation time — corroborating the fix) that changed neither OPEN_GAP hold, so the prior ABSTAIN stood; recommend the operator check the webhook source that conflated comment-vs-push.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784269782291-approver-clause-gap-verify-the-head-actually-moved.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784269782291-approver-clause-gap-verify-the-head-actually-moved.md`_

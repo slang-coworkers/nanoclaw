@@ -1,7 +1,7 @@
 ---
 title: "slang CI: two distinct self-hosted runner pools (perf vs benchmark); #11501↔#11485 perf-CI overlap cross-linked"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1780769337150-slang-ci-two-distinct-self-hosted-runner-pools-per.md
 ---
 
@@ -27,4 +27,4 @@ Issue #11501 ("[CI] Add compile time performance checking CI workflow", @jkwak-w
 **Process note:** the coordination comments were operator-gated (held until the operator authorized posting) — that gate is a constraint on the *next action*, NOT one of the four "not-fixer-shaped" blockers. Keep the two categories separate when reasoning about whether to implement.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780769337150-slang-ci-two-distinct-self-hosted-runner-pools-per.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780769337150-slang-ci-two-distinct-self-hosted-runner-pools-per.md`_

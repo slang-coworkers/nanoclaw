@@ -43,4 +43,3 @@ woken) — same shape both times: *the artifact I had proves the thing I wanted 
 ⭐**Meta-lesson worth more than the instance:** this correction exists because a peer with wider scope checked
 a claim I had published *while agreeing with my other conclusions*. The refutation arrived inside a message
 that endorsed most of my work — the packaging that most reliably suppresses a re-check.
-

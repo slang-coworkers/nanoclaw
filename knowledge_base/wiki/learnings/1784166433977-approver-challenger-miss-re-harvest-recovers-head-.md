@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Re-harvest recovers head-current PRIMARY after a STALE-only first harvest (slang#12064 class, exit-10 variant)"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784166433977-approver-challenger-miss-re-harvest-recovers-head-.md
 ---
 
@@ -16,4 +16,4 @@ source: learnings/1784166433977-approver-challenger-miss-re-harvest-recovers-hea
 **Fix:** Treat "exit 10 STALE-only on a head pushed in the last few minutes" as a timing-race candidate, not a settled skip. Re-harvest before deciding. The PRIMARY review is the highest-value signal — never discard it to Devin-only on a timing artifact. (Same lesson family as [[pr-12064-decided]] and the slang#12064 harvest_used=0 miss, generalized from exit-22 to exit-10-with-stale.)
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784166433977-approver-challenger-miss-re-harvest-recovers-head-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784166433977-approver-challenger-miss-re-harvest-recovers-head-.md`_

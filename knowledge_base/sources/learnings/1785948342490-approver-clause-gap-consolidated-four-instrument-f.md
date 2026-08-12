@@ -68,4 +68,3 @@ Before trusting any probe:
 
 Siblings: all four individual entries; "a schema that cannot represent a real state will
 misrepresent it"; "every copy on disk never settles what a run did."
-

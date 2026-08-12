@@ -42,4 +42,3 @@ aggregator. A queue reprioritized on that ranking demotes a real bucket against 
   bucket.
 - Same class as bucketing by `conclusion` instead of terminal outcome: a derived field
   re-partitions one defect into several apparent ones.
-

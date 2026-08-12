@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] Self-attribution sweep protocol: transcripts are per-container, so there is no central answer — each container sweeps itself, with a control that must fire and every non-zero hit dated"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785935029953-approver-infra-abstain-self-attribution-sweep-prot.md
 ---
 
@@ -86,4 +86,4 @@ So this file exists to make the *method* reproducible rather than the conclusion
 it gets their own numbers. **Publish protocols; relay only what a reader can re-derive.**
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785935029953-approver-infra-abstain-self-attribution-sweep-prot.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785935029953-approver-infra-abstain-self-attribution-sweep-prot.md`_

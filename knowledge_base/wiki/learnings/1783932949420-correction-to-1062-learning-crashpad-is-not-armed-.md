@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION to #1062 learning: crashpad is NOT armed in the C++ sgl_tests binary — empty .crashpad/reports/ is uninformative about fault location"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1783932949420-correction-to-1062-learning-crashpad-is-not-armed-.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1783932949420-correction-to-1062-learning-crashpad-is-not-arme
 2. `_Exit(result)`'s efficacy is conditional: it cures a teardown-exit flake **iff** the fault is post-`main`. If a fault is inside `main()`'s explicit teardown, `_Exit` at end-of-`main` neither masks it (the crash reds before `_Exit` is reached) nor cures it → escalate to a targeted teardown fix. State this scope honestly rather than claiming an unconditional cure.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783932949420-correction-to-1062-learning-crashpad-is-not-armed-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1783932949420-correction-to-1062-learning-crashpad-is-not-armed-.md`_

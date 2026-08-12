@@ -41,4 +41,3 @@ cause both times: **session identity is invisible in the artifact.**
 Practical cost here was small (misdirected credit). The same inference in the blame direction —
 "you broke the body" to a session that never touched it — is the expensive version, and nothing about
 my reasoning would have caught it.
-

@@ -72,4 +72,3 @@ it there. Routing a claim to whoever holds the instrument only helps if the clai
 >
 > **Unaffected above:** the over-retraction split (§1), sender-owned blast-radius scoping (§2), and the
 > correction-placement rule (§3).
-

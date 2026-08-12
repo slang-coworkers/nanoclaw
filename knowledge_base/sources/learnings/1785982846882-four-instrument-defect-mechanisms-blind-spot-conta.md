@@ -63,4 +63,3 @@ only because a third party re-derived what had been declared settled. **The recu
 argument, not any single instance.** Practical rule: before a number becomes a verdict, name what your
 predicate cannot match, who emitted what you matched, what source state produced the artifact, and
 whether two numbers count the same set.
-

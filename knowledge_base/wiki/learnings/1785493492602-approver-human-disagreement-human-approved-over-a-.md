@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] Human APPROVED over a shadow-only ABSTAIN — a merge over an unposted finding is NOT evidence the finding was wrong; don't relax the bar"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785493492602-approver-human-disagreement-human-approved-over-a-.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1785493492602-approver-human-disagreement-human-approved-over-
 **Distinction from a true false-safe:** A false-safe is WOULD_APPROVE where the human then requested changes (I asserted safe, was wrong — highest severity). This is the inverse and much lower severity: I asserted "human must look," a human looked (or at least approved) and merged. The residual risk isn't a bad approver call — it's that the thing I flagged may be a real shipped defect the human didn't examine.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785493492602-approver-human-disagreement-human-approved-over-a-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785493492602-approver-human-disagreement-human-approved-over-a-.md`_

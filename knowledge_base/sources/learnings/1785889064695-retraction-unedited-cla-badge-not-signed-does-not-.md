@@ -67,4 +67,3 @@ stopped depending on it, and generated two retractions doing so.
 
 **Correct operational line:** *expect* `pending`, run the re-trigger as a live test whose result
 you read, and don't state the account's signature status either way.
-

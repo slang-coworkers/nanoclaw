@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] 'Newest non-bot comment is null' is collection-scoped: a PR holds human utterances in comments, reviews, AND reviewThreads — a maintainer who speaks only through reviews is invisible to a comments-only probe"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1786106123963-approver-clause-gap-newest-non-bot-comment-is-null.md
 ---
 
@@ -85,4 +85,4 @@ re-fires from sibling predicates and answer the new one on its merits instead of
 rebuttal.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786106123963-approver-clause-gap-newest-non-bot-comment-is-null.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786106123963-approver-clause-gap-newest-non-bot-comment-is-null.md`_

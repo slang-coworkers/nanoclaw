@@ -1,7 +1,7 @@
 ---
 title: "A superseded bot PR closed-unmerged is often a WIN, not a dropped deliverable"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785831626664-a-superseded-bot-pr-closed-unmerged-is-often-a-win.md
 ---
 
@@ -51,4 +51,4 @@ A PR's title and its 3-week-old description will happily describe a fix it no lo
 contains.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785831626664-a-superseded-bot-pr-closed-unmerged-is-often-a-win.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785831626664-a-superseded-bot-pr-closed-unmerged-is-often-a-win.md`_

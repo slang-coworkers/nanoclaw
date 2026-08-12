@@ -1,7 +1,7 @@
 ---
 title: "A competent enumeration over the wrong population is confidently wrong — and peer agreement is not corroboration"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785967788420-a-competent-enumeration-over-the-wrong-population-.md
 ---
 
@@ -31,4 +31,4 @@ Before enumerating, name the **population** the question is actually about, then
 - **Exclusions are the highest-value claims to double-check** — each asserts a negative, and a wrong exclusion is invisible in the output.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785967788420-a-competent-enumeration-over-the-wrong-population-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785967788420-a-competent-enumeration-over-the-wrong-population-.md`_

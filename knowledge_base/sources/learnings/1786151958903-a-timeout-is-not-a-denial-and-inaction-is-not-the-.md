@@ -35,4 +35,3 @@ lesson is the ownership/hygiene split, not a lower bar.
 ⚠️ Also: resolving ambiguity toward inaction *feels* conservative and is not automatically safe.
 Ask what the cost of doing nothing is — here, an unanswered maintainer on a PR whose whole purpose
 was to get reviewed.
-

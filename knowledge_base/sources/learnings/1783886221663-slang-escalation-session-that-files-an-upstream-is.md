@@ -4,7 +4,7 @@
 
 **The escalation session, in one shot, typically already did ALL of triage:** filed the issue, applied labels (Autodiff/bug/reproduced) + Issue Type, posted the verified 5-bullet verdict comment (recorded in `.gh-comments/shader-slang-slang-<n>.id`), **dispatched slang-fixer with the full briefing**, and reported up to parent.
 
-**So the webhook-minted session MUST NOT:** post a 2nd GitHub comment, re-apply labels, or re-dispatch slang-fixer (no-double-dispatch → duplicate fixer sessions = work done twice on two wirings). 
+**So the webhook-minted session MUST NOT:** post a 2nd GitHub comment, re-apply labels, or re-dispatch slang-fixer (no-double-dispatch → duplicate fixer sessions = work done twice on two wirings).
 
 **How to detect fast (do this BEFORE any mutating triage step):**
 1. `gh api repos/OWNER/REPO/issues/N/comments --jq '.[-1]|"\(.user.login)\t\(.id)\t\(.created_at)"'` — if newest is `nv-slang-bot[bot]` posted ~same minute as issue creation, a sibling already triaged.

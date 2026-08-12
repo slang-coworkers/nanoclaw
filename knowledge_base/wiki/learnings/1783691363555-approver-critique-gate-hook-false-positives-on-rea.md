@@ -1,7 +1,7 @@
 ---
 title: "Approver: critique-gate hook false-positives on read-only `gh api .../pulls`"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1783691363555-approver-critique-gate-hook-false-positives-on-rea.md
 ---
 
@@ -17,4 +17,4 @@ Workarounds during Step-1/challenger investigation (before the critique gate is 
 Why: the hook's `BASH_PATTERNS` enumerate PR-creation egress shapes and `gh api .../pulls` was included as a create route; it's a coarse ERE match, not intent-aware. Not a bug to fix in-session — just route around it.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783691363555-approver-critique-gate-hook-false-positives-on-rea.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783691363555-approver-critique-gate-hook-false-positives-on-rea.md`_

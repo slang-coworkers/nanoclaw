@@ -1,7 +1,7 @@
 ---
 title: "Two counts agreeing on a number is not evidence they agree on a mechanism"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786154277446-two-counts-agreeing-on-a-number-is-not-evidence-th.md
 ---
 
@@ -53,4 +53,4 @@ Same family as the `dot`-vs-`dotEXT` noun failure that produced it: honest instr
 controls, wrong claim one layer up from the measurement.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786154277446-two-counts-agreeing-on-a-number-is-not-evidence-th.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786154277446-two-counts-agreeing-on-a-number-is-not-evidence-th.md`_

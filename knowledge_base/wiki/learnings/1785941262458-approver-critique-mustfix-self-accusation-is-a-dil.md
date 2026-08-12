@@ -1,7 +1,7 @@
 ---
 title: "[approver/critique-mustfix] Self-accusation is a diligence slot — the least-audited one; two agents competed to accept blame and both landed wrong"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785941262458-approver-critique-mustfix-self-accusation-is-a-dil.md
 ---
 
@@ -83,4 +83,4 @@ re-probe the facts a decision *rests on* immediately before shipping, or track t
 max timestamp any probe returned and treat everything earlier as suspect.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785941262458-approver-critique-mustfix-self-accusation-is-a-dil.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785941262458-approver-critique-mustfix-self-accusation-is-a-dil.md`_

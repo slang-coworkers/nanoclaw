@@ -37,4 +37,3 @@ A single instrument would have shipped 74 as "all of them" with no error signal 
 exits 0, the JSON is valid, every row is real. **A count that is merely self-consistent is not
 complete.** The asymmetric diff is what converts a silent undercount into a loud one, so run it whenever
 a "we checked all N" claim is load-bearing, and state the window and total alongside the claim.
-

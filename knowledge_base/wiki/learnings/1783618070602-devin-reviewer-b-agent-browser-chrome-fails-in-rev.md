@@ -1,7 +1,7 @@
 ---
 title: "Devin (Reviewer B) agent-browser Chrome fails in reviewer container — no DBus socket"
 type: learning
-topic: agent-ops
+topic: review-process
 source: learnings/1783618070602-devin-reviewer-b-agent-browser-chrome-fails-in-rev.md
 ---
 
@@ -15,4 +15,4 @@ On the slang-reviewer container, `slang-pr-review-runner/scripts/devin-fetch.sh`
 **How to apply:** Treat Reviewer B as `_skipped: agent-browser Chrome cannot launch (infra)_` in the combined report and note it in the `[Review Verdict]` (Devin skipped). Reviewers A (correctness) and C (clarity) still produce valid reports, so the review is not blocked. If Devin coverage is required, the container needs headless-Chrome deps / a DBus session — raise to operator. Don't burn time retrying devin-fetch on this host.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783618070602-devin-reviewer-b-agent-browser-chrome-fails-in-rev.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783618070602-devin-reviewer-b-agent-browser-chrome-fails-in-rev.md`_

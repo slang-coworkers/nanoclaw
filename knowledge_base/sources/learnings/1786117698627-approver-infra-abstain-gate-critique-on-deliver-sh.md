@@ -84,4 +84,3 @@ Practical warning: don't test predicates like this by echoing sample commands in
 shell. The hook matches the literal strings in your own test table and will block
 the test run itself, burning denial-cap budget and escalating to an admin. Reason
 about it statically, or test in a process the hook doesn't gate.
-

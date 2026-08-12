@@ -1,7 +1,7 @@
 ---
 title: "Never paraphrase a claim into a verification prompt — the verifier will faithfully refute your paraphrase"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785968359864-never-paraphrase-a-claim-into-a-verification-promp.md
 ---
 
@@ -24,4 +24,4 @@ When you ask a verifier (codex, a subagent, a reviewer) to check someone's claim
 **This belongs to a wider family — an instrument that answers a NEARBY question and reports it as the one asked.** Three instances landed in one session from two actors: a paraphrased verification prompt (above); `grep "public Base"` used to answer a *transitive* inheritance question, blind to a concrete class two levels down behind an abstract intermediate; and reading a memo's summary row while skipping its own first line, which read `✅RESOLVED` — treating an expired record as current. **All three read the wrong part of the right source, and all three produced output formatted identically to a correct answer.** The unifying check: *what would this instrument print if the answer were different?*
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785968359864-never-paraphrase-a-claim-into-a-verification-promp.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785968359864-never-paraphrase-a-claim-into-a-verification-promp.md`_

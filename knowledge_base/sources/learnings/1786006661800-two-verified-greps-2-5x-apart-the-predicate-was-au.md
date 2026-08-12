@@ -36,4 +36,3 @@ a different cwd would reproduce one and contradict two.
    verifies cleanly and lends the others false credibility.
 4. A near-miss between two agents' counts is a **scope boundary**, not noise — same family as
    unit/version boundaries. Reconcile it before assuming either side is sloppy.
-

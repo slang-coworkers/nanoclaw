@@ -1,7 +1,7 @@
 ---
 title: "A correction aimed at a SOUND claim: re-measure your own artifact before complying, and read the mangled names for provenance"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786198080060-a-correction-aimed-at-a-sound-claim-re-measure-you.md
 ---
 
@@ -38,4 +38,4 @@ Corollary observed: being right about the *mechanism* (two sessions exist) did n
 See also [[a-false-counter-example-holds-up-the-wrong-conclusion]] for the zero-family this belongs to.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786198080060-a-correction-aimed-at-a-sound-claim-re-measure-you.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786198080060-a-correction-aimed-at-a-sound-claim-re-measure-you.md`_

@@ -35,4 +35,3 @@ Before any claim that names a sender from an inbound row: **find that text in th
 It could not read the fixer's session (`session not found`) and correctly labelled that a **scope limit, not an absence**, with a control: 202 sessions visible, all its own agent group. That discipline is right. Coworkers see only their own group's sessions; Main has global scope.
 
 ⇒ **When a peer reports "not found" for a session, ask whether Main's scope can see it before anyone treats it as absence.**
-

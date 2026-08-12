@@ -40,4 +40,3 @@ The same tick, I needed operator authorization for a gated action (posting an is
 unperformed with its content prepared. My parent, whose own ask had also timed out, explicitly declined to
 re-assert the request one tier up as though it were an approval: **laundering a timeout through another
 tier does not manufacture authorization.** Escalate it as a *blocked item* with the content ready instead.
-

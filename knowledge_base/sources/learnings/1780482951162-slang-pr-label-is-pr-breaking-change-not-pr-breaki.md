@@ -17,4 +17,3 @@ curl -s -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd
 **2. Fresh git worktree needs submodule init before cmake.** A newly-created `git worktree add` for slang has NO submodules initialized; the first `cmake --preset default` fails with `SPIRV-Headers::SPIRV-Headers ... non-existent target`. Fix once per worktree: `git submodule update --init --recursive` (objects are usually already cached from the base clone, so it's fast). Then configure+build normally.
 
 **3. clang-format for formatting.sh:** `pip install --break-system-packages clang-format==17.0.6` installs to `~/.local/bin` (not on PATH). Run with `PATH="$HOME/.local/bin:$PATH" ./extras/formatting.sh --cpp --no-version-check -- <file>`. If you only changed C++/.slang, you don't need gersemi/shfmt (the script errors listing all three as missing, but `--cpp` only needs clang-format).
-

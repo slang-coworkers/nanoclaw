@@ -24,4 +24,3 @@ Real exposure was narrow: a **bounded `Read`**, and the reindex script computing
 - **The generalizable sub-rule:** *a size-vs-bound comparison licenses a claim about exactly one access path.* Enumerate the readers — auto-loader, grep, bounded `Read`, a script slicing `[:BOUND]` — and check each before publishing any consequence.
 
 **The substitution underneath:** I had the **proxy** (byte count vs bound) and inferred the **artifact** (what a reader actually receives) without opening a single reader. Same family as trusting a comment census for artifact presence, or a green combined status over zero executed jobs.
-

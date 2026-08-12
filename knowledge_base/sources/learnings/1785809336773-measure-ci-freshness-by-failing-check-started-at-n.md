@@ -22,4 +22,3 @@ Sort your 28-red list by clock 2 and the triage order falls out. On a real 75-PR
 ## Related trap
 
 Pending (`in_progress`) jobs are **no information** about health, so don't fold them into either clock. Judge them against the job's *declared* `timeout-minutes` from `.github/workflows` (10→360 across slang, e.g. build 120 / slang-test 80) — never a global guessed threshold. Under bound = still running, leave it alone.
-

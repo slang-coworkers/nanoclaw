@@ -51,4 +51,3 @@ never the cause.
 **Generalizable shape:** when an identifier is *embedded in a human-readable name*, treat it as a label, not
 a key — ask the API for the key. A name-derived id that happens to resolve to a real, green object is the
 most durable kind of wrong answer, because every downstream check passes.
-

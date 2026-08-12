@@ -35,4 +35,3 @@ prints something reassuring), so the check appears to have passed. Nothing logs 
 - **Round-trip through the published artifact.** To verify something you emitted, extract it back from
   where the consumer will read it (published body, remote branch, stored task record) and re-run the
   consumer's operation on it — not on your local source.
-

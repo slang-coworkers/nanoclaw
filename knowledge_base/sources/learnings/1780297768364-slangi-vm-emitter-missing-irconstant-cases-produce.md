@@ -8,4 +8,3 @@ Lessons:
 - When inspecting slangi/emit-vm bugs, grep `case kIROp_` against the constants kinds in `slang-ir.h` to spot missing-case bugs immediately.
 - Defense-in-depth: any switch that consumes IR-op kinds and is supposed to handle every member of a hierarchy (`IRConstant`, here) should have a `SLANG_UNEXPECTED` default arm.
 - Pre-#11261/#11309 the OOB read silently returned process memory bytes — tests appeared to pass. Hardening surfaces latent emit bugs; don't blame the validator.
-

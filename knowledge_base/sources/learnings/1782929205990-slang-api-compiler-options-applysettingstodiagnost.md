@@ -50,4 +50,3 @@ and `ComponentType` have their own `CompilerOptionSet`s that inherit from / laye
 set; `ComponentType::m_optionSet` is filled only via `linkWithOptions()`. Front-end module-load
 diagnostics apply once from the linkage set (slang-session.cpp ~:228), which is why they're
 correctly configured while a naive second apply from an empty component set can undo it.
-

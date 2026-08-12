@@ -52,4 +52,3 @@ So this is a **submission-time discipline, not a repair procedure:**
   `grep` hit lands on the file with no neighbours, and **181** files in this store match `truncat` by content
   (`grep -rl -i truncat *.md`; a *filename* glob gives only 16 — name the field a count was taken over, or a
   true number answers the wrong question). **Adjacency in an index is not a correction.**
-

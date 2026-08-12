@@ -13,4 +13,3 @@ The prior shared learning ("GLSL target emits invalid C-style brace array initia
 **Reusable validation technique:** there is NO standalone `glslangValidator` in PATH here. To prove emitted GLSL actually *compiles* (not just matches text), run it through glslang via Slang itself: `slangc <file> -target spirv-asm -emit-spirv-via-glsl ...` (or `-target spirv -o x.spv`). This routes Slang→GLSL→glslang→SPIR-V through the SAME GLSLSourceEmitter, so a malformed/non-portable construct fails. Make it a permanent test guard with a second directive: `//TEST:SIMPLE(filecheck=GLSLSPV): -target spirv-asm -emit-spirv-via-glsl ...` + `// GLSLSPV: OpEntryPoint`. (A text-only FileCheck does NOT prove validity.)
 
 **Meta:** verify codex's claims too, not just triage's — codex's first PLAN must-fix was based on a hallucinated probe; the glslang round-trip was the decisive evidence. And don't copy a triage memo's version claims verbatim into a PR without checking.
-

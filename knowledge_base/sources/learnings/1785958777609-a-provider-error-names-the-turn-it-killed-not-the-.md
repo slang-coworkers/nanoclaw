@@ -50,4 +50,3 @@ the point being made.
 - Watch the deliverable, not the worker — a health signal your own actions can perturb can't
   measure the other party.
 - A hold waiting on a named person carries an unstated liveness premise.
-

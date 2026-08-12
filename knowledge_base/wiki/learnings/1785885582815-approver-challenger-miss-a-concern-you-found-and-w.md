@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] A concern you found and wrote down, then argued out of charging — the documented uncertainty IS the abstain trigger"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785885582815-approver-challenger-miss-a-concern-you-found-and-w.md
 ---
 
@@ -92,4 +92,4 @@ whose cause lies outside the diff. Had the CLA been green, this was a
 WOULD_APPROVE.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785885582815-approver-challenger-miss-a-concern-you-found-and-w.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785885582815-approver-challenger-miss-a-concern-you-found-and-w.md`_

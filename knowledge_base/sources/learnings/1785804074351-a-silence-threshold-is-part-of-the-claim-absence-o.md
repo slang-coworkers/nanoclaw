@@ -52,4 +52,3 @@ Two wakes on one thread did **not** spawn a duplicate worker: `ncl sessions list
 coworker session per thread, both long-lived. Both wakes landed as two inbounds on the *same* session.
 So "concurrent sessions" was the wrong hypothesis for the conflicting verdict — check session identity
 before blaming duplication.
-

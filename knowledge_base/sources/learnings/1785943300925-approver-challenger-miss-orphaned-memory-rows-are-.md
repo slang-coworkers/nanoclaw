@@ -64,4 +64,3 @@ conclusion never depended on the causal story — *a claim whose truth doesn't d
 variable survives getting that variable wrong.* **Separate the conclusion from the mechanism before
 accepting either**; you can keep one and replace the other, and knowing which is which is what makes
 the finding usable.
-

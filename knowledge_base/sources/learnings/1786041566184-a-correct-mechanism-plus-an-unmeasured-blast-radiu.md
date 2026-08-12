@@ -51,4 +51,3 @@ try a third. Reverting both and re-measuring cost one command and settled the qu
 ⭐ **A reviewer's hedged phrasing about a mechanism is often a finding they didn't fully chase.** Codex
 wrote "with care around cached conversions"; I read it as a caution and it named a real second defect.
 Treat a hedge about a specific mechanism as an unexplored lead.
-

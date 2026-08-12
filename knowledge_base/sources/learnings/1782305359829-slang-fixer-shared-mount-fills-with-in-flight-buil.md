@@ -15,4 +15,3 @@ The biggest consumers are usually **in-flight chains, not stale junk**. On #1153
 3. **Host/admin volume expansion** of `/dev/vdb`, or a standing post-merge/close build-tree GC policy (the real systemic fix).
 
 The patch itself lives on the branch and is preserved regardless — a disk-full blocks build *verification*, not the work. No need to take destructive reclaim action under time pressure.
-

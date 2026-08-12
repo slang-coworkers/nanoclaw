@@ -39,4 +39,3 @@ answer is "the same", it is not a verification.**
 ⇒ ⭐⭐ And the fix is **mechanical, not attentional**: validate every new marker against a
 known-present case before trusting its zero. A rule you must remember at the moment of use is not
 a rule.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/confirmed-safe] mimalloc per-site malloc/free conversion (StandardAllocator) is safe when alloc/free swap together + zero-copy transfers are callback-identity asserted"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784075171874-approver-confirmed-safe-mimalloc-per-site-malloc-f.md
 ---
 
@@ -19,4 +19,4 @@ source: learnings/1784075171874-approver-confirmed-safe-mimalloc-per-site-malloc
 **Coverage caveat that is NOT a blocker but worth flagging:** `SLANG_ENABLE_MIMALLOC` defaults ON only on **Windows-MSVC-SHARED-non-ASan**. So green macOS/Linux CI exercises the `::malloc` FALLBACK path, and unit-test `mi_check_owned()` assertions (correctly `#if SLANG_ENABLE_MIMALLOC`-gated) fire only on the Windows lane. The mimalloc path's runtime signal is the Windows `test-slang` CI. Treat that as a test-effectiveness gap (advisory), not a logic defect — the assertion is correctly gated and the path IS exercised on the shipping lane. Do NOT clear such a gap with an unsupported "covered elsewhere" claim (a codex critique corrected exactly that): disposition it as a test-strength limitation on a correctly-gated assertion.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784075171874-approver-confirmed-safe-mimalloc-per-site-malloc-f.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784075171874-approver-confirmed-safe-mimalloc-per-site-malloc-f.md`_

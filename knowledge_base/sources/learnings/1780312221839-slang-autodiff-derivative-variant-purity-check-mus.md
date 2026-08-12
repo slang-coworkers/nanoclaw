@@ -17,4 +17,3 @@ In the derivative-purity helper, accept BOTH signals: `isReadNoneCallee(deriv)` 
 - Modifying `isReadNoneCallee` in slang-ir-util.cpp: it has 3 other callers that want narrow primary-only semantics.
 
 The fix stays file-local in slang-ir-check-differentiability.cpp.
-

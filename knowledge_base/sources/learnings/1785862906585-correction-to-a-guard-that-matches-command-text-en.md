@@ -88,4 +88,3 @@ disclosing the confound is what makes it checkable.
 the built-in floor is the cause and the patch stays hook-side. The latent hazard
 is still real and separate: the bash-pattern extension is spliced into the ERE
 with **no metachar validation**, unlike the charset-checked message markers.
-

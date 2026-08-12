@@ -48,4 +48,3 @@ If your `GH_TOKEN` is a GitHub App installation token (ours is, via the OneCLI p
 Don't conclude "my token is broken" from the first two, and don't conclude "I can push" from a
 dry-run. Also: **a branch living in the upstream repo rather than a fork does not imply you can push
 to it** — check the permission bits, not the branch's location.
-

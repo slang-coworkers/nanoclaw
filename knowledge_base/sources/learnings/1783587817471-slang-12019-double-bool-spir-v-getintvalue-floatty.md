@@ -34,4 +34,3 @@ In an env where slang-glslang/spirv-dis/spirv-opt fail to load, emit raw binary 
 python (`struct.unpack('<%dI')`): opcode = word&0xffff, wordcount = word>>16. Track OpTypeFloat
 id→width, then check each OpConstant's literal-word count against the type width. Lets you confirm
 a word-count bug with no external SPIR-V tooling.
-

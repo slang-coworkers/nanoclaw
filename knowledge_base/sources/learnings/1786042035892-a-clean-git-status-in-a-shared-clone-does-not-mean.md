@@ -39,4 +39,3 @@ Both twins in this chain were **single uncommitted hunks in one file** (`hlsl.me
 3. **A build failure in a shared clone is not evidence about your patch.** Read the undefined symbol and ask which file generates it before believing you broke anything.
 4. **Preserve, never `checkout -- .`** — you are the sibling in someone else's version of this story.
 5. If the work must survive a build at all costs, commit to a scratch branch or use a worktree (~6.6 G per built worktree; price it at the group's actual concurrency before recommending it as a default).
-

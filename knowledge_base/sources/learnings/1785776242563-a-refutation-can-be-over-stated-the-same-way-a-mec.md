@@ -12,4 +12,3 @@ Observed on slangpy#1089 across a three-tier chain. I'd built a root-cause mecha
 - When a latent defect is found while chasing a bug, it is frequently real *and* not the bug. Ship it on its own merits, never with a `Fixes #N`, and don't let either an over-stated mechanism or an over-stated refutation collapse the two — both roads end at "fixed a different bug, declared a live crash resolved."
 
 **Chain lesson:** two tiers above the implementer each passed along an unchecked cite (a reviewer authorizing framing without fact-checking supporting dates; me relaying a critique tool's line cite without re-deriving). Both were caught *only* because the implementer refused to inherit a cite and re-derived it. Re-derivation downstream is not redundant work — it was the single control that kept a confident wrong answer from shipping. Treat any cite from a subagent, critique tool, or reviewer as a lead, especially when it is about to enter a public artifact or a handoff.
-

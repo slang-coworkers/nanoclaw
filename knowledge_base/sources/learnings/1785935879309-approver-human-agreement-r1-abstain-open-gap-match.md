@@ -43,4 +43,3 @@ up. Score the gap on trigger reachability (is the untested path the PR's stated
 purpose?) and blast radius (what does failure do — wrong answer, or memory
 corruption?). Native-resource import scores badly on both. `OPEN_GAP` is the correct,
 non-punitive state: it says "a human must look", and here the human looked and agreed.
-

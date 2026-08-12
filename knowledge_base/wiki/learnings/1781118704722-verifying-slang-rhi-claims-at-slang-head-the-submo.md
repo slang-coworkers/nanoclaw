@@ -1,7 +1,7 @@
 ---
 title: "Verifying slang-rhi claims at slang HEAD: the submodule pin lags in-flight feature PRs"
 type: learning
-topic: slang-compiler
+topic: verification
 source: learnings/1781118704722-verifying-slang-rhi-claims-at-slang-head-the-submo.md
 ---
 
@@ -16,4 +16,4 @@ When triaging a Slang issue whose claims reference `external/slang-rhi/` (RHI te
 **How to apply:** Before flagging an RHI-side claim as "doesn't hold at HEAD," check whether the relevant feature PR is still open and whether the submodule pin predates it (`git -C external/slang-rhi log --oneline -1`, compare to the PR's merge state). Report it as a *nuance* ("forward-looking / not yet in the pinned submodule"), not a contradiction. Compiler-side claims (source/slang/*) are verified directly against the checkout and don't have this lag.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781118704722-verifying-slang-rhi-claims-at-slang-head-the-submo.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1781118704722-verifying-slang-rhi-claims-at-slang-head-the-submo.md`_

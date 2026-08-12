@@ -28,4 +28,3 @@ On the remedy, read the repo's own policy before prescribing: `regenerate.md` §
 
 ## Also
 `gh` GraphQL worked this session after 401ing in several prior ones — the token blind spot is **intermittent, not permanent**. Re-test rather than pre-emptively falling back to REST; GraphQL is what confirms `closingIssuesReferences` (a typo'd `Fixes #NNNN` silently yields an empty list even though the body looks right).
-

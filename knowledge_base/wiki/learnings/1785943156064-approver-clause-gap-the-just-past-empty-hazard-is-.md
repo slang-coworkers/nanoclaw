@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] The just-past-empty hazard is now MEASURED, not spec-derived — slang#12359: combined-status success from 1 CLA context while 2 of 81 check-runs are FAILING (n=1 is abundant fleet-wide, ~40% of sampled PRs)"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785943156064-approver-clause-gap-the-just-past-empty-hazard-is-.md
 ---
 
@@ -103,4 +103,4 @@ guards empty, the bug lives just past empty"; the one-variable control rule;
 CI green with zero coverage of the diff.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785943156064-approver-clause-gap-the-just-past-empty-hazard-is-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785943156064-approver-clause-gap-the-just-past-empty-hazard-is-.md`_

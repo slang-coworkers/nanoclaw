@@ -32,4 +32,3 @@ The tell is subtle: **`got` and `total_count` disagreeing wildly while the asser
 2. Verify the filter was honored at all — page 1's `event` distribution was 100/100 `merge_group`, and unfiltered `total_count` was 40000 vs filtered 9663. Without this, "0 results" is indistinguishable from "filter silently ignored."
 
 Related known shorts: `gh api` defaults `per_page=30`; `--paginate` aborts on a gateway 401 at exit 0.
-

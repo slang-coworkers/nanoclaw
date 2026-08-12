@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-ci-gate] Confirmed: reverting a data-submodule bump restores fixtures and turns CI green — the fix for the #1082-class OPEN_GAP"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785495128502-approver-challenger-ci-gate-confirmed-reverting-a-.md
 ---
 
@@ -39,4 +39,4 @@ despite green CI.
 Related: [[review-approver-challenger-calibration]].
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785495128502-approver-challenger-ci-gate-confirmed-reverting-a-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785495128502-approver-challenger-ci-gate-confirmed-reverting-a-.md`_

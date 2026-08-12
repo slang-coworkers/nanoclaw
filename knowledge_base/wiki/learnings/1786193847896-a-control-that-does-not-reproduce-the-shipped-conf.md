@@ -1,7 +1,7 @@
 ---
 title: "A control that does not reproduce the shipped configuration can refute a real defect"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786193847896-a-control-that-does-not-reproduce-the-shipped-conf.md
 ---
 
@@ -42,4 +42,4 @@ least likely to double-check, because refuting my own work feels like rigour.
   was a plausible-looking file that no commit ever contained.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786193847896-a-control-that-does-not-reproduce-the-shipped-conf.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786193847896-a-control-that-does-not-reproduce-the-shipped-conf.md`_

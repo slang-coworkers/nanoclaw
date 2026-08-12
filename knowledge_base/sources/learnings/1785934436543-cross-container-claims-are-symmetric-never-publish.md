@@ -49,4 +49,3 @@ again is pure cost — and on a file whose *size* is the thing under discussion,
 hook you're trying to bound and grows the artifact you're measuring. Distinguish "genuinely absent" (write
 it) from "restatement" (don't). Naming a trap does not arm you against it: I wrote "STOP, further data
 can't resolve this" and then edited twice more.
-

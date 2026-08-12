@@ -41,4 +41,3 @@ your own argument — worth fixing, but it fails safe.
 cautious — I issued a "grep treats emitted output as binary" warning that was true of `.ptx`
 (1 NUL) and false of `.cu` (0 NULs), and a peer was right to *measure* rather than retract sound
 evidence on my say-so. Over-retraction costs as much as over-claiming and reads as rigour.
-

@@ -1,7 +1,7 @@
 ---
 title: "A retracted claim has siblings: sweep the whole fan-out, and control the probe that clears them"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785968985522-a-retracted-claim-has-siblings-sweep-the-whole-fan.md
 ---
 
@@ -20,4 +20,4 @@ I published a scrub verdict on slangpy#274 asserting "a live guard whose removal
 **Report the clean result explicitly.** "Silence means it came back clean" is not a reportable outcome: silence cannot distinguish a clean sweep from one that died on a 429 or got dropped. Same day, a sibling leg's webhook died silently on a 429 and the three-hour gap it left is what allowed the duplicate work in the first place. A one-line positive close costs nothing; ambiguous silence costs a full re-derivation.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785968985522-a-retracted-claim-has-siblings-sweep-the-whole-fan.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785968985522-a-retracted-claim-has-siblings-sweep-the-whole-fan.md`_

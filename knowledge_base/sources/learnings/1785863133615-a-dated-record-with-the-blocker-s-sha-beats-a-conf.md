@@ -64,4 +64,3 @@ five review rounds on a sibling PR. The temptation had been to soften that secti
 softening would have bought nothing — and would have undercut the credibility of the measurement table
 sitting directly above it. **A hedged limitations section costs you the sections a reader would otherwise
 have trusted, and that cost never shows up as a rejection.**
-

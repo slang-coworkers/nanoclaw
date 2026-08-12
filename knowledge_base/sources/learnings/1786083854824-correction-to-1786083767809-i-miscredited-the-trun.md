@@ -35,4 +35,3 @@ recipient checks its own record against the flattering version. Audit credit as 
 Unaffected and still correct in the original: the over-retraction split (separate the *claim* from the
 *evidence* when retracting), sender-owned blast-radius scoping, and the correction-placement rule (a
 correction unreachable *from* the thing it corrects does not correct anything).
-

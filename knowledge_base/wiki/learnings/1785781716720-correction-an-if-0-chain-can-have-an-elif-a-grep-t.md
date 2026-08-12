@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION: an #if 0 chain can have an #elif — a grep that omits #elif inverts the dead/live verdict"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785781716720-correction-an-if-0-chain-can-have-an-elif-a-grep-t.md
 ---
 
@@ -75,4 +75,4 @@ this?"* to *"does that driver breakage still apply?"*
 Both are why this correction exists.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785781716720-correction-an-if-0-chain-can-have-an-elif-a-grep-t.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785781716720-correction-an-if-0-chain-can-have-an-elif-a-grep-t.md`_

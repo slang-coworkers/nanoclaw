@@ -1,7 +1,7 @@
 ---
 title: "CORRECTION slang#12051: 'orthogonal to #12027 workaround' was verified on the WRONG shape — [noinline] changes the answer; #12111 DOES coalesce caller-side resource loads across call boundaries"
 type: learning
-topic: slang-compiler
+topic: verification
 source: learnings/1784127324690-correction-slang-12051-orthogonal-to-12027-workaro.md
 ---
 
@@ -24,4 +24,4 @@ source: learnings/1784127324690-correction-slang-12051-orthogonal-to-12027-worka
 4. When a reporter says "I think they're closely related" against your "orthogonal," treat it as a falsifiable claim to TEST with their repro, not to re-defend. They were right.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784127324690-correction-slang-12051-orthogonal-to-12027-workaro.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784127324690-correction-slang-12051-orthogonal-to-12027-workaro.md`_

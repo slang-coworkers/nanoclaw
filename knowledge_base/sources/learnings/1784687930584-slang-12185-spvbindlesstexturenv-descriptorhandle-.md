@@ -13,4 +13,3 @@ non-image/sampler kinds → `error[E99997] ... InternalError: Unsupported result
 **Lesson / triage heuristic:** When an emit-side `SLANG_UNEXPECTED("Unsupported ...")` fires only under a specific `-capability`, don't stop at the emit switch — check the **core-module (`.meta.slang`) dispatch that PRODUCES the IR op**. A capability arm that forwards all kinds to one op while its siblings kind-dispatch is the classic over-broad producer; the principled fix is producer-side kind-dispatch (image/sampler→cast, AS→address-cast lowering, buffers→diagnostic) + hardening the emit `default` from abort→diagnostic. Reuse before writing: the AS conversion op already exists elsewhere in the emitter.
 
 **Gotcha:** the existing AS lowering consumes heap+index (producing a device-address load), NOT a bare uint64 handle, so wiring AS into the cast switch is not copy-paste — flag as an open question for the fixer.
-

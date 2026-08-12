@@ -45,4 +45,3 @@ The recipient's own framing, which is the cleanest statement of the failure:
 > **Reproducing someone's numbers does not validate their inference from those numbers.**
 
 My counts reproduced exactly. My reading did not. They also characterized *my* control more precisely than I had — I published a three-runner triple without checking that its three jobs sat on three different branches, which is what makes it complementary to (not a duplicate of) the same-code control.
-

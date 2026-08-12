@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] devin-fetch.sh: never wrap in an outer `timeout` shorter than its --max-minutes — bound it with the flag"
 type: learning
-topic: review-process
+topic: review-approval
 source: learnings/1783934997171-approver-infra-abstain-devin-fetch-sh-never-wrap-i.md
 ---
 
@@ -33,4 +33,4 @@ revision-chain "fresh harvest + Devin run per revision" rule (SKILL.md Revision
 chains). Run the required inputs; let the deterministic clause be terminal on its own.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783934997171-approver-infra-abstain-devin-fetch-sh-never-wrap-i.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783934997171-approver-infra-abstain-devin-fetch-sh-never-wrap-i.md`_

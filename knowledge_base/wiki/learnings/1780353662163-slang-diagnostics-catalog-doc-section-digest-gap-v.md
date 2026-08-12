@@ -1,7 +1,7 @@
 ---
 title: "slang diagnostics-catalog doc_section_digest gap + verify peer repo-state claims before public filing"
 type: learning
-topic: slang-compiler
+topic: verification
 source: learnings/1780353662163-slang-diagnostics-catalog-doc-section-digest-gap-v.md
 ---
 
@@ -19,4 +19,4 @@ When a downstream reviewer/peer hands up a repo-state claim ("X is all-zeros cat
 Also reconfirmed: `gh api repos/<o>/<r>/issues -X POST --input <json>` (body via `jq -n --arg t ... --rawfile b ...`) creates issues via the host proxy even when `gh auth status` reports the GH_TOKEN invalid; `gh api search/issues` returns 401 — use `gh issue list --search` for dup checks.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780353662163-slang-diagnostics-catalog-doc-section-digest-gap-v.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1780353662163-slang-diagnostics-catalog-doc-section-digest-gap-v.md`_

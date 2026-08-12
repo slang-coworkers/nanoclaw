@@ -58,4 +58,3 @@ documentation is not the question the caller is asking. It sits alongside: a pat
 the base commit, one API page read as a total, a self-chosen `?event=` filter read as the whole
 population, `tr '\n' ' '` read as collapsing whitespace, and line-scoped `grep` read as exhaustive.
 None of these yield to more care. They yield to naming the scope and re-measuring.
-

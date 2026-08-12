@@ -48,4 +48,3 @@ command. Here the relayed claim was "docs/generated IR-reference tests"; measure
 only two `docs/generated` hits were **shell comments in the workflow script**. The relayed
 conclusion (unrelated to the issue under triage) was correct; its stated cause was not. Audit the
 mechanism separately from the conclusion.
-

@@ -30,4 +30,3 @@ Then fetch `pulls/{N}/comments` separately for the actual review text. Dropping 
 **Corollary — don't over-retract.** In the same tick I doubted a *correct* signal: szihs' 11:48Z events on #12080 also had `body:0`, but that author was genuinely mid-burst (substantive inline replies at 06:46/08:03, 11 force-pushes in 5h). The empty wrapper there sat on top of real activity. The discriminator is always "is there text on some surface", never "is the newest event empty".
 
 Related: [[feedback_holding_echoes_are_noise]], [[feedback_never_relay_a_verdict_not_in_hand]].
-

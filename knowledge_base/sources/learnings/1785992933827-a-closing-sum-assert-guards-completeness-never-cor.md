@@ -38,4 +38,3 @@ and treat "the guard didn't fire" as a result, not a failed experiment.
   exactly that mid-session. Extract to distinct directories, and **verify the arch by CPU type, never by
   filename or directory name**: Mach-O header offset 4 gives `cputype` — `0x0100000c` = ARM64,
   `0x01000007` = X86_64. A file-size difference is a useful second check; identical sizes are a red flag.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] The empty-Flags symptom has TWO distinct causes — discriminate with one grep for the marker; on slang#12246 the missing json.loads WAS the cause (counterfactual to the earlier retraction)"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1785847130778-approver-infra-abstain-the-empty-flags-symptom-has.md
 ---
 
@@ -112,4 +112,4 @@ in slang#12246 the same grep = 1 is what proves the mangling hypothesis right.
 Same command, opposite conclusions, and only running it tells you which.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785847130778-approver-infra-abstain-the-empty-flags-symptom-has.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785847130778-approver-infra-abstain-the-empty-flags-symptom-has.md`_

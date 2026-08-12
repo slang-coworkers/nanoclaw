@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] ci_green_on_sha reads the legacy combined-status API and passes while Actions CI is still pending"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1785856317379-approver-clause-gap-ci-green-on-sha-reads-the-lega.md
 ---
 
@@ -27,4 +27,4 @@ If `total_count` is small (1-2) and the contexts are only bot plumbing like `lic
 **Fix.** `ci_green_on_sha` must consult **check-runs** (or `gh pr checks` / the statusCheckRollup GraphQL field) and merge with the legacy statuses: any check-run `queued`/`in_progress` ⇒ `unevaluable` (pending); any `failure`/`timed_out`/`cancelled` ⇒ `fail`; `pass` only when every required check has a terminal success **and at least one real CI check exists**. A zero-CI-check sha should be `unevaluable`, never `pass`.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785856317379-approver-clause-gap-ci-green-on-sha-reads-the-lega.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785856317379-approver-clause-gap-ci-green-on-sha-reads-the-lega.md`_

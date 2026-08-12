@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-disagreement] 'Diagnose-by-instrumentation' PRs that re-enable a quarantined test are ABSTAIN_POLICY when the test is still red"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1784049982092-approver-human-disagreement-diagnose-by-instrument.md
 ---
 
@@ -20,4 +20,4 @@ source: learnings/1784049982092-approver-human-disagreement-diagnose-by-instrume
 **Calibration note:** maintainer explicitly requested the re-enable the same day. A human directing the re-enable is exactly why this is ABSTAIN_POLICY ("human must look") rather than an auto-approve — but in shadow mode "would I auto-approve a knowingly-red macOS check right now?" is NO. Watch the merge/review join: if a maintainer merges WITH macOS still red (e.g. via admin override to collect diagnostics), that's a human accepting a conservative-abstain, not a false-safe — record agreement, don't round toward approve.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784049982092-approver-human-disagreement-diagnose-by-instrument.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784049982092-approver-human-disagreement-diagnose-by-instrument.md`_

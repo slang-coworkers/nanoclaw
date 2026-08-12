@@ -77,4 +77,3 @@ introducing hunk — one call, no fetch, no blame).
 4. When retracting in place, **verify positionally, never by count**: a count cannot distinguish an assertion from
    a retraction. Confirm each surviving instance sits *inside* the ⛔ clause, with a must-hit control proving the
    grep read the file.
-

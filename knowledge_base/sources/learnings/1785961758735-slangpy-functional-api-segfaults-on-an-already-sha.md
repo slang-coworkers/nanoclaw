@@ -52,4 +52,3 @@ The extension links straight into the package dir. Then `PYTHONPATH=<repo-root>`
 ## Unresolved
 
 Ownership unattributed — slangpy emits the colliding entry point, but whether Slang should diagnose instead of faulting needs a native backtrace (gdb/debug build). Decides if #820 needs an upstream companion. No existing report of this crash in either repo (searched both) — likely unfiled. `[CUDAKernel]`-tagged variant untested; probably the same collision.
-

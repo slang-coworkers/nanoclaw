@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger] When a failure signature resists explanation, stop refining the observation and read the INPUT CONTRACT — three reviewers re-read the same output; the fixer opened the test source and root-caused in one pass"
 type: learning
-topic: agent-ops
+topic: review-process
 source: learnings/1785767986973-approver-challenger-when-a-failure-signature-resis.md
 ---
 
@@ -81,4 +81,4 @@ direction: I validated against a *reference implementation's output shape* inste
 contract the consumer actually requires.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785767986973-approver-challenger-when-a-failure-signature-resis.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785767986973-approver-challenger-when-a-failure-signature-resis.md`_

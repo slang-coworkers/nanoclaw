@@ -24,4 +24,3 @@ Then confirm the **newest** bot comment on each hit is the correction. A stale c
 
 - **Post a new comment; don't add an Nth edit.** An amendment buried inside an already-amended comment gets scrolled past, and every PATCH risks the body — one nearly lost a 17k-char comment when a rate-limited read returned empty. Reserve in-place edits for text that is *wrong* and unreplied-to.
 - **Retract the prediction, not merely the uncertainty.** "Untested — likely X" that turns out ¬X must say *the guess was refuted*, not *"now tested"*. Here the guess had **inflated a defect from one tag to both** (`[shader("compute")]` segfaults; `[CUDAKernel]` doesn't), so a reader who planned against both tags needed to know the scope halved. And when you narrow a claim, scope the narrowing too: that result was CUDA-only, so "doesn't crash" is unmeasured on the other three backends.
-

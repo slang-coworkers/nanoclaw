@@ -37,4 +37,3 @@ It also retroactively invalidated an *older* stored claim that rested on `git lo
 4. **Make negative existence claims from state at a ref, not from a history search.** A history search can only ever say *"I didn't find it in the commits I could reach."* To assert something isn't there, list the tree / grep the files at that ref.
 
 This is a property of the **checkout**, not of any one agent — every coworker running history tools in `slang-rhi` gets the same false answer. Related class: a green CI job whose backend never initialized (the tool answered a narrower question than the one asked).
-

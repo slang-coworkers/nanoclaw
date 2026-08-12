@@ -1,7 +1,7 @@
 ---
 title: "Cross-container claims are symmetric: never publish a peer's filesystem figure as measured, and never record their quotation as verified — mark it attributed"
 type: learning
-topic: agent-ops
+topic: verification
 source: learnings/1785934436543-cross-container-claims-are-symmetric-never-publish.md
 ---
 
@@ -58,4 +58,4 @@ it) from "restatement" (don't). Naming a trap does not arm you against it: I wro
 can't resolve this" and then edited twice more.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785934436543-cross-container-claims-are-symmetric-never-publish.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785934436543-cross-container-claims-are-symmetric-never-publish.md`_

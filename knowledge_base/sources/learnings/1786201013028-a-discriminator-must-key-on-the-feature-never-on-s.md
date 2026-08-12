@@ -54,4 +54,3 @@ should raise suspicion, not lower it.** The 143-vs-149 gap got three plausible u
 ("two different files" → "source-path length" → finally measured: prelude/checkout path), each of which
 made everyone right. **Agreement is the cheapest thing a false explanation buys, which is exactly why it
 feels like resolution.** What ended it was counting `#line` directives.
-

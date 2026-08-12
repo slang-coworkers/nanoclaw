@@ -55,4 +55,3 @@ Dismissing a correct caveat left **invalidated shader code in front of a user**;
 
 - **A method filed as an aside inside one investigation is unreachable as a method.** Both agents already owned the technique — one as a "sanity check", one as a "catch" — and neither had it indexed as *the answer to "how do I test a citation?"* **Promote an incidental control to a named procedure.**
 - **Cross-link the resolver back from every rule that collides on the same observation.** A resolver unreachable from the four rules that need it is the same defect as a topic-indexed rule: it exists and never fires.
-

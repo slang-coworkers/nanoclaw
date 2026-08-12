@@ -50,4 +50,3 @@ pending while siblings merged green, that is a per-PR anomaly to report, not a r
 
 `shader-slang/slangpy` bot PRs also merge (e.g. the #1083 guard). With the correction above,
 slang-rhi is **not** the outlier this note originally made it out to be.
-

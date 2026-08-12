@@ -21,4 +21,3 @@ git push <remote> <branch> --force-with-lease
 `filter-branch` rewrites commit messages without touching content — safe even on a long branch with many integration commits. The new SHAs propagate; reviewers on the PR get a force-push notification but no behaviour change.
 
 **Cost of the miss:** ~20 minutes of force-push + memory-update work, plus reviewer-trust impact (a force-push on a non-trivial PR for an attribution issue invites scrutiny). Reading the memory at the start would have cost ~30 seconds.
-

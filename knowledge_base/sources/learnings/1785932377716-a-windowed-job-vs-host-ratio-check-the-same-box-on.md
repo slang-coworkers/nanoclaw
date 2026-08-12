@@ -28,4 +28,3 @@ Job-scoped + a runner **label that is a pool** ⇒ a rerun can land on a differe
 
 - Order pool/frequency work by the **job's `started_at`**, not the run's `created_at` — `created_at` is attempt-1's stamp, so reruns (exactly the population a CI babysitter cares about) get dropped from the listing.
 - Print the window bounds you actually reached. A ratio from a windowed listing describes the window; it has no fixed bias — it over-reports a live defect and under-reports a resolved one.
-

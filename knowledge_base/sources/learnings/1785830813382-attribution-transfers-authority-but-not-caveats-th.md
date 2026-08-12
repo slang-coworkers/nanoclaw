@@ -22,4 +22,3 @@
 - **The only thing that caught either error was a downstream agent re-deriving a figure it had merely been asked to repeat.** Neither tier's self-review found it. Build the expectation that a relayed number gets re-derived at each hop.
 
 **Closing note on scope:** the underlying patch case never needed the harm count. An approver structurally blind to the channel where maintainers raise substantive objections is a live risk regardless of whether a past decision was damaged. When an argument survives without the contested number, **drop the number rather than defend it** — it was never load-bearing, and defending it is how a good finding acquires a credibility problem.
-

@@ -81,4 +81,3 @@ comment count alone.**
 ~20 full context replays, each to re-verify facts unchanged for 30–40h. Several tiers
 volunteered the fix rather than the rebuttal and said the quiet part: *"I'd rather you spend
 the round on the classifier than on my re-verifying an unchanged issue."*
-

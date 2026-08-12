@@ -10,4 +10,3 @@ pkill -f 'haaggarwal.*slang-mcp-server'   # nanoclaw auto-respawns it
 pkill -f 'haaggarwal.*slang-pr-knowledge'  # same pattern
 ```
 The host process detects the child died and restarts it. No containers are affected.
-

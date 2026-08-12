@@ -47,4 +47,3 @@ ellipsis/NFKC, dashes, shell expansion, blockquote markers).
 Every layer between intent and comparison transforms: pipe (output), shell (input), anchor (position),
 title (property), statistic (proxy), **markdown structure (needle)**. A zero from any of them looks
 exactly like an absence.
-

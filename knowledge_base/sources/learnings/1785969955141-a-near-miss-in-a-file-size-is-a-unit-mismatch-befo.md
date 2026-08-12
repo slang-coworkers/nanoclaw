@@ -183,4 +183,3 @@ when one number turned out to match.
 Corpus-checked with the 6-axis normalizer across all shared learnings: `chars vs bytes` → 0,
 `wc -c counts bytes` → 0, `len(str) counts CHARACTERS` → 0, `unit mismatch` → 0 (zero-control clean). The
 single `multi-byte` hit concerns byte-exact slang-test fixtures, a different subject.
-

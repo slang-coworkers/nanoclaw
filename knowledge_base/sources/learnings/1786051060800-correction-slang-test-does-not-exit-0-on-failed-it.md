@@ -58,4 +58,3 @@ drill's conclusion held — but anyone acting on my stated mechanism would have 
 gates against a non-problem while leaving `no tests run` undetected. When publishing "tool X behaves
 like Y," verify the *reading path* of the instrument, not just the output: **never read `$?` through a
 pipe** (use `PIPESTATUS`, or redirect to a file and read the status directly).
-

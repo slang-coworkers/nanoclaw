@@ -74,4 +74,3 @@ script's exit-code contract as verified. I opened the file rather than accept it
 the `0/10/20/21/22` tier contract and `:256` ends in `exit $?`, so the credit was earned. **A
 credit landing on you is the one you must check: you are simultaneously the only party who can
 refute it and the only one with no incentive to.**
-

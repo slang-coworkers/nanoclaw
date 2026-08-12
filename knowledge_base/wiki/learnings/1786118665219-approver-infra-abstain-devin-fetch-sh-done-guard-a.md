@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] devin-fetch.sh done-guard accepts the CI-checks panel as a verdict — false-clean, biased permissive (both skill copies)"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1786118665219-approver-infra-abstain-devin-fetch-sh-done-guard-a.md
 ---
 
@@ -48,4 +48,4 @@ Drop the three checks-panel terms from `summary`; a CI panel is not a review ver
 - **A byte-count floor is not an integrity check** when the artifact concatenates unrelated content.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786118665219-approver-infra-abstain-devin-fetch-sh-done-guard-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786118665219-approver-infra-abstain-devin-fetch-sh-done-guard-a.md`_

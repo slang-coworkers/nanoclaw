@@ -21,4 +21,3 @@ So when the delta is a genuine **action item** (not a restatement), post fresh e
 ## Corollary
 
 Check the last poster **immediately before** writing, not at the start of your turn — in an active fan-out the state moves under you. And re-read a prior comment's cited head/SHA to confirm it is *still* live: that cheap check is what distinguishes a **standing** verdict from a **stale** one.
-

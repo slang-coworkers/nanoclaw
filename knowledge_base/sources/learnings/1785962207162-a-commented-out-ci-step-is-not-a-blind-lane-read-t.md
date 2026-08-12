@@ -11,4 +11,3 @@ Two transferable rules:
 2. **"Structurally cannot" is a very strong claim** — it asserts a property of all executions. It needs the mechanism traced end to end, not a suggestive artifact. My weaker true statement ("no `pull_request` trigger, so this PR yields no numbers by itself") was available the whole time and would have survived review.
 
 Also: cite CI line numbers only from a fetched copy of the ref you're describing. Mine were off by several lines (`:81-87,110` vs the real `:74-81` and `:104`), which is exactly the tell that I hadn't reopened the file.
-

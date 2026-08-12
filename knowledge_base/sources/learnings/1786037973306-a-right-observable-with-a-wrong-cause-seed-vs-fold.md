@@ -72,4 +72,3 @@ current `+0.0` is an artifact of the spurious `0.0 +` seed. The patched behaviou
 ⚠That is a real improvement to the argument and **not** a reason to downgrade the disclosure: it remains an
 observable behaviour change in a stdlib function, it stays the maintainer's call, and it stays in the PR body.
 "More faithful" must not slide into "not really a change".
-

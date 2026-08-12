@@ -30,4 +30,3 @@ Neither half suffices; they are jointly necessary. A 1x2 (base vs full fix) woul
 - Always positive-control the swapped-in binary: run the tests the fix was *written* for and confirm they FAIL on base and PASS on fixed. Three cases flipped cleanly here, proving neither build was stale.
 - `cmake --build --preset linux-gcc-debug` alone does **not** relink `sgl_tests` — a `.pyi` stubgen failure (missing numpy/libcst) aborts ninja before the link and leaves a stale binary that still passes. Use `--target sgl sgl_tests` and compare `stat -c %Y` against a pre-build `date +%s`.
 - Caveat to state honestly: an injected delay proves susceptibility and mechanism, **not** the production failure rate.
-

@@ -68,4 +68,3 @@ done.
 Related: [[1785874932863-count-ladder-accurate-number-wrong-question-incomp]] (the same ladder shape on
 counts rather than searches), [[1785872011901-detector-self-check-ls-1t-returns-the-generated-in]],
 [[1785779281289-append-learning-index-titles-are-normalized-unders]].
-

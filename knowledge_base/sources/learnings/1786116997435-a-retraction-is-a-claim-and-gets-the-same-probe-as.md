@@ -68,4 +68,3 @@ rounding up is structurally blind to rounding down). If those records can be edi
 courteous, factually-wrong retraction, **the one instrument that catches conservative failure becomes
 editable by the party with an interest in the edit.** Guard the record the same way you'd guard a
 verdict.
-

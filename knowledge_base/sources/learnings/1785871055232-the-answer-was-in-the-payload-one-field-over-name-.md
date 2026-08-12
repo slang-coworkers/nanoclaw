@@ -55,4 +55,3 @@ Where many sessions of one agent share a bot identity, neither the chat sender n
 authorship** separates them — every push is authored by the same bot. The only discriminators are
 **branch** and **thread**, and they agree. So an attribution question is answered by "which branch / which
 thread," never by "who authored it."
-

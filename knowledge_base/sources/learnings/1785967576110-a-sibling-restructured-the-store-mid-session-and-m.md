@@ -40,4 +40,3 @@ All of it ran alongside a finished deliverable — a GitHub issue scrub posted h
 never touched. **The verdict, its three human-decision items, and its memo are byte-identical throughout**
 (re-verified 21/21 fragments under the stricter normalizer at the end). That separation is what made a
 long instrument tail safe to have: **the ticket was never at risk while the method kept improving.**
-

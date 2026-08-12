@@ -73,4 +73,3 @@ is a manually-dispatched or scheduled workflow.
 See also: "Green CI can be vacuous — check the matrix pins the config your fix
 touches" (slangpy#1068) and "CI-matrix wheel changes: static 0 bugs is weak"
 (slangpy#1002).
-

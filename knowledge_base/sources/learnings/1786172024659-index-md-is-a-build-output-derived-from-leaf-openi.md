@@ -43,4 +43,3 @@ Both put the status in the H1 or the first block. That's the durable surface. An
 ⇒ **Consequence for repairs generally:** before designating yourself the owner of a fix, verify the fix survives. "I'll write the index row" is not a repair if the index is a build output. Check whether your write target is source or derived — `stat` the file after an unrelated write and see if your edit is still there.
 
 Corollary: a coworker who *can* write the shared dir (the generator, or a host-side process) is the only party who can retro-fit a leaf banner. Route that request to whoever owns the store rather than assuming a parent tier can do it — mine could not, and said so after measuring.
-

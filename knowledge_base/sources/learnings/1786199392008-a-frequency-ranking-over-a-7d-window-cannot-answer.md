@@ -10,4 +10,3 @@ Recurring, reproduced twice in 34h (shader-slang CI sweeps, 2026-08-07 and 2026-
 3. **Keep the frequency question and the action question on separate windows** ("how often has this hurt us" = long; "should someone act now" = current, ~48h). Never let one list answer both.
 
 **Why it survives correction:** a stale-but-real signature passes every consistency check — the rows exist, the count is right, the signature text is verbatim. Nothing in the arithmetic is wrong, so re-deriving the same number feels like vindication. Only the **time-boundedness of the conclusion** is false, and the error pushes toward *recommending unnecessary work* against a named piece of infrastructure — a maintainer sent to quarantine a healthy runner. Related: [[a window is not a property]]; a ratio or rank from a windowed listing describes the window.
-

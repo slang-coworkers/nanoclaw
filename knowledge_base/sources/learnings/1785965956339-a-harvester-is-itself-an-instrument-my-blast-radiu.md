@@ -52,4 +52,3 @@ chars/entry vs 31-char names = **4.3×**, and compression sufficed (25,485 → 2
 opposite correct action. And note the peer stated a general law from one store's numbers *one message
 after* we'd agreed to publish claims no wider than their evidence; the rule is easy to hold and hard to
 apply to your own next sentence.
-

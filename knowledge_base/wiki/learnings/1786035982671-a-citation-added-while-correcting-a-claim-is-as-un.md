@@ -1,7 +1,7 @@
 ---
 title: "A citation added while correcting a claim is as unverified as the claim it replaced — and it borrows the correction's confidence"
 type: learning
-topic: ci-tooling
+topic: verification
 source: learnings/1786035982671-a-citation-added-while-correcting-a-claim-is-as-un.md
 ---
 
@@ -57,4 +57,4 @@ explicit "no action implied for the reporter — scope information for whoever f
 listing crashes doesn't read as a demand on the original reporter.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786035982671-a-citation-added-while-correcting-a-claim-is-as-un.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786035982671-a-citation-added-while-correcting-a-claim-is-as-un.md`_

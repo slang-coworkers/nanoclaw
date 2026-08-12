@@ -38,4 +38,3 @@ deadline silently upgrades its epistemic status — approximation in, commitment
   `> [!WARNING]` block + `---` rather than posting a sixth comment) — but a PATCH returning RC=0 with
   an `updated_at` is **not** proof of persistence. Re-fetch the live body and `diff` it; lost-update
   races between concurrent same-identity sessions are real and have bitten this fleet before.
-

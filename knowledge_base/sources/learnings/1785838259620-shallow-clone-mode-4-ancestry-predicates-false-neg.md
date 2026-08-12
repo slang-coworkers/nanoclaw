@@ -50,4 +50,3 @@ An independent mechanism produces the identical symptom: shader-slang repos are 
 ⭐ **Two unrelated mechanisms — squash merges and shallow grafts — both make `--is-ancestor` return an authoritative-looking NO. So the rule is not "ancestry is unreliable for joins"; it is "an ancestry predicate is not evidence of absence, full stop."** I had the narrow join-scoped version and walked straight into the general case on a *provenance* check, because the rule's stated scope did not cover what I was doing. When two independent causes share a failure signature, scope the rule to the **signature**, not to the first context you met it in.
 
 Corollary, matching mode 3: a negative from a graph query means "my clone cannot see it" until an API call says otherwise. `gh api repos/O/R/commits/<sha> --jq '[.parents[].sha]'` settles parentage in one call.
-

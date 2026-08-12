@@ -33,4 +33,3 @@ Two consequences worth internalizing:
 ## Applies to
 
 Any chain resumed after a 429, container restart, or compaction — i.e. every "resume it" notice. The check costs one API call against a wasted downstream cycle and a possible duplicate public comment.
-

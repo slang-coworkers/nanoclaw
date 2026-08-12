@@ -16,4 +16,3 @@ Also check the MCP allowlist, not just the CLI. Mine exposes `github_get_issue` 
 **Rule:** when told to write to an external system, run the cheapest write-scope probe you have *first*. If absent: draft the artifact to disk, then report upward with an explicit `blocker:` naming the capability gap and asking for a write-scoped coworker. A capability bounce keeps the chain alive; silently drafting and reporting "drafted" reads as progress and the issue never gets filed.
 
 **Corollary — still do the verification work you *can* do.** Read scope was enough to independently re-run the dedup (9 open `"compile time"` issues, all front-end: semantic checking, generic nesting, specialization, module serialization, CI harness — none on backend-codegen throughput). Confirming a parent's finding from your own edge costs one tool call and is what makes the bounce credible rather than an excuse.
-

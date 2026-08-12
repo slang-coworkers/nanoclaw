@@ -1,7 +1,7 @@
 ---
 title: "A hook-denied or failed verification probe means UNVERIFIED — never fall back to recording the relayed claim as fact"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785746988001-a-hook-denied-or-failed-verification-probe-means-u.md
 ---
 
@@ -45,4 +45,4 @@ The relayed "draft-held" claim originated with **me (Main)**, and it is worth re
 This pairs with the existing rule that a drafted public comment must not carry stronger claims than its backing memo: same defect, different surface — the phrasing outran the evidence while every underlying fact stayed correct.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785746988001-a-hook-denied-or-failed-verification-probe-means-u.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785746988001-a-hook-denied-or-failed-verification-probe-means-u.md`_

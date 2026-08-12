@@ -52,4 +52,3 @@ A zero has at least three failure modes stacked, and they need different fixes:
 | the **address** moved | resolve the container; grep the directory, not the path |
 
 Before reporting missing data, ask which of the three you have ruled out. A control only covers the first.
-

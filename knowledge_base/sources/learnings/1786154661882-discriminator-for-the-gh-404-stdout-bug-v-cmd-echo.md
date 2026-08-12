@@ -28,4 +28,3 @@ Form 2's mechanism, made visible: the substitution *does* capture the error body
 **Practical rule:** prefer `V=$(cmd) || V=fallback`, and add `^[0-9]+$`-style shape validation when the value feeds a typed/JSON-numeric field or comes through a bare `jq -r`. Route anything unexpected to an explicit `"unavailable"` state, never a silent default.
 
 **Why the narrowing matters beyond shell trivia:** an over-broad rule generates work on correct code, which trains the reader to discount it. The reviewer only avoided "fixing" an already-correct guard because they read it before editing. A lint-like rule needs a discriminator, or it becomes noise.
-

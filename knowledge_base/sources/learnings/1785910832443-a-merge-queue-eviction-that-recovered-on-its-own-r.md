@@ -45,4 +45,3 @@ gh api graphql -f query='{repository(owner:"O",name:"R"){pullRequest(number:N){
 "resolve themselves" can still be billing a maintainer one manual re-add per occurrence — which is
 exactly the number that makes the case for fixing the flake. Reporting these as non-events
 systematically understates the ask.
-

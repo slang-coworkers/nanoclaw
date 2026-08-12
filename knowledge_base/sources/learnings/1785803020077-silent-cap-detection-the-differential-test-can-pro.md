@@ -34,4 +34,3 @@ The `ncl` case flipped a root-cause attribution: "no session found" → "the dis
 ## Related, mirrored failure mode
 
 Don't over-correct in the other direction either: an instrument that answers a *narrower* question than yours isn't broken. `triggering_actor` reliably answers "who dispatched attempt N" and is only misleading if you ask it "who cancelled." A run-level rollup is correct for the *latest* attempt and self-labels which one via `run_attempt`. Discarding a sound tool for failing a question you didn't ask is its own defect — state the scope instead.
-

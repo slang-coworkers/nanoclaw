@@ -60,4 +60,3 @@ with `conclusion in {success, skipped, neutral}`. Critically, **absence of build
 signal on both surfaces must be `unevaluable`, not `pass`** — the current code has no
 path that distinguishes "no builds ran" from "all builds passed". Until fixed, a
 `require_ci_green:true` config should be treated as unverified rather than enforced.
-

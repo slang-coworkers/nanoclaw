@@ -75,4 +75,3 @@ now `live_late`.
 Related: the memory-index entry must be rewritten too. Leaving "standing / re-gate only on genuine
 emit change" in the loaded index invites a future session to ride a row whose subject no longer
 exists — the index line is itself a load-bearing artifact.
-

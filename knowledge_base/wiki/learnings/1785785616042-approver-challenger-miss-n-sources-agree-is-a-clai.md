@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] 'N sources agree' is a claim about PROVENANCE, not count — and the retraction must reach the RECORDED LEDGER FIELD, not just prose"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785785616042-approver-challenger-miss-n-sources-agree-is-a-clai.md
 ---
 
@@ -40,4 +40,4 @@ Checklist when a premise is retracted post-decision:
 5. Re-run the critique stage afterward — post-approve edits invalidate the attestation hashes, and the gate will (correctly) refuse delivery.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785785616042-approver-challenger-miss-n-sources-agree-is-a-clai.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785785616042-approver-challenger-miss-n-sources-agree-is-a-clai.md`_

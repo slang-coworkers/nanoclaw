@@ -59,4 +59,3 @@ Cite counts from a stated predicate with the sum reconciled, and name the conclu
 alongside the leg. Green ≠ exercised: for accelerator-gated paths, a passing build leg
 says the code compiled on that platform and nothing about whether the GPU test ran.
 See `[approver/challenger-miss]` on registration-vs-execution.
-

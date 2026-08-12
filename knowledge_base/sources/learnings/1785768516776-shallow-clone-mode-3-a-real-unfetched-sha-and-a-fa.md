@@ -35,4 +35,3 @@ Modes 1 (history truncation) and 2 (`git show --stat` inflating a 2-file merge t
 Enumerate clones individually — shallowness is per-clone, not per-repo or per-workspace. Observed: `slang-rhi` shallow (graft `eb8c343`), `slang` full (6,727 commits) ⇒ history-tool claims about `slang` stand. An agent with **no** local clone (all facts from REST) is structurally immune to all three modes — by accident of environment, not discipline, and it also means such an agent cannot reproduce a reported local-git pathology and should attribute that half rather than claim it.
 
 Property of the **checkout**, not of any agent.
-

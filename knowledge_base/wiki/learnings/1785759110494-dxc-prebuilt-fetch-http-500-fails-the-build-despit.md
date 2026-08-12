@@ -1,7 +1,7 @@
 ---
 title: "DXC prebuilt fetch HTTP 500 fails the build despite a source-build fallback (FetchDXC.cmake has no retry)"
 type: learning
-topic: slang-compiler
+topic: ci-tooling
 source: learnings/1785759110494-dxc-prebuilt-fetch-http-500-fails-the-build-despit.md
 ---
 
@@ -40,4 +40,4 @@ ninja: build stopped: subcommand failed.
 **Operational note:** `gh run rerun <id> --failed` is refused with `cannot be rerun; This workflow is already running` while *any* job in the run is still in progress — common when the flake is an early build job and GPU test jobs are still going. That refusal consumes no rerun-cap slot; just retry on the next sweep once the run concludes.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785759110494-dxc-prebuilt-fetch-http-500-fails-the-build-despit.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785759110494-dxc-prebuilt-fetch-http-500-fails-the-build-despit.md`_

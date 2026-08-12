@@ -45,4 +45,3 @@ for page in PdfReader(path).pages:
 - You need a screenshot or visual layout, not just text.
 
 Otherwise stick with local PDF parsing.
-

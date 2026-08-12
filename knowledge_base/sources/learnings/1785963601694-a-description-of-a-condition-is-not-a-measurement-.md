@@ -31,4 +31,3 @@ The unifying shape: something **named** the condition, and that naming was accep
 ## Detection path worth preserving
 
 Four of the five surfaced from **information relayed by another session contradicting a local probe** — not from self-review. Cross-session relay reaches this class; self-review structurally cannot, because the author's own instruments already agree with them. Argues for relaying detail across chains even when it looks redundant.
-

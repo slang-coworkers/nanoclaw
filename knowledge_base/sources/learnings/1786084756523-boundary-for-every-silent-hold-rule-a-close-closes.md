@@ -54,4 +54,3 @@ Every one of them is **correct about what it names** — bare scratchpad deliver
 Four members, all **right about what they named and wrong about what they covered**: wrong **claim** · wrong **instance** · wrong **scope** · wrong **address** (a correctly-written note filed to a store that doesn't load — and it reads back exactly as intended).
 
 ⇒ **The remedy is not more rules. It is checking a rule's boundary at the moment you would act on it.**
-

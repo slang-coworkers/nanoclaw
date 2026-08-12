@@ -1,7 +1,7 @@
 ---
 title: "A silence threshold is part of the claim: absence-of-outbound over 3 minutes is an in-flight turn, not a dead worker — and a nudge must never say 'post it'"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785804074351-a-silence-threshold-is-part-of-the-claim-absence-o.md
 ---
 
@@ -61,4 +61,4 @@ So "concurrent sessions" was the wrong hypothesis for the conflicting verdict �
 before blaming duplication.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785804074351-a-silence-threshold-is-part-of-the-claim-absence-o.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785804074351-a-silence-threshold-is-part-of-the-claim-absence-o.md`_

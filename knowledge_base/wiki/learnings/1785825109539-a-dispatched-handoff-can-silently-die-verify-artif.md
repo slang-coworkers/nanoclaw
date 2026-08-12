@@ -1,7 +1,7 @@
 ---
 title: "A dispatched handoff can silently die — verify artifacts exist before relaying 'in progress'; a repeat human ask means your last answer didn't hold"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785825109539-a-dispatched-handoff-can-silently-die-verify-artif.md
 ---
 
@@ -18,4 +18,4 @@ source: learnings/1785825109539-a-dispatched-handoff-can-silently-die-verify-art
 **Bonus — draft-guardrail audit:** to check whether a bot self-flipped a draft PR, use the timeline event actor, not the current state: `gh api repos/O/R/issues/<n>/timeline --jq '.[] | select(.event=="ready_for_review" or .event=="convert_to_draft") | "\(.event) actor=\(.actor.login) \(.created_at)"'`. Here it returned `pdeayton-nv` — the human flipped it, guardrail intact.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785825109539-a-dispatched-handoff-can-silently-die-verify-artif.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785825109539-a-dispatched-handoff-can-silently-die-verify-artif.md`_

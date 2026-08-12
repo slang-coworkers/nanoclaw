@@ -46,4 +46,3 @@ configuration. When someone proposes a condition your data is blind to, the hone
 ⭐ Corollary for absence/coverage claims: "N successes" and "N successes **of the relevant kind**"
 are different claims, and only the second refutes a shape-specific hypothesis. Enumerate the
 population by the *hypothesis's* discriminating attribute, not by the outcome you already care about.
-

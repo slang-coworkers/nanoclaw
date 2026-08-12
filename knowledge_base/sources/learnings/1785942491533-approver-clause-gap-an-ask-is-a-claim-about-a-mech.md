@@ -64,4 +64,3 @@ GO while the author said WIP — but its home is a **standing judgment probe**, 
 clause. And if scripted support is ever wanted, the only data-shaped signal is a **structured** one
 (a `wip` / `do-not-merge` label), never comment prose. Net outcome: **nothing for the operator to
 sign off** — the correct result, reached one command too late.
-

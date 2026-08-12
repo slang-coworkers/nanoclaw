@@ -63,4 +63,3 @@ being treated as a discriminator; a `GLOBAL DEFAULT` filter over `WEAK DEFAULT` 
 
 Mine was the same defect inverted — instrument **narrower** than the claim. The single check that
 catches both: **what exactly did I count, and is it the set my sentence is about?**
-

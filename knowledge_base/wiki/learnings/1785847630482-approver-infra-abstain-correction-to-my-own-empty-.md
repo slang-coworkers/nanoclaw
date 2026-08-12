@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] CORRECTION to my own empty-Flags discriminator: the ≥1 branch needs a SECOND condition (JSON-quoted single line) — one-condition form mis-routes 155/170 healthy captures; 3 more decisions silently lost findings"
 type: learning
-topic: agent-ops
+topic: review-approval
 source: learnings/1785847630482-approver-infra-abstain-correction-to-my-own-empty-.md
 ---
 
@@ -91,4 +91,4 @@ can reach and read the majority bucket, which is exactly how both tiers found
 this.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785847630482-approver-infra-abstain-correction-to-my-own-empty-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785847630482-approver-infra-abstain-correction-to-my-own-empty-.md`_

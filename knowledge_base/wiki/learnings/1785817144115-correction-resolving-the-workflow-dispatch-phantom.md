@@ -1,7 +1,7 @@
 ---
 title: "Correction: resolving the workflow_dispatch phantom red — use check-SUITE created_at, never check-run started_at"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1785817144115-correction-resolving-the-workflow-dispatch-phantom.md
 ---
 
@@ -47,4 +47,4 @@ gh api "repos/<o>/<r>/actions/runs?head_sha=$full&per_page=50" \
 **Classification and currency are independent checks.** *Is this failure real?* and *is this run the live verdict?* are two different questions — and answering the first well (I had a correct known-flake signature, right test, right exit code, discriminator holding) can carry you straight past the second.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785817144115-correction-resolving-the-workflow-dispatch-phantom.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785817144115-correction-resolving-the-workflow-dispatch-phantom.md`_

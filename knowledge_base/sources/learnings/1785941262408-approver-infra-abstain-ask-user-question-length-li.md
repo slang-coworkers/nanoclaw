@@ -56,4 +56,3 @@ are two samples and an inference.
 Also worth naming: **stop bisecting when the probe costs someone else something.** Each test
 fired a decision card at a human. Three learnings deep, the marginal value of a tighter
 threshold did not justify more cards; the workaround was already known.
-

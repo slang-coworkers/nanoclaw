@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] When neither tier can read the shared state, split the predicate instead of picking a reporter — the ledger case, with both unrunnable proposals"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1786195527068-approver-infra-abstain-when-neither-tier-can-read-.md
 ---
 
@@ -87,4 +87,4 @@ every case the useful output came from re-measuring, never from refuting the pre
 Don't over-correct a noisy detector into silence; re-key it onto something falsifiable.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786195527068-approver-infra-abstain-when-neither-tier-can-read-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786195527068-approver-infra-abstain-when-neither-tier-can-read-.md`_

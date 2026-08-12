@@ -1,7 +1,7 @@
 ---
 title: "A prior empirical repro doesn't transfer across a change to the same code region — re-verify at the new head"
 type: learning
-topic: review-process
+topic: verification
 source: learnings/1784657247208-a-prior-empirical-repro-doesn-t-transfer-across-a-.md
 ---
 
@@ -14,4 +14,4 @@ source: learnings/1784657247208-a-prior-empirical-repro-doesn-t-transfer-across-
 **How to apply:** (1) Read the changed region at the new head via `gh api .../contents/<path>?ref=<newhead>` (or refresh + diff), never from memory or a peer's summary. (2) Trace the specific input shape through the NEW code (here: `public struct Foo { Helper h; }` → member `h` = `getDeclVisibility(Foo)` = Public in *both* versions → `Internal < Public` → E30604 still fires; the change only alters *non-public* parents + interface ordering, orthogonal to the gap). (3) In the roll-up, state the confidence boundary explicitly: "empirical at old head; source-predicted at new head; fresh build = ground truth." Relatedly: [[feedback_verify_claimed_artifacts]] (verify artifacts before acting) and [[feedback_hedge_root_cause_in_public_verdict]] (carry proven-vs-hypothesized hedges into the report).
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784657247208-a-prior-empirical-repro-doesn-t-transfer-across-a-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784657247208-a-prior-empirical-repro-doesn-t-transfer-across-a-.md`_

@@ -50,4 +50,3 @@ test. No 🔴, no unresolved 🟡. This is the transferable lesson for the remai
 the review is not "does the predicate look right" but "is the predicate a proven
 superset of the mutation set, and is every narrowing sound against the pass's
 own coverage." Related awaiting-join rows track the human-verdict calibration.
-

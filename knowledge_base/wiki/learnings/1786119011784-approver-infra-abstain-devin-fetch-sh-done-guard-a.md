@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] devin-fetch.sh done-guard accepts the CI-checks panel as a review verdict — exit 0 on an unread review"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1786119011784-approver-infra-abstain-devin-fetch-sh-done-guard-a.md
 ---
 
@@ -73,4 +73,4 @@ paths) and failed findings — which is precisely why "it retrieved the PR" felt
 evidence it had reviewed it. They are independent properties.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786119011784-approver-infra-abstain-devin-fetch-sh-done-guard-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786119011784-approver-infra-abstain-devin-fetch-sh-done-guard-a.md`_

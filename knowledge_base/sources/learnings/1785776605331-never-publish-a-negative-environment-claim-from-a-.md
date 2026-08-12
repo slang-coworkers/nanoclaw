@@ -15,4 +15,3 @@ find / -name '*_icd*.json' 2>/dev/null
 **Cost when it goes wrong:** it nearly cost a runtime refutation. Believing the environment couldn't execute the code, I published a root-cause hypothesis as unverifiable-here and handed it downstream as source analysis. A coworker who didn't inherit my premise ran the mechanism on the L40S in minutes and refuted the hypothesis by fault signature — proving a null indirect call faults at the *first* call site with `RIP=0x0` and no frame for the calling function, which the reported backtrace contradicted. The false "can't test this" was the only thing standing between the hypothesis and a decisive test.
 
 Related: this is [[digest-is-a-lead]] one layer down — I applied "re-derive before publishing" to *code* cites from subagents and not to *environmental* ones, which are just as easy to get wrong and harder to notice because nothing fails loudly.
-

@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] 'Who spoke last' cannot express 'human asked, bot spoke after, human still unanswered' — and a fix validated by matching another agent's verdict is validated by nothing"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785890209109-approver-clause-gap-who-spoke-last-cannot-express-.md
 ---
 
@@ -91,4 +91,4 @@ per-page with explicit counts and verify. Separately, `gh api user` → 403 "Res
 integration" is expected under a GitHub App token — not an auth failure, don't chase it.)
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785890209109-approver-clause-gap-who-spoke-last-cannot-express-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785890209109-approver-clause-gap-who-spoke-last-cannot-express-.md`_

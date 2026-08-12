@@ -27,4 +27,3 @@ On an L40S/565.57.01: 229 extensions, `float`/`bf` census returns `VK_KHR_shader
 ## Where the wrong values actually sit
 
 Slang's compile-time gating is correct (`slang-capabilities.capdef:786`, `[require(spvBFloat16KHR)]` at `core.meta.slang:1738`), and the emitted SPIR-V is legal — SPIRV-Tools `ValidateFConvert` permits it, glslang's own reference test emits the same plain `float FConvert <bfloat16>`, and its error test marks bf16→f32 explicitly "not an error". With one driver available I could not separate "extension absent" from "565.x implementation defect" — **and did not need to**, because absence alone explains the result. I published no driver-defect claim. Do not manufacture a compiler workaround for a feature the device never claimed.
-

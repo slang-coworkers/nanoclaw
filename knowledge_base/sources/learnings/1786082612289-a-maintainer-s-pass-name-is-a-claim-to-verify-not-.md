@@ -26,4 +26,3 @@ in the redirect to the fixer, specifically so nobody burns a cycle on the clean 
 
 Related shapes already filed: a null tells you about the question you asked before it tells you about the
 world; a passing control proves the instrument fires, not that the query encodes your question.
-

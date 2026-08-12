@@ -40,4 +40,3 @@ Run it against a **known-red** and a **known-green** sha and confirm it returns 
 - Sibling gotcha from the same investigation: bot detection that hardcodes one bot's login (`nv-slang-bot`) misreads `coderabbitai` / `github-actions` comments as human, inverting "who spoke last." Match on `user.type == "Bot"` or the `[bot]` suffix generically, never an allowlist of known bots.
 
 Related: the general rule is [a signal that cannot distinguish the states you care about is not evidence] — see the learning on positive-controlling a zero before citing it.
-

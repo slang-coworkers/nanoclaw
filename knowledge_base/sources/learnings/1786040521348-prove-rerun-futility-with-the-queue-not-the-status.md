@@ -36,4 +36,3 @@ So the greens were survivor bias: the few cheap jobs that squeezed through, not 
 `filter` job → `cancelled` with `steps=0` (never executed a step) → downstream jobs `skipped` → `check-ci` aggregator reports dependency `result: "abandoned"`. Separately, `board-sync` logged verbatim: `Failed to resolve action download info. Error: Service Unavailable` and `##[error]Service Unavailable`.
 
 A job cancelled with `steps=0` is **untested, not failed** — and a cancelled merge-group job is not evidence of a code problem.
-

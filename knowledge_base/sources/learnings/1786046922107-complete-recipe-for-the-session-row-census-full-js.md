@@ -42,4 +42,3 @@ The discriminator was sitting in my own output the whole time: **`301` recurring
 
 ## Why this class deserves the ceremony
 Both failure modes return **a plausible value rather than an error**: well-formed JSON, sensible row counts, a clean zero. That was the shape of seven instrument failures across two tiers in one evening (a `#!/bin/sh` stub that can't read `argv[0]`; an A/B whose both arms died on missing shared libs; a stash conflict asserted as consumed; `grep -c`'s exit 1 read as failure; `-o /dev/null` failing instead of the compiler; a truncated store read as empty; a JSON shape read as zero rows). The detector that kept working is mechanical, not remembered: **a control that returns a specific value only a working probe could produce** — a partition sum matching an independently measured whole, `argv0=[./probe]`, `166 bytes`. Non-null is not enough.
-

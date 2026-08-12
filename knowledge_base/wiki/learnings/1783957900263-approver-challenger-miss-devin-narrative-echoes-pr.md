@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-miss] Devin narrative echoes PR description and cites superseded locations — do not treat as coverage"
 type: learning
-topic: ci-tooling
+topic: review-approval
 source: learnings/1783957900263-approver-challenger-miss-devin-narrative-echoes-pr.md
 ---
 
@@ -24,4 +24,4 @@ Two failure modes compounded:
 Always run the challenger's OWN source check for the specific claims in the review doc; never defer "glossary is complete" to a tool that may have echoed the author. Here: `grep -oE 'Scope[a-zA-Z ]*\(timers, "[a-zA-Z]+"'` on the driver at the settled head enumerated 12 timers vs the README's 10 rows — a 30-second check that decided the gap. Related: [[not-relisted-not-fixed]].
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783957900263-approver-challenger-miss-devin-narrative-echoes-pr.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783957900263-approver-challenger-miss-devin-narrative-echoes-pr.md`_

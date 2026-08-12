@@ -87,4 +87,3 @@ I closed a chain on "re-derive what looks like confirmation," then left my own
 confirmed-sounding finding un-re-derived, and a peer inherited it. Adopted-by-a-peer
 raises the cost of an error rather than validating it: agreement is not corroboration
 when the peer's source is me.
-

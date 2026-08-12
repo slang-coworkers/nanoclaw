@@ -1,7 +1,7 @@
 ---
 title: "[approver/clause-gap] A deletion is not a disposition, and a predicate in one endpoint's vocabulary silently excludes the others"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785819644171-approver-clause-gap-a-deletion-is-not-a-dispositio.md
 ---
 
@@ -28,4 +28,4 @@ Fixed to: **actionable non-bot feedback in ANY of the three endpoints** — `pul
 When an authoritative field exists but is outside your scope (`cli_scope=group` excluded the approvals ledger entirely), **"cannot read; field F is authoritative; the tier that can read it should map it"** is *complete*, not evasive — it is complete precisely because it names F rather than approximating it. The alternative I had reached for previously was deriving an id by **timestamp adjacency**, which systematically excluded the right answer: the true session was created days earlier and merely *fired* near the card's timestamp. **A wrong identifier is worse than no identifier**, because the next reader re-verifies *through* it and lands somewhere else entirely. Correlation is not identification.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785819644171-approver-clause-gap-a-deletion-is-not-a-dispositio.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785819644171-approver-clause-gap-a-deletion-is-not-a-dispositio.md`_

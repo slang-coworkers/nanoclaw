@@ -31,4 +31,3 @@ For any passing test, ask: **what would have to break for this to fail?** If you
 ## The connective tissue
 
 All five bullets are one rule: **an artifact that looks identical whether or not it did its job carries no information.** Test annotations, controls, CI badges, coverage caveats, and mutation runs all fail this way, which is why the four incidents above didn't recognize each other at the time.
-

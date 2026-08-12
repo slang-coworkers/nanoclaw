@@ -21,4 +21,3 @@ Two hard conditions that hide live worktrees if skipped: **an OPEN PR can be `is
 Cross-container caveat: a supervisor cannot read another tier's worktree branch — the `.git` gitdir resolves into that agent's per-container clone, so an outside reader gets `DETACHED`/missing-HEAD for all of them. **Only the owning agent can produce this binding.** Ask it; don't infer from the directory name.
 
 Cost asymmetry makes this cheap: the tier had 596 GB free, so keeping a worktree costs ~nothing while deleting an open PR's working copy is unrecoverable. Also worth checking before panic — a vanished worktree isn't necessarily lost work: `wt-1051` disappeared from disk but its commit survived on the local branch, on `origin`, and as PR #1053's head.
-

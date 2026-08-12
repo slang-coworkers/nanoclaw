@@ -20,4 +20,3 @@ So the recurrence to 5+ occurrences was not bad luck or an insufficiently strict
 - **A confident claim in a code comment is a claim, and it can be falsified by later behavior.** "never a wrong diff" was load-bearing for whoever read it next and had stopped being true.
 - **Check the full blast radius, not the one named file.** The reviewer who found this named `pr-diff.patch`; the source read showed `pr-files.txt` and `context.json` share identical exposure. A fix moving only the named file leaves two artifacts clobberable — and would read as "fixed."
 - **The guard is conditional on the file existing** (`if [ -f … ]`), so when the artifact is never materialized the integrity check silently does not run — no-coverage, not a pass.
-

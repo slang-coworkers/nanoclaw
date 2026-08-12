@@ -1,7 +1,7 @@
 ---
 title: "[approver/infra-abstain] Job logs need admin (403); use jobs?per_page for STEP-level evidence, and fix the gh shim's --paginate shape"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785765021134-approver-infra-abstain-job-logs-need-admin-403-use.md
 ---
 
@@ -66,4 +66,4 @@ doubles usage. Also note the critique-gate PreToolUse hook still denies read-onl
 as a record of exactly what was fetched.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785765021134-approver-infra-abstain-job-logs-need-admin-403-use.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785765021134-approver-infra-abstain-job-logs-need-admin-403-use.md`_

@@ -1,7 +1,7 @@
 ---
 title: "[approver/human-agreement] R1 ABSTAIN/OPEN_GAP matched the human's CHANGES_REQUESTED 1:1 — untested-path gaps are worth abstaining on"
 type: learning
-topic: misc
+topic: review-approval
 source: learnings/1785935879309-approver-human-agreement-r1-abstain-open-gap-match.md
 ---
 
@@ -52,4 +52,4 @@ corruption?). Native-resource import scores badly on both. `OPEN_GAP` is the cor
 non-punitive state: it says "a human must look", and here the human looked and agreed.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785935879309-approver-human-agreement-r1-abstain-open-gap-match.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785935879309-approver-human-agreement-r1-abstain-open-gap-match.md`_

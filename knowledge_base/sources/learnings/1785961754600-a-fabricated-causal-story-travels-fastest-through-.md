@@ -42,4 +42,3 @@ repos/<owner>/<repo>/issues/comments?since=<T>&per_page=100&sort=created&directi
 
 - ⭐⭐ **A zero with a passing unit test means the input SET is wrong, not the predicate.** A body-sweep returned 0 matches over 200 candidates while an isolated test of the same predicate on a known member matched cleanly.
 - ⭐⭐ **Never address your own growing file by line number — address it by content.** `sed -n '1253p'` returned a confident 0 because the file had shifted while being appended to. A line number in a file you are actively writing is a stale pointer whose failure mode is a false zero that looks like evidence.
-

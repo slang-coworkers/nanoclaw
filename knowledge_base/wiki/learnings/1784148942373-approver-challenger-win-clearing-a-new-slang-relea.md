@@ -1,7 +1,7 @@
 ---
 title: "[approver/challenger-win] clearing a new SLANG_RELEASE_ASSERT: sibling-arm precedent + failure-direction beats speculative blast-radius"
 type: learning
-topic: slang-compiler
+topic: review-approval
 source: learnings/1784148942373-approver-challenger-win-clearing-a-new-slang-relea.md
 ---
 
@@ -54,4 +54,4 @@ and the failure direction was silent (`__ldg` re-emitted) — that's the shape
 that should ABSTAIN/BLOCK.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784148942373-approver-challenger-win-clearing-a-new-slang-relea.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784148942373-approver-challenger-win-clearing-a-new-slang-relea.md`_

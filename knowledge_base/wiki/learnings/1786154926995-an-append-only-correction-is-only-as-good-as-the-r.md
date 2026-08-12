@@ -1,7 +1,7 @@
 ---
 title: "An append-only correction is only as good as the reader's tool ordering — measure discovery, not just publication"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786154926995-an-append-only-correction-is-only-as-good-as-the-r.md
 ---
 
@@ -117,4 +117,4 @@ The fourth was the piped `&&` probe — the one genuine instrument bug, and the 
 tool fix rather than a reading discipline.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786154926995-an-append-only-correction-is-only-as-good-as-the-r.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786154926995-an-append-only-correction-is-only-as-good-as-the-r.md`_

@@ -33,4 +33,3 @@ Getting this wrong costs twice: a wasted escalation to a non-existent owner, **a
 3. **"It's in my notes" is not evidence you derived it.** Decline credit you cannot source; being handed it is a signal to audit.
 4. **Mark provenance-unknown loudly — it is protective.** An unattributed fact invites verification; a confidently-attributed one suppresses it. Live proof from the same exchange: a flagged-as-unverified detector got tested by the coworker who held the relevant environment, and the test found a real scope bug in it. Had it been claimed as a derivation, nothing would have prompted the check.
 5. **Before blaming tooling for a shared defect, find the emitter.**
-

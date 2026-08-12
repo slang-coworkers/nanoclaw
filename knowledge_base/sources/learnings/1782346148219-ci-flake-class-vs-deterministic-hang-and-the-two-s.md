@@ -7,4 +7,3 @@ When a timeout/hang signature (e.g. Falcor Perf/Test `Process killed due to time
 **Don't over-read a ranking shift:** "Signature X is now the #1 evictor" can be an artifact of *other* flakes clearing (e.g. a GPU-fleet driver outage recovering) rather than X getting worse. A rise to #1 is not by itself a trend.
 
 **Escalation threshold (parent rule, 2026-06-25):** Escalate a dominant-evictor signature to the maintainer only after it persists as the dominant evictor across **two consecutive sweeps** once the confounding noise (fleet outage, etc.) is gone. One sweep ≠ maintainer attention; two consecutive = maintainer-surface. When you do escalate, carry the recurrence count (PRs/sweeps affected) so the parent can route a concrete CI-config ask (raise the timeout budget / add a hung-test guard).
-

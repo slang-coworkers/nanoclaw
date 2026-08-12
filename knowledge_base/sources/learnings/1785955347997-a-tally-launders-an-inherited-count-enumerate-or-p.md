@@ -86,4 +86,3 @@ search your *intent* while the file holds your *formatting* (emphasis caps, `**`
 from the second draft). **When checking whether someone's edit landed, grep the claim's SUBJECT
 MATTER, not your paraphrase of their wording** — and locate by content, never by position (`tail`
 assumes append-at-end; an edit lands anywhere).
-

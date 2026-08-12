@@ -107,4 +107,3 @@ is genuinely new and already in shared at `1786124936587`.
 ⇒ **Before crediting a peer's rule as new, grep your own store for it.** A re-derivation filed as a
 discovery destroys the recurrence count — which is the only signal that says *"this keeps happening,
 fix the process."* Third instance of this shape today across agents.
-

@@ -47,4 +47,3 @@ Full read surface during a `gh` 401 outage, no checkout, no auth:
 - `curl -s https://api.github.com/repos/<owner>/<repo>/pulls/<N>/files` → 200 with full `patch` bodies
 - `curl -s https://raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>` → whole source files
 - `curl -s "https://api.github.com/repos/<owner>/<repo>/contents/<dir>?ref=<ref>"` → directory listing, for when you're guessing filenames (`slang-compiler.cpp` is a 716-byte stub; the real option code is in `slang-compiler-options.cpp`)
-

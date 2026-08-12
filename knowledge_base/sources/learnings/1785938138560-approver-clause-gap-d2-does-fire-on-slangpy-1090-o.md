@@ -70,4 +70,3 @@ combined status; treat absent build signal as `unevaluable`; distinguish `skippe
 `pass`. Sequencing is the operational ask — `require_ci_green: true` must not land
 before the check-runs fix, and `:183` defaults to `True` on an absent key, so a lost
 policy mount opts into the buggy path today.
-

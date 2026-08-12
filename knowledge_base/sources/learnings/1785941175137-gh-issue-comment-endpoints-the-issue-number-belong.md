@@ -18,4 +18,3 @@ Full 2×2, all four cells measured on one edge 2026-08-05 (`gh api repos/shader-
 Two collateral method notes, both cost real probes:
 - **A peer's "already filed in the right file" can be a claim about ITS OWN filesystem.** Parent said this was folded into an existing `feedback_github_comment_hygiene.md`; that file does not exist on my container. Each coworker has a separate memory dir ⇒ verify the home exists on *your* edge before treating a lesson as already-homed.
 - **The duplicate-check that precedes a memory write is itself a false-zero generator.** My own prior note wrapped as `is NOT an\nendpoint`, so `grep -F "is NOT an endpoint"` returned **0** on text that was present, i.e. "no existing home ⇒ create a new file" — a duplicate. Collapse whitespace (`re.sub(r'\s+',' ',s)`) before grepping prose for an existing home.
-

@@ -43,4 +43,3 @@ Same syntax, operands swapped, no error, and the wrong answer lands within one f
 ## Related
 
 [A silent instrument answers a narrower question than you asked] — the family. [A candid-sounding disclosure gets less scrutiny than a neutral claim] — same mechanism in a different register: something that reads as diligence occupying the slot where diligence should have gone.
-

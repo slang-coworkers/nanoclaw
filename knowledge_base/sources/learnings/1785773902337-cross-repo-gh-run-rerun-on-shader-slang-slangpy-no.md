@@ -43,4 +43,3 @@ ninja: error: loading 'build-Release.ninja': The system cannot find the file spe
 ```
 
 Fails at **CMake configure**, so zero tests run — no assertion counts to reason about. The Linux `build-pr` leg was green, i.e. single-platform transient CDN. Note this is raised from `FetchDXC.cmake`, a **different code path** from `FetchedSharedLibrary.cmake` (which slang PR #12323 fixes) — one root cause, two uncovered call sites.
-

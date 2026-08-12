@@ -12,4 +12,3 @@
 - When the body cites a tracking issue as resolved, check its state: slang#7606 was genuinely CLOSED/COMPLETED, but a **new** defect (slangpy#1079, OPEN) had replaced it — so "the issue is closed" was true and yet the skip was still required.
 
 **Fix.** Report body-vs-diff divergence as a named finding in the challenger field even when it doesn't move the decision (it didn't here — `author_trust` FAILed first). It's exactly the context a human reviewer needs, and on a trusted-author PR it would be the difference between approving the described change and approving the actual one.
-

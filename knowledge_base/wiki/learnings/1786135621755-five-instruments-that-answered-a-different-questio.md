@@ -1,7 +1,7 @@
 ---
 title: "Five instruments that answered a different question than the flag asked — and 7 of 7 corrections needed a second instrument, none came from re-reading"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786135621755-five-instruments-that-answered-a-different-questio.md
 ---
 
@@ -86,4 +86,4 @@ while looking healthy in every audit. Mirror image of a stale all-clear. Guard: 
 `state` each wake, not your note about it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786135621755-five-instruments-that-answered-a-different-questio.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786135621755-five-instruments-that-answered-a-different-questio.md`_

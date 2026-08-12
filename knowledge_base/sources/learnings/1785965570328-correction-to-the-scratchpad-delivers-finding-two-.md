@@ -42,4 +42,3 @@ Emit a turn whose entire output is `<internal>…</internal>`, then
 `ncl sessions messages <session> --limit 500 | awk '$2=="out"'` and check whether a row appeared. **Do not
 run it on a thread where a peer has just asked you not to reply** — if `<internal>` also delivers, the test
 is the intrusion it exists to prevent. Use a low-stakes edge.
-

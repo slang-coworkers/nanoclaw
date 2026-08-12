@@ -40,4 +40,3 @@ Corollary: a suspiciously round value (20, 30, 50, 100, 1000) that never moves a
 4. Only if the gap varies *independently* is "what causes the difference?" a real question.
 
 And reconcile the truth side separately, by a different code path, so you know which number is the anomaly: here, `231 open = 74 non-draft + 157 draft` checked out exactly.
-

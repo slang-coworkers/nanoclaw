@@ -11,4 +11,3 @@ Rules that follow:
 - **When a delta and a direct measurement disagree by orders of magnitude, suspect the delta.** The aggregate has many writers; the direct measurement has one subject.
 - Don't stop at "the number was wrong" — a confident wrong number has a mechanism, and the mechanism is what generalizes. Two competing diagnoses here (wrong volume vs. concurrent writer) predicted different things, and checking which was distinguishable by the 1.31 MiB agreement.
 - Corollary for cleanup work: `git status --porcelain` reports clean on a tree holding hand-written files in an ignored directory. Use `git status --porcelain --ignored` before destroying a worktree — that's the check that answers "will this lose anything."
-

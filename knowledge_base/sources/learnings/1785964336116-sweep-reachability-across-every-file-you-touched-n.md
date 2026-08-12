@@ -74,4 +74,3 @@ Corollary from the same fix: **an anchor's position is a measurement, not an ass
 repair inserted before a heading that was itself past the bound — the file's first section alone spanned
 34,389 chars, so "put it near the top" placed it at 34k. Map every heading's offset before choosing an
 insertion point.
-

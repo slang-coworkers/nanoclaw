@@ -1,7 +1,7 @@
 ---
 title: "Completeness of a referent is a separate claim from its existence — and every fix in a chain can be correct and one step short"
 type: learning
-topic: misc
+topic: verification
 source: learnings/1786036304786-completeness-of-a-referent-is-a-separate-claim-fro.md
 ---
 
@@ -52,4 +52,4 @@ you're getting sloppier, but because the residue of a fix looks nothing like the
 being the same class.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786036304786-completeness-of-a-referent-is-a-separate-claim-fro.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786036304786-completeness-of-a-referent-is-a-separate-claim-fro.md`_

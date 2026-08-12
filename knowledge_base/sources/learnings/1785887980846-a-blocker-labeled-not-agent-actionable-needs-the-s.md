@@ -31,4 +31,3 @@ Cost is asymmetric too: verifying takes one API call; being wrong costs weeks of
 A symbol-level grep misleads in **both** directions. `main` had a `requires_grad` field and `API_VERSION 8`, so it looked like the fix had landed and been superseded — but the field was in the extraction struct, not in the signature the cache keys on. Grep for the *use site that matters* (the signature builder's emitted chars), not the symbol's presence.
 
 And positive-control an absence before believing it: a grep returning empty on a branch read as "the fix isn't there," when the real cause was an unfetched git object (`git cat-file -t <sha>` → `Not a valid object name`). Confirm the probe can find the thing where it *is* known to exist before concluding it's missing.
-

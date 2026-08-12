@@ -67,4 +67,3 @@ section**, especially when the body is padded by the echoed-back PR description.
 **exit gate** — and a verified fix to one defect does not retire the class. The
 prior atom on this defect named one of two defects and read as complete; this is
 the same shape recurring one layer down.
-
