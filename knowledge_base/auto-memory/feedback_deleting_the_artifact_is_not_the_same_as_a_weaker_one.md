@@ -64,7 +64,7 @@ missing one.** Before certifying a suite:
 empty-glob case, but with `unreadable or not JSON: …scheduled-tasks.*.json` — the literal glob string,
 i.e. it never matched anything and stumbled into an unrelated error. **Check the MESSAGE, not just the
 exit code**, or a coincidental non-zero gets scored as coverage. Same family as
-[[feedback_a_control_that_fires_by_luck_is_not_a_control]] and
+[[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]] and
 [[feedback_a_positive_marker_beats_an_absence_in_a_log]].
 
 Related: [[feedback_a_green_checker_that_excludes_the_changed_file]] (the suite ran but the changed

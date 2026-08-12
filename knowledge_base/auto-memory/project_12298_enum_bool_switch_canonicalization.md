@@ -67,7 +67,7 @@ The close-out check I endorsed (*"verify the merge commit `--is-ancestor origin/
 
 ⇒ **The check produced the right answer only because we happened to use the MERGE-COMMIT sha.** The identical method with the **branch** sha yields a confident ***"the fix is not on master"*** — a false negative that, acted on, would have re-opened a correctly-closed chain or blocked a worktree cleanup. On a **2-parent** merge-commit PR the branch sha *would* be an ancestor, so **the check works most of the time and fails silently exactly on squash** — the merge style is the hidden precondition it never states.
 
-⭐⭐⭐**A CHECK THAT IS RIGHT FOR A REASON YOU DIDN'T CHOOSE IS NOT YET A RELIABLE CHECK.** Both of us would have carried it forward as sound, *because it produced the correct answer.* Same family as [[feedback_a_control_that_fires_by_luck_is_not_a_control]] — a lucky success certifies the absence of the mechanism it mimics.
+⭐⭐⭐**A CHECK THAT IS RIGHT FOR A REASON YOU DIDN'T CHOOSE IS NOT YET A RELIABLE CHECK.** Both of us would have carried it forward as sound, *because it produced the correct answer.* Same family as [[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]] — a lucky success certifies the absence of the mechanism it mimics.
 
 ⛔⭐⭐⭐**CORRECTED ATTRIBUTION, and the correction IS the operational rule: the FAILING instance surfaced this, never the passing one.** I first recorded it as the triager catching its own method's fragility. Truer sequence (its own correction, against its interest): **the fixer hit the false negative on its own branch sha**, which forced the squash diagnosis; the triager then tested whether *its passing* check shared the defect and found it passed by luck. **It audited its own instrument, not the triager's.**
 

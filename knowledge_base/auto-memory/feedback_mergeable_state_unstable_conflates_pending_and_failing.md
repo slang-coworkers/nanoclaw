@@ -73,6 +73,6 @@ got `(exit=0)` with no output — then nearly read that as "grep confirmed zero 
 was `head`'s**, which is 0 regardless. ⇒ ⭐⭐ **count with `grep -c` into a variable, and run
 a POSITIVE CONTROL on a pattern you know is present** (here `^\+import ` → 34 hits, against
 target 0 and 9 removed-only pin lines) — otherwise a zero is indistinguishable from a
-mis-typed regex or an empty input. See [[feedback_zero_hit_grep_has_never_one]] family and
+mis-typed regex or an empty input. See [[feedback_zero_hit_grep_has_never_once_proved_fabrication_in_my_store]] family and
 [[feedback_a_control_validates_the_instrument_never_the_target]] (the control proves the
 instrument, never that I read the right diff).

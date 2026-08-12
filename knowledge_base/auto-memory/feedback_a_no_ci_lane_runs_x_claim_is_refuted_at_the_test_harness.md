@@ -43,6 +43,6 @@ next-action framing changed. Correcting scope on a peer's *true* finding is stil
 worth shipping, because the wrong reason routes the fix to the wrong place —
 "add a slangd CI lane" vs "add a test for these two entry points."
 
-See also [[feedback_zero_hit_grep_has_never_o]] and
+See also [[feedback_zero_hit_grep_has_never_once_proved_fabrication_in_my_store]] and
 [[feedback_published_negative_env_claims_need_rederivation]] — a capability-negative
 has no failure signature; readers comply by not attempting.

@@ -176,7 +176,7 @@ Third instance in one day; [[command_grep_markdown_strip_emphasis_before_matchin
 ⛔**And the failure is in the REASSURING direction:** "untested" licenses new work (write a test, add
 coverage, cite a gap in a triage memo) rather than blocking it. A false *absence* of coverage produces
 confident recommendations, which is why it survives — cf.
-[[feedback_a_broken_instrument_fails_toward_the_answer_that_licenses_work]] if filed, and the same shape
+[[technique_keeping_this_store_reachable]] if filed, and the same shape
 in [[command_grep_markdown_strip_emphasis_before_matching]].
 
 ## ⛔ The sharper failure: my census HELD the disconfirming hit and I dismissed it

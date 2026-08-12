@@ -46,4 +46,4 @@ older one, and it cannot make the older one see it. Only an edit to the older ar
   link.** So point the check at the cause, not the effect — the effect always looks correct.
 
 Instance record: [[project_12383_spirv_validation_before_spvopt_strip]].
-Companion on trusting a body's own self-description: [[feedback_never_cite_a_peers_artifact_from_its_summary]].
+Companion on trusting a body's own self-description: [[feedback_an_artifacts_self_description_is_a_claim_by_the_artifact]].

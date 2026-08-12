@@ -550,3 +550,52 @@ repository(...){pullRequest(number:811){reviews(first:5){nodes{author{__typename
 `pr-814-slang-rhi-decided.md` records verbatim *"`skallweitNV` (requested CODE OWNER, `user.type=User`, **NOT the author**) submitted `APPROVED`"* and *"SCORED AS A LOSS."* ⇒ **They did not misread the evidence — they never opened it.** One `grep` on their own artifact would have prevented the downgrade.
 
 ⇒ ⭐⭐⭐ **THEIR GENERALIZATION IS THE ONE TO KEEP, AND IT IS BROADER THAN COUNTS: `my own artifact needs ENUMERATION, not RECALL` governs every claim about a past decision of mine — before scoring, discounting, or citing a prior decision, grep its row FIRST.** ⚠️ **And their detection note is the load-bearing half: DIRECTION COULD NOT FLAG IT, because discounting one's OWN losses never feels like a shortcut.** A self-serving error has a felt signature; a self-harming one has none. ⇒ **"Does this favour me?" is not a usable trigger. "Am I citing a prior decision from memory?" is.**
+
+## ⛔⭐⭐⭐ 2026-08-11 — THE APPROVAL POLICY EXISTS IN TWO VERSIONS ON MY EDGE, THE AUTHORITATIVE ONE IS ON AN **EPHEMERAL** MOUNT, AND THE FALLBACK IS STRICTER
+
+Chasing the approver's claim that `APPROVAL_POLICY.json` was *"widened on 2026-08-04, cutting `protected_paths` to just `**/slang-tag-version.h`"* — **it verifies, but only in one location, and the geometry is the finding:**
+```
+7 copies on my edge. SIX are the skill-bundled default:
+   policy_version = v0-shadow          8 protected_paths
+   ['.github/**','**/CMakeLists.txt','cmake/**','external/**','**/*.yml','**/*.yaml',
+    'source/slang/slang-ast-support-code.h','**/slang-tag-version.h']
+   mtimes 2026-08-09..08-10 (i.e. rewritten by container rebuilds)
+ONE is the widened live policy:
+   /workspace/extra/ephemeral/approver-policy/APPROVAL_POLICY.json
+   policy_version = v0-shadow-wide     1 protected_path  ['**/slang-tag-version.h']
+   mtime 2026-08-04 15:48:08
+findmnt -> /dev/vdb  /workspace/extra/ephemeral        <- EPHEMERAL MOUNT
+SKILL.md:33 "policy/APPROVAL_POLICY.json (mounted; carries policy_version).
+             If none is mounted, eval-clauses.py falls back to the v0 default bundled next to it."
+```
+⇒ ⭐⭐⭐ **THE OPERATIVE POLICY LIVES ON AN EPHEMERAL VOLUME AND THE SILENT FALLBACK IS *STRICTER*.** If the mount is absent on some wake, `eval-clauses.py` quietly uses the 8-path default — and **#12084's only file (`.github/workflows/nightly-mdl-perf-test.yml`) matches `.github/**` AND `**/*.yml` under the default while matching NOTHING under the wide policy.** Measured both ways. ⇒ **The same PR is `CLAUSE_FAIL:protected_paths` or `6/6 PASS` depending on whether a scratch mount happened to be present, with no diagnostic either way.** ⭐⭐ **A policy whose absence changes verdicts and produces no error is the approval-ledger equivalent of the false-green: the decision is real, its basis is invisible.**
+
+## ✅ AND THIS SETTLES A QUESTION I HAD OPEN WITH THE OPERATOR — the widening does NOT explain the losses away
+
+```
+policy widened  2026-08-04 15:48
+#813 merged     2026-08-07T14:30   #814 merged 2026-08-07T15:27
+#815 merged     2026-08-10T06:26   #811 merged 2026-08-10T07:25
+```
+⇒ **All four losses POSTDATE the widening by 3–6 days, so every one was decided under `v0-shadow-wide`** (assuming the mount was present, which is exactly what cannot be confirmed retroactively). ⇒ ⭐⭐ **The 6-loss record is NOT an artifact of a stale strict policy — it stands, and the carve-out question I sent the operator is unaffected.** **Had the widening postdated the losses, the whole escalation would have been moot; checking the dates was one command and I nearly shipped the policy question without it.**
+
+⚠️ **CAVEAT I must not overshoot: I cannot verify WHICH policy was loaded for any past decision.** The wide file's mtime is 08-04 but mount presence per-wake is not recoverable from here. ⇒ **"All four postdate the widening" is a fact about dates, not proof they were evaluated under the wide policy.** Recording it as the former.
+
+## ✅⛔⭐⭐⭐ 14:55Z — TWO CLAUSES FLIP (not one), MY "UNRECOVERABLE" CAVEAT IS RETIRED BY THEIR AUDIT, AND ONE DETAIL OF THEIRS IS WRONG IN A WAY THAT CHANGES THE FIX
+
+**Verified on my edge, both policies side by side:**
+```
+                        allow_fork_head   protected_paths   caps
+v0-shadow-wide (mounted)     True              1 glob       8000 lines / 150 files
+v0-shadow      (bundled)     False             8 globs        400 lines /  30 files
+findmnt: /dev/vdb  /workspace/extra/ephemeral  ro,relatime     <- ephemeral, READ-ONLY
+```
+⇒ ✅ **Their two-clause finding is right and my escalation understated the blast radius: a dropped mount fails `head_provenance` on EVERY FORK-AUTHORED PR — the majority of external contributions — on top of the `.github/**` / `**/*.yml` effect. And the caps tighten 20× (8000→400 lines, 150→30 files), which they did not even flag.**
+
+⛔ **BUT their mechanism detail is wrong: `allow_fork_head` is NOT "absent entirely" — it is PRESENT and explicitly `False`.** Measured: `'allow_fork_head' in d -> True`, `repr -> False`. ⇒ ⭐⭐ **Same verdict, DIFFERENT FIX. "Absent" implies add the key; "explicitly False" means the strict default is DELIBERATE, so the only defect is the SILENT FALLBACK plus the ephemeral storage.** Patching the key would quietly loosen the intended safe default — **the exact "fix it into failing open" outcome they warned against, arrived at through their own description.**
+
+⇒ ⭐⭐⭐ **AND THEY RETIRED MY CAVEAT BY MEASUREMENT, WHICH IS THE RESULT OF THIS EXCHANGE.** I had said per-wake mount presence "isn't recoverable from here." **It is — `clauses.json` records `policy_version` per decision.** Across **279** decision workspaces in their container: `216 v0-shadow-relaxed · 51 v0-shadow-wide · 12 v0-shadow`. ⇒ **~4% of runs REALLY DID fall back to the strict default — not hypothetical — and #12089 flips WITHIN its own 6-revision chain.** ⇒ ✅ **All four slang-rhi losses confirmed `v0-shadow-wide` by `policy_version`, not inference (#813 `abec21d2`, #814 `7b4a6f2e`, #815 both revs, #811 all three). MY DATE INFERENCE WAS RIGHT AND THE CAVEAT IS DROPPED.** ⭐⭐ **Their rule is the keeper: DATES ESTABLISH WHICH POLICY WAS CURRENT; ONLY `policy_version` ESTABLISHES WHICH WAS USED.**
+
+⇒ ⭐⭐⭐ **AND THEIR CORRECTION TO MY "FALSE-GREEN" FRAMING IS THE ONE THAT MATTERS FOR THE FIX: THE DIRECTION FAILS SAFE.** A dropped mount **over-abstains, never over-approves** — which is precisely why it survived 12 runs unnoticed: **it produces conservative-looking output.** ⇒ **A fail-safe defect is harder to find than a fail-open one because its symptom is indistinguishable from diligence.** The real defect is that `eval-clauses.py:283` is **silent**; the fix is to print the resolved policy path and warn on the fallback branch, plus durable (non-ephemeral) storage. **Must be stated in the escalation so nobody "fixes" it into failing open.**
+
+✅ **Method note worth copying: they probed on a COPY of the workspace.** Overwriting `clauses.json` in place would have destroyed the DECISION_REVIEW-attested hash and invalidated the approve — they verified theirs still `333a96d1…`. ⇒ **An audit that mutates the artifact it audits invalidates the thing it was checking.**

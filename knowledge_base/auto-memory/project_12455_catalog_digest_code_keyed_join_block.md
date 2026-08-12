@@ -119,12 +119,62 @@ under enforcement**, so the severity across instances of this config defect is *
 cumulative count hides that. Full mechanism, the union recipe's three failure directions, and the
 operator action: [[feedback_record_decision_ok_proves_emission_not_persistence]].
 
+## TERMINAL — MERGED 08-11T09:13:48Z as `ec47ea72b`; defect SHIPPED; join = LOSS
+
+`jkiviluoto-nv` APPROVED 08:53:46Z, author self-merged 09:13:48Z at head `1a0129a67d3a` (R3).
+**No R3 decision exists** — the approver re-resolved live state on my dispatch, found the PR
+terminal ~37 min earlier, and logged `no-op: superseded by merge` rather than minting a row for a
+terminal head. ⭐⭐**Correct: a dispatch is a CLAIM about state, not state — my R3 dispatch was
+stale when I sent it and I did not check.**
+
+**Verified by me on `origin/master` after the merge** (not a PR ref): `:1433` still drops
+`parts[4]`, `:1435` still last-wins, `:1523` still `catalog.get(code)`;
+`git merge-base --is-ancestor ec47ea72b origin/master` → YES. **The defect is live on master**;
+all 3 collisions reproduce and the lint still emits the laundering remediations.
+
+⭐⭐⭐**THE CLAIM SPLIT, AND ONLY HALF WAS EVER TESTED:** *"the defect is real"* SURVIVED (two
+independent edges + live on master); *"material enough not to ship as-is"* was **REFUTED by a
+maintainer**. Both edges spent every round proving the mechanism; **nobody tested the severity
+claim until a human did.** ⇒ **Detection and severity are separately falsifiable — verifying
+detection to exhaustion tells you nothing about placement.**
+
+Approver's calibration test, adopted after the loss and worth carrying: **"does this hurt anyone if
+every human ignores it?"** Here no — laundering requires someone to *follow printed advice* in a
+warn-only lint with no CI gate ⇒ `ABSTAIN_POLICY:CHALLENGER_CONCERN`, not BLOCK. Reserve BLOCK for
+harm needing no human action (wrong codegen, ABI break, data loss, red gate). ⚠️**Policy-level, not
+a judgement slip:** the procedure mandates BLOCK on any 🔴 and Devin reported 🔴 ⇒ fix "what counts
+as 🔴 in test-only tooling".
+
+**My read of the author was right and the approver's wasn't:** R3 (+105/−6) addressed **four**
+advisory findings, deferring only the structural re-keying — the expected shape (cheap fixes land,
+re-keying a lookup doesn't). ⇒ **the BLOCK added no information the ABSTAIN wouldn't have.**
+Two unpersisted decisions on this PR (R2 BLOCK + the join; `record_human_verdict` withdrawn by
+design, so joins have nothing to stamp onto either).
+
+✅**Join artifact NOW on my edge** — the approver `send_file`d it after I flagged that
+`approver-decisions/` named *its* filesystem, and said so explicitly (*"this is the copy that
+exists on your edge"*). Durable set for this PR, all three unpersisted:
+`slang-12455-656583bb2adb-decision.md` (23.5 KB, annotated through terminal state),
+`…-clauses.json`, `slang-12455-JOIN-merged-1a0129a67d3a.md` (5.9 KB). Its merged-master
+verification table independently matches mine: join LIVE at `:1523`, `parts[4]` LIVE at `:1433`,
+and `lint` on master still emits all three *"refresh … with `catalog-digest <code>`"* lines.
+⇒ ⭐⭐**Naming the filesystem ambiguity got the file moved in one turn** — cheaper than the
+alternative, where the only record of a 6-round decision lives on an edge nobody else can read.
+
 ## RESUME trigger
 
-**Open question I own:** the public review surface on the PR says *"0 bugs, 2 gaps"* while the
-shadow decision is BLOCK with verified line numbers, so **the author is iterating against a clean
-signal and cannot see this defect.** The approver is architecturally barred from posting. Awaiting
-an operator decision on whether to surface it and through whom — do not post a defect claim on a
-human's PR unauthorized. Two advisory items for whoever does surface it: R2's self-test trim lost
-coverage of four properties, and the PR's own prose (`regenerate.py:4092-4093` comment + commit
-message + PR-body verification table) still claims coverage the diff no longer carries.
+**The surfacing question is CLOSED BY EVENTS, not by a decision** — I escalated it to the operator
+twice and the PR merged before either was answered. ⭐⭐**A gate on someone else's reply with no
+resume path of my own: the standing rule
+([[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]]) named exactly this and I
+still had no fallback.** Whether posting would have changed the outcome is **unmeasured** — do not
+record it as "posting wouldn't have mattered"; a maintainer approved 20 min before the merge and
+never saw the finding.
+
+**LIVE follow-up, if anyone wants it:** codes 20001/20002/20005 are wrong on master today. The fix
+direction is unaffected by the merge — extractor preserves every definition; lookup selects on
+`source`+`catalog_code`+`catalog_name` (unique at both measured scopes); unresolvable tuple **warns**
+rather than falling through, since `catalog_name` is not rename-stable. Also still open from the R2
+record: `catalog_code` is load-bearing but absent from `_REQUIRED_TEST_META_KEYS` with a silent skip,
+and `catalog-digest` writes failure text to **stdout**, so a caller ignoring exit status records an
+error sentence as a digest. Nothing was ever posted to GitHub on this chain.

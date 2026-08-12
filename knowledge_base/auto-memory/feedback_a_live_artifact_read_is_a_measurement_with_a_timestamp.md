@@ -1,6 +1,6 @@
 ---
 name: feedback_a_live_artifact_read_is_a_measurement_with_a_timestamp
-description: "A read of a mutable live artifact (comment body, issue labels, PR head, TITLE, mtime) is a MEASUREMENT WITH A TIMESTAMP, not a fact — the defect is invisible because nothing malfunctions. 5 instances; the two worst are DISPATCH-SIDE, where a quoted field becomes someone else's public claim: #12398 (quoted title, reporter had already retitled) and #12404 (⛔THE WEBHOOK PAYLOAD ITSELF — I forwarded `labels=(none)` verbatim; author set milestone/assignee/Type/label 60s after filing). Cure: re-read at the moment of claiming; STAMP quoted upstream state with its read time; prefer the link to the paste."
+description: "A read of a mutable live artifact (comment body, issue labels, PR head, TITLE, mtime) is a MEASUREMENT WITH A TIMESTAMP, not a fact — the defect is invisible because nothing malfunctions. 6 instances; the worst are DISPATCH-SIDE, where a quoted field becomes someone else's public claim: #12398 (retitled), #12404, and ⛔#12469 — a RECURRENCE 5 days AFTER this leaf's webhook-side remedy was written: I forwarded `LABELS: (none)` again. Stale in 1-8s there (vs 60s), so 'be quick' is not a cure and stamping is barely one. Only fix that fires: DELETE the labels/assignee slot from the dispatch template — the URL cannot go stale."
 metadata: 
   node_type: memory
   type: feedback
@@ -142,6 +142,53 @@ What this adds beyond instances 1–4:
 current state. Either (a) re-read them live in the same turn as the dispatch, or (b) stamp them —
 *"labels as of the webhook instant 17:36:31Z; re-read before acting"* — or (c) omit them and give the
 URL. See [[project_12404_slang_package_tool_maintainer_owned]].
+
+## ⛔⛔ Sixth instance — slang#12469, 2026-08-11: THE REMEDY ABOVE DID NOT FIRE. I DID IT AGAIN.
+
+Five days after writing the webhook-side remedy on this very page, I dispatched #12469 to
+`slang-triager` with **`LABELS: (none)`** — the identical field, the identical event type
+(`github.issue_opened`), the identical laundering into someone else's brief. The triager corrected me
+again, in the same slot of its report as last time. Live read at claim time (my own, this turn):
+`labels:["Dev Opened"]`, `assignees:["zangold-nv"]`, `type:Feature`.
+
+⭐⭐⭐**The timing is the new fact, and it destroys two of the three remedies I wrote.** Timeline events:
+
+| event | at | actor | gap from filing (03:07:59Z) |
+|---|---|---|---|
+| `issue_type_added` (Feature) | 03:08:00Z | zangold-nv | **+1 s** |
+| `assigned` → zangold-nv | 03:08:00Z | zangold-nv | **+1 s** |
+| `labeled` → `Dev Opened` | 03:08:07Z | **jkwak-work** (a THIRD party) | **+8 s** |
+
+- ⛔**#12404 said 60 s; here it was 1–8 s.** So remedy (a) *"re-read them live in the same turn as the
+  dispatch"* is **unreliable by construction** — the webhook cannot reach me faster than 8 s, so the
+  payload is *already* wrong when it lands. There is no race to win.
+- ⛔**Remedy (b), stamping, is technically honest and practically useless.** A brief saying *"labels as
+  of the webhook instant 03:07:59Z"* still puts `(none)` in the recipient's context, and I have now
+  twice watched a recipient spend a paragraph correcting it. **A caveat does not stop a value from
+  being read** — the diligence-slot failure this store already names.
+- ✅**Only remedy (c) survives: OMIT the field.** Not "omit when suspicious" — omit *always*, because
+  the field's decay rate (1 s) is below my dispatch latency floor. The routing decision I actually
+  needed (issue-not-PR ⇒ triager) never once consulted `labels`. **I was pasting a field I had no use
+  for, and its only effect was to inject a falsehood.**
+- ⭐⭐**A third party labels the issue too** (`jkwak-work`, not the author). #12404's model was
+  "self-triaging MEMBER author"; that was too narrow, and a narrow model of *who* mutates the fields
+  invites "this author probably won't." **The general fact is that `issue_opened` payload metadata is
+  written by the repo's whole triage apparatus within seconds. Never model the actor; drop the field.**
+
+⭐⭐⭐**The meta-lesson, which is the expensive one: a remedy phrased as a disjunction of three options
+defaults to the weakest.** I wrote *"either (a) re-read, or (b) stamp, or (c) omit"* — and then did
+none of them, because a menu is not an instruction. **The two I offered as acceptable were the two
+that don't work.** ⇒ when a hazard has one remedy that actually holds, write ONLY that one, as an
+imperative about a specific artifact I control (the dispatch template), not as a choice among
+mitigations. See [[feedback_a_documented_invariant_with_no_enforcer]] — this page *was* the documented
+invariant, and its enforcer was my own attention, which is exactly the enforcer that fails.
+
+✅**Standing edit to my dispatch template, effective now:** a `github.issue_opened` forward carries
+`REPO` / `ISSUE` / `URL` / `AUTHOR` / `TITLE`-as-quoted-with-link / body-as-quote. It carries **no
+`LABELS`, no `ASSIGNEES`, no `MILESTONE`, no `TYPE`** line at all. If a routing decision ever needs
+one, fetch it live in that turn and say so inline.
+
+See [[project_12469_spirv_nsdi_debugger_test_infra]].
 
 **Filing note:** this rule sat inline in MEMORY.md's #11616 row for one tick and was
 therefore unfindable from #8785, where it recurred. A cross-cutting hazard filed

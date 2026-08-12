@@ -32,7 +32,7 @@ Same family as the `MEMORY.md` collapse-silently rule (**a tool that caps, dedup
 prefixes reports a TRUE NUMBER ABOUT A SET YOU NEVER SAW**), but with a sharper failure: this
 instrument was **the auditor**. A windowed audit tool doesn't merely under-report — it certifies the
 remainder as absent, and the reader's next move is to declare the store clean. Cf.
-[[feedback_a_broken_instrument_fails_toward_the_answer_that_licenses_work]] shape: here the defect
+[[technique_keeping_this_store_reachable]] shape: here the defect
 failed toward *"only a few left, wrap up"*.
 
 ## How to apply

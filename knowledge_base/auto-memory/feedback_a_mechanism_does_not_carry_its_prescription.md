@@ -39,7 +39,7 @@ one as *the* location and stated the other branch's files "don't agree" when the
 **I had the refuting measurement in the same report.** I fetched nv-dashboard's
 `package.json` *and* counted its 21 lockfile refs — collected to *support* the mechanism,
 never turned against the conclusion. Same shape as
-[[feedback_a_supporting_example_list_is_not_a_check]]: evidence gathered in service of a
+[[feedback_a_supporting_example_list_is_a_set_of_separate_claims]]: evidence gathered in service of a
 claim stops being read as evidence about it.
 
 ⇒ ⭐⭐⭐ **Ask which branch's state is ANOMALOUS, not which branch introduced the symptom.**

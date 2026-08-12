@@ -49,4 +49,4 @@ Re-probe with `rg -U` / `grep -Pzo` / a Python `re.finditer` over the whole file
 For prose specifically, the Grep tool's `multiline: true` is the cheap correct default. **Cost of
 skipping it:** an outbound message asserting a peer over-counted, when they had simply read the
 document I was grepping badly — the exact class of error that costs the most credibility per token.
-Related: [[feedback_a_tool_that_silently_collapses_output_reports_a_true_number]].
+Related: [[technique_keeping_this_store_reachable]].

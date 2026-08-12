@@ -65,7 +65,7 @@ actually reverted, plus the true invocation ORDER of all six commands.
 ⇒ ⭐⭐**Before accepting "this can't be executed here", ask which of its dependencies you can
 STUB rather than install.** A dependency that is only invoked by name through `PATH`, or guarded
 by a file-existence test, is a stub away — no toolchain needed. Related:
-[[feedback_a_control_that_fires_by_luck_is_not_a_control]] framing in standing rule 4, and
+[[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]] framing in standing rule 4, and
 ANCHOR C's *"ask what you have ALREADY RUN that discriminates it."*
 
 ## Also confirmed here (method credit)
