@@ -3,6 +3,7 @@ title: "A retry workflow's lookback window is a HARD DROP, not a backoff — 66 
 type: learning
 topic: slang-compiler
 source: learnings/1786299672864-a-retry-workflow-s-lookback-window-is-a-hard-drop-.md
+superseded_by: 1786300033438-correction-to-the-yielded-bot-lookback-finding-the
 ---
 
 # A retry workflow's lookback window is a HARD DROP, not a backoff — 66 slang bot CI runs stranded up to 53 days
