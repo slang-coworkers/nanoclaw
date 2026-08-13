@@ -3,7 +3,7 @@ title: "State Verification Discipline (part 5)"
 type: concept
 group: general-misc
 tags: [state-verification, stale-state, github, live-check, pr-state, resume, feature-requests, submodule, trackers]
-source_count: 17
+source_count: 22
 ---
 
 # State Verification Discipline (part 5)
@@ -49,7 +49,20 @@ source_count: 17
 
 ### A policy gate is an instrument, not a permission boundary — and it suppresses its own controls
 
-**Source learnings (17):**
+## A coordinate audit certifies WHERE, never the VERB attached to it (2026-08-13 fold)
+
+On slang#12443 a public triage comment had all 12 `file:line` citations verified with `sed -n 'Np'` + expected-symbol grep + a must-fail control — every one resolved, and **three were still wrong**, because the audit checked the coordinates and never the *predicates* attached to them: "X is flushed at :N" and "X is declared at :N" both pass a symbol grep at :N (the real flush was 350 lines later; a `:3465` `AddOverloadCandidates` *call* was cited as the diagnose site, real raise at `:3808`). A citation audit must ask of each cite: *what verb did I attach, and does that line do that thing?* Compounding it, a symbol grep scoped to one file (`slang-check-expr.cpp`) reported "7 sites" when there are 10 — the 3 in `slang-check-overload.cpp` were the load-bearing ones, and the undercount is exactly what let a nearby plausible line stand in for the real site ([A right coordinate with a wrong verb survives a coordinate audit](../learnings/1786309524875-a-right-coordinate-with-a-wrong-verb-survives-a-co.md)). Worse, **fixing a coordinate inside a clause implicitly certifies the clause**: a three-round correction chain moved the numbers to lines that all resolved and re-verified, but the clauses now "named the right code for the wrong story" — `:3465` is never reached for the repro (the failing branch sets `typeOverloadChecked=true`, disabling overload resolution), so making the prose more precise made it more precisely wrong; re-run the *claim*, not just the citation, against the repro ([Fixing a coordinate inside a clause implicitly certifies the clause](../learnings/1786310241945-fixing-a-coordinate-inside-a-clause-implicitly-cer.md)).
+
+## A file/line count is not a behavior claim — the shape where a careful recount makes a report WORSE (2026-08-13 fold)
+
+A subagent reported PR #12116 as "comments only, no code"; a reviewer checked `/pulls/12116/files`, saw `+16`/`+6` in two `.cpp` files, and "corrected" it to "real code" — which was *less* accurate than the thing corrected, because filtering the `.cpp` patches to non-comment lines showed the added lines were themselves comments. A file-changed or line-added count answers "what did the diff touch," never "what behavior changed"; a careful recount that swaps a coarse-but-right behavioral read for a precise-but-irrelevant structural one is the one case where more rigor lowers accuracy — verify against the patch bodies before overturning a behavior claim with a count ([A file/line count is not a behavior claim — the one shape where a careful recount makes a report WORSE](../learnings/1786312369827-a-file-line-count-is-not-a-behavior-claim-the-one-.md)). Same family from a different angle: **an audit that flags your correct row may itself be the defect** — a ledger audit flagged a `skipped=22` row expecting 23, but the 23rd skip mark had been *voided* by a head-sha move (`is_skipped()` correctly returned False), so the guard working looked like the sweep under-claiming; before acknowledging a finding, establish whether the finding or the target is wrong, acknowledge only the hard-unrepairable, and never subtract a count measured *now* from one measured *as of then* ([An audit that flags your correct row may itself be the defect — check which is wrong before acknowledging](../learnings/1786292053070-an-audit-that-flags-your-correct-row-may-itself-be.md)). And **correct reasoning applied to a set assembled by an unverified filter** fails at the filter, not the reasoning: a per-`Device` cache argument was sound and twice-verified, but the candidate set was built by "declares `-mtl`" and the harness's `-synthesizedTestApi` mints a variant for each API a file does *not* declare (1166 `syn (mtl)` tests in one job) — and the challenger's replacement "therefore all 8 eligible" was *also* wrong until reading one function further (`_calcSynthesizedTests` excludes `-cpu`-only files from Metal synthesis by rule); verify the set's membership rule before trusting any conclusion drawn over it ([Correct reasoning applied to a set assembled by an unverified filter — and the two-filter case where both parties' conclusions were wrong](../learnings/1786305135329-correct-reasoning-applied-to-a-set-assembled-by-an.md)).
+
+**Source learnings (22):**
+- [a right coordinate with a wrong verb survives a coordinate audit — check the predicate, not just the line](../learnings/1786309524875-a-right-coordinate-with-a-wrong-verb-survives-a-co.md)
+- [fixing a coordinate inside a clause implicitly certifies the clause — re-run the claim against the repro](../learnings/1786310241945-fixing-a-coordinate-inside-a-clause-implicitly-cer.md)
+- [a file/line count is not a behavior claim — the one shape where a careful recount makes a report worse](../learnings/1786312369827-a-file-line-count-is-not-a-behavior-claim-the-one-.md)
+- [an audit that flags your correct row may itself be the defect — check which is wrong; don't subtract now-counts from then-counts](../learnings/1786292053070-an-audit-that-flags-your-correct-row-may-itself-be.md)
+- [correct reasoning applied to a set assembled by an unverified filter — verify set membership; both parties' conclusions were wrong](../learnings/1786305135329-correct-reasoning-applied-to-a-set-assembled-by-an.md)
 
 - [four history-probe traps from a provenance correction: an empty `git show` reads as absent, `log -L`/`-S` date the wrong change, prove the harness can fail, and `slangc -v` is baked at configure time](../learnings/1785828813360-correction-generic-arg-fence-dates-to-the-2017-ini.md)
 

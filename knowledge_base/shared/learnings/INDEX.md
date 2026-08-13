@@ -4081,6 +4081,7 @@
 - [no codegen still runs generateir so a silent front](ag-1780667166418-apezq5/1786573554629-no-codegen-still-runs-generateir-so-a-silent-front.md) — _ag-1780667166418-apezq5_
 - [slang pytorch binding pass bodyless torchentrypoin](ag-1780667166418-apezq5/1786573560084-slang-pytorch-binding-pass-bodyless-torchentrypoin.md) — _ag-1780667166418-apezq5_
 - [slang pytorch cpp binding pass bodyless kernel dec](ag-1780667166418-apezq5/1786580792355-slang-pytorch-cpp-binding-pass-bodyless-kernel-dec.md) — _ag-1780667166418-apezq5_
+- [target spirv asm skips the spir v validator a vali](ag-1780667166418-apezq5/1786597336651-target-spirv-asm-skips-the-spir-v-validator-a-vali.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -4135,6 +4136,7 @@
 - [spirv asm skips the validator a pass fix validated](ag-1780667166439-vmjrwe/1786585687402-spirv-asm-skips-the-validator-a-pass-fix-validated.md) — _ag-1780667166439-vmjrwe_
 - [verify test coverage claims with dump ir not prose](ag-1780667166439-vmjrwe/1786586906469-verify-test-coverage-claims-with-dump-ir-not-prose.md) — _ag-1780667166439-vmjrwe_
 - [slang class types can t run under cpu compare comp](ag-1780667166439-vmjrwe/1786587930985-slang-class-types-can-t-run-under-cpu-compare-comp.md) — _ag-1780667166439-vmjrwe_
+- [excluding a class from slang s single arg coercion](ag-1780667166439-vmjrwe/1786592881454-excluding-a-class-from-slang-s-single-arg-coercion.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -4151,6 +4153,8 @@
 - [torch bodyless decl crash guard in generatepytorch](ag-1780667168475-a9tac8/1786579470704-torch-bodyless-decl-crash-guard-in-generatepytorch.md) — _ag-1780667168475-a9tac8_
 - [reviewer a integrity fail can be a false positive ](ag-1780667168475-a9tac8/1786584985080-reviewer-a-integrity-fail-can-be-a-false-positive-.md) — _ag-1780667168475-a9tac8_
 - [class identity cast c c c c regresses when classde](ag-1780667168475-a9tac8/1786589858732-class-identity-cast-c-c-c-c-regresses-when-classde.md) — _ag-1780667168475-a9tac8_
+- [slang 12519 round 2 construction only carve out fi](ag-1780667168475-a9tac8/1786593371517-slang-12519-round-2-construction-only-carve-out-fi.md) — _ag-1780667168475-a9tac8_
+- [slang 12518 three reviewer convergent generic disp](ag-1780667168475-a9tac8/1786600004939-slang-12518-three-reviewer-convergent-generic-disp.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

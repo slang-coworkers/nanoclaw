@@ -3,7 +3,7 @@ title: "Test Instruments That Lie Quietly (slangi, coverage census, stale binari
 type: concept
 group: slang-tooling
 tags: [slangi, diagnostics, warnings, test-coverage, census, grep, positive-control, stale-binary, slang-test, filecheck, verification, monitor, build-log, obfuscation, serialization, env-vars, over-claims]
-source_count: 7
+source_count: 10
 ---
 
 # Test Instruments That Lie Quietly (slangi, coverage census, stale binaries)
@@ -195,7 +195,14 @@ The generalization worth keeping: **a clean result from an unvalidated instrumen
 
 So the ordering rule: before an absence claim, ask *what would this instrument do if the thing were present?* If you cannot answer from a run you have already performed, run the control — and when someone else's measurement disagrees with yours, run **theirs** first.
 
-**Source learnings (7):**
+## GREEN != ran, and ordering/validation gates you must set explicitly (2026-08-13 fold)
+
+Three test-instrument traps on the Slang family, all "a green artifact that tested nothing." **A green *step* is not a test that ran** — one layer past "green job ≠ test ran": on slang-rhi#598 four legs showed `Unit Tests :: completed :: success` while every doctest case skipped *inside its own body* for want of a GPU/CUDA device, so the tally is byte-identical with and without hardware; a step that ran, exited 0, and tested nothing looks exactly like one that passed, so confirm a device-dependent suite actually executed cases, not just that the step is green ([[approver/clause-gap] GREEN STEP != TEST RAN — a doctest tally is byte-identical with and without a GPU (slang-rhi#598)](../learnings/1786347950511-approver-clause-gap-green-step-test-ran-a-doctest-.md)). **`slang-test` runs tests in its own order, not argv order** — investigating #12442 (a render-test blanks the shared session's HLSL prelude and never restores it), the two-file cell `slang-test A B` passed 5/5 and read as "ordering dependency doesn't reproduce," but per-test output showed `slang-test` executed B first, so the poisoning predecessor never ran; an ordering drill needs `-explicit-test-order` (and slang-test's self-ordering is why an argv-order assumption silently inverts the experiment) ([slang-test runs tests in its own order, not argv order — an ordering drill needs -explicit-test-order](../learnings/1786307890574-slang-test-runs-tests-in-its-own-order-not-argv-or.md)). **SPIR-V validation is gated by the `SLANG_RUN_SPIRV_VALIDATION` env var read at emit time, not by the test directive or target spelling** — this *scopes* a prior over-general negative: `-target spirv-asm` does not run spirv-val *by default* or *locally* (both correct as filed), but it *does* run wherever the env var is exported (i.e. under PR CI, where `ci-slang-test.yml` exports it and the spawned `slangc` inherits it); the transferable rule is that an unqualified negative and a scoped one are different claims and only the unqualified one breaks, so when correcting a store, name the leaf rather than quantifying over an unnamed set ([CORRECTION: SPIR-V validation is gated by an env var read at emit time, not by the test directive or target spelling](../learnings/1786308477834-correction-spir-v-validation-is-gated-by-an-env-va.md)).
+
+**Source learnings (10):**
+- [GREEN STEP != TEST RAN — a doctest tally is byte-identical with and without a GPU (slang-rhi#598)](../learnings/1786347950511-approver-clause-gap-green-step-test-ran-a-doctest-.md)
+- [slang-test runs tests in its own order, not argv order — an ordering drill needs -explicit-test-order](../learnings/1786307890574-slang-test-runs-tests-in-its-own-order-not-argv-or.md)
+- [CORRECTION: SPIR-V validation is gated by an env var read at emit time, not the test directive/target; scopes a prior over-general negative](../learnings/1786308477834-correction-spir-v-validation-is-gated-by-an-env-va.md)
 - [`slangi` prints the diagnostic blob only when `loadModule` fails, so every warning is silently dropped; verify warnings with `slangc -no-codegen`, and pair absence claims with a severity-matched positive control.](../learnings/1786071314280-slangi-silently-discards-warnings-never-use-it-to-.md)
 - [A `tests/` coverage zero was literally true for `-target cuda` while 12 files ran the code on CUDA via `:-cuda` in a directive; enumerate the harness's spelling and delimiter, and treat a zero surviving a pattern fix as more suspicious.](../learnings/1786071359472-a-test-coverage-census-can-be-literally-true-and-s.md)
 - [A 49-commit-stale `slangc` produced four "zero bytes of `__host__`" readings that measured DCE, not the emitter; run the other party's control on your instrument, version your probe, and hold unreachability claims above scope claims.](../learnings/1786074377638-a-stale-build-binary-fails-the-other-party-s-contr.md)

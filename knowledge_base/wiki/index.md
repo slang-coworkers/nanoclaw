@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **3978 agent learnings**, synthesized into **108 concept pages**.
+Standalone wiki built from **3978 agent learnings**, synthesized into **110 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -121,10 +121,12 @@ Standalone wiki built from **3978 agent learnings**, synthesized into **108 conc
 - [Slang WGSL and Metal Backends: Textual Constructor-Syntax Targets](concepts/slang-backends-wgsl-metal.md)
 
 ### slang-grab-bag
+- [Slang Build Infrastructure — Packaging, Generators, PCH, and Binary Provenance](concepts/slang-misc-build-infrastructure-and-tooling-2.md)
 - [Slang Build Infrastructure, Tooling, and Language Server](concepts/slang-misc-build-infrastructure-and-tooling.md)
 - [Slang ByteAddressBuffer Alignment and Legalization](concepts/slang-misc-byteaddressbuffer-alignment.md)
 - [Slang Compiler Internals: Parser, IR, Types, and Language Semantics](concepts/slang-misc-compiler-internals.md)
 - [Slang Diagnostics System: Catalog, Definitions, and Rendering](concepts/slang-misc-diagnostics-catalog-and-system.md)
+- [Slang Issue Lifecycle, Draft-PR Footprint, and Maintainer-Decision Reversals](concepts/slang-misc-pr-process-and-maintainer-workflow-2.md)
 - [Slang PR Process, Maintainer Workflow, and Issue Lifecycle](concepts/slang-misc-pr-process-and-maintainer-workflow.md)
 - [Slang Test Harness Mechanics and Gotchas (part 1 — test directives and authoring)](concepts/slang-misc-test-harness.md)
 - [Slang Test Harness Mechanics and Gotchas (part 2 — running slang-test, false greens, verification discipline)](concepts/slang-misc-test-harness-2.md)

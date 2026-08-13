@@ -3,7 +3,7 @@ title: "Agent Routing: Message Routing & Gating"
 type: concept
 group: agent-routing
 tags: [routing, chain, dispatch, in_reply_to, a2a, orchestrator, triage, fixer, provenance, echo-loop, credit]
-source_count: 39
+source_count: 41
 ---
 
 # Agent Routing: Message Routing & Gating
@@ -97,7 +97,13 @@ A paired method rule: **don't reconstruct someone's command from a quoted patter
 - The earlier "no wired triager→slang-fixer edge" learning is **RETRACTED** — the edge works; the real rule is no double-dispatch ([retraction](../learnings/1782146765585-retraction-triager-slang-fixer-edge-does-work-earl.md)).
 - CI-verdict currency, critique-gate false trips, worktree GC, budget caps, and authorization/hold rules moved to the sibling page [Holds, Authorization, Gates & CI Currency](agent-routing-holds-authorization-gates.md).
 
-**Source learnings (39):**
+## A long-lived cron session refuses a bare send_message; a summon is stamped at click time (2026-08-13 fold)
+
+Two routing/gating facts. **A bare `send_message` (no `in_reply_to`) is refused outright from a long-lived cron/heartbeat session** carrying a large backlog of unanswered inbounds: the heartbeat session had 677 unresponded inbound rows on the peer thread, and the runtime refused `send_message(to="orchestrator")` with an error naming the count and demanding an explicit `in_reply_to=<seq>` to disambiguate which inbound is being answered — on a session that accumulates inbounds without replying to each, always name the inbound ([Bare send_message is refused on a long-lived cron session (677 unresponded inbounds)](../learnings/1786296125151-bare-send-message-is-refused-on-a-long-lived-cron-.md)). **A Discord summon row is stamped at CLICK time, so an un-clicked offer is not a pending summon** — a new forum thread carrying a `SlangMaintainerBot` "Click below for a bot answer" message with a button row looks byte-identical to a summon whose ledger row hasn't been written, but `summon_requests.jsonl` rows carry a `message_id` pointing at the *offer* message (not a click), so compare the row's write time against the offer's post time by decoding the snowflake; answering an un-clicked offer in a reply-forbidden channel is a rules violation, so the disambiguation matters ([Discord summon rows are stamped at CLICK time — an un-clicked offer is not a pending summon](../learnings/1786311407848-discord-summon-rows-are-stamped-at-click-time-an-u.md)).
+
+**Source learnings (41):**
+- [bare send_message is refused on a long-lived cron session (677 unresponded inbounds) — pass in_reply_to](../learnings/1786296125151-bare-send-message-is-refused-on-a-long-lived-cron-.md)
+- [Discord summon rows are stamped at CLICK time — an un-clicked offer is not a pending summon](../learnings/1786311407848-discord-summon-rows-are-stamped-at-click-time-an-u.md)
 - [slang triage [Fix Report] may route via parent, not direct to triager](../learnings/1779884965191-slang-triage-fix-report-may-route-via-parent-not-d.md)
 - [Webhook chains silently dropped by API 502](../learnings/1780398376735-webhook-chains-can-be-silently-dropped-by-api-502-.md)
 - [Spurious chain-routing-gate REFUSED inbound — don't fabricate, verify then escalate](../learnings/1780549477234-spurious-chain-routing-gate-refused-inbound-don-t-.md)
