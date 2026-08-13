@@ -122,3 +122,17 @@ No PR. Related: closed #10065.
 - tangent-vector's 2nd reading surfaced to @j8asic (un-obfuscated names in the **emitted output** for `spv-reflect`-style post-compilation reflection), answer left to them.
 
 **My own correction owed upward:** I relayed the reflection-break to the operator as VERIFIED across several turns. Corrected.
+
+## UPDATE 08-12T17:15Z — 4th maintainer (jhelferty-nv) asks the OP to clarify scope; `Needs reporter feedback` label added
+
+**jhelferty-nv comment 5270043944** (MEMBER, 08-12T17:15:36Z, **NOT a bot mention** — addressed to @j8asic): *"It sounds like we need more clarity on what is being proposed. @j8asic Can you provide details on what you're trying to accomplish? Is your goal to minify slang source code, or is it to change the nature of symbolic name obfuscation to include the names of shader parameters but not locals?"*
+
+**State:** open · assignee `jkwak-work` · labels now **`Needs reporter feedback` + `Office-Yong` + `Office-Tess`** (the reporter-feedback label is NEW — a maintainer has formalized the awaiting-reporter state) · comments 10.
+
+**Significance — this CORROBORATES our disposition, does not reopen work:**
+- A maintainer applying `Needs reporter feedback` = independent confirmation the chain is correctly **gated on @j8asic**. Our silence-fallback ~08-21 now backed by a maintainer-applied label.
+- **NOT a bot mention** ⇒ nothing owed for us to post; jhelferty is asking the reporter, not us.
+- **THREE readings of the request are now on the table, from three different maintainers/architects** ⇒ strongly validates our repeated refusal to assert what the OP wants: (1) jhelferty A = minify slang source; (2) jhelferty B = change obfuscation to cover parameter names but not locals; (3) tangent-vector = un-obfuscated names in the emitted OUTPUT for `spv-reflect`-style post-compilation reflection. jhelferty's two framings do NOT include tangent-vector's.
+- jhelferty's framing does **not** restate our retracted reflection-break claim — it's a scoping question, not a mechanism claim. Clean.
+
+**Disposition unchanged:** gated on @j8asic, now with a maintainer-applied `Needs reporter feedback` label. Silence-fallback ~08-21 stands (today is 08-12; a maintainer nudged the reporter, which if anything refreshes the wait). Still NO fixer.

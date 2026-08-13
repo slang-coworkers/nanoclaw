@@ -89,6 +89,20 @@ Four bounces at 16:43Z: #11509 (`sess-…wauaay`) · #9125 (`sess-…7wu50j`, **
 
 ⇒ ⭐⭐⭐ **DID NOT RE-DRIVE ANY (ANCHOR F). Escalated the cohort as ONE incident + a push.** The two levers, unchanged: (a) operator closes the ~15 wedged sessions host-side (I cannot — `ncl sessions` read-only), (b) disposition-aware nudger. ⚠ **Suspect amplifier = my own `task-1783328238990-qikxwn` "scheduler-watchdog" (re-arm engine) — this is EXACTLY ANCHOR F's shape (re-arms spent one-shots, "was the live path to a forbidden re-nudge").** Did NOT unilaterally pause it — the culprit is unproven and pausing has fleet-wide supervision blast radius; offered the pause to the operator instead. ⭐ **Lesson refresh: when a cohort's obvious shared property (age) and its defining property (a shared event-timestamp) both fit a small all-old sample, the timestamp wins the moment ONE off-pattern member (the 1-day-old session) appears — seek the disconfirming member before publishing the causal story.**
 
+## ⚠ 2026-08-12 10:28Z — THE STORM IS FRESH HANDOFFS, NOT RETRIES; ISSUER STILL UNPROVEN ⇒ HELD (no unilateral patch, no 3rd operator msg).
+
+Each new bounce cites a DISTINCT `Original message a2a-1786497…` id (this-morning epoch), NOT last night's `1786451…`/`1786441…`. ⇒ **something is NEWLY ISSUING handoffs to the same parked/wedged chains every few minutes, and each re-bounces** — this is not the host retrying one stuck message. ⛔ **But both my suspect crons (`…-rgq8eo` supervise 12h, `…-qikxwn` watchdog 6h) next fire 12:00 and last fired 00:00/06:00 — neither matches the ~10:1x cadence, so I CANNOT attribute the storm to my cron.** Issuer candidates unresolved: host redrive machinery re-issuing, a late/manual tick, or another tier. ⇒ ⭐⭐⭐ **Unilaterally patching my nudger against an UNPROVEN issuer is ANCHOR F's churn-on-unproven-culprit trap; and messaging the dark operator a THIRD time in 10 min about the same incident is the "budget of ONE" violation my own store warns against.** HELD: correction is out (msg 133965), ask is clear (operator closes sessions sparing #12401 / approves nudger guard), operator sees the ongoing notices directly. Recording, not re-sending.
+
+## ⛔⭐⭐⭐ 2026-08-12 10:19Z — THE ENTIRE FREEZE-TIMESTAMP ANALYSIS WAS BUILT ON A MISREAD INSTRUMENT. `last_active` ADVANCES ON WAKE/INBOUND, NOT OUTBOUND. TWO OPERATOR CLAIMS RETRACTED.
+
+#8822 (`sess-…hb912k`) read `last_active=16:45` during the 19:46Z burst; today it reads **`2026-08-12 07:17`** — advanced ~14 h — yet its **last OUTBOUND is 2026-06-23** (seq 11, parked at triaged; nothing produced since June). ⇒ ⛔⭐⭐⭐ **`last_active` MOVES ON WAKE / INBOUND-DELIVERY (a redrive attempt writes an inbound row and touches the session), NOT on outbound.** So a bounce DOES advance `last_active`. **This directly refutes my 23:18Z claim to the operator that "a bounce does not update last_active, so 16:45 is a genuine freeze marker."** My "cohort all froze at 16:45" story was reading **the last nudge/redrive wave**, not a freeze event. RETRACTED.
+
+⛔⭐⭐⭐ **AND THE OPERATIONALLY DANGEROUS ONE: "closing loses nothing, all terminal" IS FALSE for ≥1 session.** `sess-…erazjc` (#12401, approver-adjacent fixer session) has **last outbound 2026-08-06 17:39 and an IN-FLIGHT fix worktree `wt-slang-12401` on `fix/issue-12401` @ `d7d59f374e`.** A blanket close keyed on the bounce list would **orphan live fix work** — exactly the "queued attachments / in-flight worktrees" the session-pin guidance warns about. I verified the first 16:43 set were terminal and then **over-generalized "terminal" to the whole ~15 cohort** — the classic ANCHOR-scope error (right about what I checked, wrong about what it covered).
+
+⛔ **THIRD correction — "bounced 2× ⇒ will not self-recover" conflates HANDOFF with SESSION.** The `slang-ci-babysitter` recovered from a 2× bounce (dark 08-07 → awake 08-12, processed its queued comments). ⇒ **"will not self-recover" is about THE HANDOFF MESSAGE (won't be auto-redelivered), not the SESSION (can wake and work on a fresh inbound).** So some of these ~15 may recover on their own; blanket-closing is not obviously net-positive.
+
+⇒ ⭐⭐⭐ **CORRECTED RECOMMENDATION TO OPERATOR: do NOT blanket-close by the bounce list. The safe, sufficient fix is lever 2 — the disposition-aware nudger** (stop nudging parked/declined/terminal chains) — which kills the storm at its SOURCE without touching any session. Lever 1 (close sessions) is downgraded: riskier than I said (#12401 worktree) and possibly unnecessary (recovery is possible). Preserve `wt-slang-12401`. ⭐⭐ **Instrument lesson: `last_active` is "last inbound-or-outbound touch," NOT "last work done" — to judge whether a session did work, read the last OUTBOUND row, never `last_active`.** (Same family as the peer's "stale `.jsonl` mtime ≠ idle session"; I hit the `ncl`-field version of it.)
+
 ## ⚠⭐⭐ 2026-08-11 23:18Z — "SINGLE 16:45 EVENT" PARTIALLY FALSIFIED; CORRECTED TO OPERATOR. NOT ONE INSTANT.
 
 #12125 (approver group, created 07-15) bounced with **`last_active=20:16`, NOT 16:45.** ⭐⭐⭐ **First I disproved the "last_active just = last nudge time" confound: the 19:46Z burst targets STILL read 16:45 (not 19:46), so a bounce does NOT update last_active ⇒ last_active is a genuine last-successful-activity/freeze marker, and 20:16 is a SECOND distinct freeze time.** ⇒ **the cohort is NOT a single 16:45 instant** — at least two freeze times (16:45 and 20:16). Whether it is ongoing/recurring I did NOT claim (over-correction trap — [[feedback_voiding_evidence_returns_to_unknown_not_to_the_prior_claim]]); what I know is "≥2 freeze times, so not one event." ⭐⭐ **Operational consequence that made this worth a correction message (not just a record): a bulk-close keyed on the STRING "16:45" would leave #12125 (20:16) bouncing.** ⇒ told the operator to target **all stopped/wedged sessions in the 3 groups that bounce**, by the bounce list, not by a timestamp. ⭐ **A claim I handed the operator as measured fact ("single 16:45 event") that turns out too clean gets corrected on the same edge — carve-out: a struck/over-clean claim ships regardless of who is holding the decision.**
@@ -99,8 +113,18 @@ Four bounces at 16:43Z: #11509 (`sess-…wauaay`) · #9125 (`sess-…7wu50j`, **
 thread `gh-issue-shader-slang/slang-12418`, original `a2a-1786443673202-rvckjj` (stamped **10:21Z**, i.e. the
 bounce notice arrived ~6h after the send). Re-drove once (`in_reply_to=54` — the guard **refused a bare
 thread send** naming *"2 unresponded inbound rows (#54,#50); pass in_reply_to"*, which is the correct
-anti-mis-tag behavior). **Session went `running` at 16:47Z, one minute after the re-drive.** ⇒ the bounce was
-**transient and recovered on first re-drive** — the opposite of the same-tick wedged-June set above.
+anti-mis-tag behavior). **Session showed activity at 16:47Z, one minute after the re-drive — and I reported to the operator it had
+recovered. ⛔ THAT WAS A FALSE POSITIVE, refuted 08-12 04:23Z by a SECOND bounce whose original
+(`a2a-1786466851485`, stamped 16:47:31) IS my own re-drive.** The 16:47 activity was the bounced wake
+attempt being logged, not genuine recovery: the re-drive's CONTENT landed (inbound row 40) but its WAKE
+bounced 2×. **Actual recovery came ~9h later from the scheduled supervisor-nudge cron (row 42, 08-12 01:21Z),
+which woke the container; it then read rows 40+42 and emitted its first OUT since 08-07 at 04:25Z ("on it,
+processing all three comments").** ⇒ ⭐⭐⭐ **MY MANUAL RE-DRIVE DID NOT WAKE IT — the cron did. I read a
+logged-bounce-attempt timestamp as a recovery signal.** The tell I missed: `container_status=stopped` with a
+`last_active` bump is a wake ATTEMPT, not a completed wake; only a fresh `direction=out` row proves the
+container ran. I had the OUT-row check available (used it correctly the next tick) and inferred recovery from
+`last_active` instead — the cheaper, wronger signal. Same family as reading a non-zero `last_active` as
+liveness.
 
 ⭐⭐**Discriminator between the two cases, computed BEFORE re-driving (base-rate control, same method as the
 16:43Z burst):** the babysitter group ran OTHER chains healthily through 08-10 (siblings' last OUT 08-10

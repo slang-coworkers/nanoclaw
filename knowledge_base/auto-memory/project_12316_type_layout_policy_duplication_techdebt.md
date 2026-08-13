@@ -45,4 +45,27 @@ Two checks it ran that changed the published text, both re-verified by me:
 
 **RESUME:** `@tangent-vector` picks an option / accepts the revisit trigger → then triager releases `slang-fixer` for a draft doc-comment-only PR (option 1). If he schedules option 2, the legitimate-divergence set (matrix modes · struct tail padding, intentionally omitted per `slang-ir-layout.cpp:40-44` · resource kinds) needs agreeing first. Triager state in its own `triage-12316.md` (its filesystem, not mine).
 
+## 2026-08-12 — second maintainer weighs in (comment 5269390955)
+
+`@jhelferty-nv` (MEMBER, human) tagged `@tangent-vector`: *"whether we want to try and get the agent to one-shot a PR for drift avoidance, or if the fix you're thinking of involves a major realignment between FE and IR that requires significant planning time from Yong or yourself… unless we have a clear decision I'm inclined to deprioritize."*
+
+- **This is a maintainer↔maintainer scheduling/planning question, not a request to our bot.** Default = do NOT interject in a human-to-human discussion under our shared identity; the posted recommendation (5221126781) already maps his fork.
+- **His fork maps onto the three options:** "one-shot a PR for drift avoidance" = option 1 (docs, genuinely one-shot-able) OR the *not*-one-shot-able part of option 2 (drift detection needs the legitimate-divergence set agreed first — that's the design work); "major realignment" = option 3. So the honest answer is: only option 1 is one-shot-able; option 2 is small-but-not-one-shot (gated on the divergence set); option 3 is the realignment. Neither 1 nor 2 needs Yong-scale planning.
+- **The half only `@tangent-vector` can answer:** the scope of the fix *he* has in mind. We cannot speak to that.
+- **Routed to slang-triager** (closest-to-the-state) on canonical thread, biased toward HOLD or a *brief additive* fork-mapping only — churn under shared bot identity is worse than silence, and the recommendation is already public. [[feedback_a_shared_bot_identity_makes_duplicate_posts_invisible]]
+
+**Triager posted (b), tightly scoped, 2026-08-12T16:19Z** — [issuecomment-5269448602](https://github.com/shader-slang/slang/issues/12316#issuecomment-5269448602) (1613 chars; verified live by me: defers scope to tangent-vector, makes only the false-binary/middle point, links prior 5221126781 without restating options, carries `clang-format`-absent caveat, `Office-Tess` label untouched). `Office-Tess` = human-set office-hours routing label (same convention as #12313), left alone.
+
+**Verdict trail:** `5166471646` (triage) → `5221126781` (scheduling rec) → `5269448602` (false-binary correction).
+
+## 2026-08-12T17:39Z — TERMINAL: maintainer deprioritized (backburner)
+
+`@jhelferty-nv` (MEMBER): *"Putting this on the backburner for now."* ([comment 5270291879](https://github.com/shader-slang/slang/issues/12316#issuecomment-5270291879)). Live-confirmed: issue **stays open** (`closed_at=null`), label flipped **`Office-Tess` → `Backlog`** (human, 17:39:41Z), 6 comments.
+
+This resolves the held gate to the **null branch**: no option chosen, no work dispatched. **No GitHub reply** — a bot ack into a maintainer thread is churn; the decision needs no acknowledgement from us. Chain **PARKED**, not closed.
+
+**RESUME (event-based, per the posted recommendation — NOT a date):** re-open only if (1) either layout-rules hierarchy gets a real *policy* edit (`LayoutRulesImpl` in `slang-type-layout.cpp` / `IRTypeLayoutRules` in `slang-ir-layout.cpp` — not include/format churn like `5b3f7a243`), or (2) a bug is filed where reflection and emitted code disagree on a uniform/bytes layout (≠ #12384, which is Slang-vs-C++-ABI). If a maintainer later asks our side to one-shot **option 1** → slang-fixer draft doc-comment-only PR (`pr: non-breaking`, `Fixes #12316`, formatting-not-run note — ⚠️ `clang-format` absent in-container, [[project_slang_formatting_toolchain_absent_in_containers]]). **Option 2** → agree legitimate-divergence set first. **Option 3** → tangent-vector/Yong planning.
+
+**Verdict trail (final):** `5166471646` triage → `5221126781` scheduling rec → `5269448602` false-binary correction → maintainer backburner `5270291879`.
+
 Related: #12306 origin · [[project_12307_reflection_json_scope_representation]] (sibling from same review pass) · [[feedback_issue_opened_webhook_is_not_evidence_the_issue_is_new]] (the stale-webhook error that produced the overwrite above).

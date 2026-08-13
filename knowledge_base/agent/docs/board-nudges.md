@@ -1,0 +1,34 @@
+| # | tier | github | state | last-by-us | next |
+|---|---|---|---|---|---|
+| 11398 | slang-fixer | [#11398](https://github.com/shader-slang/slang/issues/11398) | awaiting_us | 9h | 🔨 nudged (human-last) |
+| 12349 | slang-fixer | [#12349](https://github.com/shader-slang/slang/issues/12349) | awaiting_us | 7h | 🔨 nudged (human-last) |
+| 12391 | slang-triager | [#12391](https://github.com/shader-slang/slang/issues/12391) | awaiting_us | 6h | 🔨 nudged (human-last) |
+| 12392 | slangpy-triager | [#12392](https://github.com/shader-slang/slang/issues/12392) | awaiting_us | 6h | 🔨 nudged (human-last) |
+| 12400 | slang-triager | [#12400](https://github.com/shader-slang/slang/issues/12400) | awaiting_us | 6h | 🔨 nudged (human-last) |
+| 12403 | slang-triager | [#12403](https://github.com/shader-slang/slang/issues/12403) | awaiting_us | 6h | 🔨 nudged (human-last) |
+| 12428 | slang-triager | [#12428](https://github.com/shader-slang/slang/issues/12428) | awaiting_us | 3h | 🔨 nudged (human-last) |
+| 12430 | slang-reviewer | [#12430](https://github.com/shader-slang/slang/issues/12430) | awaiting_us | 5h | 🔨 nudged (human-last) |
+| 12439 | slang-pr-approver | [#12439](https://github.com/shader-slang/slang/issues/12439) | awaiting_us | 11h | 🔨 nudged (human-last) |
+| 12440 | slang-fixer | [#12440](https://github.com/shader-slang/slang/issues/12440) | awaiting_us | 7h | 🔨 nudged (human-last) |
+| 12458 | slang-triager | [#12458](https://github.com/shader-slang/slang/issues/12458) | awaiting_us | 3h | 🔨 nudged (human-last) |
+| 12459 | slang-pr-approver | [#12459](https://github.com/shader-slang/slang/issues/12459) | awaiting_us | 11h | 🔨 nudged (human-last) |
+| 12463 | slang-triager | [#12463](https://github.com/shader-slang/slang/issues/12463) | awaiting_us | 5h | 🔨 nudged (human-last) |
+| 12464 | slang-pr-approver | [#12464](https://github.com/shader-slang/slang/issues/12464) | awaiting_us | 11h | 🔨 nudged (human-last) |
+| 12468 | slang-pr-approver | [#12468](https://github.com/shader-slang/slang/issues/12468) | awaiting_us | 5h | 🔨 nudged (human-last) |
+| 12473 | slang-fixer | [#12473](https://github.com/shader-slang/slang/issues/12473) | awaiting_us | 5h | 🔨 nudged (human-last) |
+| 12475 | slang-fixer | [#12475](https://github.com/shader-slang/slang/issues/12475) | awaiting_us | 12h | 🔨 nudged (human-last) |
+| 12479 | slang-pr-approver | [#12479](https://github.com/shader-slang/slang/issues/12479) | awaiting_us | 11h | 🔨 nudged (human-last) |
+| 12482 | slang-fixer | [#12482](https://github.com/shader-slang/slang/issues/12482) | awaiting_us | 10h | 🔨 nudged (human-last) |
+| 12484 | slang-fixer | [#12484](https://github.com/shader-slang/slang/issues/12484) | awaiting_us | 11h | 🔨 nudged (fixer-owed) |
+| 12485 | slang-fixer | [#12485](https://github.com/shader-slang/slang/issues/12485) | awaiting_us | 11h | 🔨 nudged (fixer-owed) |
+| 12486 | slang-fixer | [#12486](https://github.com/shader-slang/slang/issues/12486) | awaiting_us | 11h | 🔨 nudged (fixer-owed) |
+| 12488 | slang-triager | [#12488](https://github.com/shader-slang/slang/issues/12488) | awaiting_us | 25h | 🔨 nudged (human-last) |
+| 12491 | slang-pr-approver | [#12491](https://github.com/shader-slang/slang/issues/12491) | awaiting_us | 12h | 🔨 nudged (human-last) |
+| 12492 | slang-pr-approver | [#12492](https://github.com/shader-slang/slang/issues/12492) | awaiting_us | 5h | 🔨 nudged (human-last) |
+| 12493 | slang-fixer | [#12493](https://github.com/shader-slang/slang/issues/12493) | awaiting_us | 9h | 🔨 nudged (human-last) |
+| 12495 | slang-fixer | [#12495](https://github.com/shader-slang/slang/issues/12495) | awaiting_us | 8h | 🔨 nudged (fixer-owed) |
+| 12497 | slang-fixer | [#12497](https://github.com/shader-slang/slang/issues/12497) | awaiting_us | 7h | 🔨 nudged (human-last) |
+| 12498 | slang-fixer | [#12498](https://github.com/shader-slang/slang/issues/12498) | awaiting_us | 10h | 🔨 nudged (fixer-owed) |
+| 12501 | slang-pr-approver | [#12501](https://github.com/shader-slang/slang/issues/12501) | awaiting_us | 5h | 🔨 nudged (human-last) |
+| 222 | slang-fixer | [#222](https://github.com/shader-slang/slangpy/issues/222) | awaiting_us | 8h | 🔨 nudged (fixer-owed) |
+| 12420 | main | [#12420](https://github.com/shader-slang/slang/issues/12420) | awaiting_us | 6h | 🔨 dispatched→slang-triager (fresh) |

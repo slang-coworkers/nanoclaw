@@ -84,7 +84,22 @@ No in-tree test uses a struct with a concrete base as an entry-point parameter. 
 must cover **`-target spirv` AND `-target metal`** (different crash sites) and assert the base
 member's location.
 
-## RESUME — gate `i12463-disposition-gate-e238`
+## UPDATE 2026-08-12 — maintainers took ownership, leaning B
+
+`jhelferty-nv` (MEMBER) commented (**5271300475**): *"Per Tess, it sounds like struct inheriting
+from another struct should be a diagnostic? @skiminki-nv … language deprecation aspect … arguably
+not a deprecation but more of a 'this needs to be an error'?"* — a near-verbatim restatement of our
+bot's **disposition B**. Issue now **assigned skiminki-nv + zangold-nv**, milestone **Q3 2026 (Summer)**.
+⇒ the maintainer team is acting on our A/B framing; the decision (B, and whether "error" vs
+"deprecation") is now **theirs, pending skiminki-nv**. Routed to `slang-triager` on the canonical
+thread. Chain state: **handed off — awaiting maintainer confirmation**, NOT closed.
+
+Gate note: the original series `i12463-disposition-gate-e238` was **swept** (gone by 08-12, along with
+the whole per-issue gate fleet — confirmed by explicit `--group` query, not a scope artifact).
+Re-armed as **`i12463-disposition-gate-4a1c`** with comment-id dedup seeded to 5271300475
+(`/workspace/agent/gates/i12463-seen-nonbot.id`), so it won't re-route jhelferty's comment.
+
+## RESUME — gate `i12463-disposition-gate-4a1c` (was `-e238`, swept)
 
 `0 */6 * * *`, script `/workspace/agent/gates/i12463-disposition-gate.sh`. Fires on
 **non-bot comment**, **cross-reference** (a PR naming the issue — the reporter said they'd try the
