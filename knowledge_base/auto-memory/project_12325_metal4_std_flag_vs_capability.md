@@ -169,7 +169,7 @@ comment could not exist.
 unassigned), labels `Dev Opened`/`RTR` unchanged. Correctly open — it is #807's re-enable trigger.
 ⚠️ **rhi `main` pin is STILL `2026.12.2`** (`CMakeLists.txt:148`, `SLANG_HASH_VERSION:307`) and
 `metallib_4_0` is **still commented out** (`metal-device.cpp:266`). So nothing has moved on the rhi
-side in 3 days; the bump is unowned-in-practice though nominally skallweitNV's.
+side in 3 days; the bump is unowned-in-practice — **assigned to jkwak-work** (skallweitNV authored #12325 and merged #807's stopgap, but is NOT the assignee; do not write "skallweitNV's" — author ≠ owner, corrected 08-12).
 
 **Available-but-unauthorized work:** the bump is small, mechanical and bot-doable (bump `:148` +
 `:307`, regenerate 7 SHA256s from the v2026.14.x release assets). ⚠️ It does **NOT** unblock our

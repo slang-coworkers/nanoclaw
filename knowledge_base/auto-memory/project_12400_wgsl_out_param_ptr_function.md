@@ -13,6 +13,8 @@ metadata:
 
 **Triage (slang-triager, 18:03Z):** bug · medium · P2 · target-emit (WGSL) + IR entry-point varying-param legalization. Verdict cmt **5207998744**; labels `WebGPU`+`reproduced`+`Metal`, Type=Bug. **ready-for-fix, NO fixer dispatched** (Main sequences it against #12155).
 
+**⛔ RE-OPENED 2026-08-12 18:18Z by maintainer steer.** jhelferty-nv (human, verified `is_bot:false`) cmt **5270930132**: *"@tangent-vector has thoughts. :) Parameter has a semantic, it's just implicitly defined from the semantic logic. Issue is a missing diagnostic, talk to Tess for more details."* ⇒ **reframes the bug's NATURE**, contradicting the triage framing on two points: (a) the param is NOT unsemanticed — it has an *implicitly-defined* semantic from the semantic logic; (b) the remedy the maintainer favors is a **missing DIAGNOSTIC** (Approach B in the triage), not making the shape emit valid output (Approach A). **tangent-vector = Tess, named as the authority.** Routed to slang-triager on canonical thread (pinned to resume `sess-1786035779632-1mffm6`); Main does NOT adjudicate the compiler claim. Triager to reconcile its mechanism against Tess's "implicit semantic" framing before re-issuing a verdict; the "unsemanticed" corrections on cmt 5207998744/5208026808 may need revising.
+
 ## Relationship to #8183 — SIBLING, not same root (the issue overstated it)
 Verified at HEAD `d7d59f374`:
 - Metal path gates `Stage::Vertex|Fragment` (`slang-ir-legalize-varying-params.cpp:5136`, :5151-5159) → `legalizeShaderOutputParamsForMetal` (:5090) → `lowerOutParameters` (:5110).

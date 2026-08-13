@@ -297,6 +297,51 @@ adopt: *a learning doesn't fire at the moment a decision is made; standing order
 Covers prefer-a-self-runnable-experiment, ~72h cap then escalate, never close silently, re-read your
 last public comment on ownership change, and the `Fixes`-guardrail + on-`main` check.
 
+## R8 2026-08-06 00:19 — MAINTAINER ENGAGED, accepted handoff, deferred to next sprint
+
+`kaizhangNV` (assignee) commented [`5269592309`](https://github.com/shader-slang/slangpy/issues/1089#issuecomment-5269592309):
+*"This needs further investigation, bot doesn't root cause the issue, and it points to slangpy#561 as
+a possible culprit PR. Will look into that first. Self assigned, and move to next sprint."* Issue OPEN,
+assignee `kaizhangNV`, milestone still null (his "next sprint" not yet stamped), 4 comments.
+
+**Read: healthy handoff acceptance — NOT a counter-proposal / gap / refusal.** He (a) confirms our own
+stated position that root cause is unlocated, (b) picks up **#561** as his first lead — which is the
+boundary finding from our delta comment (0.37.0 = first release to wire `.persistentPipelineCache`,
+added by #561), (c) takes ownership, (d) schedules it. Per the non-bot-author rule this is an
+ownership-acceptance restatement, so **acknowledge-and-hold, no forced routing.**
+
+⚠️ **One substance point for the triager's judgment (theirs — they own the footprint and wrote both
+comments):** our finding is #561 is **correct** and merely *activated* a latent path; the actual
+suspect is branch 2 (driver-side handling of the `pNext`-chained create-info on the **2nd**
+`vkGetPipelineKeyKHR`). If he reads "#561 = culprit" as "#561 introduced a defect", a bisect could
+burn a sprint proving a correct PR correct.
+
+❌ **MY RELAY ERROR (caught by triager, verified by me R9):** I told the triager "the delta comment
+`5198010118` directly above his already says exactly this (#561 activated a latent path)." **False.**
+Verified 08-12: the **#561 mention + "turns a pre-existing cache path on" framing is in the TRIAGE
+comment `5169214782`, TWO above his**; the delta comment `5198010118` never names #561 by number
+(only "first release to wire `.persistentPipelineCache`"). Right value, **wrong container** — a
+citation error. It would have flipped the decision: had the disambiguation truly sat directly above
+his, holding = correct; it's two up in the longer comment he likely skimmed ⇒ a pointer WAS warranted.
+**No `<github-post-authorized />`** — his "bot" is a third-person reference, not an @-mention asking us
+to act.
+
+## R9 2026-08-12 16:40 — pointer POSTED by triager; my relay was one comment-id off
+
+Triager posted [`5269664944`](https://github.com/shader-slang/slangpy/issues/1089#issuecomment-5269664944):
+#561 = activation point not defect origin, `vk-pipeline.cpp` blob-identical across the pin move,
+suspect = 2nd `vkGetPipelineKeyKHR` at `:178-179`, captures in the comment two above. Pointer only,
+"not asking you to act", fresh comment (he's human + last poster). Within post-VERIFIED. Routing
+concur: ownership restatement, chain rests with him, nothing re-opened.
+
+⭐ **Lesson — a relayed claim ABOUT AN ARTIFACT is a filesystem claim, whoever asserts it.** "My/your
+comment says X" is checkable and I got the container wrong (content in `5169214782`, not `5198010118`).
+The triager grepped instead of accepting it, and it **changed the outcome** — one id off would have had
+them hold (thinking the info sat directly above his) or point him at a comment that doesn't contain the
+fix. This is [[feedback_published_negative_env_claims_need_rederivation]]'s self-directed twin (claims
+about yourself/your artifacts skip verification because they feel like recall) applied to a **relay** —
+recorded fully in [[feedback_a_relayed_claim_about_an_artifact_is_a_filesystem_claim]].
+
 ## RESUME
 
 **Root cause STILL UNLOCATED.** Branch 1 refuted by test; branch 2 (driver-side handling of the

@@ -150,17 +150,37 @@ stated as unevaluated in the comment.
   current wrong output for an over-wide vector**, answering the body's open "not verified here" note.
   Tests asserting `38206`: **1** (`tests/diagnostics/invalid-vector-element-count.slang`).
 
-## RESUME
+## 2026-08-12 18:30Z — MAINTAINERS TOOK OWNERSHIP; chain HELD, no bot action
 
-Only on a substantive **human** (non-bot) comment on #12420, or a maintainer picking up either the
-ordering fix or the exported-constant question. **Do NOT dispatch a fixer** — the ordering fix is a
-pipeline change needing a maintainer design call (and finding 2 shows it is larger than the body's
-framing), and the exported-constant question is explicitly addressed to a maintainer. **Catch-all
-clause (per [[feedback_resume_triggers_fail_three_ways_enumerations_are_category_blind]]): any fresh
-substantive human comment, or any new obligation/scope requirement attached to this chain, fires this
-trigger even if it matches none of the specific clauses above.** ⚠️If #12417 moves toward
-ready/merge, the inert-test finding above becomes actionable on **that** PR's chain — it is a live
-hazard for whoever reviews it.
+`jhelferty-nv` (human) commented (id `5271073626`): *"It sounds like this is a 'generate a better
+diagnostic' issue? Zach, mind triaging?"* Assignees now **`jkwak-work` + `zangold-nv`** (Zach), no
+labels yet. This fired my catch-all RESUME clause (substantive human comment) — re-evaluated on
+merits per the spine's "a substantive human comment re-opens a holding chain" rule.
+
+**Disposition: HOLD, zero bot action. NOT a silent no-op — a deliberate close-again.** Three reasons,
+each sufficient:
+1. ⭐**It is maintainer-to-maintainer, not addressed to the bot.** `jhelferty` is asking Zach to
+   triage; the bot is not the audience. Inserting a bot reply into a human triage handoff is the
+   anti-pattern, not observability.
+2. **No `@nv-slang-bot` mention ⇒ NOT `<github-post-authorized />`.** Posting would be unauthorized.
+3. **The scope question is already answered by my comment `5211967028`, which is on the issue for
+   Zach to read.** His framing ("just a better diagnostic?") is exactly what findings 2 (naive
+   reorder doesn't work) + 5 (~970× compile-time cost, not just wrong text) speak to. Nothing new to
+   add; re-posting would be an echo.
+
+No coworker was ever dispatched (maintainer design call from the start) ⇒ nothing to re-dispatch.
+The maintainers own it now.
+
+## RESUME (updated)
+
+Only on: a maintainer/human comment that **asks the bot** something (mentions `@nv-slang-bot`, or
+requests a repro/fix/data the evidence on-issue doesn't already cover), OR a maintainer picking up the
+ordering fix / exported-constant question and wanting help. A further *"Zach triaging"*-style
+human-to-human exchange is **not** a bot cue — hold. **Catch-all
+(per [[feedback_resume_triggers_fail_three_ways_enumerations_are_category_blind]]): any fresh
+substantive human comment fires re-evaluation, but re-evaluation can correctly conclude HOLD — the
+trigger is to THINK, not necessarily to POST.** ⚠️If #12417 moves toward ready/merge, the inert-test
+finding above becomes actionable on **that** PR's chain — a live hazard for whoever reviews it.
 
 Related: [[project_12403_integer_dot_fallback_glsl_metal]] (the #12396 twin, same `dot` fallback
 family) · [[project_bot_comment_webhook_echo]] (echo rule) ·

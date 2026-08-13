@@ -346,6 +346,21 @@ than it looks; **OPTIONAL cleanup, explicitly NOT a revert request** (preference
 ⛔⭐⭐**I reported this as gating and it never was — see the relay-compression note in Lessons.**
 
 **LIVE (what I am actually waiting on):**
+- 🟢🔵**CHAIN RE-OPENED by `kaizhangNV` (maintainer) — a SUBSTANTIVE question directly to `@nv-slang-bot`,
+  comment [`5269806618`](https://github.com/shader-slang/slang/issues/12349#issuecomment-5269806618):**
+  *"The analysis doesn't explain why the reflection data says output.count is unused (`used: 0`)...
+  can you investigate further?"* ⇒ **re-opened, NOT closed/no-op'd** — it names a real gap the original
+  triage set aside. ⭐**Triage established `used:0` is NON-DIAGNOSTIC (identical in failing + working
+  control); the maintainer asks the NEXT question — WHY is it `0` when SPIR-V demonstrably uses the
+  descriptor?** Routed to **`slang-triager`** (owns the reflection analysis + harness) on the canonical
+  thread, **with `<github-post-authorized />`** — a real bot mention authorizes post-back; triager posts
+  closest-to-the-state. ⚠️**Almost certainly a SLANG-COMPILER reflection question, not slang-rhi** (the
+  `used` bit is compiler-computed) ⇒ likely ORTHOGONAL to #810, which fixes the layout desync regardless
+  — **but that is the triager's call to MEASURE, not mine to assert** (I gave it discriminators, NOT a
+  hypothesis to confirm — priming a concurrence is worthless, per tonight). If it's a genuine Slang
+  reflection defect it's a NEW slang-side finding and I route any fix, not the triager. ⚠️**I did NOT
+  post an ack myself** — the triager's finding IS the response; a bot ack + a bot finding is two posts
+  where one suffices, and post-back was authorized to the tier holding the state.
 - 🟢**MAINTAINER ENGAGED 08-05T18:28Z — `kaizhangNV`.** `jhelferty-nv` commented on slang#12349
   ([`5195694187`](https://github.com/shader-slang/slang/issues/12349#issuecomment-5195694187)):
   *"@kaizhangNV Can you take a look at this one? It looks like there's a draft PR already."*

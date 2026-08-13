@@ -46,7 +46,52 @@ compare 49dbe8c165...80c93009cb  ->  diverged, ahead=5 behind=25, merge-base f93
 
 ⇒ ✅ **ROUTING POSITION: the fix is mechanical (cherry-pick `50d7a5e71f..80c93009cb` onto `fix/issue-12383`, or drop `Fixes #12371` from #12408's body) but BOTH touch a branch `slang-fixer` is barred from, and the second is a maintainer-facing scope decision.** Correctly refused by them; **operator-gated at my tier too — I hold no GitHub write.** ⭐⭐ **The draft status is doing real protective work here: `draft=true` means the keyword cannot fire yet. That is the reason this is urgent-before-ready-flip rather than urgent-now** — and a reviewer flipping it to ready without reading the body would arm both consequences in one click.
 
-## Why no fix chain was opened (deliberate, 2026-08-06 06:1xZ)
+## ⭐ 2026-08-12 17:55Z — RE-OPENED by maintainer decision; parking precondition now MET
+
+`jhelferty-nv` (human maintainer, **now co-assigned to #12383 with `jkwak-work`**; no bot mention)
+commented (id 5270550992): *"From discussion with Tess, it sounds like we want the canonical
+validation step to happen at the end … We probably still also want an option to run validation where
+it currently is, though, via a `-paranoid-validation` flag or the like, so that we can catch any
+invalid spirv we generate internally prior to the spirv-opt step from CI?"*
+
+⇒ **The policy decision that parked this chain has been made by the maintainers: YES, canonical
+validation at finalisation** (the A2 direction #12408 implements). So reasons 1–2 below are now
+*resolved by human input*, not standing. **Plus a new, additive requirement #12408 does not currently
+carry:** retain an **opt-in flag** to *also* validate at the current pre-`spirv-opt` point for CI —
+not a replacement for the move, an addition. Whether that rides in #12408 or splits is a maintainer
+design call, not mine.
+
+Forwarded to `slang-triager`'s existing session for this chain (`sess-1786044169494-ew23ak`, pinned
+via `target_session_id`) on `thread_id=gh-issue-shader-slang/slang-12383`. Triager owns the GitHub
+verdict + fixer edge; I hold no GitHub write. A substantive human comment on a parked chain re-opens
+it — this is that, not a thanks/ack.
+
+**Triager acted 2026-08-12 18:06Z (cmt `5270709223` on #12383):** verified at #12408's *current* head
+`e7f5274eee` — the **canonical A2 half is DONE**: `validateSpirvArtifact(...)` runs on the *final*
+`artifact` at `:3612` (after optimize+strip), and the A1 fix is intact (4 validation calls, 0 fed
+`spirv.getBuffer()`). **`-paranoid-validation` is confirmed genuinely additive:** #12408 validates the
+pre-optimize module *only on failure paths* (`:3585`,`:3598`, inside `SLANG_FAILED` guards), never on
+a successful compile — which is exactly the CI check jhelferty wants. Would be a new `OptionKind`
+appended to the ABI enum on the `-skip-spirv-validation` pattern. **Open question routed to
+maintainers + jkwak:** does the flag ride in #12408 or split to a follow-up (triager leans follow-up).
+**No fixer dispatch** until they pick. Chain now correctly in maintainer hands.
+
+**Descendant-relation carry re-verified by triager at current heads:** both PRs moved in the 5-day gap
+(#12382 `f93eb4f74a`→`80c93009cb`, #12408 `d8dcbe3549`→`e7f5274eee`); `compare 80c93009cb...e7f5274eee`
+⇒ diverged, ahead 33 / behind 5 — #12408 now carries `Merge origin/master` commits, so the "strict
+descendant" wording at #12408 body `:269` is **stale** (substance still holds — it carries #12382's A1
+content). Left unedited (jkwak's surface). ⚠️ **Stale closing-keyword hazard still armed:** #12408 refs
+`Fixes #12371` + `Fixes #12383`; if the flag stays in #12383's scope but ships separately, #12408
+merging auto-closes #12383 before the flag lands. Triager co-trigger set: maintainer picks flag home
+⇒ dispatch fixer on this thread; #12408 moves toward ready ⇒ re-check the closing-keyword split first.
+
+**Live family state 2026-08-12 (moved far past the Aug-6 rows below):** #12371 open · **#12382** open
+draft, head `80c93009cb`, MERGEABLE, title narrowed to *"Validate the linked SPIR-V module…"* · **#12408**
+open draft, head `e7f5274eee`, MERGEABLE, title *"Validate the final SPIR-V artifact…"* (the A2 PR).
+⚠️ #12408's stale `Fixes #12371` + false "strict descendant" hazard (§ 2026-08-09 below) is **still
+armed** if this comment pushes it toward ready.
+
+## Why no fix chain was opened (deliberate, 2026-08-06 06:1xZ) — SUPERSEDED by the re-open above for reasons 1–2
 
 Three converging reasons, not one:
 

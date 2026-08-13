@@ -100,7 +100,21 @@ workload**, not just a possible one — `tools/compile-perf/lib/manifest.py:153-
 backend-codegen dominance *and* the session floor — with no code change. That makes its step 2 cheaper
 than it claims.
 
-## Disposition
+## TERMINAL 2026-08-12 — maintainer closing per offline discussion
+
+`kaizhangNV` (assignee + maintainer), cmt `5269617369`: *"We have discussed this offline, should
+close this issue. Instead we should track specific perf bugs."* ✅ **This is the maintainer's
+disposition to accept, not argue** — #12337 was self-described as a *pattern tracker, not a bug*, and
+"track specific perf bugs" is exactly what the issue's own step 3 deferred to. **Nothing lost on
+close:** the two findings (baseline asymmetry + the untimed spirv-opt gap,
+[[project_12337_spirvopt_baseline_asymmetry]]) live on disk and can seed a specific bug later.
+⛔ **No reopen, no counter-proposal, no injected backlog item** — shoving "here's a perf bug to
+track" into a close request is the verbosity+overreach pattern
+([[feedback_verbose_bot_comments_are_a_cost_we_impose]]). ⛔ Bot cannot `gh issue close`
+(hook-denied) — it is `kaizhangNV`'s click. Acknowledged in one short comment; chain CLOSED on our
+side. RESUME only if a **non-bot** reopens with new substance.
+
+## Disposition (of the earlier dispatch, retained for trace)
 
 **Dispatched to slang-triager** (closest-to-the-state: it filed the artifact and owns its dedup claim),
 pinned via `target_session_id=sess-1785837557910-nwwnel` so it lands in the session holding the filing

@@ -9,8 +9,23 @@ metadata:
 
 # slang#12430 — existential → static interface requirement → two ICEs
 
-**State 2026-08-08 13:40Z:** OPEN, **no labels, no assignee**, 3 comments (all `nv-slang-bot`,
-all ours). Title has been changed **twice** by the reviewer after filing; current:
+**State 2026-08-12 18:42Z:** OPEN, **assignees `tangent-vector` + `jvepsalainen-nv`**, 5 labels
+(`bug`, `reproduced`, `Diagnostics`, `Missing Diagnostic`, `dynamic_dispatch`), **5 comments** — 4
+ours (`nv-slang-bot`) + 1 human. Title unchanged since 08-08.
+
+⭐**MAINTAINER PICKED IT UP — 08-12 18:41Z, cmt `5271212640` by `jhelferty-nv` (human):**
+*"@tangent-vector Can you take a look and comment? @jvepsalainen-nv It looks like this was mentioned
+from your related #10892. Are you pursuing this?"* This is maintainer-to-maintainer routing (assigns
+`tangent-vector`, queries `jvepsalainen-nv` via our #10892 link) — **it asks US nothing, does not
+mention our bot, carries no post authorization, and does NOT answer the held design fork.** So it is
+the **"hold for maintainer input" path resolving as designed**, not a re-open and not a dispatch
+trigger. Our #10892 correction is what surfaced the connection `jhelferty-nv` is acting on — the
+chain did its job. **No bot post (unsolicited + maintainer-internal), no coworker dispatch (nothing to
+build until the fork is answered).** RESUME unchanged: a maintainer answers R1+R2-one-fix-or-two /
+new-diagnostic-vs-extension, or says "make a PR".
+
+**State 2026-08-08 13:40Z (superseded above):** OPEN, no labels, no assignee, 3 comments (all ours).
+Title changed **twice** by the reviewer after filing; current:
 *"Internal error instead of a diagnostic when an existential type reaches a static interface
 requirement (`E33180` does not apply; two distinct failure paths)"*.
 
