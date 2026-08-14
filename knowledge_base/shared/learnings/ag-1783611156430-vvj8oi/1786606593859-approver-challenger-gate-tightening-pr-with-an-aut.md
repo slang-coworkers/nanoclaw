@@ -1,0 +1,17 @@
+---
+author_agent_group: ag-1783611156430-vvj8oi
+author_session: sess-1786605051479-olbflp
+written_at: 2026-08-13T07:36:33.859Z
+---
+
+# [approver/challenger] Gate-tightening PR with an author-documented residual + prototype self-label → OPEN_GAP, not approve/block
+
+**Symptom:** A PR tightens a correctness gate (here: slang#11387 extends the #11286 readNone carry-set gate to also inspect a callee's *derivative variants*, so a `[__readNone]` primary with a side-effecting user `[BackwardDerivative]` can no longer silently elide its call and suppress E41031). Steps 1-2 are clean: all clauses pass, positive+negative controls present, `reviewers_complete=true`. The gate/flag positive-control probe is satisfied (trigger-present positive test verified to fail without the fix). It *looks* approvable.
+
+**Root cause of the correct call (ABSTAIN_POLICY:OPEN_GAP, not WOULD_APPROVE, not BLOCK):** the fix leaves a narrow residual that re-opens the very bug class it closes. The proxy that decides "this derivative is pure" trusts `[PreferRecompute] + [__target_intrinsic]`, and `__target_intrinsic` is **user-spellable** — a user derivative with both plus a side-effecting body is wrongly trusted ⇒ call elided ⇒ E41031 silently suppressed. Devin independently flagged it (`slang-ir-check-differentiability.cpp:278`); the author *documents it themselves* as a "Known limitation / follow-up (DRAFT)" deferred to a tracked follow-up issue (#12502, verified open); and the PR body self-declares **"not merge-ready ... Deferred pending maintainer direction"** with a `[draft]` title (though GitHub `isDraft=false`).
+
+**How to catch it — the class signal for Step-0 recall:** On any gate-tightening PR, after the positive-control probe passes, read the *leaf trust predicate* and ask "what is the weakest thing this now trusts, and can a USER spell it?" A purity/side-effect proxy keyed on a *user-spellable* decoration (`__target_intrinsic`, any `__`-attribute that isn't a hard non-user boundary) is a re-opening of the suppressed-diagnostic bug in the pathological direction. A silently-suppressed correctness DIAGNOSTIC is the highest-weight blast radius (no codegen comparison can see a *missing error*), so even a pathological trigger does NOT clear as inconsequential.
+
+**Why OPEN_GAP and not BLOCK:** three facts route a real-but-narrow residual to a human instead of a machine BLOCK: (1) the residual is explicitly out-of-scope-by-design — the PR closes the *common* class and defers the pathological one; (2) it is documented AND tracked in an open follow-up issue; (3) the PR self-labels as a maintainer-question prototype "pending maintainer direction." BLOCK asserts "this change is wrong"; the change is a sound, well-tested, conservative-fallback step whose *only* open question is whether the interim proxy is acceptable. That is a policy/scope judgment ⇒ ABSTAIN_POLICY:OPEN_GAP. Fallback-tier (Devin-only, bot-authored PR the production reviewer skips) + "uncertainty ⇒ never round up" reinforce the abstain.
+
+**Fix/rule:** A PR that (a) tightens a gate but leaves a documented residual in the same failure direction, AND/OR (b) self-declares not-merge-ready / defers a design call to a maintainer, is an OPEN_GAP hand-off — regardless of how clean the clauses and controls are. Do not round a well-engineered prototype up to approve, and do not BLOCK an author who is transparently asking a maintainer a design question.
