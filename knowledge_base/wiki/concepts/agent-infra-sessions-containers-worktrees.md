@@ -3,7 +3,7 @@ title: "Sessions, Containers, and Worktrees in Agent Infrastructure"
 type: concept
 group: agent-infra
 tags: [sessions, containers, worktrees, disk, build, ncl, nanoclaw, agent-runner, onecli]
-source_count: 37
+source_count: 38
 ---
 
 # Sessions, Containers, and Worktrees in Agent Infrastructure
@@ -131,8 +131,13 @@ The gitdir-is-ground-truth lesson above has a mirror image in publish jobs: **a 
 
 Two durable rules. **The exclusion belongs in the mirror step itself** — `cp` then prune, or a copy that skips VCS dirs — not in one operator's memory of having done it once: the source `.git` is live and `cp -rL` will copy it again every night, and a fix that must be remembered by the next run is not a fix (the same shape as the reindex work that had to be re-derived). And for **any** publish-to-public-repo job, assert before staging that the tree carries no nested VCS or scratch dirs — `find <dest> -type d \( -name .git -o -name node_modules -o -name __pycache__ -o -name .venv \)` must come back empty. A source that was a plain directory when the recipe was authored can silently become a repo later, and the recipe has no way to notice ([a nested `.git` in a mirrored tree is a PII-scrub bypass](../learnings/1785985612990-a-nested-git-in-a-mirrored-tree-is-a-pii-scrub-byp.md)).
 
-**Source learnings (37):**
+## Resolving Is Not Belonging — Sibling Worktrees Share One Object Store (2026-08-14 fold)
+
+`git cat-file -t <sha>` returning `commit` does **not** prove the SHA is yours. Worktrees created from one clone share a single object store, so *any* sibling branch's commit resolves in *every* worktree. A peer's status board attached run `31287329842` @ `49dbe8c165` to my PR; both belonged to a sibling's branch (`fix/issue-12383`), while mine were `31231556002` @ `9a24322dd3` — and `git cat-file -t 49dbe8c165` → `commit` *looked* like confirmation. Existence proves the object is reachable in the shared store, not that it belongs to your branch. To check belonging, test ancestry against *your* branch tip (`git merge-base --is-ancestor <sha> <your-branch>`) or read the PR's own `headRefOid` — not mere resolvability ([resolving is not belonging: sibling worktrees share one object store](../learnings/1786280483668-resolving-is-not-belonging-sibling-worktrees-share.md)).
+
+**Source learnings (38):**
 - [a nested `.git` in a mirrored tree is a PII-scrub bypass the scrubber cannot see](../learnings/1785985612990-a-nested-git-in-a-mirrored-tree-is-a-pii-scrub-byp.md) — compressed git objects pass every text-level scrub and grep check; prune VCS dirs inside the mirror step and gate on a file-count diff.
+- [resolving is not belonging: sibling worktrees share one object store, so any sibling's SHA resolves locally — test ancestry, not resolvability](../learnings/1786280483668-resolving-is-not-belonging-sibling-worktrees-share.md)
 - [Worktree GC: the dirname issue-number can diverge from the actual branch (wt-slang-12244-doc held fix/shadowgrad-doc-followup, still-open PR #12309) — save-then-remove is what catches it; resolve the real branch + its PR before REAP](../learnings/1785716211648-worktree-gc-dirname-issue-number-can-diverge-from-.md)
 - [Build subagent Monitor `pgrep` matches sibling worktrees (false "done") + TaskStop SIGINTs your ninja — run detached, Monitor on a unique `BUILD_EXIT=` marker](../learnings/1785468785000-build-subagent-monitor-pgrep-matches-sibling-workt.md)
 - [session reap deletes the worktree mid-build; commit tests+code before the long build, drive builds detached with a `BUILD_EXIT=` marker](../learnings/1784385072886-session-reap-deletes-worktree-mid-build-commit-tes.md)

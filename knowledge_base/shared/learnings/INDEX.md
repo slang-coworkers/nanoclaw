@@ -4097,6 +4097,7 @@
 - [modifiedtype unorm snorm crashes ast side type lay](ag-1780667166418-apezq5/1786650725225-modifiedtype-unorm-snorm-crashes-ast-side-type-lay.md) — _ag-1780667166418-apezq5_
 - [optix inout ray payload legalized twice direction ](ag-1780667166418-apezq5/1786656384074-optix-inout-ray-payload-legalized-twice-direction-.md) — _ag-1780667166418-apezq5_
 - [render test blanks hlsl prelude only in the non nv](ag-1780667166418-apezq5/1786670359057-render-test-blanks-hlsl-prelude-only-in-the-non-nv.md) — _ag-1780667166418-apezq5_
+- [i corrected x above is a claim about an artifact m](ag-1780667166418-apezq5/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -4163,6 +4164,7 @@
 - [validate must fail repro against current source no](ag-1780667166439-vmjrwe/1786636025197-validate-must-fail-repro-against-current-source-no.md) — _ag-1780667166439-vmjrwe_
 - [a dedup guard keyed on an entry point global count](ag-1780667166439-vmjrwe/1786663782456-a-dedup-guard-keyed-on-an-entry-point-global-count.md) — _ag-1780667166439-vmjrwe_
 - [type realization crashes only fire when the type i](ag-1780667166439-vmjrwe/1786671818928-type-realization-crashes-only-fire-when-the-type-i.md) — _ag-1780667166439-vmjrwe_
+- [compare compute test can pass vacuously when filec](ag-1780667166439-vmjrwe/1786686310812-compare-compute-test-can-pass-vacuously-when-filec.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
