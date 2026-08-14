@@ -4793,6 +4793,20 @@ function renderAdminOverview() {
   const el = document.getElementById('overview-summary');
   if (!el) return;
   const uptimeStr = formatDuration(d.uptime * 1000);
+  // Cost at a glance. `unavailable` non-null means the ccusage CLI didn't
+  // resolve → the number is ABSENT, not zero; show "n/a" rather than a
+  // confident $0 (same distinction the Token Usage panel makes).
+  const cost = d.cost || {};
+  const costUnavailable = cost.unavailable != null;
+  const costNum = (v) => (costUnavailable ? 'n/a' : fmtUsd(v || 0));
+  const top = cost.topCoworker7d;
+  const costCards = costUnavailable
+    ? `<div class="admin-stat-card" title="${esc(String(cost.unavailable))}"><div class="num" style="color:#94A3B8">n/a</div><div class="label">Cost — ccusage unavailable</div></div>`
+    : `
+      <div class="admin-stat-card"><div class="num" style="color:#10B981">${costNum(cost.today)}</div><div class="label">Cost (today)</div></div>
+      <div class="admin-stat-card"><div class="num" style="color:#10B981">${costNum(cost.last7d)}</div><div class="label">Cost (7d)</div></div>
+      <div class="admin-stat-card"><div class="num" style="color:#10B981">${costNum(cost.last30d)}</div><div class="label">Cost (30d)</div></div>
+      <div class="admin-stat-card"><div class="num" style="font-size:16px">${top ? esc(top.name) : '—'}</div><div class="label">Top spender (7d)${top ? ' · ' + fmtUsd(top.cost) : ''}</div></div>`;
   el.innerHTML = `
     <div class="admin-stat-grid">
       <div class="admin-stat-card"><div class="num">${uptimeStr}</div><div class="label">Uptime</div></div>
@@ -4801,6 +4815,7 @@ function renderAdminOverview() {
       <div class="admin-stat-card"><div class="num">${d.tasks.paused}</div><div class="label">Paused Tasks</div></div>
       <div class="admin-stat-card"><div class="num">${d.messages.total}</div><div class="label">Messages</div></div>
       <div class="admin-stat-card"><div class="num">${d.sessions}</div><div class="label">Sessions</div></div>
+      ${costCards}
     </div>`;
 }
 

@@ -2011,6 +2011,52 @@ let ccusageCache: CcusageCache = {
   lastRefresh: 0,
 };
 
+export interface OverviewCostSummary {
+  today: number;
+  last7d: number;
+  last30d: number;
+  topCoworker7d: { name: string; cost: number } | null;
+  lastRefresh: number;
+  unavailable: string | null;
+}
+
+/**
+ * Aggregate the at-a-glance cost figures for /api/overview from the shared
+ * ccusage cache — the SAME source the Token Usage table and /api/cost-history
+ * read, so the Overview total can never disagree with the detail views.
+ *
+ * Extracted (rather than inlined in the handler) so the aggregation is unit
+ * testable without spinning the server, mirroring `ccusageDailyArgs` /
+ * `unitCostByWeek`. `unavailable` is passed through verbatim: a non-null value
+ * means the number is ABSENT (ccusage CLI unresolved), which the UI renders as
+ * "n/a" rather than a confident $0 — the same honesty the rest of the cost UI
+ * keeps.
+ */
+export function overviewCostSummary(
+  cache: Pick<CcusageCache, '1d' | '7d' | '30d' | 'lastRefresh'>,
+  unavailable: string | null,
+): OverviewCostSummary {
+  const sumPeriodCost = (p: '1d' | '7d' | '30d'): number =>
+    (cache[p]?.combined || []).reduce((s, d) => s + (d.totalCost || 0), 0);
+  let topName: string | null = null;
+  let topCost = 0;
+  for (const g of cache['7d']?.byGroup || []) {
+    const c = (g.daily || []).reduce((s, d) => s + (d.totalCost || 0), 0);
+    if (c > topCost) {
+      topCost = c;
+      topName = g.groupName;
+    }
+  }
+  return {
+    today: sumPeriodCost('1d'),
+    last7d: sumPeriodCost('7d'),
+    last30d: sumPeriodCost('30d'),
+    topCoworker7d: topName ? { name: topName, cost: topCost } : null,
+    lastRefresh: cache.lastRefresh,
+    unavailable,
+  };
+}
+
 function ccusageSinceDate(daysAgo: number): string {
   const d = new Date(Date.now() - daysAgo * 86400000);
   return d.toISOString().slice(0, 10).replace(/-/g, '');
@@ -7719,6 +7765,9 @@ export async function handleRequest(
         /* ignore */
       }
     }
+    // Cost at a glance — same ccusageCache the Token Usage table and
+    // /api/cost-history read, so the Overview can never disagree with them.
+    result.cost = overviewCostSummary(ccusageCache, ccusageUnavailable());
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(result));
     return;
