@@ -4961,13 +4961,20 @@ function renderAdminTasks() {
 }
 
 // --- Sessions ---
+// Sessions tab view state: cost period window + sort. Cost is summed per
+// session from transcripts server-side (see /api/sessions); default view is
+// ranked by cost over 30d so the fat tail (few sessions, most spend) is on top.
+const sessionsView = { period: '30d', sort: 'cost', unavailable: null };
+
 async function loadAdminSessions() {
   const el = document.getElementById('admin-sessions-content');
   el.innerHTML = '<div class="admin-loading">Loading...</div>';
   try {
-    const res = await fetch('/api/sessions');
+    const res = await fetch(`/api/sessions?period=${sessionsView.period}&sort=${sessionsView.sort}`);
     if (!res.ok) throw new Error('fetch failed');
-    adminState.sessions = await res.json();
+    const data = await res.json();
+    adminState.sessions = data.sessions || [];
+    sessionsView.unavailable = data.costUnavailable ?? null;
     adminState.loaded.add('sessions');
     renderAdminSessions();
   } catch {
@@ -4977,13 +4984,43 @@ async function loadAdminSessions() {
 
 function renderAdminSessions() {
   const el = document.getElementById('admin-sessions-content');
+  const p = sessionsView.period;
+  const costUnavailable = sessionsView.unavailable != null;
+  const periodBtn = (val, label) =>
+    `<button class="admin-action-btn${p === val ? ' success' : ''}" data-sessions-period="${val}">${label}</button>`;
+  const sortBtn = (val, label) =>
+    `<button class="admin-action-btn${sessionsView.sort === val ? ' success' : ''}" data-sessions-sort="${val}">${label}</button>`;
+  const controls =
+    `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">` +
+    `<span style="color:var(--text-muted);font-size:10px">Cost window:</span>` +
+    periodBtn('1d', 'Today') +
+    periodBtn('7d', '7d') +
+    periodBtn('30d', '30d') +
+    `<span style="color:var(--text-muted);font-size:10px;margin-left:8px">Sort:</span>` +
+    sortBtn('cost', 'Cost') +
+    sortBtn('recent', 'Recent') +
+    (costUnavailable
+      ? `<span title="${escAttr(String(sessionsView.unavailable))}" style="color:#94A3B8;font-size:10px;margin-left:8px">cost: ccusage unavailable</span>`
+      : '') +
+    `</div>`;
+
   if (adminState.sessions.length === 0) {
-    el.innerHTML = '<div class="admin-empty">No active sessions</div>';
+    el.innerHTML = controls + '<div class="admin-empty">No sessions</div>';
     return;
   }
-  let html = `<table class="admin-table">
-    <tr><th>Group Folder</th><th>Group Name</th><th>Session ID</th><th>Actions</th></tr>`;
-  for (const s of adminState.sessions) {
+  let rows = adminState.sessions;
+  if (sessionsView.sort === 'recent') {
+    rows = [...rows].sort((a, b) => String(b.last_active || '').localeCompare(String(a.last_active || '')));
+  }
+  const totalCost = rows.reduce((s, r) => s + (r.cost || 0), 0);
+  let html =
+    controls +
+    `<div style="color:var(--text-muted);font-size:10px;margin-bottom:6px">${rows.length} sessions · ${costUnavailable ? 'n/a' : fmtUsd(totalCost)} over ${p}</div>` +
+    `<table class="admin-table">
+    <tr><th>#</th><th>Coworker</th><th>Session ID</th><th style="text-align:right">Cost (${p})</th><th style="text-align:right">Tokens</th><th>Last active</th><th>Actions</th></tr>`;
+  let i = 0;
+  for (const s of rows) {
+    i++;
     const sid = s.session_id || '';
     const grp = s.group_folder || '';
     const nanoSess = sid ? lookupNanoSessById(sid) : null;
@@ -4998,10 +5035,16 @@ function renderAdminSessions() {
       const dest = tid ? 'thread panel' : direct ? 'a2a panel' : 'main chat';
       sidCell = `<span style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px" title="Open in Coworkers (${dest})" ${attrs}>${esc(sid)}</span>`;
     }
+    const costCell = costUnavailable
+      ? '<span style="color:#94A3B8">n/a</span>'
+      : `<span style="color:#10B981">${fmtUsd(s.cost || 0)}</span>${s.costUnpriced ? '<span title="includes usage from a model without a known price" style="color:#F59E0B"> *</span>' : ''}`;
     html += `<tr>
-      <td>${esc(s.group_folder)}</td>
-      <td>${esc(s.group_name || '-')}</td>
+      <td style="color:var(--text-muted)">${i}</td>
+      <td>${esc(s.group_name || s.group_folder || '-')}</td>
       <td style="font-size:9px;color:var(--text-muted)">${sidCell}</td>
+      <td style="text-align:right">${costCell}</td>
+      <td style="text-align:right;color:var(--text-muted)">${fmtNum(s.costTokens || 0)}</td>
+      <td style="font-size:9px;color:var(--text-muted)">${esc(s.last_active || '-')}</td>
       <td><button class="admin-action-btn danger" data-action="delete-session" data-folder="${esc(s.group_folder)}">Delete</button></td>
     </tr>`;
   }
@@ -5260,6 +5303,19 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
         /* ignore */
       }
     }
+  }
+  // Sessions tab cost-window / sort toggles — re-fetch with the new params.
+  const sPeriod = e.target.closest('[data-sessions-period]');
+  if (sPeriod) {
+    sessionsView.period = sPeriod.dataset.sessionsPeriod;
+    loadAdminSessions();
+    return;
+  }
+  const sSort = e.target.closest('[data-sessions-sort]');
+  if (sSort) {
+    sessionsView.sort = sSort.dataset.sessionsSort;
+    loadAdminSessions();
+    return;
   }
   const btn = e.target.closest('[data-action]');
   if (!btn) {

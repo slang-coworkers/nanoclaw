@@ -47,6 +47,7 @@ import { refreshDestinationsForAgentGroup } from '../src/modules/agent-to-agent/
 import { CANONICAL_DECISIONS, canonicalizeDecision } from '../src/modules/approvals/decision.js';
 import { kbDoctorUnavailable, readKbDoctorArtifact, type KbDoctorView } from './kb-doctor-artifact.js';
 import { isoWeekStart, isoWeekStartFromMs, sessionIdMs, unitCostByWeek, UNIT_COST_GROUPS } from './unit-cost.js';
+import { priceUsage, normalizeModel, type SessionCostEntry, type TokenUsage } from './session-costs.js';
 
 /**
  * Check if `target` is inside (or equal to) `baseDir`.
@@ -1880,6 +1881,193 @@ function refreshContextStatsCache(): void {
     /* DB not ready */
   }
 }
+
+// ---------- Per-session cost (Sessions tab cost column) ----------
+//
+// ccusage is per-group-per-day, so a per-SESSION figure is summed from the raw
+// per-message `usage` in each transcript, priced by session-costs.ts (LiteLLM
+// rates, guarded against FALLBACK_PRICING drift). One transcript file under
+// `.claude-shared/projects/` is one SDK session (its basename is the SDK uuid),
+// mapped to the nanoclaw session id via sdk_session_routes so a row can link.
+//
+// Mirrors the context refresh: mtime-keyed per-file cache, 60s cycle, file cap.
+
+interface PerFileCost {
+  mtimeMs: number;
+  // YYYYMMDD -> { cost, tokens } for that day; summed per period at refresh.
+  days: Map<string, { cost: number; tokens: number }>;
+  unpriced: boolean; // saw usage from a model MODEL_PRICING doesn't know
+  hadSignal: boolean;
+}
+const perFileCostCache = new Map<string, PerFileCost>();
+
+function scanFileCost(path: string, mtimeMs: number): PerFileCost {
+  const cached = perFileCostCache.get(path);
+  if (cached && cached.mtimeMs === mtimeMs) return cached;
+  const out: PerFileCost = { mtimeMs, days: new Map(), unpriced: false, hadSignal: false };
+  // Dedupe by message id. A transcript replays the SAME assistant message on
+  // multiple rows when a session is resumed/rewound — each carries an identical
+  // `message.id` but a distinct top-level `uuid`. Counting every row double- to
+  // triple-counts cost (measured 1.7–2.2x on prod); ccusage dedupes by message
+  // id, so we do too, keeping this column reconciled with the group totals the
+  // Overview reads. requestId is null on Bedrock, so message.id alone is the key.
+  const seenMsgIds = new Set<string>();
+  try {
+    const content = readFileSync(path, 'utf-8');
+    for (const line of content.split('\n')) {
+      if (line.indexOf('"usage"') < 0) continue;
+      let r: {
+        type?: string;
+        timestamp?: string;
+        message?: { id?: string; usage?: TokenUsage; model?: string };
+      };
+      try {
+        r = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      const msg = r.message;
+      if (r.type !== 'assistant' || !msg?.usage) continue;
+      if (msg.id) {
+        if (seenMsgIds.has(msg.id)) continue;
+        seenMsgIds.add(msg.id);
+      }
+      const cost = priceUsage(msg.model, msg.usage);
+      const u = msg.usage;
+      const tokens =
+        (u.input_tokens || 0) +
+        (u.output_tokens || 0) +
+        (u.cache_creation_input_tokens || 0) +
+        (u.cache_read_input_tokens || 0);
+      out.hadSignal = true;
+      if (cost === 0 && msg.model && !normalizeModel(msg.model)) out.unpriced = true;
+      const key = isoDayKey(r.timestamp) ?? MISSING_TS_KEY;
+      const d = out.days.get(key) || { cost: 0, tokens: 0 };
+      d.cost += cost;
+      d.tokens += tokens;
+      out.days.set(key, d);
+    }
+  } catch {
+    /* unreadable — treat as no signal */
+  }
+  perFileCostCache.set(path, out);
+  return out;
+}
+
+// nanoclaw session id -> cost row, per period. Endpoint joins this onto the
+// /api/sessions rows; the ranked arrays back an optional sort=cost.
+type SessionCostByPeriod = Record<ContextPeriod, Map<string, SessionCostEntry>>;
+let sessionCostCache: SessionCostByPeriod = {
+  '1d': new Map(),
+  '7d': new Map(),
+  '30d': new Map(),
+  all: new Map(),
+};
+
+function refreshSessionCostCache(): void {
+  if (!db) return;
+  try {
+    const groups = db.prepare('SELECT id, folder, name FROM agent_groups').all() as {
+      id: string;
+      folder: string;
+      name: string;
+    }[];
+    // SDK uuid -> nanoclaw session id (for the link). Newest route wins.
+    const sdkToNano = new Map<string, string>();
+    try {
+      for (const r of db.prepare('SELECT sdk_session_id, nanoclaw_session_id FROM sdk_session_routes').all() as {
+        sdk_session_id: string;
+        nanoclaw_session_id: string;
+      }[]) {
+        if (r.sdk_session_id && r.nanoclaw_session_id) sdkToNano.set(r.sdk_session_id, r.nanoclaw_session_id);
+      }
+    } catch {
+      /* table may not exist on older installs — links just fall back to '' */
+    }
+
+    const cutoffs: Record<ContextPeriod, string> = {
+      '1d': ccusageSinceDate(0),
+      '7d': ccusageSinceDate(7),
+      '30d': ccusageSinceDate(30),
+      all: '',
+    };
+    const next: SessionCostByPeriod = { '1d': new Map(), '7d': new Map(), '30d': new Map(), all: new Map() };
+    const sessionsDir = join(getDataDir(), 'v2-sessions');
+    const livePaths = new Set<string>();
+
+    for (const group of groups) {
+      const claudeShared = join(sessionsDir, group.id, '.claude-shared');
+      // Sessions only — `projects/<sdk-uuid>.jsonl`. collectClaudeJsonlFiles
+      // also returns `skills/…` transcripts, whose basename is not an SDK
+      // session id (so they'd never map to a nanoclaw session) and which are
+      // skill runs, not sessions. Excluding them keeps the tab to real sessions
+      // and matches the reconciliation (projects-only) against ccusage.
+      const files = collectClaudeJsonlFiles(claudeShared).filter((f) => f.includes('/projects/'));
+      if (files.length === 0) continue;
+      const chosen = files
+        .map((f) => {
+          try {
+            return { f, m: statSync(f).mtimeMs };
+          } catch {
+            return { f, m: 0 };
+          }
+        })
+        .sort((a, b) => b.m - a.m)
+        .slice(0, MAX_CONTEXT_FILES_PER_GROUP);
+
+      for (const { f, m } of chosen) {
+        livePaths.add(f);
+        const fc = scanFileCost(f, m);
+        if (!fc.hadSignal) continue;
+        const sdkId = basename(f).replace(/\.jsonl$/, '');
+        const nanoId = sdkToNano.get(sdkId) || '';
+        for (const period of CONTEXT_PERIODS) {
+          const since = cutoffs[period];
+          let cost = 0;
+          let tokens = 0;
+          let inWindow = false;
+          for (const [key, d] of fc.days) {
+            if (period !== 'all' && !(key >= since)) continue;
+            inWindow = true;
+            cost += d.cost;
+            tokens += d.tokens;
+          }
+          if (!inWindow) continue;
+          // Merge onto the nanoclaw session (a session can span multiple SDK
+          // sub-sessions/files); unmapped files bucket under their SDK id so
+          // their cost is still counted, just without a working link.
+          const mapKey = nanoId || sdkId;
+          const bucket = next[period];
+          const prev = bucket.get(mapKey);
+          if (prev) {
+            prev.cost += cost;
+            prev.tokens += tokens;
+            prev.lastActiveMs = Math.max(prev.lastActiveMs, m);
+            prev.unpriced = prev.unpriced || fc.unpriced;
+          } else {
+            bucket.set(mapKey, {
+              sessionId: nanoId,
+              sdkSessionId: sdkId,
+              groupFolder: group.folder,
+              groupName: group.name,
+              cost,
+              tokens,
+              lastActiveMs: m,
+              unpriced: fc.unpriced,
+            });
+          }
+        }
+      }
+    }
+    sessionCostCache = next;
+    if (perFileCostCache.size > livePaths.size * 2 + 1000) {
+      for (const k of perFileCostCache.keys()) if (!livePaths.has(k)) perFileCostCache.delete(k);
+    }
+  } catch {
+    /* DB not ready */
+  }
+}
+
 if (!process.env.VITEST) {
   // Defer the first (cold) scan a few seconds so it never blocks server startup —
   // it reads every transcript once (~seconds on a large install); after that the
@@ -1888,6 +2076,11 @@ if (!process.env.VITEST) {
   setTimeout(refreshContextStatsCache, 4000).unref?.();
   const ctxStatsTimer = setInterval(refreshContextStatsCache, 60000);
   ctxStatsTimer.unref?.();
+  // Per-session cost shares the same cadence. Offset the cold scan slightly so
+  // the two full-transcript passes don't land in the same tick on startup.
+  setTimeout(refreshSessionCostCache, 6000).unref?.();
+  const sessCostTimer = setInterval(refreshSessionCostCache, 60000);
+  sessCostTimer.unref?.();
 }
 
 // ---------- Per-group token aggregation (JSONL scanning) ----------
@@ -8261,8 +8454,37 @@ export async function handleRequest(
         /* ignore */
       }
     }
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(sessions));
+    // Cost column: join the per-session cost cache for the requested period
+    // (default 30d). Every row gets `cost`/`tokens`/`costUnpriced`; a session
+    // with no priced activity in the window is 0. `?sort=cost` ranks desc so
+    // the fat tail (the few sessions that drive most spend) is at the top.
+    // `unavailable` (from the shared ccusage resolution) tells the UI to show
+    // "n/a" instead of a confident $0 when pricing is genuinely absent.
+    const periodParam = url.searchParams.get('period') || '30d';
+    const period: ContextPeriod = CONTEXT_PERIODS.includes(periodParam as ContextPeriod)
+      ? (periodParam as ContextPeriod)
+      : '30d';
+    const costByNano = sessionCostCache[period] || new Map<string, SessionCostEntry>();
+    for (const s of sessions) {
+      const c = s.session_id ? costByNano.get(s.session_id) : undefined;
+      s.cost = c ? c.cost : 0;
+      s.costTokens = c ? c.tokens : 0;
+      s.costUnpriced = c ? c.unpriced : false;
+    }
+    if (url.searchParams.get('sort') === 'cost') {
+      sessions.sort((a, b) => (b.cost || 0) - (a.cost || 0));
+    }
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
+    });
+    res.end(
+      JSON.stringify({
+        sessions,
+        period,
+        costUnavailable: ccusageUnavailable(),
+      }),
+    );
     return;
   }
 
