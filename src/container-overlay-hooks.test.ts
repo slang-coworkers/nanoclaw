@@ -47,6 +47,7 @@ function makeAgentGroup(overrides: Partial<AgentGroup> = {}): AgentGroup {
     overlays: null,
     routing: 'direct',
     disable_overlays: 0,
+    paused: 0,
     created_at: new Date().toISOString(),
     ...overrides,
   };

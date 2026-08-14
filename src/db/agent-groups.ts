@@ -43,7 +43,7 @@ export function updateAgentGroup(
   updates: Partial<
     Pick<
       AgentGroup,
-      'name' | 'agent_provider' | 'container_config' | 'coworker_type' | 'allowed_mcp_tools' | 'overlays'
+      'name' | 'agent_provider' | 'container_config' | 'coworker_type' | 'allowed_mcp_tools' | 'overlays' | 'paused'
     >
   >,
 ): void {

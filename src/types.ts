@@ -17,6 +17,7 @@ export interface AgentGroup {
   overlays: string | null; // JSON: string[] of overlay names (e.g. ["critique-gate", "buddy-monitor"])
   routing: string; // 'direct' | 'internal'
   disable_overlays: number; // 0 | 1 — when 1, skip overlay hook injection
+  paused: number; // 0 | 1 — operator kill switch. When 1 the host refuses to spawn ANY container for this group, enforced in wakeContainer so every wake path (router fanout, a2a/host-direct, host-sweep, task fires) honours it. Inbound messages still accumulate; unpausing resumes them.
   created_at: string;
   /** Dashboard sidebar grouping: NULL/'prod' = shared prod group; else a user id. */
   sidebar_group?: string | null;

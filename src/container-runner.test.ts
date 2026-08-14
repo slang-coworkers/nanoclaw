@@ -47,6 +47,34 @@ describe('buildContainerArgs ordering invariant (structural)', () => {
   });
 });
 
+describe('paused agent-group kill switch (structural)', () => {
+  // wakeContainer is THE choke point every wake path funnels through (router
+  // fanout via delivery, agent-to-agent / host-direct delivery, the host-sweep
+  // due-message wake, scheduled-task fires, container-restart), and
+  // spawnContainer has no other caller. A per-wiring pause was proven
+  // insufficient on prod — the a2a and sweep paths never consult wirings — so
+  // the pause MUST gate the spawn itself. Driving wakeContainer needs a live DB
+  // + runtime, so this guards the invariant structurally: the paused check must
+  // read the group and short-circuit BEFORE spawnContainer is reached.
+  const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
+
+  it('wakeContainer checks group.paused', () => {
+    const wake = src.indexOf('export function wakeContainer');
+    const spawnCall = src.indexOf('spawnContainer(session)', wake);
+    const pausedCheck = src.indexOf('group?.paused', wake);
+    expect(wake).toBeGreaterThan(-1);
+    expect(pausedCheck).toBeGreaterThan(-1);
+    // The guard returns before the spawn.
+    expect(pausedCheck).toBeLessThan(spawnCall);
+  });
+
+  it('the paused guard resolves false (does not spawn) rather than throwing', () => {
+    const wake = src.indexOf('export function wakeContainer');
+    const guardBlock = src.slice(src.indexOf('group?.paused', wake), src.indexOf('const existing', wake));
+    expect(guardBlock).toContain('return Promise.resolve(false)');
+  });
+});
+
 describe('per-container resource limits (structural)', () => {
   // CONTAINER_CPU_LIMIT / CONTAINER_MEMORY_LIMIT pass through to `docker run` as
   // --cpus / --memory, but only when set. The default is empty string → no flag →

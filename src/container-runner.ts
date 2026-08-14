@@ -399,6 +399,24 @@ export function wakeContainer(session: Session): Promise<boolean> {
     log.debug('Skipping wake of closed session', { sessionId: session.id });
     return Promise.resolve(false);
   }
+  // Operator kill switch. This is THE choke point every wake path funnels
+  // through — router @mention fanout (via delivery), agent-to-agent /
+  // host-direct delivery, the 60s host-sweep's due-message wake, scheduled-task
+  // fires, and container-restart all call wakeContainer, and spawnContainer has
+  // no other caller. A per-wiring pause was proven insufficient on
+  // slang-coworkers prod (2026-08-13): the a2a and sweep paths never consult
+  // wirings, so a wiring-paused approver kept spawning. Gating the spawn itself
+  // is the only pause all four honour. Messages keep accumulating in the
+  // session DB; unpausing (paused=0) lets the next sweep pick them up — no work
+  // is lost, the group just stops burning tokens.
+  const group = getAgentGroup(session.agent_group_id);
+  if (group?.paused) {
+    log.info('Skipping wake — agent group is paused', {
+      sessionId: session.id,
+      agentGroupId: session.agent_group_id,
+    });
+    return Promise.resolve(false);
+  }
   const existing = wakePromises.get(session.id);
   if (existing) {
     log.debug('Container wake already in-flight — joining existing promise', { sessionId: session.id });

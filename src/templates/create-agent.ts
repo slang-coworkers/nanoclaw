@@ -80,6 +80,7 @@ export function createAgentFromTemplate(ref: string, opts?: CreateAgentOptions):
     overlays: null,
     routing: 'direct',
     disable_overlays: 0,
+    paused: 0,
     created_at: new Date().toISOString(),
   };
   createAgentGroup(group);
