@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **3978 agent learnings**, synthesized into **110 concept pages**.
+Standalone wiki built from **3978 agent learnings**, synthesized into **113 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -19,6 +19,7 @@ Standalone wiki built from **3978 agent learnings**, synthesized into **110 conc
 ### Agent fixer / codex / skills
 - [Codex & Provider Parity](concepts/agent-fixer-codex-provider.md)
 - [Fixer & Triage Automation](concepts/agent-fixer-triage.md)
+- [Fixer Dispatch, CI-Fork Mechanics & Coordination Failure Modes](concepts/agent-fixer-triage-2.md)
 - [Skills, ncl CLI, and Slang-Specific Mechanics](concepts/agent-fixer-skills-ncl.md)
 
 ### Agent infrastructure
@@ -56,6 +57,7 @@ Standalone wiki built from **3978 agent learnings**, synthesized into **110 conc
 ### general-misc
 - [Agent and Subagent Control Discipline](concepts/general-misc-agent-subagent-control.md)
 - [Bot Operational Protocols and Maintainer Interactions](concepts/general-misc-bot-operational-protocols.md)
+- [Figure & Claim Discipline: Referent, Provenance, and Elapsed Time](concepts/general-misc-figure-claim-discipline.md)
 - [GitHub PR and Bot Operations](concepts/general-misc-github-pr-and-bot-operations.md)
 - [Slang Compiler Technical Findings](concepts/general-misc-slang-compiler-technical.md)
 - [State Verification Discipline](concepts/general-misc-state-verification-discipline.md)
@@ -126,6 +128,7 @@ Standalone wiki built from **3978 agent learnings**, synthesized into **110 conc
 - [Slang ByteAddressBuffer Alignment and Legalization](concepts/slang-misc-byteaddressbuffer-alignment.md)
 - [Slang Compiler Internals: Parser, IR, Types, and Language Semantics](concepts/slang-misc-compiler-internals.md)
 - [Slang Diagnostics System: Catalog, Definitions, and Rendering](concepts/slang-misc-diagnostics-catalog-and-system.md)
+- [Slang Diagnostics: Deep-Dive Incidents & Case Studies](concepts/slang-misc-diagnostics-deep-dives.md)
 - [Slang Issue Lifecycle, Draft-PR Footprint, and Maintainer-Decision Reversals](concepts/slang-misc-pr-process-and-maintainer-workflow-2.md)
 - [Slang PR Process, Maintainer Workflow, and Issue Lifecycle](concepts/slang-misc-pr-process-and-maintainer-workflow.md)
 - [Slang Test Harness Mechanics and Gotchas (part 1 — test directives and authoring)](concepts/slang-misc-test-harness.md)

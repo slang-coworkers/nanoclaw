@@ -10,6 +10,19 @@ source_count: 13
 
 Slang exposes a C reflection API (`spReflection*`) and C++ wrappers (`TypeReflection`, `ProgramLayout`, `DeclReflection`, etc.) for querying layout, bindings, and type structure of compiled shaders. Several non-obvious pointer-identity and serialization constraints apply.
 
+## TL;DR
+
+- **`TypeReflection*` pointer identity is not safe across `ProgramLayout` vs module reflection** — different `ASTBuilder`s back them, so the same logical type may have different pointers. Key on `getFullName()`, never the pointer.
+- **The CLI flag is `-reflection-json` (not `-emit-reflection-json`)**, and it **SIGSEGVs on any failed compile when `-target` is present** (null `m_specializedGlobalAndEntryPointsComponentType`, no compile-result gate; not a regression). Dropping `-target` is the only graceful path.
+- **`//TEST:REFLECTION:` drives `slang-reflection-test`, NOT the `-reflection-json` CLI** — a regression test for a `-reflection-json` bug must use `SIMPLE`/`DIAGNOSTIC_TEST:SIMPLE` invoking slangc directly.
+- **Reflection is AST-based; SPIR-V emit is IR-based.** Slang has **two independent type-alignment systems** — reflection `IRTypeLayout` vs the natural-layout engine (`slang-ir-layout.cpp`) — and SPIR-V stride/offset uses the latter, so emitted and reflection-reported strides can legitimately disagree; measure `OpDecorate ArrayStride` and `-reflection-json` offsets **separately**. An IR-layout-internal bug is invisible to any `//TEST:REFLECTION` test — pin it with `-dump-ir` FileCheck + a revert drill.
+- **Existential (`StructuredBuffer<Interface>`) size diverges by phase order**: reflection reads the AST `[anyValueSize]` attribute (default 16+16=32), emit reads the later `inferAnyValueSizeWhereNecessary` IR pass — a genuine gap, not a misread; an explicit large-enough `[anyValueSize(N)]` makes both agree (the user workaround). Root-cause fix is design-gated → PARK.
+- **`import` (vs `#include`) loses reflection/binding until `IComponentType::link()` is called** — imported globals are recorded as *requirements*, folded in only by `link()`; `slangc` always links, so the bug never reproduces via CLI.
+- **Reflection objects are live session pointers — not serializable.** Use `-reflection-json` → POD structs, or serialize the module and reflect at runtime.
+- **`findFieldIndexByName` returns the first match** (a duplicate same-named global is unreachable by bare name) but already supports qualified `Module.var`/`Module::var` lookup; both duplicates are always reachable by index.
+- **`include/slang-deprecated.h` holds the ACTIVE `spReflection*` C-API** (~168 functions) backing the modern C++ wrappers — only the `ICompileRequest` workflow in it is genuinely legacy.
+- **Cumulative offset is a property of an ACCESS PATH, not a node** — the reflection API returns *relative* offsets by design; adding a `getCumulativeOffset` helper is a public-ABI design call (needs an `AccessPath`) → PARK, don't PR.
+
 ## TypeReflection Pointer Identity
 
 `slang::TypeReflection*` is an internal `Type*` pointer deduplicated only within a single `ASTBuilder`. A module's `getModuleReflection()` decl tree and the linked program's `getLayout()->findTypeByName()` can be backed by different `ASTBuilder` instances (linking and generic specialization build fresh nodes), so the same logical type may have different pointers. Do not compare `TypeReflection*` across these two sources — key on `getFullName()` instead ([Slang reflection: TypeReflection* pointer identity is not safe across ProgramLayout vs module reflection](../learnings/1780993688372-slang-reflection-typereflection-pointer-identity-i.md)).
