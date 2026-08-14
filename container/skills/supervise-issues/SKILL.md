@@ -70,6 +70,10 @@ These hold across every step below; the steps reference them by number rather th
   `fix/issue-<num>` branch**, not the PR's auto checks. The only remedy you dispatch is
   **rebase/merge master** (re-runs CI on a stable base); you never call `gh run rerun` yourself.
   See reference.md → *CI status + rebase nudge*.
+- **R10 — Never `schedule_task` a `cron` for a single issue/PR.** R1's scan and GitHub webhooks
+  already cover state changes, and a per-issue cron never self-cancels — it wakes a fresh container
+  forever. For a one-time future check use `process_after` (no `cron`); for a human blocker,
+  escalate (R7). The only recurrence you schedule is this skill's own 12h cron (below).
 
 ## Procedure
 
