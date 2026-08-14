@@ -93,6 +93,14 @@ registerResource({
         'Agent runtime provider (e.g. "claude", "codex", "opencode"). Set via the dashboard UI or `update`. Takes precedence over container_configs.provider in the resolution chain (session → agent_group → container_config → "claude").',
       updatable: true,
     },
+    {
+      name: 'paused',
+      type: 'number',
+      enum: ['0', '1'],
+      description:
+        'Operator kill switch: 1 pauses the group (host refuses to spawn ANY container for it, at the wakeContainer choke point that every wake path honours — router, agent-to-agent, host-sweep, task fires); 0 resumes. Inbound messages keep accumulating while paused, so resuming loses no work. Effective immediately — no restart needed, since the gate is on the next spawn.',
+      updatable: true,
+    },
   ],
   // `create` and `delete` are custom (below): create needs a `--template`
   // branch, and the generic create inserts a bare agent_groups row but never
@@ -308,6 +316,7 @@ registerResource({
           overlays: null,
           routing: 'direct',
           disable_overlays: 0,
+          paused: 0,
           created_at: new Date().toISOString(),
         };
         createAgentGroup(group);

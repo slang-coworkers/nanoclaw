@@ -262,6 +262,7 @@ async function performCreateAgent(
     overlays: validatedOverlays ? JSON.stringify(validatedOverlays) : null,
     routing: (content.routing as string) || (directChannel ? 'direct' : 'internal'),
     disable_overlays: 0,
+    paused: 0,
     sidebar_group: sidebarGroup,
     created_at: now,
   };

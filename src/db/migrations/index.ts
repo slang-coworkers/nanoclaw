@@ -57,7 +57,12 @@ async function loadMigrations(): Promise<Migration[]> {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const files = fs
     .readdirSync(here)
-    .filter((f) => /^(\d+|module)-.*\.(js|ts)$/.test(f) && !f.endsWith('.d.ts'))
+    // A migration file is `<version>-<slug>.{ts,js}`. Exclude `.d.ts` type
+    // stubs and — critically — `.test.ts` / `.spec.ts` co-located test files:
+    // those match the version-slug shape but export test suites, not a
+    // Migration, and loading one throws "does not export a Migration-shaped
+    // value", which fails migration setup for EVERY suite that runs migrations.
+    .filter((f) => /^(\d+|module)-.*\.(js|ts)$/.test(f) && !f.endsWith('.d.ts') && !/\.(test|spec)\.(js|ts)$/.test(f))
     .sort();
 
   const out: Migration[] = [];
