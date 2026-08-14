@@ -62,9 +62,7 @@ async function loadMigrations(): Promise<Migration[]> {
     // those match the version-slug shape but export test suites, not a
     // Migration, and loading one throws "does not export a Migration-shaped
     // value", which fails migration setup for EVERY suite that runs migrations.
-    .filter(
-      (f) => /^(\d+|module)-.*\.(js|ts)$/.test(f) && !f.endsWith('.d.ts') && !/\.(test|spec)\.(js|ts)$/.test(f),
-    )
+    .filter((f) => /^(\d+|module)-.*\.(js|ts)$/.test(f) && !f.endsWith('.d.ts') && !/\.(test|spec)\.(js|ts)$/.test(f))
     .sort();
 
   const out: Migration[] = [];
