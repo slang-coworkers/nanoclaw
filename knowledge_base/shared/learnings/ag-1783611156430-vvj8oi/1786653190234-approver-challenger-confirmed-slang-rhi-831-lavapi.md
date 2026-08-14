@@ -1,0 +1,17 @@
+---
+author_agent_group: ag-1783611156430-vvj8oi
+author_session: sess-1786477327664-spdydc
+written_at: 2026-08-13T20:33:10.234Z
+---
+
+# [approver/challenger-confirmed] slang-rhi#831 lavapipe-CI: settle-then-gate resolved a 6-revision rapid-push treadmill; final WOULD_APPROVE agreed with the merge
+
+**Context:** slang-rhi#831 "CI with lavapipe" (@skallweitNV, MEMBER) ran as a 6-revision rapid-push chain (eb1f6ce → fd72d68 → a5b1e94(superseded) → 8d36ccf → 86c2a9c → 18c3704b), pushes landing every few minutes while each approval run took ~1h. Terminal: **MERGED at 18c3704b** (merge commit 5a5816fc), which was exactly my final (R6) gate head. My R6 decision = WOULD_APPROVE → **agrees with the human merge verdict.**
+
+**Treadmill lesson (operational):** when pushes outrun run time, do NOT chase every webhook — you gate stale intermediates that are obsolete before they finish. The orchestrator and I converged on **settle-then-gate**: gate only the current live HEAD (`gh pr view --json headRefOid`), and if HEAD moves mid-run, finish and record that head anyway (one authoritative verdict per head that survives long enough), rather than aborting. That produced exactly one decision on the head that actually merged. Also: re-pin at the START of each run and re-verify HEAD before recording; a decision recorded against a superseded head is noise.
+
+**Decision-shape lesson:** across the chain the verdict tracked one thing — whether the PR's own new lavapipe CI jobs were green AND the diff was principled with no verified defect. R1/R2 abstained (red lavapipe); R4/R5 abstained (green CI but unresolved challenger gaps / a critique-gate dispute); R6 approved (all lavapipe green + a clean, verified diff). The PR also got progressively cleaner: R6 was a substantial rewrite — the Windows lavapipe download/hash machinery was dropped, the setup-lavapipe action became a shared 21-line Linux-only composite (DRY across ci.yml + sanitizers.yml), lavapipe folded into the existing linux build matrix via flags, and the ARM64-lavapipe RT problem was fixed properly by detecting VK_DRIVER_ID_MESA_LLVMPIPE and trimming RT features/capabilities from the advertised set (verified: availableFeatures/availableCapabilities are the sole feed to addFeature→m_featureSet that hasFeature reads; strip runs after push/before consume; gated so it's a no-op on real ARM64 GPUs and compiled out on x86_64; RT tests SKIP on hasFeature=false).
+
+**Devin-flags lesson (recurring):** the extractor that dropped Devin's flags at R5 did NOT drop them at R6 (reported 2 bugs + 8 flags), so the bug is intermittent — always cross-check the raw devin-page.txt counter lines regardless. Adjudicating R6's 2 "bugs": Bug1 ("RT still advertised to the driver after being switched off") was the PR's INTENTIONAL, comment-documented design (it trims what slang-rhi *advertises* via hasFeature, deliberately not the VkDevice's enabled extensions; RT tests gate on hasFeature→SKIP) — a flag on intended behavior, not a defect. Bug2 (vk-heap.cpp:64) referenced code NOT in the R6 diff (landed on main separately) — pre-existing/out-of-scope. Lesson: a bot "bug" whose file:line isn't in the diff, or which the PR's own comment explains as intended, is adjudicated non-blocking — but you must open the code to confirm that, not assume it.
+
+**Confirmation:** clean approve at the merged head; the change was safe for the reasons above. Calibration signal: WOULD_APPROVE vs merged = agreement.
