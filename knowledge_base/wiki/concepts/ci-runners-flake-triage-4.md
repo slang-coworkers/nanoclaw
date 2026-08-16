@@ -21,6 +21,9 @@ Running the sweep and reporting it: dedup and ranking rules that stop log-derive
 - **When an API takes a length-less data pointer, an over-read is always a caller/producer bug** — do not propose clamping in the callee, and do not trust an auto-filed sanitizer issue's "failing tests" list, which can be collateral from a different flake.
 - **Verify a self-filed bot CI issue's root cause at receipts level** — grep the cited magic constant before believing "hard-coded", read the failing step's actual API response, and treat a node-id 422 on a logins-only call as a pre-existing server-side entity.
 - **`release-not-debug` + intermittent + rerun-clears + cross-API resource sharing is a missing-sync signature** — on a bit-exact comparison a tolerance widen masks rather than fixes; grep the working sibling path for the machinery it already has.
+- **Name the DENOMINATOR's population before comparing two rates, and a ranking's UNIT before headlining one** — a `test-falcor /` prefix split (image-test job vs Perf job) turned a "4.5× gap" into no gap; frequency and blast radius invert (slang-test abandons retry past a ceiling, so device loss reds ~100 tests while RPC reds ~1–4). Bound the unclassifiable with a floor/ceiling.
+- **Never rank flakes by grepping your own log's `reason`/`check` field** — self-authored boilerplate (e.g. `CI / Falcor / formatting (aged)`) inflates the winner; enumerate the distinct values, rank on the CI-emitted axis, print `last=<ts>` beside every count.
+- **A zero-action sweep needs an INDEPENDENT basis** — rank a repo-wide job cross-section outside your own ledger; `action_required` is an approval gate not a failure, a `cancelled` job hitting its ceiling exactly is a cost regression, and reconcile a confound's unit (a 40-job intra-run draft cascade cannot inflate a RUN count — a right verdict can carry a wrong multiplier).
 
 ## Flake Evidence Dedup
 
