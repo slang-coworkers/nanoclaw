@@ -2,13 +2,13 @@
 title: "Slang Compiler Technical Findings"
 type: concept
 group: general-misc
-tags: [slang, compiler, spirv, ir, descriptor-heap, coopmat, deepwiki, rebase, expected-failure, uninit-checker, macro, diagnostics, slang-test, expected-baseline, filecheck, slang-module, import-resolution, sourceloc]
-source_count: 19
+tags: [slang, compiler, spirv, ir, descriptor-heap, coopmat, deepwiki, rebase, expected-failure, uninit-checker, macro, diagnostics, slang-test, expected-baseline, filecheck, slang-module, import-resolution, sourceloc, isession, composite-component-type, threading]
+source_count: 20
 ---
 
 # Slang Compiler Technical Findings
 
-Concrete technical findings about the Slang compiler codebase: verifying external-tool behavior at pinned SHA, IR crash diagnosis methodology, descriptor-heap specialization, cooperative matrix coverage, rebase experiment pitfalls, expected-failure list semantics, platform macro conversion hazards, which slang-test harness pins which property, and precompiled-module import resolution.
+Concrete technical findings about the Slang compiler codebase: verifying external-tool behavior at pinned SHA, IR crash diagnosis methodology, descriptor-heap specialization, cooperative matrix coverage, rebase experiment pitfalls, expected-failure list semantics, platform macro conversion hazards, which slang-test harness pins which property, precompiled-module import resolution, and cross-session component-type / threading rules.
 
 ## TL;DR
 
@@ -36,6 +36,8 @@ Concrete technical findings about the Slang compiler codebase: verifying externa
 - Document what a guard *guarantees*, not an enumeration of how bad input arrives — arrival-path claims are checkable and are often wrong even when the guard is right.
 - Slang ships no PBR/tonemap/gamma helpers; "too bright" in a Blender→glTF scene is units and color management, and a black debug visualization means NaN (`normalize` of a zero/unbound attribute), not a zero vector.
 - A fresh `git worktree` has no submodules, and `git submodule update` there rewrites the shared `core.worktree`, breaking sibling checkouts. Verify pins, then copy trees with `tar --exclude=.git`.
+- Component types created from different `ISession`s cannot be mixed in one `CompositeComponentType`; the creation path validates only null-ness (no linkage-identity check), so it returns `SLANG_OK` and crashes later in `getEntryPointCode()`. Cross-session module reuse: serialize the module and deserialize it in the current session.
+- Unsupported-AND-unchecked is the dangerous quadrant: an unsupported operation the API won't diagnose crashes far from the cause and the user blames their own code. To establish the quadrant, grep for the identity/validation check (`==`/`!=` on the owning object, or a `SLANG_ASSERT`), not for a diagnostic name — absence of a diagnostic does not prove silent acceptance.
 
 ## DeepWiki Can Miss Bulk-Declaration Files — Verify at Pinned SHA
 
@@ -95,12 +97,25 @@ That experiment is only readable because the import path was proven, and **a `.s
 
 Two more assertion shapes read strong and cannot fail, both found by peer review on #12367 *after* the suite was green. First, **on a target that emits a prelude verbatim, any name the prelude defines is unusable as a FileCheck anchor.** `//CHECK: Slang_FuncType` on `-target host-cpp` matches the prelude, not the module body: `host-cpp` is `ArtifactStyle::Host` ⇒ `isHeterogeneousTarget` ⇒ `slang-emit.cpp:2942` emits `get_slang_cpp_host_prelude()` verbatim, and that prelude *defines* the name at `prelude/slang-cpp-host-prelude.h:63`. A shader with **no** `[DllImport]` emits `Slang_FuncType` **once** (the prelude's `using`); the `[DllImport]` build has **three** (that line plus `Slang_FuncType<int32_t,int32_t> _S1 = nullptr;` and a bit-cast, which are the body). Anchor on a declaration only the body produces — `//CHECK: Slang_FuncType<{{.*}}> {{.*}}= nullptr` — and **prove it both ways**: against the no-`[DllImport]` control the new anchor fails 0/1 while the bare name passes 1/1, which converts "this assertion is vacuous" from a code-reading into a measurement (the complement of proving a `CHECK-NOT` live by negating it). General rule: `grep <symbol> prelude/*.h` before asserting a symbol appears in emitted output. Second, **neither `diag=` nor `filecheck=` asserts the compiler's exit code.** `_diagnosticAnnotationTest` (`slang-test-main.cpp:840-844`) receives `(context, input, diagPrefix, outputToCheck)` — no result code — and extracts only the `standard error = {` block, discarding the `result code = X` line its own comment shows preceding it, so a `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):` test **passes if the compiler emits the expected diagnostic and then crashes**. `TEST:SIMPLE(filecheck=…)` doesn't pin it either (probed `//CHECK: result code = 255` → 0/1; the code isn't in the FileCheck stream). Only plain `//TEST:SIMPLE:` with a `.expected` file pins it, since the comparison string is built starting `result code = ` at `:1876-1877` — in-tree precedent `tests/spirv/direct-spirv-emit.slang.expected` opens `result code = 0`. This matters precisely when a fix converts a **segfault** into a diagnostic: the `diag=` test proves the message, only the `.expected` test proves it stopped crashing. Promote the baseline from a real run (`slang-test tests/path/new.slang` writes `new.slang.actual`, then `cp` it to `.expected`), and never commit `.actual` — it is gitignored harness scratch (`.gitignore:38`). **Pick the harness by which property you need pinned, not by what is idiomatic for the directory**; asserting the wrong property is how a green suite coexists with an unpinned fix. ([prelude-matched names and exit codes no harness checks](../learnings/1785987113227-two-ways-a-slang-test-assertion-lies-prelude-match.md))
 
+## Cross-Session Component Types: Unsupported-AND-Unchecked Is the Dangerous Quadrant
+
+A Slang user asked whether he could load a module on one `ISession` and call `createCompositeComponentType` on another (to fan specialization across threads). The answer is **no** — but the reason it bites is not that it is unsupported, it is that it is unsupported **and silently accepted**. `source/slang/slang-session.cpp:390-443` validates only null-ness (`Diagnostics::NullComponentType` at `:415`, `:430`); grepping `getLinkage() ==`/`!=`, `m_linkage ==`/`!=`, `!= this`, `getSession() !=` across the file returns **zero hits** and there is no `SLANG_ASSERT` on linkage identity in the creation path, so the call returns `SLANG_OK` and the program crashes later in `getEntryPointCode()`. Maintainer `csyonghe` on **#8437** (open), verbatim: *"component types created from different sessions cannot be mixed together in a single CompositeComponentType… If you want to use a module created from a different session, you must first serialize that module, and deserialize it from the current session."* — which is the remedy to pass any user hitting this.
+
+The transferable rule is a four-quadrant table — supported/unsupported × checked/unchecked:
+
+| | checked | unchecked |
+|---|---|---|
+| **supported** | fine | fine |
+| **unsupported** | clean error — user finds out immediately | ⚠️ UB / crash far from the cause |
+
+The bottom-right is the one worth warning about explicitly: "this is unsupported" under-serves a user if the API won't tell them, because they conclude their own code is at fault — say *"and nothing will diagnose it."* To establish which quadrant you are in, grep for the **identity/validation check** (`==`/`!=` on the owning object), not for a diagnostic name; absence of a diagnostic does **not** prove silent acceptance, since an assert or an early `SLANG_E_INVALID_ARG` also counts as checked — enumerate both. (Adjacent method from the same session, worth reusing: to prove a *lock's* absence, enumerate **every** lock in the file rather than grepping the function for one — a complete-enumeration argument, not a name-grep, since a caller could hold the lock.) And read the docs rather than inferring the "obvious" rule: Slang requires **one global session per thread** (`docs/user-guide/08-compiling.md:720-721`, extended to *"objects created from them"* at `:1011`; `include/slang.h:4071-4074`), stricter than "one session per thread" — but the carve-out at `:1015-1028` (a serial-frontend / parallel-backend split where `getEntryPointCode`/`getTargetCode`/`getTargetMetadata`/`getResultAsFileSystem` are safe concurrently after `link()`, documented experimental) can save a user's threading design by moving the thread boundary later ([unsupported-and-unchecked is the dangerous quadrant — grep for the identity check, not the diagnostic](../learnings/1786245351511-unsupported-and-unchecked-is-the-dangerous-quadran.md)).
+
 ## Document a Guard's Guarantee, Not Arrival Paths
 
 When documenting a guard/predicate that is provenance-agnostic (rejects X regardless of how X arrived), document what it **guarantees** — not a specific enumeration of how the bad input arrives. Enumerating arrival paths is fragile: the claim is a checkable assertion about compiler behavior that can be wrong even when the guard is correct. In one three-round review, three separate mechanistic explanations for why a foreign-FileDecl case was supposedly impossible were each wrong, while the guard conjunct itself was always correct. Prefer "this drops X regardless of provenance" over "X can only arrive via Y." ([Document a guard's guarantee, not the enumeration of how the bad input arrives](../learnings/1780493380222-document-a-guard-s-guarantee-not-the-enumeration-o.md))
 
 ---
-**Source learnings (19):**
+**Source learnings (20):**
 - [Blender→glTF PBR too-bright + gamma mismatch: candela units, energy/(4π)×683 Spec-mode export, AgX default view transform; Slang has no built-in PBR/tonemap/gamma helpers](../learnings/1784300430455-blender-gltf-pbr-too-bright-gamma-mismatch-candela.md)
 - [Slang normal-map/TBN debugging: mul arg-order (mul(v,m) vs mul(m,v)) + NaN-tangent (black=normalize(0)=unbound attr) diagnostic ladder](../learnings/1784305210428-slang-normal-map-tbn-debugging-mul-arg-order-nan-t.md)
 - [DeepWiki can miss files in large or vendored codebases](../learnings/1779621016571-deepwiki-can-miss-files-in-large-or-vendored-codeb.md)
@@ -120,4 +135,5 @@ When documenting a guard/predicate that is provenance-agnostic (rejects X regard
 - [A gitignored .expected file makes slang-test fail 0/1 — and git status structurally cannot warn you](../learnings/1785987659514-a-gitignored-expected-file-makes-slang-test-fail-0.md) — the synthesized `rc=0` baseline mismatches, so the test is loudly broken rather than a shipping anti-guard; only a checkout of the pushed commit measures the commit.
 - [A gitignored .expected can be missing from the commit while git status says clean](../learnings/1785987524819-a-gitignored-expected-can-be-missing-from-the-comm.md) — `*.expected` needs `git add -f` and `git ls-tree` verification; generate baselines by promoting `.actual`, never hand-write them.
 - [Two ways a slang-test assertion lies: prelude-matched names, and exit codes no harness checks](../learnings/1785987113227-two-ways-a-slang-test-assertion-lies-prelude-match.md) — a prelude-defined symbol makes a bare FileCheck anchor vacuous, and only `//TEST:SIMPLE:` with a `.expected` pins the result code.
+- [Unsupported-and-unchecked is the dangerous quadrant — cross-session `CompositeComponentType` (slang#8437, csyonghe) returns `SLANG_OK` then crashes; grep for the linkage-identity check, not the diagnostic; serialize+deserialize to reuse a module across sessions](../learnings/1786245351511-unsupported-and-unchecked-is-the-dangerous-quadran.md)
 _Catalog: [[wiki/index.md]]_

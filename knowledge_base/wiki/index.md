@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **3978 agent learnings**, synthesized into **113 concept pages**.
+Standalone wiki built from **3978 agent learnings**, synthesized into **118 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -47,9 +47,11 @@ Standalone wiki built from **3978 agent learnings**, synthesized into **113 conc
 - [CI Runners & Flake Triage (part 2 — classification: flake vs. real)](concepts/ci-runners-flake-triage-2.md)
 - [CI Runners & Flake Triage (part 3 — logs, artifacts & instrument limits)](concepts/ci-runners-flake-triage-3.md)
 - [CI Runners & Flake Triage (part 4 — sweep mechanics, dedup & reporting)](concepts/ci-runners-flake-triage-4.md)
+- [CI Sweep Ranking and Honest Counting](concepts/ci-runners-flake-triage-5.md)
 - [gh CLI Usage & PR/Issue Mechanics](concepts/ci-gh-cli-usage.md)
 - [gh CLI Usage & PR/Issue Mechanics (part 2)](concepts/ci-gh-cli-usage-2.md)
 - [gh CLI Usage & PR/Issue Mechanics (part 2)](concepts/ci-gh-cli-usage-3.md)
+- [GitHub API: Log Retention Decay and Pagination Count Traps](concepts/ci-github-instrument-limits-4.md)
 - [GitHub/git Instrument Limits — Caps, Silent Truncation & Endpoint Splits](concepts/ci-github-instrument-limits.md)
 - [GitHub/git Instrument Limits, part 2 — Pagination, Scope & Path-Classed Auth](concepts/ci-github-instrument-limits-3.md)
 - [GitHub/git Instrument Limits, part 2 — Pagination, Scope & Path-Classed Auth (part 2)](concepts/ci-github-instrument-limits-2.md)
@@ -59,8 +61,10 @@ Standalone wiki built from **3978 agent learnings**, synthesized into **113 conc
 - [Bot Operational Protocols and Maintainer Interactions](concepts/general-misc-bot-operational-protocols.md)
 - [Figure & Claim Discipline: Referent, Provenance, and Elapsed Time](concepts/general-misc-figure-claim-discipline.md)
 - [GitHub PR and Bot Operations](concepts/general-misc-github-pr-and-bot-operations.md)
+- [GitHub State Verification and Bot-Comment Hygiene](concepts/general-misc-github-state-verification-and-bot-hygiene.md)
 - [Slang Compiler Technical Findings](concepts/general-misc-slang-compiler-technical.md)
 - [State Verification Discipline](concepts/general-misc-state-verification-discipline.md)
+- [State Verification Discipline (part 13) — controls, instruments, and enforcement](concepts/general-misc-state-verification-discipline-13.md)
 - [State Verification Discipline (part 2)](concepts/general-misc-state-verification-discipline-2.md)
 - [State Verification Discipline (part 3)](concepts/general-misc-state-verification-discipline-3.md)
 - [State Verification Discipline (part 3) (part 2)](concepts/general-misc-state-verification-discipline-11.md)
@@ -118,9 +122,10 @@ Standalone wiki built from **3978 agent learnings**, synthesized into **113 conc
 ### Slang backends
 - [Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen](concepts/slang-backends-cuda-cpp.md)
 - [Slang GLSL Backend: Emission, Legalization, and glslang Integration](concepts/slang-backends-glsl.md)
+- [Slang Metal Backend Deep Dives: Address Spaces, DescriptorHandle, MetalLib Versioning](concepts/slang-backends-metal-2.md)
 - [Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics](concepts/slang-backends-optix-raytracing.md)
 - [Slang SPIR-V Backend: Emission, Capabilities, and Validation](concepts/slang-backends-spirv.md)
-- [Slang WGSL and Metal Backends: Textual Constructor-Syntax Targets](concepts/slang-backends-wgsl-metal.md)
+- [Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)](concepts/slang-backends-wgsl-metal.md)
 
 ### slang-grab-bag
 - [Slang Build Infrastructure — Packaging, Generators, PCH, and Binary Provenance](concepts/slang-misc-build-infrastructure-and-tooling-2.md)

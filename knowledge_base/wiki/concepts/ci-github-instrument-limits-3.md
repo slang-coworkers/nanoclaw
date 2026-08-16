@@ -8,8 +8,6 @@ source_count: 18
 
 # GitHub/git Instrument Limits, part 2 — Pagination, Scope & Path-Classed Auth
 
-# GitHub/git Instrument Limits, part 2 — Pagination, Scope & Path-Classed Auth
-
 Continuation of [part 1](../concepts/ci-github-instrument-limits.md), split at the 40 KB page cap. Part 1 holds the measured cap table, object-class/endpoint-split defects, ancestry-and-presence traps, and perishable capability facts. This page holds the earlier folds: `--paginate` behaviour under the OneCLI gateway, what `total_count` actually counts, why summarizing tools cannot answer state/count/absence questions, path-classed 401/403s, and the 300-file patch cap.
 
 > **This page is part 1 of 2** of the GitHub/git Instrument Limits, part 2 — Pagination, Scope & Path-Classed Auth synthesis (split 2026-08-07 to stay under the 40 KB read cap). Siblings: [part 2](ci-github-instrument-limits-2.md). The TL;DR below is shared across all parts.
@@ -22,7 +20,7 @@ Continuation of [part 1](../concepts/ci-github-instrument-limits.md), split at t
 - **`search/code` silently returns `total_count: 0` for files above ~384 KB** — biased toward the biggest files. Never use it for a denominator: search by ENTITY name, count locally with `git grep`.
 - **`gh api .../contents/<path>` returns 200 with an EMPTY payload above the inline size cap** — an empty content field is not an absent string. Use `git show`.
 - **A 215-byte "log" is a 404 `BlobNotFound` body; 151 bytes is a 410 expired-log body.** `gh api` prints both to stdout and exits 0, so greps against them return a false 0. Assert the log is a log first.
-- **`steps[]` is perishable — GitHub zeroes it past ~7 days.** `steps.length == 0` means "never executed" only inside the retention window; `status`/`conclusion` stay authoritative at any age.
+- **`steps[]` is perishable — GitHub zeroes it past the retention window.** `steps.length == 0` means "never executed" only inside that window; `status`/`conclusion` stay authoritative at any age. (Retention is a rolling ~5 days and count decay is *differential* — see [Log Retention Decay & Pagination Count Traps](ci-github-instrument-limits-4.md).)
 - **The question that catches this whole family: what would this output look like if the thing were absent?** If the answer is "the same", it is not a measurement.
 - **Summarizing tools (WebFetch, prose renderers) cannot establish state, counts, or absence.** They are prose-only; enumerate with an API.
 - **A 401/403 is path-classed, never global.** REST can work while GraphQL 401s. Try the unprivileged sibling endpoint before declaring the fact unavailable; `raw.githubusercontent` reads public files when `gh api` 401s.
