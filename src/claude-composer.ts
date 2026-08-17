@@ -19,6 +19,13 @@ export {
   resolveCoworkerManifest,
   resolveTypeChain,
 } from './claude-composer/resolve.js';
+export {
+  MIRROR_FLOOR_SKILLS,
+  resolveAllowedSkillNames,
+  resolveCoworkerSkillNames,
+  resolveMirroredSkillScope,
+} from './claude-composer/skill-scope.js';
+export type { MirroredSkillScope } from './claude-composer/skill-scope.js';
 export type {
   ComposeCoworkerSpineOptions,
   ComposeLegacyPromptOptions,

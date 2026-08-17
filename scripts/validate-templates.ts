@@ -13,8 +13,11 @@ import {
   composeCoworkerSpine,
   readCoworkerTypes,
   readSkillCatalog,
+  resolveAllowedSkillNames,
+  resolveCoworkerManifest,
   resolveTypeChain,
   type CoworkerTypeEntry,
+  type SkillMeta,
 } from '../src/claude-composer.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -32,11 +35,7 @@ interface Failure {
 function findAbstractBases(types: Record<string, CoworkerTypeEntry>): Set<string> {
   const bases = new Set<string>();
   for (const entry of Object.values(types)) {
-    const parents = entry.extends
-      ? Array.isArray(entry.extends)
-        ? entry.extends
-        : [entry.extends]
-      : [];
+    const parents = entry.extends ? (Array.isArray(entry.extends) ? entry.extends : [entry.extends]) : [];
     for (const parent of parents) bases.add(parent);
   }
   return bases;
@@ -67,6 +66,108 @@ function readCritiqueStageVocabulary(skillPath: string): Set<string> | null {
       .filter((s) => /^[A-Z_]+$/.test(s)),
   );
   return vocab.size > 0 ? vocab : null;
+}
+
+// Extract every `/slash-name` reference from a rendered-into-CLAUDE.md body.
+// Mirrors the two passes rewriteSlashRefs (src/claude-composer/spine.ts) runs:
+// backticked `` `/name` `` and bare `/name` at a word boundary. Deliberately
+// permissive — the caller filters to names the catalog knows as capability
+// skills, so prose like `/tmp/foo` or a workflow ref never reaches it.
+function extractSlashRefs(body: string): Set<string> {
+  const refs = new Set<string>();
+  for (const m of body.matchAll(/`\/([a-z][a-z0-9-]*)`/g)) refs.add(m[1]);
+  for (const m of body.matchAll(/(?:^|[\s(])\/([a-z][a-z0-9-]*)(?=[\s.,;:!?)]|$)/gm)) refs.add(m[1]);
+  return refs;
+}
+
+// SAFETY BACKSTOP for the Tier 2 scoped skills mirror (src/group-init.ts).
+//
+// group-init now mirrors only `MIRROR_FLOOR_SKILLS ∪ unclaimed-skills ∪
+// resolveCoworkerSkillNames(type)` into a group's `.claude-shared/skills/`
+// (see src/claude-composer/skill-scope.ts). Anything a coworker can actually
+// invoke but that falls outside that set would 404 at runtime as a missing
+// slash command — in production, with no test coverage in between. So assert
+// the containment here, at author time: for every leaf coworker type, every
+// capability skill referenced by its resolved workflows (declared `uses:`
+// skills AND `/skill` invocations inside step bodies / prologue / epilogue /
+// overlay bodies) must be inside the mirrored allow-list.
+//
+// Flat types (`main`) are skipped — group-init mirrors everything for them.
+function checkMirrorScope(
+  types: Record<string, CoworkerTypeEntry>,
+  catalog: Record<string, SkillMeta>,
+  typeNames: string[],
+  abstractBases: Set<string>,
+  failures: Failure[],
+): void {
+  const capabilityNames = new Set(
+    Object.values(catalog)
+      .filter((m) => m.type === 'capability')
+      .map((m) => m.name),
+  );
+
+  for (const name of typeNames) {
+    if (abstractBases.has(name)) continue;
+
+    let allowed: Set<string> | null;
+    try {
+      allowed = resolveAllowedSkillNames(projectRoot, name);
+    } catch {
+      continue; // compose check above already reports the resolution failure
+    }
+    if (allowed === null) continue; // flat type — group-init mirrors all
+
+    let manifest: ReturnType<typeof resolveCoworkerManifest>;
+    try {
+      manifest = resolveCoworkerManifest(types, name, catalog, projectRoot, { cliScope: 'group' });
+    } catch {
+      continue;
+    }
+
+    // Every body that is rendered into this coworker's CLAUDE.md, i.e. every
+    // place the agent can read a `/skill` instruction from — spine fragments
+    // included, since a context fragment is just as capable of saying
+    // "run `/some-skill`" as a workflow step is.
+    const bodies: string[] = [manifest.identity, ...manifest.invariants, ...manifest.context];
+    for (const wf of manifest.workflows) {
+      if (wf.prologue) bodies.push(wf.prologue);
+      if (wf.epilogue) bodies.push(wf.epilogue);
+      bodies.push(...Object.values(wf.stepBodies));
+      const meta = catalog[wf.name];
+      if (meta) bodies.push(...Object.values(meta.overrides));
+    }
+    for (const c of manifest.customizations) {
+      if (c.detail) bodies.push(c.detail);
+    }
+
+    const referenced = new Set<string>();
+    for (const wf of manifest.workflows) {
+      const meta = catalog[wf.name];
+      for (const used of meta?.uses.skills ?? []) {
+        if (capabilityNames.has(used)) referenced.add(used);
+      }
+    }
+    for (const body of bodies) {
+      for (const ref of extractSlashRefs(body)) {
+        if (capabilityNames.has(ref)) referenced.add(ref);
+      }
+    }
+
+    const missing = [...referenced].filter((s) => !allowed!.has(s)).sort();
+    if (missing.length > 0) {
+      failures.push({
+        typeName: name,
+        message:
+          `invokes capability skill(s) that the scoped skills mirror would NOT ship: ${missing.join(', ')}. ` +
+          `src/group-init.ts mirrors only MIRROR_FLOOR_SKILLS plus this type's resolved skills into ` +
+          `.claude-shared/skills/, so these would be missing slash commands at runtime. Fix by either ` +
+          `(a) adding the skill to this coworker type's \`skills:\` list in its coworker-types.yaml, ` +
+          `(b) declaring it under the referencing workflow's \`uses.skills:\` frontmatter, or ` +
+          `(c) adding it to MIRROR_FLOOR_SKILLS in src/claude-composer/skill-scope.ts if every ` +
+          `coworker genuinely needs it.`,
+      });
+    }
+  }
 }
 
 function main(): number {
@@ -182,9 +283,7 @@ function main(): number {
     if (abstractBases.has(name)) continue;
     let resolvedStages: Set<string>;
     try {
-      resolvedStages = new Set(
-        resolveTypeChain(types, name).flatMap((e) => e.requiredCritiqueStages ?? []),
-      );
+      resolvedStages = new Set(resolveTypeChain(types, name).flatMap((e) => e.requiredCritiqueStages ?? []));
     } catch {
       continue; // cycle / unknown — the compose check above already reports it
     }
@@ -200,6 +299,8 @@ function main(): number {
       });
     }
   }
+
+  checkMirrorScope(types, catalog, typeNames, abstractBases, failures);
 
   const skillCount = Object.keys(catalog).length;
   const leafCount = typeNames.length - abstractBases.size;
