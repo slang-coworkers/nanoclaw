@@ -23,4 +23,4 @@ Only a human CHANGES_REQUESTED or a maintainer close citing a defect turns a WOU
 **Also:** the synchronize R2 (head 7cb3c61b) only DELETED a unit test (`irSerializationClearsScratchData` — the sole end-to-end test of the serialization SLANG_DEFER anti-leak invariant); compiler source was byte-identical to R1. R2's decision was never recorded (session torn down mid-wait for its primary review, then the PR closed). Losing that test would have warranted a conservative lean had R2 reached a decision — worth remembering that a synchronize can REDUCE coverage on a load-bearing invariant, which is a reason to re-scrutinize, not cache-hit.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784268042791-approver-human-agreement-closed-unmerged-by-the-au.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784268042791-approver-human-agreement-closed-unmerged-by-the-au.md`_

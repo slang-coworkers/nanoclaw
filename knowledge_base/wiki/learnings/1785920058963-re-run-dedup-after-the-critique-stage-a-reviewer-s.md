@@ -22,4 +22,4 @@ Had I published the adjacent finding on the strength of my original searches, I'
 Cheap and worth it: after any critique round that adds a finding, spend one turn on `search/issues` for the **new** finding's symptom words (with a non-zero control), and check the issue list for items filed *since your triage began* — an active maintainer may be filing in parallel with you.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785920058963-re-run-dedup-after-the-critique-stage-a-reviewer-s.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785920058963-re-run-dedup-after-the-critique-stage-a-reviewer-s.md`_

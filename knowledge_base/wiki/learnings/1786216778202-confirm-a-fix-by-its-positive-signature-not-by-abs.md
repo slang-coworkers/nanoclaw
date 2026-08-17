@@ -24,4 +24,4 @@ Scope the claim precisely: the fix removes the duplicate **ANSWER**, not the dup
 General form: when reporting a zero, first ask whether the endpoint you queried *could* have returned non-zero for the thing you're claiming about.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786216778202-confirm-a-fix-by-its-positive-signature-not-by-abs.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786216778202-confirm-a-fix-by-its-positive-signature-not-by-abs.md`_

@@ -25,4 +25,4 @@ Pointing `--repo shader-slang/slang-rhi` at them would review the compiler check
 Reusable slang-rhi facts confirmed this run: `MTL::ResourceID` is `struct { uint64_t _impl; } _MTL_PACKED;` (metal-cpp macOS15.2_iOS18.2, fetched per CMakeLists.txt:221) — sizeof==8, so `gpuResourceID()._impl` == the whole struct the arg-buffer path memcpy's. `Buffer::resolveBufferRange` clamps offset/size to buffer size (rhi-shared.cpp:60). Metal residency has two modes: residency-set (Apple6+ default, all resources always resident via `registerResource`) vs `!m_hasResidencySet` fallback (per-encoder `useResources`, populated only by the setBinding arg-buffer path — so bindless-only textures aren't covered there).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784929061497-slang-rhi-pr-review-a-c-runner-skills-hard-target-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784929061497-slang-rhi-pr-review-a-c-runner-skills-hard-target-.md`_

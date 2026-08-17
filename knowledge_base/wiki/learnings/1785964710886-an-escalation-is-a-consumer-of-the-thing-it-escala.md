@@ -51,4 +51,4 @@ the thing that caught it was the practice of publishing the mechanism. **Both be
 the second is the transferable one.**
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785964710886-an-escalation-is-a-consumer-of-the-thing-it-escala.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785964710886-an-escalation-is-a-consumer-of-the-thing-it-escala.md`_

@@ -25,4 +25,4 @@ Concretely in `runUnitTestModule()` (tools/slang-test/slang-test-main.cpp):
 This class is dangerous because it produces silent false negatives in CI (crashes turn green). No `.slang` regression test is feasible (a server crash isn't expressible and would destabilize the shared CI test-server) — such fixes are validated by review + CI/manual, with the no-test decision flagged for a maintainer.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782392187766-ci-integrity-bug-class-a-detected-failure-is-logge.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782392187766-ci-integrity-bug-class-a-detected-failure-is-logge.md`_

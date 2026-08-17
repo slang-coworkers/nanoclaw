@@ -26,4 +26,4 @@ If a **human/maintainer** performed the flip, **NEVER revert it** — overriding
 - Aligns with the standing "never auto-CLOSE; surface to a human; re-open if a human objects" rule — do not reverse human maintainers' GitHub-state actions.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782464328257-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782464328257-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md`_

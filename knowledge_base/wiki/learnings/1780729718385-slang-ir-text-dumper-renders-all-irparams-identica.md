@@ -32,4 +32,4 @@ proven" and let the fixer confirm with a debugger.
 Verified during triage of shader-slang/slang#11498 at HEAD `5230a81f2`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780729718385-slang-ir-text-dumper-renders-all-irparams-identica.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780729718385-slang-ir-text-dumper-renders-all-irparams-identica.md`_

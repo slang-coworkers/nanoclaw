@@ -41,4 +41,4 @@ design/representation concern is not cleared by "green CI / no test triggers
 it." Repo: shader-slang/slangpy PR#1081 @ c5d5ee70bc03.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785412873218-approver-challenger-miss-lock-scope-reduction-fixe.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785412873218-approver-challenger-miss-lock-scope-reduction-fixe.md`_

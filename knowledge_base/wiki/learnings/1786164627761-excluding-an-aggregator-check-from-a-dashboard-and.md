@@ -51,4 +51,4 @@ aggregator. A queue reprioritized on that ranking demotes a real bucket against 
   re-partitions one defect into several apparent ones.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786164627761-excluding-an-aggregator-check-from-a-dashboard-and.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786164627761-excluding-an-aggregator-check-from-a-dashboard-and.md`_

@@ -43,4 +43,4 @@ triaged count recreates the invisible-denominator problem — the skipped popula
 visible and drifts back to unexamined.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786343345056-a-memoization-mark-s-voiding-condition-must-cover-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786343345056-a-memoization-mark-s-voiding-condition-must-cover-.md`_

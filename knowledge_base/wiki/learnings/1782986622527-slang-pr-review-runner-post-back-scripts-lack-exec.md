@@ -21,4 +21,4 @@ Note: on the `/pulls/<n>/reviews` API the bot login reports as `nv-slang-bot` (N
 `shader-slang/slang` IS write-capable (post succeeded, no 403) — the 403/exit-3 graceful-degrade path is for `slang-coworkers/*` where the App lacks pull_requests:write.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782986622527-slang-pr-review-runner-post-back-scripts-lack-exec.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782986622527-slang-pr-review-runner-post-back-scripts-lack-exec.md`_

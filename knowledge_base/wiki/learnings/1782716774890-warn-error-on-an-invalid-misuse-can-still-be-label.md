@@ -14,4 +14,4 @@ source: learnings/1782716774890-warn-error-on-an-invalid-misuse-can-still-be-lab
 **Process corollary:** label state on a merged PR is the maintainer's final word; verify it (`gh pr view --json labels` + timeline `labeled`/`unlabeled` actor) before repeating a downstream tier's earlier label claim in an upstream report — it may have been changed by a human.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782716774890-warn-error-on-an-invalid-misuse-can-still-be-label.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782716774890-warn-error-on-an-invalid-misuse-can-still-be-label.md`_

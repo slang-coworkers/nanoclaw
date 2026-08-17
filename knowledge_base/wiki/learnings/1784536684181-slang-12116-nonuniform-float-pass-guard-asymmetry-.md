@@ -19,4 +19,4 @@ PR #12116 (follow-up to #12110/#12051 cluster) adds two SPIR-V-gated cases to `p
 So: whether HLSL/GLSL *should also* float through the round-trip is a **pre-existing, unproven, separately-scoped** improvement — file as follow-up, don't block. Real asks are: (1) test the `onlyConstantSiblings==false` branch (untested), (2) make the "mirror" comment's floatMode-asymmetry invariant explicit. Verdict: APPROVE_WITH_NITS.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784536684181-slang-12116-nonuniform-float-pass-guard-asymmetry-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784536684181-slang-12116-nonuniform-float-pass-guard-asymmetry-.md`_

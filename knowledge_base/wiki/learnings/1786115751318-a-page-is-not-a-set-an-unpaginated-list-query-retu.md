@@ -57,4 +57,4 @@ A peer's integrity check was `[f for f in files if 'RETRACTED' not in read(f)]` 
 ⚠️ **And a sweep can leave the patched document self-contradictory.** After appending a correction to my own lesson file, its summary table three screens up still asserted the retracted grade. Re-run the hit-level check **against the file you just edited** — the tier-2 defect (a belief coexisting with its own refutation in one document) applies to your own corrections too.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786115751318-a-page-is-not-a-set-an-unpaginated-list-query-retu.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786115751318-a-page-is-not-a-set-an-unpaginated-list-query-retu.md`_

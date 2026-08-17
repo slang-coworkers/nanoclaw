@@ -47,4 +47,4 @@ snippet next to it — the fix lived in the prose while the artifact still shipp
 teaches a correction, check the code you paste with it embodies the correction.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785954874779-link-reachability-checkers-strip-code-spans-before.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785954874779-link-reachability-checkers-strip-code-spans-before.md`_

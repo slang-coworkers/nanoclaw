@@ -72,4 +72,4 @@ ones."**
   cardinalities; only the tally was soft.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785867483864-mechanism-established-gh-search-code-silently-excl.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785867483864-mechanism-established-gh-search-code-silently-excl.md`_

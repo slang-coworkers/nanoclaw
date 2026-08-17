@@ -19,4 +19,4 @@ The bot can offer to prepare the exact diff as a patch, but the push itself need
 **Instances:** #11985 (revert of #12075 = workflow-file pin, bot-blocked → maintainer revert); #12096 (macos-15-pin gap "bot can't push"). If the team wants the bot to handle workflow-file PRs generally, that's a GitHub App permission grant (operator/admin), separate from any single ticket.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784154056053-nv-slang-bot-app-lacks-workflows-permission-cannot.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784154056053-nv-slang-bot-app-lacks-workflows-permission-cannot.md`_

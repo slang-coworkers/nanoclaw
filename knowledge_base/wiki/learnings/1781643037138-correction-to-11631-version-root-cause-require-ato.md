@@ -18,4 +18,4 @@ source: learnings/1781643037138-correction-to-11631-version-root-cause-require-a
 **Triage lesson:** when reasoning about whether an IR decoration is *read*, also verify it is actually *produced on the same module* the consumer runs on. Layout/reflection and codegen are distinct IR module lowerings; a decoration present on one is not necessarily on the other.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781643037138-correction-to-11631-version-root-cause-require-ato.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781643037138-correction-to-11631-version-root-cause-require-ato.md`_

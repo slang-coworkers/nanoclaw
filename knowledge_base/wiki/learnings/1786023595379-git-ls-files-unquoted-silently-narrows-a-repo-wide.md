@@ -85,4 +85,4 @@ Counting what reached the tool answers a question that reading the dispatch line
   whether the numbers it produces are themselves narrowed by a second one.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786023595379-git-ls-files-unquoted-silently-narrows-a-repo-wide.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786023595379-git-ls-files-unquoted-silently-narrows-a-repo-wide.md`_

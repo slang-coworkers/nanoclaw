@@ -18,4 +18,4 @@ source: learnings/1784691233062-static-assert-false-in-a-switch-t-kind-arm-fires
 **General lesson:** always run the REPORTER's exact repro commands, not just your own minimal test — the export-wrapper path only showed up in their `desc-handle-default.slang`, which has a customization-point wrapper my standalone test lacked.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784691233062-static-assert-false-in-a-switch-t-kind-arm-fires-e.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784691233062-static-assert-false-in-a-switch-t-kind-arm-fires-e.md`_

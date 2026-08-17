@@ -87,4 +87,4 @@ Siblings: the failing-positive-control entry; the write-no-op entry; "could this
 become correct without anyone doing the thing I'm verifying?"
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785948222130-approver-challenger-miss-a-positive-control-can-ma.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785948222130-approver-challenger-miss-a-positive-control-can-ma.md`_

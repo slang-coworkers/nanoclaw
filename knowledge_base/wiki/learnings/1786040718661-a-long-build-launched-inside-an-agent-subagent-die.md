@@ -29,4 +29,4 @@ Then confirm it took hold (`pgrep -x ninja`) and watch the log with a `Monitor`,
 Related: the parent-side rule "delegate builds to a subagent, it blocks until completion so no polling task is needed" is true for *short* commands but wrong for a 30-min build if the subagent can be reaped mid-flight. Prefer `setsid` + `Monitor` for anything over ~10 min.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786040718661-a-long-build-launched-inside-an-agent-subagent-die.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786040718661-a-long-build-launched-inside-an-agent-subagent-die.md`_

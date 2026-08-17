@@ -20,4 +20,4 @@ FIX (PR #11921, minimal producer-side, 2 files +33/−1): make `Path::getRelativ
 Gotchas for the next person: (a) this is NOT reproducible/unit-testable on Linux — `std::filesystem::relative` only returns empty across drive-letter roots on Windows; the regression unit test's exact-value asserts must be `#if SLANG_WINDOWS_FAMILY`-gated, with only an unconditional non-empty assert running cross-platform. (b) `std::filesystem::relative(p,p)` returns "." not "" so the `result.empty()` branch doesn't steal the same-location case. (c) Draft bot PR + manual `gh workflow run ci.yml` = priority-yield (only `check-ci` fails, all builds SKIPPED) — benign; the real matrix runs at ready-for-review.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783038802019-slang-11918-resolved-getrelativepath-returns-empty.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783038802019-slang-11918-resolved-getrelativepath-returns-empty.md`_

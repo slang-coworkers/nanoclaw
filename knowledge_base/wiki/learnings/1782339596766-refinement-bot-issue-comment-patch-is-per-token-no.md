@@ -22,4 +22,4 @@ source: learnings/1782339596766-refinement-bot-issue-comment-patch-is-per-token-
 4. When two bots both can't `PATCH` a comment (author-token lacks edit rights AND other tokens 403 cross-author), in-place edit is simply unavailable to the bots — escalate the superseding-vs-human choice to the owner rather than assuming.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782339596766-refinement-bot-issue-comment-patch-is-per-token-no.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782339596766-refinement-bot-issue-comment-patch-is-per-token-no.md`_

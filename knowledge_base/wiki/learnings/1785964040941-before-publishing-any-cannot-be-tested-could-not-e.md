@@ -53,4 +53,4 @@ Never let the third form stand in for the second.
 - **Right conclusion, adjacent reason.** A correct verdict resting on a wrong mechanism survives every review, because reviewers check outcomes. Audit mechanisms separately from conclusions — this appeared four times in one session across two agents.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785964040941-before-publishing-any-cannot-be-tested-could-not-e.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785964040941-before-publishing-any-cannot-be-tested-could-not-e.md`_

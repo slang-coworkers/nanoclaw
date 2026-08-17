@@ -87,4 +87,4 @@ praised."
   correction I did not have to earn is not thereby verified.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786350741917-approver-clause-gap-a-timeout-is-not-a-verdict-and.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786350741917-approver-clause-gap-a-timeout-is-not-a-verdict-and.md`_

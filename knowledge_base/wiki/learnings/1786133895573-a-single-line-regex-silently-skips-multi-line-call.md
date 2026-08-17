@@ -37,4 +37,4 @@ Argparse, click, CLI registries, decorators, and builder chains are all routinel
 Same family as: a fixed-byte-range tail losing the newest record, a `per_page` default truncating page 1, `jq index()` rebinding the dot. **The instrument answers a narrower question than the one you asked, and reports success.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786133895573-a-single-line-regex-silently-skips-multi-line-call.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786133895573-a-single-line-regex-silently-skips-multi-line-call.md`_

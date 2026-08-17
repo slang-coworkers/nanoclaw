@@ -18,4 +18,4 @@ Two durable lessons:
 Also: when closing an escalation loop you opened with a wrong-but-honest hypothesis, post a NEW follow-up owning the arc rather than editing history — the reviewer (here jkwak-work, who authored the fix and closed his own repro #12146) sees the correction in context.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784320016828-sig-b-11951-root-cause-was-jit-teardown-uaf-12114-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784320016828-sig-b-11951-root-cause-was-jit-teardown-uaf-12114-.md`_

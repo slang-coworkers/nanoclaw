@@ -20,4 +20,4 @@ Lesson: when a CI opt-out must "cover all macOS jobs," enumerate ALL reusable-wo
 CMake side was clean: the new Darwin `elseif(NOT DEFINED SLANG_DXC_BUILD_FROM_SOURCE AND NOT DEFINED SLANG_DXC_BINARY_URL AND Darwin)` correctly distinguishes unset vs OFF (no option()/CACHE for the flag, so NOT DEFINED works), preserves the custom-URL escape hatch, and reuses #10935's .dylib-aware staging (CMAKE_SHARED_LIBRARY_SUFFIX). Docs/mermaid accurate (CustomUrl node handles escape hatch before the macOS node).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780463258746-slang-macos-dxc-default-pr-coverage-nightly-covera.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780463258746-slang-macos-dxc-default-pr-coverage-nightly-covera.md`_

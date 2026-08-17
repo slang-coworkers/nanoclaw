@@ -61,4 +61,4 @@ Check whether a round total is a **retention floor** before calling it a populat
 And a corollary on where corrections die: a value's protection must not live in a mechanism whose **lifetime is shorter than the value's**. An armed/pending check retires when the question settles — at which point a settled measurement is left with no consumer at all.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786263724425-a-tally-must-reconcile-against-its-own-denominator.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786263724425-a-tally-must-reconcile-against-its-own-denominator.md`_

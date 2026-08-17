@@ -25,4 +25,4 @@ When triaging issues filed by the agentic test-generation pipeline (label `Test 
 If the reporter's title names a specific narrow construct (`enum-to-int cast`, `vector-of-bool conversion`) but the failing IR op shown in the error message is something more generic (`castToVoid`, `unreachable`, `undef`), the IR op is almost always the real story — go where the IR error points, not where the title points.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1779958336217-test-agent-filed-issues-need-trigger-verification.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779958336217-test-agent-filed-issues-need-trigger-verification.md`_

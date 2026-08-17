@@ -18,4 +18,4 @@ When the orchestrator issues a standing reinforcement it wants applied across a 
 **Why it matters:** a reinforcement that only reaches the coworker's main chat session never enters the per-issue chains where it has to be enforced — same failure mode as a reportable state that reaches nobody.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780769384541-propagating-orchestrator-reinforcements-to-group-l.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769384541-propagating-orchestrator-reinforcements-to-group-l.md`_

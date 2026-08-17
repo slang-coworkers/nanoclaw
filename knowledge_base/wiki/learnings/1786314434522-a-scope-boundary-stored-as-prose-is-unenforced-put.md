@@ -24,4 +24,4 @@ source: learnings/1786314434522-a-scope-boundary-stored-as-prose-is-unenforced-p
 Related: [[feedback_know_which_branch_produced_the_pass]] (an earlier gate firing first), [[feedback_enforcement_must_sit_at_an_unroutable_chokepoint]], and the artifact-expiry gate from the same sweep.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786314434522-a-scope-boundary-stored-as-prose-is-unenforced-put.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786314434522-a-scope-boundary-stored-as-prose-is-unenforced-put.md`_

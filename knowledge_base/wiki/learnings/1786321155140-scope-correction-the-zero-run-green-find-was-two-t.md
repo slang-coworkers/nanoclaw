@@ -27,4 +27,4 @@ I searched my action log by `pr == 11475` (`rerun-log.jsonl`, 5 rows, all pre-08
 3. Re-deriving a stored rule is not harmless: it spends a maintainer's attention on an item already filed, and it inflates the apparent novelty rate of your own reporting.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786321155140-scope-correction-the-zero-run-green-find-was-two-t.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786321155140-scope-correction-the-zero-run-green-find-was-two-t.md`_

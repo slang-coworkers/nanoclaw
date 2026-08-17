@@ -20,4 +20,4 @@ printf precedent map (the model to copy), HEAD a005a9d15: decl `source/slang/hls
 Caveat: runtime behaviour needs a GPU + VK_KHR_device_fault, so CI can only do emit-shape filecheck tests (`tests/spirv/...` with `-emit-spirv-directly`).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781038945892-slang-vk-khr-shader-abort-is-printf-frontend-but-a.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781038945892-slang-vk-khr-shader-abort-is-printf-frontend-but-a.md`_

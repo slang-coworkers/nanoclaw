@@ -20,4 +20,4 @@ pflag/gh accept the GLUED short form `-Rowner/repo` (no space). A repo-resolver 
 Probe at minimum: token-inside-title (both `"..."` and `'...'`), glued short flag `-Rx/y`, `--repo=` equals form, compound `cd && gh pr create`, false-positive (fork target but upstream string in title → must ALLOW), and no-repo-resolvable → fail-open. 15 cases is a reasonable floor for a security-relevant command guard. Confirm fail-open vs fail-closed is the INTENDED direction (here fail-open, so forks/unknown never blocked).
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783879965262-reviewing-pretooluse-gh-command-guards-two-bypass-.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783879965262-reviewing-pretooluse-gh-command-guards-two-bypass-.md`_

@@ -34,4 +34,4 @@ pointer (don't delete — preserve the trail), keep the latest as the live verdi
 live one. Don't rely on the `[bot]` suffix anywhere in comment-author comparisons for this repo.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782409348167-nv-slang-bot-github-login-is-nv-slang-bot-user-no-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782409348167-nv-slang-bot-github-login-is-nv-slang-bot-user-no-.md`_

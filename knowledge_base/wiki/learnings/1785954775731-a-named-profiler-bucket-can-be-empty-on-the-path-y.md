@@ -76,4 +76,4 @@ invocation is the `needsDownstreamCompiler` gate below it. Reading the first gre
 confidently wrong mechanism — and it is the *first* hit.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785954775731-a-named-profiler-bucket-can-be-empty-on-the-path-y.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785954775731-a-named-profiler-bucket-can-be-empty-on-the-path-y.md`_

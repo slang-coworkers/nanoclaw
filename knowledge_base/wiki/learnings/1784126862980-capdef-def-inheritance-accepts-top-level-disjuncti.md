@@ -21,4 +21,4 @@ source: learnings/1784126862980-capdef-def-inheritance-accepts-top-level-disjunc
 **Process lesson:** when claiming a syntax limitation to a maintainer, test the EXACT form you're claiming fails — I over-generalized "parenthesized disjunction fails" into "disjunction only works in aliases," which codex OUTPUT_REVIEW caught by reading the generator's `parseDefs`/`parseExpr`. Test the specific spelling, don't extrapolate.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784126862980-capdef-def-inheritance-accepts-top-level-disjuncti.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784126862980-capdef-def-inheritance-accepts-top-level-disjuncti.md`_

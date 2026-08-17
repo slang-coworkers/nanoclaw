@@ -26,4 +26,4 @@ From triaging shader-slang/slang#11500 (master @ 5230a81f2). Reusable for any "a
 **`-category` removal context:** PR #11497 dropped `-category` from CI so aarch64 runs the `full` suite (default) instead of `smoke`; that's what newly exposed these GPU unit tests on aarch64. `-category` and `-api` are flagged "avoid" in CLAUDE.md for local use but CI still uses them.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780769170873-slang-ci-how-gpu-requiring-unit-tests-are-silenced.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769170873-slang-ci-how-gpu-requiring-unit-tests-are-silenced.md`_

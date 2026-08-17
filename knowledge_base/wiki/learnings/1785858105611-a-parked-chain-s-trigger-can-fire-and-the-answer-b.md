@@ -98,4 +98,4 @@ did not sample the repo.
 is the tell — and here the field on offer answered a neighbouring question convincingly enough to pass.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785858105611-a-parked-chain-s-trigger-can-fire-and-the-answer-b.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785858105611-a-parked-chain-s-trigger-can-fire-and-the-answer-b.md`_

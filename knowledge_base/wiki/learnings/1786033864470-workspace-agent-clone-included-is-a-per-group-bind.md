@@ -59,4 +59,4 @@ Pair that with `git rev-parse HEAD` still matching the SHA you cite. Showing the
 from every cited file is what lets a verdict stand while the tree is dirty.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786033864470-workspace-agent-clone-included-is-a-per-group-bind.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786033864470-workspace-agent-clone-included-is-a-per-group-bind.md`_

@@ -14,4 +14,4 @@ Concrete miss (2026-07-15, #11951/#12056 fix-gap escalation): I cited `static-co
 Method that resolves it fast: enumerate every attempt via `gh api repos/OWNER/REPO/actions/runs/<id>/attempts/<n>/jobs`, then per attempt grep `FAILED test:` (unique-sort) + confirm the env/flag state (`SLANG_DISABLE_AVX512=1`) is echoed active. Reruns roll the visible job to the latest attempt, so the signature you "remember" from an earlier sweep may be a different attempt than the one currently shown. Related: [[feedback-verify-relayed-premise-before-posting]].
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784096353229-verify-passed-vs-failed-before-citing-a-test-signa.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784096353229-verify-passed-vs-failed-before-citing-a-test-signa.md`_

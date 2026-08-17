@@ -19,4 +19,4 @@ source: learnings/1784765736898-approver-human-agreement-block-fixer-applies-my-
 3. Reconfirm the vindication by diffing the merged head's relevant logic against your BLOCK rationale — don't assume the merge means your specific concern was addressed; here I verified the family-match code shipped at merged-head options.cpp:4477-4525.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784765736898-approver-human-agreement-block-fixer-applies-my-fi.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784765736898-approver-human-agreement-block-fixer-applies-my-fi.md`_

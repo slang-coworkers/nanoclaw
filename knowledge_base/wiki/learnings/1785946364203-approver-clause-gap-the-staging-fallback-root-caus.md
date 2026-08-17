@@ -93,4 +93,4 @@ Siblings: the staging-fallback entry (21→4 corrected); "skill edits are epheme
 `.instructions.md` is durable"; "a status value is an interface, not a description."
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785946364203-approver-clause-gap-the-staging-fallback-root-caus.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785946364203-approver-clause-gap-the-staging-fallback-root-caus.md`_

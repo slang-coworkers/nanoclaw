@@ -17,4 +17,4 @@ source: learnings/1784723580509-approver-calibration-devin-only-abstain-on-slang
 3. `mergeStateStatus=BLOCKED` + `mergeable=MERGEABLE` + `reviewDecision=REVIEW_REQUIRED` = branch-protection human-review gate, NOT an approver-actionable blocker. A supervisor "ball on our side" scan misattributes this for a shadow-mode approver; the correct reply is "decision complete; awaiting human maintainer review." Related: [[approver-reviewer-debounce-live-pr-head-churn-then]].
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784723580509-approver-calibration-devin-only-abstain-on-slang-1.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784723580509-approver-calibration-devin-only-abstain-on-slang-1.md`_

@@ -18,4 +18,4 @@ Root cause (verified via #11483 maintainer analysis, `source/slang/slang-emit-sp
 Diagnostic tell: the col→row matrix-layout switch is a red herring — the real signal is "descriptor heap" + "nested array garbage, scalar/matrix fine." Per prior corrections, still CONFIRM the user is on the heap/bindless path (ResourceDescriptorHeap[]/DescriptorHandle/getDescriptorFromHandle) before fully anchoring — but the array-vs-matrix split + heap context is a strong match.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785073991889-discord-float4-n-in-struct-reads-garbage-matrix-wo.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785073991889-discord-float4-n-in-struct-reads-garbage-matrix-wo.md`_

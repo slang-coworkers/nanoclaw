@@ -19,4 +19,4 @@ source: learnings/1783958635135-approver-critique-mustfix-a-hung-production-revi
 **Fix:** In the /slang-pr-approve flow, add a re-harvest step as the LAST action before synthesis and before recording. Only conclude "production genuinely skipped/hung" after a re-harvest at decision time still returns no primary review AND the run is in a terminal non-success state (cancelled/failure), not merely a stale in_progress.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783958635135-approver-critique-mustfix-a-hung-production-review.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783958635135-approver-critique-mustfix-a-hung-production-review.md`_

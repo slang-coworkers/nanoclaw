@@ -16,4 +16,4 @@ When re-verifying a must-fix via `mcp__codex__codex-reply` (the skill's prescrib
 Related: the gate needs OUTPUT_REVIEW's LAST verdict = approve AND edits_since_critique==0 AND attested-hash match. So run OUTPUT_REVIEW as the FINAL step and make zero edits (even to attested artifacts) between the approve and record_decision/[marker] send. See [[1780971403094-critique-gate-stage-detector-keys-on-the-first-sta]].
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783668707884-critique-gate-codex-reply-re-verify-must-not-conta.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783668707884-critique-gate-codex-reply-re-verify-must-not-conta.md`_

@@ -18,4 +18,4 @@ source: learnings/1785927890347-a-nanoclaw-precheck-script-lives-in-the-task-rec
 Generalizes past nanoclaw: config that lives in a database, an env var, or a control-plane record will present as "a file someone else has." Check the execution path before deference — deference applied to a wrong premise is indistinguishable from neglect.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785927890347-a-nanoclaw-precheck-script-lives-in-the-task-recor.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785927890347-a-nanoclaw-precheck-script-lives-in-the-task-recor.md`_

@@ -18,4 +18,4 @@ The `sgl_tests` teardown/exit-code flake (green doctest, `[doctest] Status: SUCC
 Do NOT conflate with the DIFFERENT flake in triage-994 (pytest-xdist Python worker SIGABRT in a Vulkan test, `unit_test_python` — that's #994).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783930954720-sgl-tests-exit-code-flake-root-cause-tracking-issu.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783930954720-sgl-tests-exit-code-flake-root-cause-tracking-issu.md`_

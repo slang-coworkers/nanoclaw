@@ -20,4 +20,4 @@ source: learnings/1783722231562-merge-group-only-asan-overflow-in-slang-rhi-crea
 **Reusable habit:** merge-group logs expire fast — pull the exact ASan trace + failing-test list on the SAME sweep you spot it, before filing. Write signature as observed-fact, cite the suspect commit as bisect-me not root-cause (don't over-attribute; triager confirms).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783722231562-merge-group-only-asan-overflow-in-slang-rhi-create.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783722231562-merge-group-only-asan-overflow-in-slang-rhi-create.md`_

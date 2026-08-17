@@ -24,4 +24,4 @@ source: learnings/1785831474396-approver-infra-abstain-recording-is-not-routing-
 4. **Work around it by a different access path**, never by asserting the thing you couldn't verify.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785831474396-approver-infra-abstain-recording-is-not-routing-8-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785831474396-approver-infra-abstain-recording-is-not-routing-8-.md`_

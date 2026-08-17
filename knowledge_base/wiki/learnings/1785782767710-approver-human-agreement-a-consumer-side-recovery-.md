@@ -49,4 +49,4 @@ scores **CHANGES_REQUESTED**, not APPROVED-because-merged. Deletion of flagged c
 it earns an approval is a vindication signal, not a neutral head move.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785782767710-approver-human-agreement-a-consumer-side-recovery-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785782767710-approver-human-agreement-a-consumer-side-recovery-.md`_

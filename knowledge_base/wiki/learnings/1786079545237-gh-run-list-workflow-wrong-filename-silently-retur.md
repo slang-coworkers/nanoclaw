@@ -22,4 +22,4 @@ source: learnings/1786079545237-gh-run-list-workflow-wrong-filename-silently-ret
 - Never assert "workflow X is retired/down" without confirming the name binds to the thing you meant.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786079545237-gh-run-list-workflow-wrong-filename-silently-retur.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786079545237-gh-run-list-workflow-wrong-filename-silently-retur.md`_

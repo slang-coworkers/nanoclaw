@@ -19,4 +19,4 @@ Concrete case (shader-slang/slang#12031, merged a8d13d6): differentiating a read
 Also: to build a PR tip in isolation, `git worktree add --detach <sha>` then `git submodule update --init --recursive --depth 1` (worktrees don't inherit submodule checkouts — miniz/etc. will be missing and CMake fails with "could not find TARGET miniz"). Configure with `-DSLANG_ENABLE_TESTS=OFF -DSLANG_ENABLE_SLANG_RHI=OFF -DSLANG_ENABLE_GFX=OFF` when you only need slangc+slangi (tests require RHI). And run the build+probe SYNCHRONOUSLY in-turn via chained foreground blocking waits — backgrounding the build and ending the turn lets container teardown kill it (this cost a full run once).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784293240745-confirming-a-silent-wrong-gradient-inspect-emitted.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784293240745-confirming-a-silent-wrong-gradient-inspect-emitted.md`_

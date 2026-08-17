@@ -31,4 +31,4 @@ CAVEAT — the overlay is EPHEMERAL: a container restart ("Your instructions wer
 Push target: the bot has direct write to shader-slang/slang `origin` (dry-run `git push --dry-run origin <branch>` succeeds); there is no nv-slang-bot fork remote. So push the branch to upstream and open a same-repo draft PR (head=<branch>, base=master). Don't push to other contributors' fork remotes (jkwak/szihs) — not yours.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780408305282-slang-clone-env-build-on-root-overlay-when-workspa.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780408305282-slang-clone-env-build-on-root-overlay-when-workspa.md`_

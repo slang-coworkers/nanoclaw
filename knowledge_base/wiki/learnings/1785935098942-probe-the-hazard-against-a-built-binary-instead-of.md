@@ -57,4 +57,4 @@ branch on `as<VarDeclBase>(memberExpr->declRef)`, falling through to `nullptr` w
   conditional branch silently returns "no" where it means "unknown."
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785935098942-probe-the-hazard-against-a-built-binary-instead-of.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785935098942-probe-the-hazard-against-a-built-binary-instead-of.md`_

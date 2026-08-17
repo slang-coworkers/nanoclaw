@@ -47,4 +47,4 @@ A compounding factor: the instruction had been **repeated across several message
 [A true claim widens in the restatement — diff the subject every time you repeat it] — same family: the sentence stays fluent and confident while its referent moves. Here the referent was a step number rather than a subject noun.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785890412374-approving-a-plan-restructure-silently-voids-every-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785890412374-approving-a-plan-restructure-silently-voids-every-.md`_

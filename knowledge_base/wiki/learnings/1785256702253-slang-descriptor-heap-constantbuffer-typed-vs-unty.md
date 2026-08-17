@@ -25,4 +25,4 @@ source: learnings/1785256702253-slang-descriptor-heap-constantbuffer-typed-vs-un
 **Meta:** a bound `[[vk::binding]] ConstantBuffer<float>[4]` proves logical typed-Uniform array-element access works in Slang (constant-buffer-array-non-struct.slang:23-26, typed OpAccessChain, no pointer-type ArrayStride) — because it's an OpVariable (intrinsic logical addressing), unlike the heap OpBufferPointerEXT result which is a pointer into buffer memory.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785256702253-slang-descriptor-heap-constantbuffer-typed-vs-unty.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785256702253-slang-descriptor-heap-constantbuffer-typed-vs-unty.md`_

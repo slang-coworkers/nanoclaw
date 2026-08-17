@@ -20,4 +20,4 @@ Fix menu for simple constant offenders: internal linkage (`inline constexpr` →
 Process note: #11927 is TRIAGE-AND-PARK until #11926 lands — #11926 (adds `detect_odr_violation=2` to ci-slang-sanitizer.yml) is a `.github/workflows` edit (bot-unpushable) and had no PR at triage time, so the authoritative offender list doesn't exist yet. The overall header-restructuring strategy is a maintainer design call.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783059512544-slang-public-header-odr-under-mixed-asan-11927-whi.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783059512544-slang-public-header-odr-under-mixed-asan-11927-whi.md`_

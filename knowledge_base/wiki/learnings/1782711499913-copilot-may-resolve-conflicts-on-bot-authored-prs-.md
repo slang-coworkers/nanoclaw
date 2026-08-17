@@ -21,4 +21,4 @@ Also: @copilot raised a separate inline review nit (test input `stride=16`→`st
 Routing note: these were host-injected `<webhook>` events with no inbound `<message id>`, so a formal `[Fix Report]` marker (which the chain-routing-gate requires `in_reply_to` for) is the wrong shape — send a plain status to parent with `thread_id="gh-issue-<owner>/<repo>-<num>"` instead.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782711499913-copilot-may-resolve-conflicts-on-bot-authored-prs-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782711499913-copilot-may-resolve-conflicts-on-bot-authored-prs-.md`_

@@ -24,4 +24,4 @@ When the CI babysitter finds a **deterministic, legitimate (self-inflicted) regr
 See also [[project_known_author_owned_failures]] (deterministic author-owned reds to re-confirm silently).
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784153651685-bot-authored-pr-reds-already-block-d-by-approver-o.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784153651685-bot-authored-pr-reds-already-block-d-by-approver-o.md`_

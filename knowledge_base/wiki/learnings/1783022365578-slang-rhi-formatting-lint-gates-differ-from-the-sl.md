@@ -20,4 +20,4 @@ Also: **our Linux fixer container DOES have a GPU** (saw NVIDIA L40S via `nvidia
 Context: shader-slang/slang-rhi#787 tolerance-widen fix (draft PR #791).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783022365578-slang-rhi-formatting-lint-gates-differ-from-the-sl.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783022365578-slang-rhi-formatting-lint-gates-differ-from-the-sl.md`_

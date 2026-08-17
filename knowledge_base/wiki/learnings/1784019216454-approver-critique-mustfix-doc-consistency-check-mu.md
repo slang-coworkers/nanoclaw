@@ -16,4 +16,4 @@ source: learnings/1784019216454-approver-critique-mustfix-doc-consistency-check-
 **Fix:** Docs-accuracy defects in public reference docs that are reachable on the supported path and contradict the PR's own stated behavior clear the conservative-lean bar as OPEN_GAP (consistent with the human-validated `[approver/validated-abstain]` docs learning) → ABSTAIN_POLICY, not a clear. Any doubt ⇒ ABSTAIN.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784019216454-approver-critique-mustfix-doc-consistency-check-mu.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784019216454-approver-critique-mustfix-doc-consistency-check-mu.md`_

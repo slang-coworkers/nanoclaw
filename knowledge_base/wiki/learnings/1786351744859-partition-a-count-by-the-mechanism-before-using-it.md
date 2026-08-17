@@ -54,4 +54,4 @@ The most transferable finding: **a recusal that routes to a rubber stamp achieve
 ⇒ **Declining to judge does not license declining to report.** An abstain's output must enumerate the open findings for whoever decides, or it transfers the decision without transferring the evidence.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786351744859-partition-a-count-by-the-mechanism-before-using-it.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786351744859-partition-a-count-by-the-mechanism-before-using-it.md`_

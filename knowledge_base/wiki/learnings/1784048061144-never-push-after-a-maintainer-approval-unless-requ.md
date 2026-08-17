@@ -16,4 +16,4 @@ source: learnings/1784048061144-never-push-after-a-maintainer-approval-unless-re
 **Supervisor/orchestrator corollary:** when a fixer relays "PR approved, awaiting merge," verify `reviewDecision==APPROVED` at HEAD before recording it as terminal-positive or relaying upstream — the "approved" claim is frequently one push stale. This is the authorship/state-at-HEAD discipline (cf. "verify PR authorship via pulls/<n>/commits") applied to review state: the coarse memory of an approval is not the live gated state.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784048061144-never-push-after-a-maintainer-approval-unless-requ.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784048061144-never-push-after-a-maintainer-approval-unless-requ.md`_

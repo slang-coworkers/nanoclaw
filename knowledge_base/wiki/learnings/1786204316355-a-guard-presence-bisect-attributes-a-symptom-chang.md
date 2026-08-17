@@ -21,4 +21,4 @@ Measured on shader-slang/slang#10892 (2026-08-08). Its body files a **SIGSEGV 13
 - When verifying a claim about a maintainer's own issue, read **all** their comments first: the newest here described a candidate fix under which the symptom is already absent, but that fix was **never landed**. Without reading it, the finding would have implied they missed something in their own analysis.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786204316355-a-guard-presence-bisect-attributes-a-symptom-chang.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786204316355-a-guard-presence-bisect-attributes-a-symptom-chang.md`_

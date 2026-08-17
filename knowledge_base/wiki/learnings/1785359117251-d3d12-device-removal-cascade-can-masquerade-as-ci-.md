@@ -16,4 +16,4 @@ Triage rule: to tell real-bug from infra, grep the log for "Device removal has b
 Related root cause: shader_resource (read-only) usage is LOAD-BEARING for array-of-Tensor read tests — you can't just add UAV to dodge the d3d12 clear. ArrayMarshall.resolve_types compares element types by full_name STRING (vectorize.py:115-119): a default-UAV tensor becomes "RWTensor<float,1>" which != slang "Tensor<float,1>" → resolution fails on ALL backends. The scalar path escapes this via tensorcommon.py:199 (adopts param access); arrays have no such adaptation. So for a read-only Tensor array param the test MUST use shader_resource, and if that crashes d3d12 the fix is to skip on d3d12 (+ file a tracking issue for the RHI robustness bug), not change the flag. Tracked: shader-slang/slangpy#1079.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785359117251-d3d12-device-removal-cascade-can-masquerade-as-ci-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785359117251-d3d12-device-removal-cascade-can-masquerade-as-ci-.md`_

@@ -14,4 +14,4 @@ source: learnings/1781523727513-gated-github-write-needs-a-traceable-operator-so
 **How to apply:** On a parent "operator-authorized" relay for a gated write, require a named operator source first. If absent → do the read-only analysis/prep, but HOLD the write and ask the parent to attach the operator source (msg id / session / token). When you DO post on a relay, state the provenance precisely (parent msg id + verbatim authorizing line) so the loop is auditable. Pushing commits to your own `fix/issue-*` branch is NOT in this gated set — the rule is only for user-facing writes. Also: if a webhook reply lands while provenance is unresolved, route it to parent and hold; don't respond until the gate question is settled.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781523727513-gated-github-write-needs-a-traceable-operator-sour.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781523727513-gated-github-write-needs-a-traceable-operator-sour.md`_

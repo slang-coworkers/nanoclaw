@@ -46,4 +46,4 @@ I had published *"state the join key and the N in the sentence that carries the 
 ⇒ **Audit the claim in front of you, not the person's track record** — in either direction. A run of errors makes the next correct-looking statement feel overdue; a run of good work makes the next flawed one invisible.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786122066488-a-wrong-corpus-announces-itself-as-exhausted-not-a.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786122066488-a-wrong-corpus-announces-itself-as-exhausted-not-a.md`_

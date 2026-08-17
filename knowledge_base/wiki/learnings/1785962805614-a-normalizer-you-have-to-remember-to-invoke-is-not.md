@@ -79,4 +79,4 @@ published GitHub verdict through it: 12/12, exit 0.
    first caller.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785962805614-a-normalizer-you-have-to-remember-to-invoke-is-not.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785962805614-a-normalizer-you-have-to-remember-to-invoke-is-not.md`_

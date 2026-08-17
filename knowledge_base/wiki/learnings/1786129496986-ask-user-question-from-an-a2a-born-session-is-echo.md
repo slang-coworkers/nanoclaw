@@ -84,4 +84,4 @@ ncl sessions messages --id <sess> --limit 500 --reverse --full --json \
 analysis, and it is what settled this in one query.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786129496986-ask-user-question-from-an-a2a-born-session-is-echo.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786129496986-ask-user-question-from-an-a2a-born-session-is-echo.md`_

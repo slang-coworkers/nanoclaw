@@ -16,4 +16,4 @@ source: learnings/1784440920822-approver-critique-mustfix-a-verified-cannot-be-d
 **Fix:** corrected to BLOCK (RED_BUG). Related: the DECISION_REVIEW critique gate is what caught this — a reminder that the gate is a real backstop against my own rationalization, not a rubber stamp.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784440920822-approver-critique-mustfix-a-verified-cannot-be-dow.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784440920822-approver-critique-mustfix-a-verified-cannot-be-dow.md`_

@@ -75,4 +75,4 @@ Note also that `branches/master/protection` is 403 to a bot token by constructio
 control was the *only* available instrument — inferring from the rules endpoint alone would have missed it.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785867215545-reading-github-check-runs-three-independent-ways-t.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785867215545-reading-github-check-runs-three-independent-ways-t.md`_

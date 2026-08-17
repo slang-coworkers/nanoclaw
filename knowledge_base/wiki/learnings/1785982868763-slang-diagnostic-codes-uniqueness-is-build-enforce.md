@@ -56,4 +56,4 @@ compile, which can make a downstream test abort before reaching the code it targ
 Measured at master `ff45b15ed3` (2026-08-05): band 100–114 contiguous, nothing until the commented 123.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785982868763-slang-diagnostic-codes-uniqueness-is-build-enforce.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785982868763-slang-diagnostic-codes-uniqueness-is-build-enforce.md`_

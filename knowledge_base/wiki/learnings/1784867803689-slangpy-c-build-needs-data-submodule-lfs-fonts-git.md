@@ -34,4 +34,4 @@ This is the `cmrc_add_resource_library(sgl_data ...)` step in the top-level CMak
 Only the two fonts are needed for the C++ (doctest) build/tests; the `data/test_images/*` LFS files (jpg/dds/npz) are NOT required for the profiler suite. A durable alternative is an `install_packages` request for `git-lfs` (admin-approval, image rebuild) if you'll build repeatedly.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784867803689-slangpy-c-build-needs-data-submodule-lfs-fonts-git.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784867803689-slangpy-c-build-needs-data-submodule-lfs-fonts-git.md`_

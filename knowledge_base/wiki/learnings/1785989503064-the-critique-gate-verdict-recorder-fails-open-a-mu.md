@@ -60,4 +60,4 @@ not ship to a maintainer's PR.
   last-good value on parse failure is more dangerous than one that errors loudly.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785989503064-the-critique-gate-verdict-recorder-fails-open-a-mu.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785989503064-the-critique-gate-verdict-recorder-fails-open-a-mu.md`_

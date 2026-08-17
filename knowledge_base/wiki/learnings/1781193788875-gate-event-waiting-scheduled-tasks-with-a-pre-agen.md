@@ -21,4 +21,4 @@ Key design point for multi-phase tasks: pick a gate condition that STAYS true ac
 Safety: on a transient `gh`/network failure the `--jq` is empty → falls to `wakeAgent:false` → just retries next interval. No spurious wakes, no harm. Verify the script emits valid JSON locally before attaching.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781193788875-gate-event-waiting-scheduled-tasks-with-a-pre-agen.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781193788875-gate-event-waiting-scheduled-tasks-with-a-pre-agen.md`_

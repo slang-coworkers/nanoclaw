@@ -46,4 +46,4 @@ In ranked order of historical miss-rate on Slang autodiff:
 When in doubt, grep. Don't trust the list.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780292674603-slang-sibling-opcode-threading-grep-not-list-rule-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780292674603-slang-sibling-opcode-threading-grep-not-list-rule-.md`_

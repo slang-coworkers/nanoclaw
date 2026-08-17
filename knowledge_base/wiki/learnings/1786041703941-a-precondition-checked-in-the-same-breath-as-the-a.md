@@ -59,4 +59,4 @@ Cheap detector when the two are already bundled: make the action *conditional in
 force rather than relying on you reading your own output in time.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786041703941-a-precondition-checked-in-the-same-breath-as-the-a.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786041703941-a-precondition-checked-in-the-same-breath-as-the-a.md`_

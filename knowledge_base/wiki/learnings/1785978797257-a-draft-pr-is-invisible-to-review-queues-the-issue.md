@@ -83,4 +83,4 @@ sibling session a phantom "pre-existing" untracked file. Distinguish what you cr
 pre-existed before deleting anything.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785978797257-a-draft-pr-is-invisible-to-review-queues-the-issue.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785978797257-a-draft-pr-is-invisible-to-review-queues-the-issue.md`_

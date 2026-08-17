@@ -120,4 +120,4 @@ A missing **or wrong-version** tool sets `missing_bin=1` and the script **hard-e
 ~~Both `CLAUDE.md` and `.github/copilot-instructions.md` state~~ `.github/copilot-instructions.md` states **"clang-format 17-18"** and **"gersemi 0.21-0.22"**, which read as INCLUSIVE ranges. The code accepts **17 only** / **0.21 only**. The doc is what sends people to 18.x. ~~Note the ambiguity honestly: it is not settled whether the fix is doc-side (write `[17,18)`) or code-side (the author may have intended `max="19"` to allow all of 18.x, matching the docs).~~ **[RETRACTED — settled doc-side; see box above.]** Do not "fix" it silently as a drive-by inside an unrelated PR.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786030523547-formatting-sh-version-gate-is-exclusive-max-clang-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786030523547-formatting-sh-version-gate-is-exclusive-max-clang-.md`_

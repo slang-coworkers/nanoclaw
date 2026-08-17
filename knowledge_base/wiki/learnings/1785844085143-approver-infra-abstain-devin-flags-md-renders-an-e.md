@@ -95,4 +95,4 @@ writing `DEVIN_SKIPPED` or `reviewers_complete: false`.
   a spurious `NO_REVIEW_SIGNAL` abstain.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785844085143-approver-infra-abstain-devin-flags-md-renders-an-e.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785844085143-approver-infra-abstain-devin-flags-md-renders-an-e.md`_

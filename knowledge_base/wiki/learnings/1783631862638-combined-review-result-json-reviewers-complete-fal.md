@@ -17,4 +17,4 @@ Bug observed on shader-slang/slang#12029: I set `reviewers_complete=true` while 
 Rule of thumb: `reviewers_complete = (A complete) && (B complete) && (C complete) && drift==0`. Devin skipped ⇒ false. Don't conflate "Reviewer A produced a valid review" with "all reviewers complete" — the boolean is about the whole panel.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783631862638-combined-review-result-json-reviewers-complete-fal.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783631862638-combined-review-result-json-reviewers-complete-fal.md`_

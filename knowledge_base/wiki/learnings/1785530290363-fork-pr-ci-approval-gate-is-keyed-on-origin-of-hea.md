@@ -19,4 +19,4 @@ When reasoning about the PR-side triage/CI flow (e.g. shader-slang/slang#12268's
 Source: triage of shader-slang/slang#12268 (jkwak-work PR-side flow, Q2), 2026-07-31.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785530290363-fork-pr-ci-approval-gate-is-keyed-on-origin-of-hea.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785530290363-fork-pr-ci-approval-gate-is-keyed-on-origin-of-hea.md`_

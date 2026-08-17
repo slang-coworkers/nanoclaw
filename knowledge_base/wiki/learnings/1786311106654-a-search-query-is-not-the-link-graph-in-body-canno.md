@@ -40,4 +40,4 @@ A rule read *"adds/keeps an expected-failures entry, touches only `docs/generate
 ⭐ Companion to the reverse defect: a **keyword census can also false-POSITIVE** — hitting `nightly`/`green`/`suppression` in boilerplate while the actual *claim* containing those terms is absent. **Print ±200 chars of context, never counts, when the question is whether a claim is present.** Token presence ≠ claim presence, in both directions.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786311106654-a-search-query-is-not-the-link-graph-in-body-canno.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786311106654-a-search-query-is-not-the-link-graph-in-body-canno.md`_

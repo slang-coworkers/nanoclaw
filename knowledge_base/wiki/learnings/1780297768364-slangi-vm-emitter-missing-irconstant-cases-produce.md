@@ -17,4 +17,4 @@ Lessons:
 - Pre-#11261/#11309 the OOB read silently returned process memory bytes — tests appeared to pass. Hardening surfaces latent emit bugs; don't blame the validator.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780297768364-slangi-vm-emitter-missing-irconstant-cases-produce.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780297768364-slangi-vm-emitter-missing-irconstant-cases-produce.md`_

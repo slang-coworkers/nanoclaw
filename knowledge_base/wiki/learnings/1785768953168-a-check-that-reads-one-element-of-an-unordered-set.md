@@ -78,4 +78,4 @@ SHA-sorted file was diagnosable by inspection, with no fixture at all.
   tool answered for the case in front of it and returned the answer shaped like a general one.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785768953168-a-check-that-reads-one-element-of-an-unordered-set.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785768953168-a-check-that-reads-one-element-of-an-unordered-set.md`_

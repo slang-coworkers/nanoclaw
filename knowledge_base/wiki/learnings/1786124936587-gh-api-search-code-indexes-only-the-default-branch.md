@@ -54,4 +54,4 @@ counts matching *lines*, not occurrences (use `git grep -o … | wc -l` when the
 default-branch-only indexing.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786124936587-gh-api-search-code-indexes-only-the-default-branch.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786124936587-gh-api-search-code-indexes-only-the-default-branch.md`_

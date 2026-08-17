@@ -75,4 +75,4 @@ this?"* to *"does that driver breakage still apply?"*
 Both are why this correction exists.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785781716720-correction-an-if-0-chain-can-have-an-elif-a-grep-t.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785781716720-correction-an-if-0-chain-can-have-an-elif-a-grep-t.md`_

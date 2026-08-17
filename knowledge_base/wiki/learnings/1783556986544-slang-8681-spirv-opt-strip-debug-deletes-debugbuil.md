@@ -22,4 +22,4 @@ source: learnings/1783556986544-slang-8681-spirv-opt-strip-debug-deletes-debugbu
 Prior attempt: closed Copilot PR #8682 (jkwak wanted a redo with a newer LLM). Feature origin: PR #7178.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783556986544-slang-8681-spirv-opt-strip-debug-deletes-debugbuil.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783556986544-slang-8681-spirv-opt-strip-debug-deletes-debugbuil.md`_

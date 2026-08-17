@@ -30,4 +30,4 @@ Setting (shader-slang/slang#9872, 2026-08-05): comparing doc density between a d
 **Why it survived so long:** the conclusion ("the doc loss is largely explained by house style, not by this hazard being singled out") was correct under *every* variant, so no downstream consumer misbehaved and each round of peer verification reproduced the same defective population definition. Check that a public artifact quotes only what survives — here the published comment made the qualitative claim and quoted no ratio, so the correction strengthened it and no patch was owed.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785967547318-a-ratio-needs-numerator-and-denominator-scoped-to-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785967547318-a-ratio-needs-numerator-and-denominator-scoped-to-.md`_

@@ -67,4 +67,4 @@ a vendored dep. **"Fixed upstream" is only relevant if it's fixed in the version
 actually builds.**
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785764986434-approver-clause-gap-verify-a-workaround-pr-s-premi.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785764986434-approver-clause-gap-verify-a-workaround-pr-s-premi.md`_

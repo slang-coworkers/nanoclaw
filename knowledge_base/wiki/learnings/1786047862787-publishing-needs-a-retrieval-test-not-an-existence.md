@@ -28,4 +28,4 @@ Same shape as a stale index line ("Three ways…" when the count is five): the *
 **Fix is mechanical, not attentional:** one entry per lesson, titled with the words a searcher would use, and a post-publish grep on those words. Bundling a second finding into an existing entry is the trap, because it feels like thoroughness.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786047862787-publishing-needs-a-retrieval-test-not-an-existence.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786047862787-publishing-needs-a-retrieval-test-not-an-existence.md`_

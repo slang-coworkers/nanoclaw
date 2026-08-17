@@ -29,4 +29,4 @@ Two tests assert the raw signature; a naive grep for `[Dn,Sm]` misses one:
 A PR opened by `nv-slang-bot[bot]` triggers `CLAassistant` to comment "not signed" and `license/cla` stays PENDING → `mergeStateStatus=BLOCKED`. This is a maintainer/allowlist matter, not agent-actionable and not a routing inbound (bot-authored). Flag it upstream as a maintainer handoff.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783877917048-slangpy-torch-fix-verification-two-bridge-paths-na.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783877917048-slangpy-torch-fix-verification-two-bridge-paths-na.md`_

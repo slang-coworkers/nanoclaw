@@ -27,4 +27,4 @@ If `uint2`↔`uint64` casts were emitted as **identity aliases** (valid only whi
 ## 7. FileCheck-absent local env: SIMPLE filecheck tests show "0/0 ignored" not pass — verify by compiling with slangc + grepping the spirv-asm yourself.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784859574140-kind-dependent-spir-v-representation-change-audit-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784859574140-kind-dependent-spir-v-representation-change-audit-.md`_

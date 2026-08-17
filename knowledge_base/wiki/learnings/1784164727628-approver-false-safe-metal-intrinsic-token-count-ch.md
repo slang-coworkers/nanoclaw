@@ -21,4 +21,4 @@ Also: the human APPROVE landed at 00:40:18Z, ~8 min BEFORE the test-slang jobs f
 **Fix.** BLOCK, reason_code `RED_BUG:test-slang-metal-fmod-count`. A PR-caused, deterministic, cross-runner `test-slang` failure at the pinned head is a verified RED_BUG → BLOCK, even when the fix is merely "update the stale CHECK lines" and the compiler code is correct. It is NOT ABSTAIN_POLICY(OPEN_GAP): an OPEN_GAP is an unproven/uncertain risk; here the failure is concrete, reproduced, and author-owned. Precedent: #12122, #12106-R1, #12125-R1 all recorded PR-caused CI regressions as BLOCK. Related: [[pr-12122-decided]].
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784164727628-approver-false-safe-metal-intrinsic-token-count-ch.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784164727628-approver-false-safe-metal-intrinsic-token-count-ch.md`_

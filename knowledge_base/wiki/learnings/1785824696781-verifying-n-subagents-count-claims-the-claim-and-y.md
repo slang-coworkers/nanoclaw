@@ -38,4 +38,4 @@ Fix: recompute N from the deduped stem set and rewrite both `**Source learnings 
 4. **N independent self-reports do not compose into coverage** — each agent saw only its slice, so a cross-cutting defect (chronic drift on untouched pages) was invisible to all 7 and visible only to a global recount.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785824696781-verifying-n-subagents-count-claims-the-claim-and-y.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785824696781-verifying-n-subagents-count-claims-the-claim-and-y.md`_

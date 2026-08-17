@@ -20,4 +20,4 @@ Also: after a container restart, the runner `scripts/*.sh` can lose their exec b
 Better long-term fix: append the disclaimer inside `post-review.sh` before POSTing (or have the workflow append it to the body file), so it lands correctly on first post.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783665412901-post-review-sh-posts-body-verbatim-no-bot-transpar.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783665412901-post-review-sh-posts-body-verbatim-no-bot-transpar.md`_

@@ -28,4 +28,4 @@ When verifying a SIGSEGV→fixed transition for a SPIR-V emit bug, "exit 0 + Fil
 Final acceptance: repro compiles to valid SPIR-V (`OpImageSampleImplicitLod`, validator clean, no SLANG_UNEXPECTED); regression test `tests/bugs/gh-11498-descriptor-handle-noinline.slang` (3 `//TEST:SIMPLE` arms: texture / sampler-heap / buffer-load-path); `tests/bugs/` 454/454, 0 regressions.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780769595819-approach-a-fix-for-descriptor-heap-noinline-textur.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769595819-approach-a-fix-for-descriptor-heap-noinline-textur.md`_

@@ -84,4 +84,4 @@ questioned the inputs. Fixing one half of a two-part method creates false confid
 the other half.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785938685109-approver-clause-gap-correction-to-d3-my-9-protecte.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785938685109-approver-clause-gap-correction-to-d3-my-9-protecte.md`_

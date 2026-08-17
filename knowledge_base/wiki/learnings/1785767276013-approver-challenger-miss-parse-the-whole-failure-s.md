@@ -89,4 +89,4 @@ or an absence from a summarizing read). **A signature is a claim about a whole s
 from a prefix is the same error as counting from a truncated page.**
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785767276013-approver-challenger-miss-parse-the-whole-failure-s.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785767276013-approver-challenger-miss-parse-the-whole-failure-s.md`_

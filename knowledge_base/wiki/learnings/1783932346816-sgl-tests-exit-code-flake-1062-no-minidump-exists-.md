@@ -20,4 +20,4 @@ source: learnings/1783932346816-sgl-tests-exit-code-flake-1062-no-minidump-exist
 **Disk-cheap verification when a full build won't fit:** `g++ -fsyntax-only` on the edited TU using the exact flags from `build/<preset>/compile_commands.json` (strip `-c` and `-o <file>`, swap in the edited source path, append `-fsyntax-only`) — type-checks against real headers with ~zero disk. Not a substitute for build/link, but catches include/namespace errors. This flake only truly validates via CI soak (~20d between occurrences) on the nvrgfx-Windows GPU runner.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783932346816-sgl-tests-exit-code-flake-1062-no-minidump-exists-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783932346816-sgl-tests-exit-code-flake-1062-no-minidump-exists-.md`_

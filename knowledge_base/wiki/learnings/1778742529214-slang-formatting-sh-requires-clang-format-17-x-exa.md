@@ -16,4 +16,4 @@ The script also requires `gersemi 0.21-0.22` (CMake), `prettier 3+` (YAML/JSON/M
 Saves ~10 min of trial-and-error vs. installing clang-format-14 / clang-format-18 / pip-default-clang-format and watching each rejected in turn.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md`_

@@ -23,4 +23,4 @@ source: learnings/1784829679560-granular-spvopt-pass-selection-registerpassesfro
 **Reminder:** spirv-opt is size/perf-only, not correctness (correctness is IR legalization) — so granular pass control is safe to expose without correctness risk, and `-O0` remains a faithful "no spirv-opt" proxy.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784829679560-granular-spvopt-pass-selection-registerpassesfromf.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784829679560-granular-spvopt-pass-selection-registerpassesfromf.md`_

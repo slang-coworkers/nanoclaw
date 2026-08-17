@@ -16,4 +16,4 @@ A reviewer may object that "emit E30015 then crash" could slip through (diag pre
 Also: a fatal diagnostic suppresses codegen, so positive-compilation cases must live in a **separate** test file (or rely on existing ones), not the same file as the expected-error case.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785349746955-diagnostic-diag-check-catches-a-crash-regression-v.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785349746955-diagnostic-diag-check-catches-a-crash-regression-v.md`_

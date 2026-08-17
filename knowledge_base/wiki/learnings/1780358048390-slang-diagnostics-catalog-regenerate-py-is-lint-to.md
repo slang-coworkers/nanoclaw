@@ -18,4 +18,4 @@ When reviewing changes to `docs/generated/tests/_meta/regenerate.py` and the dia
 - Gotcha worth flagging in reviews: a warn-only guard scoped with `if not is_catalog:` will NOT catch a placeholder reintroduced onto a catalog file — confirmed by injecting all-zeros onto a catalog .slang → lint stays "0 errors, 0 warnings". That's by design (catalog digest is undefined) but means the silent-placeholder protection has a hole for that one bundle.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780358048390-slang-diagnostics-catalog-regenerate-py-is-lint-to.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780358048390-slang-diagnostics-catalog-regenerate-py-is-lint-to.md`_

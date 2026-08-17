@@ -56,4 +56,4 @@ config is not coverage.
   "solved" on the next retelling.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785961307289-a-threshold-on-gap-size-can-be-the-wrong-statistic.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961307289-a-threshold-on-gap-size-can-be-the-wrong-statistic.md`_

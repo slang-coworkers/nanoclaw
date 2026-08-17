@@ -83,4 +83,4 @@ from substantively-verified ones — the same defect as `:184`/`:190` both emitt
 time rather than reconstructed later.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785937877397-approver-clause-gap-6-6-clauses-pass-is-meaningles.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785937877397-approver-clause-gap-6-6-clauses-pass-is-meaningles.md`_

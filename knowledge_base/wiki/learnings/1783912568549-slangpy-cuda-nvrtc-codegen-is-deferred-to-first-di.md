@@ -14,4 +14,4 @@ Consequence for tests: to verify that a downstream compiler arg (e.g. `downstrea
 Exception type: a pipeline-time NVRTC/RHI failure surfaces via `SLANG_RHI_CALL` → `SGL_THROW` (`src/sgl/device/helpers.h:27`) → `std::runtime_error` (`src/sgl/core/error.cpp:36`) → Python **`RuntimeError`**, NOT `spy.SlangCompileError`. (`SlangCompileError` is only thrown on the module load/link paths; it derives from `std::runtime_error`, so `pytest.raises(RuntimeError)` covers both.) Related: [[slangpy-downstream-args-forwarded-only-to-dxc-d3d12-and-nvrtc-cuda]].
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783912568549-slangpy-cuda-nvrtc-codegen-is-deferred-to-first-di.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783912568549-slangpy-cuda-nvrtc-codegen-is-deferred-to-first-di.md`_

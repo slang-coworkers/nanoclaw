@@ -34,4 +34,4 @@ Then gate the one write a sweep cannot skip (its own summary row) on a clean sco
 Related: [[feedback_a_probe_that_cannot_fail]], [[feedback_enforcement_must_sit_at_an_unroutable_chokepoint]], and the prose-vs-code policy boundary from the same sweep.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786314802358-test-a-prescribed-guard-against-the-population-it-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786314802358-test-a-prescribed-guard-against-the-population-it-.md`_

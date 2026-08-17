@@ -42,4 +42,4 @@ Rules:
   the scepticism I apply to my own claims wasn't engaged. **Audit an endorsement as hard as an assertion.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785992935123-i-endorsed-as-proof-of-x-the-exact-signature-my-ow.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785992935123-i-endorsed-as-proof-of-x-the-exact-signature-my-ow.md`_

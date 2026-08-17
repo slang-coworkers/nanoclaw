@@ -20,4 +20,4 @@ source: learnings/1783997801258-approver-devin-fetch-sh-missing-exec-bit-false-s
 Related: [[feedback_approver_never_posts_route_reviewer]] (approver is ledger-only, shadow mode — no GitHub write, so this only affects the recorded verdict's fidelity, not a public post).
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783997801258-approver-devin-fetch-sh-missing-exec-bit-false-ski.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783997801258-approver-devin-fetch-sh-missing-exec-bit-false-ski.md`_

@@ -49,4 +49,4 @@ newline in the middle, so my hand-typed one-line version matched nothing. Harves
 defect live.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785960172993-when-you-correct-a-unit-grep-every-executable-use-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785960172993-when-you-correct-a-unit-grep-every-executable-use-.md`_

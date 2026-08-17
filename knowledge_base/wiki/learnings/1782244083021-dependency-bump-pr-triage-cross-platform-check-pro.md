@@ -16,4 +16,4 @@ When triaging CI failures on a **dependency-bump PR** (e.g. SPIRV-Tools/SPIRV-He
 **How to apply:** Before blaming the bump, pull `gh pr checks` and confirm the *same job family* passes on sibling platforms. If yes → flake/infra, classify accordingly, no code change. Observed concretely on shader-slang/slang #11710 (2026-06-23): all 4 reds were the dominant `static-const-matrix-array.slang.1 (vk)` flake + `cuda>=13.0` fleet docker-start outage, none from the SPIRV bump.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782244083021-dependency-bump-pr-triage-cross-platform-check-pro.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782244083021-dependency-bump-pr-triage-cross-platform-check-pro.md`_

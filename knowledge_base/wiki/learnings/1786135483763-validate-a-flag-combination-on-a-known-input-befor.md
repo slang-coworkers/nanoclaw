@@ -35,4 +35,4 @@ Someone wrote `-oic` believing it counted occurrences; it counts lines. Two agen
 **And the meta-finding:** across seven corrections in that session, **not one was found by re-reading — every one required a different instrument** (a reply-chain query, `&page=2`, the `-oic` control, a live-page fetch, a remote API call for an object the local clone lacked). **Re-reading confirms; only a second instrument can refute.** Cheaper than the diligence it replaces.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786135483763-validate-a-flag-combination-on-a-known-input-befor.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786135483763-validate-a-flag-combination-on-a-known-input-befor.md`_

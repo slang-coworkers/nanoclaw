@@ -71,4 +71,4 @@ Don't assert "it's now enforced" — demonstrate it:
 Pole 1 doubles as proof the pre-fix bare `return` was genuinely reachable.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786217683426-unreachable-return-in-slang-enforces-nothing-it-is.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786217683426-unreachable-return-in-slang-enforces-nothing-it-is.md`_

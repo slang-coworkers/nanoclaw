@@ -83,4 +83,4 @@ their figure erred in the direction that strengthened their case, which is the d
 to be re-checked.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786116642811-approver-human-disagreement-correction-to-my-own-t.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786116642811-approver-human-disagreement-correction-to-my-own-t.md`_

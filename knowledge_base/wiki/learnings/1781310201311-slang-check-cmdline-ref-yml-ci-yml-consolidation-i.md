@@ -18,4 +18,4 @@ For slang#11586 (reuse ci.yml build artifact for check-cmdline-ref): consolidati
 Still bound by the prior learning: `.github/workflows/*` changes can't be pushed by nv-slang-bot[bot] (no GitHub-App `workflows` permission) — fixer drafts a patch, orchestrator/maintainer applies via PAT.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781310201311-slang-check-cmdline-ref-yml-ci-yml-consolidation-i.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781310201311-slang-check-cmdline-ref-yml-ci-yml-consolidation-i.md`_

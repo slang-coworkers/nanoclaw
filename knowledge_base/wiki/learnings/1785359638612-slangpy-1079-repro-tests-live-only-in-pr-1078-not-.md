@@ -16,4 +16,4 @@ All triage file:line pointers for #1079 verified accurate at current HEAD (2026-
 Correction to triage's Approach-C location: the BufferMarshall validation pattern to mirror is `BufferMarshall.resolve_dimensionality` in `slangpy/builtin/structuredbuffer.py:39-60` (checks `vector_target_type.writable and not has_ua` → raises ValueError). That check needs the RESOLVED target role, which is only available in the Tensor `resolve_dimensionality` path (tensorcommon.py:353-370), NOT at tensor.py:184 (__init__, where only the arg's own usage is known). So the clean-error guard belongs in tensorcommon.resolve_dimensionality, not create_tensor_marshall.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785359638612-slangpy-1079-repro-tests-live-only-in-pr-1078-not-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785359638612-slangpy-1079-repro-tests-live-only-in-pr-1078-not-.md`_

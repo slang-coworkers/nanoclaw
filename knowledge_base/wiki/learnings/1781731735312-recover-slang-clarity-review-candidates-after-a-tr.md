@@ -16,4 +16,4 @@ When `slang-clarity-review-runner` (Reviewer C in /slang-pr-review) dies with a 
 **How to apply:** in the /slang-pr-review merge step, if Reviewer C's `clarity-review.md` is tiny (<200 bytes) or contains "API Error", check the tmp/review-candidates dir before treating C as skipped. Observed 2026-06-17 on shader-slang/slang#11656.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781731735312-recover-slang-clarity-review-candidates-after-a-tr.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781731735312-recover-slang-clarity-review-candidates-after-a-tr.md`_

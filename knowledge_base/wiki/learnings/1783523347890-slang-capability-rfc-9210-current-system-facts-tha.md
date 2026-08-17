@@ -20,4 +20,4 @@ When triaging capability-system design/RFC issues (e.g. #9210 "capability system
 Triage shape: this class of issue is design/RFC, not fix-eligible, when the subsystem owners are mid-debate with divergent directions (skiminki-nv "move to emit + drop propagation" vs tangent-vector "reverse the mental model: atoms=abilities, set-encode, `requires` clause in the type system"). Correct next step is a maintainer design discussion; PARK at triaged, post a NEUTRAL 5-bullet that records both directions without picking a side, do NOT dispatch a fixer (self-filed + self-assigned dev RFC). Related capability-system cluster to cross-reference: #7948 (disjunction handling), #4947 (unsupported numerical types).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783523347890-slang-capability-rfc-9210-current-system-facts-tha.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783523347890-slang-capability-rfc-9210-current-system-facts-tha.md`_

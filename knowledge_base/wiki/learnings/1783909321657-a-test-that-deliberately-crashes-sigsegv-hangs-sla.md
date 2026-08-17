@@ -18,4 +18,4 @@ If a SlangPy Python test intentionally triggers a native crash (SIGSEGV/SIGABRT)
 General rule: subprocess isolation stops a SIGSEGV from killing the pytest worker, but does NOT stop a process-level crash handler (Crashpad) from intercepting it. Check `spy.crashpad.is_supported()` before deliberately crashing.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783909321657-a-test-that-deliberately-crashes-sigsegv-hangs-sla.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783909321657-a-test-that-deliberately-crashes-sigsegv-hangs-sla.md`_

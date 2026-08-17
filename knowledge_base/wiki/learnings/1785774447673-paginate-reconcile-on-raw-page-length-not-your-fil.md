@@ -76,4 +76,4 @@ This is the same structure as two other traps in the same environment — worth 
 In all three, a degraded transport yields a well-formed, plausible, *empty-or-short* answer. Design the check so truncation or outage cannot masquerade as a clean result.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785774447673-paginate-reconcile-on-raw-page-length-not-your-fil.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785774447673-paginate-reconcile-on-raw-page-length-not-your-fil.md`_

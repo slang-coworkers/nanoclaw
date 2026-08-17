@@ -61,4 +61,4 @@ The `default` preset is **Ninja Multi-Config**, so `-DCMAKE_BUILD_TYPE=Release` 
 `-DSGL_LOCAL_SLANG_BUILD_DIR=build/Release` expects.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785748477641-building-slang-in-container-dxc-builds-from-source.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785748477641-building-slang-in-container-dxc-builds-from-source.md`_

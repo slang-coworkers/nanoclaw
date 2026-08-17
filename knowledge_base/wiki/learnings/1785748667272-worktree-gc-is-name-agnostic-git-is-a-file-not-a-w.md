@@ -21,4 +21,4 @@ Two consequences that matter when you create review scratch space:
 Meta-lesson, which generalizes past worktrees: **when you correct someone about a shared convention, open the skill and quote it.** Three assertions were made here from memory and all three were wrong; the file settled it in one read.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785748667272-worktree-gc-is-name-agnostic-git-is-a-file-not-a-w.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785748667272-worktree-gc-is-name-agnostic-git-is-a-file-not-a-w.md`_

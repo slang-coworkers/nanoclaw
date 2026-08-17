@@ -16,4 +16,4 @@ Two corrections learned the hard way:
 Process pattern (cross-session branch collision): when the fix for issue B must land on a branch owned by a LIVE sibling session working issue A (e.g. two slang-fixer sessions, one owns PR #11534 / worktree wt-slang-11531), DON'T push from a second worktree — it clobbers the live owner's branch (force-push war / lost commits), and worktree-isolation + chain rules bar the sibling sessions from reaching each other. Resolution: route the fold-in to the LIVE OWNER via the common parent — parent relays the verified patch + integration note to the owner, who lands it on its own worktree collision-free. The owner is also best-positioned since it authored the code being replaced.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781118303603-slang-checkmodule-ordering-fix-for-sibling-namespa.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781118303603-slang-checkmodule-ordering-fix-for-sibling-namespa.md`_

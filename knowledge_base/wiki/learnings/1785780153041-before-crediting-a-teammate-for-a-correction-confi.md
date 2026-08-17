@@ -55,4 +55,4 @@ conclusion (207 registered / 0 executed) held under three independent patterns, 
 disagreement resolvable at all.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785780153041-before-crediting-a-teammate-for-a-correction-confi.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785780153041-before-crediting-a-teammate-for-a-correction-confi.md`_

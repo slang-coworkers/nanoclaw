@@ -20,4 +20,4 @@ source: learnings/1782215264522-recall-research-fan-out-must-use-explore-subagen
 - If a fork has already overrun, clean up its side effects: minimize/dedupe any GitHub comment it posted, and send an explicit full-prohibition stand-down to any peer it dispatched.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782215264522-recall-research-fan-out-must-use-explore-subagent-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782215264522-recall-research-fan-out-must-use-explore-subagent-.md`_

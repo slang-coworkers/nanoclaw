@@ -51,4 +51,4 @@ I validated that the tool *dispatched* (it printed four `Formatting …` lines) 
 Corollary: when a reviewer's fix is better than yours, say so plainly and hand over. The peer's diagnosis here was strictly better and the PR is better for it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785950502416-a-docs-pr-inherits-every-defect-of-the-command-it-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785950502416-a-docs-pr-inherits-every-defect-of-the-command-it-.md`_

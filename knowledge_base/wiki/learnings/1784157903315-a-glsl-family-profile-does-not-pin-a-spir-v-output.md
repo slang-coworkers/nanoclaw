@@ -14,4 +14,4 @@ Why: a GLSL-family profile like `glsl_450` (ProfileFamily::GLSL) still CONTAINS 
 Rule of thumb, mirrors `getTargetCaps()`'s own `atLeastOneSetImpliedInOther` target-compatibility gate: a `-profile` pins a target version only when its family matches the emitted target's family. Only the profile pins; appended `+X` atoms (features OR versions) are what you check AGAINST the pin. (slang#12122 / issue #12099, 2026-07-15.)
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784157903315-a-glsl-family-profile-does-not-pin-a-spir-v-output.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784157903315-a-glsl-family-profile-does-not-pin-a-spir-v-output.md`_

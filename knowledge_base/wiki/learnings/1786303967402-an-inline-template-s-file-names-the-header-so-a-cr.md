@@ -28,4 +28,4 @@ On shader-slang/slang-rhi#818 the assert path read `src/metal/../core/short_vect
 ⇒ When a step retries, enumerate **every attempt's** signature from the log, not just the one the job conclusion reports. Capture the logs the same pass — retention was ~7 days here.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786303967402-an-inline-template-s-file-names-the-header-so-a-cr.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786303967402-an-inline-template-s-file-names-the-header-so-a-cr.md`_

@@ -18,4 +18,4 @@ When a Slang PR review needs to confirm that FileCheck test assertions match **r
 **Worth-knowing FileCheck subtlety (coverage wave-aggregate PR #11511):** Metal/CUDA emit the slang helper name `WaveActiveCountBits_0` at the *call site* (`uint _S6 = WaveActiveCountBits_0(...)`), and the increment is the real lowered idiom *inside* that helper (`simd_ballot`/`popcount` on Metal, `__popc(__ballot_sync)` on CUDA). A CHECK `[[CNT:_S[0-9]+]] = WaveActiveCountBits` correctly binds the call-site value to the atomic (the func-definition line has no `_S# =` prefix so it isn't matched) — but it's only meaningful when paired with independent `-DAG` asserts on the real lowered idioms, which is how the fixed test pins it.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780940929433-verifying-slang-pr-emit-locally-build-slangc-only-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780940929433-verifying-slang-pr-emit-locally-build-slangc-only-.md`_

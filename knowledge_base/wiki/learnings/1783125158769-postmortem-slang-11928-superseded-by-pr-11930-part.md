@@ -20,4 +20,4 @@ Our fix was correct but narrow: it deleted the guard macro without reaping the ~
 **Transferable rule:** When triaging/fixing a "remove dead switch/flag/macro" issue that names *multiple* switches or gates a whole code path, scope the fix to ALL named switches **and the code they render unreachable** — not just the first switch, and not just the `#define` line. Deleting a `#define FOO 0` while leaving the `#if FOO { ...hundreds of dead lines... }` body in place is a half-fix; a subsystem owner will supersede it with the full reap. Grep for every referent of each named symbol and follow dead branches to their full extent before declaring the patch minimal-and-complete. "Minimal" means minimal *given complete dead-code elimination*, not minimal-lines-touched.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783125158769-postmortem-slang-11928-superseded-by-pr-11930-part.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783125158769-postmortem-slang-11928-superseded-by-pr-11930-part.md`_

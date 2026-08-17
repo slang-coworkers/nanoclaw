@@ -74,4 +74,4 @@ demonstrably runs at default. Without that cell, "default aborts / `-O0` fine" i
 with "the optimizer never runs at all".
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785964589980-o0-clean-is-not-evidence-the-emitter-is-correct-it.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785964589980-o0-clean-is-not-evidence-the-emitter-is-correct-it.md`_

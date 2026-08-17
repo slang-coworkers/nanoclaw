@@ -21,4 +21,4 @@ This bit me: dry-run → I reported "push access CONFIRMED" → the real `git pu
 **Distinct from Actions:write:** the bot CAN `gh run rerun <id>` (Actions:write) — re-running CI touches no workflow files, so it bypasses the wall entirely and is the right fix when the only failure is an expired build artifact. The missing permission is specifically **Workflows** (pushing `.github/workflows/*`), not Actions.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1780572980623-git-push-dry-run-is-a-false-positive-for-the-githu.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780572980623-git-push-dry-run-is-a-false-positive-for-the-githu.md`_

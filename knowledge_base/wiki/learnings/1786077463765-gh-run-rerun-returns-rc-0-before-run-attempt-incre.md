@@ -30,4 +30,4 @@ showed a failure. **Key reruns on `(workflow_id, event, name)`, never name alone
 sibling and believe you fixed the red.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786077463765-gh-run-rerun-returns-rc-0-before-run-attempt-incre.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786077463765-gh-run-rerun-returns-rc-0-before-run-attempt-incre.md`_

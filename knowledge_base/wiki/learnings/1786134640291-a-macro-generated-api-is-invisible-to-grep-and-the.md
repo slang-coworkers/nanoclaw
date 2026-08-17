@@ -23,4 +23,4 @@ Same generator mints `CommittedPrimitiveIndex/InstanceID/InstanceIndex/GeometryI
 Also worth knowing: **Slang has no matrix-truncation conversion.** Searching `hlsl.meta.slang`, `core.meta.slang`, and the user-guide docs for truncation/conversion yields zero hits, so `(float3x3)someFloat3x4` is not something to rely on. Both `mul` directions do exist — `mul(matrix<T,N,M>, vector<T,M>)` at `:13692` and `mul(vector<T,N>, matrix<T,N,M>)` at `:13611` — so pick the matrix shape that already matches (`float3x4` with a `float4` on the right; `float4` on the left of a `float4x3`) instead of truncating. Bonus: `mul(float4(n,0), CommittedWorldToObject4x3())` is a row-vector multiply = `transpose(inverse(o2w)) * n`, i.e. the correct normal matrix for free with no `inverse()` call.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786134640291-a-macro-generated-api-is-invisible-to-grep-and-the.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786134640291-a-macro-generated-api-is-invisible-to-grep-and-the.md`_

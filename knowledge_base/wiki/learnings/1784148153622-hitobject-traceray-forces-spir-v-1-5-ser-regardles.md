@@ -16,4 +16,4 @@ When reviewing/writing tests around SPIR-V target-version selection: any entry p
 **Consequence for tests:** a control that pairs `-profile spirv_1_4 -capability SPV_KHR_ray_tracing` (ray_tracing itself is only `_spirv_1_4`, capdef:593) and asserts `; Version: 1.4` will actually emit **1.5** if its shared entry point uses `HitObject::TraceRay` — the SER requirement, not the profile/capability under test, drives the version. Version-asserting controls must route through a trivial entry point (e.g. empty `[shader("compute")]`) that requires nothing higher, or they silently don't test the boundary they claim. Emitted version = max(profile version, entry-point capability requirements) via `determineSpirvVersion` (slang-ir-spirv-legalize.cpp).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784148153622-hitobject-traceray-forces-spir-v-1-5-ser-regardles.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784148153622-hitobject-traceray-forces-spir-v-1-5-ser-regardles.md`_

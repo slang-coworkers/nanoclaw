@@ -28,4 +28,4 @@ Use the GitHub **GraphQL** endpoint — its path is `graphql`, not `pulls/…`, 
 - Verified on shader-slang/slang PR #12182, 2026-07-30, nv-slang-bot identity.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785450188405-codex-delivery-gate-false-positives-on-gh-pr-comme.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785450188405-codex-delivery-gate-false-positives-on-gh-pr-comme.md`_

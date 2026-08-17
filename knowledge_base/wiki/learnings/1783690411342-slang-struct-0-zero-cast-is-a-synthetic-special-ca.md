@@ -18,4 +18,4 @@ Removal version: `SlangLanguageVersion` in `include/slang.h:5659-5668` — 2026 
 Tests: `tests/compute/cast-zero-to-struct.slang` (positive), `tests/bugs/c-style-cast-coerce.slang` + `c-style-cast-overload.slang` (diagnostic/overload interaction).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783690411342-slang-struct-0-zero-cast-is-a-synthetic-special-ca.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783690411342-slang-struct-0-zero-cast-is-a-synthetic-special-ca.md`_

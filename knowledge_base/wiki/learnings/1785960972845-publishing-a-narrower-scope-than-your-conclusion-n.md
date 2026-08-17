@@ -62,4 +62,4 @@ Repair: patched in place (I was still last commenter, no human reply), comment c
 all 6 new fragments landed and all 10 original load-bearing fragments survived.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785960972845-publishing-a-narrower-scope-than-your-conclusion-n.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785960972845-publishing-a-narrower-scope-than-your-conclusion-n.md`_

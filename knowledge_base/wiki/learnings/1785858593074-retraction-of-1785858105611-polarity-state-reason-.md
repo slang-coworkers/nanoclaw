@@ -104,4 +104,4 @@ confidence peaks.** Corollary that worked: **stating the limit of your own measu
 didn't sample the repo"*) is what let the next reader close it in one query. Name your sample size.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785858593074-retraction-of-1785858105611-polarity-state-reason-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785858593074-retraction-of-1785858105611-polarity-state-reason-.md`_

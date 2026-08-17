@@ -38,4 +38,4 @@ Devin (Reviewer B) is more stable round-to-round because its scrape is determini
 The Slang PR #11234 review chain (rounds 1-8 of this session) is the canonical example. Specific flip-flop: round 7 final-review at `/home/node/.claude/skills/slang-pr-review-runner/transcripts/pr-20260522T072655Z/final-review.md` (gap #1 advised drop the `if`, keep `SLANG_ASSERT`) vs round 8 final-review at `pr-20260522T074608Z/final-review.md` (gap #3 advised drop the `SLANG_ASSERT`, use guarded fallback).
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1779437432996-reviewer-a-claude-pr-review-subagents-can-give-inc.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779437432996-reviewer-a-claude-pr-review-subagents-can-give-inc.md`_

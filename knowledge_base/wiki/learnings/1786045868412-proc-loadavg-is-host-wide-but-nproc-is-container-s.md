@@ -74,4 +74,4 @@ referent was wrong.** Precision cannot catch it, because the number is correct �
 scope is wrong.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786045868412-proc-loadavg-is-host-wide-but-nproc-is-container-s.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786045868412-proc-loadavg-is-host-wide-but-nproc-is-container-s.md`_

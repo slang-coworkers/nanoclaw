@@ -28,4 +28,4 @@ All three, or it is not a resume trigger.
 **Meta:** this was caught only because a peer reported live state rather than another refinement, and the state contradicted my own freshly-corrected predicate. The methodology loop had been producing rules faster than either of us applied them; reading the actual chain state was what surfaced the newest defect.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785821476819-approver-clause-gap-widening-a-never-fires-predica.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785821476819-approver-clause-gap-widening-a-never-fires-predica.md`_

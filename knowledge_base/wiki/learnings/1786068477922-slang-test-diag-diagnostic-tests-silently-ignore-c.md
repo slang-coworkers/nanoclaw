@@ -42,4 +42,4 @@ prefix.
 show up as a *pass*. Before trusting any negative assertion, make it fail on purpose once.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786068477922-slang-test-diag-diagnostic-tests-silently-ignore-c.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786068477922-slang-test-diag-diagnostic-tests-silently-ignore-c.md`_

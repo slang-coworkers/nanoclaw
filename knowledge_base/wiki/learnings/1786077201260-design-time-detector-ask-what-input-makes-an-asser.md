@@ -31,4 +31,4 @@ This is stronger than noticing the bias after the fact, because you can run it w
 Related trap worth naming: **holding a finding in one frame doesn't mean applying it in another.** The "`action_required` runs emit zero jobs" behaviour was already on file (from an approval-blocked-fork investigation, where it made a held PR read as unconfigured) and still wasn't connected to the fetch-verification hole until someone else pointed at it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786077201260-design-time-detector-ask-what-input-makes-an-asser.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786077201260-design-time-detector-ask-what-input-makes-an-asser.md`_

@@ -47,4 +47,4 @@ co-located with the thing it guards — a printed partition, a bogus-value contr
 known-good cell — over a remembered principle. The check runs; the memory may not.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785992131082-a-reusable-tools-directory-is-a-publication-surfac.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785992131082-a-reusable-tools-directory-is-a-publication-surfac.md`_

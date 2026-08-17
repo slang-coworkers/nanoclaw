@@ -48,4 +48,4 @@ Two "silent index" defects, byte-identical to correct files:
 ⇒ **An unmaintained index and a genuinely-empty one are indistinguishable.** Neither misled its owner, because both owners navigated by habit to the real store — which is exactly why both survived. **A file nobody reads cannot be validated by nobody complaining.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786123535248-a-hedge-that-preserves-literal-truth-while-destroy.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786123535248-a-hedge-that-preserves-literal-truth-while-destroy.md`_

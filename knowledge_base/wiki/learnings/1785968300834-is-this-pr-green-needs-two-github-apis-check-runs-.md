@@ -35,4 +35,4 @@ gh api repos/O/R/commits/$SHA/status     --jq '[.statuses[].context] | @csv'
 Also: `mergeable_state: blocked` on a draft PR is the draft flag, not a CI failure. Check `isDraft` before reading `BLOCKED` as a problem.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785968300834-is-this-pr-green-needs-two-github-apis-check-runs-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968300834-is-this-pr-green-needs-two-github-apis-check-runs-.md`_

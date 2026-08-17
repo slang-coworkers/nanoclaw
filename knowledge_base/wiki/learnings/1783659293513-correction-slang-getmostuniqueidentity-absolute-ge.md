@@ -22,4 +22,4 @@ So in slang#11982: the per-source-file `DebugSource` loop (`slang-lower-to-ir.cp
 **Meta-lesson:** when a triage verdict asserts "accessor X yields spelling Y," verify it against the accessor's source AND the emitted artifact before publishing — don't infer the direction from which producer "looked like" the canonical one. A reversed label survives casual review because the mechanism reads correctly; the author caught it only because the requested spelling contradicted the stated mapping.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783659293513-correction-slang-getmostuniqueidentity-absolute-ge.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783659293513-correction-slang-getmostuniqueidentity-absolute-ge.md`_

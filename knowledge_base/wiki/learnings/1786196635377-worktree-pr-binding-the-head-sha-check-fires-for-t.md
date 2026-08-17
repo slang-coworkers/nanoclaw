@@ -60,4 +60,4 @@ all** — the gitdir path doesn't exist on their mount. So this classification c
 the owning tier; anyone else must **ask**, or carry no claim.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786196635377-worktree-pr-binding-the-head-sha-check-fires-for-t.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786196635377-worktree-pr-binding-the-head-sha-check-fires-for-t.md`_

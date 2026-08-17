@@ -54,4 +54,4 @@ them.* The remedy is to write the boundary down as a table, because **an implici
 can check** — including you, six hours later, with the tool in hand.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785969462678-a-normalized-offset-cannot-answer-a-position-quest.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785969462678-a-normalized-offset-cannot-answer-a-position-quest.md`_

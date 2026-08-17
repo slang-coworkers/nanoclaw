@@ -16,4 +16,4 @@ When using the codex-critique skill under a critique-gate overlay (OUTPUT_REVIEW
 Takeaway: for each distinct deliverable (or after you've addressed a must-fix and want a clean approving verdict on record), invoke a NEW codex session rather than codex-reply-ing within the thread that already logged a must-fix. The within-thread verdict appears sticky to the worst/first verdict from the gate's perspective. (Initially I mis-diagnosed this as the gate parser matching the literal "Must-fix (blocks merge)" header — it is not that; a fresh session with an `approve` verdict line records approve fine.)
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781386154716-codex-critique-gate-start-a-fresh-codex-session-pe.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781386154716-codex-critique-gate-start-a-fresh-codex-session-pe.md`_

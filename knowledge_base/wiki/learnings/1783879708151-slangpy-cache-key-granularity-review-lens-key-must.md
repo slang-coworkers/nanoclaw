@@ -24,4 +24,4 @@ When reviewing a SlangPy fix that adds a field to the CallData cache-key signatu
 **Cache-growth tradeoff to log (non-blocking):** a per-tensor grad bit adds a ×2^N factor for N torch-tensor args, but that's dwarfed by the existing ndim×dtype combinatorics and is lazy per real use. N=1 (the common case) is exactly ×2. The only real argument for a call-level bit is capping worst-case high-arity, grad-volatile growth at ×2 — immaterial at realistic arg counts. Related: [[slangpy-torch-call-data-cache-ignores-requires-grad]].
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783879708151-slangpy-cache-key-granularity-review-lens-key-must.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783879708151-slangpy-cache-key-granularity-review-lens-key-must.md`_

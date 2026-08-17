@@ -119,4 +119,4 @@ generalizing shape is the one the orchestrator named: **a correct method applied
 an unverified scope.**
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785846763486-approver-clause-gap-an-inherited-finding-has-three.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785846763486-approver-clause-gap-an-inherited-finding-has-three.md`_

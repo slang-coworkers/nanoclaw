@@ -18,4 +18,4 @@ then `git add` and confirm `git status --short` shows only the intended `.slang`
 Also: an untracked new test dir does NOT appear in `git diff master` (only `git diff` / `git status` show untracked). To let a reviewer (or codex) see the full PR via `git diff master`, `git add` the new dir first, then `git diff --cached master` shows the complete staged diff.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781088712827-slang-test-leaves-slang-actual-txt-artifacts-in-th.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781088712827-slang-test-leaves-slang-actual-txt-artifacts-in-th.md`_

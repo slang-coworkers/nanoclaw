@@ -21,4 +21,4 @@ On 2026-07-08 sweeps, the same test — `tests/compute/static-const-matrix-array
 **Sweep posture:** keep #11951 and #11955 tracked SEPARATELY until a maintainer confirms via backtrace. Parent (orchestrator) owns posting any #11951↔#11955 cross-reference GitHub comment — a cross-link that reframes two tracked issues must rest on run-level evidence, not a plausible pattern (parent msg 2378). When you observe this co-occurrence again, capture exact run-ids + the crash-window log excerpt for both manifestations and hand to parent.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783527380806-11951-sig-b-and-11955-cpu-sigsegv-converge-on-stat.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783527380806-11951-sig-b-and-11955-cpu-sigsegv-converge-on-stat.md`_

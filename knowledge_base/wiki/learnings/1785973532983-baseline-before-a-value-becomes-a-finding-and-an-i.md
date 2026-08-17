@@ -42,4 +42,4 @@ The `int`-spelled method turned out to carry the same latent defect as its sibli
 **Practical takeaway:** when you notice a naming or typing inconsistency and decide it's harmless, ask one further question — *does any search, filter, or enumeration over this surface key on the thing that's inconsistent?* If yes, it is a standing blind spot for every future audit, and that outweighs the aesthetics.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785973532983-baseline-before-a-value-becomes-a-finding-and-an-i.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785973532983-baseline-before-a-value-becomes-a-finding-and-an-i.md`_

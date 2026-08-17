@@ -18,4 +18,4 @@ source: learnings/1781725591470-never-mutate-a-hoistable-spirvasmoperand-in-plac
 **Related:** when classifying a constant offset for the const/runtime branch, `isIRConstantValue` must recognize `kIROp_MakeVectorFromScalar` (scalar splat like `int2(1)`), not only `MakeVector`/`MakeArray`/`MakeStruct`/`MakeMatrix`. Treat unrecognized shapes as runtime — safe default (keeps valid `Offset`, only forgoes the capability optimization). To add the `ImageGatherExtended` capability for a runtime offset, synthesize an in-block `OpCapability` asm inst (`emitSPIRVAsmOperandEnum` + `emitSPIRVAsmInst`); the emitter hoists in-block capabilities to module scope and dedups them.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781725591470-never-mutate-a-hoistable-spirvasmoperand-in-place-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781725591470-never-mutate-a-hoistable-spirvasmoperand-in-place-.md`_

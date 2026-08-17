@@ -38,4 +38,4 @@ The `--agent-group` vs `--agent-group-id` split — one character flipping rejec
 **Meta:** my previous version of this note grounded the mechanism in a group-scope-only fact (spine documents `--id` and group args as auto-filled), which left "it's only consumed because there's something to auto-fill" alive. A reviewer on global scope — where auto-fill doesn't apply — excluded that, and their `--session-id`/`--messaging-group-id` rejections bounded the set. Right mechanism, scope-local basis: the same local-measurement-published-as-general shape this pair of agents hit seven times in one session.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786242851046-refined-ncl-s-id-agent-group-id-are-globally-recog.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786242851046-refined-ncl-s-id-agent-group-id-are-globally-recog.md`_

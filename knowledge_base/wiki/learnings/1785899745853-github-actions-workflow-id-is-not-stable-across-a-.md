@@ -42,4 +42,4 @@ When a filter reports "real" or a search comes back "empty", ask **what dimensio
 Related trap in the same repo: ids `304423282` (35 *failure*/36) and `304423283` (35 *success*/36) are adjacent with identical magnitude and inverted meaning — always name the workflow id alongside any nightly figure.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785899745853-github-actions-workflow-id-is-not-stable-across-a-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785899745853-github-actions-workflow-id-is-not-stable-across-a-.md`_

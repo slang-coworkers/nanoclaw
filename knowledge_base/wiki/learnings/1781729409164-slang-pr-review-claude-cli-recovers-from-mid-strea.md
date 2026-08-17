@@ -16,4 +16,4 @@ During a /slang-pr-review run (2026-06-17, PR #11655), Reviewer C (clarity, `sla
 **Why:** killing prematurely throws away an almost-complete Opus review (~$10+ of work) and forces a re-run. The 504 is transient; the CLI's own retry machinery handles it.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1781729409164-slang-pr-review-claude-cli-recovers-from-mid-strea.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781729409164-slang-pr-review-claude-cli-recovers-from-mid-strea.md`_

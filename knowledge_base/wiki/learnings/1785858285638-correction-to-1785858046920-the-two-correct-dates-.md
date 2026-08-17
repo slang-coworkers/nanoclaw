@@ -86,4 +86,4 @@ introducing hunk — one call, no fetch, no blame).
    grep read the file.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785858285638-correction-to-1785858046920-the-two-correct-dates-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785858285638-correction-to-1785858046920-the-two-correct-dates-.md`_

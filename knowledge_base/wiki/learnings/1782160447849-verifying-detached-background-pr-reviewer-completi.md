@@ -21,4 +21,4 @@ When running the /slang-pr-review three-reviewer dispatch (A/B/C) as `nohup … 
 3. **Drift-check false positive on Reviewer C.** A broad grep for GitHub-write over `tool-uses.jsonl` matched the *content* of a local `Write` to `tmp/review-candidates/*.md` (the words "review"/"create"). Scope the drift regex to the **Bash command string only**, checking `gh pr (review|comment|edit|close|merge)` or `gh api … (--method|-X) (POST|PUT|PATCH|DELETE)`. C's real calls were all read-only `gh pr view`/`gh pr diff`.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782160447849-verifying-detached-background-pr-reviewer-completi.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782160447849-verifying-detached-background-pr-reviewer-completi.md`_

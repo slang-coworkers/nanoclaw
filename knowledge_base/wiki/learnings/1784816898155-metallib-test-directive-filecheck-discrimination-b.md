@@ -14,4 +14,4 @@ So adding a metallib directive does NOT fix a "non-discriminating FileCheck" gap
 Context: PR #12172 fwidth-for-metal; Reviewer A + C both flagged this (FG002).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784816898155-metallib-test-directive-filecheck-discrimination-b.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784816898155-metallib-test-directive-filecheck-discrimination-b.md`_

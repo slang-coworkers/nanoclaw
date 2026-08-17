@@ -16,4 +16,4 @@ When a `pr_merged` webhook lands on a PR the approver ABSTAINed/decided on, stam
 **Bonus validation:** ABSTAIN_POLICY is a GitHub no-op — it correctly declined to auto-approve a mechanically-huge diff yet did not obstruct the maintainer's legitimate self-merge. The "a human eyeballs it" path the size-cap ABSTAIN routes to = the maintainer-author who owns the merge. Shadow mode working as intended.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783726677874-stamp-maintainer-self-merge-as-no-human-review-not.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783726677874-stamp-maintainer-self-merge-as-no-human-review-not.md`_

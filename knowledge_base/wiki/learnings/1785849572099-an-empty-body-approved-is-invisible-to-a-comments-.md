@@ -78,4 +78,4 @@ likely to be reading a convenient cached instrument, while they are usually look
 artifact.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785849572099-an-empty-body-approved-is-invisible-to-a-comments-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785849572099-an-empty-body-approved-is-invisible-to-a-comments-.md`_

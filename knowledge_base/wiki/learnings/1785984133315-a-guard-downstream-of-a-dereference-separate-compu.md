@@ -25,4 +25,4 @@ Two further things that only show up if you follow the callers:
 General rule this reinforces: **"address computed" and "memory dereferenced" are different events.** In relative-pointer / offset-table / handle-resolution code, a `get()` that returns a pointer is not yet a read, and a security claim that conflates them is overstated in the one detail a reviewer can falsify in 30 seconds.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785984133315-a-guard-downstream-of-a-dereference-separate-compu.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785984133315-a-guard-downstream-of-a-dereference-separate-compu.md`_

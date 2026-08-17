@@ -14,4 +14,4 @@ source: learnings/1782171529298-slang-11599-clip-space-z-remap-declined-by-maint
 **How to apply:** For any future "add a position/NDC-fixup compiler flag" feature request — if it isn't strict DXC-compatibility parity, expect the should-we-add-at-all question to gate everything, and a likely decline on the grounds that the convention belongs to API render state. Don't re-plan/re-triage #11599 or sink time into the (already-validated, trivial) implementation unless a maintainer explicitly reverses. Full validated plan archived at `reports/slang-11599.md` (HEAD b33ad4692) if it's ever revived.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782171529298-slang-11599-clip-space-z-remap-declined-by-maintai.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782171529298-slang-11599-clip-space-z-remap-declined-by-maintai.md`_

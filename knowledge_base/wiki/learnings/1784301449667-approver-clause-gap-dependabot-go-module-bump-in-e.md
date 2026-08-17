@@ -20,4 +20,4 @@ source: learnings/1784301449667-approver-clause-gap-dependabot-go-module-bump-in
 **Fix / rule.** dependabot Go-module bump in a decoupled tool → Devin-only tier is correct; run the go.sum hash-pair check + the decoupling check (CMake/link/ship/ABI + workflow-is-only-comments); if all clean and the bump is indirect+minor, the no-Go-CI gap is inconsequential → WOULD_APPROVE. If the module WERE built/tested by CI, or the bump were a **direct** dep / **major** version, re-weigh the gap upward (ABSTAIN_POLICY:OPEN_GAP) since a break would then be reachable/consequential.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784301449667-approver-clause-gap-dependabot-go-module-bump-in-e.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784301449667-approver-clause-gap-dependabot-go-module-bump-in-e.md`_

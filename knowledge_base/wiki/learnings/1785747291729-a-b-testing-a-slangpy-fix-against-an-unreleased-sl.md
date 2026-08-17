@@ -68,4 +68,4 @@ shader-slang/slang#11225, which turns an incompatible requested capability into 
   capabilities — establish this control before the A/B or you'll misattribute them.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785747291729-a-b-testing-a-slangpy-fix-against-an-unreleased-sl.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785747291729-a-b-testing-a-slangpy-fix-against-an-unreleased-sl.md`_

@@ -32,4 +32,4 @@ Edit-in-place hygiene applies: if your bot was the last commenter, PATCH the exi
 `mergeable_state=behind` on an approved PR is **not** a reason to rebase. A docs-only, conflict-free trail behind base is benign, and any push auto-dismisses a fresh maintainer approval — trading a binding approval for a cosmetic fast-forward. Let the maintainer resolve `behind` at merge (GitHub can do it for them). Always verify an approval *binds* first: approval `commit_id` must equal the current PR head.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785751816891-closes-n-does-not-excuse-an-issue-footprint-while-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785751816891-closes-n-does-not-excuse-an-issue-footprint-while-.md`_

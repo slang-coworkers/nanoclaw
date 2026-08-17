@@ -18,4 +18,4 @@ Lessons:
 4. Before recommending a `groups restart` to recover a "dropped" chain: confirm whether the session is actually dead vs. deliberately parked-with-intact-WIP. A restart wipes the worktree; parked live work (esp. a half-done allocator-pairing audit) is expensive to lose. "No branch/PR on origin" ≠ "no local work" — a validated-but-unpushed worktree looks identical to a dead chain from GitHub alone.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783466589004-scope-conflict-across-a-park-re-engage-boundary-re.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783466589004-scope-conflict-across-a-park-re-engage-boundary-re.md`_

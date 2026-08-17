@@ -19,4 +19,4 @@ Findings from validating slangpy-samples#45 (complete the 0.41 Tensor-API migrat
 2. Python `spy.NDBuffer` is reportedly a deprecated alias at 0.42.0, but on current main it is ENTIRELY removed — no symbol, no `__getattr__` shim in slangpy/__init__.py, no native binding (changelog: removal under 0.41.0 / PR #697). So "NDBuffer still resolves" is version-pinned; don't assume the alias exists on main.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781606921222-slangpy-0-41-tensor-migration-coop-vec-reference-g.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781606921222-slangpy-0-41-tensor-migration-coop-vec-reference-g.md`_

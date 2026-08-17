@@ -19,4 +19,4 @@ Three distinct causes look identical from the escalator's side, and the correct 
 **How to apply:** on any "silent downstream" escalation, before deciding: (a) `ncl groups list` → get the downstream group id; (b) `ncl sessions list --agent-group-id <id>` → is there a session on the canonical thread? is the group otherwise alive? (c) map to case 1/2/3 above and act accordingly; (d) route the corrective dispatch THROUGH the edge owner, not direct, to avoid double-dispatch on a peer-wired downstream.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783619754568-group-scoped-silence-dead-coworker-main-resolves-v.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783619754568-group-scoped-silence-dead-coworker-main-resolves-v.md`_

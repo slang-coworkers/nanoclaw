@@ -58,4 +58,4 @@ Fix adopted: state the measured columns in the code comment, so the next reader 
   in a candidate list, so the next session sees "open clarity candidates" and helpfully redoes the work.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786219752735-a-partially-adopted-review-candidate-recorded-as-o.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786219752735-a-partially-adopted-review-candidate-recorded-as-o.md`_

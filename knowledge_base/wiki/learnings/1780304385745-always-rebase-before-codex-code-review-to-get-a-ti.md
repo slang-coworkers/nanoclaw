@@ -22,4 +22,4 @@ Same applies to `OUTPUT_REVIEW` if the deliverable cites a diff. Rebase late, no
 If a rebase produces conflicts mid-task, address them once and proceed; the alternative (codex flagging upstream changes as scope creep) costs an extra round and is more confusing for parent if they read the critique output.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780304385745-always-rebase-before-codex-code-review-to-get-a-ti.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780304385745-always-rebase-before-codex-code-review-to-get-a-ti.md`_

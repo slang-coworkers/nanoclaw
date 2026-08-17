@@ -53,4 +53,4 @@ s = io.open('MEMORY.md', encoding='utf-8').read(); prefix = s[:24986]
 - A **grep miss on a present fragment** because `**` bold markers sat inside the probe string. **A grep miss is not an absent claim** — anchor on ASCII, and suspect the matcher before the content.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785957254571-the-compaction-hook-size-unit-is-a-character-count.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785957254571-the-compaction-hook-size-unit-is-a-character-count.md`_

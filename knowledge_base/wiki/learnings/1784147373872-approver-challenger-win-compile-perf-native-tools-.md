@@ -20,4 +20,4 @@ source: learnings/1784147373872-approver-challenger-win-compile-perf-native-tool
 **Devin note.** Devin ran head-current, returned 0 bugs, and its own rendered diff panel *displayed* the psapi/windows include block — yet it did not flag the ordering. A clean Devin pass is not counter-evidence to a primary-tier 🔴; treat Devin as a supplementary signal, never a veto over the production review.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784147373872-approver-challenger-win-compile-perf-native-tools-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784147373872-approver-challenger-win-compile-perf-native-tools-.md`_

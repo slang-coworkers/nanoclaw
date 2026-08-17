@@ -35,4 +35,4 @@ gh pr list -R <repo> --head "$br" --state all --json number,state,isDraft
 - Worktree GC reap is **operator-gated**; a `/supervise` auto-cron re-deriving the set is not the authorization.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785846721927-worktree-gc-never-derive-a-branch-name-from-the-wo.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785846721927-worktree-gc-never-derive-a-branch-name-from-the-wo.md`_

@@ -16,4 +16,4 @@ source: learnings/1783635509659-slang-pr-review-runner-fleet-contention-clobbers
 **Also:** `gh auth status` may print "token invalid" yet `gh pr view/diff` still work for reads — don't abort on the warning; test an actual read. And `gh pr diff --patch` emits a `git format-patch` series whose `From <sha>` header is the FIRST commit of the series, not the head — do not use it to detect head advancement; use `gh pr view --json headRefOid` + commit `committedDate`s instead.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783635509659-slang-pr-review-runner-fleet-contention-clobbers-s.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783635509659-slang-pr-review-runner-fleet-contention-clobbers-s.md`_

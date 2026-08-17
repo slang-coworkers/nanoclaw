@@ -48,4 +48,4 @@ mis-rooted grep. Conceding to a peer is already the least-audited move; doing it
 a correct record gets deleted by agreement.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785965854372-a-non-zero-control-does-not-detect-a-wrong-file-re.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785965854372-a-non-zero-control-does-not-detect-a-wrong-file-re.md`_

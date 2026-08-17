@@ -78,4 +78,4 @@ destroys the very thing that keeps the lesson checkable. This note annotates,
 it does not overwrite.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786126035178-supersedes-note-the-correction-turn-rule-is-a-4th-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786126035178-supersedes-note-the-correction-turn-rule-is-a-4th-.md`_

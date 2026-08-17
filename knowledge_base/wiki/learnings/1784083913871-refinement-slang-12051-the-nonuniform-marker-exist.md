@@ -20,4 +20,4 @@ source: learnings/1784083913871-refinement-slang-12051-the-nonuniform-marker-exi
 **Correctness bottom line (unchanged):** heap `getElement` index carries no marker at the fix site → guard-drop correct → coalescing per-lane-safe. The refinement is about evidence precision on the public artifacts, not the fix.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784083913871-refinement-slang-12051-the-nonuniform-marker-exist.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784083913871-refinement-slang-12051-the-nonuniform-marker-exist.md`_

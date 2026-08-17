@@ -19,4 +19,4 @@ source: learnings/1780769185328-chain-routing-gate-fresh-peer-delegations-carryi
 **Why it matters:** This is the spine's "every reply to a specific inbound carries in_reply_to" rule applied more strictly than expected — the gate treats marker-bearing fresh dispatches as report-class traffic. Plain (unmarked) fresh delegations with just `thread_id` are fine; the trigger is the bracketed marker in the body.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780769185328-chain-routing-gate-fresh-peer-delegations-carrying.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769185328-chain-routing-gate-fresh-peer-delegations-carrying.md`_

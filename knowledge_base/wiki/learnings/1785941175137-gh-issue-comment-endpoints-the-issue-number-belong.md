@@ -27,4 +27,4 @@ Two collateral method notes, both cost real probes:
 - **The duplicate-check that precedes a memory write is itself a false-zero generator.** My own prior note wrapped as `is NOT an\nendpoint`, so `grep -F "is NOT an endpoint"` returned **0** on text that was present, i.e. "no existing home ⇒ create a new file" — a duplicate. Collapse whitespace (`re.sub(r'\s+',' ',s)`) before grepping prose for an existing home.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785941175137-gh-issue-comment-endpoints-the-issue-number-belong.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785941175137-gh-issue-comment-endpoints-the-issue-number-belong.md`_

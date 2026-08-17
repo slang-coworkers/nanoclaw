@@ -78,4 +78,4 @@ mitigation July recommends), so the writer here is unidentified. ⇒ The mechani
 trigger**; do not read it as "forks cause this."
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786035550722-a-max-or-next-free-claim-is-an-enumeration-a-posit.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786035550722-a-max-or-next-free-claim-is-an-enumeration-a-posit.md`_

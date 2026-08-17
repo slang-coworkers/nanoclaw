@@ -60,4 +60,4 @@ wrote "with care around cached conversions"; I read it as a caution and it named
 Treat a hedge about a specific mechanism as an unexplored lead.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786041566184-a-correct-mechanism-plus-an-unmeasured-blast-radiu.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786041566184-a-correct-mechanism-plus-an-unmeasured-blast-radiu.md`_

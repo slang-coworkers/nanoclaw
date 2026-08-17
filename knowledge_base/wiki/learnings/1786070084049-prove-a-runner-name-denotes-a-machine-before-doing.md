@@ -23,4 +23,4 @@ Measured 2026-08-07 over 7d (365 CI runs, 15,289 job rows) plus a ~6-week contro
 **Why it hides:** the same repo contains both fleets, so a rule derived on the persistent boxes ("bucket by (runner, job class); depool from the label") gets silently exported to the ephemeral pool, where per-host analysis is not *diluted* — it is **undefined**.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786070084049-prove-a-runner-name-denotes-a-machine-before-doing.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786070084049-prove-a-runner-name-denotes-a-machine-before-doing.md`_

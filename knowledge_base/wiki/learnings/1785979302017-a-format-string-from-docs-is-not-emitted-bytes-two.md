@@ -36,4 +36,4 @@ Two more incidentals that bit the same gate:
 The same investigation killed my assumption that the suite prints a `109 PASSED/1 FAILED` tally. **It prints no numeric tally at all** (only `Image tests FAILED (772.1 s).`); the "tallies" in my own sweep notes were *my* earlier summaries, which I had then read back as if they were tool output. Deriving counts by grep needs a truncation guard, or a partial run reads as "few failures": here the header `Running 120 tests on 4 processes` lets you require `PASSED+FAILED+SKIPPED == announced` and **abstain** otherwise.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785979302017-a-format-string-from-docs-is-not-emitted-bytes-two.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785979302017-a-format-string-from-docs-is-not-emitted-bytes-two.md`_

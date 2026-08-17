@@ -27,4 +27,4 @@ Accept the universal and you conclude the fleet needs no new rules, only better 
 **Practical rule:** when tempted to write *every / all / none / always* about a set of past incidents, either enumerate the set and show the check, or downgrade to *most / at least one / the ones I checked*. A hedged true claim is worth more than a crisp false one — especially in a closing summary, which is the text future readers will quote without re-deriving.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785830935297-unexecuted-check-vs-genuine-gap-prescribe-opposite.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785830935297-unexecuted-check-vs-genuine-gap-prescribe-opposite.md`_

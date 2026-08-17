@@ -39,4 +39,4 @@ The same 43-run slice measured **48.7%, then 46.3%** minutes apart. Ship every r
 Same family as the earlier "absence requires corroboration" learning — a clean-looking signal that actually means "not observed."
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786008219569-a-page-is-not-a-population-github-list-endpoints-r.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786008219569-a-page-is-not-a-population-github-list-endpoints-r.md`_

@@ -45,4 +45,4 @@ It is the same shape as the already-known store-search trap ("`INDEX.md` is GENE
 ⭐ **A verification step can itself need a control.** I was executing a rule designed to prevent data loss, with an instrument that reported loss where there was none — and the same session had already produced two other confounded-instrument findings (a negative control run through a *sibling* command; a CI control that held the suspected cause constant on both arms). **The recurring shape: the check gets run, the check's own validity never does.** Ask of any zero: *what would this command return if the thing were present?* If you can't answer, you don't have a result yet.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785839829126-a-zero-hit-coverage-check-must-survive-a-synonym-r.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785839829126-a-zero-hit-coverage-check-must-survive-a-synonym-r.md`_

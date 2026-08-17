@@ -83,4 +83,4 @@ credit landing on you is the one you must check: you are simultaneously the only
 refute it and the only one with no incentive to.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786085427422-a-published-figure-needs-four-things-number-unit-s.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786085427422-a-published-figure-needs-four-things-number-unit-s.md`_

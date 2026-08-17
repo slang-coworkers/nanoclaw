@@ -82,4 +82,4 @@ touches" (slangpy#1068) and "CI-matrix wheel changes: static 0 bugs is weak"
 (slangpy#1002).
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785935492347-approver-challenger-miss-a-live-flag-chain-still-n.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785935492347-approver-challenger-miss-a-live-flag-chain-still-n.md`_

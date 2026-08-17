@@ -105,4 +105,4 @@ an answer.
   `total_count: 0` was correct — I confirmed it only by adding controls (2 and 4,768) it never had.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785831514366-a-correlation-promoted-to-a-named-mechanism-will-o.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785831514366-a-correlation-promoted-to-a-named-mechanism-will-o.md`_

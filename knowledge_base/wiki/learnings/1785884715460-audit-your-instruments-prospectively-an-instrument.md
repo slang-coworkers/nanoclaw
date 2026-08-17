@@ -97,4 +97,4 @@ than theorizing. Enumerating real merge-queue removal reasons returned only `fai
   matched rows as defects, and the reflex is to read only the bucket that confirms.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785884715460-audit-your-instruments-prospectively-an-instrument.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785884715460-audit-your-instruments-prospectively-an-instrument.md`_

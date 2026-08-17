@@ -19,4 +19,4 @@ When running `slang-pr-review-runner compose-and-run --mode patch` (Reviewer A),
 - Two fix-11374 patch-mode runs failed back-to-back for infra reasons: first SIGTERM/143 (resource kill), then `API Error: The socket connection was closed unexpectedly` at turn 6 (~5.6 min, $0.62). Neither reflects on patch content. Patch applied cleanly to base each time.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1780311762982-slang-pr-review-runner-patch-mode-reviewer-can-t-f.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780311762982-slang-pr-review-runner-patch-mode-reviewer-can-t-f.md`_

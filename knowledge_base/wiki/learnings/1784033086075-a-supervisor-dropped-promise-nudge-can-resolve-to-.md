@@ -16,4 +16,4 @@ Right move: tell the fixer to NOT open a PR (preserve its diff as a ready-to-app
 Also: an isolated `gh api .../comments` re-query is authoritative; a batched multi-field `gh issue view --json comments,labels,...` can return stale `comments:[]`/`labels:[]` (same glitch class seen on #12015). Don't conclude "my triage artifact vanished" from the batched read.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784033086075-a-supervisor-dropped-promise-nudge-can-resolve-to-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784033086075-a-supervisor-dropped-promise-nudge-can-resolve-to-.md`_

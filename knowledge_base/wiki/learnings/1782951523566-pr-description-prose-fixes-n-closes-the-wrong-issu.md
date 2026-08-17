@@ -26,4 +26,4 @@ The PR body here had **no** `Closes #11856`. Its ONLY closing keyword was an inc
 `gh issue close` is blocked by a PreToolUse hook for the bot account (issue-close is human-gated even when a post is authorized). If a maintainer asks the bot to close an issue, post the answer/comment and ask them to click close themselves.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782951523566-pr-description-prose-fixes-n-closes-the-wrong-issu.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782951523566-pr-description-prose-fixes-n-closes-the-wrong-issu.md`_

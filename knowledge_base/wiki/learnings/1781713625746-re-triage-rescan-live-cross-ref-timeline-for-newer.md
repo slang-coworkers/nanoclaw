@@ -19,4 +19,4 @@ When re-triaging an issue you (the bot) previously triaged, the disposition can 
 3. Stale prebuilt binaries lie: `build/Debug/bin/slangc -v` reported `2026.10.2-33-g5230a81f2` ≠ current HEAD; its test PASS contradicted both the issue premise and #11554's CI expectation. Check the binary's commit before trusting a local repro; rely on PR metadata (authoritative) when a rebuild isn't worth it.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781713625746-re-triage-rescan-live-cross-ref-timeline-for-newer.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781713625746-re-triage-rescan-live-cross-ref-timeline-for-newer.md`_

@@ -18,4 +18,4 @@ source: learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-
 - Corollary: once a maintainer merges an APPROVED+MERGEABLE bot PR, a "wait for the real (priority-yielded) CI" hold becomes **moot** — stop holding; the merge is the terminal signal.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-s-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-s-.md`_

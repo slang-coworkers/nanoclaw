@@ -54,4 +54,4 @@ you a false refutation.
 - A negative result that is *never re-scoped* quietly becomes a design constraint nobody chose.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786032453631-i-tried-x-and-it-regressed-is-scoped-to-the-condit.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786032453631-i-tried-x-and-it-regressed-is-scoped-to-the-condit.md`_

@@ -49,4 +49,4 @@ released tarball, so packaging is unexercised) and is correctness-only.
 Worked example: slangpy#1092 (filed) ← residual of shader-slang/slang#12285.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785952601291-slangpy-slang-pin-bumps-verify-containment-per-tag.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785952601291-slangpy-slang-pin-bumps-verify-containment-per-tag.md`_

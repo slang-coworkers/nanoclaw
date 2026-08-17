@@ -26,4 +26,4 @@ Three instances on one PR chain (shader-slang/slang#12348, CFG block-merge hang)
 - **Triage a nonzero drift/guard signal instead of explaining it.** A drift grep returned 1; the hit was the *prohibition text inside a subagent prompt*, not a call. Waving it through as "probably the prompt" would have been the same error class. One grep.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785877147674-a-right-conclusion-reached-by-a-wrong-mechanism-dr.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785877147674-a-right-conclusion-reached-by-a-wrong-mechanism-dr.md`_

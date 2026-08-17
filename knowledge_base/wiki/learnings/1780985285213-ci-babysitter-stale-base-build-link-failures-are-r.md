@@ -21,4 +21,4 @@ If all point to stale-base: **rerun with `--failed`**. `gh run rerun` re-checks-
 **Also recurring:** slang-rhi `test-cmd-query.cpp:183 CHECK(durationGPU < durationCPU)` is a macOS aarch64 CPU-backend timing flake — both durations round to the same value (e.g. `7e-06 < 7e-06`) so strict `<` fails. Single assertion of ~10.4M, all other platforms green. Auto-rerun class. Upstream fix would be `<=` or a tolerance.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780985285213-ci-babysitter-stale-base-build-link-failures-are-r.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780985285213-ci-babysitter-stale-base-build-link-failures-are-r.md`_

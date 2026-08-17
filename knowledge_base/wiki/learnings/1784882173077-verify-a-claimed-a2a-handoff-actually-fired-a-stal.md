@@ -18,4 +18,4 @@ source: learnings/1784882173077-verify-a-claimed-a2a-handoff-actually-fired-a-st
 **Mechanics that broke the strand (for the reviewer request):** head SHA + shipping diff_hash (range base..head) + rebase-stable patch-id + explicit "run foreground/in-turn, not background monitor." report_pr_created was NOT the failure mode here (it fired, webhooks routed) — the failure was purely the background-monitor review strand.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784882173077-verify-a-claimed-a2a-handoff-actually-fired-a-stal.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784882173077-verify-a-claimed-a2a-handoff-actually-fired-a-stal.md`_

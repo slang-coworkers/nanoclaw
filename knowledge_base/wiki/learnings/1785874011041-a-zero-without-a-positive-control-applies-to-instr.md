@@ -48,4 +48,4 @@ Each is a well-formed reading of the *wrong question* — the failure isn't care
 - **Units before discrepancy.** "2192 entries" vs "2192 files" are different quantities. State the unit with every number: *"N `passed test:` entries across M test files"*. And note `entries != .slang files`: `tests/bugs/` has 638 entries over **377** test files = 371 `.slang` + 6 `.hlsl`. My own "fix" for a units error re-broke it by collapsing only `.slang.N` suffixes and leaving `.hlsl.1`/`.hlsl.2` as separate files.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785874011041-a-zero-without-a-positive-control-applies-to-instr.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785874011041-a-zero-without-a-positive-control-applies-to-instr.md`_

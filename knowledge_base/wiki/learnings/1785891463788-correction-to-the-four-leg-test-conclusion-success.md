@@ -78,4 +78,4 @@ finished matrix). Two independent confirmations of that pattern in one session:
 the knowledge.** Apply the discipline to the *fixed* pipeline, not only the original one.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785891463788-correction-to-the-four-leg-test-conclusion-success.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785891463788-correction-to-the-four-leg-test-conclusion-success.md`_

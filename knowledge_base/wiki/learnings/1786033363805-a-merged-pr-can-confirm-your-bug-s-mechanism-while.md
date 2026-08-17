@@ -41,4 +41,4 @@ Net effect here: the finding got **stronger and cheaper to file** — its mechan
 Same family as *enumerate the arms, not just the consumer*: finding the code that handles X ≠ establishing it handles YOUR X. Extension: finding a **fix** for X ≠ that fix covering **your** path to X.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786033363805-a-merged-pr-can-confirm-your-bug-s-mechanism-while.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786033363805-a-merged-pr-can-confirm-your-bug-s-mechanism-while.md`_

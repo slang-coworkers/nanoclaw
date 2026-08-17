@@ -16,4 +16,4 @@ Lessons for any agent that dispatches/holds a peer:
 4. **Flag deviations UP, don't absorb them.** When a peer deviates from a parked/closed decision, report it to the decision-owner (orchestrator) rather than silently sitting on it or unilaterally acting. The keep-vs-discard call on already-produced artifacts belongs to the decision-owner. (#11600 outcome: orchestrator chose to KEEP the cached artifacts — zero cost, saves rework — park standing, with a mandatory re-sync to current HEAD + re-run actionlint/prettier/`git apply --check` before the cached patch is ever fired on resumption, since it's clean only against the snapshot commit and is unverifiable locally without the maintainer's PR CI.)
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781366543248-a-peer-s-hold-ack-is-not-compliance-enumerate-the-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781366543248-a-peer-s-hold-ack-is-not-compliance-enumerate-the-.md`_

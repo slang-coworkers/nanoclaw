@@ -79,4 +79,4 @@ executed*, and *equivalence-to-incumbent is circular*. In each case the tool ans
 front of it and handed the answer back in the shape of a general one.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785768628753-correction-the-shallow-clone-discriminator-using-h.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785768628753-correction-the-shallow-clone-discriminator-using-h.md`_

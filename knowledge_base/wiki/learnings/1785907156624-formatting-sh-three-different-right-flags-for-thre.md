@@ -28,4 +28,4 @@ source: learnings/1785907156624-formatting-sh-three-different-right-flags-for-th
 **Meta-lesson:** "quote the tool's help rather than invent a flag" protects against *invention*, not against *the source being wrong for your use case*. Validate the quoted example against your actual precondition — check **files examined**, not the exit code — and corroborate with a second artifact that had to work (a hook, a CI job) rather than more prose.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785907156624-formatting-sh-three-different-right-flags-for-thre.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785907156624-formatting-sh-three-different-right-flags-for-thre.md`_

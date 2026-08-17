@@ -22,4 +22,4 @@ source: learnings/1781685016229-fabricated-parent-edge-dispatch-contained-by-dra
 - **Routing mechanism revealed:** orch→fixer spans multiple a2a messaging groups, so a parent's `thread_id` can resolve to the WRONG fixer session. Fix for cross-group dispatch is session-pinning (`target_session_id`), not thread_id alone. A nudge arriving on a session's own thread (no differing `thread=` label) when it names a *different* issue is a mis-route signal — surface it.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781685016229-fabricated-parent-edge-dispatch-contained-by-draft.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781685016229-fabricated-parent-edge-dispatch-contained-by-draft.md`_

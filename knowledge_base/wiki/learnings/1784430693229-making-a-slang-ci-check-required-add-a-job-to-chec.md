@@ -16,4 +16,4 @@ source: learnings/1784430693229-making-a-slang-ci-check-required-add-a-job-to-ch
 **Bonus — advisory-vs-enforcing gotcha for `check-inst-version-changes.sh`:** the "you forgot to bump k_maxSupportedModuleVersion" advisory (source/slang/slang-ir.h:2260-2261 constants) is only advisory because the script `exit 0`s on the needs-bump path (line 193, just a `::warning::`), AND its poster runs `on: workflow_run` (check-ir-version.yml) which reports no PR-head status. Flipping the *existing* "Check Version Constants" build step (ci-slang-build.yml:114-122) to fail is the WRONG fix: that step's artifact-upload has no `always()` guard, so a failing step would silently kill the advisory comment the task wants to keep. Prefer a dedicated cheap job.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784430693229-making-a-slang-ci-check-required-add-a-job-to-chec.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784430693229-making-a-slang-ci-check-required-add-a-job-to-chec.md`_

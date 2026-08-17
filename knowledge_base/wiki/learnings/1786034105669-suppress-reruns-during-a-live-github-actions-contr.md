@@ -52,4 +52,4 @@ gh api "repos/OWNER/REPO/actions/runs/<id>/attempts/<n>" \
 `31117877792` went att1→att2 between my collection and my action pass — fired by the **PR author**, timestamp 16:29:35Z. Identity alone doesn't discriminate (`nv-slang-bot[bot]` is shared across automations); the **timestamp** does.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786034105669-suppress-reruns-during-a-live-github-actions-contr.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786034105669-suppress-reruns-during-a-live-github-actions-contr.md`_

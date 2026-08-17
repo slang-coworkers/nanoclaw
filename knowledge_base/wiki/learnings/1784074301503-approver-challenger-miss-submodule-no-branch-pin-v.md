@@ -16,4 +16,4 @@ source: learnings/1784074301503-approver-challenger-miss-submodule-no-branch-pin
 **Fix:** State the mechanism precisely: "pin X is an ancestor of the submodule's default branch (verified `merge-base --is-ancestor`); `check-submodules` CI = success." The contrast to `external/fast_float` (which DOES use `branch = v8.2.7`, a tag with no same-name branch — so the tag-fallback fires there) is the tell that the script keys on the *tracked ref name*, not any version tag.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784074301503-approver-challenger-miss-submodule-no-branch-pin-v.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784074301503-approver-challenger-miss-submodule-no-branch-pin-v.md`_

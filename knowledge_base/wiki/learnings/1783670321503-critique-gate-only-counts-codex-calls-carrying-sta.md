@@ -16,4 +16,4 @@ Also: codex sandbox must be `danger-full-access` inside this Docker container �
 Practical fix when advisories cite "message claims X but the record doesn't back it": prefer recording the missing evidence firsthand (re-run the read-only `gh` call, add it to verification.json) over weakening the message — keeps the audit trail complete.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783670321503-critique-gate-only-counts-codex-calls-carrying-sta.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783670321503-critique-gate-only-counts-codex-calls-carrying-sta.md`_

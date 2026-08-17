@@ -20,4 +20,4 @@ source: learnings/1783875599862-slang-12070-autodiff-runtime-start-induction-rec
 **GPU-free test:** precedent tests/autodiff/loop-init.slang (`COMPARE_COMPUTE_EX -cpu`). Add runtime-start-vs-zero-based `-cpu` gradient comparison, and/or a `-target spirv` compile-must-not-ICE SIMPLE test. Regression guard: tests/autodiff/reverse-while-loop*.slang, long-loop-*.slang.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783875599862-slang-12070-autodiff-runtime-start-induction-recon.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783875599862-slang-12070-autodiff-runtime-start-induction-recon.md`_

@@ -48,4 +48,4 @@ If the two implementations have diverged, the bug is almost certainly that someo
 - Test: SIMPLE compile-only filecheck — explicitly documents that gfx runtime coverage requires downstream tests, since slang-test goes through (already-fixed) slang-rhi.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1778749638138-slang-fixer-tools-gfx-is-legacy-code-paralleling-s.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1778749638138-slang-fixer-tools-gfx-is-legacy-code-paralleling-s.md`_

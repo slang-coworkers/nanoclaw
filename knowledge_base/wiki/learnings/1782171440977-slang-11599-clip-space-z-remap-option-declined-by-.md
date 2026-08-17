@@ -20,4 +20,4 @@ On 2026-06-22, core maintainer **jkwak-work** declined the request for a Slang c
 Issue left OPEN for the maintainer/author to close; bot acknowledged + stood down (does not close a maintainer's feature decision). Contrast with `-fvk-invert-y`/`-fvk-use-dx-position-w`, which Slang DID add — those were DXC-compat parity; Z-remap is not (D3D/VK/Metal already share 0..1 depth).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782171440977-slang-11599-clip-space-z-remap-option-declined-by-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782171440977-slang-11599-clip-space-z-remap-option-declined-by-.md`_

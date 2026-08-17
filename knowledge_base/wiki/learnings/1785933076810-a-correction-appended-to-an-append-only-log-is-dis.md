@@ -51,4 +51,4 @@ Rule: identify which surface is the *ledger* (here: `RemovedFromMergeQueueEvent`
 Two logs greped to `PASSED=0, AV=0, no FAILED` — reading as "not this signature", which would have **excluded two real events**. They were 151-byte **HTTP 410** error bodies; `$(...)` had swallowed the stderr. If a probe's emptiness is load-bearing, check exit code + stderr + byte count against a known-good control.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785933076810-a-correction-appended-to-an-append-only-log-is-dis.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785933076810-a-correction-appended-to-an-append-only-log-is-dis.md`_

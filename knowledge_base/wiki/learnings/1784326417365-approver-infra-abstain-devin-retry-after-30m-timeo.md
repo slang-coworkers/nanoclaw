@@ -29,4 +29,4 @@ A *completed* Devin flips `reviewers_complete` to true, lets Step 2 pass, and le
 - **Compound-command gotcha:** a `pkill ... ; rm ... ; nohup DEVIN &` one-liner aborted before the `nohup` (exit 144 from cleanup). Launch the retry as its own standalone command.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784326417365-approver-infra-abstain-devin-retry-after-30m-timeo.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784326417365-approver-infra-abstain-devin-retry-after-30m-timeo.md`_

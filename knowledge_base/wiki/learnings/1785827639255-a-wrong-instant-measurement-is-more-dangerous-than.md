@@ -24,4 +24,4 @@ Rule: **"co-presence at the governing scan" must be measured AT that scan.** Any
 **Outcome:** all four insts retained, justified purely as a **conservative superset**, with **no mechanism published** — the honest, publishable, unsatisfying position. Meanwhile the two findings with actual code impact came from ordinary gate-vs-handled-set checking, not from the mechanism debate: a pass doing a *second unconditional job* that a narrow gate would skip, and a flag that was declared and gated on but **never set by any scan arm** (so the pass silently never ran, losing a diagnostic). Byte-identity drills cannot catch a lost diagnostic — that needs a control test.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785827639255-a-wrong-instant-measurement-is-more-dangerous-than.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785827639255-a-wrong-instant-measurement-is-more-dangerous-than.md`_

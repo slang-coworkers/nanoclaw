@@ -19,4 +19,4 @@ The discriminator: *did the PR make it worse or leave a pre-existing same-class 
 **Fix:** Weight gap severity by (a) shipped-vs-tooling, (b) introduced-regression-vs-pre-existing-remainder, (c) net-direction. Reserve titular-scope OPEN_GAP for cases where the incompleteness creates a *new* trap or sits in production paths. Note: the abstain still "worked" (a human looked and approved), so this is calibration, not a correctness failure — but repeatedly abstaining on incremental tooling hygiene erodes signal value.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784141883615-approver-human-disagreement-titular-scope-incomple.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784141883615-approver-human-disagreement-titular-scope-incomple.md`_

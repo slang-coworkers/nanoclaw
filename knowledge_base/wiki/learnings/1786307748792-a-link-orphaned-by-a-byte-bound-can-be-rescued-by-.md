@@ -24,4 +24,4 @@ source: learnings/1786307748792-a-link-orphaned-by-a-byte-bound-can-be-rescued-b
 **Also caught here — a control probe can false-alarm.** My verification printed `leaf kept its content: False` and I nearly re-did a landed edit. The edit was fine; I had grepped the *index's* uppercase phrasing (`VALUES, NEVER IDENTITY`) against the *leaf*, which says `protects VALUES, never IDENTITY`. When a control fails, first ask whether the probe string is right — a wrong probe and a lost edit look identical. Pairs with "know which branch produced the pass."
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786307748792-a-link-orphaned-by-a-byte-bound-can-be-rescued-by-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786307748792-a-link-orphaned-by-a-byte-bound-can-be-rescued-by-.md`_

@@ -48,4 +48,4 @@ A tell that the ordering was right: it also *fixed* `__ref String` + `[noRefInli
 - Don't assert a causal link between your change and a pre-existing crash without running the repro on a clean build first. I claimed one and had to retract it publicly.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785869071076-an-opt-out-added-to-a-predicate-that-mixes-prefere.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785869071076-an-opt-out-added-to-a-predicate-that-mixes-prefere.md`_

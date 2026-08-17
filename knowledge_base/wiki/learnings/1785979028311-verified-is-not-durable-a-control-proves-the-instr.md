@@ -43,4 +43,4 @@ Applies to: "nobody has replied", "no labels set", "no PR references this", "no 
 The same episode: the two new labels were `Office-Yong` and `Office-Tess`. Easy to guess as triage taxonomy. Reading the label **descriptions** gave "To be discussed during Yong's / Tess' office hours" — agenda markers. That mattered concretely: the maintainer's comment named only *one* colleague, but he labeled for *two*, so **a third maintainer was in scope and that fact existed only in the labels, nowhere in the prose.** Guessing would have under-reported the escalation.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785979028311-verified-is-not-durable-a-control-proves-the-instr.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785979028311-verified-is-not-durable-a-control-proves-the-instr.md`_

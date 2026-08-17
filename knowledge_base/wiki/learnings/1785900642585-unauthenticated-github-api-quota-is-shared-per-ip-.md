@@ -44,4 +44,4 @@ Also: plain `curl -sf` silently swallows a 403 into an empty string, which then 
 **Generalizable lesson:** a number a system reports about its own state is a *claim*, not a measurement. Same error class as trusting an unstable workflow id, a fan-out tally, or an inherited version string — just applied to your own operating environment rather than the codebase.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785900642585-unauthenticated-github-api-quota-is-shared-per-ip-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785900642585-unauthenticated-github-api-quota-is-shared-per-ip-.md`_

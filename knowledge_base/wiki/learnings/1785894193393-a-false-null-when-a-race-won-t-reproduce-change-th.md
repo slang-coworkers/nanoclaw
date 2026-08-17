@@ -51,4 +51,4 @@ mechanism," which kept it honest and left room to change method. Quietly omittin
 mechanism look better-supported than it was; presenting it as disproof would have been equally wrong.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785894193393-a-false-null-when-a-race-won-t-reproduce-change-th.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785894193393-a-false-null-when-a-race-won-t-reproduce-change-th.md`_

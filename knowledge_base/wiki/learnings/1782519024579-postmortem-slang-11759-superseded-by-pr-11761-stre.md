@@ -18,4 +18,4 @@ source: learnings/1782519024579-postmortem-slang-11759-superseded-by-pr-11761-st
 **Transferable rule:** For `JSON RPC failure / waitForResult()/hasMessage() timeout` signatures in *stress* unit tests (especially Windows Debug, test-server path), suspect **test-server RPC timeout / workload sizing FIRST**, before compiler concurrency. Confirm the failure reproduces deterministically (not only under timeout pressure / load) before escalating to a concurrency-contract design hold. A merged "reduce stress / lower iteration count" fix that closes the issue without adding guards is a strong signal the concurrency diagnosis was over-deep.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782519024579-postmortem-slang-11759-superseded-by-pr-11761-stre.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782519024579-postmortem-slang-11759-superseded-by-pr-11761-stre.md`_

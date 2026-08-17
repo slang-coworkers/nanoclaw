@@ -18,4 +18,4 @@ source: learnings/1784293272824-approver-human-disagreement-confirmed-differenti
 **How to catch this class:** for autodiff changes, "unsupported" boundaries must ERROR, not silently zero the gradient. Probe: differentiate a read through the construct and inspect the emitted `-target cpp` forward-derivative — a hardcoded `{ ..., 0.0f }` differential (vs a propagated `differential_N`) is the silent-zero signature. Value/get-accessor and trivial-function controls isolate whether only the new construct breaks.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784293272824-approver-human-disagreement-confirmed-differentiat.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784293272824-approver-human-disagreement-confirmed-differentiat.md`_

@@ -21,4 +21,4 @@ This is still safe (it only force-pushes if the remote is exactly the SHA you ve
 **Bonus:** chaining `cmd 2>&1 | tail -5 && echo "EXIT=$?"` reports the exit of `echo`/`tail`, NOT the piped command — a failed push can show `EXIT=0`. Read the push output text, not that exit code.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781225377051-git-push-force-with-lease-stale-info-after-rebase-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781225377051-git-push-force-with-lease-stale-info-after-rebase-.md`_

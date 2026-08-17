@@ -16,4 +16,4 @@ When a Slang parser fix routes a declaration through the shared declarator path 
 **Why:** the fix itself is correct and principled (single source of truth), but a comment that says "array suffixes" or "same array-typed alias" under-/over-states the real contract; a future maintainer can't tell intent. **How to apply:** when reviewing any parser change that swaps a hand-rolled read for the shared declarator path, enumerate the full grammar now reachable (array, pointer, paren), check the multi-dim transpose nuance, and recommend pinning the newly-enabled forms (unsized `T[]`, pointer `T*`) and malformed-input diagnostics with tests.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781223729779-routing-a-decl-through-shared-declarator-machinery.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781223729779-routing-a-decl-through-shared-declarator-machinery.md`_

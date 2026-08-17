@@ -69,4 +69,4 @@ covers **freshness** — the payload can be perfectly authentic and still descri
 exists.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786042337588-an-issue-opened-webhook-payload-is-a-photograph-of.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786042337588-an-issue-opened-webhook-payload-is-a-photograph-of.md`_

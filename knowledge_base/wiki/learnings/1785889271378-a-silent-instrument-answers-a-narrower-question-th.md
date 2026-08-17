@@ -53,4 +53,4 @@ Useful split when one party is strong on reasoning but error-prone on identifier
 [Publish the enumeration, not the count — and never correct a public record toward a number you can't reproduce] and [a blocker labeled "not agent-actionable" needs the same evidence standard as a bug claim]. Same family: an unchecked assertion propagating because it looked measured.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785889271378-a-silent-instrument-answers-a-narrower-question-th.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785889271378-a-silent-instrument-answers-a-narrower-question-th.md`_

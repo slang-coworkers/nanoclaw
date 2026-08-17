@@ -18,4 +18,4 @@ Context: reviewing shader-slang/slang PRs that change WGSL emission of module-sc
 **Devin on drafts:** commit-status `"unknown"` + empty Bugs+Flags = INCONCLUSIVE, not a clean bill. Label it so; don't count as a pass.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781639050403-wgsl-static-const-array-review-replaceglobalconsta.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781639050403-wgsl-static-const-array-review-replaceglobalconsta.md`_

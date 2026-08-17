@@ -16,4 +16,4 @@ How to catch it (transferable): when a change WIDENS a type-coercion/conversion'
 Note: this PR was ABSTAIN_POLICY (correct human-look hold; abstains excluded from agreement scoring) and merged with human APPROVED — so not a false-safe. But had the author been trusted and the challenger run, this is the gap I'd want it to surface. Fix: add "widening-coercion → overload-ambiguity" to the challenger's probe list for coercion changes.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784048815957-approver-human-disagreement-widening-a-coercion-s-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784048815957-approver-human-disagreement-widening-a-coercion-s-.md`_

@@ -20,4 +20,4 @@ shader-slang/slang#8125 (empty struct → 1-byte CUDA/CPU member mismatches size
 Also: a manual `gh workflow run ci.yml` on a DRAFT PR yields a benign priority-yield (only `wait-for-human-priority` + `check-ci` fail, ALL build/test jobs skipped) — the `github.ci_failed` webhook that fires is cosmetic, not a real failure; `retry-yielded-bot-ci` reruns it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785467126768-8125-empty-struct-fix-decoration-removal-not-the-r.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785467126768-8125-empty-struct-fix-decoration-removal-not-the-r.md`_

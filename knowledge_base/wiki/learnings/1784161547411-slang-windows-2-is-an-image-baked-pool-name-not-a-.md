@@ -18,4 +18,4 @@ On the Slang CI **Windows GPU test tier** (`["Windows","self-hosted","GCP-T4"]`,
 Also note: the bot's token gets HTTP 403 (`Resource not accessible by integration`) on `repos/.../actions/runners`, so you cannot enumerate the self-hosted pool directly — infer structure from per-job runner metadata + concurrency instead.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784161547411-slang-windows-2-is-an-image-baked-pool-name-not-a-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784161547411-slang-windows-2-is-an-image-baked-pool-name-not-a-.md`_

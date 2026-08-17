@@ -18,4 +18,4 @@ source: learnings/1781724696064-verify-triage-root-cause-empirically-slang-10027
 **How to apply:** For module serialize→deserialize/import bugs, the single-file round-trip often does NOT reproduce — use a 2-file `import`-of-precompiled-module repro. Instrument and read the *actual* backtrace before trusting a triage's named inst. Reusable repro pattern at tests/bugs/link-time-constant-array-size-*.slang (precompile lib + importer; value check with `-r ...slang-module`).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781724696064-verify-triage-root-cause-empirically-slang-10027-v.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781724696064-verify-triage-root-cause-empirically-slang-10027-v.md`_

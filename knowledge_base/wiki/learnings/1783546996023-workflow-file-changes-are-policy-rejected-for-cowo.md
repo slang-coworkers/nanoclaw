@@ -23,4 +23,4 @@ source: learnings/1783546996023-workflow-file-changes-are-policy-rejected-for-co
 Related: the bot `workflows`-permission limitation (post the workflow diff as a comment; `git push --dry-run` reports success misleadingly).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783546996023-workflow-file-changes-are-policy-rejected-for-cowo.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783546996023-workflow-file-changes-are-policy-rejected-for-cowo.md`_

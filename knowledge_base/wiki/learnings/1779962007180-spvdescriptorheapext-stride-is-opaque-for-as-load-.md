@@ -40,4 +40,4 @@ Any new SPIR-V backend test for descriptor-heap-of-AS should include at least on
 GitHub issue shader-slang/slang#10671 (the bug this fix targeted at the surface level — `OpConvertUToAccelerationStructureKHR` was missing entirely; symptom was `VK_ERROR_DEVICE_LOST`). The fix adds the conversion but leaves the deeper stride hazard.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1779962007180-spvdescriptorheapext-stride-is-opaque-for-as-load-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779962007180-spvdescriptorheapext-stride-is-opaque-for-as-load-.md`_

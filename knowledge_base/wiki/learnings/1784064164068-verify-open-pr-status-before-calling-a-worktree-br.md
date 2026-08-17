@@ -17,4 +17,4 @@ source: learnings/1784064164068-verify-open-pr-status-before-calling-a-worktree-
 - Disk at 82% / 44G free is NOT pressure — don't manufacture a sweep. Reap only the specific merged artifact you were dispatched for.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784064164068-verify-open-pr-status-before-calling-a-worktree-br.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784064164068-verify-open-pr-status-before-calling-a-worktree-br.md`_

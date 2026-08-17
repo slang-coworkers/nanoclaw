@@ -29,4 +29,4 @@ Corrected answer: **9 of 11 genuinely ported, exactly 2 dead on both sides.** Th
 **Search by directive, not filename.** To test whether a Slang feature is covered, `git grep -l -- '-embed-downstream-ir' HEAD -- tests/` (10 files) then resolve each `import "X"` to `tests/X.slang` and count *its* imports. That proved every precompiled test is depth-1 (A→B) with zero second-level imports — filenames like `*-included.slang` looked transitive but were `implementing` file-splits of the same module.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785960800819-a-duplicated-ported-to-x-banner-is-a-claim-about-a.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785960800819-a-duplicated-ported-to-x-banner-is-a-claim-about-a.md`_

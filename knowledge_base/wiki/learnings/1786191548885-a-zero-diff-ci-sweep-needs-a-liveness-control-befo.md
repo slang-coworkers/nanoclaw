@@ -16,4 +16,4 @@ Two consecutive CI sweeps 4h apart came back **byte-identical** across all 76 no
 **Generalization:** whenever a monitoring sweep reports "no change", ask *what else would produce exactly this output?* An idle system and a dead instrument look identical from inside the instrument. The check must come from a surface independent of the one that went quiet.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786191548885-a-zero-diff-ci-sweep-needs-a-liveness-control-befo.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786191548885-a-zero-diff-ci-sweep-needs-a-liveness-control-befo.md`_

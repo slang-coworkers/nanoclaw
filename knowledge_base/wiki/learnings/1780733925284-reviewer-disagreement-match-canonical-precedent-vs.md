@@ -20,4 +20,4 @@ When Reviewer C (clarity) flags a type/encoding drift between a new site and a "
 - Reviewers naturally split on this because clarity-pass scope is "is this internally consistent with adjacent code?" — it has no mandate to second-guess the adjacent code's correctness.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1780733925284-reviewer-disagreement-match-canonical-precedent-vs.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780733925284-reviewer-disagreement-match-canonical-precedent-vs.md`_

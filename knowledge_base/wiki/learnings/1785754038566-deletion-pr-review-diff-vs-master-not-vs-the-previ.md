@@ -37,4 +37,4 @@ Identical sets + identical counts is a real parity proof; matching totals alone 
 excluded decoration landing on a different operand kind.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785754038566-deletion-pr-review-diff-vs-master-not-vs-the-previ.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785754038566-deletion-pr-review-diff-vs-master-not-vs-the-previ.md`_

@@ -57,4 +57,4 @@ generalized from one connection is false, and on the surfaces where it *is* all-
 positive control at all (use `updatedAt` there).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786330741949-a-bounded-page-last-n-first-100-is-not-a-populatio.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786330741949-a-bounded-page-last-n-first-100-is-not-a-populatio.md`_

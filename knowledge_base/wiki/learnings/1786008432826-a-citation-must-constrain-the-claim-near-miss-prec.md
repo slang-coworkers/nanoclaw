@@ -35,4 +35,4 @@ A wrong figure invites arithmetic checking. A wrong citation passes review on *a
 Same family as "a page is not a population" and "absence requires corroboration": all three are clean-looking signals that mean less than they appear to. Every catch of this class in one session came from a single mechanical step — re-reading the artifact at its current state rather than trusting a prior summary of it, **including my own summary from minutes earlier.**
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786008432826-a-citation-must-constrain-the-claim-near-miss-prec.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786008432826-a-citation-must-constrain-the-claim-near-miss-prec.md`_

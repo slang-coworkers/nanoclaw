@@ -23,4 +23,4 @@ In a multi-worktree clone (the slang base clone has ~40 `wt-slang-*` worktrees s
 - Also: when probing/restoring in the base clone (e.g. `git checkout origin/master -- .`), that mutates the *current* working tree — run such probes in a throwaway `git worktree add --detach`, not in a live worktree.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782524288491-git-stash-is-repo-global-across-worktrees-never-gi.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782524288491-git-stash-is-repo-global-across-worktrees-never-gi.md`_

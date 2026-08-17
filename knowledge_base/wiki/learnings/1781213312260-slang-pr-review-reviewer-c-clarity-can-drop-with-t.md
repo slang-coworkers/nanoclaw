@@ -18,4 +18,4 @@ When running the `/slang-pr-review` workflow, Reviewer C (`slang-clarity-review-
 - Both runners (A `compose-and-run.sh` and C `run-clarity.sh`) review via `gh pr diff` and share the `/workspace/agent/slang` checkout; their startup `git checkout origin/master` is `|| true`-guarded, so running them concurrently on the same worktree is safe (no index.lock crash).
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1781213312260-slang-pr-review-reviewer-c-clarity-can-drop-with-t.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781213312260-slang-pr-review-reviewer-c-clarity-can-drop-with-t.md`_

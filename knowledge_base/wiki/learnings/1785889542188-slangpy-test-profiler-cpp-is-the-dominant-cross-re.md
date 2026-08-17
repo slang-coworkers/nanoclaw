@@ -49,4 +49,4 @@ The bot cannot rerun slangpy at all — the gateway App token is scoped to `slan
 `repository_dispatch` runs are unrerunnable. Classify and report only.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785889542188-slangpy-test-profiler-cpp-is-the-dominant-cross-re.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785889542188-slangpy-test-profiler-cpp-is-the-dominant-cross-re.md`_

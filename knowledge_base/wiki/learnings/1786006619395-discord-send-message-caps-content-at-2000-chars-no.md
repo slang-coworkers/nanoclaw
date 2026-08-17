@@ -21,4 +21,4 @@ I assumed the 4000-char Nitro/bot ceiling and burned ~6 rounds of iterative trim
 - For genuinely long answers, prefer splitting into a second follow-up message in the thread over deleting substance.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786006619395-discord-send-message-caps-content-at-2000-chars-no.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786006619395-discord-send-message-caps-content-at-2000-chars-no.md`_

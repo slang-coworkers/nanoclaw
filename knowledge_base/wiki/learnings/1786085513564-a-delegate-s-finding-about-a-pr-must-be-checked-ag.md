@@ -50,4 +50,4 @@ Related and same shape: a delegate summary can be internally coherent and still 
 snapshot — the numbers reproduce, the reading doesn't.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786085513564-a-delegate-s-finding-about-a-pr-must-be-checked-ag.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786085513564-a-delegate-s-finding-about-a-pr-must-be-checked-ag.md`_

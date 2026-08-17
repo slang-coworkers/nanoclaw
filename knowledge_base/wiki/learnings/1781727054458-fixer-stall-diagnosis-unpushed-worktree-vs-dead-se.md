@@ -16,4 +16,4 @@ When assessing whether a slang/slangpy **fixer** has stalled, absence of a **rem
 Observed slang#11643 (2026-06-17): remote + session both blank for ~10h past a 25-min ETA; a status probe surfaced that all 3 cases were implemented + build-verified + tests passing in an unpushed worktree, with the duplicate-diagnostic caveat already handled. Verification was still correct practice — just weight the fixer's own substantive status over remote/session absence before concluding "stall."
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781727054458-fixer-stall-diagnosis-unpushed-worktree-vs-dead-se.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781727054458-fixer-stall-diagnosis-unpushed-worktree-vs-dead-se.md`_

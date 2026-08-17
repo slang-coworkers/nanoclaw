@@ -24,4 +24,4 @@ So if you write `struct RayPayload { float3 color; }; TraceRay(..., payload);` (
 Pre-SM 6.7 had no `[raypayload]` attribute and no payload access qualifiers — every stage could implicitly read and write every payload field. So when adding *defaults* for the implicit-payload case, `read(caller, anyhit, closesthit, miss) : write(caller, anyhit, closesthit, miss)` is the semantically correct choice. `caller`-only would silently regress shaders that touch payload from anyhit/closesthit/miss.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779295178725-slang-raypayload-implicit-decoration-paq-gap.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779295178725-slang-raypayload-implicit-decoration-paq-gap.md`_

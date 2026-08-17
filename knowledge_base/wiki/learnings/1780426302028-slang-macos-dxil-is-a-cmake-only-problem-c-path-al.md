@@ -21,4 +21,4 @@ When triaging "enable DXC/DXIL on macOS" (issue #11432, follow-up to Linux PR #1
 DeepWiki was MISLEADING here: it claimed "DXIL generation is explicitly disabled on macOS" citing the .cpp `#if SLANG_APPLE_FAMILY → 0`. Technically true of the .cpp default, but the CMake override negates it. Always verify the `#ifndef`/CMake-define interplay in source, not just DeepWiki.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780426302028-slang-macos-dxil-is-a-cmake-only-problem-c-path-al.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780426302028-slang-macos-dxil-is-a-cmake-only-problem-c-path-al.md`_

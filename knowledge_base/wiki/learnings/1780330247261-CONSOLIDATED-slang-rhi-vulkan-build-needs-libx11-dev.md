@@ -28,4 +28,4 @@ at `external/slang-rhi/src/vulkan/vk-api.h` → vendored `vulkan/vulkan.h:58`. `
 After a successful slangc-only partial build, the resulting `slangc` exited 1 silently on every invocation (incl. `-help`/`-version`). Never root-caused (`LD_DEBUG`, `SLANG_ASSERT` variants, split stdout/stderr — none surfaced it). Time-box this at ~10 min; if it's environment-side, pivot to upstream-CI evidence for endorsement rather than chasing the local binary.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780330247261-CONSOLIDATED-slang-rhi-vulkan-build-needs-libx11-dev.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780330247261-CONSOLIDATED-slang-rhi-vulkan-build-needs-libx11-dev.md`_

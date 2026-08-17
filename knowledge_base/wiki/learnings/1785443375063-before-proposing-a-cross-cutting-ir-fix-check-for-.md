@@ -21,4 +21,4 @@ Check the file list of any hit. A cross-cutting fold/rule is often already owned
 **Corollary — layering signal:** when a maintainer says a fix "conflates a separate concern," treat it as a strong hint that the separated concern has (or should have) its own PR. Look for it before defending or reworking your approach.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785443375063-before-proposing-a-cross-cutting-ir-fix-check-for-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785443375063-before-proposing-a-cross-cutting-ir-fix-check-for-.md`_

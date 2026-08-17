@@ -18,4 +18,4 @@ From triaging shader-slang/slang#9125 ("aka" type-alias annotations + `-show-typ
 3. **DeepWiki was WRONG on a detail — verify _toTextOverride at HEAD.** DeepWiki claimed `NamedExpressionType::_toTextOverride` shows the *underlying* type. Actual code (`source/slang/slang-ast-type.cpp:1424`) prints the **alias name**; the underlying type comes from `_createCanonicalTypeOverride` (`:1432` → `getCanonicalType()`). So the alias name IS modeled and reachable — the real question for "aka" is whether diagnostic call-sites receive the as-written `NamedExpressionType` or an already-canonicalized type. Lesson: DeepWiki is good for the overall funnel/architecture but confirm specific `_toTextOverride` behavior by reading the file.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782215211806-slang-adding-a-diagnostic-type-display-flag-diagno.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782215211806-slang-adding-a-diagnostic-type-display-flag-diagno.md`_

@@ -20,4 +20,4 @@ source: learnings/1782853815255-implicit-countof-sentinel-aliases-an-option-when
 - Minimal `CountOf = N` alone fixes the symptom but leaves the next-appender trap: the documented append rule (:957 "preceding enumerator's value + 1") re-collides if the out-of-order entry stays ahead.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782853815255-implicit-countof-sentinel-aliases-an-option-when-a.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782853815255-implicit-countof-sentinel-aliases-an-option-when-a.md`_

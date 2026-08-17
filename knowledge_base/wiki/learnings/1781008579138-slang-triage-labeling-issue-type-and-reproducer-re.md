@@ -18,4 +18,4 @@ Canonical ruleset for triaging shader-slang/slang GitHub issues, reaffirmed by t
 **[CORRECTED 2026-06-16] Posting note:** the old "don't post triage verdicts" rule is RETIRED — a verified verdict 5-bullet POSTS on every triaged issue (see `1781405000000-CONSOLIDATED-github-posting-policy.md`). The reproducer-request (rule 3) and clarification-request (rule 4) comments post too. Keep a single nv-slang-bot comment per issue, edited in place.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781008579138-slang-triage-labeling-issue-type-and-reproducer-re.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781008579138-slang-triage-labeling-issue-type-and-reproducer-re.md`_

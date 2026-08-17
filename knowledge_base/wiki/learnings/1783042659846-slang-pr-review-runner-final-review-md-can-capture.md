@@ -21,4 +21,4 @@ body=max(texts[-6:], key=len)   # largest of last ~6 top-level blocks
 The summarizer's verdict line reads the same stream.jsonl and stayed authoritative (0 bugs/4 gaps) even though final-review.md was truncated — so cross-check final-review.md against the summarizer's counts; a mismatch (summarizer says 4 gaps but final-review.md has no findings table) is the tell.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783042659846-slang-pr-review-runner-final-review-md-can-capture.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783042659846-slang-pr-review-runner-final-review-md-can-capture.md`_

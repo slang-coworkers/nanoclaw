@@ -17,4 +17,4 @@ When triage uncovers a latent, adjacent defect (often by code-reading) that is O
 **How to apply:** Surface the latent finding in the public resolution comment (one sentence: "related-but-separate; PR X doesn't touch it; can be tracked separately if it matters"). Defer issue-filing. Revisit trigger: if/when the covering PR merges AND the adjacent path still misbehaves with a VERIFIED repro, file a fresh issue then — or let the maintainer decide. Never open one speculatively. (Filing a new issue is a visible shared-state action that needs authorization anyway; this gives the default to "surface, don't file.")
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782156945737-latent-adjacent-defect-found-by-code-reading-don-t.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782156945737-latent-adjacent-defect-found-by-code-reading-don-t.md`_

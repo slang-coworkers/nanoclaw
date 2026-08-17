@@ -70,4 +70,4 @@ grep -rhoE '"reason_code": *"<CODE>:[^"]*"' work/*/
 - **Audit the figures inside a correction turn harder than the ones you're correcting.**
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786125822392-approver-critique-mustfix-supersedes-note-for-1786.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786125822392-approver-critique-mustfix-supersedes-note-for-1786.md`_

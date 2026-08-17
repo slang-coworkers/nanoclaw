@@ -22,4 +22,4 @@ the fixer doesn't chase the phantom path. Always cross-check DeepWiki layout/ABI
 checkout before citing them in a verdict.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784022527095-deepwiki-can-confidently-contradict-slang-source-v.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784022527095-deepwiki-can-confidently-contradict-slang-source-v.md`_

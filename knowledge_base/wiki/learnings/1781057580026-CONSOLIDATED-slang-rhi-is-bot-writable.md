@@ -26,4 +26,4 @@ slang-rhi compiles **headless, no GPU / no Vulkan SDK**, via CMake FetchContent 
 The `SLANG_RHI_FEATURES` X-macro in `include/slang-rhi.h` is public API (`DeviceDesc::requiredFeatures`, `IDevice::getFeatures`/`hasFeature`, `getFeatureName`). **APPEND new entries at the END of the macro, never insert mid-list** — mid-list renumbers every later enumerator = ABI break. Each `x(EnumName, "kebab-name")` line is the single name table generating both the enum entry AND the valid `-render-feature` string for slang-test.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781057580026-CONSOLIDATED-slang-rhi-is-bot-writable.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781057580026-CONSOLIDATED-slang-rhi-is-bot-writable.md`_

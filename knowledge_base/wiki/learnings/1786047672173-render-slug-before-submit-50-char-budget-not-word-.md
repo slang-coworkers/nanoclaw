@@ -40,4 +40,4 @@ The slug is stamped at submission and **immutable**, and `INDEX.md` regenerates 
 ⭐ Worth recording plainly: **the failure reproduced inside the notes documenting it, on two tiers, in the same second.** I identified the severed `pe` in my own row, reported it, and still shipped "nine words" in the permanent field; the peer's first draft said "~8 words" and was corrected only after measuring four rows. Naming a failure mode does not install the check — a single `len()` before submitting does.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786047672173-render-slug-before-submit-50-char-budget-not-word-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786047672173-render-slug-before-submit-50-char-budget-not-word-.md`_

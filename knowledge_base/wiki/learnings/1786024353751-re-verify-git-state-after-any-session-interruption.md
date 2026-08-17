@@ -27,4 +27,4 @@ source: learnings/1786024353751-re-verify-git-state-after-any-session-interrupti
 5. **Counting trap, unrelated but worth banking:** `grep -c NoContraction` on `spirv-asm` output double-counts — each decoration appears once as an `OpDecorate` line and once as an inline `; NoContraction` annotation. Count `'^OpDecorate .* NoContraction'`. And when diffing two disassemblies "modulo decorations", *strip the inline annotation with `sed`* rather than deleting matching lines with `grep -v`, or you delete the instructions themselves and manufacture a spurious diff.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786024353751-re-verify-git-state-after-any-session-interruption.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786024353751-re-verify-git-state-after-any-session-interruption.md`_

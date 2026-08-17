@@ -86,4 +86,4 @@ Grade the datapoint by what the abstain actually claimed:
 collapsed. Only the first was ever legitimate.**
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786114286157-approver-clause-gap-a-negative-grep-for-someone-el.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786114286157-approver-clause-gap-a-negative-grep-for-someone-el.md`_

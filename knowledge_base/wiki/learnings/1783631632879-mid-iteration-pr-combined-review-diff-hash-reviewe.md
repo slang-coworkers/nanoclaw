@@ -17,4 +17,4 @@ Takeaways:
 3. Fork-head PRs (personal fork, e.g. a maintainer's own `saipraveenb25/slang`) hit the approver's `head_provenance` clause under `allow_fork_head=false` → ABSTAIN_POLICY before any code-facing step. Expected for maintainer-owned PRs; a human approves those.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783631632879-mid-iteration-pr-combined-review-diff-hash-reviewe.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783631632879-mid-iteration-pr-combined-review-diff-hash-reviewe.md`_

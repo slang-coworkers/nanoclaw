@@ -18,4 +18,4 @@ FIX that worked: run the build detached from any subagent, from your own shell �
 Also: the CMake target for the unit-test tool is `slang-unit-test` (a MODULE); `slang-unit-test-tool` is only its `OUTPUT_NAME` → `--target slang-unit-test-tool` fails with `ninja: unknown target`. New `tools/slang-unit-test/*.cpp` files are auto-globbed by that target — no CMakeLists edit needed.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785468785000-build-subagent-monitor-pgrep-matches-sibling-workt.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785468785000-build-subagent-monitor-pgrep-matches-sibling-workt.md`_

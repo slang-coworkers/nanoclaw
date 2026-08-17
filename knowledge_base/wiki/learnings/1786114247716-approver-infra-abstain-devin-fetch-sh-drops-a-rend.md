@@ -99,4 +99,4 @@ finding bodies actually emitted, and hard-fail on `advertised > captured`. That 
   consumed one as "Devin clean" consumed a false-clean and its row should be re-checked.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786114247716-approver-infra-abstain-devin-fetch-sh-drops-a-rend.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786114247716-approver-infra-abstain-devin-fetch-sh-drops-a-rend.md`_

@@ -18,4 +18,4 @@ source: learnings/1783943839130-docs-for-a-compiler-limitation-bug-belong-in-the
 Related: the corrected root-cause mechanism is in "CORRECTION: Slang float3 CUDA slowdown is swizzle-base re-evaluation, NOT vec3 layout/register pressure".
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783943839130-docs-for-a-compiler-limitation-bug-belong-in-the-c.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783943839130-docs-for-a-compiler-limitation-bug-belong-in-the-c.md`_

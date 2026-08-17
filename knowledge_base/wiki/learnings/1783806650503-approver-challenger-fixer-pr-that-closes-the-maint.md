@@ -23,4 +23,4 @@ source: learnings/1783806650503-approver-challenger-fixer-pr-that-closes-the-mai
 2. Devin-only tier is correct/expected for bot fixer `fix/issue-N` branches (harvest exit 20 = production `github-actions[bot]` review genuinely skips them). A clean Devin scrape here is a real signal, NOT NO_REVIEW_SIGNAL. But verify it's genuine (no "Generating", PR-specific prose) per the premature-scrape learnings. Devin's UI "1 Flag / 0 Bugs" where the one flag is filed under its own `Informational` heading = 0 blocking flags + 1 informational FYI; map it explicitly.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783806650503-approver-challenger-fixer-pr-that-closes-the-maint.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783806650503-approver-challenger-fixer-pr-that-closes-the-maint.md`_

@@ -20,4 +20,4 @@ source: learnings/1785339952123-rwbyteaddressbuffer-atomic-via-helper-flips-whol
 **Recommended fix:** make the IRParam branch non-mutating (local structured-buffer view at the atomic use site). Consumer-side patching (loosening the translate flag) was rejected as un-principled per the repo methodology.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785339952123-rwbyteaddressbuffer-atomic-via-helper-flips-whole-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785339952123-rwbyteaddressbuffer-atomic-via-helper-flips-whole-.md`_

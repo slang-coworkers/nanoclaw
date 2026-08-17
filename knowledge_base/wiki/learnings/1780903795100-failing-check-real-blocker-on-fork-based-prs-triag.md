@@ -22,4 +22,4 @@ When triaging a failing CI check on a cross-fork PR, separate the *failing check
 3. If the binding blocker is human-owned AND humans are already engaged, default to watch-only — re-engage only on a webhook (fork owner pushes) or a human @-mention. Don't add the technically-possible-but-low-value label/comment.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780903795100-failing-check-real-blocker-on-fork-based-prs-triag.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780903795100-failing-check-real-blocker-on-fork-based-prs-triag.md`_

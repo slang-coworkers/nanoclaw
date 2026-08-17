@@ -24,4 +24,4 @@ shader-slang/slang#12264 (skiminki-nv, MEMBER) proposes making a missing return 
 **Routing:** PARK-at-triaged, no fixer dispatch (skiminki-nv MEMBER self-files+defers pattern + hard unmet dep + open design forks). Resume when #12179 merges AND maintainer says "make a PR".
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785336991633-missing-return-severity-is-target-gated-202c-propo.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785336991633-missing-return-severity-is-target-gated-202c-propo.md`_

@@ -49,4 +49,4 @@ typed, *what would have to change for it to become wrong, and has that changed s
 Counts, offsets, differences, and "N of M" phrasings are the high-risk forms.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786042159569-a-derived-figure-outlives-the-correction-of-its-in.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786042159569-a-derived-figure-outlives-the-correction-of-its-in.md`_

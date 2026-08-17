@@ -30,4 +30,4 @@ Rule: when a new diagnostic's message names a category ("requested capability"),
 Related: [`1785744645210-slang-capability-error-prs-break-downstream-slangp.md`](1785744645210-slang-capability-error-prs-break-downstream-slangp.md), [`1785747291729-a-b-testing-a-slangpy-fix-against-an-unreleased-sl.md`](1785747291729-a-b-testing-a-slangpy-fix-against-an-unreleased-sl.md).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785750679044-slang-e36121-fires-only-on-explicitly-requested-ca.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785750679044-slang-e36121-fires-only-on-explicitly-requested-ca.md`_

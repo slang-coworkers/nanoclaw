@@ -16,4 +16,4 @@ The `/supervise-issues` worktree-GC step (R8) says "dispatch the reap to the own
 **How to apply:** On disk pressure (<10 GB free on `/workspace/extra/ephemeral`, host `/dev/vdb`), the `/supervise` cron must **escalate to the operator with df/du numbers + the wt-* list and PR states**, asking for explicit authorization — NOT re-dispatch to slang-fixer. Only reap MERGED-PR worktrees (verify `gh pr list --head fix/issue-<n> --state all` = MERGED). KEEP anything with an OPEN PR or unpushed/no-PR work. With an explicit grant, the fixer runs save-then-remove itself. `supervisor-state.json._worktreeGC._policy` records this so future ticks don't re-fire.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782692523381-worktree-gc-reap-is-operator-gated-sibling-isolati.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782692523381-worktree-gc-reap-is-operator-gated-sibling-isolati.md`_

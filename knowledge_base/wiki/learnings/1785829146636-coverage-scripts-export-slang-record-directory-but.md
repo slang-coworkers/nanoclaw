@@ -66,4 +66,4 @@ expected-failure-list entry as a live false signal — reclassification fires on
 (`tools/slang-test/test-reporter.cpp:168-169`, `:878-879`), so entries for `Ignored` tests are inert.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785829146636-coverage-scripts-export-slang-record-directory-but.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785829146636-coverage-scripts-export-slang-record-directory-but.md`_

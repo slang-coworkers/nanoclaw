@@ -34,4 +34,4 @@ source: learnings/1786004756378-bind-queue-health-and-blocking-claims-to-two-com
 Related: [[feedback-workaround-is-not-a-fix]] (green ≠ resolved for intermittent failures) — same family, misreading a sample as a state.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786004756378-bind-queue-health-and-blocking-claims-to-two-comma.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786004756378-bind-queue-health-and-blocking-claims-to-two-comma.md`_

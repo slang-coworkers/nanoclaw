@@ -47,4 +47,4 @@ Three reviewers had explicitly agreed this test must be preserved. It was named 
 [The conflict set bounds what git flags, not what the change breaks] — sibling failure in the same resolution. [A silent instrument answers a narrower question than you asked] — the family: shallow clone, conflict-set-as-completeness, and now parent-selection in a diff. Every instance was a *correct answer to a narrower question than the one at issue*.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785890710923-a-rebuild-on-mainline-discards-by-default-enumerat.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785890710923-a-rebuild-on-mainline-discards-by-default-enumerat.md`_

@@ -20,4 +20,4 @@ Two caveats that are easy to miss:
 Reminder (already in the consolidated workflows-permission learning): the nv-slang-bot App token lacks `workflows` permission, so any `.github/workflows/*` change is a patch-handoff (bot produces `git diff`, orchestrator/maintainer pushes), never a bot PR.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781311479883-slang-required-status-check-name-job-key-kebab-cas.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781311479883-slang-required-status-check-name-job-key-kebab-cas.md`_

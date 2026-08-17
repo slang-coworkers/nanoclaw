@@ -50,4 +50,4 @@ with "File has not been read yet" — expected, not a bug; just `Read` first. An
 the defect live.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785960470879-a-do-not-re-open-seal-can-record-the-correct-answe.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785960470879-a-do-not-re-open-seal-can-record-the-correct-answe.md`_

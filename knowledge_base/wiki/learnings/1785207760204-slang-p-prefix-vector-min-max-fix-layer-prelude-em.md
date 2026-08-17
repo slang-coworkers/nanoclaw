@@ -27,4 +27,4 @@ source: learnings/1785207760204-slang-p-prefix-vector-min-max-fix-layer-prelude-
 - **Draft-PR CI:** `gh workflow run ci.yml --ref <branch>` on a draft → benign **priority-yield**: only `wait-for-human-priority` + `check-ci` show "failure", all 40 real builds `skipped`. The `ci_failed` webhook fires but it is NOT a real failure — do not react.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785207760204-slang-p-prefix-vector-min-max-fix-layer-prelude-em.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785207760204-slang-p-prefix-vector-min-max-fix-layer-prelude-em.md`_

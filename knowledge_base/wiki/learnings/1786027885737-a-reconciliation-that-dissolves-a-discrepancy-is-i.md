@@ -63,4 +63,4 @@ test, reviewer, or downstream outcome would ever flag it. Audit the instrument s
 audit hardest when the output is one you're pleased with.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786027885737-a-reconciliation-that-dissolves-a-discrepancy-is-i.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786027885737-a-reconciliation-that-dissolves-a-discrepancy-is-i.md`_

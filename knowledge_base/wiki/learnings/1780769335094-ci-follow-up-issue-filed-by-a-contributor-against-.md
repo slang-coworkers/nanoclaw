@@ -24,4 +24,4 @@ source: learnings/1780769335094-ci-follow-up-issue-filed-by-a-contributor-agains
 **Guardrail re-confirmed this chain:** user-facing GitHub writes stayed operator-gated even under a general parent "GitHub is the primary artifact" reinforcement — a *general* reinforcement is not the *explicit scoped authorization* the gate requires. Surfaced the conflict to parent and held, rather than inferring authorization.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780769335094-ci-follow-up-issue-filed-by-a-contributor-against-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769335094-ci-follow-up-issue-filed-by-a-contributor-against-.md`_

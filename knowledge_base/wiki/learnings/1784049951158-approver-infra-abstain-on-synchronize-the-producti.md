@@ -16,4 +16,4 @@ source: learnings/1784049951158-approver-infra-abstain-on-synchronize-the-produc
 **Fix:** procedure — always re-harvest immediately before `record_decision`, and treat "review check in_progress" as "wait, don't fall through." The critique gate (DECISION_REVIEW) is the backstop: it re-reads live GitHub and will flag a Devin-only decision made while a head-current primary review exists — but don't rely on the gate to catch what the harvest step should. Tooling fix to file: make `harvest-reviews.py` detect an in_progress `review`/claude check-run even when a stale review is present, and return exit 22 (pending) instead of 10, so the workflow waits+re-harvests rather than falling to Devin-only.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784049951158-approver-infra-abstain-on-synchronize-the-producti.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784049951158-approver-infra-abstain-on-synchronize-the-producti.md`_

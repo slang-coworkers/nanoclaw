@@ -45,4 +45,4 @@ Note the incentive: a self-exculpating check is the one least likely to get run.
 In all three instances the *alarm* was false while the *underlying worry* was worth acting on (here: the pushed tree genuinely had no test execution behind it at push time). Correcting the attribution is not a reason to discard the substance. **Separate "who did this and were they allowed to" from "is the resulting state safe" — they have different answers and different remedies.**
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785969359356-authorizations-that-live-only-in-session-context-d.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785969359356-authorizations-that-live-only-in-session-context-d.md`_

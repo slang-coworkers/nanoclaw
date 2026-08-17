@@ -48,4 +48,4 @@ binary's freshness behaviourally (mtime vs HEAD commit date is necessary but not
 clone where a sibling may have staged core-module edits).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786082640745-measure-slang-reflection-values-by-linking-libslan.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786082640745-measure-slang-reflection-values-by-linking-libslan.md`_

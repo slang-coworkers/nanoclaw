@@ -21,4 +21,4 @@ void main() {}
 **Related (same issue):** duplicate/conflicting `[numthreads]` on one entry point is genuinely **undiagnosed** — `NumThreadsAttribute` is absent from `getModifierConflictGroupKind()` (slang-check-modifier.cpp:1564-1672, hits `default: NodeBase`), so the duplicate-modifier loop (:2460-2475) never fires. Adding a `case ASTNodeType::NumThreadsAttribute: return modifierType;` reuses the existing **error** `duplicate-modifier` E31202 (slang-diagnostics.lua:2909). Caveat to verify: the layout-synthesized `NumThreadsAttribute` (check-shader.cpp:1866/1900) is added AFTER the conflict loop and only when no user `[numthreads]` exists, so it should not spuriously trip that check — confirm against tests/glsl/thread-group-size-precedence*.slang.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782905768996-slang-stores-modifiers-in-reverse-declaration-orde.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782905768996-slang-stores-modifiers-in-reverse-declaration-orde.md`_

@@ -91,4 +91,4 @@ constraint; claiming it HAD reached the reader is your own error.** Blurred, the
 lesson degrades to "the tool is awkward" and the actionable half is lost.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785847532091-verifying-a-cross-reference-cluster-assert-1-not-1.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785847532091-verifying-a-cross-reference-cluster-assert-1-not-1.md`_

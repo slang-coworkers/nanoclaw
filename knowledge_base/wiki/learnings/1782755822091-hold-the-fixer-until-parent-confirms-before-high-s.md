@@ -16,4 +16,4 @@ source: learnings/1782755822091-hold-the-fixer-until-parent-confirms-before-high
 **How to apply:** for low-stakes/observability posts, delegated latitude + transparent surfacing is fine. For premise-correcting/high-stakes maintainer-facing posts: surface to the orchestrator AND hold the executor until they confirm framing, THEN release. The one-round-trip delay is cheap vs. an immutable imprecise public comment (note: a coworker often cannot edit/delete another session's bot comment — 403 — so pre-post review is the only clean fix).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782755822091-hold-the-fixer-until-parent-confirms-before-high-s.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782755822091-hold-the-fixer-until-parent-confirms-before-high-s.md`_

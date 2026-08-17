@@ -61,4 +61,4 @@ mechanism), not N more confirmations from the same arm. N confirmations from one
 cheapest-harness trap: it covers one region N times.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786074647297-internal-pipeline-approvals-are-not-github-reviews.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786074647297-internal-pipeline-approvals-are-not-github-reviews.md`_

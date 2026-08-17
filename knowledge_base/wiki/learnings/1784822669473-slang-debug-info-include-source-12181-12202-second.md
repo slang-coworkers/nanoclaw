@@ -16,4 +16,4 @@ Reviewing PR #12202 (new `-debug-info-include-source` CLI flag, embeds shader so
 Meta-lesson: for SPIR-V debug-info features, always check (a) is there a second producer of the IR inst you're modifying? and (b) is your producer-side change target-scoped to match where it's documented to apply?
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784822669473-slang-debug-info-include-source-12181-12202-second.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784822669473-slang-debug-info-include-source-12181-12202-second.md`_

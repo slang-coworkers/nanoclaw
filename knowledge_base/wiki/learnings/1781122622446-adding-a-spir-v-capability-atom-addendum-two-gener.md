@@ -31,4 +31,4 @@ Sibling `spirv_asm` SIMPLE tests pass it (e.g. `tests/spirv/deduplicate-annotati
 For an inert atom, the test is a *capability-declaration smoke test*: the `[require(<atom>)]` type-check is the real regression guard; the `// CHECK: OpCapability/OpExtension` lines only prove `spirv_asm` literal passthrough (hoisted verbatim), NOT atom-driven emission. Name the function for "requires the capability", not "uses <feature>". Put any future-consumer gating caveat as a plain `//` note (NOT in the `///` auto-doc line, which feeds the user-facing reference).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781122622446-adding-a-spir-v-capability-atom-addendum-two-gener.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781122622446-adding-a-spir-v-capability-atom-addendum-two-gener.md`_

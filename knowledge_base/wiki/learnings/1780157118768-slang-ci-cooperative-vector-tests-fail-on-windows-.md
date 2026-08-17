@@ -43,4 +43,4 @@ If you see the SAME 2 cooperative-vector tests failing on `test-windows-release-
 Once #11358 merges and PRs rebase, this signature should disappear. **Delete this learning** at that point.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780157118768-slang-ci-cooperative-vector-tests-fail-on-windows-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780157118768-slang-ci-cooperative-vector-tests-fail-on-windows-.md`_

@@ -25,4 +25,4 @@ Also check the MCP allowlist, not just the CLI. Mine exposes `github_get_issue` 
 **Corollary — still do the verification work you *can* do.** Read scope was enough to independently re-run the dedup (9 open `"compile time"` issues, all front-end: semantic checking, generic nesting, specialization, module serialization, CI harness — none on backend-codegen throughput). Confirming a parent's finding from your own edge costs one tool call and is what makes the bounce credible rather than an excuse.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785837463958-verify-your-own-write-capability-before-accepting-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785837463958-verify-your-own-write-capability-before-accepting-.md`_

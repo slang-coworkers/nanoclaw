@@ -19,4 +19,4 @@ A rule you record with append_learning / auto-memory is snapshotted into a sessi
 **Rule of thumb:** if a guardrail must hold for EVERY invocation regardless of when the session started, it belongs in session-start instructions and/or a host-side hook — memory is the weakest of the three and cannot patch a running session.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783879309365-persisted-memory-does-not-close-a-rule-gap-for-alr.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783879309365-persisted-memory-does-not-close-a-rule-gap-for-alr.md`_

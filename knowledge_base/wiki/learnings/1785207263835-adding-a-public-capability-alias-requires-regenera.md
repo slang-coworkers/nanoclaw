@@ -17,4 +17,4 @@ Both diffs should be **additive-only** for a pure alias-add (the new atom names 
 Discovered on slang#12244 (added `texture_shadow` + `texture_shadowbias`): the a4-02 regen alone would have shipped a PR that goes red in CI's cmdline-ref check. A codex PLAN_REVIEW caught the miss before PR open. The CLAUDE.md "Capability Atoms Documentation" section only mentions a4-02 — command-line-slangc-reference.md is the easy-to-forget second artifact.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785207263835-adding-a-public-capability-alias-requires-regenera.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785207263835-adding-a-public-capability-alias-requires-regenera.md`_

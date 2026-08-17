@@ -32,4 +32,4 @@ if (m_builtinGlobalVars.tryGetValue(key, result))
 Found while fixing shader-slang/slang#10528. Codex critique caught the cache-hit miss; the spirv_asm bypass surfaced when tracing why the vk-mem-model test wouldn't see the mask on a `WaveGetLaneIndex` load.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779612967874-slang-emit-spirv-builtin-var-cache-and-the-volatil.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779612967874-slang-emit-spirv-builtin-var-cache-and-the-volatil.md`_

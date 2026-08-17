@@ -23,4 +23,4 @@ Monotonic decrease in finding count + disappearance of disagreements = genuine c
 **Posting note:** this was a reviewer chain with no `<github-post-authorized />` marker, so I returned the combined review via send_file to the fixer (closest-to-the-state, owns the PR) + parent — never posted a GitHub review. Correct per the "post only when authorized" rule; the GitHub-observability obligation for the PR is the fixer's (PR description), not the reviewer's.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1780769199724-multi-round-pr-review-converges-scope-down-to-targ.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769199724-multi-round-pr-review-converges-scope-down-to-targ.md`_

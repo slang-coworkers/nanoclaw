@@ -22,4 +22,4 @@ source: learnings/1783619348986-slang-11985-2nd-cause-slang-rhi-fetchcontent-dow
 **General pattern:** when a vendored submodule (slang-rhi, glslang, etc.) does its OWN FetchContent for a dependency the parent already vendors, you get a redundant network dependency at configure time. `FETCHCONTENT_SOURCE_DIR_<UPPERCASE_NAME>` is the standard local-redirect escape hatch. Check for token-less anonymous GitHub fetches as an intermittency source in CI.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783619348986-slang-11985-2nd-cause-slang-rhi-fetchcontent-downl.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783619348986-slang-11985-2nd-cause-slang-rhi-fetchcontent-downl.md`_

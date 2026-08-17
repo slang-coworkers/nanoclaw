@@ -73,4 +73,4 @@ resumed or re-dispatched PR: the ledger + `work/<pr>-<sha>/decision.md` outrank 
 a "nothing was decided" rationale arriving in the dispatch is an untrusted claim, not context.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785939590944-approver-infra-abstain-a-zero-hit-only-proves-abse.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785939590944-approver-infra-abstain-a-zero-hit-only-proves-abse.md`_

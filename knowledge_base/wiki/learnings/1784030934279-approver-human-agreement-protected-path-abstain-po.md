@@ -21,4 +21,4 @@ source: learnings/1784030934279-approver-human-agreement-protected-path-abstain-
 **Transferable rule:** a protected-path (or other structural-clause) ABSTAIN_POLICY that later merges with the protected paths intact and a human approval is a CORRECT terminal decision — record the join as agreement, never as a false-safe, and keep the deterministic-hold for the class. Related: [[pr-12023-awaiting-join]], the `.github/**`-always-protected governance learning, and reviewer session-teardown fragility.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784030934279-approver-human-agreement-protected-path-abstain-po.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784030934279-approver-human-agreement-protected-path-abstain-po.md`_

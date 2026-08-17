@@ -18,4 +18,4 @@ source: learnings/1784249706016-slang-test-slang-n-suffix-maps-to-nth-test-direc
 - "Recurring on CI, green on master, not in my diff" is NOT sufficient to call flake when the sub-test is deterministic AND your PR added a diagnostic that could abort that exact code path. Check whether your change makes the previously-passing input now error.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784249706016-slang-test-slang-n-suffix-maps-to-nth-test-directi.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784249706016-slang-test-slang-n-suffix-maps-to-nth-test-directi.md`_

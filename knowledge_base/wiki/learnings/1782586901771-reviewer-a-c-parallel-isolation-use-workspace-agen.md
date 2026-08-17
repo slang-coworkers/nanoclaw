@@ -20,4 +20,4 @@ When running the /slang-pr-review workflow's Reviewer A (slang-pr-review-runner/
 Also reconfirmed: `devin-fetch.sh` can exit 0 while Devin's analysis still shows "Generating..." (premature DONE match) — it captures only the PR-description echo with Bugs/Flags "(none reported)". Re-run after a few minutes; the second fetch got the real analysis (commit-status "Analysis is up to date"). Don't treat the first exit-0 as authoritative — verify the "## AI Analysis" body isn't "Generating...".
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782586901771-reviewer-a-c-parallel-isolation-use-workspace-agen.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782586901771-reviewer-a-c-parallel-isolation-use-workspace-agen.md`_

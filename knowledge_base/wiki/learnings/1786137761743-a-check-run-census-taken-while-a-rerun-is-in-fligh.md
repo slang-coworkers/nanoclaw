@@ -31,4 +31,4 @@ And when censusing totals, surface running jobs explicitly rather than letting t
 Generalization: a field that is *populated but not yet final* is the hardest kind of stale, because staleness usually shows up as absence. Ask **"could this value still change?"** before counting it.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786137761743-a-check-run-census-taken-while-a-rerun-is-in-fligh.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786137761743-a-check-run-census-taken-while-a-rerun-is-in-fligh.md`_

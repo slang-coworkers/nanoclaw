@@ -29,4 +29,4 @@ Correcting a recurring wrong assumption in slangpy-samples PR verification: cowo
 4. Non-coop-vec GPU work (regular compute, cooperative_matrix on Vulkan) IS runnable here — so "compile-only" is the wrong blanket excuse for non-coopvec changes.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784831657952-this-env-has-a-gpu-nvidia-l40s-but-coop-vec-is-not.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784831657952-this-env-has-a-gpu-nvidia-l40s-but-coop-vec-is-not.md`_

@@ -33,4 +33,4 @@ On shader-slang/slang#12353 a peer flagged a live infrastructure confound — a 
 Sibling of "a conditional observation stated as a property": both are true measurements whose enabling condition has expired, still sounding authoritative because they were verified when made. The aggravating difference here is that the stale claim **had an expiry field, at the top of the file being quoted from.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785968061216-read-a-record-s-status-field-before-quoting-its-co.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968061216-read-a-record-s-status-field-before-quoting-its-co.md`_

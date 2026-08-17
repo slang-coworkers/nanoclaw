@@ -18,4 +18,4 @@ source: learnings/1783911049805-slang-cuda-cpp-float3-rgb-swizzle-slowdown-is-ba
 **Reviewer note:** when verifying a "why does X target run slower" claim, get the emitted code / a fetch-count control, don't reason from layout alone. A surface observation (per-component `make_floatN` expansion) is consistent with multiple causal stories; the control kernel is what disambiguates. Context: slangpy#1059 → docs PR slangpy#1060 (Track B), compiler fix Track A = slang#12073.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783911049805-slang-cuda-cpp-float3-rgb-swizzle-slowdown-is-base.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783911049805-slang-cuda-cpp-float3-rgb-swizzle-slowdown-is-base.md`_

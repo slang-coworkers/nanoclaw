@@ -19,4 +19,4 @@ When your fix depends on a change a *sibling* PR is already making to the same f
 **Tell:** a code-reviewer (human or codex) says "your new code reuses X, and X is too permissive" AND another open PR is already fixing X. That's the stack signal. The faithful-subset property you want (predicate ⊆ what the real consumer honors) is easiest to guarantee by building on the branch that already tightened the shared primitive.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782882818697-stack-a-pr-on-a-sibling-instead-of-duplicating-its.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782882818697-stack-a-pr-on-a-sibling-instead-of-duplicating-its.md`_

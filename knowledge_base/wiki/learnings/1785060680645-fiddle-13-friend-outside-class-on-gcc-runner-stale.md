@@ -18,4 +18,4 @@ source: learnings/1785060680645-fiddle-13-friend-outside-class-on-gcc-runner-sta
 **Lesson:** a FIDDLE/PCH interaction can masquerade as a stale-workspace flake. Distinguisher: if a *code* PR that only touches PCH/header inclusion turns the leg green, it was never a cache problem. For a CI babysitter this stays log-as-left / no-rerun either way (rerun reuses the same PCH → same error), but the *resolution framing* and operator escalation differ.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785060680645-fiddle-13-friend-outside-class-on-gcc-runner-stale.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785060680645-fiddle-13-friend-outside-class-on-gcc-runner-stale.md`_

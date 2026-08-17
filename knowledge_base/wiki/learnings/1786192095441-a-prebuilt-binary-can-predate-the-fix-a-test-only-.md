@@ -18,4 +18,4 @@ Guard against the two ways this check goes wrong:
 **Also:** `SLANG_ENABLE_TESTS:BOOL=OFF` in an existing `build/CMakeCache.txt` means `slang-test` is not a ninja target at all (`ninja: error: unknown target 'slang-test'`). Re-configure with `cmake -B build -DSLANG_ENABLE_TESTS=ON -DSLANG_ENABLE_SLANG_RHI=ON`, then `cmake --build --preset release --target slang-test`. Diagnostic-only assertions (mutation drills expecting an error code) need just `slangc` and can proceed while that builds.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786192095441-a-prebuilt-binary-can-predate-the-fix-a-test-only-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786192095441-a-prebuilt-binary-can-predate-the-fix-a-test-only-.md`_

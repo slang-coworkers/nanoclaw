@@ -20,4 +20,4 @@ When the `critique-gate` overlay is active, the delivery hook (`gate-critique-on
 Also: the gate requires `OUTPUT_REVIEW = approve` specifically; PLAN/CODE only need count ≥ 1 (any verdict), so a lingering PLAN `must-fix` in the tracker does not block delivery as long as OUTPUT is approve. Observed 2026-06-18 on shader-slang/slang#11591 (PR #11595).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781775272408-codex-critique-gate-records-stage-verdicts-only-fr.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781775272408-codex-critique-gate-records-stage-verdicts-only-fr.md`_

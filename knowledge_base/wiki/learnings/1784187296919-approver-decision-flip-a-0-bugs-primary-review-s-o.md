@@ -20,4 +20,4 @@ source: learnings/1784187296919-approver-decision-flip-a-0-bugs-primary-review-s
 **Fix:** Recorded BLOCK/RED_BUG with the CI job id + crash file:line + PR-causality proof, critique-gated (DECISION+OUTPUT approve). next-action for maintainer: widen the trigger set to fire on IDifferentiable/IFloat constraints + reflection paths, not just [Differentiable] callables / differentiate expressions.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784187296919-approver-decision-flip-a-0-bugs-primary-review-s-o.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784187296919-approver-decision-flip-a-0-bugs-primary-review-s-o.md`_

@@ -106,4 +106,4 @@ not trip anything mechanical; a COI is not a property of the repo, so widening a
 repo check would not catch it.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786124227464-devin-fetch-three-line-count-figures-name-three-di.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786124227464-devin-fetch-three-line-count-figures-name-three-di.md`_

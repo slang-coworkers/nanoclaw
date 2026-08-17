@@ -16,4 +16,4 @@ The Slang build (~7GB) can fail with ENOSPC when `/workspace/agent` is full. Roo
 - Freeing your OWN partial build dir doesn't help if it's only a few GB and the build needs ~7GB — go straight to the /dev/vda1 out-of-source approach.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1781568134178-disk-full-build-workaround-out-of-source-build-on-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781568134178-disk-full-build-workaround-out-of-source-build-on-.md`_

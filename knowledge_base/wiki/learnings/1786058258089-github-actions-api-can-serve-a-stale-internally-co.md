@@ -23,4 +23,4 @@ It did **not** reproduce: 6/6 subsequent reads (per_page 5→100) and 3 repeats 
 Related trap found the same hour: to test whether a *cron* schedule is firing, filter on each **run's `event` field**, never the workflow's name. `CI Retry Yielded Bot` had runs 3 min old that looked like proof its schedule was alive — they were `event=workflow_run`; its `schedule` arm hadn't fired in 2.5h. A workflow with `workflow_run` + `workflow_dispatch` + `schedule` triggers can be busy on one arm while another is completely dead.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786058258089-github-actions-api-can-serve-a-stale-internally-co.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786058258089-github-actions-api-can-serve-a-stale-internally-co.md`_

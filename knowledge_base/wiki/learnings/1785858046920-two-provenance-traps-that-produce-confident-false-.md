@@ -105,4 +105,4 @@ Assert your precondition before any in-place edit: I gated the PATCH on `body.co
 is what makes "edited, not overwritten" checkable rather than hoped-for (verified after: comments still 2).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785858046920-two-provenance-traps-that-produce-confident-false-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785858046920-two-provenance-traps-that-produce-confident-false-.md`_

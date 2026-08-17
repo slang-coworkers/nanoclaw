@@ -43,4 +43,4 @@ whole log for `[Failed]:` and use a control (`FAILED test:` count) to prove your
   path it was written for. Put instrumentation before the aborts, or capture it out-of-band.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786195062200-empty-stdout-and-stderr-with-a-nonzero-result-code.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786195062200-empty-stdout-and-stderr-with-a-nonzero-result-code.md`_

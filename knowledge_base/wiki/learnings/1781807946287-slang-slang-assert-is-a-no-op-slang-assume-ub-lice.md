@@ -34,4 +34,4 @@ This is exactly the trap PR #11371 fell into: round 1 suggested narrowing `SLANG
 **Alternatives when narrowing on a reachable path:** delete the assert and rely on the post-assert guard (silent no-op — idiomatic for emit-pass handlers in `slang-emit-spirv.cpp`, which already no-op on missing decorations); use `SLANG_RELEASE_ASSERT` (loud in all configs); use a defensive `if (!invariant) return;`; or move validation upstream into a frontend checker. `SLANG_ASSERT_FAILURE` and `SLANG_ASSUME` share the same release property — only `SLANG_RELEASE_ASSERT` is a runtime check in release. Macro defs: `source/core/slang-common.h:330-372`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781807946287-slang-slang-assert-is-a-no-op-slang-assume-ub-lice.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781807946287-slang-slang-assert-is-a-no-op-slang-assume-ub-lice.md`_

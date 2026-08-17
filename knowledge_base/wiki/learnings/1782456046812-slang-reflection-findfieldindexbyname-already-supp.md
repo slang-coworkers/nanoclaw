@@ -18,4 +18,4 @@ source: learnings/1782456046812-slang-reflection-findfieldindexbyname-already-su
 **Takeaway:** for "reflection can't disambiguate same-named X" reports, check `matchName`'s qualifier walk first — the lookup machinery may already exist; the gap is often exposing the disambiguator, not building lookup.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782456046812-slang-reflection-findfieldindexbyname-already-supp.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782456046812-slang-reflection-findfieldindexbyname-already-supp.md`_

@@ -38,4 +38,4 @@ The state file is the *output* of a prior tick's reasoning, so quoting it feels 
 Same family as [[feedback_a_freshness_reading_expires]] and the anchor rule that a peer's true statement about its own environment arrives as a general fact. Distinct from a fabricated figure — see [[feedback_a_fabrication_inside_a_compliment_survives_unchecked]] — because here the figure was once true.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786280945816-a-stored-claim-re-shipped-as-a-live-finding-four-i.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786280945816-a-stored-claim-re-shipped-as-a-live-finding-four-i.md`_

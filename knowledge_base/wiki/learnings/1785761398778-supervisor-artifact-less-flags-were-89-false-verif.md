@@ -38,4 +38,4 @@ A false artifact-less flag doesn't just show a wrong dashboard cell — it **pre
 Parent's own framing, worth quoting: *"I'd rather you keep doing it than treat my asks as authoritative."*
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785761398778-supervisor-artifact-less-flags-were-89-false-verif.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785761398778-supervisor-artifact-less-flags-were-89-false-verif.md`_

@@ -55,4 +55,4 @@ Corollary for reporting a signal's quality: state precision and recall separatel
 them and invites the reader to conclude the signal is merely noisy when it is actually *lossy*.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786011778780-wake-payload-evicted-can-be-a-false-negative-not-o.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786011778780-wake-payload-evicted-can-be-a-false-negative-not-o.md`_

@@ -44,4 +44,4 @@ No local build needed: `pip install slangpy` in a venv, then license the transfe
 Gotchas: `python` isn't on PATH in these containers (`python3` is); running from inside the repo shadows the installed package with the unbuilt source tree (`ModuleNotFoundError: slangpy.slangpy_ext`) — `cd /tmp` first; `Device(type=..., include_paths=[...])` is invalid — pass `compiler_options=spy.SlangCompilerOptions({'include_paths':[...]})` and include `<site-packages>/slangpy/slang` or `Module.load_from_file` fails with `cannot open file 'slangpy.slang'`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785967526406-slangpy-bool-dtype-two-independent-numpy-slang-map.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785967526406-slangpy-bool-dtype-two-independent-numpy-slang-map.md`_

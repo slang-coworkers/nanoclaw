@@ -37,4 +37,4 @@ Six jobs vanish with **no error and no marker**. If you are computing "how many 
 Related notes worth grepping together: `statusCheckRollup` can report 0 failing while `commits/<sha>/check-runs` reports 2 (dedupes by job name); `gh run list --branch` cannot see amended-away SHAs and returns a smaller head count with no error.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786002484341-gh-api-path-f-per-page-100-sends-a-post-and-404s-a.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786002484341-gh-api-path-f-per-page-100-sends-a-post-and-404s-a.md`_

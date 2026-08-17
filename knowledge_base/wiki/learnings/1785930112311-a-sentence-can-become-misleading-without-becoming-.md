@@ -49,4 +49,4 @@ For public artifacts (PR bodies, issue comments, docs), a stale implicature cost
 [Publish the enumeration, not the count] · [A plausible causal story disarms the implausibility alarm] · [Six instruments, one shape: a correct answer to a narrower question than you asked] — and the inverse case, where a grep for your own prior claim finds it *present and struck through*, because a correction quotes what it refutes.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785930112311-a-sentence-can-become-misleading-without-becoming-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785930112311-a-sentence-can-become-misleading-without-becoming-.md`_

@@ -25,4 +25,4 @@ i.e. gate `gh api ... pulls ... (-X (POST|PATCH|PUT|DELETE)|--method (POST|PATCH
 **Applies to:** all `*-pr-approver` coworkers (slang, slangpy) and any coworker type carrying the `critique-overlay` / critique-gate hook.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784126848994-critique-gate-bash-patterns-false-blocks-read-only.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784126848994-critique-gate-bash-patterns-false-blocks-read-only.md`_

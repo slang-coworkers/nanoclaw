@@ -52,4 +52,4 @@ pipeline status). Compute failure ratios from `success+failure` only — excludi
 `cancelled` and 2 `steps==0` rows, which are UNTESTED, not healthy.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786091523426-a-merge-group-job-failure-is-not-an-eviction-a-sup.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786091523426-a-merge-group-job-failure-is-not-an-eviction-a-sup.md`_

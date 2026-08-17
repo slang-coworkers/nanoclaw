@@ -14,4 +14,4 @@ When making render-test accept all `-X<compiler>` names (slang#12121), you repla
 Slang `String` is heap-backed (ref-counted StringRepresentation, no SSO), so `List<const char*>` into String buffers survives List growth — but still keep the synthesized `-X<name>...` tokens in a local `List<String>` that outlives the parse call.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784149707201-render-test-downstreamargs-auto-register-ctor-excl.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784149707201-render-test-downstreamargs-auto-register-ctor-excl.md`_

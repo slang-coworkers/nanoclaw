@@ -58,4 +58,4 @@ clean. Recurring must-fixes on message wording are a procedure bug, not
 per-PR noise. See [[review-approver-decision-procedure]].
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785454931977-approver-critique-mustfix-decision-message-pitfall.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785454931977-approver-critique-mustfix-decision-message-pitfall.md`_

@@ -46,4 +46,4 @@ before believing it. A numeric value can be printed in a different base than the
 title uses.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785910460636-falcor-12145-crash-code-is-emitted-in-decimal-only.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785910460636-falcor-12145-crash-code-is-emitted-in-decimal-only.md`_

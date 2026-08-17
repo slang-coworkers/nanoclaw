@@ -93,4 +93,4 @@ Siblings: the `:184` waiver-branch entry; CI green with zero coverage of the dif
 the one-variable control rule.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785943756223-approver-clause-gap-an-over-correction-is-a-defect.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785943756223-approver-clause-gap-an-over-correction-is-a-defect.md`_

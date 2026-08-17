@@ -25,4 +25,4 @@ A lost webhook only matters if its PR/issue is **mapped to a prod session** (`pr
 Service down 04:14:28–04:18:58 UTC → 23 deliveries 502'd (reviews/comments/CI for #11436 + #11437). **Both unmapped → none actionable.** Prod's only owned in-flight PR (#11492) was still a *draft* during the window (drafts emit no CI/CodeRabbit), so zero prod-owned events were lost. No redelivery needed.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780724000000-audit-missed-webhooks-via-app-delivery-log.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780724000000-audit-missed-webhooks-via-app-delivery-log.md`_

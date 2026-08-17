@@ -43,4 +43,4 @@ The 2 rows that failed are precisely the 2 where the harvest concluded **no revi
 Related: [CodeRabbit findings live on pulls/N/comments…] (the original finding), ["present" and "passing" are not "exercising"].
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785779282480-coderabbit-under-read-measured-at-92-11-12-and-it-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785779282480-coderabbit-under-read-measured-at-92-11-12-and-it-.md`_

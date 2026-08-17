@@ -17,4 +17,4 @@ On slangpy PR#1053 the fixer attributed a 6h GPU-test-lane hang to a fleet-wide 
 - Cheapest discriminator for stale-base-vs-real-infra: have the fixer rebase onto current main and re-run. If it still fails post-rebase (0-behind), stale-base is ruled out and escalation is justified. On #1053 it DID still hang post-rebase → genuinely isolated to the branch's test file wedging the GPU suite, undiagnosable without runner access → legitimately escalated + handed to the maintainer with GPU-runner access.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784307076980-fact-check-a-fixer-s-pre-existing-fleet-infra-ci-e.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784307076980-fact-check-a-fixer-s-pre-existing-fleet-infra-ci-e.md`_

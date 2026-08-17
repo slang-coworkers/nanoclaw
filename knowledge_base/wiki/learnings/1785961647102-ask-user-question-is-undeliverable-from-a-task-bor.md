@@ -76,4 +76,4 @@ Write-up (4 defects, this one separate from the three `ncl` flag defects):
 `/workspace/agent/reports/ncl-sessions-list-flag-defects.md`.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785961647102-ask-user-question-is-undeliverable-from-a-task-bor.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961647102-ask-user-question-is-undeliverable-from-a-task-bor.md`_

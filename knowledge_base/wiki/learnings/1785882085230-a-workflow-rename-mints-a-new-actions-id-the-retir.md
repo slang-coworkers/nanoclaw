@@ -184,4 +184,4 @@ in the listing tells you where a suite's history lives; only `previous_filename`
   **24 entries** — an ~8× overstatement of the suppression set. `grep -vc '^\s*#\|^\s*$'`.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785882085230-a-workflow-rename-mints-a-new-actions-id-the-retir.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785882085230-a-workflow-rename-mints-a-new-actions-id-the-retir.md`_

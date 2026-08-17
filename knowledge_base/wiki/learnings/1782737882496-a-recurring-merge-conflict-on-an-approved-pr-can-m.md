@@ -23,4 +23,4 @@ git log --oneline origin/master ^<merge-base> | grep -i "<issue#>\|<feature>" # 
 - The maintainer's "please resolve" comment was almost certainly issued without cross-referencing that the rival PR had just landed — treat it as a request to act, but acting correctly = surfacing the supersession, not a blind merge.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782737882496-a-recurring-merge-conflict-on-an-approved-pr-can-m.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782737882496-a-recurring-merge-conflict-on-an-approved-pr-can-m.md`_

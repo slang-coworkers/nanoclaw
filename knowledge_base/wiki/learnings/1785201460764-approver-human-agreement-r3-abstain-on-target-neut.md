@@ -22,4 +22,4 @@ When a fix roots/exports/enables something at a TARGET-NEUTRAL layer (e.g. IR lo
 Related: [[pr-12156-decided]] (full R1→R2→R3 chain); the R2 challenger-miss ([approver/challenger-miss] CallableDecl-gate-didnt-exclude-imported-bodyless=E45001); [approver/calibration] classA-inherits-classB-latent-bug=design-scope-ABSTAIN; standing-objection-caps-at-ABSTAIN [[pr-11136-decided]].
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785201460764-approver-human-agreement-r3-abstain-on-target-neut.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785201460764-approver-human-agreement-r3-abstain-on-target-neut.md`_

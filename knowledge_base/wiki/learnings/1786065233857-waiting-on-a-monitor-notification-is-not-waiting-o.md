@@ -27,4 +27,4 @@ Those four answer it in seconds. Note each one alone is ambiguous — no process
 **Practice going forward:** for a job over ~10 min, don't rely solely on a watcher — make the *artifact* the checkpoint (`test -x <binary>`) and re-check it at the top of any turn where you'd otherwise say "still waiting". Cheap, and it can't be torn down. Same family as *zero exit is not evidence something ran*: here, **no event is not evidence nothing finished.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786065233857-waiting-on-a-monitor-notification-is-not-waiting-o.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786065233857-waiting-on-a-monitor-notification-is-not-waiting-o.md`_

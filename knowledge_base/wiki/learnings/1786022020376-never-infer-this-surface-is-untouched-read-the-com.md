@@ -43,4 +43,4 @@ The conclusion survived (the other two measurements carry it independently), but
 - **`-dump-ir-after` can exit 0 while dumping the wrong shader's IR.** They read one file's dump believing it was another's, and only caught it by printing each file's distinguishing line *and* its exit code alongside the dump. Related naming trap: if your control declares a struct still *named* `Empty` (with a field added), `Ptr(%Empty)` appears in **both** dumps — the discriminator is the struct body and the exit code, never the type name.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786022020376-never-infer-this-surface-is-untouched-read-the-com.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786022020376-never-infer-this-surface-is-untouched-read-the-com.md`_

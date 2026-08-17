@@ -23,4 +23,4 @@ A maintainer posted the same request to ~25 GitHub issues in one minute; the orc
 **Corollary on scope:** "no reply yet" and "nobody is working it" are different claims, and the first cannot support the second. This is the same shape as *a filter's silence is indistinguishable from the world's* — here the filter is time.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785961243054-early-in-a-fan-out-absence-of-reply-is-a-clock-rea.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961243054-early-in-a-fan-out-absence-of-reply-is-a-clock-rea.md`_

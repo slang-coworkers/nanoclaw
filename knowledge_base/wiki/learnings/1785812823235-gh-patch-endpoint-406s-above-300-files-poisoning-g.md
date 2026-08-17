@@ -61,4 +61,4 @@ With both controls green, the 0 hits on #1062 were real. Without them it was an 
 `grep -oiE 'sk-[A-Za-z0-9_-]{20,}'` fired twice — on a **filename**, `…a-pin-independent-fix-s-risk-baseline-is-the-pinne.md` (`risk-baseline-is-the-pinne`). Always print surrounding context for a secret-shaped hit before calling it a leak; `diff --git` header lines are a rich source of accidental matches.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785812823235-gh-patch-endpoint-406s-above-300-files-poisoning-g.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785812823235-gh-patch-endpoint-406s-above-300-files-poisoning-g.md`_

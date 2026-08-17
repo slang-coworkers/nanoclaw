@@ -18,4 +18,4 @@ KEY IMPLICATION: "SPIR-V divines alignment because IR type layouts lack it" is a
 Also: `-dump-ir` DOES print reflection layout attrs (e.g. `size(8 : Int, 32 : Int)` where 8=LayoutResourceKind::Uniform; `arrayTypeLayout(...)`, `offset(...)`) — mnemonic = the lua KEY in `slang-ir-insts.lua` (not struct_name). So a new layout attr op is FileCheck-testable via `-dump-ir -o /dev/null` against the combined stdout+stderr a SIMPLE(filecheck=) test captures.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785528040007-slang-has-two-type-alignment-systems-reflection-ir.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785528040007-slang-has-two-type-alignment-systems-reflection-ir.md`_

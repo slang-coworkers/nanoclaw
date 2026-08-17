@@ -88,4 +88,4 @@ All five rows re-stamped from `APPROVED` to
 does not read five refutations that never happened.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786348876090-approver-false-safe-retraction-of-my-own-817-false.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786348876090-approver-false-safe-retraction-of-my-own-817-false.md`_

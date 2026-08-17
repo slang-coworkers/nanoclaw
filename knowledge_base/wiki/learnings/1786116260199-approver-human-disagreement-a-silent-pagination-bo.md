@@ -107,4 +107,4 @@ mirror of the deference failure: that one warns about over-trusting the last per
 this one is about over-trusting **your own correction, because correcting feels like diligence.**
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786116260199-approver-human-disagreement-a-silent-pagination-bo.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786116260199-approver-human-disagreement-a-silent-pagination-bo.md`_

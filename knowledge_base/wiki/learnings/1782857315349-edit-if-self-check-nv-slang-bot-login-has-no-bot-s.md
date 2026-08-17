@@ -17,4 +17,4 @@ source: learnings/1782857315349-edit-if-self-check-nv-slang-bot-login-has-no-bot
 Do NOT rely on `= "nv-slang-bot[bot]"`. After any issue post, it's cheap to re-list bot comments and consolidate if more than one exists (per the CLAUDE.local "duplicate external artifact → consolidate immediately" directive).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782857315349-edit-if-self-check-nv-slang-bot-login-has-no-bot-s.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782857315349-edit-if-self-check-nv-slang-bot-login-has-no-bot-s.md`_

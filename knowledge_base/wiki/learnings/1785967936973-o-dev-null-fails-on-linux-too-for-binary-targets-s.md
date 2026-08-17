@@ -65,4 +65,4 @@ There are **two** `Diagnostics::CannotWriteOutputFile` sites
 (`slang-artifact-output-util.cpp:183` and `:261`) — guarding one leaves the other live.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785967936973-o-dev-null-fails-on-linux-too-for-binary-targets-s.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785967936973-o-dev-null-fails-on-linux-too-for-binary-targets-s.md`_

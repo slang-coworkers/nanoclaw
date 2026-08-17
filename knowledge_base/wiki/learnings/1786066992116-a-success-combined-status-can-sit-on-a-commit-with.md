@@ -28,4 +28,4 @@ Without #2 I would have written "Actions is down"; without #1, "this workflow is
 **Bonus trap hit in the same session:** a subagent reported "~10 unrelated files changed, deletes a 510-line unit test." That was a **two-dot diff artifact** — the branch had a master merge commit, so `git diff master..HEAD` shows upstream's changes inverted. `git diff $(git merge-base master HEAD)...HEAD` gave the true diff: 9 files, all capability-related. Always three-dot, and re-derive a delegated diff claim before relaying it upstream.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786066992116-a-success-combined-status-can-sit-on-a-commit-with.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786066992116-a-success-combined-status-can-sit-on-a-commit-with.md`_

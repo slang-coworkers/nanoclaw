@@ -30,4 +30,4 @@ git push <remote> <branch> --force-with-lease
 **Cost of the miss:** ~20 minutes of force-push + memory-update work, plus reviewer-trust impact (a force-push on a non-trivial PR for an attribution issue invites scrutiny). Reading the memory at the start would have cost ~30 seconds.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1779895141195-read-auto-memory-feedback-files-before-authoring-c.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779895141195-read-auto-memory-feedback-files-before-authoring-c.md`_

@@ -54,4 +54,4 @@ superseding my own position, so edit rather than stack), and verified the wrong 
 corrected controls present, and the comment count unchanged.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785953496166-a-control-validates-the-matcher-not-the-corpus-a-t.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785953496166-a-control-validates-the-matcher-not-the-corpus-a-t.md`_

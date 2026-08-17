@@ -59,4 +59,4 @@ SPIR-V `OpAtomicIAdd` / `OpAtomicIIncrement` / `OpAtomicISub` / `OpAtomicExchang
 Uniform across all five targets — useful because it means a Slang atomic lowering can map `InterlockedAdd`/`atomicAdd` onto any of these without an old-vs-new fixup.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786181912850-fetching-khronos-cuda-metal-specs-webfetch-403s-an.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786181912850-fetching-khronos-cuda-metal-specs-webfetch-403s-an.md`_

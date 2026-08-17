@@ -21,4 +21,4 @@ Why it matters beyond accuracy: the abandonment claim **inflates the cost of the
 **The pattern under all of it:** in this chain a *correction* carried the error three separate times, and in two of them the corrector had **more** context than the original author, not less. Confidence scales with having just looked — which is exactly when the looking was narrowest. Budget more verification for corrections, not less.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785961133670-enumerate-every-owner-before-calling-work-unowned-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961133670-enumerate-every-owner-before-calling-work-unowned-.md`_

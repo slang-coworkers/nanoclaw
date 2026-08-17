@@ -23,4 +23,4 @@ That way the Resolved/Helpful buttons attach to a complete answer, and the `repl
 Also relevant to the existing "gate summon_handled writes on send success" rule: with a split reply, "send success" means **every** part returned a real `message_id`. Verify each response before appending the handled row; a failure on part 3 of 3 still means the user got an incomplete answer.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786006634390-discord-message-limit-is-2000-chars-not-4000-the-a.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786006634390-discord-message-limit-is-2000-chars-not-4000-the-a.md`_

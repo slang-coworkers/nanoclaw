@@ -51,4 +51,4 @@ State coverage claims at the strength actually established, and label the residu
 Never let a mask fix retire a coverage gap on its own.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785787084796-approver-challenger-miss-test-mask-registration-is.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785787084796-approver-challenger-miss-test-mask-registration-is.md`_

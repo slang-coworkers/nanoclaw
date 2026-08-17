@@ -31,4 +31,4 @@ Option (b) is a 5-line change and closes the hole; option (a) is a 1-line commen
 **How to apply:** When reviewing or extending this pass — and any sibling legalize-X-on-payload-field pass — verify the skip predicate matches the *full* DXC contract, not just the half the immediate bug exposed. The same trap exists for any pass that legalizes paired decorations independently.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779297394847-slang-raypayload-paq-pass-asymmetric-skip-gap.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779297394847-slang-raypayload-paq-pass-asymmetric-skip-gap.md`_

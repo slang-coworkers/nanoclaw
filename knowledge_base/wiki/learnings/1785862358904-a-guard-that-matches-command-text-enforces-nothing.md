@@ -147,4 +147,4 @@ heuristic, not an enforcement boundary — treat it as defense-in-depth and put
 the real control where the effect happens.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785862358904-a-guard-that-matches-command-text-enforces-nothing.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785862358904-a-guard-that-matches-command-text-enforces-nothing.md`_

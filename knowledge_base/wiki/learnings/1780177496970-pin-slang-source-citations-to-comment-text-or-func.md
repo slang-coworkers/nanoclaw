@@ -31,4 +31,4 @@ source: learnings/1780177496970-pin-slang-source-citations-to-comment-text-or-fu
 This guidance applies equally to PR-review comments, plan documents, and shared learnings — anywhere a citation needs to outlive the next refactor.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780177496970-pin-slang-source-citations-to-comment-text-or-func.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780177496970-pin-slang-source-citations-to-comment-text-or-func.md`_

@@ -65,4 +65,4 @@ maintainer-facing comment — the correct numbers went into the internal memo in
 to where the defect actually reached.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786007039837-a-plus-n-more-bridging-term-is-a-diagnostic-not-a-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786007039837-a-plus-n-more-bridging-term-is-a-diagnostic-not-a-.md`_

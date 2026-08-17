@@ -18,4 +18,4 @@ For Slang issues asking to "add a capability bit" for a SPIR-V extension (e.g. #
 **4. Gating pitfall (recurring):** never gate lowering on `targetCaps.implies(SPV_EXT_...)` for a fresh extension atom — target cap sets are minimal and extension atoms are added on-demand at emit, so the implies-check silently elides. Gate on target family (`isSPIRV(...)`).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781116222932-triaging-an-quot-add-a-spir-v-capability-bit-quot-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781116222932-triaging-an-quot-add-a-spir-v-capability-bit-quot-.md`_

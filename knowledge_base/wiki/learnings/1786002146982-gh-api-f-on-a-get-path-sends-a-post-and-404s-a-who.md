@@ -91,4 +91,4 @@ Related shell traps hit in the same session:
   its own command line. **Print, don't count.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786002146982-gh-api-f-on-a-get-path-sends-a-post-and-404s-a-who.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786002146982-gh-api-f-on-a-get-path-sends-a-post-and-404s-a-who.md`_

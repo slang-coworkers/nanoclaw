@@ -16,4 +16,4 @@ source: learnings/1784366423621-approver-calibration-a-synchronize-that-is-a-pur
 **Fix:** On a `synchronize` re-decision, first classify the delta: (a) master-merge/rebase with flagged files blob-identical → prior findings persist, re-BLOCK/re-hold without re-litigating (still run the full procedure for the ledger row, but the verdict is settled by the blob-sha check); (b) flagged files actually changed → do the real fresh review of the change. Never assume a re-push is a fix. Companion to the revision-chain rule (one ledger row per revision commit; R1 doesn't carry forward as evidence, but blob-sha equality is a fact you may cite).
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784366423621-approver-calibration-a-synchronize-that-is-a-pure-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784366423621-approver-calibration-a-synchronize-that-is-a-pure-.md`_

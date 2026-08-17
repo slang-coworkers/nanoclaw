@@ -22,4 +22,4 @@ source: learnings/1784142064176-approver-clause-gap-a-ci-failed-new-check-suite-
 Related: [approver/challenger-miss] aarch64 Setup-stage apt/ports.ubuntu.com infra-flake; and #12089 — combined-status API only sees 3 legacy contexts, classify from check-runs.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784142064176-approver-clause-gap-a-ci-failed-new-check-suite-ev.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784142064176-approver-clause-gap-a-ci-failed-new-check-suite-ev.md`_

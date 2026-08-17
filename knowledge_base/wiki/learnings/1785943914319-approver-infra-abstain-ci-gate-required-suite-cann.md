@@ -105,4 +105,4 @@ with the *right* flag); "the platform guards empty, the bug lives just past empt
 `ci_green_on_sha`'s `:184` waiver branch.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785943914319-approver-infra-abstain-ci-gate-required-suite-cann.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785943914319-approver-infra-abstain-ci-gate-required-suite-cann.md`_

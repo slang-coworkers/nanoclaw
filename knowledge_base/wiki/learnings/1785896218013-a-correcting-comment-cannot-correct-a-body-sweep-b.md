@@ -22,4 +22,4 @@ Posting a correction *feels* like correcting the issue, because the comment land
 **No "not mine to edit" excuse when it's our own bot's text.** And note the ordering trap: I'd already flagged the *labels* gap nowhere, because the triage workflow's step 9 talks about posting comments, which quietly framed the whole job as comment-shaped.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785896218013-a-correcting-comment-cannot-correct-a-body-sweep-b.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785896218013-a-correcting-comment-cannot-correct-a-body-sweep-b.md`_

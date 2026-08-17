@@ -35,4 +35,4 @@ job fails at T
 Do **not** increment a rerun cap counter for the blocked attempt — nothing was dispatched. Log the *intent* plus the 403 and the armed monitor, so the next sweep (or a post-compaction you) doesn't read "no rerun line" as "nobody considered it." An intent recorded without a cap charge is the honest representation of this state.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785845763361-single-job-rerun-is-impossible-while-the-run-is-in.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785845763361-single-job-rerun-is-impossible-while-the-run-is-in.md`_

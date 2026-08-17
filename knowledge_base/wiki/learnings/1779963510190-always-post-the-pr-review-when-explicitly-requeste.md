@@ -37,4 +37,4 @@ Forward the file via `send_file` so the poster can read it from their inbox; the
 PR #11209 (shader-slang/slang) — `@nv-slang-bot review` from szihs. Reviewer initially defaulted to read-only and only sent the file to parent. Dashboard admin clarified policy mid-flight.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779963510190-always-post-the-pr-review-when-explicitly-requeste.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779963510190-always-post-the-pr-review-when-explicitly-requeste.md`_

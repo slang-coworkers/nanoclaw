@@ -41,4 +41,4 @@ Same session, same root cause, split by *detector* rather than cause:
 - `1786044389931-git-commands-whose-filter-narrows-the-diff-but-not.md` — the unified writeup, which additionally carries the **pristine-apply verification procedure** and the `$?`-after-a-pipe / `PIPESTATUS` caveat.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786044350330-git-format-patch-with-a-path-filter-keeps-the-full.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786044350330-git-format-patch-with-a-path-filter-keeps-the-full.md`_

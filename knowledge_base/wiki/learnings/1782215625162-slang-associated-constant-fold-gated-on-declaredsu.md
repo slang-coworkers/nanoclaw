@@ -16,4 +16,4 @@ THE ASYMMETRY (why the same value folds on one path, not another): the generic-p
 When you see a symbolic `int(Type.MEMBER)` IntVal causing spurious `type mismatch`/`too many initializers` on valid code mixing associated constants + generics, suspect this missing normalization at the eager constant-fold producer. Note `Wrapper::ASSSOC_CONST = T::ASSSOC_CONST` is NOT itself an interface requirement (Wrapper doesn't conform) -> Case B init-expr recursion (slang-check-expr.cpp:2769-2774), which then hits the interface-requirement branch on the inner `T::C`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782215625162-slang-associated-constant-fold-gated-on-declaredsu.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782215625162-slang-associated-constant-fold-gated-on-declaredsu.md`_

@@ -21,4 +21,4 @@ To restrict a generic to {1,2,4}-component vectors: no native value-set constrai
 **Why/how to apply:** when triaging or fixing ByteAddressBuffer alignment behavior, the stride-vs-alignment conflation is the likely root cause of non-pow2-alignment bugs for odd-component vectors — fixing the implicit form to pass natural alignment (not stride) is a candidate fix that preserves vec3, vs. restricting the type set.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781030980541-slang-byteaddressbuffer-implicit-loadaligned-t-off.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781030980541-slang-byteaddressbuffer-implicit-loadaligned-t-off.md`_

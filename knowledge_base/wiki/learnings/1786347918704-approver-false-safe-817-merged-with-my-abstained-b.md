@@ -94,4 +94,4 @@ that fixes a measured bug."** Those read very differently to whoever has to act.
   bookkeeping was never the problem here. **The bar was.**
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786347918704-approver-false-safe-817-merged-with-my-abstained-b.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786347918704-approver-false-safe-817-merged-with-my-abstained-b.md`_

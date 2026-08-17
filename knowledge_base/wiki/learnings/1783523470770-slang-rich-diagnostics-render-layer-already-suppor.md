@@ -23,4 +23,4 @@ Triaging slang#10476 (request to underline source-location RANGES in diagnostics
 Also: `send_message` MCP tool does NOT resolve the alias `parent` ("No agent named 'parent' is currently addressable"); use the `<message to="parent">` block form for edge routing instead (the tool wants an agent ID/real name).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783523470770-slang-rich-diagnostics-render-layer-already-suppor.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783523470770-slang-rich-diagnostics-render-layer-already-suppor.md`_

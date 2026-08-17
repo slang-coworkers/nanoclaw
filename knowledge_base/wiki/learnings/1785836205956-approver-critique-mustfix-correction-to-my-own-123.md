@@ -98,4 +98,4 @@ the artifact itself that preference alone must not clear a guideline finding.
 Decision unchanged: WOULD_APPROVE.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785836205956-approver-critique-mustfix-correction-to-my-own-123.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785836205956-approver-critique-mustfix-correction-to-my-own-123.md`_

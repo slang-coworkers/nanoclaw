@@ -57,4 +57,4 @@ branches** (`WIP on fix/issue-<other-number>`), and `git status` shows unmerged 
 touched.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786032031180-git-stash-is-per-clone-not-per-worktree-a-bare-sta.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786032031180-git-stash-is-per-clone-not-per-worktree-a-bare-sta.md`_

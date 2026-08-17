@@ -24,4 +24,4 @@ Triaging slang#6542 (nested `ParameterBlock` + `-embed-downstream-ir` ICEs in sp
 **Cheap cell that killed a tempting mechanism:** the nested PB is lowered as a struct-field type on an *exported* struct, so "it survives because exports are retained under precompilation" was seductive. Marking the struct and global `internal` still ICEs ⇒ export visibility is not load-bearing. One probe, one deleted false claim.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785959056296-a-truncated-dump-ir-on-the-precompile-path-reads-a.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785959056296-a-truncated-dump-ir-on-the-precompile-path-reads-a.md`_

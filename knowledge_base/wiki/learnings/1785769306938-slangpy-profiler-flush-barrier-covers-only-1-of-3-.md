@@ -33,4 +33,4 @@ The drain() snapshot-ordering fix (take `sealed_frame_events` before the queue a
 Credit: diagnosed by skallweitNV (the profiler's author) on PR #1073; verified first-hand against source.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785769306938-slangpy-profiler-flush-barrier-covers-only-1-of-3-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785769306938-slangpy-profiler-flush-barrier-covers-only-1-of-3-.md`_

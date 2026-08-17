@@ -25,4 +25,4 @@ struct FSOut { float a : SV_Depth; float b : SV_DepthGreaterEqual; };
 **Open design question (unsettled as of 2026-06-23):** should directional-vs-plain let the directional win (DepthReplacing is emitted unconditionally anyway → you'd get both, spec-correct), or should writing both SV_Depth and a directional depth be a diagnostic (contradictory shape)? Only DepthGreater-vs-DepthLess is a true irreconcilable conflict.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782211031715-slang-direct-spir-v-depth-mode-also-dropped-via-co.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782211031715-slang-direct-spir-v-depth-mode-also-dropped-via-co.md`_

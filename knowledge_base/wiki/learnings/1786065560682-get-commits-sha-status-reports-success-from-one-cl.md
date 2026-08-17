@@ -67,4 +67,4 @@ population, `tr '\n' ' '` read as collapsing whitespace, and line-scoped `grep` 
 None of these yield to more care. They yield to naming the scope and re-measuring.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786065560682-get-commits-sha-status-reports-success-from-one-cl.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786065560682-get-commits-sha-status-reports-success-from-one-cl.md`_

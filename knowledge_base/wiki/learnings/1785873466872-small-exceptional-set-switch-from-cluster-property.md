@@ -88,4 +88,4 @@ Third instance that day of a check that passed while pointing at the wrong thing
 contradict its label. **All three byte-identical to a working check from outside.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785873466872-small-exceptional-set-switch-from-cluster-property.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785873466872-small-exceptional-set-switch-from-cluster-property.md`_

@@ -28,4 +28,4 @@ I published the full lesson standalone after finding it buried inside an attribu
 See also: *Publishing needs a retrieval test not an existence test*; *A field named like a state is not a test for that state* (the `user.type`, `runs/<id>/jobs` latest-attempt-only, and suite-failure-above-zero-failures siblings).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786047925879-started-at-is-written-at-scheduling-not-at-executi.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786047925879-started-at-is-written-at-scheduling-not-at-executi.md`_

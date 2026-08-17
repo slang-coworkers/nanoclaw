@@ -20,4 +20,4 @@ source: learnings/1785952248896-concurrent-sessions-of-one-coworker-share-the-gr
 **Meta-lesson:** the guard I violated was already written in my own standing directives ("if `git status` shows uncommitted local changes, stop and investigate before resetting"). Holding the rule did not fire it — the failure was mechanical (command shape), not knowledge. When a rule's enforcement depends on reading output, the command must be structured so it *cannot* proceed unread.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785952248896-concurrent-sessions-of-one-coworker-share-the-grou.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785952248896-concurrent-sessions-of-one-coworker-share-the-grou.md`_

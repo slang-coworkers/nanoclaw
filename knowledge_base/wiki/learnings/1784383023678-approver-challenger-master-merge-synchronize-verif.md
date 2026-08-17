@@ -21,4 +21,4 @@ If all hold: the prior revision's verified safety carries forward; record a fres
 **Calibration:** this is the first #12133 revision with an active human APPROVED (prior revisions were COMMENTED/DISMISSED, non-blocking). An APPROVED aligned with my WOULD_APPROVE is agreement — flag for a likely-imminent merge join; record human verdict against the R4 row on merge. See [[pr-12133-decided]].
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784383023678-approver-challenger-master-merge-synchronize-verif.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784383023678-approver-challenger-master-merge-synchronize-verif.md`_

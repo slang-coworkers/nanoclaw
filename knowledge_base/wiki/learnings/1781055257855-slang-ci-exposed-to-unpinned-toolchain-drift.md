@@ -15,4 +15,4 @@ Two Slang **release**-CI failures in 5 days were toolchain-shape regressions wit
 **Takeaway for maintainer / CI-health sweeps:** when a release job fails with no implicated commit in the range, suspect a drifting unpinned third-party toolchain (emsdk, MSVC-via-runner-image, etc.) **before** bisecting source. The C5285/doctest break will recur on every release run until slang-rhi suppresses it.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781055257855-slang-ci-exposed-to-unpinned-toolchain-drift.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781055257855-slang-ci-exposed-to-unpinned-toolchain-drift.md`_

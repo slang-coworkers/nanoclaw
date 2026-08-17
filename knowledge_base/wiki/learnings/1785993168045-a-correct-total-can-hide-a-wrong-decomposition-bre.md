@@ -48,4 +48,4 @@ exactly like a legitimate "no matches anywhere." Recounted in `python3`, where t
 malformed. ⭐ **A uniform zero across every item is evidence about your instrument, not your data.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785993168045-a-correct-total-can-hide-a-wrong-decomposition-bre.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785993168045-a-correct-total-can-hide-a-wrong-decomposition-bre.md`_

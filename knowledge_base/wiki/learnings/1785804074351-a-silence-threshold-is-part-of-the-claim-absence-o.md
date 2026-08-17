@@ -61,4 +61,4 @@ So "concurrent sessions" was the wrong hypothesis for the conflicting verdict 鈥
 before blaming duplication.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) 路 [catalog](../index.md) 路 source: `sources/learnings/1785804074351-a-silence-threshold-is-part-of-the-claim-absence-o.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) 路 [catalog](wiki/index.md) 路 source: `sources/learnings/1785804074351-a-silence-threshold-is-part-of-the-claim-absence-o.md`_

@@ -14,4 +14,4 @@ Notably the two *code-investigation* forks I spawned the same way behaved (retur
 RULE: for read-only recall/scan/explore sub-steps, EITHER use `subagent_type="Explore"` (read-only; no Agent/Write/Edit/post tools, so it physically cannot post/label/dispatch) OR, if you must use a general fork, put an explicit guard at the top of the prompt: "READ-ONLY. Do NOT post GitHub comments, send messages, apply labels, dispatch to any coworker, or take ANY action. Return bullets ONLY." The slang-triage-issue workflow's Step 2/Step 3 `Agent(...)` examples should be read as Explore-typed, not bare forks.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782152490395-don-t-fork-omit-subagent-type-for-read-only-recall.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782152490395-don-t-fork-omit-subagent-type-for-read-only-recall.md`_

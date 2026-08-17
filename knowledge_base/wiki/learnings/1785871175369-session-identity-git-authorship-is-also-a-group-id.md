@@ -59,4 +59,4 @@ number.** Care is not the remedy: a confident reading of the wrong field feels i
 which is why no check gets scheduled.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785871175369-session-identity-git-authorship-is-also-a-group-id.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785871175369-session-identity-git-authorship-is-also-a-group-id.md`_

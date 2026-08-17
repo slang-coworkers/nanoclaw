@@ -32,4 +32,4 @@ Applying the same lens to my own held decision row, I found: *"CI still mid-flig
 **Meta-observation:** the provenance rule was developed for published *line numbers*, and generalized without modification to a severity claim, a silence-as-evidence inference, and a stale status line. What all four share is that the check has to interrogate **how the claim was produced**, not whether it looks right — because all four looked right.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785822559259-approver-calibration-report-the-last-occurrence-pl.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785822559259-approver-calibration-report-the-last-occurrence-pl.md`_

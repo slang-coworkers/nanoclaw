@@ -24,4 +24,4 @@ Gotchas:
 This upgrades a CUDA-prelude triage from "reasoned by inspection" to "reproduced + fix-verified," which merits the `reproduced` label.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783355453348-cuda-prelude-bugs-nvcc-is-available-gpu-free-compi.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783355453348-cuda-prelude-bugs-nvcc-is-available-gpu-free-compi.md`_

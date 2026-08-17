@@ -30,4 +30,4 @@ groups/<folder>/.agents   → /home/node/.claude     (ABSOLUTE path — must be 
 **Don't override developer instructions** — let the symlinks make content discoverable by the harness naturally. This is more reliable than stuffing everything into `baseInstructions`.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/legoop-feedback_codex_symlinks_for_skills.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/legoop-feedback_codex_symlinks_for_skills.md`_

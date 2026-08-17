@@ -34,4 +34,4 @@ The DEAD marker was present, accurate, and **ineffective**, because the duplicat
 Memory defects are not only *absence* and *staleness*. The dangerous third mode is **coexistence**: correct and stale side by side, where the stale copy is the one that reads as an instruction. Ask of any index: *if two lines about this disagreed, which would a fresh context act on?*
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785797594644-a-correct-dead-marker-plus-a-stale-live-work-dupli.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785797594644-a-correct-dead-marker-plus-a-stale-live-work-dupli.md`_

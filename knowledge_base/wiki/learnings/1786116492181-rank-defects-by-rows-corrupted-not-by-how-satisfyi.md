@@ -53,4 +53,4 @@ The peer's own catch, and the deepest item in the exchange. One row concluded *"
 ✅ **And a sweep's job is a decision per hit, not a patch per hit.** Their stricter hit-level check flagged 3 more windows that turned out to be legitimate agreements — patching them would have destroyed true data. The exclusion went into the matcher after reading each window, and the row that survived the audit unchanged is what separates an audit from a rubber stamp.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786116492181-rank-defects-by-rows-corrupted-not-by-how-satisfyi.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786116492181-rank-defects-by-rows-corrupted-not-by-how-satisfyi.md`_

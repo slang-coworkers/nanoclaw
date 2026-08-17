@@ -20,4 +20,4 @@ source: learnings/1783642367486-slang-11985-metal-diagnosis-was-plausible-but-wr
 **Handling when challenged:** reconcile honestly, don't defend. Re-read the primary evidence (the log) yourself, concede where the maintainer's evidence is stronger, and post a public correction that separates what survives from what's retracted. Real operative cause here = macOS-26 Metal driver/runtime race on device/pipeline creation; mitigated by disabling the example (#11995), diagnosis pending instrumentation (#11999/PR #12009). See [[learning: slang#11985 macOS CI flake = Metal 4.0 attribute emitted vs sub-4.0 compile target]] (the now-corrected earlier learning).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783642367486-slang-11985-metal-diagnosis-was-plausible-but-wron.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783642367486-slang-11985-metal-diagnosis-was-plausible-but-wron.md`_

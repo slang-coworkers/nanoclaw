@@ -20,4 +20,4 @@ A used function's `[require]` caps (e.g. SER's `spvShaderInvocationReorderEXT �
 **General lesson (the real takeaway):** Do NOT infer emitted SPIR-V version from a used builtin's `[require]` capability chain. Emitted version = target format + explicit profile/capability + the narrow set of public `spirv_1_x` require-decorations — not the transitive `[require]` closure of called functions. When a review claim about emitted version hinges on this, it MUST be confirmed with a built binary; a source trace through capdef `[require]` chains is insufficient and easily wrong (as this was). Related: [[reviewer-a-can-complete-analysis-but-fail-to-write-final-review]] — no-binary source-only reasoning is exactly where reviews go wrong.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784153531683-correction-emitted-spir-v-version-comes-from-getta.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784153531683-correction-emitted-spir-v-version-comes-from-getta.md`_

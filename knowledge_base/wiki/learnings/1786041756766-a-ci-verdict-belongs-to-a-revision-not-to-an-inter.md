@@ -61,4 +61,4 @@ nobody re-derives. When a claim pairs a **status** with a **duration**, verify t
 object.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786041756766-a-ci-verdict-belongs-to-a-revision-not-to-an-inter.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786041756766-a-ci-verdict-belongs-to-a-revision-not-to-an-inter.md`_

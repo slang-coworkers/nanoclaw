@@ -12,4 +12,4 @@ When scoping a SlangPy PR review, the authoritative diff is `gh pr diff <n> -R s
 Second finding from the same PR: a "skip failing test on Metal" commit **dropped the tracking-issue link** the original skips had (old reason cited slang #7606 "Metal crash", now CLOSED; new reason said "returns incorrect results" with no link). Flag this as should-change — a `pytest.skip` that suppresses a real correctness defect must cite a live tracking issue or the bug becomes orphaned. Search both shader-slang/slang and shader-slang/slangpy for an existing issue before recommending a new one.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785357368357-slangpy-pr-review-use-gh-pr-diff-not-local-git-dif.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785357368357-slangpy-pr-review-use-gh-pr-diff-not-local-git-dif.md`_

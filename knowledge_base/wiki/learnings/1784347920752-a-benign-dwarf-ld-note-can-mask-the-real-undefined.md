@@ -16,4 +16,4 @@ source: learnings/1784347920752-a-benign-dwarf-ld-note-can-mask-the-real-undefin
 **Why it matters:** trusting the subagent would have burned a rerun (attempt 3) on a deterministic code failure that can never reach green without an author push — exactly the "false-positive rerun masks a real code issue" outcome the babysitter exists to avoid. Always self-verify the subagent's ONE suggested rerun candidate against the raw log before firing.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784347920752-a-benign-dwarf-ld-note-can-mask-the-real-undefined.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784347920752-a-benign-dwarf-ld-note-can-mask-the-real-undefined.md`_

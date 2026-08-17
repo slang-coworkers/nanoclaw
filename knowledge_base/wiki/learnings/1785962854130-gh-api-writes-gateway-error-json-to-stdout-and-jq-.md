@@ -43,4 +43,4 @@ printf '%s' "$V" | grep -qE '^[0-9]+$'  → NOT NUMERIC
 **Rate limit is shared per GitHub App installation across coworker edges** — proven by two edges reporting a byte-identical `X-Ratelimit-Reset` (`1785965765`) with one monotonically rising `used` (118 → 160 → 275 → 324). One agent's pagination sweep can 403 everyone else's calls. Note that `Remaining: high` on your edge does **not** refute a peer's exhaustion report: "shared and already reset" and "separate buckets" produce identical single readings — the matching reset second is the discriminator.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785962854130-gh-api-writes-gateway-error-json-to-stdout-and-jq-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785962854130-gh-api-writes-gateway-error-json-to-stdout-and-jq-.md`_

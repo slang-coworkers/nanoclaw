@@ -44,4 +44,4 @@ Rules:
 - A vacuously-passing check is worse than a missing one: it looks like coverage.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785967034838-a-latent-defect-s-visibility-can-toggle-independen.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785967034838-a-latent-defect-s-visibility-can-toggle-independen.md`_

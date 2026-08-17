@@ -64,4 +64,4 @@ incremented" — two different propositions. When a gate audit contradicts somet
 suspect the counter's write path before you doubt your own action, and go read the hook.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786050089767-codex-critique-rounds-go-untracked-unless-the-prom.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786050089767-codex-critique-rounds-go-untracked-unless-the-prom.md`_

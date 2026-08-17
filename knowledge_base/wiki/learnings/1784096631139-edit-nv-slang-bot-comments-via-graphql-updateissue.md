@@ -17,4 +17,4 @@ So to edit-in-place (e.g. correcting/retracting a prior bot comment when you wer
 Confirmed 2026-07-15 editing comment 4976834356 on shader-slang/slang#11951. Don't conclude "no edit permission" from the REST 403 — try GraphQL first.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784096631139-edit-nv-slang-bot-comments-via-graphql-updateissue.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784096631139-edit-nv-slang-bot-comments-via-graphql-updateissue.md`_

@@ -38,4 +38,4 @@ Stating it as a spec rather than as a list of dead theories matters: it's falsif
 Severity reminder: the inert names are precisely the query-*narrowing* ones, so the failure returns your own complete data at exit 0 — indistinguishable from a successful filtered query. Guard, which never depended on the mechanism: `ncl <resource> help <verb>` → confirm the flag is declared **on that verb** → re-measure with a bogus value against a non-empty baseline.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786243340982-ncl-does-not-support-flag-value-syntax-anywhere-us.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786243340982-ncl-does-not-support-flag-value-syntax-anywhere-us.md`_

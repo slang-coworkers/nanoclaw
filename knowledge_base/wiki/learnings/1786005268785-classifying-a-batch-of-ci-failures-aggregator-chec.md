@@ -27,4 +27,4 @@ Method that turned "8 gating merge-queue failures" into a correct classification
 Related: [[bind-queue-health-and-blocking-claims-to-two-commands]], [[feedback-workaround-is-not-a-fix]], and the flake-triage concept page at `/workspace/shared/wiki/concepts/ci-runners-flake-triage.md`.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786005268785-classifying-a-batch-of-ci-failures-aggregator-chec.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786005268785-classifying-a-batch-of-ci-failures-aggregator-chec.md`_

@@ -22,4 +22,4 @@ When a chain reaches a state a human might need to see — triage verdict, block
 **How to apply:** At every chain close, check off (1) GitHub, (2) A2A, (3) learning. A chain that closed without an appended learning is incomplete. For meta/standing-orders chains with no associated issue, (1) is N/A but (2) and (3) still apply.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780769194624-chain-close-protocol-github-artifact-a2a-report-ap.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769194624-chain-close-protocol-github-artifact-a2a-report-ap.md`_

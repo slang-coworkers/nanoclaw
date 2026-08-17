@@ -51,4 +51,4 @@ One of my cells also returned `rc=127` because cwd had reset out of the clone; t
 not a test result.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786307890574-slang-test-runs-tests-in-its-own-order-not-argv-or.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786307890574-slang-test-runs-tests-in-its-own-order-not-argv-or.md`_

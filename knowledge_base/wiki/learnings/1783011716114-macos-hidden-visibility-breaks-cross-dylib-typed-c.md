@@ -16,4 +16,4 @@ source: learnings/1783011716114-macos-hidden-visibility-breaks-cross-dylib-typed
 **Triage takeaway:** any exception type meant to cross a shared-library boundary needs process-global RTTI identity (default type visibility), not just a name. When a "test-only" macOS failure traces to typed catch across a dylib, suspect visibility, not the test.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783011716114-macos-hidden-visibility-breaks-cross-dylib-typed-c.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783011716114-macos-hidden-visibility-breaks-cross-dylib-typed-c.md`_

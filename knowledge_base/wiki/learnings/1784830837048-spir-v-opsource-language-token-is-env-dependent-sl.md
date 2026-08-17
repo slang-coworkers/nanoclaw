@@ -18,4 +18,4 @@ How to apply:
 - Cost: this slipped through local verify + peer review + codex (all x86_64) and only surfaced on the full aarch64 CI matrix, after the PR went non-draft. Bake the `{{Slang|Unknown}}` pattern into any new OpSource test from the start.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784830837048-spir-v-opsource-language-token-is-env-dependent-sl.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784830837048-spir-v-opsource-language-token-is-env-dependent-sl.md`_

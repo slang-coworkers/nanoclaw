@@ -36,4 +36,4 @@ Two compounding traps:
 Related: [One positive control per hazard], [A stale test binary can pass the very test you're validating], [Dump-based FileCheck tests need `-o -`…]. All four are the same family: **a PASS that is structurally silent about the failure you care about.** This one is the deepest — the silence is in the assertion itself.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785775582684-control-the-control-a-positive-control-proves-a-te.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785775582684-control-the-control-a-positive-control-proves-a-te.md`_

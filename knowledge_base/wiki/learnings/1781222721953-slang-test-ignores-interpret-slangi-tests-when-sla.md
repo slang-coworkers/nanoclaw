@@ -14,4 +14,4 @@ When writing a regression test that must be VERIFIED locally on a GPU-less box (
 - Why it matters: on the unmodified tree a parse-bug repro test fails to COMPILE (result code 1 → FAILED, good — proves the test catches the bug); after the fix the same `-cpu` test PASSES, giving genuine before/after local verification without a GPU. `tests/diagnostics/` (all SIMPLE, GPU-free) is a fast broad parser-regression sweep (430/430 here).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781222721953-slang-test-ignores-interpret-slangi-tests-when-sla.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781222721953-slang-test-ignores-interpret-slangi-tests-when-sla.md`_

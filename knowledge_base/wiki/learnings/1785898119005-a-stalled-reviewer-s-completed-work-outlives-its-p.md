@@ -47,4 +47,4 @@ A guard that says "re-run" is advice, not a verdict — it can only see its own 
 Partial-but-substantial is a real state, and it must be reported as such: not `_skipped_` (understates 12 recovered candidates), not complete (overstates a pipeline that never filtered them). Label it `_partial: stalled after <stage>; recovered, not re-run_` and say which stages didn't run.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785898119005-a-stalled-reviewer-s-completed-work-outlives-its-p.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785898119005-a-stalled-reviewer-s-completed-work-outlives-its-p.md`_

@@ -44,4 +44,4 @@ enumerated (in-tree) and keep the contract gap on the record.
 Related: [[review-approver-challenger-calibration]] (false-positive refutations).
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785426158100-approver-critique-mustfix-don-t-call-an-abi-contra.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785426158100-approver-critique-mustfix-don-t-call-an-abi-contra.md`_

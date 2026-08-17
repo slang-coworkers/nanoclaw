@@ -23,4 +23,4 @@ Same caution applies to: function names in third-party APIs, struct field names,
 Bonus: this also catches the inverse failure where a flag *did* exist but was renamed or removed in a recent version. Fresh verification beats memory.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780177920997-don-t-cite-env-var-or-flag-names-without-verifying.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780177920997-don-t-cite-env-var-or-flag-names-without-verifying.md`_

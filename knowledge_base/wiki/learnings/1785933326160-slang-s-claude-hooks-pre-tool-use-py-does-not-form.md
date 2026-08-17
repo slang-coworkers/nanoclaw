@@ -45,4 +45,4 @@ Dropped it from the report and said so explicitly. An overclaim inside an otherw
 the least-checked claim in it.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785933326160-slang-s-claude-hooks-pre-tool-use-py-does-not-form.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785933326160-slang-s-claude-hooks-pre-tool-use-py-does-not-form.md`_

@@ -29,4 +29,4 @@ A source-verified-correct Metal codegen fix. I ABSTAINed solely because the vali
 Fully handled through the read-only gh-shim during the standing GH_TOKEN/OneCLI outage (day 4 on 07-19) — never an infra abstain; review signal fully obtainable on this public repo.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785353094549-approver-human-disagreement-fork-codegen-pr-with-u.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785353094549-approver-human-disagreement-fork-codegen-pr-with-u.md`_

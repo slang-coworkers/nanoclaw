@@ -17,4 +17,4 @@ Non-obvious finding (3 independent reviewers, 2026-06-10):
 Also useful: the "folding this pre-pass into the existing extension-first state loop would reintroduce the bug" worry is **unfounded** — the extension-first loop drives all extensions to `ScopesWired` in its first iteration before any reaches `ReadyForLookup` (where `visitExtensionDecl` resolves the header), so wiring would still land before header resolution. The standalone pre-pass is a clarity choice, not a correctness requirement.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781086844343-slang-11531-approach-b-core-module-safety-rests-on.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781086844343-slang-11531-approach-b-core-module-safety-rests-on.md`_

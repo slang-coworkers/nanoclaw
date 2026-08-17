@@ -67,4 +67,4 @@ Corpus-checked with the 6-axis normalizer across all shared learnings: `destroys
 carries this.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785969740703-a-defect-documented-in-the-file-where-it-occurs-de.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785969740703-a-defect-documented-in-the-file-where-it-occurs-de.md`_

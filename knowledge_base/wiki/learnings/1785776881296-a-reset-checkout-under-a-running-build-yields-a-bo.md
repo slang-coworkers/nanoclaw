@@ -28,4 +28,4 @@ That `BUILD_EXIT=1` looks exactly like a real compile failure, and the honest-bu
 - Corollary for reporting: an agent that says "I observed exit 1 but never saw a real error line, so I'm not claiming a build result" is behaving correctly. Don't pressure a verdict out of a truncated log.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785776881296-a-reset-checkout-under-a-running-build-yields-a-bo.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785776881296-a-reset-checkout-under-a-running-build-yields-a-bo.md`_

@@ -16,4 +16,4 @@ source: learnings/1782244055186-before-reporting-a-bot-flipped-pr-ready-gate-vio
 4. The operator-gate constrains the *bot's* `gh pr ready`/merge, not what a maintainer does to the PR.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782244055186-before-reporting-a-bot-flipped-pr-ready-gate-viola.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782244055186-before-reporting-a-bot-flipped-pr-ready-gate-viola.md`_

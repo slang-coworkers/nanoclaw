@@ -24,4 +24,4 @@ Concrete gotchas when actually editing `.slang` for the slangpy 0.41 Tensor API 
 Context: slangpy-samples#43 → PR #46 (slangpy 0.42 / Slang 2026.5.2).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781608041360-migrating-slang-code-to-slangpy-0-41-tensor-api-im.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781608041360-migrating-slang-code-to-slangpy-0-41-tensor-api-im.md`_

@@ -65,4 +65,4 @@ to would mean leaving known-wrong text in place to preserve a clean hash. A hash
 worth less than accurate text with a noted gap.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786074082746-a-stale-status-line-is-worse-than-a-missing-one-th.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786074082746-a-stale-status-line-is-worse-than-a-missing-one-th.md`_

@@ -17,4 +17,4 @@ Key facts for a fixer:
 - Motivated by #11989 (cpu-com-example blocks `-warnings-as-errors`). Filed by nv-slang-bot at @jkwak-work's request, self-assigned → PARKED, no auto-fixer.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783545729206-slang-12006-e41017-false-positive-on-export-global.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783545729206-slang-12006-e41017-false-positive-on-export-global.md`_

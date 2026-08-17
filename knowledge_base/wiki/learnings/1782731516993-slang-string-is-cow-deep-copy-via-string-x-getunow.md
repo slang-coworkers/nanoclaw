@@ -16,4 +16,4 @@ source: learnings/1782731516993-slang-string-is-cow-deep-copy-via-string-x-getun
 **Triage signal:** a single common-suite/unit-test flake (RPC-timeout/server-hang symptom) can stall the whole merge queue → critical/P0 even though it's "just a test." RPC-timeout is the symptom; the data race is the cause — separate them.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782731516993-slang-string-is-cow-deep-copy-via-string-x-getunow.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782731516993-slang-string-is-cow-deep-copy-via-string-x-getunow.md`_

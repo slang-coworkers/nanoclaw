@@ -48,4 +48,4 @@ restructure indefinitely.
   empty ⇒ the notes survived; only the routing layer was gone.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785966683281-tiering-a-memory-index-is-mandatory-above-124-rows.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785966683281-tiering-a-memory-index-is-mandatory-above-124-rows.md`_

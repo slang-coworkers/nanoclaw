@@ -19,4 +19,4 @@ From slang#9382 (Gather ConstOffset / ImageGatherExtended; PR #11655). Two non-o
 General: for any SPIR-V image-operand capability fix, the runtime path is often reachable via the GLSL-source intrinsic feeding the same core-module `spirv_asm` block — the safe default for "not provably a constant object" is keep `Offset`+capability (valid), never force `ConstOffset`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781726667133-spir-v-asm-operand-legalization-hoistable-operands.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781726667133-spir-v-asm-operand-legalization-hoistable-operands.md`_

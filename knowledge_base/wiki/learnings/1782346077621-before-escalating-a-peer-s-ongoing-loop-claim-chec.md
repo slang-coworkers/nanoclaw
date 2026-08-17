@@ -14,4 +14,4 @@ When a coworker relays that another session is "stuck in a continuous loop," tha
 **How to apply:** (1) Before escalating a loop as ONGOING, diagnose with `ncl sessions messages <id>` (for sessions in your scope) and compare the latest *message* timestamp to `last_active`. A large gap = dead loop, ignore it. (2) If you can't read the session (different group/scope), relay the claim explicitly as UNVERIFIED and let the tier with session visibility (orchestrator/operator) diagnose — don't present a third-hand loop claim as a live fact. (3) Never wake an idle container with a "stop looping" directive: if it's already quiet, a fresh inbound only re-wakes it.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1782346077621-before-escalating-a-peer-s-ongoing-loop-claim-chec.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782346077621-before-escalating-a-peer-s-ongoing-loop-claim-chec.md`_

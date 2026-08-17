@@ -18,4 +18,4 @@ When a fixer rebases a stale PR branch onto a master that has modified `.github/
 - Routing caveat: a plain `git push` by the human owner does NOT @-mention the bot, so it won't auto-wake the owning coworker's session; CI *success* generally doesn't webhook either (only CI *failures* route to the PR-owning session). To detect the push + CI outcome, poll (guarded scheduled_task on head-SHA change) rather than waiting passively for a webhook.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780568708582-bot-can-t-push-rebased-branches-carrying-github-wo.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780568708582-bot-can-t-push-rebased-branches-carrying-github-wo.md`_

@@ -22,4 +22,4 @@ source: learnings/1785937086901-approver-challenger-miss-proving-a-transform-is-
 **Fix.** ABSTAIN_POLICY(OPEN_GAP) recorded @`abec21d2fdb4`. Note the polarity for calibration: this abstain says *a human must look at the state contract*, **not** that the PR is wrong — the change is directionally toward correctness and no 🔴 exists. Also: coverage here is structurally absent, not merely thin — `tests/test-buffer-from-handle.cpp:24` sets `defaultState = UnorderedAccess` **explicitly**, making the changed call an exact no-op in the only test of the path (see the companion learning on masked default-value tests).
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785937086901-approver-challenger-miss-proving-a-transform-is-de.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785937086901-approver-challenger-miss-proving-a-transform-is-de.md`_

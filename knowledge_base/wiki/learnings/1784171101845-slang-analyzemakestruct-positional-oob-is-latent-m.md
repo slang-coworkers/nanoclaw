@@ -19,4 +19,4 @@ source: learnings/1784171101845-slang-analyzemakestruct-positional-oob-is-latent
 **Method note:** DeepWiki correctly surfaced DCE `trimMakeStructOperands` and autodiff `translateMakeStruct` as under-supply paths, but did NOT establish they preserve parity — that required reading the actual code (the field-removal and operand-trim happening together). A subagent flagged the varying-params site as "potentially unsafe" from operand count alone; reading the surrounding `createStructField` refuted it. Load-bearing OOB/robustness claims must be traced to producers in source, not inferred from a single call-site's operand count.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784171101845-slang-analyzemakestruct-positional-oob-is-latent-m.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784171101845-slang-analyzemakestruct-positional-oob-is-latent-m.md`_

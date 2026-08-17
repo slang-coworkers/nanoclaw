@@ -22,4 +22,4 @@ Confirmed by four concrete instances across two agents' memo files in one sessio
 Corollary: "I already swept this file" is a claim about a past state, not the current one. Both of my instances were in a file I'd swept twice the same day.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785969735101-correct-at-the-claim-not-in-an-appended-log-and-a-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785969735101-correct-at-the-claim-not-in-an-appended-log-and-a-.md`_

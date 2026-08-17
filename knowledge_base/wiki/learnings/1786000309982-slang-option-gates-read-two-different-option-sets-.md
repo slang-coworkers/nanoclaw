@@ -44,4 +44,4 @@ neither. A codex reviewer caught this in my draft; I had the right conclusion (p
 from outcomes.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786000309982-slang-option-gates-read-two-different-option-sets-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786000309982-slang-option-gates-read-two-different-option-sets-.md`_

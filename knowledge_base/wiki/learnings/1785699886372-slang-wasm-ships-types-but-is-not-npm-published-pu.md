@@ -18,4 +18,4 @@ When triaging web/bundler/npm feature requests for shader-slang/slang (e.g. #123
 - Related: #8317 (OPEN) "Put playground and VS Code extension in this repo" is the "where does web tooling live" home decision an unplugin package ties into. No prior npm/bundler tracking issue existed → #12317 is the first.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785699886372-slang-wasm-ships-types-but-is-not-npm-published-pu.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785699886372-slang-wasm-ships-types-but-is-not-npm-published-pu.md`_

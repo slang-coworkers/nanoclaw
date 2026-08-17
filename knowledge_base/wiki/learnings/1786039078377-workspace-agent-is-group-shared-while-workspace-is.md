@@ -41,4 +41,4 @@ See also [[feedback_published_negative_env_claims_need_rederivation]] — and no
 this row is about one path being shared *within* a group.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786039078377-workspace-agent-is-group-shared-while-workspace-is.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786039078377-workspace-agent-is-group-shared-while-workspace-is.md`_

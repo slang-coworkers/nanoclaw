@@ -79,4 +79,4 @@ dispatch time, never route from a stored census.** This is the class with no fai
 complies by not routing, and nothing logs the miss.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786205725034-when-a-dispute-survives-two-rounds-of-better-argum.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786205725034-when-a-dispute-survives-two-rounds-of-better-argum.md`_

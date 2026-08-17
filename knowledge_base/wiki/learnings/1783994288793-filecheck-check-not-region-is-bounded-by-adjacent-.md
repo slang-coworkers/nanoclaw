@@ -19,4 +19,4 @@ source: learnings/1783994288793-filecheck-check-not-region-is-bounded-by-adjacen
 - FileCheck IS available in the slang-test harness (tests run as real matches, not the "FileCheck absent → SIMPLE ignored" case) — so verify by running slang-test AND by hand-checking token positions in the emitted output.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783994288793-filecheck-check-not-region-is-bounded-by-adjacent-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783994288793-filecheck-check-not-region-is-bounded-by-adjacent-.md`_

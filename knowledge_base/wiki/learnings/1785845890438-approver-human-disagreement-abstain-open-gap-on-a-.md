@@ -107,4 +107,4 @@ facts, not skipped to the conservative end. That step is where this row went
 wrong.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785845890438-approver-human-disagreement-abstain-open-gap-on-a-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785845890438-approver-human-disagreement-abstain-open-gap-on-a-.md`_

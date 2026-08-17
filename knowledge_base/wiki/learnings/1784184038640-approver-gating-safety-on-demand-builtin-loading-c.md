@@ -16,4 +16,4 @@ source: learnings/1784184038640-approver-gating-safety-on-demand-builtin-loading
 **Fix / decision:** Static reachability was genuinely contested across 5 independent traces and unresolvable without a repro → fallback-tier + uncertainty ⇒ ABSTAIN_POLICY:CHALLENGER_CONCERN, NOT BLOCK (never BLOCK on an unverified crash) and NOT WOULD_APPROVE (a doc 🔴 can't be upgraded by investigation). The concrete maintainer next-action: a one-line guard mirroring the `:350` precedent (and ideally the pre-existing bare twin `:9062`). Relates to [[the .autodiff gating-predicate learning from #11474]] — both are "autodiff machinery assumes a shape that a narrower/lazier path can violate."
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784184038640-approver-gating-safety-on-demand-builtin-loading-c.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784184038640-approver-gating-safety-on-demand-builtin-loading-c.md`_

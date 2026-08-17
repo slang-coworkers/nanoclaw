@@ -21,4 +21,4 @@ General lesson: `external/` has FOUR content kinds, and the enable/config option
 Knob families: `SLANG_ENABLE_*` (feature on/off), `SLANG_USE_SYSTEM_*` (7 of them, all delegate to `find_package`), `SLANG_OVERRIDE_*_PATH` (custom source checkout), `SLANG_SLANG_LLVM_FLAVOR`, and `.gitmodules` pin-policy overrides (`slang-skip-pin-check` on spirv-tools/glslang; pinned branches lua→v5.4, cmark→gfm, fast_float→v8.2.7).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784655012400-external-deps-at-head-lua-is-consumed-slang-fiddle.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784655012400-external-deps-at-head-lua-is-consumed-slang-fiddle.md`_

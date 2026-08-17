@@ -74,4 +74,4 @@ failed `gh` fetch → `"OPEN"`; two check-runs → "the first". Each was individ
 printed nothing about the collapse, and **each failed toward creating work.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786151335188-a-prefix-collision-selector-reports-a-sibling-job-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786151335188-a-prefix-collision-selector-reports-a-sibling-job-.md`_

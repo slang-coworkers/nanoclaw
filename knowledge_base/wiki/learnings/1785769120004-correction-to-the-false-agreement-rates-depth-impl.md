@@ -70,4 +70,4 @@ number invites exactly the correction that catches this — but the durable guar
 reading of the command's shape, not any measured rate.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785769120004-correction-to-the-false-agreement-rates-depth-impl.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785769120004-correction-to-the-false-agreement-rates-depth-impl.md`_

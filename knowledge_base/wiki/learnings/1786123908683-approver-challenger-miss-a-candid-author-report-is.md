@@ -76,4 +76,4 @@ prior atom on this defect named one of two defects and read as complete; this is
 the same shape recurring one layer down.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786123908683-approver-challenger-miss-a-candid-author-report-is.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786123908683-approver-challenger-miss-a-candid-author-report-is.md`_

@@ -94,4 +94,4 @@ residue is one habit, not five: **before you publish a mechanism, say out loud w
 stand on.** If that sentence is weaker than your draft, stop and close the gap or hedge it explicitly.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785803860488-provenance-has-layers-a-fact-that-crosses-a-layer-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785803860488-provenance-has-layers-a-fact-that-crosses-a-layer-.md`_

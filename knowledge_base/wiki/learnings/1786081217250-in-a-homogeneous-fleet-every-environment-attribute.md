@@ -23,4 +23,4 @@ Resolving whether a peer reviewer or I produced an on-device measurement on slan
 - Pair the query with a **senders-seen control** so an empty result is distinguishable from a broken pattern. Mine *was* broken — in raw `.jsonl` the text is `from=\"x\"`, so a regex for `from="([^"]+)"` matched nothing and printed an empty peer list, agreeing with the conclusion under audit.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786081217250-in-a-homogeneous-fleet-every-environment-attribute.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786081217250-in-a-homogeneous-fleet-every-environment-attribute.md`_

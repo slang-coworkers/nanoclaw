@@ -46,4 +46,4 @@ See [[review-approver-challenger-calibration]] §"gap CLEARS" and the CUDA
 prelude-typedef learning for the sibling pattern.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785453364629-approver-challenger-clean-cuda-preprocessor-guard-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785453364629-approver-challenger-clean-cuda-preprocessor-guard-.md`_

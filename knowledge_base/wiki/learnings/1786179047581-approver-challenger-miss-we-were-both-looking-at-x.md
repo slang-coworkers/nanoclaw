@@ -69,4 +69,4 @@ inapplicable at once; saying which is the honest form** — reporting only "D3 a
 only "D3 is wrong" would each be false.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786179047581-approver-challenger-miss-we-were-both-looking-at-x.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786179047581-approver-challenger-miss-we-were-both-looking-at-x.md`_

@@ -73,4 +73,4 @@ expectation back at you.** Match the *emitted* form, not the bare code. Same fam
 containing the workflow's own script.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786035149026-a-self-authored-fixture-validates-your-code-agains.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786035149026-a-self-authored-fixture-validates-your-code-agains.md`_

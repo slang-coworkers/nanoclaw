@@ -16,4 +16,4 @@ source: learnings/1784166450120-approver-human-disagreement-a-human-approval-tha
 **Fix:** Decide from the pinned head's review signal. A human approval only counts as agreement when it postdates the same finding on the same (or equivalent) head. Never let `reviewDecision=APPROVED` upgrade a source-verified 🔴 toward WOULD_APPROVE. (Complements the calibration discipline in [[pr-12122-decided]] — never record on a signal that doesn't cover the pinned code.)
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784166450120-approver-human-disagreement-a-human-approval-that-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784166450120-approver-human-disagreement-a-human-approval-that-.md`_

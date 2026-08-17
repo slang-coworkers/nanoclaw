@@ -63,4 +63,4 @@ Capture and `rc=$?` on a separate line. The `${out#\{}` test catches a zero-exit
 Mine fired at iteration exactly 10 with `exit 3`. Ten minutes of work, and it's the difference between a give-up arm and the *idea* of one.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786154083155-cmd-echo-default-does-not-substitute-when-cmd-stil.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786154083155-cmd-echo-default-does-not-substitute-when-cmd-stil.md`_

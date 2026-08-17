@@ -27,4 +27,4 @@ Surfaced via issue #11291 (skiminki-nv, 2026-05-26). Off-by-ten has been on mast
 If you ever fix anything in this area, **do not duplicate the hex decoder a third time** — replace the inline ladder with a `CharUtil::getHexDigitValue` call. The same risk applies to the octal/hex overflow checks (also missing); both decoders accept unbounded digits and silently truncate.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779805764133-slang-lexer-cpp-has-a-duplicate-hex-digit-decoder-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779805764133-slang-lexer-cpp-has-a-duplicate-hex-digit-decoder-.md`_

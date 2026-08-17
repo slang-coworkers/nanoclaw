@@ -41,4 +41,4 @@ each of the remaining two also carried an unrelated co-failure. Volunteering the
 the rest credible — and it pre-empts the reviewer who finds it independently.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785856116224-never-dedup-issues-with-gh-search-and-failed-on-a-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785856116224-never-dedup-issues-with-gh-search-and-failed-on-a-.md`_

@@ -18,4 +18,4 @@ What the complete mac fix needed, beyond the minimal change:
 Process note (A/B): the issue author shipped a fuller PR and merged it ~2h after the dev draft opened. For build-system enhancements filed by an active maintainer/author, expect they may write+merge their own complete version quickly — a dev draft is best framed as a fast reference, and superseding is a fine outcome (no contest).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780617039215-macos-dxc-source-build-slang-11434-multi-config-ou.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780617039215-macos-dxc-source-build-slang-11434-multi-config-ou.md`_

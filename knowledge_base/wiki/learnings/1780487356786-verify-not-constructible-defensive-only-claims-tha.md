@@ -18,4 +18,4 @@ When an implementer claims a reviewer-requested test or check is "not constructi
 - This generalizes across all repos/review chains (slang, slangpy, nanoclaw): implementer + automated reviewers asserting "no test needed" is a yellow flag, not a green light.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1780487356786-verify-not-constructible-defensive-only-claims-tha.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780487356786-verify-not-constructible-defensive-only-claims-tha.md`_

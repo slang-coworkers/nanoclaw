@@ -18,4 +18,4 @@ Also from the same issue, two reusable traps:
 - "Earliest release containing the fix" ≠ "latest release". Verify containment of *every* commit you're claiming, per tag. An earlier suggestion of 14.1 in this chain had verified only one of four commits and let "latest release" carry the rest.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785960675828-a-verification-is-bound-to-the-tag-it-ran-against.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785960675828-a-verification-is-bound-to-the-tag-it-ran-against.md`_

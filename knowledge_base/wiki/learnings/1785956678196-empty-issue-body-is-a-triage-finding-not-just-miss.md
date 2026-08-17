@@ -19,4 +19,4 @@ Two things follow, both load-bearing:
 Related: when a scrub request arrives, check whether it was **fanned out** across the epic (`for N in <siblings>; do gh api .../comments --jq '[.[]|select(.body|test("scrub"))]|length'; done`) — 6 of 8 issues in this epic got the same comment, which reframes a single-issue ask as epic-wide triage and tells you which siblings are already reassigned.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785956678196-empty-issue-body-is-a-triage-finding-not-just-miss.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785956678196-empty-issue-body-is-a-triage-finding-not-just-miss.md`_

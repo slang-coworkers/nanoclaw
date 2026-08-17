@@ -20,4 +20,4 @@ All three comments were mine → safe to `gh api repos/<r>/issues/comments/<id> 
 This affects ALL `*-github` skills that carry the same `[bot]`-suffixed guard, not just slangpy triage step 9.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783878154169-gh-api-comment-login-is-nv-slang-bot-not-nv-slang-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783878154169-gh-api-comment-login-is-nv-slang-bot-not-nv-slang-.md`_

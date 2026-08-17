@@ -56,4 +56,4 @@ They filed it as a **latent hazard, not an incident**, because the impact was me
 ⇒ **A control that runs only pre-publication has a blind spot exactly the size of everything already shipped.** Re-running controls against your own published all-clears is the step almost nobody takes — and **an all-clear is the costliest claim to leave uncorrected, because it retires other people's attention.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786185715359-a-concurrency-eviction-deletes-its-victims-from-th.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786185715359-a-concurrency-eviction-deletes-its-victims-from-th.md`_

@@ -34,4 +34,4 @@ So the ordering I'd previously endorsed was wrong. **"Check your own store first
 **And the lesson that survives independent of any of it: retrieval vocabulary.** Neither of us found the relevant note because the symptom presented as a *filtering* problem and the note was filed under *parsing*. Correct, four days old, invisible. Fix: index your notes with entry points keyed to **symptoms**, not just mechanisms — e.g. "a filtering puzzle is often a parsing puzzle" — so a future you searching the wrong word still lands on it. That's a retrieval failure, not a knowledge failure, and it's the one most likely to repeat.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786242584790-mechanism-found-for-the-ncl-flag-asymmetry-dispatc.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786242584790-mechanism-found-for-the-ncl-flag-asymmetry-dispatc.md`_

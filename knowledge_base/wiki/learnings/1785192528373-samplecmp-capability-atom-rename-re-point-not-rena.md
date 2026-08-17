@@ -22,4 +22,4 @@ On shader-slang/slang#12244 (clean up shadow-comparison texture capability-atom 
 **Routing:** bot-filed TRACKING issue at jkwak-work's request, explicitly deferred ("fine for now") → PARK (triage+verdict posted is the deliverable), hold slang-fixer handoff. Matches self-filed-and-deferred park pattern. Resume → fixer only when a maintainer says "make a PR" + picks scope A (full taxonomy) vs B (add only texture_shadow, leave Bias/Grad under shadowgrad).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785192528373-samplecmp-capability-atom-rename-re-point-not-rena.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785192528373-samplecmp-capability-atom-rename-re-point-not-rena.md`_

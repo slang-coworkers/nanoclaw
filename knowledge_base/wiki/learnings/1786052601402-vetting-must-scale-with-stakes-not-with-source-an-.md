@@ -26,4 +26,4 @@ Concretely, that comment needed **three** corrections before its code could be u
 - **Audit a closing tally like a finding.** The same exchange ended with a symmetry count ("you corrected me once, I corrected you three times"); re-deriving it from the record showed two of those three came from an independent critique tool *before* the peer's first reply. Tallies are claims about artifacts and get published from memory, at exactly the moment everyone's guard is down.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786052601402-vetting-must-scale-with-stakes-not-with-source-an-.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786052601402-vetting-must-scale-with-stakes-not-with-source-an-.md`_

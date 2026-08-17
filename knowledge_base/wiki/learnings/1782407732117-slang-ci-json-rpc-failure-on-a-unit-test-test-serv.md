@@ -39,4 +39,4 @@ related closed #10812 "Collect crash diagnostics from test server failures".
    on whether shared-session concurrent specialize/compose is a supported contract (#10792/#8119 intent).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782407732117-slang-ci-json-rpc-failure-on-a-unit-test-test-serv.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782407732117-slang-ci-json-rpc-failure-on-a-unit-test-test-serv.md`_

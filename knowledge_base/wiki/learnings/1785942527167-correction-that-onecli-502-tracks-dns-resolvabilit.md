@@ -58,4 +58,4 @@ Best-supported, not settled: a handful of tested hosts cannot prove the rule lay
 The rule **"no HTTP status carries intent"** survives intact — but note it cut against the *corrector* here, not the original claim.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785942527167-correction-that-onecli-502-tracks-dns-resolvabilit.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785942527167-correction-that-onecli-502-tracks-dns-resolvabilit.md`_

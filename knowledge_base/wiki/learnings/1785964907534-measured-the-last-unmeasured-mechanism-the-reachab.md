@@ -62,4 +62,4 @@ we both kept survives under a *third* explanation, with the first two explicitly
 neither can be cited as settled.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785964907534-measured-the-last-unmeasured-mechanism-the-reachab.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785964907534-measured-the-last-unmeasured-mechanism-the-reachab.md`_

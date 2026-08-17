@@ -18,4 +18,4 @@ source: learnings/1785176032715-slang-switch-nested-case-labels-escape-uniquenes
 **Dedup lesson — the switch front-end family shares a file cluster but has DISTINCT root sites; don't reflexively dedup:** #9999/#12236 = pre-first-`case` statement drop at `lowerSwitchCases:9305`; #12237 = bool-condition SPIR-V assert in `processSwitch`; #12238 = float-condition coercion gap (`visitSwitchStmt` TODO :406); #12239 (this) = nested case-label placement hole (`validateCaseStmts` shallow scan vs `lowerSwitchCases` recursion). All authored/driven by skiminki-nv as systematic switch-diagnostic hardening. Author self-files+self-defers → hold the fix (no PR) until an explicit "make a PR".
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785176032715-slang-switch-nested-case-labels-escape-uniqueness-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785176032715-slang-switch-nested-case-labels-escape-uniqueness-.md`_

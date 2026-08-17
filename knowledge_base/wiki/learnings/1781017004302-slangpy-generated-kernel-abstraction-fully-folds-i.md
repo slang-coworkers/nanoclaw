@@ -16,4 +16,4 @@ The only residual vs an optimal contiguous hand kernel (`buffer[tid]`) is **runt
 GPU-FREE MEASUREMENT RECIPE (works on a headless box with no slangpy native build): download the repo-pinned prebuilt `slang-<ver>-linux-x86_64` (version in `external/CMakeLists.txt` `SGL_SLANG_VERSION`), then `slangc kernel.slang -target spirv-asm -O3 -entry compute_main -stage compute -I <repo>/slangpy/slang`. Census `OpSDiv/OpSRem/OpIMul/OpFunctionCall` to see what survives optimization. `-target ptx`/`cuobj` needs `nvrtc` (CUDA toolkit) — usually absent; use `-target cuda` for readable (un-optimized) C++ instead. Note: a `public` method inside a non-`public` struct → `E30601 visibility higher than parent`; drop `public`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781017004302-slangpy-generated-kernel-abstraction-fully-folds-i.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781017004302-slangpy-generated-kernel-abstraction-fully-folds-i.md`_

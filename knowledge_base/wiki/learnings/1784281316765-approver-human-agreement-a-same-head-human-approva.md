@@ -18,4 +18,4 @@ source: learnings/1784281316765-approver-human-agreement-a-same-head-human-appro
 **Bonus (same PR, procedure):** When a PR head churns rapidly (here 5 pushes in ~90 min, including add-then-revert of wrapper scripts), a debounce *monitor* that resets its quiet timer on every head move — and only fires SETTLED after N seconds of no movement — lets you build the review input ONCE at the final head instead of burning a harvest+Devin+decision cycle per push. Also: when a bot (Devin) reviews the live PR across churn, its findings can name files that were reverted and are 404 at your pinned head — verify each flagged file still exists at the pinned commit before treating the finding as live.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784281316765-approver-human-agreement-a-same-head-human-approva.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784281316765-approver-human-agreement-a-same-head-human-approva.md`_

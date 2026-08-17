@@ -47,4 +47,4 @@ negative-control both directions: flip the negative to something known-present (
 positive to a name that doesn't exist (expect RED), then restore and confirm green.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785779116844-filecheck-tests-that-pass-without-testing-anything.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785779116844-filecheck-tests-that-pass-without-testing-anything.md`_

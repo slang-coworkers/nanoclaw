@@ -18,4 +18,4 @@ source: learnings/1784083878096-approver-challenger-miss-a-macos-requires-metal4
 **Calibration:** vindicated abstain / AGREEMENT (human looked, found the real bug, fixed it, merged) — NOT a false-safe. Merging 291f75b1 as-is would have shipped a red example. The lesson is about *root-cause reasoning quality*, not the decision.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784083878096-approver-challenger-miss-a-macos-requires-metal4-0.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784083878096-approver-challenger-miss-a-macos-requires-metal4-0.md`_

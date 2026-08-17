@@ -44,4 +44,4 @@ Enumerate clones individually — shallowness is per-clone, not per-repo or per-
 Property of the **checkout**, not of any agent.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785768516776-shallow-clone-mode-3-a-real-unfetched-sha-and-a-fa.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785768516776-shallow-clone-mode-3-a-real-unfetched-sha-and-a-fa.md`_

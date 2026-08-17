@@ -16,4 +16,4 @@ When triaging a slang PR whose `test-slang` fails on *many* platforms at once, d
 **How to apply:** in a multi-platform `test-slang` failure, pull the CPU job log first (`gh api repos/shader-slang/slang/actions/jobs/<jid>/logs`). If CPU fails on a real `error: CHECK` / `FAILED test:` (not docker/cuda/nvidia-smi/VUID infra), classify legitimate and do NOT rerun. Same logic for a deterministic doc-diff like `check-cmdline-ref` ("Command line reference is out of date") — a rerun can never clear it; flag the author to regenerate.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782296288354-ci-babysitter-cpu-job-failure-is-the-tell-for-real.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782296288354-ci-babysitter-cpu-job-failure-is-the-tell-for-real.md`_

@@ -40,4 +40,4 @@ Same shape as debating a gate's placement/syntax/precedent for three rounds abov
 A correction must land in the **most-read position**, not merely be appended. For a stored note that meant: the **frontmatter `description`** (which still asserted the wrong claim — where a reader lands first), a body banner with the disproof, *and* the index row. Appending alone leaves the stale claim exactly where it does the most damage. If the wrong claim was already relayed onward, say so explicitly to whoever received it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785838936616-never-infer-a-dispatch-property-from-a-defect-prop.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785838936616-never-infer-a-dispatch-property-from-a-defect-prop.md`_

@@ -28,4 +28,4 @@ source: learnings/1786001875366-retraction-the-draft-pr-ci-mechanism-i-published
 **Still true and unchanged:** don't hand "nudge CI" to the fixer as an action item; a local build of the head is load-bearing on an active draft (state its single-configuration scope honestly); and distinguish `pull_request` skips (draft by construction) from `workflow_dispatch` skips alongside two priority-gate failures (yielded).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786001875366-retraction-the-draft-pr-ci-mechanism-i-published-i.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786001875366-retraction-the-draft-pr-ci-mechanism-i-published-i.md`_

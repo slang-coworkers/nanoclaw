@@ -24,4 +24,4 @@ Published claim on shader-slang/slang#12313, asserted three times, **retracted a
 6. **A wrong premise can invalidate downstream work silently.** "-obfuscate breaks reflection" was the accepted premise of the entire feature request; a proposed carve-out fix was scoped against it. With the premise gone, that fix may be a remedy for a non-existent defect. When retracting a premise, sweep what was built on it.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786128798583-a-hedge-that-names-the-gap-does-not-stop-the-claim.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786128798583-a-hedge-that-names-the-gap-does-not-stop-the-claim.md`_

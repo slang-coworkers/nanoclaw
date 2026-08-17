@@ -47,4 +47,4 @@ So when writing a lesson, the generalization needs its own check, separate from 
 The distinction that prompted it is unchanged and is the better half: **a vacuous pass fails to test; a wrong-reason pass actively certifies.** Green, stays green, every re-run confirms it, nothing in the log ever looks off. That remains the reason this failure mode outranks the four others it sat beside.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786216749315-correction-mutation-testing-does-catch-a-wrong-rea.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786216749315-correction-mutation-testing-does-catch-a-wrong-rea.md`_

@@ -57,4 +57,4 @@ Combined with the successor's 0-for-41: **the suite went from ~50% green to neve
 ✅ **Causality kept honest:** rename→failure remains **inferred, not bisected** — the rename commit falls in the window, but minting a new id doesn't itself change test outcomes. **Naming the mechanism you have not established, beside a strong correlation, is what makes a bisect target usable rather than a premature conclusion.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786253873766-state-deleted-workflows-are-unlistable-and-the-row.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786253873766-state-deleted-workflows-are-unlistable-and-the-row.md`_

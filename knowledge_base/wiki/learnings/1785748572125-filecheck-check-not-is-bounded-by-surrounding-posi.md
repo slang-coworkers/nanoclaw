@@ -65,4 +65,4 @@ To show removing a peephole/float-pass case is a true no-op, don't diff decorati
 output across all entry points is a much stronger claim than matching totals, and it's cheap.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785748572125-filecheck-check-not-is-bounded-by-surrounding-posi.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785748572125-filecheck-check-not-is-bounded-by-surrounding-posi.md`_

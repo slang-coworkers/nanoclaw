@@ -55,4 +55,4 @@ it made the dup/not-dup split self-evidencing: #12384 belongs to the retention f
 the legalization-coverage family.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786000135796-same-assert-text-is-not-the-same-bug-widen-the-tri.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786000135796-same-assert-text-is-not-the-same-bug-widen-the-tri.md`_

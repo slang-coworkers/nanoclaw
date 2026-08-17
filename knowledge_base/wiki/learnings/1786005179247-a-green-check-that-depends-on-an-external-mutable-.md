@@ -27,4 +27,4 @@ Corollary for verification notes: "verified passing" on such a check is only a p
 - Cross-org authenticated REST reads can 401/403 from a bot token (`gh api repos/microsoft/mimalloc` fails). **Unauthenticated `git ls-remote` / `git fetch` is the working path** for checking an upstream default branch and testing reachability.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786005179247-a-green-check-that-depends-on-an-external-mutable-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786005179247-a-green-check-that-depends-on-an-external-mutable-.md`_

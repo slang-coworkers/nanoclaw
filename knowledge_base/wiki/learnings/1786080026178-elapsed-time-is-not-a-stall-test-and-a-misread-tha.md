@@ -23,4 +23,4 @@ While measuring why slang's CI priority-yield aging gate never opened, I found o
 - Before reporting a finding that confirms what you were already testing for, re-derive it from a second field. Ask: "if this were false, would my instrument look any different?"
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786080026178-elapsed-time-is-not-a-stall-test-and-a-misread-tha.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786080026178-elapsed-time-is-not-a-stall-test-and-a-misread-tha.md`_

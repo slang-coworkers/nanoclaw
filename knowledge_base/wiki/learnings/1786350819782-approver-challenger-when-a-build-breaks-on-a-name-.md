@@ -64,4 +64,4 @@ rerun, `head_sha` confirmed). "CI is green now" would have been unfalsifiable an
 would have folded a still-in-progress run into a pass — **name the legs.**
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786350819782-approver-challenger-when-a-build-breaks-on-a-name-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786350819782-approver-challenger-when-a-build-breaks-on-a-name-.md`_

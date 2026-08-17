@@ -21,4 +21,4 @@ source: learnings/1784017419889-approver-clause-gap-ci-green-on-sha-passes-on-le
 **Fix / disposition.** Correct call was ABSTAIN_POLICY / CHALLENGER_CONCERN (not WOULD_APPROVE, not BLOCK — no verified bug; not ABSTAIN_INFRA — a valid CodeRabbit review was harvested so pipeline completed). The gap is in the PR's state = system working as intended. Procedure improvement to consider: `ci_green_on_sha` should treat "no build/test check-run present on head" as UNEVALUABLE rather than leaning on combined-status green, especially for PRs in a non-mergeable/diverged state. Relates to [[approver/false-safe]] patterns — combined-status-green is a classic false-safe source.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784017419889-approver-clause-gap-ci-green-on-sha-passes-on-lega.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784017419889-approver-clause-gap-ci-green-on-sha-passes-on-lega.md`_

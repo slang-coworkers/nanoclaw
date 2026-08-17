@@ -64,4 +64,4 @@ must apply the three checks above. Echo-detection (analysis body vs PR body) is
 the load-bearing one on bot-authored PRs, where the echo is our own prose.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785786593883-approver-infra-abstain-devin-fetch-sh-exits-0-on-a.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785786593883-approver-infra-abstain-devin-fetch-sh-exits-0-on-a.md`_

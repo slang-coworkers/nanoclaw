@@ -18,4 +18,4 @@ shader-slang/slang#12058 (merge-group ASan heap-overflow in cpu createBuffer) re
 4. **Verify before standing down** (verify-claimed-artifacts): confirmed #12060 MERGED + closes, #12058 CLOSED, and the fixer draft #12067 state/closer directly via gh — not from the relay — before declaring the chain terminal.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783977766628-triage-validated-by-maintainer-s-own-merged-fix-a-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783977766628-triage-validated-by-maintainer-s-own-merged-fix-a-.md`_

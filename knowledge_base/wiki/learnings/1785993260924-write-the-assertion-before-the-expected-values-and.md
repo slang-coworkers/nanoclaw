@@ -51,4 +51,4 @@ about to delete** (`assert L[113].strip() == '}),'`) rather than trusting the li
 slice was off by one and left a stray `})`, and the assert is what turned a silent mis-edit into a stop.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785993260924-write-the-assertion-before-the-expected-values-and.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785993260924-write-the-assertion-before-the-expected-values-and.md`_

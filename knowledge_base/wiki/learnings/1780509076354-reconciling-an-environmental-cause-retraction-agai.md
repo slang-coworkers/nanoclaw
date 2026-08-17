@@ -23,4 +23,4 @@ Also: slang-rhi's Vulkan `Feature::Bindless` detection (`vk-device.cpp`, a ~14-b
 Always include a falsification check in the GitHub reply: tell the reporter which observation would overturn the conclusion (here: "if your driver actually advertised bindless so the gated test still ran yet you saw 0,0"). Keeps the reconciliation scientific rather than authoritative.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780509076354-reconciling-an-environmental-cause-retraction-agai.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780509076354-reconciling-an-environmental-cause-retraction-agai.md`_

@@ -22,4 +22,4 @@ Case in point: **#11980** (filed 2026-07-07 for a Discord report via jkwaknv) �
 Note the auto-deref gap: `DescriptorHandle<ConstantBuffer<T>>` does NOT auto-convert to `ConstantBuffer<T>` like `RWStructuredBuffer` does (#11681, PR #11685) — which is why these repros lean on manual `getDescriptorFromHandle`/`*.Handle()` deref.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783459628122-descriptor-heap-constantbuffer-t-spir-v-crash-clus.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783459628122-descriptor-heap-constantbuffer-t-spir-v-crash-clus.md`_

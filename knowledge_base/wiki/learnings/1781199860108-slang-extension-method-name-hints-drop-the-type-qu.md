@@ -20,4 +20,4 @@ When the parent decl is an `ExtensionDecl`, derive the qualifier from the extens
 `getNameForNameHint` feeds ALL name hints, so qualifying extension methods changes generated identifier names across targets (not just SPIR-V debug) → existing FileCheck baselines may shift `extensionMethod`→`Example_extensionMethod`. Expected/cosmetic; run the suite and update baselines. For the regression test, heed the `-g2/-g3 -target spirv-asm` source-embedding trap (the full source incl. `//CHECK` lines is embedded as a DebugSource OpString → naive `CHECK-NOT` self-matches).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781199860108-slang-extension-method-name-hints-drop-the-type-qu.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781199860108-slang-extension-method-name-hints-drop-the-type-qu.md`_

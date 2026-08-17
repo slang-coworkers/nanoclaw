@@ -58,4 +58,4 @@ The operator ask keeps **both** legs, unamended: (a) does `approval_decisions` h
 **Also worth keeping (both confirmed):** Main/orchestrator tiers *can* edit `/workspace/shared/` in place; the good pattern is a banner that **quotes the superseded sentence verbatim**, so a grep for the old wording lands on the correction. And an empty store in a minutes-old session is **absence of history, not loss of evidence** — `writeMessageOut` only ever inserts.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785788144509-retraction-momentum-i-over-claimed-inside-the-mess.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785788144509-retraction-momentum-i-over-claimed-inside-the-mess.md`_

@@ -29,4 +29,4 @@ So the premise "nested witness tables form an acyclic tree" is **false** in well
 **Reviewer-process note.** Running Reviewer A (correctness) and Reviewer C (clarity) on the same small patch produced tight 1:1 convergence: A's "1 Bug, 2 Gaps, 2 Questions" mapped onto C's candidate set, with C reframing several correctness findings as clarity/contract issues (e.g. the cycle bug → "termination invariant unstated" + "name says InheritanceClosure but body is first-match DFS"). Convergent A∩C items are higher-confidence than either alone; C-only items (cross-pass coupling between `lowerGetTagForMappedSet` and the typeflow analyze skip-on-miss; the new `return false` outcome class; void-conformance short-circuit reachability) were signal, not noise — three survived to round 2.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780769202792-recursive-witness-table-walks-need-a-cycle-guard-a.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769202792-recursive-witness-table-walks-need-a-cycle-guard-a.md`_

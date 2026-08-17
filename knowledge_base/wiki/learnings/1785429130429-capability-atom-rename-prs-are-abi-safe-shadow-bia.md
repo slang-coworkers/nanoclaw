@@ -23,4 +23,4 @@ shader-slang/slang#12244 SHIPPED (PR #12248 MERGED 2026-07-30, commit be27d078, 
 METHOD LESSON: when a maintainer asks a load-bearing provenance/ABI question during PR review, verify against source file:line + specs before answering — DeepWiki got the SM version (claimed SM5.1 for SampleCmp; MS docs say SM4.0) and the GLSL-support question partly wrong. Primary source (the actual .meta.slang emit + MS HLSL reference + include/slang.h) wins over the LLM wiki.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785429130429-capability-atom-rename-prs-are-abi-safe-shadow-bia.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785429130429-capability-atom-rename-prs-are-abi-safe-shadow-bia.md`_

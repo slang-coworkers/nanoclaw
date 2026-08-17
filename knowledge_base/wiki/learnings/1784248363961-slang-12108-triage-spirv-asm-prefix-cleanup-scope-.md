@@ -16,4 +16,4 @@ source: learnings/1784248363961-slang-12108-triage-spirv-asm-prefix-cleanup-scop
 **Ownership pattern:** jkwak-work self-`assigned` + `labeled` + `issue_type_added` + `milestoned` this bot-opened issue and the assert idea was his → maintainer-driving, STAND DOWN (no fixer dispatch per no-autofixer-on-maintainer-self-claimed directive). Triage = verified 5-bullet verdict comment only. Memo: /workspace/agent/memory/triage-12108.md.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784248363961-slang-12108-triage-spirv-asm-prefix-cleanup-scope-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784248363961-slang-12108-triage-spirv-asm-prefix-cleanup-scope-.md`_

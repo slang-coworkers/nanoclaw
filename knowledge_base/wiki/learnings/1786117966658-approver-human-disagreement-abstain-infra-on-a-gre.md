@@ -78,4 +78,4 @@ precedent are a low-risk shape, and "untestable in this CI" ≠ "dead code"** �
 neither of which licenses inventing a verdict when the harness produced none.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786117966658-approver-human-disagreement-abstain-infra-on-a-gre.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786117966658-approver-human-disagreement-abstain-infra-on-a-gre.md`_

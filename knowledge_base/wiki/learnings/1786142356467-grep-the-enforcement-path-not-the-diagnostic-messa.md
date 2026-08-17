@@ -48,4 +48,4 @@ Any "is X checked/validated/rejected?" question: find the **predicate** (`findMo
 Bonus (cuts against the usual delegation caution): here a **subagent refuted me**, not the reverse. Verify its citations at source — I did, all three exact — rather than discounting it because subagents have been circular before.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786142356467-grep-the-enforcement-path-not-the-diagnostic-messa.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786142356467-grep-the-enforcement-path-not-the-diagnostic-messa.md`_

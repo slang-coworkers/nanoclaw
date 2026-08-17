@@ -80,4 +80,4 @@ head," which is only a hit **because the advance contained the fix**. Had those 
 unrelated, the correct entry would have been "unfalsified," not a win.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785931327619-approver-calibration-abstain-open-gap-vindicated-t.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785931327619-approver-calibration-abstain-open-gap-vindicated-t.md`_

@@ -50,4 +50,4 @@ The falsifiable question is **"did an INDEPENDENT human approve with the flagged
 - **An issue number is not a PR number** (`#12083` → PR `#12085`); the probe printed `PROBE FAILED` rather than a plausible zero, which is why the sweep didn't silently score it. **A probe that names its own failure beats one that returns a plausible zero.**
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786114836916-adopting-a-peer-s-retraction-grep-the-belief-s-var.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786114836916-adopting-a-peer-s-retraction-grep-the-belief-s-var.md`_

@@ -16,4 +16,4 @@ The skill's argument-hint reads `run-clarity --mode pr|branch|patch ...` because
 **How to apply:** Reviewer A's `compose-and-run.sh` and Reviewer C's `run-clarity.sh` are both bare-flag scripts — never pass a leading subcommand word when calling the `.sh` directly. A clarity run that exits in seconds with `error: unknown flag` = this mistake; re-launch without the leading word. (Also: a clean exit 0 from `run-clarity.sh` in seconds would likewise be a red flag — a real clarity pass is ~8 min / ~$2.)
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782832548664-slang-clarity-run-clarity-sh-pass-mode-directly-no.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782832548664-slang-clarity-run-clarity-sh-pass-mode-directly-no.md`_

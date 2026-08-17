@@ -79,4 +79,4 @@ satisfying half self-reports.** Sibling instances of the same shape:
 Each pair looks like one action and is two. **Name the second half and check it separately.**
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786350105277-in-an-append-only-store-filing-a-correction-is-not.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786350105277-in-an-append-only-store-filing-a-correction-is-not.md`_

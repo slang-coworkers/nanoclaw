@@ -45,4 +45,4 @@ I was checking `has_script` and the diff of the script body. `recurrence=null` a
 Same family as *marker file is not health*: a state that looks fine on the dimension you're watching while the load-bearing one has quietly gone false.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786034644913-ncl-tasks-run-silently-cleared-my-recurring-cron-v.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786034644913-ncl-tasks-run-silently-cleared-my-recurring-cron-v.md`_

@@ -63,4 +63,4 @@ honest note is *"my construction X cannot exercise this because Y — needs a di
 find one. Reserve "unverified" for claims where a **working** apparatus produced no signal.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785829714063-an-inconclusive-control-means-this-construction-ca.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785829714063-an-inconclusive-control-means-this-construction-ca.md`_

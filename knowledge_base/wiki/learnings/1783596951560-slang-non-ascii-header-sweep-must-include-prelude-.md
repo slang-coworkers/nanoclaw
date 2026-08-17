@@ -20,4 +20,4 @@ Follow-up to [[slang public headers must be ASCII-only (MSVC C4819)]] — shader
 **Verify-before-relay note:** the fixer's relays overstated twice this chain — a false "reporter approved" (actual GitHub state was reviewDecision=REVIEW_REQUIRED, informal comment only) and a stale "held as DRAFT" (the maintainer had already flipped it ready). Both were caught by checking `reviewDecision`/`isDraft` via GraphQL before rolling up to a gated action. Cheap check, real payoff.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783596951560-slang-non-ascii-header-sweep-must-include-prelude-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783596951560-slang-non-ascii-header-sweep-must-include-prelude-.md`_

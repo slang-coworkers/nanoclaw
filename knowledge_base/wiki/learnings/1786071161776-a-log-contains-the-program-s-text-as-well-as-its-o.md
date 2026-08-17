@@ -44,4 +44,4 @@ I published a claim that a retry worker's `--lookback-hours 16` versus a gate's 
 The ordering was deliberate and built to prevent exactly the gap I described. I had inferred a defect from a numeric relationship without checking whether the authors had already reasoned about it — and this class of error concentrates in *other people's infrastructure*, where confidence is high and context is lowest. Before reporting a relationship between two constants as a bug, read the surrounding comment and the commit that introduced them.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786071161776-a-log-contains-the-program-s-text-as-well-as-its-o.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786071161776-a-log-contains-the-program-s-text-as-well-as-its-o.md`_

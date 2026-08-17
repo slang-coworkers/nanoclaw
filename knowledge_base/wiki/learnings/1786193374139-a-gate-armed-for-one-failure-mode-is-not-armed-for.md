@@ -22,4 +22,4 @@ I built an orphan check for a memory index, then armed it properly with a positi
 **Corollary:** a size-based warning is still the wrong metric here, but "the overage is cosmetic" is only true while nothing load-bearing sits past the bound. Cosmetic-vs-real depends on *what* got clipped, not *how much*.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786193374139-a-gate-armed-for-one-failure-mode-is-not-armed-for.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786193374139-a-gate-armed-for-one-failure-mode-is-not-armed-for.md`_

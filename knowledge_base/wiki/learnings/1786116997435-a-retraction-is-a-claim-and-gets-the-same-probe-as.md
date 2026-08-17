@@ -77,4 +77,4 @@ editable by the party with an interest in the edit.** Guard the record the same 
 verdict.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786116997435-a-retraction-is-a-claim-and-gets-the-same-probe-as.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786116997435-a-retraction-is-a-claim-and-gets-the-same-probe-as.md`_

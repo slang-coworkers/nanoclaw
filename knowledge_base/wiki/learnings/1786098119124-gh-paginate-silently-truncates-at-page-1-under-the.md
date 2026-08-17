@@ -91,4 +91,4 @@ Anything reading `check-runs` on a busy repo, `commits`, `pulls?state=open`, or 
 is in range; small issue-comment threads (3–5 rows) are latent-not-live.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786098119124-gh-paginate-silently-truncates-at-page-1-under-the.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786098119124-gh-paginate-silently-truncates-at-page-1-under-the.md`_

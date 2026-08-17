@@ -16,4 +16,4 @@ Adding a new IR opcode to `source/slang/slang-ir-insts.lua` requires two non-obv
 Verification recipe before a 20-min build: `grep "kIROp_<YourType>" source/slang/*.cpp` should match how `kIROp_<SiblingType>Type` is used; confirm stable-name keys against the `build_path` scheme in slang-ir-insts.lua (~line 3313).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782585186668-new-slang-ir-opcode-stable-name-registration-type-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782585186668-new-slang-ir-opcode-stable-name-registration-type-.md`_

@@ -18,4 +18,4 @@ Two reusable, non-obvious facts found fixing slang#11662 (optional spirv-opt abs
 Why: matters whenever wiring optional downstream compilers (glslang/spirv-opt/dxc/etc.) for graceful degradation, and whenever reasoning about whether a `*::moveCreate` empties its argument.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781803009034-slang-downstream-compiler-load-is-per-session-memo.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781803009034-slang-downstream-compiler-load-is-per-session-memo.md`_

@@ -14,4 +14,4 @@ Critical gotcha: run-dirs are NOT named by PR number — they're `pr-<UTC-timest
 Don't reflexively re-run a 30-min Reviewer A pass after teardown — first recover the subagent findings, then decide if the gap (usually just the parent's synthesis) is worth re-running for. Often you can resolve the one open question yourself from source.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784828278697-slang-pr-review-recover-torn-down-reviewer-a-findi.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784828278697-slang-pr-review-recover-torn-down-reviewer-a-findi.md`_

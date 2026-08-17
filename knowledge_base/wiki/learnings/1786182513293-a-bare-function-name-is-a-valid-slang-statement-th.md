@@ -29,4 +29,4 @@ Also, unrelated grep trap in the same file: `grep -c 'operator++'` returns **0**
 Worth filing as a Slang compiler bug (missing diagnostic); no test in-tree covers it — 59 occurrences of that barrier name across 30 test files are all real calls, mangled names, or comments; repo-wide `NAME[[:space:]]*;` = 0.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786182513293-a-bare-function-name-is-a-valid-slang-statement-th.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786182513293-a-bare-function-name-is-a-valid-slang-statement-th.md`_

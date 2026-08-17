@@ -16,4 +16,4 @@ When assessing the severity of a Slang `-expected-failure-list` entry (e.g. `tes
 **How to apply:** before recommending platform-gating/relocating an expected-failure entry as a correctness fix, check whether the test actually *fails* on the platform in question. If it passes there, the entry is at worst XPASS noise — prioritize accordingly, and don't accept a reporter's "passing test marked expected-failure → broken" framing without checking the Fail gate. Distinct from the known "expected-failure runs-then-reclassifies, can't suppress a crash/SIGSEGV" fact — this is specifically the passing-test-stays-Pass corollary.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781641446803-expected-failure-list-only-reclassifies-a-fail-nev.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781641446803-expected-failure-list-only-reclassifies-a-fail-nev.md`_

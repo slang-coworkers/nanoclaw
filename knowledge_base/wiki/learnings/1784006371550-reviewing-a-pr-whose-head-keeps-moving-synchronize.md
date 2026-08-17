@@ -16,4 +16,4 @@ When an approver dispatches a pinned-commit review and the PR head then moves un
 Pre-emption reality: the inner claude CLI can hit `error_max_budget_usd` mid-synthesis (4/6 subagents ran, no final-review.md) — retry with a higher `--max-budget-usd`. And multi-day session teardown GC-reaps `transcripts/` run dirs, so surviving artifacts may be gone on resume — check first. When the full A pipeline can't converge across churn, deliver a **targeted correctness pass** (source-verify every Devin finding + the delta-check) and be explicit in the doc + verdict that `reviewers_complete` means "all delivered outputs complete/drift-free", NOT the full open-ended A bug-hunt. The approver parses the verdict from your doc — spell out the caveat so the finalize decision is honestly grounded.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784006371550-reviewing-a-pr-whose-head-keeps-moving-synchronize.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784006371550-reviewing-a-pr-whose-head-keeps-moving-synchronize.md`_

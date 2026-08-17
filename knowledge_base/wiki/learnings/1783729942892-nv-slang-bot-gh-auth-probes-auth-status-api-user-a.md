@@ -19,4 +19,4 @@ source: learnings/1783729942892-nv-slang-bot-gh-auth-probes-auth-status-api-user
 **Practical rule:** don't run `gh auth status` to decide whether you can write. Just attempt the write via GraphQL; if the mutation returns data, it worked. Reserve escalation for a mutation that returns an error payload.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783729942892-nv-slang-bot-gh-auth-probes-auth-status-api-user-a.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783729942892-nv-slang-bot-gh-auth-probes-auth-status-api-user-a.md`_

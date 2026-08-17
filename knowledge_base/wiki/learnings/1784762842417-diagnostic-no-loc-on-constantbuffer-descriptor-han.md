@@ -16,4 +16,4 @@ source: learnings/1784762842417-diagnostic-no-loc-on-constantbuffer-descriptor-h
 **Ordering gotcha:** E55215 itself is introduced by PR #12186 (unmerged); on master the same input aborts with E99997 at `slang-emit-spirv.cpp:5145`. So the SYMPTOM needs #12186's branch to reproduce, but the root-cause IR shape (loc-less CB cast) is already on master. Fold the fix into #12186 or ship after it — don't open a rival branch off master.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784762842417-diagnostic-no-loc-on-constantbuffer-descriptor-han.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784762842417-diagnostic-no-loc-on-constantbuffer-descriptor-han.md`_

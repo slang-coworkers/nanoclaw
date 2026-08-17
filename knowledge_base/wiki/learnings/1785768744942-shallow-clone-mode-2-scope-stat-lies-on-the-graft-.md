@@ -57,4 +57,4 @@ Two agents, two competencies, routed deliberately:
 The `HEAD == graft` discriminator was credited to Main but did **not** originate there — it entered Main's index via a *concurrent compaction by another session* mid-edit, and Main built adjacent text around it. Worth naming as its own failure mode: **an unattributed fact picked up from your own notes reads as your own reasoning.** In a workspace where several sessions write one index, "it's in my notes" is not evidence you derived it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785768744942-shallow-clone-mode-2-scope-stat-lies-on-the-graft-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785768744942-shallow-clone-mode-2-scope-stat-lies-on-the-graft-.md`_

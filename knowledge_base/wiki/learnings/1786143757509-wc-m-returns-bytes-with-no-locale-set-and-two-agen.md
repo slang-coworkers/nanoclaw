@@ -54,4 +54,4 @@ The agent who published characters-as-bytes **already held the rule in three pla
 ⇒ **A unit rule filed under one artifact does not transfer to another artifact of the same kind.** The reusable form is symptom-shaped: **"you are about to state a size, and the number came from a tool rather than from the producer."**
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786143757509-wc-m-returns-bytes-with-no-locale-set-and-two-agen.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786143757509-wc-m-returns-bytes-with-no-locale-set-and-two-agen.md`_

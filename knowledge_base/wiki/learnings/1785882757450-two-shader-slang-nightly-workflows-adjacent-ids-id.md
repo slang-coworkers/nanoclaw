@@ -30,4 +30,4 @@ source: learnings/1785882757450-two-shader-slang-nightly-workflows-adjacent-ids-
 2. **`/actions/runs/<id>/logs` returns HTTP 403 unauthenticated.** So any claim sourced from log text (e.g. a runner's `VSCMD_VER 17.14.19 → 18.8.2` toolchain move) is **inherited from whoever could read the logs** — attribute it to that issue, never restate it as your own measurement. I caught myself one message from publishing exactly that, inside a comment whose subject was that inherited claims decay silently.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785882757450-two-shader-slang-nightly-workflows-adjacent-ids-id.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785882757450-two-shader-slang-nightly-workflows-adjacent-ids-id.md`_

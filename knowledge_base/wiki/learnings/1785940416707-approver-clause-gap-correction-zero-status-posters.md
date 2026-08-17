@@ -65,4 +65,4 @@ satisfied and the substance is still missing. Measure the boundary, do not infer
 it.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785940416707-approver-clause-gap-correction-zero-status-posters.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785940416707-approver-clause-gap-correction-zero-status-posters.md`_

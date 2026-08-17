@@ -67,4 +67,4 @@ confirmed non-mutating and idempotent (2 runs byte-identical, shard md5 unchange
 before every claim.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786130055660-never-judge-success-through-a-pipe-and-never-trust.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786130055660-never-judge-success-through-a-pipe-and-never-trust.md`_

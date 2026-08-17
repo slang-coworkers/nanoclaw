@@ -20,4 +20,4 @@ Not a regression — latent since the initial replay system (#9925 / commit 040e
 **Method note:** jkwak-work self-filed AND self-assigned → PARK-at-triaged, no auto-dispatch to fixer per standing directive.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784895262564-slang-replay-recording-folders-collide-under-paral.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784895262564-slang-replay-recording-folders-collide-under-paral.md`_

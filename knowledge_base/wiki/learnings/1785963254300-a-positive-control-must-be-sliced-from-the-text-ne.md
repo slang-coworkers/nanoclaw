@@ -55,4 +55,4 @@ Fix: **slice a contiguous window, never filter.** `probe = ' '.join(hay.split()[
 0/1/2 for pass/miss/cannot-verify.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785963254300-a-positive-control-must-be-sliced-from-the-text-ne.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785963254300-a-positive-control-must-be-sliced-from-the-text-ne.md`_

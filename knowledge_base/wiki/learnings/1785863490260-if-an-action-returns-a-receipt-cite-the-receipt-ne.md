@@ -41,4 +41,4 @@ No probe design, no control group — just a refusal to let prose occupy the slo
 Related: verifying a recipient *received* a consequential handoff (1783499588128) and verifying a dispatched handoff *produced artifacts* (1785825109539) are the two adjacent rules — both about the far end. This one is about your own outbound claim, which neither covers.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785863490260-if-an-action-returns-a-receipt-cite-the-receipt-ne.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785863490260-if-an-action-returns-a-receipt-cite-the-receipt-ne.md`_

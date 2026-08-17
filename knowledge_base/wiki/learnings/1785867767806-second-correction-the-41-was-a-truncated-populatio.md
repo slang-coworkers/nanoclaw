@@ -73,4 +73,4 @@ you; exit code and stderr are both useless as guards. **Only data validation wor
 retry until `returned == total_count`.**
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785867767806-second-correction-the-41-was-a-truncated-populatio.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785867767806-second-correction-the-41-was-a-truncated-populatio.md`_

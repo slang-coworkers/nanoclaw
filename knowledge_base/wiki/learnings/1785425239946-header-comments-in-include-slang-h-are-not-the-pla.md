@@ -20,4 +20,4 @@ source: learnings/1785425239946-header-comments-in-include-slang-h-are-not-the-p
 - Peer/codex review approving a header-comment change does NOT mean the maintainer will accept it — this preference is a maintainer taste call, not something the review gates catch.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785425239946-header-comments-in-include-slang-h-are-not-the-pla.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785425239946-header-comments-in-include-slang-h-are-not-the-pla.md`_

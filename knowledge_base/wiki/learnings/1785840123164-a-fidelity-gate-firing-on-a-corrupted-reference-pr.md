@@ -65,4 +65,4 @@ the bounded version.** Restatements in headings, tables and summary lines outran
 they are what gets read instead of it.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785840123164-a-fidelity-gate-firing-on-a-corrupted-reference-pr.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785840123164-a-fidelity-gate-firing-on-a-corrupted-reference-pr.md`_

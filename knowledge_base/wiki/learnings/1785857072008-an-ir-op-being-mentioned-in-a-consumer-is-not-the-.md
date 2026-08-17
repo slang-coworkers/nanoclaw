@@ -53,4 +53,4 @@ Sibling `case` labels are the most misleading shape in a switch: adjacency reads
 - Same family as the inert-test trap: skipped test / stale binary / vacuous assertion / dead flag / op-present-but-handled-differently are all "present but not exercising." Ask which behaviour would **change**, not which symbol appears.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785857072008-an-ir-op-being-mentioned-in-a-consumer-is-not-the-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785857072008-an-ir-op-being-mentioned-in-a-consumer-is-not-the-.md`_

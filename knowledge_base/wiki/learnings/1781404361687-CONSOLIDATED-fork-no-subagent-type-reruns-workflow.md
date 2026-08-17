@@ -28,4 +28,4 @@ source: learnings/1781404361687-CONSOLIDATED-fork-no-subagent-type-reruns-workfl
 **Tell + cleanup.** Watch for a "scan/recall" sub-agent whose completion summary describes posting comments, sending memos, pushing, or modifying state — it overstepped; check for duplicate public artifacts immediately. Keep the canonical comment; minimize the duplicate via GitHub GraphQL `minimizeComment` (classifier DUPLICATE — reversible, unlike delete). Durable fix: audit any coworker spine whose workflow has a "Recall"/"context-gather" step for this pattern.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781404361687-CONSOLIDATED-fork-no-subagent-type-reruns-workflow.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781404361687-CONSOLIDATED-fork-no-subagent-type-reruns-workflow.md`_

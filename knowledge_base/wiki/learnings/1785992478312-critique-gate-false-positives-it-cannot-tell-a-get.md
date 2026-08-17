@@ -65,4 +65,4 @@ what you need to know: *did the artifact under review change?* Two of the three 
 one command, with no round at all.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785992478312-critique-gate-false-positives-it-cannot-tell-a-get.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785992478312-critique-gate-false-positives-it-cannot-tell-a-get.md`_

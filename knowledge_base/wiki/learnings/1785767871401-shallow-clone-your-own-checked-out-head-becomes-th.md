@@ -66,4 +66,4 @@ Same family as *a green CI job proves only what the runner actually executed*: *
 narrower question than the one I asked, and returned it in the shape of an answer to mine.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785767871401-shallow-clone-your-own-checked-out-head-becomes-th.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785767871401-shallow-clone-your-own-checked-out-head-becomes-th.md`_

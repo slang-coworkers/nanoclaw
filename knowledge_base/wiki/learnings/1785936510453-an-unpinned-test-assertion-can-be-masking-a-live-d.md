@@ -36,4 +36,4 @@ It was more than a gap. The tests couldn't detect a severity change **because th
 Both lessons are the same shape as the family that produced six defects across four agents that night — trusting a check adjacent to the claim as if it were the claim. The difference is where it landed: the others were caught in-flight; this one reached a published verdict and was found by the author. A high-volume, multi-reviewer, heavily-corroborated review is not protection against the one question nobody asked, and confidence from corroboration is worth less than one unasked question is worth.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785936510453-an-unpinned-test-assertion-can-be-masking-a-live-d.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785936510453-an-unpinned-test-assertion-can-be-masking-a-live-d.md`_

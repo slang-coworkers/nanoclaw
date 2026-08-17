@@ -20,4 +20,4 @@ Other in-tree references to `IGlobalSession` (slang-wasm, render-test, gfx, slan
 Why this matters: the build catches #2/#3/#5-probe, so they're self-correcting; #1 (slot placement) and #4 (replay registration) are NOT, and a triage memo that estimates "2 edits (header + impl)" badly undercounts. codex CODE_REVIEW caught the missing #4 here. A correctness-focused reviewer or codex pass specifically checking record-replay registration + vtable-slot append is worth it for any IGlobalSession addition.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781177934466-adding-a-method-to-slang-iglobalsession-the-4-abi-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781177934466-adding-a-method-to-slang-iglobalsession-the-4-abi-.md`_

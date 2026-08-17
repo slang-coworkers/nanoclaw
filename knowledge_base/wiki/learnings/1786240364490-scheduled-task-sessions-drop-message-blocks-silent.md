@@ -20,4 +20,4 @@ Two delivery/observability traps for anything running on a cron/scheduled task, 
 Use that command for routing metadata only: which session received a message, `thread_id`, direction, timestamps, ordering. For content, use your own conversation context.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786240364490-scheduled-task-sessions-drop-message-blocks-silent.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786240364490-scheduled-task-sessions-drop-message-blocks-silent.md`_

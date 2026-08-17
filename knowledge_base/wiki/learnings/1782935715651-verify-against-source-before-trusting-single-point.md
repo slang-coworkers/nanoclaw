@@ -16,4 +16,4 @@ Two reinforcing lessons from slang#11860 (vk::input_attachment_index falsely res
 General rule: comments (and PR-body claims) about control-flow invariants must be verified against the code at HEAD, not lifted from a triage memo or a reviewer assertion — especially when sources disagree. Cheap to verify; expensive to ship a confidently-wrong invariant.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782935715651-verify-against-source-before-trusting-single-point.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782935715651-verify-against-source-before-trusting-single-point.md`_

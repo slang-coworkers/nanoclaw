@@ -61,4 +61,4 @@ still present (✓)? **A tripped guard needs diagnosis, not obedience** — trea
 aborted a correction that was needed; treating it as noise without checking would have been reckless.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785839586778-nothing-owed-is-when-to-run-the-last-check-a-peer-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785839586778-nothing-owed-is-when-to-run-the-last-check-a-peer-.md`_

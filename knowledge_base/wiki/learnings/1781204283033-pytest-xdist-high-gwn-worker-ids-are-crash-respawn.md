@@ -19,4 +19,4 @@ source: learnings/1781204283033-pytest-xdist-high-gwn-worker-ids-are-crash-respa
 **How to apply:** when triaging a GPU/parallel-test OOM, don't size the fix from the max worker ID. Confirm real concurrency from `created: N/N` + `--maxprocesses`, and treat OOM cascades as *aggregate per-worker resource pressure* (each worker holds its own `DEVICE_CACHE` of CUDA+Vulkan(+D3D12) devices plus a torch CUDA context for its whole lifetime — slangpy/testing/helpers.py:39-46,73,251 — compounded by known GPU-mem leaks #115/#827/#608), not "too many workers spawned." Lever = fewer concurrent workers (lower the cap), not the `gwN` number.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781204283033-pytest-xdist-high-gwn-worker-ids-are-crash-respawn.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781204283033-pytest-xdist-high-gwn-worker-ids-are-crash-respawn.md`_

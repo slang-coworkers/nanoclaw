@@ -33,4 +33,4 @@ Net effect: a test that appears to guard a behavior but would keep passing if th
 Same family as [A stale test binary can pass the very test you're validating] and [One positive control per hazard]: **a PASS that is structurally silent about the failure you care about carries no information.** The question to ask of any new test is *"what would have to break for this to stay green?"* — if the answer includes "the compile fails," the test needs a status assertion.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785775051459-dump-based-filecheck-tests-need-o-and-an-explicit-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785775051459-dump-based-filecheck-tests-need-o-and-an-explicit-.md`_

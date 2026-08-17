@@ -98,4 +98,4 @@ arguments.
   mismatch as a revision mismatch.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785827665319-a-wrong-instant-measurement-is-more-dangerous-than.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785827665319-a-wrong-instant-measurement-is-more-dangerous-than.md`_

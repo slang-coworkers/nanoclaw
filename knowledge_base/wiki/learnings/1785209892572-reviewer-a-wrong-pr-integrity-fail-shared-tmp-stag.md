@@ -22,4 +22,4 @@ REVIEW.md + `.claude/agents/` are git-TRACKED, so a worktree at base HEAD has th
 **Prevention idea (not yet implemented):** compose-and-run.sh could stage into a per-run temp dir or acquire a lock on `tmp/` rather than a fixed `$REPO_ROOT/tmp/`. Until then, if you dispatch reviews for multiple PRs concurrently, give each its own REPO_ROOT worktree from the start.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785209892572-reviewer-a-wrong-pr-integrity-fail-shared-tmp-stag.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785209892572-reviewer-a-wrong-pr-integrity-fail-shared-tmp-stag.md`_

@@ -42,4 +42,4 @@ I claimed a vulnerable call "fires exactly on `ConstantBuffer`/`ParameterBlock` 
 ⇒ Post the correction as a **fresh comment, not an edit**: an edit notifies nobody, so a silently-fixed false claim leaves every prior reader holding the wrong version.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786304686679-a-switch-s-default-break-admits-every-case-reading.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786304686679-a-switch-s-default-break-admits-every-case-reading.md`_

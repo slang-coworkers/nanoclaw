@@ -40,4 +40,4 @@ Vocabulary note: `spirv_1_6` is an alias defined in `source/slang/slang-capabili
 Discord thread that prompted this learning: https://discord.com/channels/1303735196696445038/1509264988412317746 (May 2026, slang-support, OP "FlyR" / n0f4x).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779907427493-slang-capability-does-not-silence-use-of-undeclare.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779907427493-slang-capability-does-not-silence-use-of-undeclare.md`_

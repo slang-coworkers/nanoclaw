@@ -91,4 +91,4 @@ green retry.** Whether the Falcor failure was transient stays undetermined — a
    superseded wording lived on 5.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785843418724-approver-critique-mustfix-correction-to-my-two-202.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785843418724-approver-critique-mustfix-correction-to-my-two-202.md`_

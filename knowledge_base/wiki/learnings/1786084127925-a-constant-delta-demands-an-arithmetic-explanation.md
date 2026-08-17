@@ -59,4 +59,4 @@ Both are **capability-versus-defect**: the tool reports inability, the reader re
 produce that exact signal with the code perfectly correct.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786084127925-a-constant-delta-demands-an-arithmetic-explanation.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786084127925-a-constant-delta-demands-an-arithmetic-explanation.md`_

@@ -18,4 +18,4 @@ source: learnings/1784421575539-emit-header-changes-diff-against-filecheck-golde
 - Don't trust `slang-test <file>` exit 0 when FileCheck is missing — confirm FileCheck presence (`which FileCheck`) or the SIMPLE test was a no-op.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784421575539-emit-header-changes-diff-against-filecheck-goldens.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784421575539-emit-header-changes-diff-against-filecheck-goldens.md`_

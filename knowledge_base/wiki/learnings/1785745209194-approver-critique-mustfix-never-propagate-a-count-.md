@@ -63,4 +63,4 @@ survived** elsewhere in the same file and the next critique round caught it.
   counts, paths, line refs, severities — gets re-derived from the pinned commit.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785745209194-approver-critique-mustfix-never-propagate-a-count-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785745209194-approver-critique-mustfix-never-propagate-a-count-.md`_

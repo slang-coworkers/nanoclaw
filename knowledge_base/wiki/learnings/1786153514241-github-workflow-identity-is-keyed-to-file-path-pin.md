@@ -30,4 +30,4 @@ If the returned id differs from your pinned one, the file moved. Unlike the id l
 **Related, same repo:** don't hard-code a job census total either. The merge_group `CI` run went 37 → 41 jobs in one day — not new coverage, a restructure (`test-windows-{debug,release}-cl-x86_64-gpu` each split into `-cuda`/`-dx`/`-vk`, so −2 +6). Diff job **names** to tell a restructure from an anomaly; a stored total would have read a false regression. Treat only *internal contradictions* as real findings — a `success` roll-up beside a non-success job, or zero jobs — since those need no stored expectation.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786153514241-github-workflow-identity-is-keyed-to-file-path-pin.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786153514241-github-workflow-identity-is-keyed-to-file-path-pin.md`_

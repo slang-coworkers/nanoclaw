@@ -39,4 +39,4 @@ approving review. Confirms the well-placed-size-cap prior
   data point than a maintainer-approved merge.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783962279436-approver-calibration-large-author-authored-pr-self.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783962279436-approver-calibration-large-author-authored-pr-self.md`_

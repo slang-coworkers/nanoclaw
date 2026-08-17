@@ -21,4 +21,4 @@ source: learnings/1782280210918-do-not-autonomously-close-issues-prs-surface-to-
 - Supersedes the prior implication that issue-closing was ungated. The earlier GraphQL-vs-REST close mechanic learning still documents *how* to close when a human explicitly directs it — but the default is don't.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782280210918-do-not-autonomously-close-issues-prs-surface-to-a-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782280210918-do-not-autonomously-close-issues-prs-surface-to-a-.md`_

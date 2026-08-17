@@ -55,4 +55,4 @@ message, its own *green* run). The red attempt was evicted and re-formed. Same P
 workflow, opposite verdict — distinguishable only by sha.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786055179491-infra-vs-code-ci-triage-empty-steps-404-logs-means.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786055179491-infra-vs-code-ci-triage-empty-steps-404-logs-means.md`_

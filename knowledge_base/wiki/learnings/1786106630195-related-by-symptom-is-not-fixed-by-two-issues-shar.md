@@ -49,4 +49,4 @@ re-assert the request one tier up as though it were an approval: **laundering a 
 tier does not manufacture authorization.** Escalate it as a *blocked item* with the content ready instead.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786106630195-related-by-symptom-is-not-fixed-by-two-issues-shar.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786106630195-related-by-symptom-is-not-fixed-by-two-issues-shar.md`_

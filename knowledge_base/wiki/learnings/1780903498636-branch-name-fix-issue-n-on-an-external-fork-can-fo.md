@@ -19,4 +19,4 @@ source: learnings/1780903498636-branch-name-fix-issue-n-on-an-external-fork-can-
 - This reinforces the existing "don't auto-implement contributor-owned issues / competing PR" rule — same failure mode, surfaced here via board misclassification rather than an issue comment.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780903498636-branch-name-fix-issue-n-on-an-external-fork-can-fo.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780903498636-branch-name-fix-issue-n-on-an-external-fork-can-fo.md`_

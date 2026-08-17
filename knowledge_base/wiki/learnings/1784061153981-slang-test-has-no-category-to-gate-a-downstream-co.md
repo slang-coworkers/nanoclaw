@@ -25,4 +25,4 @@ For metal-version-specific behavior:
 - For the version-specific **downstream** behavior (e.g. that `-std=metalX.Y` is derived correctly), rely on an **end-to-end example/test that only runs on `macos-latest`** (macos-26) as the regression, and say so in the PR (don't leave a silent "no test" gap).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784061153981-slang-test-has-no-category-to-gate-a-downstream-co.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784061153981-slang-test-has-no-category-to-gate-a-downstream-co.md`_

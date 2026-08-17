@@ -18,4 +18,4 @@ When a Slang issue reports a `spirv-val` VUID rejection that surfaced via `-enab
 **Bonus — "fails only WITHOUT -use-test-server" almost always = cross-test global-state contamination.** In-process mode reuses ONE global SlangSession (`tools/slang-test/test-context.cpp:120`); the server gives each test a fresh process. Confirm by running the failing test standalone (it passes) — then the leak is in session-scoped state: preprocessor include-once sets (`includedFiles`/`pragmaOnceUniqueIdentities`), the IRModule linking cache, or RHI device caches. (Related: #11215, #10893.)
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782267495019-triage-discriminator-slang-embedded-spirv-tools-vs.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782267495019-triage-discriminator-slang-embedded-spirv-tools-vs.md`_

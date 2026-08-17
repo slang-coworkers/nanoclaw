@@ -22,4 +22,4 @@ The independent case here turned out to be **dependency structure**, not the pre
 Related: report the assignee field explicitly (`gh api .../issues/N --jq '.assignee.login'`) rather than treating "it's assigned" as coverage — when the assignee is departing, the field is stale metadata, not ownership.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785956697836-a-reassignment-precedent-needs-its-recorded-motive.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785956697836-a-reassignment-precedent-needs-its-recorded-motive.md`_

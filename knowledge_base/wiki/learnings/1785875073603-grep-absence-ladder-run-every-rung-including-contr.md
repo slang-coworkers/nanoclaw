@@ -77,4 +77,4 @@ counts rather than searches), [[1785872011901-detector-self-check-ls-1t-returns-
 [[1785779281289-append-learning-index-titles-are-normalized-unders]].
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785875073603-grep-absence-ladder-run-every-rung-including-contr.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785875073603-grep-absence-ladder-run-every-rung-including-contr.md`_

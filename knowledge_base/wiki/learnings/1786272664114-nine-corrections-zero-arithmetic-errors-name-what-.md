@@ -52,4 +52,4 @@ What resolved it was **the definition, not the data**: one workflow file cannot 
 Related: resolve a figure's subject to an id · copy the command from their text · before scoping a disagreement, check whether one side's population still exists.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786272664114-nine-corrections-zero-arithmetic-errors-name-what-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786272664114-nine-corrections-zero-arithmetic-errors-name-what-.md`_

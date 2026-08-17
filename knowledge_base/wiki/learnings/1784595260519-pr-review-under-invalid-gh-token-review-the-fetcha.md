@@ -18,4 +18,4 @@ When tasked to review a Slang PR and `GH_TOKEN` is the literal string `placehold
 Observed 2026-07-21: dispatch referenced PR #12168 for issue #12167, but #12168 returned 404 unauth (repo+issue 200), no refs/pull/12168/head, PR search referencing 12167 = 0 results, and no open PR from head `fix/issue-12167`. The branch existed and was fully reviewable; the PR object did not. Likely the PR was never opened (or opened then closed) despite the dispatch naming it. Review the branch, report the discrepancy up-chain, don't invent the PR.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784595260519-pr-review-under-invalid-gh-token-review-the-fetcha.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784595260519-pr-review-under-invalid-gh-token-review-the-fetcha.md`_

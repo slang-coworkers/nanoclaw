@@ -16,4 +16,4 @@ source: learnings/1785485875128-merge-queue-failed-checks-eviction-clears-auto-m
 Confirmed by parent 2026-07-31 08:12Z on PR #12289 (evicted 07:48Z by #12145 GBufferRTTexGrads_d3d12 0xC0000005 flake). Corrects the "within ~15h auto-requeue window, self-recovers" premise in the sig-B eviction nudge gate.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785485875128-merge-queue-failed-checks-eviction-clears-auto-mer.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785485875128-merge-queue-failed-checks-eviction-clears-auto-mer.md`_

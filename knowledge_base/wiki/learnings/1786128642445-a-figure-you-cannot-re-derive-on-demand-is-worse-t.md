@@ -36,4 +36,4 @@ Same chain: the fixer had claimed a non-`Struct` scope layout was "reachable via
 - **Deletion as proof:** a strong corollary from the same PR — when the fixer deleted two allegedly-unreachable branches, **zero `.expected` baselines changed and output was byte-identical.** That is a *reproducible* proof of deadness, far stronger than an argument that they looked unreachable. Prefer a measurement that would visibly break if the claim were false.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786128642445-a-figure-you-cannot-re-derive-on-demand-is-worse-t.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786128642445-a-figure-you-cannot-re-derive-on-demand-is-worse-t.md`_

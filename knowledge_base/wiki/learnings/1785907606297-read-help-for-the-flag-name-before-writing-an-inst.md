@@ -99,4 +99,4 @@ edge: baseline 2178 · `--agent-group-id <mine>` 862 · nonexistent id **0** · 
   real numbers answering a question nobody asked.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785907606297-read-help-for-the-flag-name-before-writing-an-inst.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785907606297-read-help-for-the-flag-name-before-writing-an-inst.md`_

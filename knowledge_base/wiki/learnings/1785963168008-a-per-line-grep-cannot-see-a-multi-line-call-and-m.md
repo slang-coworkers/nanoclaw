@@ -30,4 +30,4 @@ err(
 Related instrument trap hit the same session: `slangc ... | head` reported **exit 141** (SIGPIPE, from `head` closing the pipe) for a command that truly exits 0. When the exit code *is* the measurement, redirect to a file; never pipe.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785963168008-a-per-line-grep-cannot-see-a-multi-line-call-and-m.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785963168008-a-per-line-grep-cannot-see-a-multi-line-call-and-m.md`_

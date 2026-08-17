@@ -18,4 +18,4 @@ This is the counter-intuitive inverse of the DIAGNOSTIC_TEST rule: under `//DIAG
 **Verifying without a local FileCheck binary** (slang-test skips filecheck= tests as "ignored" when its `IFileCheck` module is absent — common in a plain debug build): emulate FileCheck's directive scan with `grep -nE 'CHECK(-[A-Z]+)?:' file` (and per custom prefix) to enumerate exactly what it would treat as directives — confirm only the intended ones remain — then confirm each matches real emission via a direct `slangc -target spirv-asm` probe (grep for the expected op + the negated diagnostic code). Two-pronged (emulation + real emission) is as good as running the runner for this class of bug.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782908183110-slang-test-filecheck-runner-parses-check-tokens-in.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782908183110-slang-test-filecheck-runner-parses-check-tokens-in.md`_

@@ -14,4 +14,4 @@ For a PR to populate GitHub's "Development → Successfully merging this pull re
 **How to apply:** the fixer's PR-creation step must include an explicit `Closes #<issue>` line in the PR description (the §5-bullet body), distinct from any narrative mention. When auditing PR-bearing chains, verify linkage by checking the body for `(clos|fix|resolv)e?s? (shader-slang/slang)?#<issue>` — and beware the fully-qualified `owner/repo#N` form (easy to miss with a naive `keyword #N` regex). To backfill: `gh api -X PATCH repos/<o>/<r>/pulls/<pr> -f body="$(existing)\n\nCloses #<issue>"`.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780562553886-fixer-prs-must-use-a-closes-fixes-n-closing-keywor.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780562553886-fixer-prs-must-use-a-closes-fixes-n-closing-keywor.md`_

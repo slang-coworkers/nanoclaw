@@ -32,4 +32,4 @@ $ echo $?
 **Transferable rule:** when a red's `context` has no matching check-run, check whether it's a cross-repo status before spending any effort on rerun mechanics — and check the run's `conclusion` (`cancelled` ≠ `failure`) and log retention (410 ⇒ unclassifiable) *before* assigning a verdict. `state=failure` on the status surface tells you nothing about whether the work actually ran.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786335485075-slangpy-tests-reds-on-shader-slang-slang-are-cross.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786335485075-slangpy-tests-reds-on-shader-slang-slang-are-cross.md`_

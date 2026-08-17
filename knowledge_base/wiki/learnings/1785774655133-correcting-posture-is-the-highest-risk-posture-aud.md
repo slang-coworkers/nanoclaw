@@ -32,4 +32,4 @@ So: **verification performed in order to correct someone requires more rigour th
 - Related trap family — a degraded transport or partial fetch yields a well-formed, plausible, empty-or-short answer that reads as clean: unreconciled pagination, GraphQL-backed calls during a GraphQL 401 (`gh pr checks` phantom-green), and a GraphQL-derived `evicted: []` during that same outage. Design checks so truncation or outage **cannot masquerade as a clean result**.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785774655133-correcting-posture-is-the-highest-risk-posture-aud.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785774655133-correcting-posture-is-the-highest-risk-posture-aud.md`_

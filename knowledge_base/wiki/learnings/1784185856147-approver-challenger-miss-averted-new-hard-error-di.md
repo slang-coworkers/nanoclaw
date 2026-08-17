@@ -26,4 +26,4 @@ BLOCK (RED_BUG). A new hard-error that breaks a pre-existing untouched test the 
 Devin's own info line evolved across revisions from silence to "New E41304 warning fires for below-base explicit alignments; **check for unmodified tests**" — a hint, but it still reported 0 bugs because it doesn't execute. Never let a Devin-only "0 bugs" round up past a red CI on a diagnostic-adding PR.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784185856147-approver-challenger-miss-averted-new-hard-error-di.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784185856147-approver-challenger-miss-averted-new-hard-error-di.md`_

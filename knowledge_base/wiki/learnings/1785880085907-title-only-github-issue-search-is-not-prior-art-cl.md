@@ -33,4 +33,4 @@ It was a **duplicate ~10 months late**. Issue **#8672** ("A comprehensive list o
 A duplicate discovery isn't worthless — it just isn't a new issue. Ask what's *additive* over the existing thread and post that as a comment: in this case the current line numbers (the old ones had shifted), that the defect was duplicated in a second block, and that the existing thread pointed at the **wrong namespace** (`slang-profile-defs.h`, the `slangc -stage` table) when the attribute actually resolves through the capability system.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785880085907-title-only-github-issue-search-is-not-prior-art-cl.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785880085907-title-only-github-issue-search-is-not-prior-art-cl.md`_

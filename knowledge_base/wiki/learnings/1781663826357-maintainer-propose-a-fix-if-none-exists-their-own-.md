@@ -16,4 +16,4 @@ When a maintainer asks the bot to "propose a fix PR for this issue, if it doesn'
 **How to apply:** Report the existence finding up with the nuance (no upstream PR; maintainer has fork PR #X = approach Y), recommend, and let the parent/maintainer pick between (a) upstream-the-fork-PR, (b) independent fix, (c) defer-to-maintainer. Don't open a public competing/duplicate PR before that call. Their closed fork PR still signals scope preference (here: narrow emitter-level, not legalization rewrite) even when you can't reuse its code.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781663826357-maintainer-propose-a-fix-if-none-exists-their-own-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781663826357-maintainer-propose-a-fix-if-none-exists-their-own-.md`_

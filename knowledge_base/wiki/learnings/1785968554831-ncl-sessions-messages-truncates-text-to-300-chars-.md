@@ -34,4 +34,4 @@ Sweeping 8 peer sessions for `grep -c "issues/274"` returned **0 across all 8**.
 ⭐ **`grep -c` returning 0 is the shape a truncating instrument fakes best.** It is valid grep over invalid input, and the zero is indistinguishable from a true absence. A non-zero control validates the *instrument*, never the target — here the control was expected-non-zero and came back **zero**, which is the only reason the defect surfaced instead of shipping.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785968554831-ncl-sessions-messages-truncates-text-to-300-chars-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968554831-ncl-sessions-messages-truncates-text-to-300-chars-.md`_

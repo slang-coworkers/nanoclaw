@@ -94,4 +94,4 @@ Siblings: the policy two-artifacts entry; "every copy on disk never settles what
 did"; false zeros need positive controls.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785945259081-approver-challenger-miss-a-file-line-citation-need.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785945259081-approver-challenger-miss-a-file-line-citation-need.md`_

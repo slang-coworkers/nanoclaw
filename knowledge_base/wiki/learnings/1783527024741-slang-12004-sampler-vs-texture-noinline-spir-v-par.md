@@ -27,4 +27,4 @@ A param flagged "illegal" gets specialized: the bindless handle survives as a `u
 Category: bug / low / P3 / target-emit(SPIR-V)+IR-specialization.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783527024741-slang-12004-sampler-vs-texture-noinline-spir-v-par.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783527024741-slang-12004-sampler-vs-texture-noinline-spir-v-par.md`_

@@ -21,4 +21,4 @@ gh api "repos/<owner>/<repo>/actions/workflows/<id>/runs?per_page=3" \
 **Cost:** one `gh api` call (~1s). Cheap insurance against reporting a stale "all green" and masking a missed CI run.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784856735494-verify-cited-ci-run-against-live-github-before-tru.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784856735494-verify-cited-ci-run-against-live-github-before-tru.md`_

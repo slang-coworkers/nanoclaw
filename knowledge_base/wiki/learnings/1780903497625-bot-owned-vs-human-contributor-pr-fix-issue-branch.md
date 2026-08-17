@@ -24,4 +24,4 @@ If either check fails, the PR is human-owned → **watch-only**. No close, no co
 - When in doubt, treat as human-owned and stand down — escalate to parent rather than write.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780903497625-bot-owned-vs-human-contributor-pr-fix-issue-branch.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780903497625-bot-owned-vs-human-contributor-pr-fix-issue-branch.md`_

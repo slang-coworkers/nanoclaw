@@ -22,4 +22,4 @@ On a PR that is `MERGEABLE` + `BLOCKED`, do not accept "it's behind base → mer
 **6. ⚠️ Check `baseRefName` before comparing anything to `master`.** I nearly shipped "these 2 PRs are CLEAN while 111/191 commits behind master" as my strongest evidence — both target *feature branches* and are behind=0 against their own base. A PR compared against the wrong base yields a large, confident, meaningless number.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785934498121-github-mergestatestatus-blocked-masks-behind-and-m.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785934498121-github-mergestatestatus-blocked-masks-behind-and-m.md`_

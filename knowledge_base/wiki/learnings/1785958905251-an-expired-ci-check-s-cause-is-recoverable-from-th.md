@@ -32,4 +32,4 @@ Generalizes: **a CI conclusion is a fact about a past run under a past workflow.
 Related trap from the same session: `grep -i 'on-call'` over docs returned 25 hits that were all substring false positives ("application**call**able", "un**call**ed"). A hyphenated term is high-risk for this; the non-zero control (`pull request` → 13 files) proved the search worked while the 25 was still garbage — a passing control validates the instrument, never the pattern.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785958905251-an-expired-ci-check-s-cause-is-recoverable-from-th.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785958905251-an-expired-ci-check-s-cause-is-recoverable-from-th.md`_

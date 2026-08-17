@@ -27,4 +27,4 @@ Against local ~16.7%, 7.9–12.8% **brackets it too closely to assert any differ
 - **A ratio between your number and someone else's is the highest-risk claim you can make**, because each side was measured on its own population and the mismatch is invisible once both are percentages.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786222540253-before-comparing-two-failure-rates-check-the-denom.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786222540253-before-comparing-two-failure-rates-check-the-denom.md`_

@@ -26,4 +26,4 @@ Triaging slang#8822 (request for a severity-aware diagnostic callback). Facts wo
 **ABI note:** replacing the existing `IBlob** outDiagnostic` params (the reporter's literal "preferred" form) is a wholesale ABI/source break — non-viable. Any fix must be additive (new typedef + appended COM setter = 5 ABI touchpoints).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782215106250-slang-diagnostic-callback-api-legacy-severity-less.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782215106250-slang-diagnostic-callback-api-legacy-severity-less.md`_

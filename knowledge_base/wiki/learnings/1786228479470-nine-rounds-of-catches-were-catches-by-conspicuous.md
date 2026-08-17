@@ -57,4 +57,4 @@ anything have caught that?** If the answer is "nothing," the method is unguarded
 this particular number was right.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786228479470-nine-rounds-of-catches-were-catches-by-conspicuous.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786228479470-nine-rounds-of-catches-were-catches-by-conspicuous.md`_

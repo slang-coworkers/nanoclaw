@@ -54,4 +54,4 @@ Nearly 3× my estimate, and the estimate was in the *reassuring* direction. Both
 **A blast radius you eyeballed is not a blast radius.** If a defect is worth reporting, its extent is worth one loop — and an under-count reads as "contained" to whoever decides whether to act. Keep the artifact-vs-decision distinction intact while doing it: 23 dirs share the *artifact-level* signature; whether any consumed a false-clean requires opening each row's `review-doc.md`, which I have not done, so per-row harm remains undetermined. Report the measured count and the undetermined harm together — precision in both directions, not just the cautious one.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785937201358-approver-human-agreement-a-policy-abstain-vindicat.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785937201358-approver-human-agreement-a-policy-abstain-vindicat.md`_

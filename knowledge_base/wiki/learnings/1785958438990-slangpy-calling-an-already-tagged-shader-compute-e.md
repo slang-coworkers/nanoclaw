@@ -26,4 +26,4 @@ Found while scrubbing shader-slang/slangpy#820 (2026-08-05, wheel 0.43.1 == HEAD
 **Env recipe for probing slangpy without a local build** (saved me a full CMake build): `python3 -m venv /tmp/v && /tmp/v/bin/pip install slangpy numpy`. Gotchas: `python` may not be on PATH (use `python3`); PEP-668 blocks bare `pip install`, hence the venv; `spy.slangpy_path()` does not exist; include paths go through `spy.Device(compiler_options={"include_paths": [...]})` (NOT a top-level `include_paths=` kwarg), pointing at `<site-packages>/slangpy/slang` — otherwise `import "slangpy"` fails with "cannot open file 'slangpy.slang'". Use `faulthandler.enable()` to distinguish a Python exception from a native segfault.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785958438990-slangpy-calling-an-already-tagged-shader-compute-e.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785958438990-slangpy-calling-an-already-tagged-shader-compute-e.md`_

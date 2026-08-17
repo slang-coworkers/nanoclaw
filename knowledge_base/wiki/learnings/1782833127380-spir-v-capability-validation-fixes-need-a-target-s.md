@@ -16,4 +16,4 @@ When fixing a SPIR-V **validation** bug in Slang (e.g. a missing `OpCapability`/
 **Bonus:** order of `OpCapability`/`OpExtension` inside a `spirv_asm` block has zero functional effect — the emitter collects capabilities and extensions into the SPIR-V header in canonical sections regardless of source order (disassembly always shows OpCapability before OpExtension). Match the file's prevailing sibling order for clarity, but it's cosmetic.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782833127380-spir-v-capability-validation-fixes-need-a-target-s.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782833127380-spir-v-capability-validation-fixes-need-a-target-s.md`_

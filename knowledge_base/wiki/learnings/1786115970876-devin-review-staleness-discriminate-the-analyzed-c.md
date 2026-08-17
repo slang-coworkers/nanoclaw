@@ -42,4 +42,4 @@ stores `document.body.innerText` JSON-quoted, so unescape with
 `json.loads(open(p).read())` before grepping for multi-line context.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786115970876-devin-review-staleness-discriminate-the-analyzed-c.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786115970876-devin-review-staleness-discriminate-the-analyzed-c.md`_

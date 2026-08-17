@@ -50,4 +50,4 @@ Generalization: whenever a tool's exit code is your instrument, **verify the sta
 - `--all` does not exist (exit 1, "unrecognized argument"). `--since master` is the script's own help example and resolves to `git diff --name-only master HEAD` — **committed only**, so it is a false-clean for uncommitted work.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785936156369-formatting-sh-markdown-stage-omits-run-all-bare-an.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785936156369-formatting-sh-markdown-stage-omits-run-all-bare-an.md`_

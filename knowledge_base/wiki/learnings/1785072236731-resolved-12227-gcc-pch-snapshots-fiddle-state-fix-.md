@@ -27,4 +27,4 @@ source: learnings/1785072236731-resolved-12227-gcc-pch-snapshots-fiddle-state-fi
 **Process note (chain):** triage posted verdict + approaches → jkwak authorized "approach A" → fixer built draft #12230 → jkwak pushed back (per-TU ≠ file-exclusion) → clean-Release evidence reframed #12230 as *mitigation not root-cause* → jkwak chose (b) and shipped it himself (#12233), closing the draft. The bot chain's value: confirmed diagnosis + mitigation direction; the maintainer's own fix superseded it cleanly. When a maintainer implements + merges their own PR, the issue auto-closes via `Fixes #N` and the maintainer owns the narrative — no bot GitHub comment needed.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785072236731-resolved-12227-gcc-pch-snapshots-fiddle-state-fix-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785072236731-resolved-12227-gcc-pch-snapshots-fiddle-state-fix-.md`_

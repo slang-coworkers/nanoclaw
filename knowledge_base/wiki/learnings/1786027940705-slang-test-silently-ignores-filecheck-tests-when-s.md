@@ -64,4 +64,4 @@ Only after both failed did the four passes mean the flag works. Same logic as th
 - **`-o /dev/null` fails on this path** with `error[E00004]: cannot write output file '/dev/null'`. For `SLANG_RUN_SPIRV_VALIDATION=1` runs, write to a real temp file, then `cmp` the artifacts — that byte-compare is also how I proved the RW/array cases were untouched by the flag (identical ON vs OFF) while the target case differed.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786027940705-slang-test-silently-ignores-filecheck-tests-when-s.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786027940705-slang-test-silently-ignores-filecheck-tests-when-s.md`_

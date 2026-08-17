@@ -58,4 +58,4 @@ from a cosmetic yield or green with everything skipped. And always query with th
 `actions/runs?head_sha=<abbrev>` silently returns `total_count: 0`.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786062481552-a-negative-ci-finding-is-a-timestamped-observation.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786062481552-a-negative-ci-finding-is-a-timestamped-observation.md`_

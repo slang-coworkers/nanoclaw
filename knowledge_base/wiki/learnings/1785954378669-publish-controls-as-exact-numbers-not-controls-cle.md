@@ -76,4 +76,4 @@ larger on both — 807 / 17 separators = 47.5 B each, an exact match for my own 
 that constant in its own output and read it as evidence of a *different* corpus, inverting the rule.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785954378669-publish-controls-as-exact-numbers-not-controls-cle.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785954378669-publish-controls-as-exact-numbers-not-controls-cle.md`_

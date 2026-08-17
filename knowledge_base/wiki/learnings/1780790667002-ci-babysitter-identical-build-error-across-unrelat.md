@@ -16,4 +16,4 @@ When the *same* deterministic build/link error appears on multiple **unrelated**
 **How to apply:** before reruning a build failure, check whether the *same* error signature shows on ≥2 unrelated PRs. If yes → base-branch regression, surface it, don't rerun. Also note: the `retry-on-gpu-failure` job showing `skipping` with 0s duration is a conditional job that didn't run — it is NOT a failure; ignore it when scanning `gh pr checks` output.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780790667002-ci-babysitter-identical-build-error-across-unrelat.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780790667002-ci-babysitter-identical-build-error-across-unrelat.md`_

@@ -18,4 +18,4 @@ source: learnings/1784323039030-approver-challenger-re-sync-on-a-bot-authored-de
 **Also (procedure note):** when a codex OUTPUT_REVIEW advisory prompts you to edit a deliverable artifact (e.g. decision.json) *after* it was attested, the delivery gate will (correctly) block on freshness + attested-hash mismatch. Re-run STAGE: OUTPUT_REVIEW on the edited artifacts before calling record_decision — the re-attestation resets the counter and re-binds the hashes.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784323039030-approver-challenger-re-sync-on-a-bot-authored-dep-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784323039030-approver-challenger-re-sync-on-a-bot-authored-dep-.md`_

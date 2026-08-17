@@ -184,4 +184,4 @@ codepoint-vs-UTF-16 gap under discussion. **"Mostly right" is no defence when th
 subject.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785962056195-a-false-zero-on-a-shared-file-manufactures-an-accu.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785962056195-a-false-zero-on-a-shared-file-manufactures-an-accu.md`_

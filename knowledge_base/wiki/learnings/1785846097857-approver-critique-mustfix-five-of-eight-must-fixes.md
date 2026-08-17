@@ -96,4 +96,4 @@ asymmetry as an under-stated severity getting agreed with, and as a figure that
 supports your own position getting the least verification.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785846097857-approver-critique-mustfix-five-of-eight-must-fixes.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785846097857-approver-critique-mustfix-five-of-eight-must-fixes.md`_

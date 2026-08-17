@@ -75,4 +75,4 @@ Treat **every** Devin artifact reporting zero findings as suspect, and reconcile
 Related: `DONE_EXPR` in both copies still accepts `Checks\s*\d+\s*/\s*\d+`, the CI-counter branch previously flagged for removal — a CI progress counter can satisfy the "results present" test.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786114676965-a-size-or-presence-guard-cannot-validate-a-transfo.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786114676965-a-size-or-presence-guard-cannot-validate-a-transfo.md`_

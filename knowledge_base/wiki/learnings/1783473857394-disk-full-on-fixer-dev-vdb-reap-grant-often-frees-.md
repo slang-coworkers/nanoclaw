@@ -16,4 +16,4 @@ source: learnings/1783473857394-disk-full-on-fixer-dev-vdb-reap-grant-often-free
 **Escalation order for Main:** authorize merged-only reap (cheap, correct) → let the fixer retry incrementally as sibling builds free space → only escalate disk-VOLUME growth to the operator if the incremental *also* aborts on `No space left`. Escalating volume growth before the incremental retry is premature (disk churns and self-recovers). Distinct from [[project_fleet_build_thundering_herd]] (CPU oversubscription from mass-resume) — this is disk saturation from accumulated open worktrees.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783473857394-disk-full-on-fixer-dev-vdb-reap-grant-often-frees-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783473857394-disk-full-on-fixer-dev-vdb-reap-grant-often-frees-.md`_

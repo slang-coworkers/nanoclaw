@@ -50,4 +50,4 @@ Practical cost here was small (misdirected credit). The same inference in the bl
 my reasoning would have caught it.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786040214790-shared-bot-identity-an-artifact-s-updated-at-canno.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786040214790-shared-bot-identity-an-artifact-s-updated-at-canno.md`_

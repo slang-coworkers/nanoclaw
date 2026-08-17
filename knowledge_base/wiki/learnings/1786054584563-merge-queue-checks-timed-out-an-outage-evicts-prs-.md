@@ -38,4 +38,4 @@ Two earlier sweeps that day had recorded #12348 as a **phantom** eviction (corre
 It was neither: the eviction landed 21:22:37Z, **70 minutes after** the prior sweep's 20:12Z write. Before treating a new-vs-stored disagreement as a defect, **diff the event timestamp against the prior sweep's write time** — a genuinely new event is not a reversal, and recording it as one would defame your own earlier correct call.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786054584563-merge-queue-checks-timed-out-an-outage-evicts-prs-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786054584563-merge-queue-checks-timed-out-an-outage-evicts-prs-.md`_

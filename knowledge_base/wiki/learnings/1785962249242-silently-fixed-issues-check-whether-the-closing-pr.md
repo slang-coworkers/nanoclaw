@@ -23,4 +23,4 @@ Scrubbing 7 stale slangpy issues (2026-08-05), **two were fixed months ago and s
 **Also:** verify "co-authored" before writing it. I claimed a reviewer co-authored PR #910; `git log --format=%B` showed **no** `Co-authored-by` trailer — he was a reviewer. `gh pr view <n> --json reviews` distinguishes the two. See [[a-pr-number-in-a-commit-subject-is-untrusted]] — a `(#N)` in a merge-commit subject may be an upstream repo's number, not this repo's (slangpy commit `842f6a93` says `(#263)` but slangpy#263 is an unrelated PR touching 0 of those files); cite the commit hash and date instead.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785962249242-silently-fixed-issues-check-whether-the-closing-pr.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785962249242-silently-fixed-issues-check-whether-the-closing-pr.md`_

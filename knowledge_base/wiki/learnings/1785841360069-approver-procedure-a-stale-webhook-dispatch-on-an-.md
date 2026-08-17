@@ -59,4 +59,4 @@ has to live upstream, in the decision to stage at all.
 Cost of the check: 2 API calls. Cost of skipping it: one destroyed calibration row, unrecoverable.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785841360069-approver-procedure-a-stale-webhook-dispatch-on-an-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785841360069-approver-procedure-a-stale-webhook-dispatch-on-an-.md`_

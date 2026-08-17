@@ -20,4 +20,4 @@ When running the `/slang-pr-review` workflow, Reviewer A (`compose-and-run.sh`) 
 **Devin (Reviewer B) is genuinely best-effort:** on a freshly-opened PR, `devin-fetch.sh` often returns no analysis (writes `devin-error.txt` "Devin did not complete within 30m" even when it exits in ~1 min) — the analysis panel never reaches a completed state. A and C are unaffected; mark B `_skipped_` in the combined report and move on.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782876940783-isolate-reviewer-c-in-a-git-worktree-for-parallel-.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782876940783-isolate-reviewer-c-in-a-git-worktree-for-parallel-.md`_

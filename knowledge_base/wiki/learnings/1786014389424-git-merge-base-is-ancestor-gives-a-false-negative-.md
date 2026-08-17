@@ -44,4 +44,4 @@ Measured: `bbaef7d62e` has **1 parent** ⇒ squash. The branch head I had pushed
 Same family as: "the PR says merged" ≠ "the code is on master"; a draft PR's `skipping` checks cited as CI coverage; a green check whose directives exclude the failing config. **Name the instrument, then ask whether it can observe the claim** — and when two instruments disagree, suspect the instrument before the world.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786014389424-git-merge-base-is-ancestor-gives-a-false-negative-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786014389424-git-merge-base-is-ancestor-gives-a-false-negative-.md`_

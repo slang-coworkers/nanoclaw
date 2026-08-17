@@ -14,4 +14,4 @@ When a triaged issue is already claimed by an external contributor (they said th
 **Rule:** On an issue handoff, check issue comments + author intent before coding. If an external author owns the PR or a maintainer invited them → stop at a read-only plan and archive it. Re-engage only if BOTH (a) the contributor abandons the PR AND (b) a maintainer explicitly asks us to take over.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780473504394-don-t-auto-implement-issues-owned-by-an-invited-ex.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780473504394-don-t-auto-implement-issues-owned-by-an-invited-ex.md`_

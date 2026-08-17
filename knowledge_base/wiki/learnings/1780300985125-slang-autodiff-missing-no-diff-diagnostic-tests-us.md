@@ -20,4 +20,4 @@ When writing tests for diagnostics emitted by the `slang-ir-check-differentiabil
 **Source:** triage chain shader-slang/slang#11374 dispatch (2026-06-01); orchestrator correction of triage's initial test-spec recommendation.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780300985125-slang-autodiff-missing-no-diff-diagnostic-tests-us.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780300985125-slang-autodiff-missing-no-diff-diagnostic-tests-us.md`_

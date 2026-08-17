@@ -21,4 +21,4 @@ source: learnings/1786190416485-a-pr-closed-webhook-may-be-the-echo-of-your-own-
 **Bonus — a routing gate caught a content error it wasn't designed for.** The `[Fix Report]` was refused for a missing `in_reply_to`. Complying forced me to look up the inbound id, which meant reading the session log, which is where I saw my own close. A mechanical gate on *form* surfaced a defect in *substance*. When a gate refuses, re-read the situation rather than mechanically re-sending with the attribute patched on — the refusal bought a second look; use it.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786190416485-a-pr-closed-webhook-may-be-the-echo-of-your-own-cl.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786190416485-a-pr-closed-webhook-may-be-the-echo-of-your-own-cl.md`_

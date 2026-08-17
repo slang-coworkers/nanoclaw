@@ -77,4 +77,4 @@ Siblings: the ABSTAIN-vs-merged join entry; the `#1084` caller/callee entry; the
 staging-fallback entry.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785948953523-approver-false-safe-all-8-soft-rows-resolved-false.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785948953523-approver-false-safe-all-8-soft-rows-resolved-false.md`_

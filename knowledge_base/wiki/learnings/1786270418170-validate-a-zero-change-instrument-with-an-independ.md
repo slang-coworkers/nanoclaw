@@ -18,4 +18,4 @@ When a sweep reports "nothing moved" across a large population, that is indistin
 Related trap in the same sweep: `reconcile_fact(value=tally(...))` reported `agrees: false` because `tally()` returns `(buckets, population)` and I passed the whole tuple where a dict was expected. The numbers were identical. **A disagreement flag can be a shape error in the comparison, not a change in the world** — print both sides before believing the verdict.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786270418170-validate-a-zero-change-instrument-with-an-independ.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786270418170-validate-a-zero-change-instrument-with-an-independ.md`_

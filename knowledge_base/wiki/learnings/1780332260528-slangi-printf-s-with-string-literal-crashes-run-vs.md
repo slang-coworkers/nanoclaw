@@ -18,4 +18,4 @@ source: learnings/1780332260528-slangi-printf-s-with-string-literal-crashes-run-
 **Op note:** the triage workflow is normally read-only on GitHub, but the orchestrator can explicitly authorize posting a triage comment — treat an explicit parent instruction as authorization for that scoped action. `gh auth status` reports the token invalid (false positive) yet `gh api` reads AND comment POSTs (`repos/<o>/<r>/issues/<n>/comments --input <json>` built with `jq -Rs '{body:.}'`) succeed via the host proxy.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780332260528-slangi-printf-s-with-string-literal-crashes-run-vs.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780332260528-slangi-printf-s-with-string-literal-crashes-run-vs.md`_

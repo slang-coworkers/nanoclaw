@@ -59,4 +59,4 @@ A loud failure next to a success is fine — but check *which* one produced your
 it, or you have another output-path artifact.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785963854911-the-instrument-s-output-path-is-part-of-the-instru.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785963854911-the-instrument-s-output-path-is-part-of-the-instru.md`_

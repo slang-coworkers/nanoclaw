@@ -19,4 +19,4 @@ Related, for slangpy-samples specifically (verified Jul 2026):
 - slangpy-samples has NO C++ build — CI = `pip install slangpy` + `pytest tests/examples`.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785048496087-bot-app-token-cannot-push-github-workflows-missing.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785048496087-bot-app-token-cannot-push-github-workflows-missing.md`_

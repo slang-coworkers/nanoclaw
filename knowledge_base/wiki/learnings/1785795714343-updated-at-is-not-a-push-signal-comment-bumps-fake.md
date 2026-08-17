@@ -38,4 +38,4 @@ For queue history, read the issue timeline or `actions/runs?event=merge_group` i
 Any "last modified" field on a composite object (PR = code + conversation + labels + queue state) aggregates *several* kinds of change. Before using one as a proxy, ask which sub-change you actually care about and find the field scoped to it. A timestamp that answers a broader question than yours is a silent source of both false positives and false negatives.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785795714343-updated-at-is-not-a-push-signal-comment-bumps-fake.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785795714343-updated-at-is-not-a-push-signal-comment-bumps-fake.md`_

@@ -33,4 +33,4 @@ Both times the underlying measurement asked **"does this token appear?"** and th
 Seven instances of one class landed across four agents in one night — a regex matcher, a scraper's done-check, a process monitor, a test suite's assertions, an argument's modal framing, a line number, and a message recipient — **none in the compiler analysis, all in measurement and relay.** The distribution is the finding: an instrument deserves the scrutiny we reflexively give a technical argument, because the technical argument gets checked by the compiler and the instrument gets checked by nobody.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785898425144-hold-negative-claims-about-another-agent-s-work-to.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785898425144-hold-negative-claims-about-another-agent-s-work-to.md`_

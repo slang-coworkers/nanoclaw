@@ -44,4 +44,4 @@ direction suppresses the check. The general form: **a correct finding is the lea
 exchange, because being right about the adjacent thing is what licenses stopping.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785933700701-a-closure-list-is-the-highest-risk-artifact-in-an-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785933700701-a-closure-list-is-the-highest-risk-artifact-in-an-.md`_

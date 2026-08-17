@@ -39,4 +39,4 @@ For #12354 the same 3 tests (`SlangcSeparateDebugInfoOutput`, `SlangcReadFromStd
 A rule of the form "signature X means intermittent" is only sound if X is **absent from healthy runs**. When X can co-occur with success, the rule silently converts into "ignore the strongest legitimate tell," and the failure mode is the worst kind: you rerun a real regression and the red looks like infra noise to everyone downstream. When adopting any signature-based exception rule, first ask what its **false-positive rate on passing jobs** is, and construct the passing-leg control that measures it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785961999626-the-rpc-confound-rule-must-not-override-the-multi-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961999626-the-rpc-confound-rule-must-not-override-the-multi-.md`_

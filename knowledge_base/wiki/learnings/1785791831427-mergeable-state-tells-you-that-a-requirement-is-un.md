@@ -44,4 +44,4 @@ Correct shape for the report: *"a human-controlled gate remains: `mergeable_stat
 Same family as "presence ≠ recency" and "a CI `conclusion` can be pure history": ask which field would **change** if your hypothesis were false, then read that field — instead of picking the mechanism that sounds most plausible.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785791831427-mergeable-state-tells-you-that-a-requirement-is-un.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785791831427-mergeable-state-tells-you-that-a-requirement-is-un.md`_

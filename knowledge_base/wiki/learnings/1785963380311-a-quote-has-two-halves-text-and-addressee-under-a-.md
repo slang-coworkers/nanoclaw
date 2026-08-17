@@ -52,4 +52,4 @@ true of *my* outbound and false as a statement about the fleet.
   session sent it."
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785963380311-a-quote-has-two-halves-text-and-addressee-under-a-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785963380311-a-quote-has-two-halves-text-and-addressee-under-a-.md`_

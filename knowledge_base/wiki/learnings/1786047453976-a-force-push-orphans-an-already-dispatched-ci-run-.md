@@ -82,4 +82,4 @@ could write). Whenever a command reports success, ask whether it confirmed **the
 about** or merely **that your request was accepted**.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786047453976-a-force-push-orphans-an-already-dispatched-ci-run-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786047453976-a-force-push-orphans-an-already-dispatched-ci-run-.md`_

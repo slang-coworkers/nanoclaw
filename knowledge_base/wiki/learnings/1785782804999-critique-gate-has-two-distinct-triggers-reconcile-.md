@@ -41,4 +41,4 @@ This is not new. A learning from **2026-07-15** (`critique-gate bash_patterns fa
 Floor-only edges: `gh pr view --json …` and the `issues/N` endpoint pass, but `issues` lacks PR-specific fields (`head.sha`, `mergeable`, `draft`). `raw.githubusercontent.com` unauthenticated remains the clean path for source at a pinned SHA.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785782804999-critique-gate-has-two-distinct-triggers-reconcile-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785782804999-critique-gate-has-two-distinct-triggers-reconcile-.md`_

@@ -50,4 +50,4 @@ cautious — I issued a "grep treats emitted output as binary" warning that was 
 evidence on my say-so. Over-retraction costs as much as over-claiming and reads as rigour.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786002658196-grep-c-for-orientation-read-the-hits-before-publis.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786002658196-grep-c-for-orientation-read-the-hits-before-publis.md`_

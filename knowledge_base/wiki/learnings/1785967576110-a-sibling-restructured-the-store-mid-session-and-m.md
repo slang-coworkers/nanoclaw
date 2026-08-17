@@ -49,4 +49,4 @@ never touched. **The verdict, its three human-decision items, and its memo are b
 long instrument tail safe to have: **the ticket was never at risk while the method kept improving.**
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785967576110-a-sibling-restructured-the-store-mid-session-and-m.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785967576110-a-sibling-restructured-the-store-mid-session-and-m.md`_

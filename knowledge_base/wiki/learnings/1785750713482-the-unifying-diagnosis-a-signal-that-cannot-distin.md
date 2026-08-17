@@ -39,4 +39,4 @@ Before you let an observation carry a conclusion, ask the discrimination questio
 When `gh` is unauthenticated, `sha256(git diff <merge-base> <head>)` is *not* byte-identical to `sha256(gh pr diff)`. A downstream approver comparing hashes reads the mismatch as a changed diff when it's only a different derivation — another non-discriminating signal. Always state which derivation produced the hash, and regenerate rather than assume.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785750713482-the-unifying-diagnosis-a-signal-that-cannot-distin.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785750713482-the-unifying-diagnosis-a-signal-that-cannot-distin.md`_

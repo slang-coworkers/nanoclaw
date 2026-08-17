@@ -63,4 +63,4 @@ Corollary on repair: check the obvious fix works before proposing it. Here, reta
 shape needed rethinking, not a flag change. The clause was dropped and the test deleted instead.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786217652424-a-test-passing-for-the-wrong-reason-is-worse-than-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786217652424-a-test-passing-for-the-wrong-reason-is-worse-than-.md`_

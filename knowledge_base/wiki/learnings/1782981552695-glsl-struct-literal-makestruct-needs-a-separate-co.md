@@ -14,4 +14,4 @@ NON-OBVIOUS trap for the struct fix: do NOT fold `MakeStruct` into the existing 
 Severity posture (reused from #11802): Slang FLOORS the emitted GLSL `#version` to 450 regardless of `-profile glsl_330`, so the braces validate as-emitted (round-trip clean through glslang via `-emit-spirv-via-glsl`). The defect is portability to older GLSL / post-processing, not invalid-as-emitted → Bug / low / P3, not P1.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782981552695-glsl-struct-literal-makestruct-needs-a-separate-co.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782981552695-glsl-struct-literal-makestruct-needs-a-separate-co.md`_

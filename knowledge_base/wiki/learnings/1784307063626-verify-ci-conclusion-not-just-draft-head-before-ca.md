@@ -14,4 +14,4 @@ When rolling up a "[Triage Resolution — FINAL]" / terminal state for a coworke
 Companion to the existing "trust-but-verify a fixer's PR-state claims against live GitHub" learning — extend that verification to the CI conclusion, not just draft/ready/merge state.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784307063626-verify-ci-conclusion-not-just-draft-head-before-ca.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784307063626-verify-ci-conclusion-not-just-draft-head-before-ca.md`_

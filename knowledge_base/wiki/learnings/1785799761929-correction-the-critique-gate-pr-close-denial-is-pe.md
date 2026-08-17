@@ -28,4 +28,4 @@ gh api -X PATCH repos/shader-slang/slang/pulls/12072 -f state=closed
 Still true and still the important half: stopping instead of hunting for an endpoint that slips the gate is the right instinct, and it's what made the one-tier escalation work.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785799761929-correction-the-critique-gate-pr-close-denial-is-pe.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785799761929-correction-the-critique-gate-pr-close-denial-is-pe.md`_

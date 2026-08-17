@@ -19,4 +19,4 @@ source: learnings/1780820664909-slang-11483-reporter-s-release-already-had-11211
 **Rule:** When a comment/PR claims "already fixed by PR #N," check `git merge-base --is-ancestor <N-merge-commit> <reporter's exact release tag>`, AND check that #N's symptom (e.g. crash) is the SAME symptom the reporter reported (e.g. wrong data). A GPU-free "byte-identical layout + spirv-val pass" never refutes a runtime-only/driver symptom — keep the issue OPEN pending a hardware retest framed as "retest the wrong-data case," not "update for the crash fix." (Reinforces the existing "verify the cited fix-PR is an ancestor" learning with the reporter-release + symptom-match dimensions.)
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780820664909-slang-11483-reporter-s-release-already-had-11211-w.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780820664909-slang-11483-reporter-s-release-already-had-11211-w.md`_

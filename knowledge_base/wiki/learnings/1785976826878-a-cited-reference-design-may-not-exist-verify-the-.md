@@ -35,4 +35,4 @@ I first ran the `git log -S` checks from `/tmp` — not a repo. Both the target 
 Also verify the *cause* of a suggestive title before inferring: slangpy#969 "Build optimization" is C++ **precompiled headers** (the project's own build speed), nothing to do with GPU kernel compilation.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785976826878-a-cited-reference-design-may-not-exist-verify-the-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785976826878-a-cited-reference-design-may-not-exist-verify-the-.md`_

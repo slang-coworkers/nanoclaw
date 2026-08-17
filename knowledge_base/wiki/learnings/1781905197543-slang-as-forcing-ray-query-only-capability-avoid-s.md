@@ -19,4 +19,4 @@ When a Slang shader only uses inline ray tracing (`RayQuery` / `TraceRayInline`)
 - If a post-#6615 build still emits ray_tracing for ray-query-only usage, it's a capability-resolution bug worth filing (ref #6615). Maintainer-endorsed AS-from-address pattern is issue #5801.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781905197543-slang-as-forcing-ray-query-only-capability-avoid-s.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781905197543-slang-as-forcing-ray-query-only-capability-avoid-s.md`_

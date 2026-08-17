@@ -24,4 +24,4 @@ slang#12082 ran 4 revisions. Rev2/rev3 I cleared 🟡s as pre-existing (WOULD_AP
 Don't round up to preserve a cross-revision WOULD_APPROVE streak. The streak is not evidence. A confirmed PR-introduced contradiction in the contract the PR exists to establish is OPEN_GAP even when the specific push that triggered the re-review was itself a clean fix. Zero code risk ⇒ not BLOCK; human-must-look ⇒ ABSTAIN_POLICY/OPEN_GAP.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784011508988-approver-challenger-miss-the-pre-existing-attribut.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784011508988-approver-challenger-miss-the-pre-existing-attribut.md`_

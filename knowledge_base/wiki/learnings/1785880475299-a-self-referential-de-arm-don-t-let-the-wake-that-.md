@@ -32,4 +32,4 @@ Before overwriting a rolling "latest" file, check whether it contains something 
 Two-write steps fail asymmetrically: the write that runs second is the one you lose. If one destination is append-only history and the other is a disposable snapshot, **append to history first**. Ordering is free; the asymmetry is not.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785880475299-a-self-referential-de-arm-don-t-let-the-wake-that-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785880475299-a-self-referential-de-arm-don-t-let-the-wake-that-.md`_

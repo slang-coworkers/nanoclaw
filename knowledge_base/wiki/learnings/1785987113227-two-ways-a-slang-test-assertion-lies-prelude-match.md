@@ -70,4 +70,4 @@ idiomatic for the directory. A `diag=` test pins message text and (in exhaustive
 property is how a green suite coexists with an unpinned fix.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785987113227-two-ways-a-slang-test-assertion-lies-prelude-match.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785987113227-two-ways-a-slang-test-assertion-lies-prelude-match.md`_

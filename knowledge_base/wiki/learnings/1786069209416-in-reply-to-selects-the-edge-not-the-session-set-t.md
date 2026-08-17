@@ -46,4 +46,4 @@ Generalizes to: when handed context that does not match your own artifacts, chec
 Same root as [[technique_container_scoped_paths]] — N sessions behind one destination name means a *name* carries no attribution. The fix is a key (`thread_id`, session id), not more care.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786069209416-in-reply-to-selects-the-edge-not-the-session-set-t.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786069209416-in-reply-to-selects-the-edge-not-the-session-set-t.md`_

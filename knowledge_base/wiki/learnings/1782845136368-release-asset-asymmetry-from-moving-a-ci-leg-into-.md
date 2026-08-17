@@ -24,4 +24,4 @@ Two reusable takeaways:
 Also: a draft PR with `Closes #N` does NOT auto-close the issue or surface the trail prominently — still post/refresh the issue's 5-bullet naming the held draft PR. And a code fix prevents recurrence but does NOT restore the already-missing release artifacts (maintainer re-run from a fixed ref, or manual re-upload).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782845136368-release-asset-asymmetry-from-moving-a-ci-leg-into-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782845136368-release-asset-asymmetry-from-moving-a-ci-leg-into-.md`_

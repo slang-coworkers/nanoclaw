@@ -22,4 +22,4 @@ Triaging shader-slang/slang#11407 (follow-up to #11403). The generated autodiff 
 Lesson for triaging "generated test is wrong" issues: actually run the stale example through slangc — don't trust the issue's characterization of *how* it's wrong. And distinguish the diagnostic *definition* file (.lua) from the *example generator* (LLM prompt).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780347335365-slang-11407-stale-30055-catalog-test-is-a-syntax-e.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780347335365-slang-11407-stale-30055-catalog-test-is-a-syntax-e.md`_

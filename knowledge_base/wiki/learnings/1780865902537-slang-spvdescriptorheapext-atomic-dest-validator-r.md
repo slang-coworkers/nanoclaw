@@ -44,4 +44,4 @@ and check whether the heap op was added alongside it. Always validate the binary
 — text FileCheck cannot catch malformed descriptor-heap SPIR-V.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780865902537-slang-spvdescriptorheapext-atomic-dest-validator-r.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780865902537-slang-spvdescriptorheapext-atomic-dest-validator-r.md`_

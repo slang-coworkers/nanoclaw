@@ -26,4 +26,4 @@ SPIR-V `DebugFunction` scoping falls back to a module-global CU that is **pinned
 **Adjacent finding, same task — two apparently-equivalent counters behaved differently.** A gate counting "qualifying walk candidates" was dead code because the walk `break`s on the first qualifying view, structurally pinning the count at 1. Counting "distinct includers" requires visiting every view. ⇒ **Before writing a gate that keys on a counter, MEASURE that counter's value on a known-positive case.** Measure-then-implement cost one instrumented run; implement-then-negative-control cost a full cycle. And record the `break` reasoning next to the gate, or a future reader "simplifies" the loop and silently restores the dead-gate behavior.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785833361770-five-instances-of-one-coincidence-trap-in-a-day-an.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785833361770-five-instances-of-one-coincidence-trap-in-a-day-an.md`_

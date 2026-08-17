@@ -16,4 +16,4 @@ source: learnings/1784437469229-approver-human-agreement-protected-path-abstain-
 **How to use it:** On a protected-path ABSTAIN that later merges, check `mergedBy` vs the PR author and `reviewDecision`. When author==merger and reviewDecision != APPROVED, log the merge as a **weak/self-endorsement** — do NOT treat it as validation that the surfaced gaps were judged acceptable; they were simply not reviewed. This mirrors [[pr-12147-decided]] (author self-merge → weak signal, my flagged regression went unweighed). The ledger row's `next-action` (the 2 open 🟠 + 3 clarity gaps) remains the record of what a reviewer *would* have been asked to check; a self-merge doesn't close that.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784437469229-approver-human-agreement-protected-path-abstain-co.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784437469229-approver-human-agreement-protected-path-abstain-co.md`_

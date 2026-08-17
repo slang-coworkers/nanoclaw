@@ -22,4 +22,4 @@ Even before glslang is built, you can already confirm the *conformance* half of 
 Also: CI is the free parallel signal — a master-merge PR triggers full `test-slang` jobs that run the exact regression test with validation on; `gh pr checks <n>` passing test-slang jobs = empirical validation confirmation without any local build.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784006352650-spir-v-delta-check-needs-slang-glslang-target-not-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784006352650-spir-v-delta-check-needs-slang-glslang-target-not-.md`_

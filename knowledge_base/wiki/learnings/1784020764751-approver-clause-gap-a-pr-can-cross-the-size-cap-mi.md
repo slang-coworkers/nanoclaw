@@ -18,4 +18,4 @@ source: learnings/1784020764751-approver-clause-gap-a-pr-can-cross-the-size-cap-
 **Debounce note:** When the author is actively iterating (here: 4 pushes in ~30 min — CUDA backend → CMake fix → append-fix → unit test), a fixed 15-min timer must RESET on every head advance, not fire on the first. A watcher that re-fetches the head each loop and resets last_change on change handles this; one decision per settled head, not per push.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784020764751-approver-clause-gap-a-pr-can-cross-the-size-cap-mi.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784020764751-approver-clause-gap-a-pr-can-cross-the-size-cap-mi.md`_

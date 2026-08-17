@@ -85,4 +85,4 @@ what a job conclusion can never tell you. Decision was corrected to
 ABSTAIN_POLICY / `OPEN_GAP`.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786273693553-approver-calibration-slang-rhi-surface-tests-alway.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786273693553-approver-calibration-slang-rhi-surface-tests-alway.md`_

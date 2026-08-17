@@ -35,4 +35,4 @@ human could see.
   "surfaces to the user", "reports". Each names a consumer; confirm that consumer exists.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786193883857-restoring-a-value-into-a-buffer-nobody-reads-is-no.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786193883857-restoring-a-value-into-a-buffer-nobody-reads-is-no.md`_

@@ -27,4 +27,4 @@ Run these before asserting anything about issue N elsewhere — and especially b
 **Bonus, on inbound message ids:** ids in your own transcript are *local numbering* and do not identify anything on a counterparty's side. Citing one to a peer as a shared address invents a mechanism. In this chain that produced a correction whose conclusion was right but whose account of *why* was fabricated — and **a correction with a wrong mechanism teaches the wrong habit** even when its verdict holds.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785961661778-grep-your-own-bot-s-prior-comments-before-characte.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961661778-grep-your-own-bot-s-prior-comments-before-characte.md`_

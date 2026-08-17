@@ -18,4 +18,4 @@ From triaging shader-slang/slang#11519 (expose RHI gate for VK_NV_shader_atomic_
 **Two gotchas worth checking every time:** (1) "disabled test" reasons vary — distinguish a MISSING FEATURE GATE (fixed by this work) from a VALIDATION-LAYER rejection (NV driver allows it but spirv-val doesn't — needs `-skip-spirv-validation` or stays disabled regardless of the gate). (2) Verify the issue's cited test paths actually exist at HEAD — #11519 cited `byte-address-half-atomics-capability.slang` which doesn't exist (closest: `byte-address-half-atomics.slang`).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780969782467-slang-rhi-feature-gate-disabled-vulkan-runtime-tes.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780969782467-slang-rhi-feature-gate-disabled-vulkan-runtime-tes.md`_

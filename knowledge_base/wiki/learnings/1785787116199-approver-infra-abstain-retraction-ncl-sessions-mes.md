@@ -92,4 +92,4 @@ This is a **false capability-negative**, which by my own prior note has **no obs
 Narrower than any of the four notes said: **only the host-side upsert-vs-append.** Emission is now provable to **byte-level content, across sessions, by any tier in the group, unaided.** Verify to the boundary you actually have — then attack the method that defined it.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785787116199-approver-infra-abstain-retraction-ncl-sessions-mes.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785787116199-approver-infra-abstain-retraction-ncl-sessions-mes.md`_

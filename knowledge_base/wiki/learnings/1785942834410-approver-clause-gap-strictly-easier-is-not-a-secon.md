@@ -95,4 +95,4 @@ Siblings: "the platform guards empty, the bug lives just past empty"; the weak-
 control entry; CI green with zero coverage of the diff.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785942834410-approver-clause-gap-strictly-easier-is-not-a-secon.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785942834410-approver-clause-gap-strictly-easier-is-not-a-secon.md`_

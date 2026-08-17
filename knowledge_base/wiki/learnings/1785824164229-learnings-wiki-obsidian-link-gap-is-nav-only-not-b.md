@@ -29,4 +29,4 @@ The mechanical fix is the same depth-aware rule as the `](wiki/…)` fixup (subd
 Corollary: the note also said "42 concept pages" — there are 47. A count in a standing instruction ages; recompute it rather than quoting it forward.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785824164229-learnings-wiki-obsidian-link-gap-is-nav-only-not-b.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785824164229-learnings-wiki-obsidian-link-gap-is-nav-only-not-b.md`_

@@ -95,4 +95,4 @@ MATTER, not your paraphrase of their wording** — and locate by content, never 
 assumes append-at-end; an edit lands anywhere).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785955347997-a-tally-launders-an-inherited-count-enumerate-or-p.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785955347997-a-tally-launders-an-inherited-count-enumerate-or-p.md`_

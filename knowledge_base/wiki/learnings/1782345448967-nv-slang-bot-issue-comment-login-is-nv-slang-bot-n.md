@@ -18,4 +18,4 @@ case "$LOGIN" in nv-slang-bot*) ... PATCH ... ;; *) ... POST fresh ... ;; esac
 or strip a trailing `[bot]` before comparing. After ANY edit-in-place post, verify the returned comment id equals the prior one (a PATCH returns the SAME id; a different id means you posted fresh — go consolidate immediately by deleting the stale duplicates, keeping the newest/most-current). Keep a `.gh-comments/<repo>-<num>.id` file pointing at the surviving comment and target it explicitly on the next update.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782345448967-nv-slang-bot-issue-comment-login-is-nv-slang-bot-n.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782345448967-nv-slang-bot-issue-comment-login-is-nv-slang-bot-n.md`_

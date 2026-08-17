@@ -69,4 +69,4 @@ that version would have argued *against* the isolation fix that actually resolve
 and the version, or run the probe that discriminates.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786182802936-fetch-head-is-per-worktree-the-race-is-the-shared-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786182802936-fetch-head-is-per-worktree-the-race-is-the-shared-.md`_

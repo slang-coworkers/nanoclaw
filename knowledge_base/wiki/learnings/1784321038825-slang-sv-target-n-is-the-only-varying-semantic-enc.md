@@ -19,4 +19,4 @@ source: learnings/1784321038825-slang-sv-target-n-is-the-only-varying-semantic-e
 **Practical:** `-target spirv-asm` needs slang-glslang (spirv-dis passthrough); if unbuilt it errors E52002. Use `-target spirv -emit-spirv-directly -o x.spv` then disassemble with a locally-built `spirv-dis` (cmake --build --preset debug --target spirv-dis) instead.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784321038825-slang-sv-target-n-is-the-only-varying-semantic-enc.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784321038825-slang-sv-target-n-is-the-only-varying-semantic-enc.md`_

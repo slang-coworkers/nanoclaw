@@ -18,4 +18,4 @@ source: learnings/1782215118821-nvapi-render-tests-silently-ignored-submodule-fe
 **Triage takeaway:** Before dispatching a fixer, `gh pr list --search "<topic>"` for an in-flight maintainer PR. #10660 was self-assigned to the author who already had a (stale, unlinked) draft PR #10865 — parked the fix-forward rather than double-working it. Maintainer draft PRs are often NOT linked to their issue (no `Closes #N`), so the issue page doesn't surface them — worth linking in the triage comment.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782215118821-nvapi-render-tests-silently-ignored-submodule-fetc.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782215118821-nvapi-render-tests-silently-ignored-submodule-fetc.md`_

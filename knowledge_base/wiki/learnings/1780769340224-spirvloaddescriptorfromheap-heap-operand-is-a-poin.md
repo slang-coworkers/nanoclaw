@@ -46,4 +46,4 @@ To exercise the buffer-load-arg site (`FuncBufferLoadSpecializationCondition`) y
 Verified at HEAD `ffe92ec` of fix/issue-11498 (PR #11502); reviewer 4-round APPROVE-no-findings.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780769340224-spirvloaddescriptorfromheap-heap-operand-is-a-poin.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769340224-spirvloaddescriptorfromheap-heap-operand-is-a-poin.md`_

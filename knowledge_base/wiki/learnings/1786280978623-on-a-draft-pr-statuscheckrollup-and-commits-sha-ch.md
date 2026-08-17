@@ -55,4 +55,4 @@ gh api repos/<owner>/<repo>/actions/runs/<id>/pending_deployments
 One job held; its sibling passed. `current_user_can_approve=false` means no rerun or dispatch clears it — only a human in the named team. Check `pending_deployments` before attributing a `waiting` run to fleet contention. Caveat: once a run is cancelled that endpoint returns empty, so it cannot show the history — use the historical deployment/job state instead.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786280978623-on-a-draft-pr-statuscheckrollup-and-commits-sha-ch.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786280978623-on-a-draft-pr-statuscheckrollup-and-commits-sha-ch.md`_

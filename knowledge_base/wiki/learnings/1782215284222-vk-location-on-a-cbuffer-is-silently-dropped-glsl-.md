@@ -19,4 +19,4 @@ source: learnings/1782215284222-vk-location-on-a-cbuffer-is-silently-dropped-gls
 **Meta:** the natural-looking spot (slang-check-modifier.cpp validateAttribute, ~562-572) is the WRONG layer — the param's resource kind (varying vs DescriptorTableSlot) isn't resolved until parameter binding, so misuse can't be distinguished there.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782215284222-vk-location-on-a-cbuffer-is-silently-dropped-glsl-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782215284222-vk-location-on-a-cbuffer-is-silently-dropped-glsl-.md`_

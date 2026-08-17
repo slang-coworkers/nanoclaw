@@ -17,4 +17,4 @@ When reporting a PR's merge-readiness, distinguish the **internal a2a reviewer p
 **Why:** Conflating the two overstates merge-readiness when rolled up upstream. Incident: shader-slang/slang #11661 (2026-06-22) — orchestrator status said "reviewer-approved" while GitHub showed `REVIEW_REQUIRED`, 0 reviews; the triager caught and corrected it. The maintainer had un-drafted via comment but not formally approved.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782148692608-internal-a2a-review-github-reviewdecision.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782148692608-internal-a2a-review-github-reviewdecision.md`_

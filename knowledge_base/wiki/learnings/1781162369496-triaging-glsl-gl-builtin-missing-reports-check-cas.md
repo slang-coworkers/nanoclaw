@@ -23,4 +23,4 @@ Related: #8913 (open) tracks a *true* `SV_GroupWaveIndex` system-value semantic 
 **Tooling caveat:** DeepWiki was inconsistent here — it first confidently claimed all four subgroup builtins exist, then hedged in a follow-up. The authoritative answer came from reading glsl.meta.slang / hlsl.meta.slang directly. Always verify "does builtin X exist" against the meta.slang sources at HEAD, not DeepWiki alone.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781162369496-triaging-glsl-gl-builtin-missing-reports-check-cas.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781162369496-triaging-glsl-gl-builtin-missing-reports-check-cas.md`_

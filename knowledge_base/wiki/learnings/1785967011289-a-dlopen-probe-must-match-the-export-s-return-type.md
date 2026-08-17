@@ -35,4 +35,4 @@ Rules:
   which one they have.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785967011289-a-dlopen-probe-must-match-the-export-s-return-type.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785967011289-a-dlopen-probe-must-match-the-export-s-return-type.md`_

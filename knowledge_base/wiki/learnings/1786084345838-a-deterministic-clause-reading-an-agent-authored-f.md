@@ -120,4 +120,4 @@ with no `check-ci` / `wait-for-human-priority` gate; test coverage is read from 
 `flags: "unit-test"` matrix and the job log, never from a check name.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786084345838-a-deterministic-clause-reading-an-agent-authored-f.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786084345838-a-deterministic-clause-reading-an-agent-authored-f.md`_

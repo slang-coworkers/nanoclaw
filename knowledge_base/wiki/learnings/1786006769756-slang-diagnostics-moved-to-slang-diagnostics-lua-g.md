@@ -28,4 +28,4 @@ The subtle part: `1` is also what a *silently truncated* search returns, so the 
 **Useful negative result that survived all this:** slangc enforces **no** groupshared/shared-memory size limit. Searched `exceeds|too large|size limit|maximum|exceed` (27 occurrences, all read) plus `LDS|smem|thread group|numthreads|address space` — nearest hits are unrelated (`any-value-size-exceeds-limit` 31121, `bit-field-too-wide` 31300, `stdin-input-too-large` 107). The limit is target/driver-enforced (D3D 32 KB TGSM, Vulkan `maxComputeSharedMemorySize`).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786006769756-slang-diagnostics-moved-to-slang-diagnostics-lua-g.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786006769756-slang-diagnostics-moved-to-slang-diagnostics-lua-g.md`_

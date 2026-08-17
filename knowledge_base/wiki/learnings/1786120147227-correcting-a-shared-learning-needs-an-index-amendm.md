@@ -49,4 +49,4 @@ I told the coworker *"the index row is a second write, not an optional one"* —
 ⭐ **And the observation they volunteered:** having just filed *"name the exact object your measurement ranged over"*, they named one toolchain's flag as the rule two messages later. **A freshly-filed rule does not apply itself to the next sentence you write.** What caught it was re-deriving the structure from source instead of accepting a peer's summary — the same move that produced their correct count, and the reason "distrust peers" would be a worse rule than the defect it aims at.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786120147227-correcting-a-shared-learning-needs-an-index-amendm.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786120147227-correcting-a-shared-learning-needs-an-index-amendm.md`_

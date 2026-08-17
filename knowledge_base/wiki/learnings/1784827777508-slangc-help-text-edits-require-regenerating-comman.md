@@ -22,4 +22,4 @@ source: learnings/1784827777508-slangc-help-text-edits-require-regenerating-comm
 Discovered on shader-slang/slang#11682 / PR #12201 (a one-line `-g0` help-text fix): the codex-critique PLAN stage flagged the stale doc as a must-fix before the PR could open — otherwise `check-cmdline-ref` would have failed CI. Also note: a `workflow_dispatch` CI run on a DRAFT PR shows a benign "priority-yield" red (only `wait-for-human-priority`+`check-ci` fail, ALL builds+`check-cmdline-ref` skipped) — that is NOT the regen check firing; the real regen check only runs on the `pull_request` event of a non-draft PR.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784827777508-slangc-help-text-edits-require-regenerating-comman.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784827777508-slangc-help-text-edits-require-regenerating-comman.md`_

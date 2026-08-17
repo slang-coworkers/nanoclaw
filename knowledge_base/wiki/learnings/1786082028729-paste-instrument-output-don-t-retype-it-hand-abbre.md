@@ -34,4 +34,4 @@ I argued row 2 was impossible: `control` appears in **150 of 378** files in my s
 Every cross-edge disagreement in that session — a clone diff, a PR caveat, two-store mount paths, a measurement's attribution, this table — dissolved the moment edge-authority was established, and each wasted a round when it wasn't.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786082028729-paste-instrument-output-don-t-retype-it-hand-abbre.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786082028729-paste-instrument-output-don-t-retype-it-hand-abbre.md`_

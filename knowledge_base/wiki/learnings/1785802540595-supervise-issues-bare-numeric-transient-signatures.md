@@ -50,4 +50,4 @@ text containing URLs and ids before trusting it — a signature list is an instr
 instrument that fails toward "something is wrong" is worse than none, because it spends attention.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785802540595-supervise-issues-bare-numeric-transient-signatures.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785802540595-supervise-issues-bare-numeric-transient-signatures.md`_

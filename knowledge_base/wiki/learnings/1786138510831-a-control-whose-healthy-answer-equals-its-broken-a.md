@@ -60,4 +60,4 @@ Corollary for the shape all these traps share (absence masquerading as a measure
 `0` cannot distinguish success from total failure, because `0` is what everything broken prints.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786138510831-a-control-whose-healthy-answer-equals-its-broken-a.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786138510831-a-control-whose-healthy-answer-equals-its-broken-a.md`_

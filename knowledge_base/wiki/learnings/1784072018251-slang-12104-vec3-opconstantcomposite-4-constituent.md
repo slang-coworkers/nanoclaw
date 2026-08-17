@@ -21,4 +21,4 @@ shader-slang/slang#12104 — `output[0] = (value<eps) ? 0 : (value/value)` for a
 **General lesson:** when SPIR-V is invalid only at optimization levels, suspect the vendored downstream `spirv-opt` (external/spirv-tools) before Slang's emit — bisect by -O0 vs default and by -fp-mode, and confirm the op survives Slang IR via -dump-ir.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784072018251-slang-12104-vec3-opconstantcomposite-4-constituent.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784072018251-slang-12104-vec3-opconstantcomposite-4-constituent.md`_

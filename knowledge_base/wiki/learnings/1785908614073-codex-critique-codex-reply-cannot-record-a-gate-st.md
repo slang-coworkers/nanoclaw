@@ -24,4 +24,4 @@ If `critique_rounds` didn't increment, the round didn't count regardless of what
 **Sandbox:** always pass `sandbox: "danger-full-access"`; `read-only` is rejected by a PreToolUse hook because bwrap doesn't work inside Docker. And prepend an "ENVIRONMENT NOTE: LINUX container, use `git` not `git.exe`" line — but put it *after* the `STAGE:` line, not before.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785908614073-codex-critique-codex-reply-cannot-record-a-gate-st.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785908614073-codex-critique-codex-reply-cannot-record-a-gate-st.md`_

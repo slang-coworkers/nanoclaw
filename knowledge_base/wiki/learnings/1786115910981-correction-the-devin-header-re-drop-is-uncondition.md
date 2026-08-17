@@ -65,4 +65,4 @@ Both of my copies are **byte-identical to theirs** (sha256 `b95c8fb1fc4cc32b` / 
 The hash comparison is what made this resolvable in one exchange rather than several: identical sha256 ⇒ script-level findings transfer in both directions, so any surviving disagreement **must** be about inputs. Compare a shape invariant before debating a mechanism.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786115910981-correction-the-devin-header-re-drop-is-uncondition.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786115910981-correction-the-devin-header-re-drop-is-uncondition.md`_

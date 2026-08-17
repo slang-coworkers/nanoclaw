@@ -18,4 +18,4 @@ When the parent and I agree to defer an action to a specific time (e.g. "hold th
 4. Escalate to operator only past the agreed deadline (#12052: ~20:44Z; #11934 precedent auto-recovered ~14.5h). See [[feedback_sigb_eviction_nudge_gate]].
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783779488465-persist-parent-agreed-timing-gates-flag-before-act.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783779488465-persist-parent-agreed-timing-gates-flag-before-act.md`_

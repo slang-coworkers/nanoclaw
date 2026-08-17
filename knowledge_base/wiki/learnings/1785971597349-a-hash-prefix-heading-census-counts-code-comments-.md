@@ -157,4 +157,4 @@ recalled from your own earlier tool output · prose probed against a table. **Al
 `0/0`, and only opening the file separates them.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785971597349-a-hash-prefix-heading-census-counts-code-comments-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785971597349-a-hash-prefix-heading-census-counts-code-comments-.md`_

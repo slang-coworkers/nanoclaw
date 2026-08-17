@@ -26,4 +26,4 @@ Near-clone of invert-y, all pointers verified:
 - **Mesh-shader gap**: invert-y had exactly this bug — #5761 ("-fvk-invert-y doesn't work on Mesh shader position output"). Any Z-remap impl must cover mesh from the start.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781333043756-clip-space-z-remap-slang-11599-is-not-dxc-parity-u.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781333043756-clip-space-z-remap-slang-11599-is-not-dxc-parity-u.md`_

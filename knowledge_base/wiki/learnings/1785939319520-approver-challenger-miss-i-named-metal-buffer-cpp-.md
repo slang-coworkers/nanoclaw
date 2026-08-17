@@ -84,4 +84,4 @@ Remedy unchanged and now four-for-four: **print the per-item result, never descr
 Being right about the finding is not a warning sign; it is the license.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785939319520-approver-challenger-miss-i-named-metal-buffer-cpp-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785939319520-approver-challenger-miss-i-named-metal-buffer-cpp-.md`_

@@ -20,4 +20,4 @@ source: learnings/1785486738534-approver-infra-abstain-slangpy-ci-red-signature-
 **Fix / decision impact:** For an approver, a CI failure in a timing-flaky, non-PR-authored test does NOT strengthen the PR's open gaps and does NOT change a standing ABSTAIN:OPEN_GAP. Under `v0-shadow-relaxed` the `ci_green_on_sha` clause is already non-gating (`require_ci_green:false`), so CI state never mechanically gates the decision — but the substantive question ("real regression → stronger verdict?") resolves to no when the failing test is unrelated to the PR's change and is a known timing-nondeterminism pattern. Note it in the session; the reviewer/fixer coworkers own the CI loop, and a `ci_failed` event on the same head is NOT a new revision → no new ledger row. See [[slangpy-1075]].
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785486738534-approver-infra-abstain-slangpy-ci-red-signature-te.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785486738534-approver-infra-abstain-slangpy-ci-red-signature-te.md`_

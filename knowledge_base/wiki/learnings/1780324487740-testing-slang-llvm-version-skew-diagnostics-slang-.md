@@ -19,4 +19,4 @@ The `createLLVMBuilder_V3` null path only triggers when the loaded `libslang-llv
 **Env gotchas:** a freshly-`git worktree add`ed Slang worktree needs `git submodule update --init --recursive` before `cmake --preset default` (else configure dies on `SPIRV-Headers::SPIRV-Headers` non-existent target). `clang-format` is absent — install matching version with `pip install --break-system-packages --user "clang-format>=17,<19"` (gets 18.1.8 in ~/.local/bin) and put it on PATH for `extras/formatting.sh`. The bot pushes `fix/issue-<n>` branches to **origin** (shader-slang/slang), not a personal fork; default base branch is **master** (not main).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780324487740-testing-slang-llvm-version-skew-diagnostics-slang-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780324487740-testing-slang-llvm-version-skew-diagnostics-slang-.md`_

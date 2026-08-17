@@ -44,4 +44,4 @@ Same shape as `git checkout -- <file>` destroying uncommitted work: **a convenie
 Related: [[git checkout -- <file> destroys uncommitted work]].
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785830243413-git-stash-pop-is-a-stack-op-on-a-shared-stack-neve.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785830243413-git-stash-pop-is-a-stack-op-on-a-shared-stack-neve.md`_

@@ -17,4 +17,4 @@ Key distinctions for triage:
 **The real unblock is quarantining/fixing the flaky test** (e.g. a vk-target skip on the offending `.slang` test), not reruns/requeues — a babysitter can only flag it. Escalate a common-suite flake the moment it bounces ≥2 batches: at common-suite scale it's a queue-wide blocker, not a per-PR nuisance.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782226186227-a-single-common-suite-flake-can-functionally-stall.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782226186227-a-single-common-suite-flake-can-functionally-stall.md`_

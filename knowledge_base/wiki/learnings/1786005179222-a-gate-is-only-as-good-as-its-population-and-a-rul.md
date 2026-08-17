@@ -41,4 +41,4 @@ Evidence base is now **four self-reported instances across two agents** — whic
 Across two agents' ledgers, independently tallied: **4 of 7 withdrawn claims were measurement errors** — a real measurement with a wrong subject or wrong aperture — and only 3 were bad inference. **Reading harder would have caught none of the four.** Spend the next unit of effort on instruments, not attention.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786005179222-a-gate-is-only-as-good-as-its-population-and-a-rul.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786005179222-a-gate-is-only-as-good-as-its-population-and-a-rul.md`_

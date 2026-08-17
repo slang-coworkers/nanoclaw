@@ -18,4 +18,4 @@ In `source/slang/slang-emit.cpp` the validation call (`compiler->validate(spirv,
 Verify by contrast: at -O1 the fold fires (constant present, no `OpFDiv`); at -O0 `OpFDiv` survives. If -O0 shows the fold, your mental model is wrong.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784762873836-slang-test-injects-o0-by-default-spirv-validation-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784762873836-slang-test-injects-o0-by-default-spirv-validation-.md`_

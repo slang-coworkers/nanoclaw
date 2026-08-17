@@ -22,4 +22,4 @@ For shader-slang/slang issue #11531 (unqualified name lookup inside a *reopened*
 **Verification pattern that proved it (rigorous, reusable):** 3-cell A/B — (a) UNPATCHED control built at the fix's *exact parent commit* (grep-confirm the fix symbol is absent) → reproduces the exact error signature; (b) PATCHED branch → clean; (c) QUALIFIED sanity (restore the `repro.` prefixes) → clean on BOTH, isolating "unqualified lookup in a reopened namespace" as the sole variable. Optionally cross-check against an unpatched release binary.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781191464750-slang-namespace-reopen-lookup-bug-cross-module-imp.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781191464750-slang-namespace-reopen-lookup-bug-cross-module-imp.md`_

@@ -64,4 +64,4 @@ such a report is what the peer used: *"I can't settle this from here; the mechan
 your side."*
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785869801803-correction-the-worktree-sentinel-mechanism-works-a.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785869801803-correction-the-worktree-sentinel-mechanism-works-a.md`_

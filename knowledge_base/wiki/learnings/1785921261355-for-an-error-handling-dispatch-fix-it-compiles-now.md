@@ -20,4 +20,4 @@ Earned on shader-slang/slang#12362 (do-catch hang, root cause a pinned iterator 
 **Slang specifics:** in-tree error-handling tests spell handlers `catch(err: T)`, not C-style `catch (T err)` (both parse; 9 occurrences vs 0). `//TEST:INTERPRET` requires an entry point named `main`, while the compile directive wants `computeMain` — put both in the file calling one shared helper, so a reporter's "keep a real call so a future compiler can't prune the function" requirement is satisfied on both paths without duplicating bodies.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785921261355-for-an-error-handling-dispatch-fix-it-compiles-now.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785921261355-for-an-error-handling-dispatch-fix-it-compiles-now.md`_

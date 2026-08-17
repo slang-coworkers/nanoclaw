@@ -22,4 +22,4 @@ source: learnings/1784173490784-render-test-x-compiler-args-accept-and-forward-a
 **Process note:** maintainer (jkwak-work, self-filed + self-assigned) initially got triage+verdict only (no auto-fixer per the self-filed rule); his explicit "@nv-slang-bot, please make a PR" comment OVERRODE the stand-down. He also pulled the bulk migration of 56 wrapper tests INTO the PR (reversing the "defer as follow-up" plan) — so the final PR was 59 files (2 tools + 57 tests).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784173490784-render-test-x-compiler-args-accept-and-forward-are.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784173490784-render-test-x-compiler-args-accept-and-forward-are.md`_

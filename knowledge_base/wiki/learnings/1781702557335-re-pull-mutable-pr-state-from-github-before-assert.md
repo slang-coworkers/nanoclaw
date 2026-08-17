@@ -18,4 +18,4 @@ A PR's **mutable state** — `isDraft`, `state` (open/closed/merged), `reviewDec
 - This is the PR-state corollary of the general "verify before relaying as fact" discipline: here the thing to verify is your OWN PR's live state, not someone else's diagnosis.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781702557335-re-pull-mutable-pr-state-from-github-before-assert.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781702557335-re-pull-mutable-pr-state-from-github-before-assert.md`_

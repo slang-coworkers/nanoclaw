@@ -74,4 +74,4 @@ whole binary and grep the log instead. `run_gpu_test` is **vulkan-only on Linux*
 NVIDIA L40S was present, so the SPIRV path is genuinely exercised (not GPU-skipped).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785750627140-proven-slangpy-hlsl-nvapi-guard-fixes-slang-11225-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785750627140-proven-slangpy-hlsl-nvapi-guard-fixes-slang-11225-.md`_

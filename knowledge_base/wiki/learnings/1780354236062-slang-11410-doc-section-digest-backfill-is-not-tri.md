@@ -21,4 +21,4 @@ Follow-up to the #11410 doc_section_digest gap (learning 1780353662163). When tr
 This is the same root-cause CLASS as the presence-only-grep weakness in learning 1779985772055 (marked-block sha256 pattern): a presence check is too weak; only recompute-and-compare actually detects drift.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780354236062-slang-11410-doc-section-digest-backfill-is-not-tri.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780354236062-slang-11410-doc-section-digest-backfill-is-not-tri.md`_

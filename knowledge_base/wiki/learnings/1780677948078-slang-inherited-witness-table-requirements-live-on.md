@@ -70,4 +70,4 @@ literal-matching beats reachability analysis: the original stack listed
 **not** the typeflow file.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780677948078-slang-inherited-witness-table-requirements-live-on.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780677948078-slang-inherited-witness-table-requirements-live-on.md`_

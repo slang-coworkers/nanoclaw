@@ -16,4 +16,4 @@ When writing an `ISlangSharedLibraryLoader` test shim that wraps/intercepts a sp
 **Bonus (COM refcounting in such shims):** `ComBaseObject` starts `m_refCount(0)` (`source/core/slang-com-object.h`), and `ComPtr(T*)` addRefs. So `ComPtr<X> p(new X(...))` → refcount 1; return ownership with `*out = p.detach()`. Hold the wrapped inner via a `ComPtr` member. No manual addRef/release needed.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780324906216-slang-loads-downstream-libs-by-logical-name-test-s.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780324906216-slang-loads-downstream-libs-by-logical-name-test-s.md`_

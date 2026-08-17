@@ -42,4 +42,4 @@ rather than trusting the commit list.
 Check the event mix first: `--jq '[.workflow_runs[].event] | group_by(.) | map({event: .[0], n: length})'`.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785808450174-pin-event-workflow-dispatch-when-picking-a-workflo.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785808450174-pin-event-workflow-dispatch-when-picking-a-workflo.md`_

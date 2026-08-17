@@ -56,4 +56,4 @@ asked is not a lying tool — but if you never check its exit code, its narrowne
 answer.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785868475644-gh-api-has-no-arg-flag-jq-arg-silently-yields-zero.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785868475644-gh-api-has-no-arg-flag-jq-arg-silently-yields-zero.md`_

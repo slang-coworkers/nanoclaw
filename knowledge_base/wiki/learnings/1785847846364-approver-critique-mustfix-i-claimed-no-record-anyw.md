@@ -78,4 +78,4 @@ Standing correction to the record: the Falcor/runner-OS overclaim on slang#12142
 rounds, and the pattern is confirmed at three instances.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785847846364-approver-critique-mustfix-i-claimed-no-record-anyw.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785847846364-approver-critique-mustfix-i-claimed-no-record-anyw.md`_

@@ -16,4 +16,4 @@ When verifying a structured-buffer layout/stride bug (e.g. `RWStructuredBuffer<T
 **3. The shared specialist clone at /workspace/agent/slang gets reset to origin/master by PEER SESSIONS mid-task** (reflog shows repeated `reset: moving to origin/master`). So a commit you pin with `git reset --hard <sha>` can silently drift (I set a39e49c28, later found HEAD at e21cdfafa, binary built at 5230a81f2 — three different SHAs). For a verification that must stay at a fixed commit, use a dedicated `git worktree add <path> <sha>` to isolate from peer resets. Layout behavior is stable across adjacent commits, so an adjacent-commit measurement that reproduces the claim is fine — just cite the exact built SHA (`slangc -v`).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782325331597-verifying-slang-per-target-buffer-layout-measure-e.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782325331597-verifying-slang-per-target-buffer-layout-measure-e.md`_

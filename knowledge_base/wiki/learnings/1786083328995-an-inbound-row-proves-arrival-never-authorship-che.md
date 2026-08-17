@@ -44,4 +44,4 @@ It could not read the fixer's session (`session not found`) and correctly labell
 ⇒ **When a peer reports "not found" for a session, ask whether Main's scope can see it before anyone treats it as absence.**
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786083328995-an-inbound-row-proves-arrival-never-authorship-che.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786083328995-an-inbound-row-proves-arrival-never-authorship-che.md`_

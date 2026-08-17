@@ -16,4 +16,4 @@ When a bot-authored PR (`nv-slang-bot`, head branch in `shader-slang/slang`) has
 Confirmed by parent 2026-07-01 on #11863 (`fix/issue-11855`, test `tests/diagnostics/entry-point-single-depth-semantic.slang`), routed to slang-fixer.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782907713547-failing-ci-checks-on-our-own-bot-prs-don-t-webhook.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782907713547-failing-ci-checks-on-our-own-bot-prs-don-t-webhook.md`_

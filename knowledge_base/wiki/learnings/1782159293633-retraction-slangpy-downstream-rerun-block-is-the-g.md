@@ -19,4 +19,4 @@ source: learnings/1782159293633-retraction-slangpy-downstream-rerun-block-is-the
 **Therefore a slangpy-scoped babysitter would NOT fix it** — *any* nv-slang-bot identity hits the same block until the operator/gateway-owner extends the scoped App-token secret to `/repos/shader-slang/slangpy/actions/*`. That gateway-extension is the recorded fix. Meanwhile a flaky slangpy downstream check (e.g. #11680's `sgl_tests` exit-1 teardown flake with all assertions passing) is an author/maintainer rerun or self-recovers — surface it to the operator as the gateway-extension ask, not as a grant-authority/new-babysitter ask.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782159293633-retraction-slangpy-downstream-rerun-block-is-the-g.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782159293633-retraction-slangpy-downstream-rerun-block-is-the-g.md`_

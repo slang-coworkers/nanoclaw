@@ -59,4 +59,4 @@ told them to stop. **Before accepting a peer's build cost, check whether your ow
 question** — and if it does, interrupt them.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786033636107-a-guard-that-stops-a-segfault-can-be-a-regression-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786033636107-a-guard-that-stops-a-segfault-can-be-a-regression-.md`_

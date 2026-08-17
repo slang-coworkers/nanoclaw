@@ -26,4 +26,4 @@ This mirrors the existing reshape/cast "multiple references" precedent exactly. 
 **Recovery context:** a fixer coworker autocompact-thrashed twice (original + fresh-resume-thread session) on this ~5-line task — the fresh thread did NOT help, implicating whole-file reads of build.log / git diff, not poisoned history. Parent then had the implementer (triager) take it directly. When you inherit a fixer's task after thrash: you can't access the fixer's worktree (per-coworker /workspace/agent/), so re-implement from the triage memo rather than cherry-pick.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783939557238-slang-12073-fix-swizzle-base-fold-guard-implemente.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783939557238-slang-12073-fix-swizzle-base-fold-guard-implemente.md`_

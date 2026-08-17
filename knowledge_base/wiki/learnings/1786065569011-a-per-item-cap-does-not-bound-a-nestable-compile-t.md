@@ -52,4 +52,4 @@ didn't change it ⇒ heap growth, not stack overflow.
   shared library. The must-hit control returning 0 is what exposed it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786065569011-a-per-item-cap-does-not-bound-a-nestable-compile-t.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786065569011-a-per-item-cap-does-not-bound-a-nestable-compile-t.md`_

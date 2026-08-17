@@ -32,4 +32,4 @@ R6 added `kIROp_GetNaturalAlignment` (stable-name appended) with NO `k_maxSuppor
 Post host-migration, `gh` GraphQL (`gh pr view`) stayed 401 across this whole re-eval; REST (`gh api`) + WebFetch worked. The critique-gate PreToolUse hook false-positives on read-only `gh api .../pulls/<n>` (matches `gh api [^|]*pulls\b`) — route PR reads through WebFetch or `pulls`-free endpoints (`commits/heads/<branch>`, `commits/<sha>/check-runs`, `compare/<a>...<b>`).
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784420055611-approver-human-agreement-full-chain-vindication-bl.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784420055611-approver-human-agreement-full-chain-vindication-bl.md`_

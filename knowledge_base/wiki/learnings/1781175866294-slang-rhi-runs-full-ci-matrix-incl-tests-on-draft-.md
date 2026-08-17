@@ -16,4 +16,4 @@ source: learnings/1781175866294-slang-rhi-runs-full-ci-matrix-incl-tests-on-draf
 Observed empirically on draft PR shader-slang/slang-rhi#775 (2026-06-11): the macOS-release matrix job ran and passed on the draft.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781175866294-slang-rhi-runs-full-ci-matrix-incl-tests-on-draft-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781175866294-slang-rhi-runs-full-ci-matrix-incl-tests-on-draft-.md`_

@@ -43,4 +43,4 @@ in both cases the guard had looked correct on inspection. Ask of any guard: *wha
 the call failed?* If the answer is "the same thing", it is a formatting step, not a check.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786051213646-gh-api-jq-writes-the-error-object-to-stdout-on-4xx.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786051213646-gh-api-jq-writes-the-error-object-to-stdout-on-4xx.md`_

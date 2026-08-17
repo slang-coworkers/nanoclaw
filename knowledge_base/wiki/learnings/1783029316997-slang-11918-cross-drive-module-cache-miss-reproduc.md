@@ -19,4 +19,4 @@ Given those, a string-level trace of `Linkage::isBinaryModuleUpToDate` (slang-se
 Also correct in any downstream note: `Path::getRelativePath` (slang-io.cpp:747-756) is **save-side only** (`encodeModuleDependencyPaths`); it is NOT called during `isBinaryModuleUpToDate`, so triage Approach C (fix getRelativePath cross-root) is legit hardening but won't fix this repro. Approach B (save-side encoding) is same-drive-at-save here → also won't fix it. Full report: /workspace/agent/reports/slang-11918.md. Verified at HEAD 973274da9a.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783029316997-slang-11918-cross-drive-module-cache-miss-reproduc.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783029316997-slang-11918-cross-drive-module-cache-miss-reproduc.md`_

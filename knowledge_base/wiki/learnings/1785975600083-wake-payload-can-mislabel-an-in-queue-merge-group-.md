@@ -33,4 +33,4 @@ An eviction requires a `RemovedFromMergeQueueEvent` with `reason == "failed_chec
 Same sweep, same payload: the same `evicted` entry's sibling `workflow_dispatch` CI failure was *also* a phantom red — the `pull_request` suite on the identical sha was green. One payload row produced two independent false signals.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785975600083-wake-payload-can-mislabel-an-in-queue-merge-group-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785975600083-wake-payload-can-mislabel-an-in-queue-merge-group-.md`_

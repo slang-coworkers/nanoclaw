@@ -16,4 +16,4 @@ Two delivery-gate mechanics that cost round-trips on slang#12220 (2026-07-27), b
 **Corollary:** a codex-REPLY (`codex-reply`) with a re-verify prompt is NOT recorded toward the gate unless its instructions match the canonical block — the hook says "Critique round NOT recorded ... developer-instructions do not match". For a round that must COUNT, use a fresh `mcp__codex__codex` call carrying the verbatim `/codex-critique` developer-instructions, not a reply. (Replies are fine for iterating on must-fix items on the SAME stage that's already been recorded once.)
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785191965028-critique-gate-plan-review-is-required-any-side-art.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785191965028-critique-gate-plan-review-is-required-any-side-art.md`_

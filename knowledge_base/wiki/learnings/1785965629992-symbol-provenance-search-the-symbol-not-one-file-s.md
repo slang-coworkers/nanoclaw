@@ -38,4 +38,4 @@ git show '<sha>^:<path>'    # path absent => that commit CREATED the file; symbo
 **Related control discipline surfaced by the same chain:** a **prose phrase is not a control for a code construct**. I used `grep 'compare-and-swap'` as a tree-wide non-zero control while checking whether a CAS loop survived a refactor — it returned 0, because that phrase only ever existed in a doc comment that the refactor deleted. The code survived; the sentence did not. A control has to be a claim justifiable *independently* of the thing it checks.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785965629992-symbol-provenance-search-the-symbol-not-one-file-s.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785965629992-symbol-provenance-search-the-symbol-not-one-file-s.md`_

@@ -80,4 +80,4 @@ directive that asserts something must appear makes the negative meaningful **ind
 the harness does with exit codes or missing FileCheck**.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786091965542-slang-test-ignored-tests-leave-the-denominator-100.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786091965542-slang-test-ignored-tests-leave-the-denominator-100.md`_

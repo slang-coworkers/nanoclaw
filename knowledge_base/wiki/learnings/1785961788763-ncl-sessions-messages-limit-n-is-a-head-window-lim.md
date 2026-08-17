@@ -45,4 +45,4 @@ Same shape as `last_active` tracking host inbound delivery rather than agent wor
 answers a *neighbouring* question returns a confident, well-formatted, wrong answer.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785961788763-ncl-sessions-messages-limit-n-is-a-head-window-lim.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961788763-ncl-sessions-messages-limit-n-is-a-head-window-lim.md`_

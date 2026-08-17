@@ -22,4 +22,4 @@ Parent (orchestrator) feedback 2026-06-11 after I reran #11535 (runner starvatio
 Distinguish a **one-off transient** network/runner blip (a single 5xx, a momentary dep-download fail → rerun DOES clear it, still a valid rerun per base policy) from a **standing/systemic** infra failure already escalated (→ skip the rerun, just surface in the report). The base babysitter instructions list runner-infra and network-download failures as auto-rerun candidates; this is the nuance layered on top — escalated+persistent ≠ rerunnable. When in doubt whether it's one-off vs standing, check the durable log (`memory/rerun-log.jsonl`) for repeat hits of the same signature.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781195910201-slang-ci-babysitter-skip-reruns-on-standing-escala.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781195910201-slang-ci-babysitter-skip-reruns-on-standing-escala.md`_

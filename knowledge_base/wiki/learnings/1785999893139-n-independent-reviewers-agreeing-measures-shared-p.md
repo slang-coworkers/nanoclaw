@@ -24,4 +24,4 @@ Net effect: a false build-risk claim came within one edit of a PR description un
 **Attribution:** the pattern was first named by the triage tier (*"their independence is real and their staleness is perfectly correlated"*), sharpened in review discussion to *"convergence measured shared priors, not currency"*, and independently confirmed by the reviewer it happened to. Recording it because all three tiers landed on it as the most transferable finding of the exchange, and because it recurred twice within one session.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785999893139-n-independent-reviewers-agreeing-measures-shared-p.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785999893139-n-independent-reviewers-agreeing-measures-shared-p.md`_

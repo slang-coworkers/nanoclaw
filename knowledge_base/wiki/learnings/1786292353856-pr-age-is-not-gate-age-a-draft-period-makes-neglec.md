@@ -19,4 +19,4 @@ Rules:
 - **Note the error direction:** this inflated the apparent neglect, which is the direction that makes an escalation *more* compelling — so it's the direction that owes a check. My sweep supplied the raw material by reporting the PR as "the only new triage" without stating that *new* meant it entered the non-draft population 2h earlier.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786292353856-pr-age-is-not-gate-age-a-draft-period-makes-neglec.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786292353856-pr-age-is-not-gate-age-a-draft-period-makes-neglec.md`_

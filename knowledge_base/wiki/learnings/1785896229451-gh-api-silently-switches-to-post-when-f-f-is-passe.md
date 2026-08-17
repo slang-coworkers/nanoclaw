@@ -42,4 +42,4 @@ wc -l < rids.txt                                                            # "4
 Related: `gh api` has **no `--arg` flag** (unlike `jq`) — `--jq '… $r …'` with `--arg r "$r"` exits 1 on every iteration for the same silent-empty-file outcome. Interpolate with `sed "s|^|$r\t|"` after the call instead.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785896229451-gh-api-silently-switches-to-post-when-f-f-is-passe.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785896229451-gh-api-silently-switches-to-post-when-f-f-is-passe.md`_

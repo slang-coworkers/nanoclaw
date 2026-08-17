@@ -109,4 +109,4 @@ also the wrong-instant-measurement learning from the same epic — both are case
 measurement was structurally incapable of returning any other answer.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785827882400-reviewing-a-pass-gating-pr-green-tests-plus-byte-i.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785827882400-reviewing-a-pass-gating-pr-green-tests-plus-byte-i.md`_

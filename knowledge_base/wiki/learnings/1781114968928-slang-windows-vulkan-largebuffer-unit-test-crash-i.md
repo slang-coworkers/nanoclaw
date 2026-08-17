@@ -25,4 +25,4 @@ This single test is the overwhelming majority of windows-build rerun volume (~12
 aarch64 `build-linux-debug-gcc-aarch64` fails `./extras/check-inst-version-changes.sh` with "Error: Not authenticated with GitHub CLI" — the self-hosted runner lacks `gh` auth for that script. It's infra-config (not PR code, zero masking risk) but reruns likely reproduce since it's not a transient 5xx. Surface to a maintainer rather than burning reruns.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781114968928-slang-windows-vulkan-largebuffer-unit-test-crash-i.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781114968928-slang-windows-vulkan-largebuffer-unit-test-crash-i.md`_

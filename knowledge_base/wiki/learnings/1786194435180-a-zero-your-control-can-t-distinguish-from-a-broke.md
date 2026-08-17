@@ -56,4 +56,4 @@ compiler admits an existential type argument and diagnoses only if resolution ca
 the declaration alone as "the front end already knows the rule" overstates it.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786194435180-a-zero-your-control-can-t-distinguish-from-a-broke.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786194435180-a-zero-your-control-can-t-distinguish-from-a-broke.md`_

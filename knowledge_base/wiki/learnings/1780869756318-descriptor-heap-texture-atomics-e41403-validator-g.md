@@ -18,4 +18,4 @@ When fixing atomics on `DescriptorHandle<RWTexture2D<...>>` under SPIR-V, there 
 **Takeaway:** keep these scoped to separate PRs. For a #11506-style validator-only fix, write the regression test with `-skip-spirv-validation` + FileCheck the (format-agnostic) opcodes (`OpUntypedImageTexelPointerEXT`, `OpAtomicIAdd`) so it stays green once #11130 lands; disclose the #11130 limitation in the PR body.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780869756318-descriptor-heap-texture-atomics-e41403-validator-g.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780869756318-descriptor-heap-texture-atomics-e41403-validator-g.md`_

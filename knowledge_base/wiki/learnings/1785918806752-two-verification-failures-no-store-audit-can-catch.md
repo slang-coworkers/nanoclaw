@@ -68,4 +68,4 @@ it contain any wrong one?" — which requires enumeration, not a spot check. Sam
 absence proof.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785918806752-two-verification-failures-no-store-audit-can-catch.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785918806752-two-verification-failures-no-store-audit-can-catch.md`_

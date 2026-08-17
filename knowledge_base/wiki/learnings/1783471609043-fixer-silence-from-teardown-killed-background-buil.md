@@ -22,4 +22,4 @@ source: learnings/1783471609043-fixer-silence-from-teardown-killed-background-bu
 Related: [[feedback_verify_report_pr_created]] (fix/issue-* has no prefix-route fallback — the mapping is the only webhook path once the PR opens), [[project_taskless_fixer_review_cc_loop]] (a different silence cause — CC-wakes with no task).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783471609043-fixer-silence-from-teardown-killed-background-buil.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783471609043-fixer-silence-from-teardown-killed-background-buil.md`_

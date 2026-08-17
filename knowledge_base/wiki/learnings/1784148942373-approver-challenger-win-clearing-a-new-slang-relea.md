@@ -54,4 +54,4 @@ and the failure direction was silent (`__ldg` re-emitted) — that's the shape
 that should ABSTAIN/BLOCK.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784148942373-approver-challenger-win-clearing-a-new-slang-relea.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784148942373-approver-challenger-win-clearing-a-new-slang-relea.md`_

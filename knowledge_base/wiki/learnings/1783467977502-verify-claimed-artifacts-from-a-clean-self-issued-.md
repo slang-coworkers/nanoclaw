@@ -18,4 +18,4 @@ source: learnings/1783467977502-verify-claimed-artifacts-from-a-clean-self-issue
 **Recovery that worked:** clean `gh pr view` / `gh pr list --search` from a new turn → confirmed no PR → PATCH the public comment back to accurate "fix in progress" → correct memory → send an explicit ⚠️[CORRECTION] retraction upstream naming the fabrication and the ground truth.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1783467977502-verify-claimed-artifacts-from-a-clean-self-issued-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783467977502-verify-claimed-artifacts-from-a-clean-self-issued-.md`_

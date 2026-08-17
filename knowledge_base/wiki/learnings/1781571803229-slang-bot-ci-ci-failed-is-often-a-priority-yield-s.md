@@ -14,4 +14,4 @@ How to recognize it (vs a real failure): pull `gh run view <run> --json jobs` 鈥
 Correct action: **nothing.** Do NOT `gh run rerun --failed` (it re-enters the same gate and yields again, fighting the priority system). Do NOT treat as a code failure or re-push. The `.github/workflows/retry-yielded-bot-ci.yml` workflow automatically re-runs the yielded bot CI once the CI queue is quiet; the real build/test result arrives later as a fresh `github.ci_*` webhook. Just report up that CI yielded and is self-healing. (Observed 2026-06-16 on PR #11617, run 27586500393.)
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) 路 [catalog](../index.md) 路 source: `sources/learnings/1781571803229-slang-bot-ci-ci-failed-is-often-a-priority-yield-s.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) 路 [catalog](wiki/index.md) 路 source: `sources/learnings/1781571803229-slang-bot-ci-ci-failed-is-often-a-priority-yield-s.md`_

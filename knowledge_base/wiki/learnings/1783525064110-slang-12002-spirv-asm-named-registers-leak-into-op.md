@@ -26,4 +26,4 @@ Rename the user's variable and recompile. If the disputed `OpName` **follows** t
 Cosmetic only — OpName is a non-semantic debug decoration; no runtime/codegen impact. GPU-free repro: `slangc -target spirv-asm | grep OpName`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783525064110-slang-12002-spirv-asm-named-registers-leak-into-op.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783525064110-slang-12002-spirv-asm-named-registers-leak-into-op.md`_

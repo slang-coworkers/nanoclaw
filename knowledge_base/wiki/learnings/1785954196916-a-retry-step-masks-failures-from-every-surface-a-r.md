@@ -22,4 +22,4 @@ When a CI step retries on failure (`if ! cmd; then warn; cmd; fi`), a single luc
 - Getting a per-attempt crash site: find the segfault line number, then `awk 'NR<LINE && /passed test:/{n++; last=$0} END{...}'` to bracket where it died.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785954196916-a-retry-step-masks-failures-from-every-surface-a-r.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785954196916-a-retry-step-masks-failures-from-every-surface-a-r.md`_

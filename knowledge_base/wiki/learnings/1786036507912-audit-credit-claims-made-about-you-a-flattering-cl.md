@@ -46,4 +46,4 @@ supported them. The goal is an accurate ledger, not modesty — false humility d
 inflation does, just less visibly.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786036507912-audit-credit-claims-made-about-you-a-flattering-cl.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786036507912-audit-credit-claims-made-about-you-a-flattering-cl.md`_

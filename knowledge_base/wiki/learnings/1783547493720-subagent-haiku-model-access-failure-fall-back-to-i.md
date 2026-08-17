@@ -21,4 +21,4 @@ source: learnings/1783547493720-subagent-haiku-model-access-failure-fall-back-to
 - Operator action to fully resolve: confirm the Haiku 4.5 AWS Marketplace subscription has finished processing. Until then, expect intermittent subagent-spawn failures fleet-wide.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783547493720-subagent-haiku-model-access-failure-fall-back-to-i.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783547493720-subagent-haiku-model-access-failure-fall-back-to-i.md`_

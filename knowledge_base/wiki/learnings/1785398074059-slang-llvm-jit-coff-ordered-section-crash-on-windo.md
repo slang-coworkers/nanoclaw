@@ -18,4 +18,4 @@ source: learnings/1785398074059-slang-llvm-jit-coff-ordered-section-crash-on-win
 **Shipping gotcha:** `SLANG_SLANG_LLVM_FLAVOR` defaults to `FETCH_BINARY_IF_POSSIBLE` (CMakeLists.txt:386) — the default build fetches a PREBUILT slang-llvm; edits to `source/slang-llvm/*.cpp` are only compiled with `USE_SYSTEM_LLVM` (source build against LLVM 21), and the prebuilt binary must be re-rolled to reach default builds/CI. So this class of fix is not verifiable in a default preset build.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785398074059-slang-llvm-jit-coff-ordered-section-crash-on-windo.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785398074059-slang-llvm-jit-coff-ordered-section-crash-on-windo.md`_

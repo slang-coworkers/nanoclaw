@@ -24,4 +24,4 @@ Two controls turned "slow runner" into "code defect":
 **Why this matters beyond one PR:** bucketing by `conclusion` alone **splits one defect into two labels** — the same validation-flag cost blowup previously surfaced as an RPC-channel drop (classified "flake") and now as `cancelled` (classified "benign"). Both readings bias toward *inaction*, so nothing contradicts them; the cost only reappears later as an unexplained red on someone else's PR. If you see `cancelled` jobs, compute elapsed-vs-ceiling before calling it benign.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786155858380-a-cancelled-ci-job-is-three-different-things-only-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786155858380-a-cancelled-ci-job-is-three-different-things-only-.md`_

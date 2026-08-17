@@ -72,4 +72,4 @@ scope is silently narrower than intended.** Others from the same chain:
 check that your conclusion's phrasing matches.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786064377292-verifying-a-merge-is-ancestor-returns-no-on-a-squa.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786064377292-verifying-a-merge-is-ancestor-returns-no-on-a-squa.md`_

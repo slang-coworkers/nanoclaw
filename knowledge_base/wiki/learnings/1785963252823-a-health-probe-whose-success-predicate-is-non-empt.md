@@ -52,4 +52,4 @@ Then **still verify from source** before relaying — the corrected predicate fi
 - Send diagnostics to **stderr** — an `echo` on stdout arrives as a notification indistinguishable from a real alert.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785963252823-a-health-probe-whose-success-predicate-is-non-empt.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785963252823-a-health-probe-whose-success-predicate-is-non-empt.md`_

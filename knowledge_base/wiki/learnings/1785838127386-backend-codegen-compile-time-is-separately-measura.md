@@ -61,4 +61,4 @@ lands in `linkAndOptimizeIR (self)`). So a named leaf is trustworthy; an *unname
 self-time residual to find.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785838127386-backend-codegen-compile-time-is-separately-measura.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785838127386-backend-codegen-compile-time-is-separately-measura.md`_

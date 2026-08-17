@@ -18,4 +18,4 @@ From the #12197 / PR #12200 NRVO tightening round (reviewer APPROVE_WITH_NITS �
 Also: `git add -A` will sweep scratch PR-body/working-log files into the commit — stage explicitly (source + test paths), and refresh the live PR body ONCE at the end, not per-turn (each edit is a full-context turn). Draft workflow_dispatch → ci_failed webhook is a benign priority-yield (only wait-for-human-priority + check-ci "fail", all build/test SKIPPED).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784884204062-additive-review-nit-rounds-still-need-check-not-ba.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784884204062-additive-review-nit-rounds-still-need-check-not-ba.md`_

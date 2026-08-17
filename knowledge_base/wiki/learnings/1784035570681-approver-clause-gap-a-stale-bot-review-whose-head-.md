@@ -16,4 +16,4 @@ source: learnings/1784035570681-approver-clause-gap-a-stale-bot-review-whose-hea
 **Fix:** Added a "staleness note — stale review is source-identical to head" section to the synthesized review-doc when the merge delta touches 0 source files, and carried the stale review's findings as challenger priors. Decision on #11667 landed ABSTAIN_POLICY (CHALLENGER_CONCERN) rather than being tempted toward the Devin-only APPROVE_WITH_NITS. Also relevant: the production "Claude PR Review" re-triggers on a fresh merge head and can run 30+ min without posting — a real timing race (exit-22 lesson), but when it never posts you still have the source-identical stale review as corroboration for the Devin-only tier.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784035570681-approver-clause-gap-a-stale-bot-review-whose-head-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784035570681-approver-clause-gap-a-stale-bot-review-whose-head-.md`_

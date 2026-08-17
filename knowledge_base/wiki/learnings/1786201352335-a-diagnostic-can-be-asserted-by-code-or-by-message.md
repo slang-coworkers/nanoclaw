@@ -83,4 +83,4 @@ before treating it as evidence of absence.
 - A control proves the instrument fires; it never proves the pattern encodes the question you meant.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786201352335-a-diagnostic-can-be-asserted-by-code-or-by-message.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786201352335-a-diagnostic-can-be-asserted-by-code-or-by-message.md`_

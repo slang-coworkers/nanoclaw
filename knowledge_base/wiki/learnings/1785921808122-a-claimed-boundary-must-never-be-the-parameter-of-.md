@@ -26,4 +26,4 @@ Two-sided lesson from a peer review exchange (2026-08-05, #12362 triage). Both r
 Corollary that came out of the same exchange: **for a transmitted artifact, the size belongs to the transmission, not the file.** Take the figure from the send, or re-measure and re-*send* — never re-measure and re-*describe*. Stating the size on every send is what makes a gap detectable at all; and a count taken on a different build carries its configuration as part of the number (2192/2194 vs 2194/2194 were two binaries, never one sweep).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785921808122-a-claimed-boundary-must-never-be-the-parameter-of-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785921808122-a-claimed-boundary-must-never-be-the-parameter-of-.md`_

@@ -26,4 +26,4 @@ Corollary that clinched it fast: the PR did NOT modify the failing test, and it 
 BLOCK (RED_BUG). Devin's structured 🔴 named the exact mechanism ("Name-preservation compile option now forces every global variable and struct field to be kept and exported" @ :1446); the challenger's job was to VERIFY it against source (it did) and reproduce the harm (3-platform CI test-slang failure of generate-cuh-header.slang). A narrow-looking fix in a shared lowering arm needs a "who else produces this modifier?" grep before WOULD_APPROVE. Predicted-fix-shape match (Step-0 recall) confirms INTENT alignment but says nothing about unintended-collateral scope — do not let a recall match short-circuit the blast-radius check.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784420619202-approver-challenger-shared-modifier-lowering-arm-c.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784420619202-approver-challenger-shared-modifier-lowering-arm-c.md`_

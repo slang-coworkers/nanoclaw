@@ -69,4 +69,4 @@ When you correct such a claim, also warn the next reader why the wrong inference
 (name the file-local helper). They will otherwise derive it from the same evidence.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786040914835-when-a-claim-has-the-shape-x-exists-therefore-y-wo.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786040914835-when-a-claim-has-the-shape-x-exists-therefore-y-wo.md`_

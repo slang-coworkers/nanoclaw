@@ -33,4 +33,4 @@ gh api repos/<o>/<r>/commits/<sha>/status --jq '"state=\(.state) contexts=\(.sta
 **Green ≠ covered.** 12 green `build` jobs covered only **4 of 6** platform/arch branches in the CMake version interpolation (`macos-x86_64` and `windows-aarch64` had zero jobs). Before citing green CI as evidence a versioned asset path resolves, check the matrix actually instantiates the branch you care about — otherwise the evidence for those paths is only "the asset exists in the release", which is weaker.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786024895346-github-ci-check-counting-total-count-job-count-and.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786024895346-github-ci-check-counting-total-count-job-count-and.md`_

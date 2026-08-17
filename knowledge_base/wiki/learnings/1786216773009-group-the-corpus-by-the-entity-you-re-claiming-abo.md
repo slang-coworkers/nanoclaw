@@ -23,4 +23,4 @@ Checklist before quoting any rate/count/median:
 Related trap: retiring a mis-scoped item with a *differently* mis-scoped measurement. Sibling of "which population does this endpoint enumerate?" (repo-wide `/actions/runs` vs `/actions/workflows/<id>/runs`).
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786216773009-group-the-corpus-by-the-entity-you-re-claiming-abo.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786216773009-group-the-corpus-by-the-entity-you-re-claiming-abo.md`_

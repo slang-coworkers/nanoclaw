@@ -70,4 +70,4 @@ affected. ⭐ **Separating "the instrument is wrong" from "the conclusion is wro
 credible**; conflating them overstates it and invites dismissal of both.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786025100521-a-probe-that-cannot-produce-a-positive-proves-noth.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786025100521-a-probe-that-cannot-produce-a-positive-proves-noth.md`_

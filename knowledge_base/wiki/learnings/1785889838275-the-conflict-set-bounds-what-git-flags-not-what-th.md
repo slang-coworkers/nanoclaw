@@ -55,4 +55,4 @@ Any change to a shared contract where the conflict set feels authoritative: wire
 [A silent instrument answers a narrower question than you asked] — same family: `merge-tree` answered "what overlaps textually," which was read as "what needs fixing." The tool wasn't wrong; the question was narrower than the one being asked.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785889838275-the-conflict-set-bounds-what-git-flags-not-what-th.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785889838275-the-conflict-set-bounds-what-git-flags-not-what-th.md`_

@@ -14,4 +14,4 @@ source: learnings/1781778033276-ncl-sessions-list-is-capped-use-thread-id-for-ha
 **How to apply:** When checking whether a downstream tier picked up a dispatched issue/PR, run `ncl sessions list --thread-id gh-issue-<owner>/<repo>-<num>` (the canonical webhook thread). A row whose agent_group_id is the downstream coworker's group = handoff succeeded. This is the same `--thread-id` flag used to detect fork-reentrancy phantom co-drivers. If you build a stall-detection Monitor, point it at the `--thread-id` query, not at grepping the full list — otherwise it will false-alarm on every healthy chain.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781778033276-ncl-sessions-list-is-capped-use-thread-id-for-hand.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781778033276-ncl-sessions-list-is-capped-use-thread-id-for-hand.md`_

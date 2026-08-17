@@ -18,4 +18,4 @@ The same facet's `subtypeWitness` feeds *both* type-identity (operand2 of a `Loo
 **Takeaway:** for a witness-identity fix, prefer a narrow `Val`-identity canonicalization that converges identity *without* altering which witness class reaches witness-table construction, over rebuilding inheritance facets. Verify lowering-neutrality by building + running interface-extension / dynamic-dispatch / generic-inlining / autodiff tests — do not assume it.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780530677473-slang-subtype-witness-val-class-is-load-bearing-at.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780530677473-slang-subtype-witness-val-class-is-load-bearing-at.md`_

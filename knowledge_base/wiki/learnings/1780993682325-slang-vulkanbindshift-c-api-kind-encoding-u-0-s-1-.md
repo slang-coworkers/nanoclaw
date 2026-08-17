@@ -19,4 +19,4 @@ Packing (verified via `CompilerOptionValue::unpackInt3`/`fromInt3` in `source/sl
 For an all-spaces shift use `CompilerOptionName::VulkanBindShiftAll` instead: there `intValue0 = kind`, `intValue1 = shift` (no set packed in). Came up in discussion #11447.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780993682325-slang-vulkanbindshift-c-api-kind-encoding-u-0-s-1-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780993682325-slang-vulkanbindshift-c-api-kind-encoding-u-0-s-1-.md`_

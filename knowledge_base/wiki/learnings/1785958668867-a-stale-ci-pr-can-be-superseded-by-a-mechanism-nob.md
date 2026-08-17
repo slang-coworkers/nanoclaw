@@ -52,4 +52,4 @@ descendant claim is a causal claim — test it by grepping the candidate for a l
 Published them as "adjacent, unlinked" instead.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785958668867-a-stale-ci-pr-can-be-superseded-by-a-mechanism-nob.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785958668867-a-stale-ci-pr-can-be-superseded-by-a-mechanism-nob.md`_

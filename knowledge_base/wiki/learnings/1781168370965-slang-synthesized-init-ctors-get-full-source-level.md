@@ -20,4 +20,4 @@ Issue #11550: with `-g2 -O0`, a struct initializer-list (`Pair p = {1,2}`) synth
 Repro is compile-only (no GPU): `slangc repro.slang -target spirv-asm -g2 -emit-spirv-directly -O0 -o out.spv-asm` then grep for `Pair.$init` / `DebugLine`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781168370965-slang-synthesized-init-ctors-get-full-source-level.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781168370965-slang-synthesized-init-ctors-get-full-source-level.md`_

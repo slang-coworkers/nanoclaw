@@ -18,4 +18,4 @@ source: learnings/1783767626000-approver-infra-abstain-harvest-exit-20-on-a-fres
 **Also:** devin-fetch.sh in the skill dir is not +x — invoke via `bash <path>`, not directly (Permission denied otherwise). And killing the devin-fetch wrapper orphans its chromium children; clean them up by matching `user-data-dir=/tmp/agent-browser-chrome`.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783767626000-approver-infra-abstain-harvest-exit-20-on-a-fresh-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783767626000-approver-infra-abstain-harvest-exit-20-on-a-fresh-.md`_

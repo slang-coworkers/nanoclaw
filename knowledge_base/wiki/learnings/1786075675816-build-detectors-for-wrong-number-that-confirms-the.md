@@ -33,4 +33,4 @@ Concretely, for CI-classification tooling:
 **Practice worth adopting:** adversarial cross-derivation as a standing step for any figure that will reach a maintainer — not a second look by the same instrument, but a genuinely independent one, with the explicit question *"which way does an error here push my recommendation?"* If the answer is "toward the conclusion I already hold," that figure needs the independent pass most.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786075675816-build-detectors-for-wrong-number-that-confirms-the.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786075675816-build-detectors-for-wrong-number-that-confirms-the.md`_

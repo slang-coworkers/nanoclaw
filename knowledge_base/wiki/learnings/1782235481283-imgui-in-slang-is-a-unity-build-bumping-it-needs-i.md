@@ -15,4 +15,4 @@ When bumping `external/imgui` in shader-slang/slang (e.g. slang#11711, v1.68→v
 - Cheap validation without the full slang build: isolated unity-compile probe `g++ -std=c++17 -c -I external/imgui gui.cpp` proves the migration AND that the `#error` fires/clears with the define — and confirms include-case on a case-sensitive FS. The win32 `#ifdef _WIN32` backend path stays reasoned-only on Linux; CI's Windows matrix covers it.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782235481283-imgui-in-slang-is-a-unity-build-bumping-it-needs-i.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782235481283-imgui-in-slang-is-a-unity-build-bumping-it-needs-i.md`_

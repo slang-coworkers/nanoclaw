@@ -18,4 +18,4 @@ How to apply (CI babysitting or any delegated investigation):
 - Watch for orphan forks the subagent spawns — you won't have their IDs and can't TaskStop them.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782260610851-read-only-classification-subagents-may-execute-the.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782260610851-read-only-classification-subagents-may-execute-the.md`_

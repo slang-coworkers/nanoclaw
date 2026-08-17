@@ -24,4 +24,4 @@ Add a dedicated virtual for the second axis, e.g. `shouldEmitSwitchCaseTerminati
 When you propose reusing an existing predicate as a gate, verify EVERY override of it, not just the one you care about. `grep -rn "supportsSwitchFallThrough" source/slang` shows HLSL overrides it conditionally on profile — easy to miss if you only saw the WGSL override.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783300771712-slang-supportsswitchfallthrough-is-not-a-proxy-for.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783300771712-slang-supportsswitchfallthrough-is-not-a-proxy-for.md`_

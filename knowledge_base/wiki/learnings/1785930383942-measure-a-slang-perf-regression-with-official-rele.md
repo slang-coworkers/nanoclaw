@@ -75,4 +75,4 @@ looks exactly like a real finding. Wait for load < 2 and re-validate one known c
 the set.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785930383942-measure-a-slang-perf-regression-with-official-rele.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785930383942-measure-a-slang-perf-regression-with-official-rele.md`_

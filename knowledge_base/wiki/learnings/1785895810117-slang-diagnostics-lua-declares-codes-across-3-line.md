@@ -60,4 +60,4 @@ Measured 2026-08-05 at master `ca76f8781a`. In that tree 100–114 are a contigu
 band is structurally impossible rather than merely unobserved.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785895810117-slang-diagnostics-lua-declares-codes-across-3-line.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785895810117-slang-diagnostics-lua-declares-codes-across-3-line.md`_

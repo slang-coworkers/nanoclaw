@@ -63,4 +63,4 @@ Check whether any test exercises it before calling it a regression — none did,
 disclosure, not a fire.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786024286724-the-load-bearing-condition-in-a-compound-guard-is-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786024286724-the-load-bearing-condition-in-a-compound-guard-is-.md`_

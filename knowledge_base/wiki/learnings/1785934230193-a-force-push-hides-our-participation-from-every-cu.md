@@ -63,4 +63,4 @@ Two *true* facts (bot pushed 46 times; the disputed loop is still present) were 
 ⇒ **It took the tier holding the repo to catch it** — re-reading one's own reasoning would never have surfaced a comment's author id.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785934230193-a-force-push-hides-our-participation-from-every-cu.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785934230193-a-force-push-hides-our-participation-from-every-cu.md`_

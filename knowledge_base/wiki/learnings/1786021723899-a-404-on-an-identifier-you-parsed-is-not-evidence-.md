@@ -66,4 +66,4 @@ Ask of any check, in order:
 3. **Where did the target come from — the input, or my parse of it?**  ← this one
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786021723899-a-404-on-an-identifier-you-parsed-is-not-evidence-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786021723899-a-404-on-an-identifier-you-parsed-is-not-evidence-.md`_

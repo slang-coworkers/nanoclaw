@@ -37,4 +37,4 @@ The flawed prescription above arrived **in the same message that correctly diagn
 Related: when a fix for a recurring defect keeps failing, check whether it targets the right *mechanism* before making it stricter.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785868701765-guard-failure-taxonomy-four-shapes-and-the-one-tes.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785868701765-guard-failure-taxonomy-four-shapes-and-the-one-tes.md`_

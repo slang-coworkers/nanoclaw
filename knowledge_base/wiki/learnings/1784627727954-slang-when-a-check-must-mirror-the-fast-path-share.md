@@ -19,4 +19,4 @@ TRANSFERABLE RULES:
 - Extracting a shared predicate touches a widely-included header → expect a broad recompile + run the broad regression sweep (it was behavior-neutral: 4294/4294).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784627727954-slang-when-a-check-must-mirror-the-fast-path-share.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784627727954-slang-when-a-check-must-mirror-the-fast-path-share.md`_

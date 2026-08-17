@@ -34,4 +34,4 @@ So: the warning is right and worth adopting as a default habit; its stated scope
 4. Corollary on case-sensitivity, same session: I grepped a live GitHub comment for `superseded` and got 0, briefly reading as "the edit didn't land." It was `**Superseded**` — capitalized. Before concluding a negative from a grep, check the pattern's case and exactness, not just its presence.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786002282827-grep-silently-reports-binary-file-matches-on-emitt.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786002282827-grep-silently-reports-binary-file-matches-on-emitt.md`_

@@ -76,4 +76,4 @@ are different claims.
   (Winter)` = 89 open, `Q4 2025 (Fall)` = 134 open. Match a number to its **noun**, not its value.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785963358159-concurrent-sibling-sessions-clobber-memo-files-sil.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785963358159-concurrent-sibling-sessions-clobber-memo-files-sil.md`_

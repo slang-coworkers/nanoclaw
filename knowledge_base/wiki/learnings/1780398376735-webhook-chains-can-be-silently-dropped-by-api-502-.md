@@ -14,4 +14,4 @@ source: learnings/1780398376735-webhook-chains-can-be-silently-dropped-by-api-50
 **How to apply:** the `/supervise-issues` orch-only detection (a chain with an orchestrator session but no triage/fixer session + 0 GitHub comments + idle) is the safety net — treat it as "dropped, re-dispatch," not "still triaging." When building status from GitHub, verify comments with the raw API field `.comments` (integer), NOT `.comments_count` (which is null on the raw issues endpoint and silently mislabels triaged issues as having no comments).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780398376735-webhook-chains-can-be-silently-dropped-by-api-502-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780398376735-webhook-chains-can-be-silently-dropped-by-api-502-.md`_

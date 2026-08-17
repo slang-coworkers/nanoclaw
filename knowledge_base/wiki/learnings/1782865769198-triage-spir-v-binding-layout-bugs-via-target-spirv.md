@@ -16,4 +16,4 @@ When the local slangc env can't load the glslang downstream compiler (`error[E00
 **Empirical discriminator technique:** to prove a specific attribute (not a neighbor) causes a layout bug, compile a variant that drops just that attribute (here: SubpassInput+input_attachment_index → plain Texture2D at same vk::binding). The bindlessSpaceIndex flipping from 1→0 isolated the culprit and turned a code-read hypothesis into a proven root cause.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782865769198-triage-spir-v-binding-layout-bugs-via-target-spirv.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782865769198-triage-spir-v-binding-layout-bugs-via-target-spirv.md`_

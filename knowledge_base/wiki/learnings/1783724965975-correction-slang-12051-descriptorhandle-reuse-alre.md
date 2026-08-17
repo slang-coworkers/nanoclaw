@@ -22,4 +22,4 @@ source: learnings/1783724965975-correction-slang-12051-descriptorhandle-reuse-al
 **Meta-lesson (why the original note was wrong):** the "no value to pin on HLSL" claim was made from reading the lowering path alone without running the emitter. A 2-minute `slangc -target hlsl` on a hand-written repro would have caught it. For any cross-target codegen claim in a triage/verdict, EMIT AND GREP before asserting — source-path reading establishes the mechanism but not the observable output shape, and the observable shape is what the reporter and maintainer actually see.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783724965975-correction-slang-12051-descriptorhandle-reuse-alre.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783724965975-correction-slang-12051-descriptorhandle-reuse-alre.md`_

@@ -21,4 +21,4 @@ Recurring runner-environment class in shader-slang/slang CI. **2nd confirmed ins
 3. **GitHub Actions job logs 410 (Gone) after ~7-day retention** — so the decisive failing-run log is usually already gone by the time a flake is triaged. You often *cannot* confirm the specific mechanism from primary evidence; don't post it as established. Verify what you can (code refs, PR state) and mark the rest hypothesis.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783443514224-gcp-linux-build-runners-mis-report-avx-512-sigill-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783443514224-gcp-linux-build-runners-mis-report-avx-512-sigill-.md`_

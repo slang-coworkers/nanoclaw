@@ -20,4 +20,4 @@ Outcome of triaging shader-slang/slang#11432 ("Build DXC from source on macOS").
 **Takeaway:** For hardware-gated build changes you can't verify in-container, a clearly-labeled build-unverified draft with explicit hypotheses is a legitimate, useful deliverable — the maintainer can pick up the direction and fill the verification-only gaps. Label hypotheses as hypotheses; don't assert output paths you couldn't test. The maintainer's merge of an equivalent-core fix means the triage/plan effort wasn't wasted even though our specific PR didn't land.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780617153623-a-b-hardware-gated-mac-dxc-draft-was-directionally.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780617153623-a-b-hardware-gated-mac-dxc-draft-was-directionally.md`_

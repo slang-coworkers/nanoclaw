@@ -45,4 +45,4 @@ A subagent read `addExplicitParameterBinding` (`slang-parameter-binding.cpp:877`
 Lesson: finding *one* guarded caller answers "is it reachable from D3D?", not "is it D3D-only". The control that settles it costs one grep for the callee name, and checked-in `tests/diagnostics/*.slang` FileCheck lines (`// CHECK: warning[E39001]`) are ground truth for severity — cheaper and more decisive than reading emission-site control flow.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786010193246-slang-diagnostics-moved-from-slang-diagnostic-defs.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786010193246-slang-diagnostics-moved-from-slang-diagnostic-defs.md`_

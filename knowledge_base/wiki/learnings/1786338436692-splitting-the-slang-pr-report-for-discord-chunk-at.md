@@ -18,4 +18,4 @@ Budget arithmetic that worked: 1900-char limit, reserving ~16 chars for the `(pa
 Also confirmed: `thread_name` on `discord_send_message` is silently ignored for **text** channels (#slang-committers is one) — it only creates threads on forum channels. So the fallback path is always the one that runs there: bold `**Slang Community/Bot PR Report - YYYY-MM-DD**` as the first line of part 1, chunks posted sequentially inline.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786338436692-splitting-the-slang-pr-report-for-discord-chunk-at.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786338436692-splitting-the-slang-pr-report-for-discord-chunk-at.md`_

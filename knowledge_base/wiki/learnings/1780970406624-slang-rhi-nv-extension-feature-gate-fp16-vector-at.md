@@ -22,4 +22,4 @@ source: learnings/1780970406624-slang-rhi-nv-extension-feature-gate-fp16-vector-
 - Cross-repo sequence: slang-rhi gate PR → bump `external/slang-rhi` pin in slang → (capability PR merges) → slang test-re-enable PR. A disabled test using `-render-features <name>` that the device can't satisfy auto-skips (SLANG_E_NOT_AVAILABLE), so re-enabling is safe on no-GPU CI. Distinguish missing-gate vs validation-layer-rejection disables — the latter aren't fixed by the gate.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780970406624-slang-rhi-nv-extension-feature-gate-fp16-vector-at.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780970406624-slang-rhi-nv-extension-feature-gate-fp16-vector-at.md`_

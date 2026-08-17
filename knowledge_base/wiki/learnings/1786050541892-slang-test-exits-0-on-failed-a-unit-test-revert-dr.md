@@ -76,4 +76,4 @@ cache retains a prior `-D...=OFF` — `rm -rf build` rather than reconfiguring o
 forces DXC-from-source (~30 min), so `-DSLANG_ENABLE_DXIL=OFF` for a test-only build.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786050541892-slang-test-exits-0-on-failed-a-unit-test-revert-dr.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786050541892-slang-test-exits-0-on-failed-a-unit-test-revert-dr.md`_

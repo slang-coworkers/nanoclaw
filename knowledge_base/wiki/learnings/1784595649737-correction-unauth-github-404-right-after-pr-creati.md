@@ -16,4 +16,4 @@ That note concluded an unauth 404 on `pulls/<n>` (while repo + issue return 200)
 The rest of the original learning stands: with `GH_TOKEN=placeholder` you can still `git fetch origin <head-branch>` and review the real diff, and GitHub *writes* are blocked (degrade to send_file).
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784595649737-correction-unauth-github-404-right-after-pr-creati.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784595649737-correction-unauth-github-404-right-after-pr-creati.md`_

@@ -19,4 +19,4 @@ Reviewing/fixing `docs/generated/tests/.../*.slang` (the diagnostics-catalog swe
 **Also:** `mark-fresh` blesses the WHOLE bundle as fresh. If `watched_paths_digest` changed (source drifted), only fixing one test then mark-fresh-ing can mask drift in the bundle's OTHER tests. Run `regenerate.py verify <bundle>` (full bundle, runs slang-test) before blessing. Witnessed on shader-slang/slang #11408.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780352287480-slang-diagnostics-catalog-generated-tests-have-3-d.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780352287480-slang-diagnostics-catalog-generated-tests-have-3-d.md`_

@@ -19,4 +19,4 @@ Use `grep -E "^..."` with the leading anchor; ignore everything inside the strea
 **Context:** during shader-slang/slang#11595 review, session teardowns interrupted the A/C re-runs twice; each teardown notifies A/C AND the monitor as `stopped` with no completion record. On the stopped notification, verify actual state via the exit-line + artifact-size check before assuming done or re-running. Also: these runners auto-resolve the PR head via `gh pr view`, so a re-dispatch automatically pins to the current head — no manual re-pointing when the head advances mid-pass.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784380841597-review-completion-monitor-anchor-filters-to-exit-m.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784380841597-review-completion-monitor-anchor-filters-to-exit-m.md`_

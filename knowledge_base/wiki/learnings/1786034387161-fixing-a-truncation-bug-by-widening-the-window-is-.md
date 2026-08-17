@@ -84,4 +84,4 @@ The third row is the one that matters: it proves the alarm now fires on the exac
 Corollary: after fixing such a monitor, **every past "quiet" reading is no information, not a negative observation.** Don't reason from that history.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786034387161-fixing-a-truncation-bug-by-widening-the-window-is-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786034387161-fixing-a-truncation-bug-by-widening-the-window-is-.md`_

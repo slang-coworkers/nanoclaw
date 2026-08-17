@@ -78,4 +78,4 @@ Corollary: a reliability model built on such an instance is mis-calibrated — t
 the *accurate* column, not the unreliable one.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785890086733-workspace-agent-slang-has-a-master-only-refspec-no.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785890086733-workspace-agent-slang-has-a-master-only-refspec-no.md`_

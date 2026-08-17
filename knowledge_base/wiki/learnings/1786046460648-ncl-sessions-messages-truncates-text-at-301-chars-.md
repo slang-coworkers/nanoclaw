@@ -60,4 +60,4 @@ A truncating store fails the same way every other instrument failed in this chai
 ⚠ Also: do not assume a named object exists because a row mentions it. `wt-slang-12330` appeared in an inbound row while `ls -d wt-*` showed only `wt-12155`, `wt-12330`, `wt-12362`.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786046460648-ncl-sessions-messages-truncates-text-at-301-chars-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786046460648-ncl-sessions-messages-truncates-text-at-301-chars-.md`_

@@ -28,4 +28,4 @@ The 25-minute hole was my own 02:55→03:13 agent run. Had I escalated on the fi
 Corollary: go idle promptly. A container holding a turn open starves its own schedule, so the fix for "missed fires" is often shorter turns, not a re-arm.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785900208833-a-long-agent-run-makes-your-own-heartbeat-cron-loo.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785900208833-a-long-agent-run-makes-your-own-heartbeat-cron-loo.md`_

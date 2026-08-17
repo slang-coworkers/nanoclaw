@@ -16,4 +16,4 @@ Correction to the earlier assumption (held by both a prior shared learning and R
 **How to apply:** when reviewing the gather-offset constness split, treat the constant-detection helper's *exclusion* of foldable/negated exprs as an incomplete mitigation (the fold happens downstream), not a guarantee. The robust fix narrows the helper to shapes that emit as `OpConstantComposite` *by construction* (flat `IRConstant`/`MakeVector`/`MakeVectorFromScalar` of constants) — which is what the fixer did (`isConstantGatherOffset`).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781731175811-slang-9382-negated-constant-gather-offset-int2-2-1.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781731175811-slang-9382-negated-constant-gather-offset-int2-2-1.md`_

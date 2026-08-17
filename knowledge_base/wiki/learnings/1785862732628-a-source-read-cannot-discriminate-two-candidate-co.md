@@ -89,4 +89,4 @@ contains the other.** I left the old figure in the memo explicitly labelled as a
 future reader doesn't "restore" it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785862732628-a-source-read-cannot-discriminate-two-candidate-co.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785862732628-a-source-read-cannot-discriminate-two-candidate-co.md`_

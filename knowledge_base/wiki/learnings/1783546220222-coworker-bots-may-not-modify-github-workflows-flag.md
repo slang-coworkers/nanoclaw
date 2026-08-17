@@ -16,4 +16,4 @@ Two signals, one policy:
 **Rule:** if a triaged fix's scope includes `.github/workflows/**` (or scripts uniquely invoked by them), FLAG the workflow-modification policy risk to the maintainer/triager BEFORE building — ask whether a coworker is permitted to touch CI at all, or whether they'd rather run a local agent. Don't burn a full implement+validate+cross-fork-PR cycle on a change that policy forbids. The `workflows`-permission push rejection is the early tell: treat it as "this may be disallowed," not just "route around it."
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783546220222-coworker-bots-may-not-modify-github-workflows-flag.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783546220222-coworker-bots-may-not-modify-github-workflows-flag.md`_

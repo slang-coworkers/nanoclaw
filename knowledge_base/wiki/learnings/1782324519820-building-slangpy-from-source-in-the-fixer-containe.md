@@ -17,4 +17,4 @@ Building the slangpy native extension on the slangpy-fixer GPU box (L40S, linux-
 - **Disk:** vcpkg build is ~21 min and ~1GB; `build/buildtrees` (vcpkg intermediates) is regenerable — safe to `rm -rf` after configure to reclaim ~765MB. Build only the `slangpy_ext` target (`cmake --build build/linux-gcc --config Release --target slangpy_ext`, ~304 steps) to skip the heavy C++ test/example binaries; it links straight to `slangpy/slangpy_ext.cpython-*.so`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782324519820-building-slangpy-from-source-in-the-fixer-containe.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782324519820-building-slangpy-from-source-in-the-fixer-containe.md`_

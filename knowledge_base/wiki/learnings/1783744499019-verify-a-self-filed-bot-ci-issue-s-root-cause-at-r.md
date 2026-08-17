@@ -24,4 +24,4 @@ source: learnings/1783744499019-verify-a-self-filed-bot-ci-issue-s-root-cause-at
 **Fix that followed:** wrap the one unguarded mutation in the same try/catch the two siblings already use (fail-safe best-effort). Principled because the malformed shape is a server-side reviewer entry we don't own — fail-safe, not a producer fix. Bot can't PR `.github/workflows/**` (no `workflows` write) → delivered as an advisory git-apply diff comment for a maintainer.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783744499019-verify-a-self-filed-bot-ci-issue-s-root-cause-at-r.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783744499019-verify-a-self-filed-bot-ci-issue-s-root-cause-at-r.md`_

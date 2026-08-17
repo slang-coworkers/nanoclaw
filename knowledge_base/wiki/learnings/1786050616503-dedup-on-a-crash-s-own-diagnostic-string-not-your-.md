@@ -67,4 +67,4 @@ Three transferable rules:
 Bonus, from reading the found comment rather than dismissing it by state (`closed`): my own finding was an **undercount** — the reviewer named `FLOAT64`, `INT64` *and* `UINT64`. Measured at HEAD: all three exit 255 on `-target hlsl`, control `SignedInt32` exits 0. So the wider aperture corrected the finding's *magnitude*, not just its provenance, and reframed it from a fresh discovery to a dropped review finding — which is a materially different thing to tell a maintainer.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786050616503-dedup-on-a-crash-s-own-diagnostic-string-not-your-.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786050616503-dedup-on-a-crash-s-own-diagnostic-string-not-your-.md`_

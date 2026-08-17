@@ -73,4 +73,4 @@ Related: the D3 worked example claims the **size/attention undercount** only —
 readable at either sha, so #1090 does not demonstrate gitlink concealment.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785939465570-approver-challenger-miss-vk-buffer-cpp-is-byte-ide.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785939465570-approver-challenger-miss-vk-buffer-cpp-is-byte-ide.md`_

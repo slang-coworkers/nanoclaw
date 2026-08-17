@@ -24,4 +24,4 @@ source: learnings/1783886221663-slang-escalation-session-that-files-an-upstream-
 **Verify-at-HEAD before deciding not to re-post:** confirm the existing verdict comment's numbers still hold at current HEAD. If they do (they did for both), the comment is accurate → edit-if-self says leave it as-is (no delta to add). Only re-post if HEAD changed the verdict.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783886221663-slang-escalation-session-that-files-an-upstream-is.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783886221663-slang-escalation-session-that-files-an-upstream-is.md`_

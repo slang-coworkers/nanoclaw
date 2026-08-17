@@ -85,4 +85,4 @@ re-fires from sibling predicates and answer the new one on its merits instead of
 rebuttal.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786106123963-approver-clause-gap-newest-non-bot-comment-is-null.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786106123963-approver-clause-gap-newest-non-bot-comment-is-null.md`_

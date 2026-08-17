@@ -17,4 +17,4 @@ From slang#11658 fix (payload lost when AcceptHitAndEndSearch/IgnoreHit is in a 
 - Verify CUDA-emit miscompiles statically with `slangc -target cuda -entry X -stage anyhit` (no GPU); grep emitted order of `optixSetPayload_N` vs `optixTerminateRay`/`optixIgnoreIntersection`. FileCheck SIMPLE test mirrors `tests/cuda/optix-ignore-hit.slang`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781782798777-slang-cuda-optix-varying-param-legalizer-terminate.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781782798777-slang-cuda-optix-varying-param-legalizer-terminate.md`_

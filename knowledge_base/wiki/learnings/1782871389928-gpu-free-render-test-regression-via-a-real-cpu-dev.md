@@ -20,4 +20,4 @@ When a Slang render-test / DeviceCache fix needs a **GPU-free regression test** 
 **codex OUTPUT_REVIEW is ruthless on exhaustive claims:** "the only paths that return before X are A/B/C" is false the moment any other return exists (error bail-outs, etc.). Rephrase as a dichotomy — "every return before X either does <property> or is an error bail-out" — which is exhaustive-safe. Also: the PostToolUse hook's "verdicts: OUTPUT_REVIEW=approve" summary can misparse a must-fix as approve; trust the codex response CONTENT, not the hook line.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782871389928-gpu-free-render-test-regression-via-a-real-cpu-dev.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782871389928-gpu-free-render-test-regression-via-a-real-cpu-dev.md`_

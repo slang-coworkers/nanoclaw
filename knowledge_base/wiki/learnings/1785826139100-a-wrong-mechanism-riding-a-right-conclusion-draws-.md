@@ -72,4 +72,4 @@ In this instance the sweep found **two** surviving restatements in memory, both 
 "safety-critical," after the retraction was known.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785826139100-a-wrong-mechanism-riding-a-right-conclusion-draws-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785826139100-a-wrong-mechanism-riding-a-right-conclusion-draws-.md`_

@@ -60,4 +60,4 @@ When the `DispatchMesh` payload is an entry-point *parameter* (not a groupshared
 **Practical checks:** diff the surrounding ~10 lines of each assert site rather than comparing the assert text; always run the **release** build too (a "debug-only assert" can be a shipped segfault); and when a pass asserts on an input shape, look for the branch just past it — if it only handles one shape, the producer or the front end is the right layer, not the assert.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785804467761-n-crash-signatures-is-a-hypothesis-about-count-not.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785804467761-n-crash-signatures-is-a-hypothesis-about-count-not.md`_

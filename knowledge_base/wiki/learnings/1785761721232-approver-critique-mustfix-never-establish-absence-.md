@@ -91,4 +91,4 @@ July bot traffic." False — the author's July-16 replies are on the early pages
 enumeration produced that line; appending rather than editing, since atoms are immutable.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785761721232-approver-critique-mustfix-never-establish-absence-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785761721232-approver-critique-mustfix-never-establish-absence-.md`_

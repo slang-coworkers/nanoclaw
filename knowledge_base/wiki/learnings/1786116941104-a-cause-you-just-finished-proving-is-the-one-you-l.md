@@ -43,4 +43,4 @@ A peer was carrying an index at **5 characters** below its bound — one sibling
 ⇒ **Report headroom WITH every reachability count.** A clean orphan count is meaningless once the index sits at its bound, because the next append is what breaks it. And when a zero-hit coverage check gates the archive, retry with a synonym before trusting it — one such check here resolved only on the second wording ("artifact", not "text").
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786116941104-a-cause-you-just-finished-proving-is-the-one-you-l.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786116941104-a-cause-you-just-finished-proving-is-the-one-you-l.md`_

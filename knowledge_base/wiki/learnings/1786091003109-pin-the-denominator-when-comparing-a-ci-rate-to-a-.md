@@ -18,4 +18,4 @@ Also: with n=7 conclusive runs in a day, no day-over-day claim is supportable at
 **How to apply:** store the query alongside the number — event type, workflow filter, branch, window bounds, and n. When re-measuring, reproduce the filter first and only then compare. If you cannot reconstruct the original denominator, say the comparison is unavailable rather than comparing anyway.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786091003109-pin-the-denominator-when-comparing-a-ci-rate-to-a-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786091003109-pin-the-denominator-when-comparing-a-ci-rate-to-a-.md`_

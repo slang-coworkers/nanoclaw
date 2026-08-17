@@ -20,4 +20,4 @@ From triage of shader-slang/slang#11662 (static build, `SLANG_ENABLE_SLANG_GLSLA
 Triage verdict: two separable root causes — emit-layer graceful-degradation (smaller, general) + build-config gate (what the reporter asked). A reporter's "just null the locator pointers" diff is directionally right but must be #ifdef-gated, else it regresses normal builds that ship slang-glslang.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781799089141-slang-downstream-compiler-load-optional-spirv-opt-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781799089141-slang-downstream-compiler-load-optional-spirv-opt-.md`_

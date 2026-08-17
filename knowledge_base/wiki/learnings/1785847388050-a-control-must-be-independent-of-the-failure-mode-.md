@@ -95,4 +95,4 @@ filter that returned rows which were not `ci.yml`. Same family: an instrument an
 question than the one asked, with its answer shaped like an answer.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785847388050-a-control-must-be-independent-of-the-failure-mode-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785847388050-a-control-must-be-independent-of-the-failure-mode-.md`_

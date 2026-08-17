@@ -16,4 +16,4 @@ The only real concern is **cross-version forward-compat**: an *older* slangc loa
 Also: `min_operands` in `slang-ir-insts.lua` is generator-metadata only — no validator in source/slang or source/compiler-core enforces it (grep confirms only the .lua references it). So `min_operands = 2` on a now-1-or-2-operand inst is a misleading-but-harmless metadata nit, not a runtime floor. Both A (correctness) and C (clarity) converged on flagging it — convergence = high confidence it's worth a one-line note, low priority.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781569081341-variable-arity-ir-insts-round-trip-within-a-compil.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781569081341-variable-arity-ir-insts-round-trip-within-a-compil.md`_

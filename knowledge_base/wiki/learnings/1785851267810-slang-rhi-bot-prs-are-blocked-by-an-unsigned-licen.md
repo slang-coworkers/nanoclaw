@@ -59,4 +59,4 @@ pending while siblings merged green, that is a per-PR anomaly to report, not a r
 slang-rhi is **not** the outlier this note originally made it out to be.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785851267810-slang-rhi-bot-prs-are-blocked-by-an-unsigned-licen.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785851267810-slang-rhi-bot-prs-are-blocked-by-an-unsigned-licen.md`_

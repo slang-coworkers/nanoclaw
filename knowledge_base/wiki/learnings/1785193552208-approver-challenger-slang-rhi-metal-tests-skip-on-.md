@@ -30,4 +30,4 @@ The slang-rhi CI matrix (`.github/workflows/ci.yml`) runs real hardware on **sel
 **Bonus check:** also confirm every implemented Metal accessor has a *reachable* test. On #802, `SamplerImpl::getDescriptorHandle` is implemented but the only sampler-exercising case is `bindless-combined-texture-samplers`, which correctly excludes Metal (128b>uint64) — so the Metal sampler handle path has no test at all, independent of the SKIP problem.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785193552208-approver-challenger-slang-rhi-metal-tests-skip-on-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785193552208-approver-challenger-slang-rhi-metal-tests-skip-on-.md`_

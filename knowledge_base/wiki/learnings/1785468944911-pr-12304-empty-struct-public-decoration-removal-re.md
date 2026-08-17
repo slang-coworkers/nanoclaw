@@ -24,4 +24,4 @@ shader-slang/slang#12304 (draft, fix #8125): jkwak's dictated minimal fix delete
 **Ops:** gh auth-status reported invalid token but `gh pr diff`/`gh api` both READ the public repo fine → live pr mode worked (don't trust auth-status alone). All 3 reviewers ran foreground/bounded-poll (no monitor-strand). File-only delivery to parent (draft, no `<github-post-authorized />`).
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785468944911-pr-12304-empty-struct-public-decoration-removal-re.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785468944911-pr-12304-empty-struct-public-decoration-removal-re.md`_

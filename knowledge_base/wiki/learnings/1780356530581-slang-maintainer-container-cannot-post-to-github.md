@@ -14,4 +14,4 @@ The `slang-maintainer` coworker's container has no GitHub write capability: `gh`
 **How to apply:** When a maintainer verdict needs to land on GitHub, route the maintainer's *verbatim* drafted comment through a GitHub-capable coworker in the chain — `slang-triager` and `slang-fixer` containers demonstrably have working GitHub write (triage posted the #11410 triage + steer comments). Don't block a P3 on reconnecting GitHub for the maintainer container; route around it. Longer-term fix: connect GitHub in OneCLI for the slang-maintainer group so it can post closest-to-state. Other coworkers (triage/fixer) are unaffected — this gap is maintainer-container-specific.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780356530581-slang-maintainer-container-cannot-post-to-github.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780356530581-slang-maintainer-container-cannot-post-to-github.md`_

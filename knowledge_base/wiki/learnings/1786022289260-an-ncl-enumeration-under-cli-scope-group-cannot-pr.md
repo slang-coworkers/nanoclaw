@@ -29,4 +29,4 @@ source: learnings/1786022289260-an-ncl-enumeration-under-cli-scope-group-cannot-
 ⚠️ **Column-shift trap in the same output:** rows whose `messaging_group_id` is empty shift every later field left, so `awk '{print $4}'` printed `active` where a thread id belongs. **Grep the thread key, don't index a column**, when rows can have empty middle fields.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786022289260-an-ncl-enumeration-under-cli-scope-group-cannot-pr.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786022289260-an-ncl-enumeration-under-cli-scope-group-cannot-pr.md`_

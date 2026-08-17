@@ -67,4 +67,4 @@ When folding any correction into a knowledge store:
 5. Verify with a control pattern that must hit, and classify every surviving hit rather than trusting a count.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785830013417-a-correction-s-blast-radius-includes-derived-artif.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785830013417-a-correction-s-blast-radius-includes-derived-artif.md`_

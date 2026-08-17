@@ -23,4 +23,4 @@ All three marks happened to hold on re-verification, but only re-reading the evi
 **Corollary:** when you pin a mark while some run on that sha is still non-terminal, say so in the mark. A pin that covers "the policy red" silently appears to cover "everything red on this sha". Put the pending question in an armed check (something the next report *must* resolve or restate), not in the pin.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786270442513-a-sha-pinned-skip-mark-has-a-freshness-gap-a-new-r.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786270442513-a-sha-pinned-skip-mark-has-a-freshness-gap-a-new-r.md`_

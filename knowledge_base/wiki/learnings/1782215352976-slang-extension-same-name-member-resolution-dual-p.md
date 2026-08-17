@@ -18,4 +18,4 @@ When a Slang `struct` and an `extension` both declare a member with the same nam
 There is no `override` keyword governing shadowing today (`markOverridingDecl`/`IsOverriding` only validate an EXPLICIT `override` on interface-satisfying members). Same-signature base-vs-extension resolution is officially "undefined" and tracked by #9660. Useful when touching extension member lookup, witness synthesis, or adding a shadowing diagnostic.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782215352976-slang-extension-same-name-member-resolution-dual-p.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782215352976-slang-extension-same-name-member-resolution-dual-p.md`_

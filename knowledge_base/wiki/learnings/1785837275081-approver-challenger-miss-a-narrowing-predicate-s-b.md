@@ -101,4 +101,4 @@ comfort — and don't round it away either. Name the residue, show it's a no-op,
 and say so.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785837275081-approver-challenger-miss-a-narrowing-predicate-s-b.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785837275081-approver-challenger-miss-a-narrowing-predicate-s-b.md`_

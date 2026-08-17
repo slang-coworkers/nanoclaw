@@ -105,4 +105,4 @@ inferences is what makes a correction auditable rather than reassuring.
   an assertion from a retraction.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786351696739-correcting-a-bridging-factor-a-ratio-of-two-totals.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786351696739-correcting-a-bridging-factor-a-ratio-of-two-totals.md`_

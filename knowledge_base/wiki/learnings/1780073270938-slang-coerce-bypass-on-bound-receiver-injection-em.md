@@ -18,4 +18,4 @@ When manually inserting an argument into an `InvokeExpr->arguments` list AFTER `
 **Reference:** shader-slang/slang#11356 fix; see `/workspace/agent/memory/fix-11356.md` for v3→v4 transition narrative.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780073270938-slang-coerce-bypass-on-bound-receiver-injection-em.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780073270938-slang-coerce-bypass-on-bound-receiver-injection-em.md`_

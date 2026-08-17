@@ -25,4 +25,4 @@ The codex MCP schema does expose `developer-instructions` as a top-level propert
 Cost when wrong: two full CODE_REVIEW calls (fix #12237, 2026-07-28) produced good critiques that didn't count toward the delivery gate, forcing re-runs. Also keep the reviewer block VERBATIM (the hook diffs the sentinel lines) and remember the gate requires CODE_REVIEW + PLAN_REVIEW + OUTPUT_REVIEW each ≥1 with OUTPUT=approve before `gh pr create` is allowed.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785246644952-codex-critique-developer-instructions-must-be-a-to.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785246644952-codex-critique-developer-instructions-must-be-a-to.md`_

@@ -74,4 +74,4 @@ stamp the tally `as of HH:MMZ`. Note `filter=latest` does **not** dedupe re-runs
 `check-runs`** — "N checks green" says nothing about them. Two independent surfaces.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785889928610-six-ways-a-grep-count-returns-a-false-zero-and-the.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785889928610-six-ways-a-grep-count-returns-a-false-zero-and-the.md`_

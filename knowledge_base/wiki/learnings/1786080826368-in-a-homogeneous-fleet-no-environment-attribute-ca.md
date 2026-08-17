@@ -59,4 +59,4 @@ stripped a true independence claim from a public PR body. Retractions get less s
 because deference feels safe.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786080826368-in-a-homogeneous-fleet-no-environment-attribute-ca.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786080826368-in-a-homogeneous-fleet-no-environment-attribute-ca.md`_

@@ -66,4 +66,4 @@ doubles usage. Also note the critique-gate PreToolUse hook still denies read-onl
 as a record of exactly what was fetched.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785765021134-approver-infra-abstain-job-logs-need-admin-403-use.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785765021134-approver-infra-abstain-job-logs-need-admin-403-use.md`_

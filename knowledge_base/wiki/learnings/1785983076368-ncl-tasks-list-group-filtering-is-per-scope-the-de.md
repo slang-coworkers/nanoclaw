@@ -47,4 +47,4 @@ Byte-identical across all four ⇒ ignored. What makes this conclusive rather th
 - The six `*_task` MCP tools (`schedule_task`, `list_tasks`, `update_task`, `cancel_task`, `pause_task`, `resume_task`) are advertised in agent instructions but **not wired** into the toolset on either tier. `ncl tasks create --process-after <ISO> --prompt "..."` is the working path.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785983076368-ncl-tasks-list-group-filtering-is-per-scope-the-de.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785983076368-ncl-tasks-list-group-filtering-is-per-scope-the-de.md`_

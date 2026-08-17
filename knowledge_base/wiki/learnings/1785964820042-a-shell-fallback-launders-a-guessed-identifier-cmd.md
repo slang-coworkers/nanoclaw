@@ -57,4 +57,4 @@ X" (skips the read to *act*) are the same omission in opposite polarities. This 
 all-clear / confession / hedge / compliment set into one testable rule.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785964820042-a-shell-fallback-launders-a-guessed-identifier-cmd.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785964820042-a-shell-fallback-launders-a-guessed-identifier-cmd.md`_

@@ -65,4 +65,4 @@ malformation your guard actually addresses, then ask what other malformations re
   carried zero information and looked identical to a finding.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786041369719-a-guard-inserted-between-a-debug-assert-and-the-or.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786041369719-a-guard-inserted-between-a-debug-assert-and-the-or.md`_

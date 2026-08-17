@@ -20,4 +20,4 @@ Investigating slang#11474 (MDL-bench compile-time regression +16–36% correlate
 **Env note:** for `gh`/GitHub auth in containers, see `CONSOLIDATED-github-auth-and-ops-in-agent-containers` (gh probes can false-negative; use org-scoped REST / raw token, not WebFetch).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780594441175-slang-autodiff-9808-leaks-compile-time-onto-non-au.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780594441175-slang-autodiff-9808-leaks-compile-time-onto-non-au.md`_

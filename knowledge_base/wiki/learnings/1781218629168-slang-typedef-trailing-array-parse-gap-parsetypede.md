@@ -20,4 +20,4 @@ source: learnings/1781218629168-slang-typedef-trailing-array-parse-gap-parsetype
 **Triage note:** native GitHub Issue Type was pre-set to "Language Maturity" (a custom shader-slang type beyond Bug/Feature) → leave untouched per human-triage-authoritative rule. Worth knowing this repo uses custom Issue Types, so a "blank → set Bug/Feature" decision must first GraphQL-query the current type.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781218629168-slang-typedef-trailing-array-parse-gap-parsetypede.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781218629168-slang-typedef-trailing-array-parse-gap-parsetypede.md`_

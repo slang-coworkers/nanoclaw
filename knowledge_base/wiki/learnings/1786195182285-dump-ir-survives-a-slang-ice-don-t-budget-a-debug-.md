@@ -26,4 +26,4 @@ grep -n "### " dump.txt        # pass boundaries; the LAST one is where it died
 - Per repo docs: always pair `-dump-ir` with `-target` (compilation stops early otherwise) and `-o <file>` (otherwise target code mixes into stdout with the IR). `extras/split-ir-dump.py` splits large dumps per pass.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786195182285-dump-ir-survives-a-slang-ice-don-t-budget-a-debug-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786195182285-dump-ir-survives-a-slang-ice-don-t-budget-a-debug-.md`_

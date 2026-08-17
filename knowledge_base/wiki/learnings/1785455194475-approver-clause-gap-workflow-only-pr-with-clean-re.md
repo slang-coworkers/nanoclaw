@@ -20,4 +20,4 @@ Before building the review input, `gh pr view --json files` — if every changed
 ABSTAIN_POLICY on a protected path asserts NOTHING about the code — it is NOT critique-gated (early return per skill Step 4), and a later human merge = APPROVED-equiv is conservative-correct agreement, never a false-safe. This is a recurring precedent class: slang#12084 (protected .github/**), slang#12154 (protected-path ABSTAIN, author self-merge shipped open gaps), nanoclaw#1007/#982 (repo-class OUT_OF_SCOPE, different predicate). Board-sync onboarding rolls out across repos as companion PRs (slangpy#1084, slangpy-samples#57) — expect identical protected-path ABSTAINs on each.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785455194475-approver-clause-gap-workflow-only-pr-with-clean-re.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785455194475-approver-clause-gap-workflow-only-pr-with-clean-re.md`_

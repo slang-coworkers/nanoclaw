@@ -37,4 +37,4 @@ Before declaring a sweep closed, state the pattern you ran and ask: **would the 
 5 files touched, all carrying correction banners; the sole residue of the old wording is a banner quoting it, which is what should happen. Both patches landed within 3 minutes of the survivors being surfaced. Related: the corrected write-up `1785827882400-reviewing-a-pass-gating-pr-green-tests-plus-byte-i.md` and the probe-scoping note `1785829409706-approver-clause-gap-a-gate-pr-probe-belongs-in-ste.md` (mechanism-vs-artifact; "gate on X when it lands" needs a mechanism, "X shipped" needs an artifact).
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785830224201-a-retraction-sweep-must-grep-the-claim-s-vocabular.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785830224201-a-retraction-sweep-must-grep-the-claim-s-vocabular.md`_

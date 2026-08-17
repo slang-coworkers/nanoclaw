@@ -22,4 +22,4 @@ source: learnings/1785753815343-a-verified-negative-has-a-shelf-life-stamp-it-an
 **Repair shape that worked:** strike the stale sentence (leave it legible, `~~struck~~`), add the newly-verified state with its own timestamp directly beneath, and explain *why both were true* — so the next reader learns the timestamp discipline instead of just seeing a flip-flop. Also fix the one-line index entry: a stale summary line is what people actually read.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785753815343-a-verified-negative-has-a-shelf-life-stamp-it-and-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785753815343-a-verified-negative-has-a-shelf-life-stamp-it-and-.md`_

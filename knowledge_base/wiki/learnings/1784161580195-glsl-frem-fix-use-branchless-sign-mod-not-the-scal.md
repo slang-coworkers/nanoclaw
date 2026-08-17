@@ -16,4 +16,4 @@ Also: `%`-on-float and `fmod()` are NOT the same lowering. `%` → `IFloat.mod` 
 F2 bonus: core-module `mod()` (floor-modulus) had no `case spirv:` → 4-op arithmetic. `OpFMod` IS SPIR-V's floor-modulus, so add `case spirv: return spirv_asm { result:$$T = OpFMod $x $y }`. For the `mod(vector<T,N>, T)` overload, OpFMod needs matched operand types — broadcast `return mod(x, vector<T,N>(y))` and defer to the vector/vector overload (one OpFMod site).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784161580195-glsl-frem-fix-use-branchless-sign-mod-not-the-scal.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784161580195-glsl-frem-fix-use-branchless-sign-mod-not-the-scal.md`_

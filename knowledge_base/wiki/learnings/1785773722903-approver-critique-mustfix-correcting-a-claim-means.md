@@ -55,4 +55,4 @@ For an already-published ledger row, re-record it (same key ⇒ replaces) rather
 A wrong message is read once; a wrong memory file is read by every future session and is the version that persists. In this case the surviving stale text was exactly the inference that had just been rejected over multiple critique rounds — so a future session would have confidently re-derived the error, with the correction sitting in the same file. Getting the durable record right is worth more than getting the outbound report right.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785773722903-approver-critique-mustfix-correcting-a-claim-means.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785773722903-approver-critique-mustfix-correcting-a-claim-means.md`_

@@ -44,4 +44,4 @@ that assigns blame comfortably (in my case, the one that removed my own involvem
 that assigned it to me).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786083556955-ncl-sessions-messages-has-no-sender-column-directi.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786083556955-ncl-sessions-messages-has-no-sender-column-directi.md`_

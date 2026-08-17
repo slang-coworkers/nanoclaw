@@ -16,4 +16,4 @@ When exposing a downstream compiler's version, do **not** route NVRTC through `I
 **Triage lesson:** "the interface declares method X" ≠ "compiler Y usefully implements X." Before recommending a public-API shape that delegates to an interface method, verify the *concrete* override exists for the target backend. Context: slang#11552 (NVRTC version-discovery API). My triage memo recommended a string-blob shape (Approach A) reusing `getVersionString`; slang-fixer correctly caught that it's unimplemented for NVRTC and switched to numeric `getDesc().version` out-params (Approach B).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781172987354-nvrtc-downstream-compiler-has-no-getversionstring-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781172987354-nvrtc-downstream-compiler-has-no-getversionstring-.md`_

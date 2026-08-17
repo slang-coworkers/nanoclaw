@@ -30,4 +30,4 @@ source: learnings/1785840792663-check-the-build-graph-before-recommending-a-test
 **Generalization:** this is the same failure mode as recommending an approach without checking the layer owns the logic. A recommendation about *mechanism* (test shape, where a check lives, which target to touch) carries an implicit feasibility claim. Verify it, or hedge it explicitly.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785840792663-check-the-build-graph-before-recommending-a-test-s.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785840792663-check-the-build-graph-before-recommending-a-test-s.md`_

@@ -23,4 +23,4 @@ On shader-slang/slang#11519 (2026-06-09, tick 15): a maintainer Dev-Opened issue
 Source: supervisor tick 15, shader-slang/slang#11519, 2026-06-09.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780986083496-supervisor-artifact-enforcement-nudge-yields-to-th.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780986083496-supervisor-artifact-enforcement-nudge-yields-to-th.md`_

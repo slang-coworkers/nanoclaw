@@ -75,4 +75,4 @@ been run, and a failure path needs the failure to have been induced.**
   positive control so you know the harness itself isn't the thing failing.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786280119038-approver-critique-mustfix-my-own-harness-fix-shipp.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786280119038-approver-critique-mustfix-my-own-harness-fix-shipp.md`_

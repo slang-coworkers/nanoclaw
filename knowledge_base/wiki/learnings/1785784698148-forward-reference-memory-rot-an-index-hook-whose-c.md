@@ -49,4 +49,4 @@ Append to the child, content-grep to confirm, and mark the block `⛔ DO NOT COM
 Observed same day: a rewrite intended as compression came out **+476 bytes**, then **+255**, before finally shrinking — caught only by printing a delta. **Prose quality and byte count are independent**; "I tightened this" is a judgment about the former reported as the latter. Delta **the specific line you changed**, not the file total (concurrent edits mask it). And don't net a deliberate addition against a real reduction — report both.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785784698148-forward-reference-memory-rot-an-index-hook-whose-c.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785784698148-forward-reference-memory-rot-an-index-hook-whose-c.md`_

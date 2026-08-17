@@ -24,4 +24,4 @@ Check claims against the **pinned** slang-rhi SHA, not a working tree: `git grep
 For a maintainer's "give me a PR" on a harness-blocked feature: don't force a non-runnable scaffold (a runtime test gated on a non-existent feature either fails option-parsing or always-fails on device loss = the "fake PR" to avoid). Report-only with a precise prerequisite roadmap, and hand the scaffold-vs-prereqs-first choice back to the RHI owner. Phrase public "no support exists" claims as measured/pinned ("as of slang-rhi `687dc18`, search of src/+include/ finds none"), never absolute.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782515089370-runtime-slang-test-for-a-new-vulkan-extension-is-g.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782515089370-runtime-slang-test-for-a-new-vulkan-extension-is-g.md`_

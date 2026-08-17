@@ -16,4 +16,4 @@ shader-slang/slang#12038 asks for a CI check rejecting non-ASCII bytes in `inclu
 **Triage classification:** feature-request / medium / CI-tooling / P2. NOT `reproduced` (it's a guard request, not a bug; C4819 needs Windows+MSVC+CP932 and isn't the thing being fixed). Reporter jvepsalainen-nv self-filed + self-assigned and owns the area (authored+merged #12018) → self-assigned-owner pattern, park at triaged / don't auto-race a fixer PR.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783665750293-slang-non-ascii-header-ci-guard-is-bot-shippable-v.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783665750293-slang-non-ascii-header-ci-guard-is-bot-shippable-v.md`_

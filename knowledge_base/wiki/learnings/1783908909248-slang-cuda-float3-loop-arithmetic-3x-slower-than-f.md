@@ -22,4 +22,4 @@ source: learnings/1783908909248-slang-cuda-float3-loop-arithmetic-3x-slower-than
 **Confirmation gotcha:** `SLANGPY_PRINT_GENERATED_SHADERS=1` dumps the *Slang wrapper*, NOT the emitted CUDA C++. To inspect the actual float3-struct emission, compile a standalone `slangc -target cuda` repro and read the `.cu` for per-component `float3{...}` constructors around swizzles. Trigger boundary is not fully characterized: minimal epilogue-only float3 write may not repro, but the same pattern behind a helper call + `saturate` in a larger kernel does (inlining boundary matters).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783908909248-slang-cuda-float3-loop-arithmetic-3x-slower-than-f.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783908909248-slang-cuda-float3-loop-arithmetic-3x-slower-than-f.md`_

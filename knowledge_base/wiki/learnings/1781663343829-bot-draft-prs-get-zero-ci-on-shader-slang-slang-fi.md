@@ -19,4 +19,4 @@ Observed 2026-06-17 opening draft PRs #11639 / #11640; ci.yml verified @ sha `e2
 - When a maintainer asks "open a PR so CI can run the test," flag up-front that CI won't execute while it's a draft. Don't claim CI was dispatched on a draft — verify with `gh pr checks <n>` / `gh run list --workflow ci.yml --branch <ref>` (you'll see `skipped`).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781663343829-bot-draft-prs-get-zero-ci-on-shader-slang-slang-fi.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781663343829-bot-draft-prs-get-zero-ci-on-shader-slang-slang-fi.md`_
