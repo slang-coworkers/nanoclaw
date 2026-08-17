@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Tests for the okf-synthesis tool embedded in SKILL.md.
 
 The tool is EXTRACTED from SKILL.md (the largest ```python block) rather than
@@ -159,7 +158,7 @@ class GateAndConvergence(unittest.TestCase):
         self.mod = load_tool(self.root)
 
     def test_gate_asleep_when_bounded(self):
-        rc = self.mod.cmd_gate  # ensure symbol exists
+        assert self.mod.cmd_gate  # ensure symbol exists
         report = self.mod.scan()
         self.assertEqual(report["offenders"], [])
         out = _capture(self.mod.cmd_gate)
@@ -211,16 +210,16 @@ class CliSmoke(unittest.TestCase):
         env = dict(os.environ, OKF_MEMORY_ROOT=root)
 
         # bounded tree -> scan exits 0
-        r = subprocess.run([sys.executable, script, "scan"], env=env, capture_output=True, text=True)
+        r = subprocess.run([sys.executable, script, "scan"], env=env, capture_output=True, text=True, check=False)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
         # add a dossier -> scan exits 3
         write(root, "CLAUDE.local.md", "# pile\n\nissue notes\n")
-        r = subprocess.run([sys.executable, script, "scan"], env=env, capture_output=True, text=True)
+        r = subprocess.run([sys.executable, script, "scan"], env=env, capture_output=True, text=True, check=False)
         self.assertEqual(r.returncode, 3, r.stdout + r.stderr)
 
         # gate always emits valid JSON on its last line, exit 0
-        r = subprocess.run([sys.executable, script, "gate"], env=env, capture_output=True, text=True)
+        r = subprocess.run([sys.executable, script, "gate"], env=env, capture_output=True, text=True, check=False)
         self.assertEqual(r.returncode, 0)
         obj = json.loads(r.stdout.strip().splitlines()[-1])
         self.assertTrue(obj["wakeAgent"])
@@ -228,7 +227,7 @@ class CliSmoke(unittest.TestCase):
         # missing root -> scan refuses with exit 2
         r = subprocess.run([sys.executable, script, "scan"],
                            env=dict(os.environ, OKF_MEMORY_ROOT=os.path.join(tmp, "nope")),
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, check=False)
         self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
 
 
