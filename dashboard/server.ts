@@ -8449,6 +8449,11 @@ export async function handleRequest(
         sessions,
         period,
         costUnavailable: ccusageUnavailable(),
+        // Base URL of the per-session transcript archive (build-transcripts-archive.ts,
+        // served separately). When set, the Sessions tab links each row to
+        // `<base>/<group-folder>/<session-id>/index.html`. Install-specific, so it's
+        // env-configured (empty on installs without the archive → no link rendered).
+        transcriptsBase: process.env.TRANSCRIPTS_BASE_URL || readProjectEnvValue('TRANSCRIPTS_BASE_URL') || '',
       }),
     );
     return;

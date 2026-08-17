@@ -4960,6 +4960,7 @@ async function loadAdminSessions() {
     const data = await res.json();
     adminState.sessions = data.sessions || [];
     sessionsView.unavailable = data.costUnavailable ?? null;
+    sessionsView.transcriptsBase = data.transcriptsBase || '';
     adminState.loaded.add('sessions');
     renderAdminSessions();
   } catch {
@@ -5057,7 +5058,11 @@ function renderAdminSessions() {
       <td style="text-align:right">${costCell}</td>
       <td style="text-align:right;color:var(--text-muted)">${fmtNum(s.costTokens || 0)}</td>
       <td style="font-size:9px;color:var(--text-muted)">${esc(s.last_active || '-')}</td>
-      <td><button class="admin-action-btn danger" data-action="delete-session" data-folder="${esc(s.group_folder)}">Delete</button></td>
+      <td>${
+        sessionsView.transcriptsBase && sid && grp
+          ? `<a class="admin-action-btn" href="${escAttr(sessionsView.transcriptsBase)}/${encodeURIComponent(grp)}/${encodeURIComponent(sid)}/index.html" target="_blank" rel="noopener" title="Open rendered transcript">transcript</a> `
+          : ''
+      }<button class="admin-action-btn danger" data-action="delete-session" data-folder="${esc(s.group_folder)}">Delete</button></td>
     </tr>`;
   }
   html += '</table>';
