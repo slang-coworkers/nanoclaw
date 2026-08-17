@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
+import { resolveMirroredSkillScope } from './claude-composer.js';
 import { DATA_DIR, DEFAULT_AGENT_PROVIDER, GROUPS_DIR } from './config.js';
 import { ensureContainerConfig } from './db/container-configs.js';
 import { log } from './log.js';
@@ -201,11 +202,33 @@ export function initGroupFilesystem(
     // the destination. This fixes silent skill-mirror staleness — prior
     // copy-once-at-init left existing groups stuck on old skill versions
     // indefinitely after upstream changes.
+    //
+    // SCOPED (Tier 2): only the coworker type's own resolved skills plus the
+    // always-on floor are mirrored. Claude Code lists every mirrored skill's
+    // name + description in the per-turn preamble, so an unscoped mirror makes
+    // e.g. a slang coworker pay for every `nanoclaw-*` skill on every turn.
+    // `resolveMirroredSkillScope` fails open — an untyped group, a flat type
+    // (`main`), or any resolution error yields `dirs: null` = mirror all.
+    //
+    // The resolved scope is held here (null = unscoped) because the
+    // subagent-definition mirror below reuses it: `agents/` must never
+    // advertise a subagent whose skill dir was scoped out.
+    let mirroredSkillDirs: Set<string> | null = null;
     const skillsDst = path.join(claudeDir, 'skills');
     const skillsSrc = path.join(projectRoot, 'container', 'skills');
     if (fs.existsSync(skillsSrc)) {
       fs.mkdirSync(skillsDst, { recursive: true });
+      const scope = resolveMirroredSkillScope(projectRoot, group.coworker_type);
+      if (scope.degraded) {
+        log.warn('Skills mirror falling back to mirror-all', {
+          group: group.name,
+          id: group.id,
+          coworker_type: group.coworker_type,
+          reason: scope.reason,
+        });
+      }
       for (const skill of fs.readdirSync(skillsSrc)) {
+        if (scope.dirs && !scope.dirs.has(skill)) continue;
         const src = path.join(skillsSrc, skill);
         const dst = path.join(skillsDst, skill);
         const existed = fs.existsSync(dst);
@@ -213,6 +236,17 @@ export function initGroupFilesystem(
           initialized.push(existed ? `skills/${skill} (refreshed)` : `skills/${skill}`);
         }
       }
+      // Prune skills that are no longer in scope. Without this, a group that
+      // was mirrored before scoping (or whose coworker_type changed) keeps
+      // paying for skills it can't invoke — the mirror is copy-forward only.
+      if (scope.dirs) {
+        for (const existing of fs.readdirSync(skillsDst)) {
+          if (scope.dirs.has(existing)) continue;
+          fs.rmSync(path.join(skillsDst, existing), { recursive: true, force: true });
+          initialized.push(`skills/${existing} (pruned — out of type scope)`);
+        }
+      }
+      mirroredSkillDirs = scope.dirs;
     }
 
     // 2b. data/v2-sessions/<id>/.claude-shared/agents/ — subagent definitions.
@@ -220,12 +254,19 @@ export function initGroupFilesystem(
     // subagent definition. Overlays like `codex-critique` ship both an
     // OVERLAY.md (compose-time body) and an agent.md (runtime subagent).
     // mtime-refreshed on each wake for the same reason as skills/.
+    //
+    // Scoped in lockstep with skills/: a skill dir the type doesn't get can't
+    // contribute a subagent either. `overlays/` stays unscoped — overlays are
+    // selected per agent-group (agent_groups.overlays), not by coworker type.
+    const agentSourceAllowed = (subdir: string, entry: string): boolean =>
+      subdir !== 'skills' || mirroredSkillDirs === null || mirroredSkillDirs.has(entry);
     const agentsDst = path.join(claudeDir, 'agents');
     fs.mkdirSync(agentsDst, { recursive: true });
     for (const subdir of ['skills', 'overlays']) {
       const srcRoot = path.join(projectRoot, 'container', subdir);
       if (!fs.existsSync(srcRoot)) continue;
       for (const entry of fs.readdirSync(srcRoot)) {
+        if (!agentSourceAllowed(subdir, entry)) continue;
         const agentFile = path.join(srcRoot, entry, 'agent.md');
         if (fs.existsSync(agentFile)) {
           const dst = path.join(agentsDst, `${entry}.md`);
@@ -242,10 +283,12 @@ export function initGroupFilesystem(
 
     // Prune mirrors for agent.md files removed upstream so stale definitions
     // (e.g. sandbox:'read-only' from an old codex-critique) can't persist.
+    // Also prunes definitions whose skill dir went out of type scope.
     for (const existing of fs.readdirSync(agentsDst)) {
       const name = existing.replace(/\.md$/, '');
-      const stillExists = ['skills', 'overlays'].some((sub) =>
-        fs.existsSync(path.join(projectRoot, 'container', sub, name, 'agent.md')),
+      const stillExists = ['skills', 'overlays'].some(
+        (sub) =>
+          agentSourceAllowed(sub, name) && fs.existsSync(path.join(projectRoot, 'container', sub, name, 'agent.md')),
       );
       if (!stillExists) {
         fs.rmSync(path.join(agentsDst, existing));
