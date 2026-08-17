@@ -289,6 +289,14 @@ jobs:
       - name: Container skill tests (Python)
         run: python3 container/skills/learnings-wiki/test_learnings_wiki.py
 
+      # The costliest-session-digest tool is Python embedded in SKILL.md (the
+      # container writes it out at runtime), so nothing else executes it. Its
+      # pricing table must stay reconciled with dashboard/session-costs.ts; this
+      # suite extracts the tool FROM SKILL.md and asserts pricing/dedup/gate shape
+      # so a silent drift is caught rather than shipping a wrong cost figure.
+      - name: Costliest-session digest tests (Python)
+        run: python3 container/skills/costliest-session-digest/test_costliest_session.py
+
       # The KB observability producers are Python too, and their suite ran NOWHERE:
       # #1124 added 32 tests and CI never executed one of them, so the review's
       # "32/32 passed" was a hand-run that nothing repeats. These two tools decide
