@@ -687,3 +687,46 @@ export async function routeInboundToSession(opts: {
     await wakeContainer(freshSession);
   }
 }
+
+/**
+ * Route a human cost-cap override decision (NanoClaw #1) into a session.
+ *
+ * The dashboard admin picks Continue or Stop on an escalated session; this
+ * writes a `cost_override` control row into the session's inbound.db and wakes
+ * the container so the runner's next poll applies it. A direct analog of
+ * `routeInboundToSession` — no messaging-group lookup, no fan-out, no command
+ * gate. Caller (dashboard ingress) is `DASHBOARD_SECRET`-gated and must have
+ * already validated the decision.
+ */
+export async function routeCostOverrideToSession(opts: {
+  sessionId: string;
+  decision: 'continue' | 'stop';
+}): Promise<void> {
+  if (opts.decision !== 'continue' && opts.decision !== 'stop') {
+    throw new Error(`invalid cost-override decision: ${String(opts.decision)}`);
+  }
+  const session = getSession(opts.sessionId);
+  if (!session) throw new Error(`session not found: ${opts.sessionId}`);
+
+  writeSessionMessage(session.agent_group_id, session.id, {
+    id: generateId(),
+    kind: 'cost_override',
+    timestamp: new Date().toISOString(),
+    platformId: 'dashboard:admin',
+    channelType: 'dashboard',
+    threadId: session.thread_id ?? null,
+    content: JSON.stringify({ decision: opts.decision }),
+    trigger: 1,
+  });
+
+  log.info('Routed cost-override to session', {
+    sessionId: session.id,
+    agentGroup: session.agent_group_id,
+    decision: opts.decision,
+  });
+
+  const freshSession = getSession(session.id);
+  if (freshSession) {
+    await wakeContainer(freshSession);
+  }
+}

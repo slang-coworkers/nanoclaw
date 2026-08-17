@@ -19,9 +19,31 @@ export interface RunnerConfig {
   model?: string;
   effort?: string;
   fallbackModel?: string;
+  /**
+   * Immortality (NanoClaw #1 cost cap): orchestrator / admin groups escalate
+   * for visibility only and are NEVER quiesced by a cost stop. Host-materialized
+   * from `agent_groups.is_admin === 1 || coworker_type === 'main'`. Sourced from
+   * an authoritative host field, never inferred from the group name.
+   */
+  immortal?: boolean;
+  /**
+   * Per-session soft cost cap (USD). One "allotment" — a 'continue' override
+   * raises the effective cap by this same amount. Host-materialized from the
+   * per-group threshold; falls back to NANOCLAW_COST_T2_USD then a conservative
+   * default. LEAN v1 has NO per-group cap config table.
+   */
+  costCapT2Usd?: number;
 }
 
 const DEFAULT_MAX_MESSAGES = 10;
+
+/**
+ * Conservative default per-session cost cap (USD) when neither container.json
+ * nor NANOCLAW_COST_T2_USD supplies one. Sized against the known cost driver:
+ * a small tail of 1M-context sessions accounts for most fleet spend, so a
+ * three-figure cap flags those without tripping ordinary sessions.
+ */
+const DEFAULT_COST_CAP_T2_USD = 100;
 
 let _config: RunnerConfig | null = null;
 
@@ -49,9 +71,25 @@ export function loadConfig(): RunnerConfig {
     model: (raw.model as string) || undefined,
     effort: (raw.effort as string) || undefined,
     fallbackModel: (raw.fallbackModel as string) || process.env.ANTHROPIC_FALLBACK_MODEL || undefined,
+    immortal: raw.immortal === true,
+    costCapT2Usd: resolveCostCapT2Usd(raw.costCapT2Usd),
   };
 
   return _config;
+}
+
+/**
+ * Resolve the per-session cost cap. Precedence: NANOCLAW_COST_T2_USD env
+ * override → container.json `costCapT2Usd` (host-materialized) → conservative
+ * default. A non-positive or unparseable value falls through to the next
+ * source so a bad hand-edit can't silently disable the cap.
+ */
+function resolveCostCapT2Usd(rawValue: unknown): number {
+  const env = Number(process.env.NANOCLAW_COST_T2_USD);
+  if (Number.isFinite(env) && env > 0) return env;
+  const fromConfig = Number(rawValue);
+  if (Number.isFinite(fromConfig) && fromConfig > 0) return fromConfig;
+  return DEFAULT_COST_CAP_T2_USD;
 }
 
 /** Get the loaded config. Throws if loadConfig() hasn't been called. */

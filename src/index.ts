@@ -352,6 +352,10 @@ async function main(): Promise<void> {
     onCredentialRejectFn: async (_credentialId: string) => {
       log.debug('Dashboard credential reject — response registry not yet implemented');
     },
+    onCostOverrideFn: async (sessionId: string, decision: 'continue' | 'stop') => {
+      const { routeCostOverrideToSession } = await import('./router.js');
+      await routeCostOverrideToSession({ sessionId, decision });
+    },
   });
 
   // 3c. GitHub webhook server (publicly exposed, HMAC-validated)
