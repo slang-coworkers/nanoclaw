@@ -4998,9 +4998,36 @@ function renderAdminSessions() {
     rows = [...rows].sort((a, b) => String(b.last_active || '').localeCompare(String(a.last_active || '')));
   }
   const totalCost = rows.reduce((s, r) => s + (r.cost || 0), 0);
+  // Cost distribution across sessions with priced activity in the window. The
+  // tail is heavy (a few sessions dominate spend), so percentiles say more than
+  // the mean: p50 = the typical session, p90/p99/max = where the cost concentrates.
+  const pricedCosts = rows
+    .map((r) => r.cost || 0)
+    .filter((c) => c > 0)
+    .sort((a, b) => a - b);
+  const pctl = (arr, q) => (arr.length ? arr[Math.min(arr.length - 1, Math.floor((q / 100) * (arr.length - 1)))] : 0);
+  const distPills =
+    costUnavailable || pricedCosts.length === 0
+      ? ''
+      : `<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap;font-size:10px">` +
+        `<span style="color:var(--text-muted)">Cost per session (${pricedCosts.length} priced):</span>` +
+        [
+          ['p50', 50],
+          ['p75', 75],
+          ['p90', 90],
+          ['p99', 99],
+          ['max', 100],
+        ]
+          .map(
+            ([lbl, q]) =>
+              `<span style="border:1px solid var(--border);border-radius:4px;padding:1px 6px"><span style="color:var(--text-muted)">${lbl}</span> <b style="color:#10B981">${fmtUsd(pctl(pricedCosts, q))}</b></span>`,
+          )
+          .join('') +
+        `</div>`;
   let html =
     controls +
     `<div style="color:var(--text-muted);font-size:10px;margin-bottom:6px">${rows.length} sessions · ${costUnavailable ? 'n/a' : fmtUsd(totalCost)} over ${p}</div>` +
+    distPills +
     `<table class="admin-table">
     <tr><th>#</th><th>Coworker</th><th>Session ID</th><th style="text-align:right">Cost (${p})</th><th style="text-align:right">Tokens</th><th>Last active</th><th>Actions</th></tr>`;
   let i = 0;
