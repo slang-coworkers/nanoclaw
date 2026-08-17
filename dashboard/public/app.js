@@ -4972,6 +4972,42 @@ async function loadAdminSessions() {
   }
 }
 
+// Per-session cost-cap pill + escalation override buttons. Mirrors the Cost
+// column's pill styling. Status → color: ok green, warn amber, escalated red,
+// stopped grey. When status==='escalated' the row also offers Continue / Stop
+// buttons that POST the human decision to the cost-override endpoint (which the
+// dashboard proxies to the host ingress). Shared contract with the runner:
+// s.costStatus / s.costSpent / s.costCap / s.costImmortal.
+function renderCostCapCell(s) {
+  const status = s.costStatus;
+  if (!status) return '<span style="color:#64748B">—</span>';
+  const colors = {
+    ok: '#10B981',
+    warn: '#F59E0B',
+    escalated: '#EF4444',
+    stopped: '#94A3B8',
+  };
+  const color = colors[status] || '#94A3B8';
+  const spent = typeof s.costSpent === 'number' ? fmtUsd(s.costSpent) : '?';
+  const cap = typeof s.costCap === 'number' ? fmtUsd(s.costCap) : '?';
+  const immortalMark = s.costImmortal
+    ? '<span title="immortal (orchestrator/admin) — never stopped" style="color:var(--text-muted)"> ∞</span>'
+    : '';
+  let cell =
+    `<span style="border:1px solid ${color};border-radius:4px;padding:1px 6px;white-space:nowrap">` +
+    `<b style="color:${color}">${spent}</b><span style="color:var(--text-muted)"> / ${cap}</span>` +
+    `<span style="color:${color};font-size:9px"> ${esc(status)}</span>${immortalMark}</span>`;
+  if (status === 'escalated' && s.session_id) {
+    const sid = escAttr(s.session_id);
+    cell +=
+      `<span style="display:inline-flex;gap:4px;margin-left:6px">` +
+      `<button class="admin-action-btn success" data-action="cost-override" data-session-id="${sid}" data-decision="continue">Continue</button>` +
+      `<button class="admin-action-btn danger" data-action="cost-override" data-session-id="${sid}" data-decision="stop">Stop</button>` +
+      `</span>`;
+  }
+  return cell;
+}
+
 function renderAdminSessions() {
   const el = document.getElementById('admin-sessions-content');
   const p = sessionsView.period;
@@ -5034,7 +5070,7 @@ function renderAdminSessions() {
     `<div style="color:var(--text-muted);font-size:10px;margin-bottom:6px">${rows.length} sessions · ${costUnavailable ? 'n/a' : fmtUsd(totalCost)} over ${p}</div>` +
     distPills +
     `<table class="admin-table">
-    <tr><th>#</th><th>Coworker</th><th>Session ID</th><th style="text-align:right">Cost (${p})</th><th style="text-align:right">Tokens</th><th>Last active</th><th>Actions</th></tr>`;
+    <tr><th>#</th><th>Coworker</th><th>Session ID</th><th style="text-align:right">Cost (${p})</th><th>Cost cap</th><th style="text-align:right">Tokens</th><th>Last active</th><th>Actions</th></tr>`;
   let i = 0;
   for (const s of rows) {
     i++;
@@ -5055,11 +5091,13 @@ function renderAdminSessions() {
     const costCell = costUnavailable
       ? '<span style="color:#94A3B8">n/a</span>'
       : `<span style="color:#10B981">${fmtUsd(s.cost || 0)}</span>${s.costUnpriced ? '<span title="includes usage from a model without a known price" style="color:#F59E0B"> *</span>' : ''}`;
+    const costCapCell = renderCostCapCell(s);
     html += `<tr>
       <td style="color:var(--text-muted)">${i}</td>
       <td>${esc(s.group_name || s.group_folder || '-')}</td>
       <td style="font-size:9px;color:var(--text-muted)">${sidCell}</td>
       <td style="text-align:right">${costCell}</td>
+      <td>${costCapCell}</td>
       <td style="text-align:right;color:var(--text-muted)">${fmtNum(s.costTokens || 0)}</td>
       <td style="font-size:9px;color:var(--text-muted)">${esc(s.last_active || '-')}</td>
       <td>${
@@ -5396,6 +5434,39 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
     btn.disabled = true;
     try {
       await fetch(`/api/sessions/${encodeURIComponent(folder)}`, { method: 'DELETE' });
+      adminState.loaded.delete('sessions');
+      loadAdminSessions();
+    } catch {
+      btn.disabled = false;
+    }
+    return;
+  }
+
+  if (action === 'cost-override') {
+    const sessionId = btn.dataset.sessionId;
+    const decision = btn.dataset.decision;
+    if (!sessionId || (decision !== 'continue' && decision !== 'stop')) return;
+    const verb = decision === 'stop' ? 'Stop (quiesce)' : 'Continue (raise cap)';
+    if (!confirm(`${verb} session "${sessionId}"?`)) return;
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/cost-override', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, decision }),
+      });
+      if (!res.ok) {
+        let msg = 'Cost override failed';
+        try {
+          const j = await res.json();
+          msg = j.error || msg;
+        } catch {
+          /* non-JSON */
+        }
+        alert(msg);
+        btn.disabled = false;
+        return;
+      }
       adminState.loaded.delete('sessions');
       loadAdminSessions();
     } catch {
