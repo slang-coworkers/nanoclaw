@@ -31,6 +31,7 @@ import {
   watchFile,
   unwatchFile,
   writeFileSync,
+  renameSync,
   unlinkSync,
   mkdirSync,
   rmSync,
@@ -1966,6 +1967,72 @@ let sessionCostCache: SessionCostByPeriod = {
   all: new Map(),
 };
 
+// Per-session cost-cap state, published by the runner into outbound.db
+// session_state under the single JSON key `cost_cap`. Shared contract with the
+// agent-runner (nv-dashboard):
+//   { capUsd, spentUsd, status:'ok'|'warn'|'escalated'|'stopped',
+//     immortal, window:'lifetime'|'daily', dayKey?, escalatedAt?, decision?, decidedAt? }
+// `window` distinguishes a per-run (lifetime) cap from an immortal orchestrator's
+// per-DAY visibility bound (dayKey present only when window==='daily').
+// Read inline in /api/sessions; a short TTL keeps the escalation status
+// near-real-time for the override loop while avoiding an outbound.db open on
+// every keystroke of a fast poll.
+interface SessionCapState {
+  capUsd?: number;
+  spentUsd?: number;
+  status?: 'ok' | 'warn' | 'escalated' | 'stopped';
+  immortal?: boolean;
+  window?: 'lifetime' | 'daily';
+  dayKey?: string;
+  escalatedAt?: string;
+  decision?: 'continue' | 'stop';
+  decidedAt?: string;
+}
+const CAP_CACHE_TTL_MS = 5000;
+const sessionCapCache = new Map<string, { at: number; state: SessionCapState | null }>();
+
+/**
+ * Read a session's `cost_cap` state from its outbound.db (readonly). Returns
+ * null when the DB, the table, or the key is absent (graceful degradation:
+ * pre-cost-cap runners simply show no cap). Mirrors the readonly-probe pattern
+ * used elsewhere (server.ts ~7855). Short-TTL cached per (group, session).
+ */
+function readSessionCapState(agentGroupId: string, sessionId: string): SessionCapState | null {
+  if (!agentGroupId || !sessionId) return null;
+  const cacheKey = `${agentGroupId}/${sessionId}`;
+  const cached = sessionCapCache.get(cacheKey);
+  const now = Date.now();
+  if (cached && now - cached.at < CAP_CACHE_TTL_MS) return cached.state;
+  let state: SessionCapState | null = null;
+  const outboundPath = join(getDataDir(), 'v2-sessions', agentGroupId, sessionId, 'outbound.db');
+  if (existsSync(outboundPath)) {
+    let odb: Database.Database | null = null;
+    try {
+      odb = new Database(outboundPath, { readonly: true });
+      const cols = odb.prepare('PRAGMA table_info(session_state)').all() as Array<{ name: string }>;
+      if (cols.some((c) => c.name === 'value')) {
+        const row = odb.prepare("SELECT value FROM session_state WHERE key = 'cost_cap'").get() as
+          | { value: string }
+          | undefined;
+        if (row?.value) {
+          const parsed = JSON.parse(row.value);
+          if (parsed && typeof parsed === 'object') state = parsed as SessionCapState;
+        }
+      }
+    } catch {
+      state = null;
+    } finally {
+      try {
+        odb?.close();
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  sessionCapCache.set(cacheKey, { at: now, state });
+  return state;
+}
+
 // Guard against overlapping cold scans: the uncapped 30d pass can exceed the 60s
 // tick interval on a cold cache, so a second tick must not stack on the first.
 let sessionCostScanning = false;
@@ -2076,10 +2143,55 @@ function refreshSessionCostCache(): void {
     if (perFileCostCache.size > livePaths.size * 2 + 1000) {
       for (const k of perFileCostCache.keys()) if (!livePaths.has(k)) perFileCostCache.delete(k);
     }
+    writeCostThresholdFile(next);
   } catch {
     /* DB not ready */
   } finally {
     sessionCostScanning = false;
+  }
+}
+
+/**
+ * Publish `data/cost-thresholds.json` — the p90 of priced per-session cost over
+ * a trailing window — so the runner can seed each new per-run cost cap from the
+ * fleet's recent spend distribution. Shared contract (dashboard WRITES, host
+ * READS): { p90Usd, period, sampleSize, computedAt }.
+ *
+ * Prefer the 7d window (responsive to recent spend); fall back to 30d when 7d
+ * has no priced sessions yet. Percentile method matches the Sessions-tab pctl
+ * (sort asc; index = floor(0.9*(n-1))). Written atomically (tmp + rename) and
+ * fail-soft — the file is advisory, so any error just skips this cycle.
+ */
+function writeCostThresholdFile(byPeriod: SessionCostByPeriod): void {
+  try {
+    let period: ContextPeriod = '30d';
+    let costs: number[] = [];
+    for (const p of ['7d', '30d'] as ContextPeriod[]) {
+      const priced = [...byPeriod[p].values()]
+        .map((e) => e.cost)
+        .filter((c) => c > 0)
+        .sort((a, b) => a - b);
+      if (priced.length) {
+        period = p;
+        costs = priced;
+        break;
+      }
+    }
+    if (costs.length === 0) return;
+    const idx = Math.min(costs.length - 1, Math.floor(0.9 * (costs.length - 1)));
+    const payload =
+      JSON.stringify({
+        p90Usd: costs[idx],
+        period,
+        sampleSize: costs.length,
+        computedAt: new Date().toISOString(),
+      }) + '\n';
+    const outPath = join(getDataDir(), 'cost-thresholds.json');
+    const tmpPath = `${outPath}.tmp-${process.pid}-${Date.now()}`;
+    writeFileSync(tmpPath, payload);
+    renameSync(tmpPath, outPath);
+  } catch {
+    /* fail-soft: threshold file is advisory */
   }
 }
 
@@ -8431,11 +8543,61 @@ export async function handleRequest(
       ? (periodParam as ContextPeriod)
       : '30d';
     const costByNano = sessionCostCache[period] || new Map<string, SessionCostEntry>();
+    // Base URL of the flat claude-trace archive (scripts/refresh-claude-trace-www.sh,
+    // served separately). When set, each priced row links to its session-precise
+    // trace file `<base>/<folder>__session-<id>*.html`. Resolved once outside the
+    // loop; empty on installs without the archive → no trace link rendered.
+    const traceBase = process.env.CLAUDE_TRACE_BASE_URL || readProjectEnvValue('CLAUDE_TRACE_BASE_URL') || '';
     for (const s of sessions) {
       const c = s.session_id ? costByNano.get(s.session_id) : undefined;
       s.cost = c ? c.cost : 0;
       s.costTokens = c ? c.tokens : 0;
       s.costUnpriced = c ? c.unpriced : false;
+      // Cost-cap state, published by the runner into outbound.db session_state.
+      // Absent (older runner / no accrual yet) → cap fields stay undefined and
+      // the UI renders no pill for the row. Read ONLY for sessions with priced
+      // activity (s.cost>0): each read opens a SQLite DB, and probing every one
+      // of ~3000 mostly-idle sessions is wasteful — the cap only matters where
+      // spend is accruing.
+      const cap = s.session_id && s.cost > 0 ? readSessionCapState(s.agent_group_id, s.session_id) : null;
+      if (cap) {
+        s.costCap = cap.capUsd;
+        s.costSpent = cap.spentUsd;
+        s.costStatus = cap.status;
+        s.costImmortal = cap.immortal;
+        s.costWindow = cap.window;
+      }
+      // Session-precise trace deep-link. Sessions live under
+      // data/v2-sessions/<agent_group_id>/… but traces live under
+      // groups/<folder>/.claude-trace/session-<session_id>*.html, so map via the
+      // group folder (already joined as s.group_folder). Bounded + fail-soft;
+      // skip idle rows (s.cost<=0) to stay as cheap as the cap read above.
+      if (traceBase && s.cost > 0 && s.group_folder && s.session_id) {
+        try {
+          const traceDir = join(getGroupsDir(), s.group_folder, '.claude-trace');
+          if (existsSync(traceDir)) {
+            const prefix = `session-${s.session_id}`;
+            let newest = '';
+            let newestMs = -1;
+            for (const f of readdirSync(traceDir)) {
+              if (!f.startsWith(prefix) || !f.endsWith('.html')) continue;
+              let m = 0;
+              try {
+                m = statSync(join(traceDir, f)).mtimeMs;
+              } catch {
+                /* unreadable — treat as oldest */
+              }
+              if (m >= newestMs) {
+                newestMs = m;
+                newest = f;
+              }
+            }
+            if (newest) s.traceUrl = `${traceBase}/${s.group_folder}__${newest}`;
+          }
+        } catch {
+          /* fail-soft: no trace link for this row */
+        }
+      }
     }
     if (url.searchParams.get('sort') === 'cost') {
       sessions.sort((a, b) => (b.cost || 0) - (a.cost || 0));
@@ -8454,6 +8616,9 @@ export async function handleRequest(
         // `<base>/<group-folder>/<session-id>/index.html`. Install-specific, so it's
         // env-configured (empty on installs without the archive → no link rendered).
         transcriptsBase: process.env.TRANSCRIPTS_BASE_URL || readProjectEnvValue('TRANSCRIPTS_BASE_URL') || '',
+        // Base URL of the flat claude-trace archive; per-row deep-links are on
+        // s.traceUrl (resolved above). Exposed for parity with transcriptsBase.
+        traceBase,
       }),
     );
     return;
@@ -11857,6 +12022,78 @@ export async function handleRequest(
         res.writeHead(503, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: message }));
         return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (e: any) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
+  // POST /api/cost-override — human decision on an escalated per-session cost
+  // cap. The WRITE (into the session's inbound.db as a kind='cost_override'
+  // message + container wake) lives on the HOST; the dashboard is a separate
+  // process, so it proxies to the host ingress /api/dashboard/cost-override with
+  // the Bearer secret, exactly like send-to-session. Decisions: 'continue'
+  // (raise the window cap by one allotment) and 'stop' (recorded-only for
+  // immortal). This dashboard is SSO-protected (no DASHBOARD_SECRET by design),
+  // so the override intentionally does NOT fail-closed when the secret is unset.
+  if (req.method === 'POST' && url.pathname === '/api/cost-override') {
+    if (!requireAuth(req, res)) return;
+    const body = await readBody(req, res);
+    if (body === null) return;
+    try {
+      const { sessionId, decision } = JSON.parse(body);
+      if (typeof sessionId !== 'string' || !sessionId.trim() || (decision !== 'continue' && decision !== 'stop')) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end('{"error":"sessionId and decision (continue|stop) required"}');
+        return;
+      }
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const secret = getDashboardSecret();
+      if (secret) headers.Authorization = `Bearer ${secret}`;
+      try {
+        const upstream = await fetch(`${getDashboardIngressBaseUrl()}/api/dashboard/cost-override`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ session_id: sessionId.trim(), decision }),
+          signal: AbortSignal.timeout(5000),
+        });
+        const upstreamText = await upstream.text();
+        if (!upstream.ok) {
+          let error = upstreamText || 'Dashboard host bridge request failed';
+          try {
+            const parsed = JSON.parse(upstreamText);
+            error = parsed.error || error;
+          } catch {
+            /* text body */
+          }
+          res.writeHead(upstream.status, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error }));
+          return;
+        }
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Dashboard host bridge unreachable. Ensure NanoClaw host is running.';
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: message }));
+        return;
+      }
+      // Cost-cap state may change after the runner wakes; drop ONLY this
+      // session's short-TTL cache entry (keyed "<agentGroupId>/<sessionId>") so
+      // the next /api/sessions read reflects the decision sooner — without
+      // invalidating every other row's cached cap. Resolve the agent group id
+      // from the central DB (the override endpoint only carries sessionId).
+      try {
+        const sid = sessionId.trim();
+        const row = db?.prepare('SELECT agent_group_id FROM sessions WHERE id = ?').get(sid) as
+          | { agent_group_id?: string }
+          | undefined;
+        if (row?.agent_group_id) sessionCapCache.delete(`${row.agent_group_id}/${sid}`);
+      } catch {
+        /* best-effort cache invalidation — falls back to the 5s TTL */
       }
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true }));
