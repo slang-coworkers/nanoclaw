@@ -1,8 +1,10 @@
 // Integration tests for container/hooks/force-codex-sandbox.sh.
 //
-// The hook rejects mcp__codex__codex calls with sandbox != "danger-full-access".
-// bwrap doesn't work inside Docker containers, so read-only sandbox wastes a
-// round-trip (30% of codex-critique sessions hit this).
+// The hook FORCES mcp__codex__codex calls to sandbox "danger-full-access" by
+// rewriting the tool input (PreToolUse `updatedInput`) rather than denying —
+// bwrap doesn't work inside Docker containers, and denying wasted a round-trip
+// (30% of codex-critique sessions hit this) and failed when the model didn't
+// retry with the exact string.
 
 import { spawnSync } from 'child_process';
 import path from 'path';
@@ -13,6 +15,7 @@ const SCRIPT = path.resolve(process.cwd(), 'container', 'hooks', 'force-codex-sa
 
 interface RunResult {
   status: number;
+  stdout: string;
   stderr: string;
 }
 
@@ -22,42 +25,48 @@ function run(payload: object): RunResult {
     env: { PATH: process.env.PATH || '' },
     encoding: 'utf-8',
   });
-  return { status: proc.status ?? -1, stderr: proc.stderr ?? '' };
+  return { status: proc.status ?? -1, stdout: proc.stdout ?? '', stderr: proc.stderr ?? '' };
 }
 
 describe('force-codex-sandbox hook', () => {
-  it('allows mcp__codex__codex with danger-full-access', () => {
+  it('allows danger-full-access unchanged (no rewrite)', () => {
     const r = run({
       tool_name: 'mcp__codex__codex',
       tool_input: { prompt: 'review this', sandbox: 'danger-full-access' },
     });
     expect(r.status).toBe(0);
+    expect(r.stdout.trim()).toBe('');
   });
 
-  it('blocks mcp__codex__codex with read-only', () => {
+  it('forces danger-full-access when sandbox is read-only, preserving other input', () => {
     const r = run({
       tool_name: 'mcp__codex__codex',
       tool_input: { prompt: 'review this', sandbox: 'read-only' },
     });
-    expect(r.status).toBe(2);
-    expect(r.stderr).toContain('BLOCKED');
-    expect(r.stderr).toContain('danger-full-access');
+    expect(r.status).toBe(0);
+    const out = JSON.parse(r.stdout);
+    expect(out.hookSpecificOutput.hookEventName).toBe('PreToolUse');
+    expect(out.hookSpecificOutput.updatedInput.sandbox).toBe('danger-full-access');
+    expect(out.hookSpecificOutput.updatedInput.prompt).toBe('review this');
   });
 
-  it('blocks mcp__codex__codex with standard sandbox', () => {
+  it('forces danger-full-access when sandbox is standard', () => {
     const r = run({
       tool_name: 'mcp__codex__codex',
       tool_input: { prompt: 'review this', sandbox: 'standard' },
     });
-    expect(r.status).toBe(2);
+    expect(r.status).toBe(0);
+    const out = JSON.parse(r.stdout);
+    expect(out.hookSpecificOutput.updatedInput.sandbox).toBe('danger-full-access');
   });
 
-  it('allows mcp__codex__codex when sandbox is omitted (defaults to danger-full-access)', () => {
+  it('leaves an omitted sandbox alone (config default is already danger-full-access)', () => {
     const r = run({
       tool_name: 'mcp__codex__codex',
       tool_input: { prompt: 'review this' },
     });
     expect(r.status).toBe(0);
+    expect(r.stdout.trim()).toBe('');
   });
 
   it('passes through non-codex tools', () => {
@@ -66,5 +75,6 @@ describe('force-codex-sandbox hook', () => {
       tool_input: { command: 'ls' },
     });
     expect(r.status).toBe(0);
+    expect(r.stdout.trim()).toBe('');
   });
 });
