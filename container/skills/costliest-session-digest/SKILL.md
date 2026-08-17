@@ -1,7 +1,7 @@
 ---
 name: costliest-session-digest
 license: MIT
-description: Daily "costliest session + why" digest for ONE agent group. Finds the group's most expensive session of the day from its own SDK transcripts (the same raw per-message usage the dashboard prices from), explains WHY it was costly (peak context, cache-write churn, model tier, oversized tool outputs, redundant loops), and DMs the owner a tight few-bullet summary. Self-correcting: a daily cron gate stays silent on cheap days. Triggers on "costliest session", "cost digest", "why was that session expensive", "daily cost report".
+description: Daily "costliest session + why" digest for ONE agent group. Finds the group's most expensive session of the day from its own SDK transcripts (the same raw per-message usage the dashboard prices from), explains WHY it was costly (peak context, cache-write churn, model tier, oversized tool outputs, redundant loops), and DMs the owner a tight few-bullet summary. Self-correcting — a daily cron gate stays silent on cheap days. Triggers on "costliest session", "cost digest", "why was that session expensive", "daily cost report".
 ---
 
 # costliest-session-digest
