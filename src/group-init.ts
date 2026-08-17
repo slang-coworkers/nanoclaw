@@ -20,6 +20,15 @@ const DEFAULT_SETTINGS_JSON =
         CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
         CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
       },
+      // Strip Claude Code's native Workflow tool — the single largest tool
+      // schema on every turn (~26KB) — because NanoClaw orchestrates its own
+      // sessions (a2a messaging + host-side orchestration), so it is dead
+      // weight. Matches merged upstream #3031 ("lean harness defaults"), whose
+      // group-init.ts delta our fork's diverged copy dropped on the Aug-5 sync.
+      // NEW groups only; existing groups keep their settings.json (never
+      // regenerated) — re-enable per group by editing that group's
+      // .claude-shared/settings.json and restarting.
+      disableWorkflows: true,
       hooks: {
         PreCompact: [
           {
