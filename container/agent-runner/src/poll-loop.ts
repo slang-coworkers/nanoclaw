@@ -130,7 +130,16 @@ function utcDayKey(): string {
  *    dayKey is today's UTC day; a stale day starts fresh at 0.
  */
 function initCostTracking(providerName: string): void {
-  const cfg = getConfig();
+  // getConfig() throws if loadConfig() was never called — the case in poll-loop
+  // integration tests that exercise the loop without scaffolding container.json.
+  // Cost accounting is simply off there; production always loads config first.
+  let cfg: ReturnType<typeof getConfig>;
+  try {
+    cfg = getConfig();
+  } catch {
+    costEnabled = false;
+    return;
+  }
   costAllotmentUsd = cfg.costCapT2Usd && cfg.costCapT2Usd > 0 ? cfg.costCapT2Usd : 0;
   costImmortal = cfg.immortal === true;
   costWindow = costImmortal ? 'daily' : 'lifetime';
@@ -138,15 +147,18 @@ function initCostTracking(providerName: string): void {
   if (!costEnabled) return;
 
   const persisted = getCostCap();
-  costCapUsd = persisted?.capUsd && persisted.capUsd > 0 ? persisted.capUsd : costAllotmentUsd;
 
   if (costWindow === 'daily') {
     costDayKey = utcDayKey();
     const persistedIsToday = persisted?.dayKey === costDayKey;
+    // A fresh UTC day starts back at the p90/day allotment so the daily bound
+    // holds day-over-day; only a same-day respawn adopts the persisted (possibly
+    // 'continue'-raised) cap, spend, and escalation.
+    costCapUsd = persistedIsToday && persisted?.capUsd && persisted.capUsd > 0 ? persisted.capUsd : costAllotmentUsd;
     costSpentUsd = persistedIsToday && persisted?.spentUsd && persisted.spentUsd > 0 ? persisted.spentUsd : 0;
-    // An escalation from an earlier day must not suppress today's first escalation.
     costEscalatedAt = persistedIsToday ? persisted?.escalatedAt : undefined;
   } else {
+    costCapUsd = persisted?.capUsd && persisted.capUsd > 0 ? persisted.capUsd : costAllotmentUsd;
     costDayKey = undefined;
     costSpentUsd = persisted?.spentUsd && persisted.spentUsd > 0 ? persisted.spentUsd : 0;
     costEscalatedAt = persisted?.escalatedAt;
@@ -221,6 +233,9 @@ function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void 
       costDayKey = today;
       costSpentUsd = 0;
       costEscalatedAt = undefined;
+      // New day → back to the p90/day allotment; a prior day's 'continue' raise
+      // does not carry over (the bound is per-day).
+      costCapUsd = costAllotmentUsd;
     }
   }
 
@@ -665,16 +680,27 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     // 'continue' can resume. Normal messages are left `pending` (never
     // markProcessing'd) so they run once the session resumes.
     if (costStopRequested) {
-      const controls = messages.filter((m) => m.kind === 'cost_override');
-      if (controls.length === 0) {
-        await sleep(POLL_INTERVAL_MS);
+      // Recovery out of a cost stop is TWO-WAY: a cost_override 'continue' (the
+      // dashboard button) OR an explicit /clear. A /clear clears the stop and
+      // falls through to the normal command path below (which resets the window
+      // + continuation). Everything else stays pending until the session resumes.
+      const hasClear = messages.some(
+        (m) => (m.kind === 'chat' || m.kind === 'chat-sdk') && isClearCommand(m),
+      );
+      if (!hasClear) {
+        const controls = messages.filter((m) => m.kind === 'cost_override');
+        if (controls.length === 0) {
+          await sleep(POLL_INTERVAL_MS);
+          continue;
+        }
+        const controlIds = controls.map((m) => m.id);
+        markProcessing(controlIds);
+        for (const c of controls) applyCostOverride(c);
+        markCompleted(controlIds);
         continue;
       }
-      const controlIds = controls.map((m) => m.id);
-      markProcessing(controlIds);
-      for (const c of controls) applyCostOverride(c);
-      markCompleted(controlIds);
-      continue;
+      // /clear present → drop the quiesce and let the normal loop reset us.
+      costStopRequested = false;
     }
 
     const ids = messages.map((m) => m.id);
