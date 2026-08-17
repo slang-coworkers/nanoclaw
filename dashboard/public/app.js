@@ -4974,10 +4974,14 @@ async function loadAdminSessions() {
 
 // Per-session cost-cap pill + escalation override buttons. Mirrors the Cost
 // column's pill styling. Status → color: ok green, warn amber, escalated red,
-// stopped grey. When status==='escalated' the row also offers Continue / Stop
-// buttons that POST the human decision to the cost-override endpoint (which the
-// dashboard proxies to the host ingress). Shared contract with the runner:
-// s.costStatus / s.costSpent / s.costCap / s.costImmortal.
+// stopped grey. A daily-window cap (immortal orchestrator's per-DAY visibility
+// bound) renders "/day" after the cap and keeps the ∞ marker. When
+// status==='escalated' the row offers override buttons: Continue + Stop for a
+// NON-immortal per-run cap, but Continue ONLY (no Stop) for an immortal one —
+// immortal runs by design; the DM/pill is the bound, not a kill switch. Buttons
+// POST the human decision to the cost-override endpoint (which the dashboard
+// proxies to the host ingress). Shared contract with the runner: s.costStatus /
+// s.costSpent / s.costCap / s.costImmortal / s.costWindow.
 function renderCostCapCell(s) {
   const status = s.costStatus;
   if (!status) return '<span style="color:#64748B">—</span>';
@@ -4990,20 +4994,22 @@ function renderCostCapCell(s) {
   const color = colors[status] || '#94A3B8';
   const spent = typeof s.costSpent === 'number' ? fmtUsd(s.costSpent) : '?';
   const cap = typeof s.costCap === 'number' ? fmtUsd(s.costCap) : '?';
+  const perDay = s.costWindow === 'daily' ? ' /day' : '';
   const immortalMark = s.costImmortal
     ? '<span title="immortal (orchestrator/admin) — never stopped" style="color:var(--text-muted)"> ∞</span>'
     : '';
   let cell =
     `<span style="border:1px solid ${color};border-radius:4px;padding:1px 6px;white-space:nowrap">` +
-    `<b style="color:${color}">${spent}</b><span style="color:var(--text-muted)"> / ${cap}</span>` +
+    `<b style="color:${color}">${spent}</b><span style="color:var(--text-muted)"> / ${cap}${perDay}</span>` +
     `<span style="color:${color};font-size:9px"> ${esc(status)}</span>${immortalMark}</span>`;
   if (status === 'escalated' && s.session_id) {
     const sid = escAttr(s.session_id);
-    cell +=
-      `<span style="display:inline-flex;gap:4px;margin-left:6px">` +
-      `<button class="admin-action-btn success" data-action="cost-override" data-session-id="${sid}" data-decision="continue">Continue</button>` +
-      `<button class="admin-action-btn danger" data-action="cost-override" data-session-id="${sid}" data-decision="stop">Stop</button>` +
-      `</span>`;
+    let btns = `<button class="admin-action-btn success" data-action="cost-override" data-session-id="${sid}" data-decision="continue">Continue</button>`;
+    // No Stop for immortal — the escalation is a visibility bound, never a halt.
+    if (!s.costImmortal) {
+      btns += `<button class="admin-action-btn danger" data-action="cost-override" data-session-id="${sid}" data-decision="stop">Stop</button>`;
+    }
+    cell += `<span style="display:inline-flex;gap:4px;margin-left:6px">` + btns + `</span>`;
   }
   return cell;
 }
@@ -5103,6 +5109,10 @@ function renderAdminSessions() {
       <td>${
         sessionsView.transcriptsBase && sid && grp
           ? `<a class="admin-action-btn" href="${escAttr(sessionsView.transcriptsBase)}/${encodeURIComponent(grp)}/${encodeURIComponent(sid)}/index.html" target="_blank" rel="noopener" title="Open rendered transcript">transcript</a> `
+          : ''
+      }${
+        s.traceUrl
+          ? `<a class="admin-action-btn" href="${escAttr(s.traceUrl)}" target="_blank" rel="noopener" title="Open session-precise claude-trace">trace</a> `
           : ''
       }<button class="admin-action-btn danger" data-action="delete-session" data-folder="${esc(s.group_folder)}">Delete</button></td>
     </tr>`;
