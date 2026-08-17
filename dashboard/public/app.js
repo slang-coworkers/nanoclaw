@@ -5002,11 +5002,14 @@ function renderCostCapCell(s) {
     `<span style="border:1px solid ${color};border-radius:4px;padding:1px 6px;white-space:nowrap">` +
     `<b style="color:${color}">${spent}</b><span style="color:var(--text-muted)"> / ${cap}${perDay}</span>` +
     `<span style="color:${color};font-size:9px"> ${esc(status)}</span>${immortalMark}</span>`;
-  if (status === 'escalated' && s.session_id) {
+  // Continue is offered on BOTH 'escalated' and 'stopped' rows so a stop is
+  // always reversible from the UI (cost_override 'continue' clears the stop and
+  // re-arms). Stop is offered only on an escalated non-immortal row (immortal is
+  // never halted; a 'stopped' row is already halted).
+  if ((status === 'escalated' || status === 'stopped') && s.session_id) {
     const sid = escAttr(s.session_id);
     let btns = `<button class="admin-action-btn success" data-action="cost-override" data-session-id="${sid}" data-decision="continue">Continue</button>`;
-    // No Stop for immortal — the escalation is a visibility bound, never a halt.
-    if (!s.costImmortal) {
+    if (!s.costImmortal && status === 'escalated') {
       btns += `<button class="admin-action-btn danger" data-action="cost-override" data-session-id="${sid}" data-decision="stop">Stop</button>`;
     }
     cell += `<span style="display:inline-flex;gap:4px;margin-left:6px">` + btns + `</span>`;
