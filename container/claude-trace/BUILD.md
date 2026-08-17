@@ -55,3 +55,24 @@ change is confined to `TARGET_DOMAINS` / `isTargetAPI()` plus the smithy deps.
 Traces are big — measured on lego, 21 files were 218 MB and one session was
 165 MB. `scripts/claude-trace-gc.py` bounds this (7-day age + a 5 GB LRU cap,
 never touching a live session's file). Wire it on any box where tracing is on.
+
+## Serving the transcript index (:8081)
+
+`scripts/refresh-claude-trace-www.sh` regenerates a lightweight index over the
+live `.html` traces and symlinks them into a served dir, so the transcripts are
+browsable on a port (prod: `:8081`). The trace HTML is written live by the
+wrapper, so only the index needs rebuilding. Wire three cron lines (adjust
+`NANOCLAW_ROOT` / paths per box):
+
+```cron
+30 4  * * *  cd <checkout> && python3 scripts/claude-trace-gc.py --days 7 --max-gb 5 >> ~/.config/nanoclaw/claude-trace-gc.log 2>&1
+*/15 * * * *  NANOCLAW_ROOT=<checkout> <checkout>/scripts/refresh-claude-trace-www.sh >> ~/.config/nanoclaw/claude-trace-www.log 2>&1
+@reboot cd ~/.local/share/claude-trace-www && python3 -m http.server 8081 --bind 0.0.0.0 >> ~/.config/nanoclaw/claude-trace-www.log 2>&1
+```
+
+**Symlink gotcha (the fix in this script):** busy groups' dirs can be symlinks
+(e.g. `groups/<g>` → `/ephemeral/...`). A recursive `find "$R/groups" -path
+'*/.claude-trace/*'` does **not** descend through those symlinks, so the busiest
+groups' transcripts were silently missing. The script uses a shell glob
+(`"$R"/groups/*/.claude-trace/`) so the shell resolves the symlinks first — keep
+the glob form.
