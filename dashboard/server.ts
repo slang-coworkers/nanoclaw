@@ -1940,7 +1940,9 @@ function scanFileCost(path: string, mtimeMs: number): PerFileCost {
         (u.cache_creation_input_tokens || 0) +
         (u.cache_read_input_tokens || 0);
       out.hadSignal = true;
-      if (cost === 0 && msg.model && !normalizeModel(msg.model)) out.unpriced = true;
+      // Flag "unpriced" only when an unknown model actually billed tokens. Zero-usage
+      // synthetic rows (model "<synthetic>") carry no cost and must not raise the `*`.
+      if (cost === 0 && tokens > 0 && msg.model && !normalizeModel(msg.model)) out.unpriced = true;
       const key = isoDayKey(r.timestamp) ?? MISSING_TS_KEY;
       const d = out.days.get(key) || { cost: 0, tokens: 0 };
       d.cost += cost;
@@ -1964,8 +1966,12 @@ let sessionCostCache: SessionCostByPeriod = {
   all: new Map(),
 };
 
+// Guard against overlapping cold scans: the uncapped 30d pass can exceed the 60s
+// tick interval on a cold cache, so a second tick must not stack on the first.
+let sessionCostScanning = false;
 function refreshSessionCostCache(): void {
-  if (!db) return;
+  if (!db || sessionCostScanning) return;
+  sessionCostScanning = true;
   try {
     const groups = db.prepare('SELECT id, folder, name FROM agent_groups').all() as {
       id: string;
@@ -1993,6 +1999,9 @@ function refreshSessionCostCache(): void {
     };
     const next: SessionCostByPeriod = { '1d': new Map(), '7d': new Map(), '30d': new Map(), all: new Map() };
     const sessionsDir = join(getDataDir(), 'v2-sessions');
+    // Widest period this cache serves is 30d; only scan files touched within it
+    // (+1d slack). A file older than that has no rows in any served window.
+    const cutoffMs = Date.now() - 31 * 86400 * 1000;
     const livePaths = new Set<string>();
 
     for (const group of groups) {
@@ -2004,6 +2013,11 @@ function refreshSessionCostCache(): void {
       // and matches the reconciliation (projects-only) against ccusage.
       const files = collectClaudeJsonlFiles(claudeShared).filter((f) => f.includes('/projects/'));
       if (files.length === 0) continue;
+      // Accurate over the whole 30d window: scan EVERY file touched in the last
+      // ~31d, no count cap. The old 400-file cap truncated the busiest groups
+      // (main/fixer/triager each have ~1000 files/30d), undercounting the 30d
+      // total ~2x. The per-file mtime cache keeps steady state cheap — only the
+      // cold scan reads them all.
       const chosen = files
         .map((f) => {
           try {
@@ -2012,8 +2026,7 @@ function refreshSessionCostCache(): void {
             return { f, m: 0 };
           }
         })
-        .sort((a, b) => b.m - a.m)
-        .slice(0, MAX_CONTEXT_FILES_PER_GROUP);
+        .filter((x) => x.m >= cutoffMs);
 
       for (const { f, m } of chosen) {
         livePaths.add(f);
@@ -2065,6 +2078,8 @@ function refreshSessionCostCache(): void {
     }
   } catch {
     /* DB not ready */
+  } finally {
+    sessionCostScanning = false;
   }
 }
 
