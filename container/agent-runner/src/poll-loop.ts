@@ -28,7 +28,14 @@ import {
   migrateLegacyContinuation,
   setContinuation,
   setCurrentInReplyTo,
+  getCostCap,
+  setCostCap,
+  type CostCapState,
+  type CostCapStatus,
+  type CostCapWindow,
 } from './db/session-state.js';
+import { getConfig } from './config.js';
+import { priceUsage } from './pricing.js';
 import {
   formatMessages,
   extractRouting,
@@ -58,6 +65,277 @@ const IDLE_END_MS = process.env.NANOCLAW_IDLE_END_MS
  * page cache (host-sweep then respawns with a fresh mount).
  */
 const CORRUPTION_STREAK_EXIT = 10;
+
+// ── Per-session cost cap (NanoClaw #1, v2 two-window) ─────────────────────────
+//
+// Live per-session cost accounting + a soft escalation when spend crosses the
+// cap. TWO WINDOWS, chosen by immortality:
+//
+//   - NON-IMMORTAL → 'lifetime': spend accrues across turns AND container
+//     respawns; reset only on a new_session batch or /clear. Escalates once per
+//     run (a new_session re-arms it).
+//   - IMMORTAL (orchestrator/admin) → 'daily': spend accrues per UTC day; a new
+//     day resets the counter and re-arms escalation. Immortal groups escalate
+//     for visibility only and are NEVER quiesced — the DM itself is the bound.
+//
+// State is persisted to outbound.db `session_state` under the single `cost_cap`
+// JSON key (the shared contract the dashboard reads) so spend survives respawns.
+//
+// FIX #4: only the Claude provider emits 'usage' events. costEnabled therefore
+// requires providerName === 'claude'; other providers accrue nothing and would
+// otherwise paint a false-green $0, so we leave the cap disabled (no row → the
+// dashboard shows "—").
+//
+// Module-level because the accounting happens inside `processQuery`'s event
+// loop (a free function) while init/override live in `runPollLoop`; one
+// container == one session, so a singleton is correct.
+const WARN_FRACTION = 0.8;
+
+let costEnabled = false;
+let costImmortal = false;
+// 'lifetime' for non-immortal, 'daily' for immortal.
+let costWindow: CostCapWindow = 'lifetime';
+// UTC day ("YYYY-MM-DD") the daily spend belongs to. Only meaningful for the
+// daily window; undefined for lifetime.
+let costDayKey: string | undefined;
+// One "allotment" — the base cap and the amount a 'continue' override adds.
+let costAllotmentUsd = 0;
+// Effective cap: allotment plus any raises from 'continue' overrides.
+let costCapUsd = 0;
+let costSpentUsd = 0;
+let costEscalatedAt: string | undefined;
+let costDecision: 'continue' | 'stop' | undefined;
+let costDecidedAt: string | undefined;
+// Quiesce marker: a 'stop' override was applied — take no NEW work. Never set
+// for immortal groups.
+let costStopRequested = false;
+
+/** Current UTC day as "YYYY-MM-DD" — the daily-window bucket key. */
+function utcDayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Load persisted cost state once at loop start so accrued spend (and any raised
+ * cap / stop decision) survives a container respawn. Immortality comes from the
+ * authoritative host-materialized config field, not the persisted row.
+ *
+ * FIX #4: the cap is enabled only for the Claude provider (the only one that
+ * emits 'usage' events). A non-Claude group leaves costEnabled false so no
+ * cost_cap row is written — the dashboard renders "—" rather than a false $0.
+ *
+ * Window handling:
+ *  - lifetime (non-immortal): adopt persisted spend/escalation as-is.
+ *  - daily (immortal): adopt persisted spend/escalation ONLY if the persisted
+ *    dayKey is today's UTC day; a stale day starts fresh at 0.
+ */
+function initCostTracking(providerName: string): void {
+  // getConfig() throws if loadConfig() was never called — the case in poll-loop
+  // integration tests that exercise the loop without scaffolding container.json.
+  // Cost accounting is simply off there; production always loads config first.
+  let cfg: ReturnType<typeof getConfig>;
+  try {
+    cfg = getConfig();
+  } catch {
+    costEnabled = false;
+    return;
+  }
+  costAllotmentUsd = cfg.costCapT2Usd && cfg.costCapT2Usd > 0 ? cfg.costCapT2Usd : 0;
+  costImmortal = cfg.immortal === true;
+  costWindow = costImmortal ? 'daily' : 'lifetime';
+  costEnabled = costAllotmentUsd > 0 && providerName === 'claude';
+  if (!costEnabled) return;
+
+  const persisted = getCostCap();
+
+  if (costWindow === 'daily') {
+    costDayKey = utcDayKey();
+    const persistedIsToday = persisted?.dayKey === costDayKey;
+    // A fresh UTC day starts back at the p90/day allotment so the daily bound
+    // holds day-over-day; only a same-day respawn adopts the persisted (possibly
+    // 'continue'-raised) cap, spend, and escalation.
+    costCapUsd = persistedIsToday && persisted?.capUsd && persisted.capUsd > 0 ? persisted.capUsd : costAllotmentUsd;
+    costSpentUsd = persistedIsToday && persisted?.spentUsd && persisted.spentUsd > 0 ? persisted.spentUsd : 0;
+    costEscalatedAt = persistedIsToday ? persisted?.escalatedAt : undefined;
+  } else {
+    costCapUsd = persisted?.capUsd && persisted.capUsd > 0 ? persisted.capUsd : costAllotmentUsd;
+    costDayKey = undefined;
+    costSpentUsd = persisted?.spentUsd && persisted.spentUsd > 0 ? persisted.spentUsd : 0;
+    costEscalatedAt = persisted?.escalatedAt;
+  }
+  costDecision = persisted?.decision;
+  costDecidedAt = persisted?.decidedAt;
+  costStopRequested = persisted?.status === 'stopped' && !costImmortal;
+
+  // Publish immediately so the dashboard shows a cap even before the first turn
+  // (and so a flipped immortal flag / window is reflected).
+  persistCostCap();
+}
+
+/**
+ * Reset the LIFETIME window to a fresh allotment — called when a non-immortal
+ * session genuinely starts over (a new_session task batch or an explicit
+ * /clear). No-op for the immortal daily window (that rolls on the UTC day, not
+ * on session boundaries) and when the cap is disabled.
+ */
+function resetCostForNewSession(): void {
+  if (!costEnabled || costWindow !== 'lifetime') return;
+  costSpentUsd = 0;
+  costCapUsd = costAllotmentUsd;
+  costEscalatedAt = undefined;
+  costStopRequested = false;
+  costDecision = undefined;
+  costDecidedAt = undefined;
+  persistCostCap();
+}
+
+/** Current status band from spent/cap/escalation/stop state. */
+function computeCostStatus(): CostCapStatus {
+  if (costStopRequested && !costImmortal) return 'stopped';
+  if (costSpentUsd >= costCapUsd) return 'escalated';
+  if (costSpentUsd >= WARN_FRACTION * costCapUsd) return 'warn';
+  return 'ok';
+}
+
+function persistCostCap(): void {
+  if (!costEnabled) return;
+  const state: CostCapState = {
+    capUsd: costCapUsd,
+    spentUsd: costSpentUsd,
+    status: computeCostStatus(),
+    immortal: costImmortal,
+    window: costWindow,
+    // dayKey is present ONLY for the daily window (shared contract #1).
+    ...(costWindow === 'daily' && costDayKey ? { dayKey: costDayKey } : {}),
+    ...(costEscalatedAt ? { escalatedAt: costEscalatedAt } : {}),
+    ...(costDecision ? { decision: costDecision } : {}),
+    ...(costDecidedAt ? { decidedAt: costDecidedAt } : {}),
+  };
+  setCostCap(state);
+}
+
+/**
+ * Price one usage event, add it to lifetime spend, persist, and fire the
+ * one-shot escalation on first crossing. Reprices from the token fields for
+ * dashboard parity; falls back to the SDK's own cost only for models the copied
+ * rate table doesn't know (so an unpriced model still accrues rather than
+ * silently reading $0 forever).
+ */
+function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void {
+  if (!costEnabled) return;
+
+  // IMMORTAL daily rollover: crossing into a new UTC day zeroes today's spend
+  // and re-arms the once-per-day escalation. The lifetime window never rolls —
+  // it resets only on a new_session batch or /clear (resetCostForNewSession).
+  if (costWindow === 'daily') {
+    const today = utcDayKey();
+    if (today !== costDayKey) {
+      costDayKey = today;
+      costSpentUsd = 0;
+      costEscalatedAt = undefined;
+      // New day → back to the p90/day allotment; a prior day's 'continue' raise
+      // does not carry over (the bound is per-day).
+      costCapUsd = costAllotmentUsd;
+    }
+  }
+
+  // Prefer the per-TTL cache-write split (authoritative for this fleet, which
+  // runs 1h prompt caching); fall back to the flat cache_creation field only
+  // when no split is reported, matching the dashboard's priceUsage semantics.
+  const hasSplit = event.ephemeral1hInputTokens > 0 || event.ephemeral5mInputTokens > 0;
+  let delta = priceUsage(getConfig().model, {
+    input_tokens: event.inputTokens,
+    output_tokens: event.outputTokens,
+    cache_read_input_tokens: event.cacheReadInputTokens,
+    cache_creation_input_tokens: event.cacheCreationInputTokens,
+    ...(hasSplit
+      ? {
+          cache_creation: {
+            ephemeral_1h_input_tokens: event.ephemeral1hInputTokens,
+            ephemeral_5m_input_tokens: event.ephemeral5mInputTokens,
+          },
+        }
+      : {}),
+  });
+  if (delta <= 0 && event.totalCostUsd > 0) delta = event.totalCostUsd; // unpriced model fallback
+  if (delta <= 0) return;
+
+  costSpentUsd += delta;
+
+  // One-shot soft escalation on first crossing of the cap. Dedupe via
+  // escalatedAt so a warm session that keeps spending only escalates once per
+  // allotment (a 'continue' override clears escalatedAt and raises the cap).
+  if (costSpentUsd >= costCapUsd && !costEscalatedAt) {
+    costEscalatedAt = new Date().toISOString();
+    emitCostEscalation();
+  }
+  persistCostCap();
+}
+
+/**
+ * Fire the escalation: a kind:'system' outbound row the host's `cost_escalation`
+ * delivery action picks up and routes to a human approver (owner/admin). This
+ * is the ONLY signal — the runner cannot block on a reply; the human decision
+ * returns asynchronously as a `cost_override` inbound row.
+ */
+function emitCostEscalation(): void {
+  const sessionId = process.env.NANOCLAW_SESSION_ID || '';
+  writeMessageOut({
+    id: generateId(),
+    kind: 'system',
+    content: JSON.stringify({
+      action: 'cost_escalation',
+      sessionId,
+      spentUsd: Number(costSpentUsd.toFixed(4)),
+      capUsd: Number(costCapUsd.toFixed(4)),
+      immortal: costImmortal,
+      window: costWindow,
+    }),
+  });
+  log(
+    `Cost cap escalation: spent=$${costSpentUsd.toFixed(2)} >= cap=$${costCapUsd.toFixed(2)} ` +
+      `(immortal=${costImmortal}, window=${costWindow})`,
+  );
+}
+
+/**
+ * Apply a human cost-override decision (from a `cost_override` inbound row).
+ *   - continue: clear the escalation, raise the cap by one allotment, resume.
+ *   - stop: quiesce (finish current turn, take no new work). Immortal groups
+ *     never stop — the decision is recorded but status stays at 'escalated'.
+ */
+function applyCostOverride(msg: MessageInRow): void {
+  if (!costEnabled) return;
+  let decision: unknown;
+  try {
+    decision = (JSON.parse(msg.content) as { decision?: unknown }).decision;
+  } catch {
+    log(`cost_override with unparseable content — ignoring (id=${msg.id})`);
+    return;
+  }
+  const now = new Date().toISOString();
+  if (decision === 'continue') {
+    costStopRequested = false;
+    costEscalatedAt = undefined;
+    costCapUsd += costAllotmentUsd;
+    costDecision = 'continue';
+    costDecidedAt = now;
+    log(`cost_override continue — cap raised to $${costCapUsd.toFixed(2)}, resuming`);
+  } else if (decision === 'stop') {
+    costDecision = 'stop';
+    costDecidedAt = now;
+    if (!costImmortal) {
+      costStopRequested = true;
+      log('cost_override stop — quiescing after current turn, taking no new work');
+    } else {
+      log('cost_override stop on immortal group — recorded, but immortal never quiesces');
+    }
+  } else {
+    log(`cost_override with unknown decision "${String(decision)}" — ignoring`);
+    return;
+  }
+  persistCostCap();
+}
 
 /**
  * User-facing notice for a turn that produced nothing at all, even after the
@@ -358,6 +636,11 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   // This lets the new container re-process those messages.
   clearStaleProcessingAcks();
 
+  // Cost cap (NanoClaw #1): load persisted spend so the cap survives respawns,
+  // and publish the current cap state for the dashboard. Provider name gates
+  // enablement (only Claude emits the 'usage' events the cap prices — FIX #4).
+  initCostTracking(config.providerName);
+
   const refreshDestinations = makeDestinationsRefresher(config.systemContext);
 
   let pollCount = 0;
@@ -392,6 +675,34 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
       continue;
     }
 
+    // Cost-cap quiesce (NanoClaw #1): after a 'stop' override, take no NEW
+    // work — but still process any `cost_override` control rows so a later
+    // 'continue' can resume. Normal messages are left `pending` (never
+    // markProcessing'd) so they run once the session resumes.
+    if (costStopRequested) {
+      // Recovery out of a cost stop is TWO-WAY: a cost_override 'continue' (the
+      // dashboard button) OR an explicit /clear. A /clear clears the stop and
+      // falls through to the normal command path below (which resets the window
+      // + continuation). Everything else stays pending until the session resumes.
+      const hasClear = messages.some(
+        (m) => (m.kind === 'chat' || m.kind === 'chat-sdk') && isClearCommand(m),
+      );
+      if (!hasClear) {
+        const controls = messages.filter((m) => m.kind === 'cost_override');
+        if (controls.length === 0) {
+          await sleep(POLL_INTERVAL_MS);
+          continue;
+        }
+        const controlIds = controls.map((m) => m.id);
+        markProcessing(controlIds);
+        for (const c of controls) applyCostOverride(c);
+        markCompleted(controlIds);
+        continue;
+      }
+      // /clear present → drop the quiesce and let the normal loop reset us.
+      costStopRequested = false;
+    }
+
     const ids = messages.map((m) => m.id);
     markProcessing(ids);
 
@@ -404,10 +715,20 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     const commandIds: string[] = [];
 
     for (const msg of messages) {
+      // Cost-cap override (NanoClaw #1): a human decision from the dashboard.
+      // Applied to the in-memory cost state and acked — never fed to the agent.
+      if (msg.kind === 'cost_override') {
+        applyCostOverride(msg);
+        commandIds.push(msg.id);
+        continue;
+      }
       if ((msg.kind === 'chat' || msg.kind === 'chat-sdk') && isClearCommand(msg)) {
         log('Clearing session (resetting continuation)');
         continuation = undefined;
         clearContinuation(config.providerName);
+        // /clear is a genuine restart — zero the lifetime cost window too so the
+        // fresh conversation starts on a fresh allotment (no-op for daily).
+        resetCostForNewSession();
         writeMessageOut({
           id: generateId(),
           kind: 'chat',
@@ -474,6 +795,9 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     // when the entire batch is tasks (no chat messages mixed in) — mixed
     // batches default to the stored continuation so chat history is preserved.
     const newSessionBatch = isNewSessionBatch(keep);
+    // A fresh-session batch starts the conversation over — reset the lifetime
+    // cost window to a new allotment (no-op for the immortal daily window).
+    if (newSessionBatch) resetCostForNewSession();
 
     // Format messages: passthrough commands get raw text (only if the
     // provider natively handles slash commands), others get XML.
@@ -846,6 +1170,34 @@ export async function processQuery(
           if ((m.kind === 'chat' || m.kind === 'chat-sdk') && isClearCommand(m)) return false;
           return true;
         });
+
+        // Cost-cap override mid-query (FIX #1): the router writes cost_override
+        // with trigger:1, so without this it would fall through the trigger gate
+        // below, get pushed to the provider as a bogus prompt, and be
+        // markCompleted'd — applyCostOverride would NEVER run mid-query. Extract
+        // and apply these BEFORE the trigger gate (and before routing promotion,
+        // so the override's dashboard routing can't hijack the real routing),
+        // ack them, and drop them from newMessages so they never reach
+        // query.push. A 'stop' quiesces promptly: end the active stream and
+        // return so the outer loop settles into the stop state.
+        const overrides = newMessages.filter((m) => m.kind === 'cost_override');
+        if (overrides.length > 0) {
+          const overrideIds = overrides.map((m) => m.id);
+          markProcessing(overrideIds);
+          for (const o of overrides) applyCostOverride(o);
+          markCompleted(overrideIds);
+          for (const o of overrides) {
+            const idx = newMessages.indexOf(o);
+            if (idx >= 0) newMessages.splice(idx, 1);
+          }
+          if (costStopRequested) {
+            log('cost_override stop applied mid-query — ending active stream to quiesce');
+            endedForCommand = true;
+            query.end();
+            return;
+          }
+        }
+
         if (newMessages.length === 0) {
           // End stream when agent is idle: no SDK events and no pending messages
           if (Date.now() - lastEventTime > IDLE_END_MS) {
@@ -972,6 +1324,10 @@ export async function processQuery(
       lastEventTime = Date.now();
       handleEvent(event, routing);
       touchHeartbeat();
+
+      // Cost cap (NanoClaw #1): reprice each turn's usage, accrue lifetime
+      // spend, persist, and fire the one-shot soft escalation on cap crossing.
+      if (event.type === 'usage') recordTurnCost(event);
 
       if (event.type === 'init') {
         queryContinuation = event.continuation;

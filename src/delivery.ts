@@ -29,7 +29,8 @@ import {
   migrateDeliveredTable,
 } from './db/session-db.js';
 import { runGuarded, type DeliveryGuardSpec, type GuardedDeliveryHandler } from './delivery-guard.js';
-import { isUnguarded, type Unguarded } from './guard/index.js';
+import { isUnguarded, unguarded, type Unguarded } from './guard/index.js';
+import { pickApprover, pickApprovalDelivery } from './modules/approvals/primitive.js';
 import { log } from './log.js';
 import { normalizeOptions } from './channels/ask-question.js';
 import { clearOutbox, openInboundDb, openOutboundDb, readOutboxFiles } from './session-manager.js';
@@ -680,6 +681,92 @@ async function handleSystemAction(
 
   log.warn('Unknown system action', { action });
 }
+
+/**
+ * Cost-cap escalation (NanoClaw #1, v2 two-window). The runner fires a
+ * kind:'system' outbound row
+ * `{action:'cost_escalation', sessionId, spentUsd, capUsd, immortal, window}`
+ * when a session's spend crosses its cap. This host action resolves a human
+ * approver (scoped admin → global admin → owner, via the same primitive the
+ * OneCLI approval bridge uses) and DMs them the decision card, branching on the
+ * window:
+ *   - lifetime (non-immortal): a per-run cap with Continue / Stop choices.
+ *   - daily (immortal): a per-day visibility bound — Continue only; immortal
+ *     sessions are never stopped, so the DM itself IS the bound (once/day).
+ *
+ * Unguarded: this is a HOST-initiated, read-only notification — it mutates no
+ * central-DB state and grants the agent nothing. The privileged surface (the
+ * override write-back) is the dashboard's authenticated cost-override endpoint,
+ * not this handler.
+ */
+registerDeliveryAction(
+  'cost_escalation',
+  async (content, session) => {
+    const spentUsd = Number(content.spentUsd);
+    const capUsd = Number(content.capUsd);
+    const immortal = content.immortal === true;
+
+    const approvers = pickApprover(session.agent_group_id);
+    if (approvers.length === 0) {
+      log.warn('cost_escalation: no owner/admin to notify', { sessionId: session.id });
+      return;
+    }
+    const originChannelType = session.messaging_group_id
+      ? (getMessagingGroup(session.messaging_group_id)?.channel_type ?? '')
+      : '';
+    const target = await pickApprovalDelivery(approvers, originChannelType);
+    if (!target) {
+      log.warn('cost_escalation: no DM channel for any approver', { sessionId: session.id });
+      return;
+    }
+
+    const group = getAgentGroup(session.agent_group_id)?.name ?? session.agent_group_id;
+    const spent = Number.isFinite(spentUsd) ? spentUsd.toFixed(2) : '?';
+    const cap = Number.isFinite(capUsd) ? capUsd.toFixed(2) : '?';
+    // Two DM shapes, branched on immortal/window. Whitespace is intentional —
+    // these mirror the dashboard cost-cap cell so the two surfaces read alike.
+    const text = immortal
+      ? [
+          '📊  Daily cost — orchestrator over p90/day  (visibility bound, ∞ never stopped)',
+          `Group ${group}  ∞ immortal · Session ${session.id}  (per-DAY cap)`,
+          `Spent $${spent} today  ›  cap $${cap}/day  (p90)`,
+          "▶ Continue  raise today's cap",
+          '(no Stop — immortal runs by design; this DM IS the bound; fires at most once/day)',
+        ].join('\n')
+      : [
+          '⚠️  Cost cap — decision needed',
+          `Group ${group} · Session ${session.id}  (per-run cap)`,
+          `Spent $${spent}  ›  cap $${cap}  (p90)`,
+          '▶ Continue  raise cap and resume',
+          '■ Stop      finish this turn, take no new work',
+        ].join('\n');
+
+    const adapter = getDeliveryAdapter();
+    if (!adapter) {
+      log.warn('cost_escalation: no delivery adapter set — skipping DM', { sessionId: session.id });
+      return;
+    }
+    try {
+      await adapter.deliver(
+        target.messagingGroup.channel_type,
+        target.messagingGroup.platform_id,
+        null,
+        'chat',
+        JSON.stringify({ text }),
+      );
+      log.info('cost_escalation delivered', {
+        sessionId: session.id,
+        approver: target.userId,
+        spentUsd,
+        capUsd,
+        immortal,
+      });
+    } catch (err) {
+      log.error('cost_escalation: DM delivery failed', { sessionId: session.id, err });
+    }
+  },
+  unguarded('cost_escalation is a host-initiated read-only notification — no privileged mutation'),
+);
 
 export function stopDeliveryPolls(): void {
   activePolling = false;
