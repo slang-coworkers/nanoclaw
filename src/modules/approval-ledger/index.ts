@@ -63,7 +63,7 @@ function validateRecordDecision(content: Record<string, unknown>, session: Sessi
     log.warn('record_decision: invalid decision state (dropped)', { decision, repo, pr: prNumber });
     notifyAgent(
       session,
-      `record_decision ignored: "${decision}" is not a decision state. Use WOULD_APPROVE, BLOCK, ABSTAIN_POLICY or ABSTAIN_INFRA.`,
+      `record_decision ignored: "${decision}" is not a decision state. Use WOULD_APPROVE, BLOCK or ABSTAIN_POLICY.`,
     );
     return false;
   }

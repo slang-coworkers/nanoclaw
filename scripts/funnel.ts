@@ -288,7 +288,7 @@ interface Row {
   // Verity (PR-approver) shadow-mode decision for this PR, joined from
   // approval_decisions by (repo, pr_number). NULL when no approver ran (the
   // common case until the approvers have processed the PR). `decision` is one
-  // of WOULD_APPROVE|BLOCK|ABSTAIN_POLICY|ABSTAIN_INFRA; `human` is the joined
+  // of WOULD_APPROVE|BLOCK|ABSTAIN_POLICY; `human` is the joined
   // human outcome (APPROVED|CHANGES_REQUESTED|…) or null if not yet joined.
   approver: { decision: string; human: string | null } | null;
 }
