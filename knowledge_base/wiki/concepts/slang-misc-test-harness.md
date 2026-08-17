@@ -3,7 +3,7 @@ title: "Slang Test Harness Mechanics and Gotchas (part 1 — test directives and
 type: concept
 group: slang-grab-bag
 tags: [slang-test, test-harness, test-directives, synthesized-subtests, DIAGNOSTIC_TEST, LANG_SERVER, slangi, INTERPRET, COMPARE_COMPUTE, golden-tests, reflection-expected, metallib, render-test]
-source_count: 72
+source_count: 29
 ---
 
 # Slang Test Harness — Test Directives and Authoring
@@ -49,6 +49,8 @@ Matching a specific synthesized variant requires exact equality against the full
 ## Test Coverage by Change Type
 
 PRs that change slang-test harness scheduling behavior (not compiler behavior) do not need a `.slang` test. The correct regression vehicle is a `slang-unit-test` targeting extracted pure helpers; `-dry-run` is a valid acceptance check for harness changes ([slang-test harness changes: .slang test rule N/A, but slang-unit-test is the right vehicle](../learnings/1780320008141-slang-test-harness-changes-slang-test-rule-n-a-but.md)).
+
+**When recommending a test *shape*, check the BUILD graph, not just the call graph — a symbol trivially reachable in source may be unbuildable from a test target.** A test-shape recommendation ("in-process unit test asserting `f() → SLANG_FAIL`" vs "subprocess test asserting exit code") reads as a stylistic preference, so a downstream fixer who picks a different shape looks like they deviated — when in fact the recommended shape was impossible and theirs was forced, which turns into review friction or a fixer talked out of the only workable design. The worked case is shader-slang/slang#12212: triage recommended an in-process `slang-unit-test` asserting `CapabilityDefParser::parseDefs() → SLANG_FAIL`, but that is **unbuildable, not merely inferior** — `git grep CapabilityDefParser` hits exactly ONE file (`tools/slang-capability-generator/capability-generator-main.cpp`, no header, no declaration elsewhere) and `tools/CMakeLists.txt:80` builds it via `generator(slang-capability-generator LINK_WITH_PRIVATE compiler-core)`, an **executable with no library target**, so nothing can link the parser. The shipped fix (PR #12217, merged `f282bdf9c0`) used a **subprocess** test (`tools/slang-unit-test/unit-test-capability-generator.cpp`) that runs the built generator and asserts diagnostic + nonzero exit + no output files — and that was **strictly better coverage**, not a consolation prize: the bug in #12212 was precisely that the tool printed an error and still `exit(0)`, so the contract under test is the *process exit code*; an in-process `parseDefs()` assertion would have verified the return value while leaving the exit-status regression untested. Generalization: when the defect is "the *tool* behaved wrong" (exit code, files written, stdout), the unit under test is the process, not the function — reach for a subprocess test deliberately. The 30-second check before recommending a shape: (1) `git grep -l '<Symbol>'` — is it in a header or trapped in one `.cpp`? (2) find the target in `CMakeLists.txt` — library (linkable) or executable (not)? (3) executable-only ⇒ subprocess/CLI test is the only option, so say so. Two concrete gotchas for this generator: a **minimal repro can pass for the wrong reason** — a bare `def _foo : stage;` yields error **20003** (undefined identifier "stage"), an *already-nonzero-exit* path, so a test built on it "reproduces" without exercising the bug and keeps passing if 20007 propagation regresses; declare `abstract stage;` first to get the intended **20007** (`missingExternalInternalAtomPair`), and always confirm the repro fails via the *intended* diagnostic (grep the expected code in stderr), not merely that it failed. And the **generator binary lives in a sibling tree** `build/generators/<config>/bin/` (not next to the unit-test binary's `build/<config>/bin/`), so a spawning test derives the path from `UnitTestContext::executableDirectory` via `../../generators/<config>/bin/` and `SLANG_IGNORE_TEST`s when absent (cross-compiled/install-only layouts put it at `SLANG_GENERATORS_PATH`). Harness model to copy: `tools/slang-unit-test/unit-test-depfile.cpp` uses `ProcessUtil::execute(cmdLine, ExecuteResult&)` returning `resultCode` + `standardOutput`/`standardError`; unit-test `.cpp` files auto-glob into the `slang-unit-test` MODULE target, so adding one needs no CMakeLists edit ([recommend a test shape against the BUILD graph, not the call graph — #12212's in-process test was unbuildable](../learnings/1785840768185-correction-recommend-a-test-shape-against-the-buil.md), [check the build graph before recommending a test shape](../learnings/1785840792663-check-the-build-graph-before-recommending-a-test-s.md), [check the BUILD graph, not just the call graph, before recommending a test shape](../learnings/1785840805944-check-the-build-graph-not-just-the-call-graph-befo.md)).
 
 ## INTERPRET / slangi Tests
 
@@ -112,10 +114,13 @@ The `.N` is a **sub-test / directive index, NOT a run/retry counter** — it is 
 
 ---
 
-**Source learnings (26):**
+**Source learnings (29):**
 - [synthesized subtest skip needs pre-run exclusion](../learnings/1780314391657-slang-test-synthesized-subtest-skip-needs-pre-run-.md)
 - [matching expanded subtest name needs exact equality](../learnings/1780318208555-slang-test-matching-an-expanded-subtest-name-needs.md)
 - [harness changes: slang-unit-test is the right vehicle](../learnings/1780320008141-slang-test-harness-changes-slang-test-rule-n-a-but.md)
+- [recommend a test shape against the BUILD graph, not the call graph (#12212 in-process test unbuildable; subprocess test locks the tool-exit-code contract)](../learnings/1785840768185-correction-recommend-a-test-shape-against-the-buil.md)
+- [check the build graph before recommending a test shape (feasibility claim is implicit in a mechanism recommendation)](../learnings/1785840792663-check-the-build-graph-before-recommending-a-test-s.md)
+- [check the BUILD graph, not just the call graph, before recommending a test shape (#12212; minimal repro must declare `abstract stage;` for 20007, generator binary in sibling tree)](../learnings/1785840805944-check-the-build-graph-not-just-the-call-graph-befo.md)
 - [INTERPRET/slangi silently skipped](../learnings/1781222721953-slang-test-ignores-interpret-slangi-tests-when-sla.md)
 - [LANG_SERVER harness cannot observe diagnostics](../learnings/1781083469573-CONSOLIDATED-langserver-harness-cannot-observe-diagnostics.md)
 - [LS diagnostics cannot be auto-tested](../learnings/1781086523456-slang-ls-diagnostics-cannot-be-auto-tested-lang-se.md)

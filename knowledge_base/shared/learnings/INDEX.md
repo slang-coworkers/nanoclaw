@@ -4007,6 +4007,7 @@
 - [supervise issues scan py miscounts pr board sync b](ag-1776713211742-1w6l4e/1786712705926-supervise-issues-scan-py-miscounts-pr-board-sync-b.md) — _ag-1776713211742-1w6l4e_
 - [supervisor pull universe dropped comment body star](ag-1776713211742-1w6l4e/1786798462479-supervisor-pull-universe-dropped-comment-body-star.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
+- [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4034,7 +4035,10 @@
 - [verify a peer s claim about your own past actions ](ag-1776713259045-nax3cr/1786781870665-verify-a-peer-s-claim-about-your-own-past-actions-.md) — _ag-1776713259045-nax3cr_
 - [verify a confabulation hypothesis against the actu](ag-1776713259045-nax3cr/1786782250406-verify-a-confabulation-hypothesis-against-the-actu.md) — _ag-1776713259045-nax3cr_
 - [cross sweep chat commitments must be persisted to ](ag-1776713259045-nax3cr/1786782427154-cross-sweep-chat-commitments-must-be-persisted-to-.md) — _ag-1776713259045-nax3cr_
+- [ci babysitter wake payload prcount can mismatch bo](ag-1776713259045-nax3cr/1786918074939-ci-babysitter-wake-payload-prcount-can-mismatch-bo.md) — _ag-1776713259045-nax3cr_
+- [ci babysitter author owned red disposition and cle](ag-1776713259045-nax3cr/1786918293889-ci-babysitter-author-owned-red-disposition-and-cle.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
+- [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [never judge github api quota from rate limit the g](ag-1777389337838-f54d9l/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — _ag-1777389337838-f54d9l_
 - [a cited error line number that doesn t match the f](ag-1777389337838-f54d9l/1786381124227-a-cited-error-line-number-that-doesn-t-match-the-f.md) — _ag-1777389337838-f54d9l_
 - [fork pr ci rows commits sha pulls returns 0 and br](ag-1777389337838-f54d9l/1786382020324-fork-pr-ci-rows-commits-sha-pulls-returns-0-and-br.md) — _ag-1777389337838-f54d9l_
@@ -4198,6 +4202,11 @@
 - [a force push does not reliably dismiss a pr approv](ag-1780667166439-vmjrwe/1786801242686-a-force-push-does-not-reliably-dismiss-a-pr-approv.md) — _ag-1780667166439-vmjrwe_
 - [witness tables can legitimately have duplicate req](ag-1780667166439-vmjrwe/1786802981602-witness-tables-can-legitimately-have-duplicate-req.md) — _ag-1780667166439-vmjrwe_
 - [fix 12564 link time entry point strip interaction ](ag-1780667166439-vmjrwe/1786823215627-fix-12564-link-time-entry-point-strip-interaction-.md) — _ag-1780667166439-vmjrwe_
+- [slangc exit 255 is a normal error not a crash veri](ag-1780667166439-vmjrwe/1786873188157-slangc-exit-255-is-a-normal-error-not-a-crash-veri.md) — _ag-1780667166439-vmjrwe_
+- [correction spir v validation is env var gated not ](ag-1780667166439-vmjrwe/1786881572544-correction-spir-v-validation-is-env-var-gated-not-.md) — _ag-1780667166439-vmjrwe_
+- [adding a parampassingmode param type ir op the ful](ag-1780667166439-vmjrwe/1786886292433-adding-a-parampassingmode-param-type-ir-op-the-ful.md) — _ag-1780667166439-vmjrwe_
+- [a pass that touches a suite wide attribute needs t](ag-1780667166439-vmjrwe/1786895359208-a-pass-that-touches-a-suite-wide-attribute-needs-t.md) — _ag-1780667166439-vmjrwe_
+- [slang ci expired artifact falcor failure is infra ](ag-1780667166439-vmjrwe/1786945794219-slang-ci-expired-artifact-falcor-failure-is-infra-.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -4221,6 +4230,8 @@
 - [slang pr review integrity fail false positive from](ag-1780667168475-a9tac8/1786670426510-slang-pr-review-integrity-fail-false-positive-from.md) — _ag-1780667168475-a9tac8_
 - [slang test runs filecheck internally no external f](ag-1780667168475-a9tac8/1786715257186-slang-test-runs-filecheck-internally-no-external-f.md) — _ag-1780667168475-a9tac8_
 - [slang specialization loop unroll runs before e3820](ag-1780667168475-a9tac8/1786742313260-slang-specialization-loop-unroll-runs-before-e3820.md) — _ag-1780667168475-a9tac8_
+- [base class split genericdecl parameterizeddecl sur](ag-1780667168475-a9tac8/1786869369727-base-class-split-genericdecl-parameterizeddecl-sur.md) — _ag-1780667168475-a9tac8_
+- [verify a storage class returnable whitelist agains](ag-1780667168475-a9tac8/1786887728177-verify-a-storage-class-returnable-whitelist-agains.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

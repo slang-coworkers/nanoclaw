@@ -3,7 +3,7 @@ title: "Reading Papers, Transcripts & Research Workflow"
 type: concept
 group: review-process
 tags: [research, papers, arxiv, pdf, transcript, pymupdf, poppler, agent-browser]
-source_count: 2
+source_count: 6
 ---
 
 # Reading Papers, Transcripts & Research Workflow
@@ -95,13 +95,16 @@ For tables, layer `pdftotext -layout` or a dedicated tool (`camelot`, `tabula`) 
 
 **Devin (Reviewer B) may time out on DRAFT PRs — anonymous analysis never settles** — On slang#12131 (a DRAFT PR), `devin-fetch.sh` hit its 30m timeout (exit 3) with `devin-error.txt: "Devin did not reach a stable done state within 30m"` — the anonymous scrape of app.devin.ai/review never reached a settled commit-status. [Devin (Reviewer B) may time out on DRAFT PRs — anonymous analysis never settles](../learnings/1784173916549-devin-reviewer-b-may-time-out-on-draft-prs-anonymo.md)
 
+**Devin's done-detector races the AI-analysis text render — a settled page can still contain "Generating…"** — The opposite failure to a timeout: `devin-fetch.sh` can declare Devin *done* too early. Its `DONE_EXPR` (`scripts/devin-fetch.sh:64-69`) treats the page as complete when three predicates go true — not "PR analysis in progress", contains "Devin's AI analysis", and matches one of `\d+ Flags?` / "No flags" / "All checks passed" / "checks failed". On shader-slang/slang#11218 (captured 2026-05-20) all three settled — the "37/37 All checks passed" banner, the "2 Flags" toggle, and the right-rail "Analysis complete" — while the middle-pane analysis paragraph was still rendering the literal string `"Generating..."`, so `devin-flags.md`'s `## AI Analysis` captured "Devin's AI analysis\nGenerating..." instead of the narrative [Devin's done-detector races the AI-analysis text render](../learnings/1779298338813-devin-review-done-detector-false-positives-on-all-.md). The checks pipeline and Devin's analysis hydrate independently, so "All checks passed" alone is not a done signal — the detector should additionally require that the paragraph following the "Devin's AI analysis" heading is not `Generating...` (`const idx = t.indexOf("Devin's AI analysis"); if (/Generating\.\.\./.test(t.slice(idx, idx+600))) return false;`) and that the right-rail reads `Analysis complete`. Practical guard: when a run's `## AI Analysis` shows only "Generating..." or a short stub, do not trust the Flags section as exhaustive — re-scrape via agent-browser (click "View results", open the `^\d+\s+Flags?$` toggle, expand each flag's `cursor-pointer` ancestor, re-read `document.body.innerText`) before reporting upstream. On #11218 this didn't change the verdict (the fully-extracted Devin report still aligned with Reviewer A: 0 bugs, 2 flags, no blockers) — it only affects the runner's reliability.
+
 **[approver/infra-abstain] Verity delegate-path vs deployed harvest+Devin skill contradiction — the real root of the contract-block gap** — **Builds on** the earlier `[approver/infra-abstain] reviewer-coworker review-doc omits commit_id/_approver_result` atom (slang#12055). [[approver/infra-abstain] Verity delegate-path vs deployed harvest+Devin skill contradiction — the real root of the contract-block gap](../learnings/1784187372743-approver-infra-abstain-verity-delegate-path-vs-dep.md)
 
 ---
-**Source learnings (5):**
+**Source learnings (6):**
 - [Reading arXiv/HF papers end-to-end with the Read tool](../learnings/1778494512351-reading-arxiv-hf-papers-end-to-end-with-the-read-t.md)
 - [PDF transcript extraction: pymupdf blocks beats llama-index](../learnings/1779350236903-pdf-transcript-extraction-pymupdf-blocks-beats-lla.md)
 - [slang-pr-review Reviewer A can complete analysis but fail to write final-review.md](../learnings/1784148145296-slang-pr-review-reviewer-a-can-complete-analysis-b.md)
 - [Devin (Reviewer B) may time out on DRAFT PRs — anonymous analysis never settles](../learnings/1784173916549-devin-reviewer-b-may-time-out-on-draft-prs-anonymo.md)
 - [[approver/infra-abstain] Verity delegate-path vs deployed harvest+Devin skill contradiction — the real root of the contract-block gap](../learnings/1784187372743-approver-infra-abstain-verity-delegate-path-vs-dep.md)
+- [Devin's done-detector races the AI-analysis text render (false positive on "All checks passed")](../learnings/1779298338813-devin-review-done-detector-false-positives-on-all-.md)
 _Catalog: [[wiki/index.md]]_

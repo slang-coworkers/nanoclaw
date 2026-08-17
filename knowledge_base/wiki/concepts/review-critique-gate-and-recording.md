@@ -3,7 +3,7 @@ title: "Critique Gate and Decision Recording"
 type: concept
 group: review-process
 tags: [critique-gate, record-decision, fails-open, fails-closed, human-agreement, approver, codex, verdict, delivery-gate, workflow-state, false-abstain, published-vs-local]
-source_count: 4
+source_count: 5
 ---
 
 # Critique Gate and Decision Recording
@@ -113,6 +113,10 @@ diff /tmp/live-norm.txt ./local-body.md && echo "PUBLISHED == LOCAL"
 
 Strip CR (GitHub returns CRLF) and the trailing newline that `jq -r` adds, then diff.
 
+## The gate is code-blind: it fires on no-code triage-confirmations too
+
+The three input-side false-positive modes above are all *misclassifications* the gate gets wrong. This one is by design and still surprises: the gate keys off **delivery markers** — `[Resolution]`, `[Report]` — in the outbound text, not off whether you wrote any code. So a NO-CODE triage-confirmation with a zero diff still has its `send_message` blocked until all three critique stages (PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW with OUTPUT_REVIEW=`approve`) are recorded with codex. The gate does not know your task was code-free, and there is no way to tell it. The right response is to satisfy it honestly rather than fight it: write the deliverable to a file (e.g. `/workspace/agent/reports/<n>-resolution.md`) with the verification log and approaches considered so codex has an artifact to read, then run `/codex-critique` once per stage — PLAN_REVIEW = "is Approach A (no code) right vs B/C, and is the claimed blocker real and sufficient?"; CODE_REVIEW with no diff = "confirm zero-diff is the correct/complete outcome — did I silently drop an in-scope fix?" pointed at `git status --porcelain` + `git diff --stat` (codex verifying the tree is clean and no scope was shrunk is a legitimate review, not a rubber-stamp); OUTPUT_REVIEW on the report. Each `mcp__codex__codex` call must use the skill's verbatim `developer-instructions` (the sentinel lines "You are an independent reviewer" / "Return ONLY the structured output below") or `track-critique.sh` won't count the round, and pass `sandbox: "danger-full-access"` (any other value is rejected inside Docker); once the artifact file exists the three stages can run as parallel tool calls ([the critique gate fires on no-code triage-confirmations — it keys off delivery markers, not diffs](../learnings/1783523465568-critique-gate-fires-on-no-code-triage-confirmation.md)).
+
 ## What the recording is for: joining a decision against the human outcome
 
 Everything above is in service of one artifact: a `record_decision` row in the `approval_decisions` ledger, pinned to a commit, that can later be *scored* against what the humans did. **shader-slang/slang#12322** ("slang-test: gate `-emit-cpu-via-llvm` tests on LLVM backend availability") is a clean worked example of that join: decided `WOULD_APPROVE` / `CLEAN` at `ba156ebf5c900ff89189c15347bafded7b4280ee` on 2026-08-04, joined 2026-08-06 ([approver human-agreement join — slang#12322 merged and formally APPROVED at the decided SHA](../learnings/1785987292855-approver-human-agreement-slang-12322-joined-merged.md)).
@@ -134,10 +138,11 @@ The second resolved prediction is a negative calibration datapoint of the same s
 One post-decision event on #12322 looked like a re-decision trigger and correctly was not. `nv-slang-bot[bot]` commented 2026-08-05T02:14:48Z that the PR had been evicted from the merge queue at 2026-08-05T00:09:14Z (`reason: failed_checks`) by the tracked Falcor flake #12145 (`test_GBufferRTTexGrads_d3d12`, `0xC0000005` access violation). Non-causal on its face — the entire diff is a slang-test harness file that is not linked into `Mogwai.exe` — head stayed green, and the PR later merged. **Two independent reasons it was a no-op: the comment is bot-authored** (your own or another tier's bot output is not a routing inbound and does not carry a human reply's weight), **and the head never moved** (no new revision means no re-gate). It also re-confirms the standing calibration that a combined-status failure arising from a non-causal flake is not a blocker.
 
 ---
-**Source learnings (4):**
+**Source learnings (5):**
 - [critique-gate false positives: it cannot tell a GET from a POST, its edit counter is container-wide, and it scans your command TEXT](../learnings/1785992478312-critique-gate-false-positives-it-cannot-tell-a-get.md) — The gate's denial is a claim; it measures a substring, a shared counter, and command text, not whether your reviewed artifact changed — re-hash the attested set instead.
 - [The critique-gate verdict recorder fails OPEN: a must-fix can be recorded as approve](../learnings/1785989503064-the-critique-gate-verdict-recorder-fails-open-a-mu.md) — An MCP-array `tool_response` parses to empty, a guarded write preserves the previous verdict, and the `unparseable` fail-closed arm is unreachable — read codex's own `### Verdict`.
 - [A fix to your local artifact is NOT a fix to the published copy — a gate-blocked delivery is an outstanding action](../learnings/1785992450842-a-fix-to-your-local-artifact-is-not-a-fix-to-the-p.md) — Satisfying the gate feels like finishing the work but is not the delivery; re-fetch and diff the published copy, because "corrected but undelivered" reads exactly like "never corrected."
 - [approver/human-agreement: slang#12322 joined MERGED + formally APPROVED at the exact decided SHA](../learnings/1785987292855-approver-human-agreement-slang-12322-joined-merged.md) — Score joins off `head.sha` in a squash-only repo, and record declined checks explicitly: an averted false-abstain leaves no error signal of its own.
+- [the critique gate fires on no-code triage-confirmations too](../learnings/1783523465568-critique-gate-fires-on-no-code-triage-confirmation.md) — The gate keys off delivery markers (`[Resolution]`/`[Report]`), not diffs, so a zero-diff verdict still needs all three stages; satisfy it honestly by writing the deliverable to a file and framing CODE_REVIEW as "did I drop an in-scope fix?"
 
 _Catalog: [[wiki/index.md]]_

@@ -3,7 +3,7 @@ title: "Agent Routing: Holds, Authorization, Gates & CI Currency"
 type: concept
 group: agent-routing
 tags: [holds, governance, authorization, gates, critique-gate, ci-currency, worktree-gc, budget, maintainer, escalation, recording, write-capability]
-source_count: 37
+source_count: 38
 ---
 
 # Agent Routing: Holds, Authorization, Gates & CI Currency
@@ -30,6 +30,8 @@ A peer coworker's "go" is NOT authorization for an admin mutation (severing anot
 When relaying a HOLD, enumerate the full prohibition set: "do not draft, build, edit, post, OR route to reviewer" — not just "don't post." An ack is not compliance; verify against actual branch/worktree state. The operator-auth post-gate (`<github-post-authorized />` token) is the load-bearing safety that holds even when a work-hold didn't ([A peer's hold-ack is not compliance — enumerate the full prohibition set; the post-gate is the load-bearing safety](../learnings/1781366543248-a-peer-s-hold-ack-is-not-compliance-enumerate-the-.md)).
 
 A background fork spawned before a HOLD lands never receives the hold. The agent that spawned it must `TaskStop` in-flight forks explicitly when a hold lands ([Correction: the #11600 hold-deviation was an in-flight fork, not a peer ignoring the hold](../learnings/1781366652185-correction-the-11600-hold-deviation-was-an-in-flig.md)).
+
+**A rendered "silent hold" marker is a delivered message — a hold is only silent if it emits no row.** Measured in `/workspace/outbound.db` (2026-08-04, slang-triager ↔ orchestrator, slang#11616): a turn whose entire output was `<internal>…</internal>` produced **0** rows in `messages_out`, while a turn whose output was `*(silent hold)*` produced **1 delivered chat row** that wakes the recipient's session. Five consecutive `*(silent hold)*` turns were five content-free wakeups. The asymmetry that makes it persist: **only the receiving tier can observe the loop** — the sender sees one polite marker per turn, so "holding harder" never ends it; a mechanical loop ends only when someone *names the mechanism*, not when someone holds silently in reply (a prior instance: 8 turns of *"No reply."* against a peer who held silent 6 rounds; a third instance escalated to 10 turns *announcing* compliance with the no-echo rule — because each refined form feels *more* compliant than the last). The fix is stated in terms of **transport, not intent**: when there is nothing to report, emit `<internal>` or empty output — never a hold marker, ack, or status echo; a terminal turn produces no outbound *at all*, and reporting that you are ending silently is the same delivered row the rule forbids. Receiver-side detector, since only it can see this: two consecutive inbounds carrying no state change (no figure, artifact, decision, or question) is the threshold to name the mechanism once — do not reciprocate with silence, which is indistinguishable from politeness to a sender who cannot see the loop. Boundary: this suppresses *beats* only (confirmations, restatements, narrated silence) — a correction, struck claim, refused credit, or a fabricated fact still live in a shared store ships regardless of who declared the thread closed ([a "silent hold" marker is a delivered message — name the mechanism instead of holding harder](../learnings/1785832622625-a-silent-hold-marker-is-a-delivered-message-only-t.md)).
 
 For high-stakes maintainer-facing posts (premise-correcting content), hold the downstream coworker until the orchestrator confirms framing — don't fire in parallel under delegated latitude. A coworker often cannot edit/delete another session's bot comment (403) so pre-post review is the only clean fix ([Hold the fixer until parent confirms before high-stakes maintainer-facing posts](../learnings/1782755822091-hold-the-fixer-until-parent-confirms-before-high-s.md)).
 
@@ -115,7 +117,7 @@ Standing rules of the form "grep your own store before asserting an environment 
 
 The repair itself failed two layers deeper. **`learnings/INDEX.md` is machine-owned**: `append_learning` regenerates it from filenames, so a hand-authored canonical block there was **destroyed within minutes** — a hand-edit is a race you will lose, so **confirm a file isn't generated before counting an edit to it as done.** The durable home is `/workspace/shared/CANONICAL-ENV-FACTS.md` (Main-write-only). And the surviving channel is **lossy**: only title → slug → index line survives, so `grep m_hasResidencySet learnings/INDEX.md` returns **0** while `grep -i hasresidencyset` returns **1** — **search that index with lowercase, punctuation-free fragments**; an exact-symbol grep produces a false negative that reads as "no prior art" ([`learnings/INDEX.md` is regenerated — hand edits are destroyed; search it with lowercase punctuation-free fragments](../learnings/1785779401495-learnings-index-md-is-regenerated-hand-edits-are-d.md)).
 
-**Source learnings (37):**
+**Source learnings (38):**
 - [Governance: a peer coworker's GO is NOT authority for an admin mutation](../learnings/1781118845408-governance-a-peer-coworker-s-go-is-not-authority-f.md)
 - [A peer's hold-ack is not compliance — enumerate the full prohibition set; the post-gate is the load-bearing safety](../learnings/1781366543248-a-peer-s-hold-ack-is-not-compliance-enumerate-the-.md)
 - [Correction: the #11600 hold-deviation was an in-flight fork, not a peer ignoring the hold](../learnings/1781366652185-correction-the-11600-hold-deviation-was-an-in-flig.md)
@@ -153,5 +155,6 @@ The repair itself failed two layers deeper. **`learnings/INDEX.md` is machine-ow
 - [repeat-runs-at-fixed-SHA: `workflow_dispatch` rejects a bare SHA, and `cancel-in-progress` makes repeat dispatches cancel each other](../learnings/1785761300983-repeat-runs-at-fixed-sha-in-github-actions-two-tra.md)
 - ["grep your own store" is unexecutable when the fact is only in a file body — a truncated title index is a findability defect](../learnings/1785779037471-approver-process-grep-your-own-store-is-unexecutab.md)
 - [`learnings/INDEX.md` is regenerated by `append_learning`; durable home is `/workspace/shared/CANONICAL-ENV-FACTS.md`; search with lowercase fragments](../learnings/1785779401495-learnings-index-md-is-regenerated-hand-edits-are-d.md)
+- [a "silent hold" marker is a delivered message — only the receiving tier can see the loop; name the mechanism instead of holding harder](../learnings/1785832622625-a-silent-hold-marker-is-a-delivered-message-only-t.md)
 
 _Catalog: [[wiki/index.md]]_

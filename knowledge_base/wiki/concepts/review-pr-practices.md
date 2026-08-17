@@ -3,7 +3,7 @@ title: "PR Review Practices"
 type: concept
 group: review-process
 tags: [pr-review, slang-reviewer, devin, reviewer-a, reviewer-b, reviewer-c, github, draft-pr, convergence, false-positives, a2a-review, fleet-contention, repo-root-isolation, pr-approver, shadow-mode, clause-gap, challenger, critique-gate, abstain-infra, head-pinning, human-calibration, memoization-safety]
-source_count: 30
+source_count: 31
 ---
 
 # PR Review Practices
@@ -96,6 +96,8 @@ To verify C made no GitHub writes (`gh pr review`, `gh issue comment`, `gh api .
 
 **Budget cap mid-analysis.** When Reviewer A terminates with `error_max_budget_usd` (check the final `"subtype"` in the stream/log), it dies before writing `final-review.md` — leaving only mid-analysis hypotheses in `stream.jsonl`. Those are unconcluded hypotheses the orchestrator would have disproved in its own editorial filter. Re-run A at a higher cap (e.g. `--max-budget-usd 50`) and independently verify any high-stakes hypothesis against the actual source — do not propagate mid-analysis guesses into the verdict [slang-pr-review: Reviewer A budget-cap mid-analysis hypotheses are NOT findings — re-run + independently verify](../learnings/1781134206455-slang-pr-review-reviewer-a-budget-cap-mid-analysis.md). Crucially, a **tiny diff does not guarantee a cheap run** — the 6-subagent dispatch + deepwiki queries are expensive regardless of diff size, so the default `$30` cap can silently exit `error_max_budget_usd` with no `final-review.md` even on a +24/−2 change (observed #12172, 58 turns); detect by extracting the last `type:"result"` record (`is_error:true` + `subtype:"error_max_budget_usd"` = budget death, not a crash), re-run at `--max-budget-usd 40`, and salvage from the run-dir's own `stream.jsonl` — never a shared `reviewerA.log` path, which later unrelated reviews clobber [Reviewer A ($30 budget cap) can silently produce no final-review.md](../learnings/1784816888015-reviewer-a-30-budget-cap-can-silently-produce-no-f.md).
 
+**Raising the dollar cap is the wrong lever — a dollar cap on this pipeline shape is structurally guaranteed to destroy the output it protects.** Two runs of the Reviewer A pipeline on PR #12336 both died at their cap with zero recoverable findings: run 1 (larger diff, $40 cap) died at $40.09 with a 0-byte `final-review.md`; run 2 reviewed a *much smaller* diff (2 files, +70/−8) at a *higher* $60 cap yet cost **$81.60** and completed **0** domain passes — no file at all [a budget cap on a fan-out reviewer pipeline is structurally guaranteed to destroy the output it protects](../learnings/1785839403586-a-budget-cap-on-a-fan-out-reviewer-pipeline-is-str.md). Per-subagent transcripts showed all eight lenses each doing 0.6–1.2MB of repo exploration and none emitting a single `ReportFindings` block. The defect is structural: the pipeline fans out six domain reviewers + a clarity pass **concurrently and unbounded**, so **spend scales with reviewer-count × exploration-depth, not with diff size**; the cap is evaluated at the top level and trips only *after* the fan-out has burned its tokens, killing the subagents *before* their reporting step — the money goes on exploration, the value is entirely in the last few percent (synthesis), so any dollar cap on this shape lands in the interval that destroys the artifact, and a bigger number just buys the same failure mode. Fix the *shape*, not the number: cap the fan-out to only the rule-applicable lenses (two of run 2's reviewers weren't rule-applicable and burned 1.86MB of 7MB), dispatch one lens per invocation with its own budget so a kill loses one pass not all eight, and make each reviewer report incrementally so a kill loses the tail. The generalizable rule: **a resource cap is only safe when the protected artifact is produced incrementally** — if the output exists solely at the end, any cap is a coin-flip between "finished" and "spent everything for nothing," and concurrent fan-out worsens the odds as you add workers. When a first failure spent *more* on a *smaller* input, budget is the wrong variable; report spend-at-death and which passes completed rather than re-running at a bigger cap, because per-subagent spend attribution is the specific evidence that separates "needed more budget" from "the shape is wrong."
+
 
 ## Reviewer A Flip-Flops Across Rounds
 
@@ -149,7 +151,7 @@ Two traps when monitoring nohup-background reviewer jobs [Verifying detached bac
 1. **Context compaction kills in-flight Monitor.** A large compaction event can fire Monitor's timeout early. After any compaction, re-check process/output state directly rather than trusting the monitor.
 2. **`pgrep -fc 'pattern'` false counts.** The pattern string appears in your own command pipeline → pgrep counts your own shell invocation. Use `ps aux | grep <pat> | grep -v grep` instead. Better still, treat the authoritative completion signal as the wrapper's done-marker in its log plus a non-empty output file: A = `>>> repro.sh: done` + `final-review.md`; C = `>>> run-clarity.sh: done (rc=0)` + `clarity-review.md`; B = `>>> devin-fetch: …/devin-flags.md (N lines)` + `devin-flags.md`.
 
-**Source learnings (30):**
+**Source learnings (31):**
 
 - [Empirical "I tested it" probes can miss the wrong sub-case](../learnings/1779434309171-empirical-i-tested-it-probes-can-miss-the-wrong-su.md)
 - [Reviewer A flip-flops across rounds — log signed-off positions per round](../learnings/1779437432996-reviewer-a-claude-pr-review-subagents-can-give-inc.md)
@@ -158,6 +160,7 @@ Two traps when monitoring nohup-background reviewer jobs [Verifying detached bac
 - [Reviewer C can die mid-run on a transient API socket error](../learnings/1780603736166-slang-pr-review-reviewer-c-can-die-mid-run-on-a-tr.md)
 - [Verify "inaccurate comment" flags against code text, not PR-body citations](../learnings/1780769188437-slang-review-verify-inaccurate-comment-flags-again.md)
 - [Multi-round PR review converges; scope down when delta is comment-only](../learnings/1780769199724-multi-round-pr-review-converges-scope-down-to-targ.md)
+- [A budget cap on a fan-out reviewer pipeline is structurally guaranteed to destroy its output](../learnings/1785839403586-a-budget-cap-on-a-fan-out-reviewer-pipeline-is-str.md)
 - [Reviewer A and C share one checkout — parallel runs collide on git index.lock](../learnings/1780769238745-slang-pr-review-reviewer-a-and-c-share-one-checkou.md)
 - [Reviewer B (devin-fetch) exit 0 ≠ Devin analysis complete](../learnings/1780870637455-slang-pr-review-reviewer-b-devin-fetch-exit-0-devi.md)
 - [Reviewer A budget-cap mid-analysis hypotheses are NOT findings](../learnings/1781134206455-slang-pr-review-reviewer-a-budget-cap-mid-analysis.md)
