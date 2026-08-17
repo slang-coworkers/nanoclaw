@@ -30,7 +30,7 @@
 #   10 only STALE bot reviews (newest at a different commit) -> Devin-only
 #   20 no harvestable bot review AND none pending -> genuine skip, Devin-only
 #   22 no review yet but a review bot is still running -> WAIT + re-run (timing race)
-#   21 reviews fetch FAILED (gh/rate-limit/network) -> ABSTAIN_INFRA
+#   21 reviews fetch FAILED (gh/rate-limit/network) -> ABSTAIN_POLICY:NO_REVIEW_SIGNAL
 #   2  usage / no context
 set -uo pipefail
 
@@ -125,7 +125,7 @@ def finish(code):
 reviews = paginated_list(reviews_s)
 if reviews_rc != 0 or reviews is None:
     if dry:
-        print(f"DRY: reviews fetch FAILED for {repo}#{pr} -> exit 21 (ABSTAIN_INFRA)")
+        print(f"DRY: reviews fetch FAILED for {repo}#{pr} -> exit 21 (ABSTAIN_POLICY:NO_REVIEW_SIGNAL)")
     else:
         os.makedirs(os.path.join(out, "review"), exist_ok=True)
         json.dump({"found": False, "fetch_error": "reviews fetch failed"},
