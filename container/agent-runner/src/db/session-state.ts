@@ -155,14 +155,26 @@ export function getCurrentInReplyTo(): string | null {
  *            'stopped'  a human 'stop' override was applied (never for immortal)
  *  - immortal groups (orchestrator / admin) never reach 'stopped'; their status
  *    caps at 'escalated' (visibility only).
+ *
+ * TWO-WINDOW MODEL (v2):
+ *  - window 'lifetime' (non-immortal): spend accrues across turns AND container
+ *    respawns; reset only on a new_session batch or /clear. Escalates once per run.
+ *  - window 'daily' (immortal): spend accrues per UTC day; `dayKey` ("YYYY-MM-DD")
+ *    rolls the counter and re-arms escalation on a new day. Escalates once per day.
+ *    `dayKey` is present ONLY when window === 'daily'.
  */
 export type CostCapStatus = 'ok' | 'warn' | 'escalated' | 'stopped';
+
+export type CostCapWindow = 'lifetime' | 'daily';
 
 export interface CostCapState {
   capUsd: number;
   spentUsd: number;
   status: CostCapStatus;
   immortal: boolean;
+  window: CostCapWindow;
+  /** UTC day ("YYYY-MM-DD") the daily spend belongs to. Present only when window === 'daily'. */
+  dayKey?: string;
   escalatedAt?: string;
   decision?: 'continue' | 'stop';
   decidedAt?: string;

@@ -683,12 +683,16 @@ async function handleSystemAction(
 }
 
 /**
- * Cost-cap escalation (NanoClaw #1). The runner fires a kind:'system' outbound
- * row `{action:'cost_escalation', sessionId, spentUsd, capUsd, immortal}` when a
- * session's lifetime cost crosses its cap. This host action resolves a human
+ * Cost-cap escalation (NanoClaw #1, v2 two-window). The runner fires a
+ * kind:'system' outbound row
+ * `{action:'cost_escalation', sessionId, spentUsd, capUsd, immortal, window}`
+ * when a session's spend crosses its cap. This host action resolves a human
  * approver (scoped admin → global admin → owner, via the same primitive the
- * OneCLI approval bridge uses) and DMs them a plain notice with the dashboard
- * override choices (continue / stop).
+ * OneCLI approval bridge uses) and DMs them the decision card, branching on the
+ * window:
+ *   - lifetime (non-immortal): a per-run cap with Continue / Stop choices.
+ *   - daily (immortal): a per-day visibility bound — Continue only; immortal
+ *     sessions are never stopped, so the DM itself IS the bound (once/day).
  *
  * Unguarded: this is a HOST-initiated, read-only notification — it mutates no
  * central-DB state and grants the agent nothing. The privileged surface (the
@@ -716,13 +720,26 @@ registerDeliveryAction(
       return;
     }
 
-    const spent = Number.isFinite(spentUsd) ? `$${spentUsd.toFixed(2)}` : '(unknown)';
-    const cap = Number.isFinite(capUsd) ? `$${capUsd.toFixed(2)}` : '(unknown)';
+    const group = getAgentGroup(session.agent_group_id)?.name ?? session.agent_group_id;
+    const spent = Number.isFinite(spentUsd) ? spentUsd.toFixed(2) : '?';
+    const cap = Number.isFinite(capUsd) ? capUsd.toFixed(2) : '?';
+    // Two DM shapes, branched on immortal/window. Whitespace is intentional —
+    // these mirror the dashboard cost-cap cell so the two surfaces read alike.
     const text = immortal
-      ? `Cost cap reached on ${session.agent_group_id} (session ${session.id}): spent ${spent} of ${cap}. ` +
-        `This is an orchestrator/admin (immortal) session — it keeps running; this is a visibility heads-up.`
-      : `Cost cap reached on ${session.agent_group_id} (session ${session.id}): spent ${spent} of ${cap}. ` +
-        `Review in the dashboard Sessions tab and choose Continue (raise the cap by one allotment) or Stop (quiesce the session).`;
+      ? [
+          '📊  Daily cost — orchestrator over p90/day  (visibility bound, ∞ never stopped)',
+          `Group ${group}  ∞ immortal · Session ${session.id}  (per-DAY cap)`,
+          `Spent $${spent} today  ›  cap $${cap}/day  (p90)`,
+          "▶ Continue  raise today's cap",
+          '(no Stop — immortal runs by design; this DM IS the bound; fires at most once/day)',
+        ].join('\n')
+      : [
+          '⚠️  Cost cap — decision needed',
+          `Group ${group} · Session ${session.id}  (per-run cap)`,
+          `Spent $${spent}  ›  cap $${cap}  (p90)`,
+          '▶ Continue  raise cap and resume',
+          '■ Stop      finish this turn, take no new work',
+        ].join('\n');
 
     const adapter = getDeliveryAdapter();
     if (!adapter) {

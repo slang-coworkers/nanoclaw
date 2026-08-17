@@ -278,8 +278,11 @@ export function startDashboardIngress(options: DashboardIngressOptions = {}): Da
     }
 
     // Cost-cap override endpoint (NanoClaw #1). Mirrors inbound-session: the
-    // dashboard proxies the admin's Continue/Stop decision here (Bearer-gated),
-    // and we route it into the session's inbound.db + wake the container.
+    // dashboard proxies the admin's Continue/Stop decision here, and we route it
+    // into the session's inbound.db + wake the container.
+    // SECURITY BOUNDARY: the dashboard is SSO-protected, so SSO is the boundary
+    // here; setting DASHBOARD_SECRET adds a Bearer check that would close this
+    // endpoint to anything but the authenticated dashboard.
     if (req.url === '/api/dashboard/cost-override') {
       const body = await readBody(req, res);
       if (body === null) return;
