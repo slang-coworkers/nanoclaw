@@ -37,7 +37,7 @@ Exit codes (let the workflow branch):
        poll.
   21 — the reviews fetch itself FAILED (gh error / rate-limit / network) — the
        PR may carry a real review we couldn't see, so the workflow treats this
-       as an infra signal (ABSTAIN_INFRA), never a clean Devin-only decision
+       as an infra signal (ABSTAIN_POLICY:NO_REVIEW_SIGNAL), never a clean Devin-only decision
    2 — usage / no context
 
 stdlib + gh only.
@@ -128,7 +128,7 @@ def harvest(repo, pr, commit):
     except Exception as e:
         # A fetch failure is NOT "no review" — a real review (possibly
         # REQUEST_CHANGES) may exist behind the error. Distinct code 21 so the
-        # workflow routes to ABSTAIN_INFRA instead of a clean Devin-only pass.
+        # workflow routes to ABSTAIN_POLICY:NO_REVIEW_SIGNAL instead of a clean Devin-only pass.
         return ({"found": False, "fetch_error": str(e)[:200]}, 21)
 
     # Keep only trusted bot reviews with a real body; drop echoes + empties.
@@ -224,7 +224,7 @@ def main():
               f"{result.get('pending_bot')} still running -> WAIT + re-harvest "
               f"(timing race, NOT a skip)")
     elif code == 21:
-        print(f"FETCH FAILED for {a.repo}#{a.pr} -> ABSTAIN_INFRA "
+        print(f"FETCH FAILED for {a.repo}#{a.pr} -> ABSTAIN_POLICY:NO_REVIEW_SIGNAL "
               f"({result.get('fetch_error')})")
     else:
         print(f"no harvestable bot review for {a.repo}#{a.pr} -> Devin-only")

@@ -119,7 +119,7 @@ the challenger fetch what they need.
    - `21` — the reviews FETCH failed (gh/rate-limit/network); a real review may
      exist behind the error. Do NOT fall to Devin-only — this is an infra gap:
      synthesize a doc with `reviewers_complete:false` so the skill records
-     ABSTAIN_INFRA (`NO_REVIEW_SIGNAL`), or abstain directly.
+     ABSTAIN_POLICY (`NO_REVIEW_SIGNAL`), or abstain directly.
 
 2. **Run Devin over the PR head — in a FRESH SUBAGENT, not this session**
    (best-effort). Devin runs through `agent-browser` (Chromium page dumps,
@@ -166,7 +166,7 @@ the challenger fetch what they need.
      `reviewers_complete` = true when Devin completed (exit 0) OR a CodeRabbit
      review was harvested; **false** when NO bot review AND Devin
      failed/timed-out (2/3/4) — the skill's Step 2 reads that as
-     harness-integrity fail → ABSTAIN_INFRA:NO_REVIEW_SIGNAL.
+     harness-integrity fail → ABSTAIN_POLICY:NO_REVIEW_SIGNAL.
    - **Never fabricate a verdict.** Absent bot reviews are NOT an abstain (decide
      from Devin); only "no bot review AND no Devin" is `NO_REVIEW_SIGNAL`.
 
@@ -182,7 +182,7 @@ critique-gated record. This workflow never makes or edits a decision itself.
 Post one summary line for the decision to `dashboard:slangpy-pr-approver` (the
 per-decision `[Approval Decision]` message is emitted by the skill, not the
 workflow) and return the decision state: would_approve / abstain_policy /
-abstain_infra / block.
+block.
 
 ### Step 4: capture learnings (after the decision, and on human-verdict joins)
 
@@ -200,9 +200,11 @@ never edit), titled with its category so the learnings-wiki sync groups them:
 - `[approver/clause-gap]` — a policy predicate proved wrong or imprecise.
 - `[approver/challenger-miss]` — the human caught what the challenger cleared;
   quote what the challenger should have probed.
-- `[approver/infra-abstain]` — every ABSTAIN_INFRA: the named artifact and root
-  cause (these burn down the infra gate) — including a harvest that returned
-  nothing AND a Devin run that failed.
+- `[approver/infra-abstain]` — every ABSTAIN_POLICY carrying an infra
+  reason_code (NO_REVIEW_SIGNAL, HARNESS_FAIL, CLAUSE_UNEVALUABLE:*,
+  CHALLENGER_INCOMPLETE, CRITIQUE_UNAVAILABLE, STALE_STAGE): the named artifact
+  and root cause (these burn down the infra gate) — including a harvest that
+  returned nothing AND a Devin run that failed.
 - `[approver/critique-mustfix]` — what the critique gate keeps correcting in the
   derivation; recurring ones are procedure bugs.
 
