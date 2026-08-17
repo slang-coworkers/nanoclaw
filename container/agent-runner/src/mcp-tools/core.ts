@@ -557,7 +557,7 @@ const recordDecision: McpToolDefinition = {
         mode: { type: 'string', description: 'historical | live | live_late' },
         decision: {
           type: 'string',
-          description: 'Closed enum: WOULD_APPROVE | BLOCK | ABSTAIN_POLICY | ABSTAIN_INFRA',
+          description: 'Closed enum: WOULD_APPROVE | BLOCK | ABSTAIN_POLICY',
         },
         reason_code: { type: 'string', description: 'e.g. CLAUSE_FAIL:<name>, OPEN_GAP, REVIEW_DOC_MISSING' },
         review_diff_hash: { type: 'string', description: 'The diff_hash the review doc reported reviewing' },

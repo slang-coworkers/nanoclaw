@@ -96,13 +96,21 @@ function legacyParams(opts: LegacyOpts) {
 }
 
 describe('isValidDecision', () => {
-  it('accepts the four closed states, rejects anything else', () => {
-    for (const d of ['WOULD_APPROVE', 'BLOCK', 'ABSTAIN_POLICY', 'ABSTAIN_INFRA']) {
+  it('accepts the three closed states, rejects anything else', () => {
+    for (const d of ['WOULD_APPROVE', 'BLOCK', 'ABSTAIN_POLICY']) {
       expect(isValidDecision(d)).toBe(true);
     }
     expect(isValidDecision('APPROVE')).toBe(false);
     expect(isValidDecision('')).toBe(false);
     expect(isValidDecision('would_approve')).toBe(false);
+  });
+
+  // ABSTAIN_INFRA was retired in task #14 — folded into ABSTAIN_POLICY plus an
+  // infra reason_code. It is no longer a decision state, so isValidDecision
+  // rejects it and the record_decision gate (validateRecordDecision, index.ts)
+  // drops any container still emitting it.
+  it('rejects the retired ABSTAIN_INFRA state', () => {
+    expect(isValidDecision('ABSTAIN_INFRA')).toBe(false);
   });
 });
 

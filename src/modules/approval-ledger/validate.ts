@@ -30,7 +30,15 @@ const MAX_BLOB_LEN = 64 * 1024;
 /** Tolerated clock skew between the container's stamp and host time. */
 const MAX_FUTURE_SKEW_MS = 5 * 60 * 1000;
 
-export const VALID_DECISIONS = ['WOULD_APPROVE', 'BLOCK', 'ABSTAIN_POLICY', 'ABSTAIN_INFRA'] as const;
+// ABSTAIN_INFRA retired (task #14): "the pipeline couldn't decide" now records
+// ABSTAIN_POLICY with an infra reason_code (NO_REVIEW_SIGNAL, HARNESS_FAIL,
+// CLAUSE_UNEVALUABLE:<name>, CHALLENGER_INCOMPLETE, CRITIQUE_UNAVAILABLE,
+// STALE_STAGE), which already carries the infra-vs-policy distinction. This is
+// the one authoritative list; isValidDecision (below) now rejects ABSTAIN_INFRA
+// automatically, so a stale agent-runner-src copy still emitting it gets a
+// correctable record_decision error. Historical ABSTAIN_INFRA rows persist in
+// the ledger unchanged (the decision column is plain TEXT, no CHECK).
+export const VALID_DECISIONS = ['WOULD_APPROVE', 'BLOCK', 'ABSTAIN_POLICY'] as const;
 export const VALID_MODES = ['historical', 'live', 'live_late', 'unknown'] as const;
 /**
  * The closed verdict domain. The first three are GitHub review states; MERGED
@@ -50,7 +58,7 @@ const DECISION_SET: ReadonlySet<string> = new Set(VALID_DECISIONS);
 const MODE_SET: ReadonlySet<string> = new Set(VALID_MODES);
 const HUMAN_VERDICT_SET: ReadonlySet<string> = new Set(VALID_HUMAN_VERDICTS);
 
-/** Whether the string is one of the four closed decision states. */
+/** Whether the string is one of the closed decision states. */
 export function isValidDecision(d: string): boolean {
   return DECISION_SET.has(d);
 }

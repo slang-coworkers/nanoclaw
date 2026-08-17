@@ -1094,21 +1094,6 @@
                 }
               }
             ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "ABSTAIN_INFRA"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#ec835a"
-                }
-              }
-            ]
           }
         ]
       },
@@ -1161,17 +1146,6 @@
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "ABSTAIN_POLICY"
-        },
-        {
-          "refId": "D",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "PF3A0F3054C0DA367"
-          },
-          "query": "SELECT last(\"abstain_infra_all\") FROM \"nanoclaw_approvals\" WHERE $timeFilter",
-          "rawQuery": true,
-          "resultFormat": "time_series",
-          "alias": "ABSTAIN_INFRA"
         }
       ],
       "description": "24-hour window (collector APPROVAL_WINDOW_H=24). Previously mislabelled \"all time\"."
