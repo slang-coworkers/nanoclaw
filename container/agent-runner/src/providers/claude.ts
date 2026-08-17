@@ -100,6 +100,15 @@ export const SDK_DISALLOWED_TOOLS = [
   'ExitWorktree',
   'DesignSync',
   'ReportFindings',
+  // Preamble trim (Tier 1): unused native tools whose schemas were shipped every
+  // turn. NotebookEdit (no coworker edits notebooks), PushNotification (no
+  // headless surface), and the three MCP-resource tools (every NanoClaw MCP
+  // server exposes TOOLS, not resources, so these are permanently inert).
+  'NotebookEdit',
+  'PushNotification',
+  'ListMcpResourcesTool',
+  'ReadMcpResourceTool',
+  'ReadMcpResourceDirTool',
 ];
 
 // Base tool allowlist for NanoClaw agent containers (always included).
@@ -128,7 +137,6 @@ export const TOOL_ALLOWLIST = [
   'TodoWrite',
   'ToolSearch',
   'Skill',
-  'NotebookEdit',
 ];
 
 export function parseAllowedMcpTools(env?: Record<string, string | undefined>): string[] {

@@ -90,7 +90,7 @@ User: "Can you transcribe audio?"
 ## Scope limits
 
 Customization scope is limited to the container and workspace you operate in. Do NOT:
-- Modify another group's `CLAUDE.local.md` or workspace files
+- Modify another group's memory or workspace files
 - Push changes to the host NanoClaw source (that requires a separate PR process)
 - Expand your own allowed-tools list without the corresponding source change being reviewed
 
