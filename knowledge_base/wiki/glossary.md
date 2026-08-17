@@ -105,7 +105,8 @@ type: nav
 - [Reading Papers, Transcripts & Research Workflow](concepts/review-research-workflow.md)
 
 **Slang autodiff & IR**
-- [Slang Autodiff & Differentiation: Internals, Bugs, and Design Rules](concepts/slang-autodiff-ir-autodiff-differentiation.md)
+- [Slang Autodiff & Differentiation: Internals and Design Rules](concepts/slang-autodiff-ir-autodiff-differentiation.md)
+- [Slang Autodiff & Differentiation: Performance, Target Bugs, and Verification (part 2)](concepts/slang-autodiff-ir-autodiff-differentiation-2.md)
 - [Slang IR Passes, Diagnostics, and Tooling](concepts/slang-autodiff-ir-passes-diagnostics.md)
 
 **Slang backends**
@@ -131,6 +132,7 @@ type: nav
 
 **Slang language core**
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
+- [Slang Generics & Type System (part 2)](concepts/slang-language-generics-and-type-system-2.md)
 - [Slang Intrinsics & Builtins](concepts/slang-language-intrinsics-and-builtins.md)
 - [Slang Reflection API](concepts/slang-language-reflection-api.md)
 - [Slang switch: front-end validation, missing diagnostics & SPIR-V codegen](concepts/slang-language-switch-statement.md)

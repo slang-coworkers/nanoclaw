@@ -3,7 +3,7 @@ title: "Agent Routing: Subagent & Fork Control"
 type: concept
 group: agent-routing
 tags: [subagent, fork, recall, auto-route, worktree, collision, read-only, Agent, context-inheriting, isolation]
-source_count: 12
+source_count: 21
 ---
 
 # Agent Routing: Subagent & Fork Control
@@ -59,6 +59,14 @@ When an auto-route hook re-fires right after an explicit stand-down on the same 
 
 For the `/slang-fix-issue` and `/slang-plan` **Recall** step ('spawn an Agent to scan prior learnings'), pass an isolated `subagent_type` (e.g. `Explore`) — never a bare context-inheriting fork, which re-runs the whole workflow and can produce phantom co-driver activity ([1783301166520-recall-scan-step-use-an-isolated-subag](../learnings/1783301166520-recall-scan-step-use-an-isolated-subagent-type-nev.md)).
 
+The over-reach is **non-deterministic**, which is why the isolated type is the only safe default, not a guard clause. On the #11684 triage a Step-2 recall fork spawned with a bare `Agent(prompt="Scan …/INDEX.md")` (omitting `subagent_type`) inherited the AUTO-ROUTE `/slang-triage-issue` directive and executed the entire triage workflow: it posted a second public GitHub triage comment, re-applied the `reproduced` label + Issue Type, sent a duplicate handoff to slang-fixer, and (sharing the container filesystem) overwrote the parent's `.gh-comments/<repo>-<n>.id` cache with its own comment id — a "phantom co-driver". Yet the *same-shaped* code-investigation forks the parent spawned that turn returned digests only. Because you cannot rely on a fork respecting a narrow prompt when it carries an actionable mission context, the workflows' Step-2/Step-3 `Agent(...)` examples should be read as `Explore`-typed; if a general fork is unavoidable, prepend the hard guard "READ-ONLY. Do NOT post GitHub comments, send messages, apply labels, dispatch to any coworker, or take ANY action. Return bullets ONLY." ([don't fork — omit `subagent_type` — for read-only recall/scan steps; the fork inherits full triage context](../learnings/1782152490395-don-t-fork-omit-subagent-type-for-read-only-recall.md)).
+
+## Subagent Dispatch Is the One Outward Surface With No PreToolUse Gate
+
+Structurally, why bare-fork overstep recurs even when the correct dispatch rule is auto-loaded in the agent's context: enumerating `~/.claude/settings.json` on the `main` edge (2026-08-04) shows a `PreToolUse` matcher on every other outward surface — `Edit|Write`, `Bash`, `mcp__codex__codex`, `mcp__nanoclaw__send_message` — but **none on `Agent`**. The one matcher-less `PreToolUse` entry that does fire on every tool is `curl -sf … > /dev/null 2>&1 || true` (output discarded, failure swallowed): it cannot block or inject, and `SubagentStart` is the same shape. So subagent dispatch is gated by nothing but the dispatching agent's memory ([subagent dispatch (Agent tool) is the one outward surface with no PreToolUse gate](../learnings/1785841367040-subagent-dispatch-agent-tool-is-the-one-outward-su.md)).
+
+This separates two failure classes that need opposite fixes. **Present-but-unfindable** (rule exists but isn't reachable from where you'd look) is what a note/cross-link fixes. **Present-but-unexecuted** (rule loaded in context, not run) — the bare-fork misses above — is provably *not* fixed by a note, because the note was already loaded; it needs a check at the point of action. If such a gate is ever built for `Agent`, it must **block-with-message, never auto-inject the missing clause** (auto-inject suppresses the signal so the agent never learns the miss), and it must pass a **two-sided acceptance test before you believe it works**: a read-only dispatch *missing* the clause must be observed BLOCKED (rules out a matcher that never matches — a `PreToolUse` matcher fails silent and green when the tool-name string is wrong), AND a dispatch *carrying* the clause must be allowed through (rules out over-blocking). Record the block message verbatim — a config diff is not a test result. Note the config is container-local (per-agent-group, stamped `X-Group-Folder`), so editing it changes nothing for sibling groups; `/app/hooks/` is image-owned and unwritable from a container edge ([subagent dispatch (Agent tool) is the one outward surface with no PreToolUse gate](../learnings/1785841367040-subagent-dispatch-agent-tool-is-the-one-outward-su.md)).
+
 
 ## Recent operational learnings (incremental fold 2026-07-17)
 
@@ -75,7 +83,7 @@ For the `/slang-fix-issue` and `/slang-plan` **Recall** step ('spawn an Agent to
 
 Two subagent-control failure modes. A coworker must NEVER end a turn waiting on a **background** subagent's completion notification: a container restart (instruction update, redeploy, image rebuild) tears down the notification, and the coworker waits indefinitely — observed on #11682, where the fixer sat idle 3+ days after "I'll act on the background subagent's completion" until a maintainer pinged. Use a **synchronous blocking Agent** for builds/tests so the result returns in-turn ([fixer stalls forever waiting on a background-subagent completion notification across teardown](../learnings/1784751502806-fixer-stalls-forever-waiting-on-background-subagen.md)). And when you add a NEW `SLANG_ASSERT` that can fire during the core-module build, do NOT hand it to an autonomous `general-purpose` subagent — one edited `slang-parser.cpp` to inject debug `fprintf` probes and chased a phantom; the assert firing is *expected signal*, so run the build yourself (or use read-only `Explore` for diagnosis) and read the log deliberately ([build subagents will EDIT your source when a new assert fires — drive assert-bearing builds yourself](../learnings/1784760030186-build-subagents-will-edit-your-source-when-a-new-a.md)).
 
-**Source learnings (19):**
+**Source learnings (21):**
 - [Don't use context-inheriting fork for narrow recall during active workflow](../learnings/1781727052401-don-t-use-a-context-inheriting-agent-fork-for-narr.md)
 - [Read-only recall forks must be scoped Explore or explicitly constrained](../learnings/1782215832171-read-only-recall-forks-must-be-scoped-explore-or-e.md)
 - [Duplicate dispatch peer live-writes the fix into your shared worktree](../learnings/1782215986023-duplicate-dispatch-peer-live-writes-the-fix-into-y.md)
@@ -95,4 +103,6 @@ Two subagent-control failure modes. A coworker must NEVER end a turn waiting on 
 - [critique-gate: 0-byte workflow-state.json silently drops all verdicts; repair to {}](../learnings/1784161587191-critique-gate-0-byte-workflow-state-json-silently-.md)
 - [never end a turn waiting on a background subagent's completion notification — a teardown kills it (3+ day stall on #11682); use a synchronous blocking Agent](../learnings/1784751502806-fixer-stalls-forever-waiting-on-background-subagen.md)
 - [don't hand an assert-bearing build to an autonomous general-purpose subagent (it edits your source to 'debug'); drive it yourself or use read-only Explore](../learnings/1784760030186-build-subagents-will-edit-your-source-when-a-new-a.md)
+- [don't fork (omit subagent_type) for read-only recall/scan — the fork inherits full triage context and may run the whole workflow](../learnings/1782152490395-don-t-fork-omit-subagent-type-for-read-only-recall.md)
+- [subagent dispatch (Agent tool) is the one outward surface with no PreToolUse gate](../learnings/1785841367040-subagent-dispatch-agent-tool-is-the-one-outward-su.md)
 _Catalog: [[wiki/index.md]]_
