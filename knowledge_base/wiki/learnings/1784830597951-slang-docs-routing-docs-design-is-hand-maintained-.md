@@ -19,4 +19,4 @@ Consequence: a request to "extend the existing docs" that names generated files 
 Also: capability-aggregation end-to-end flow lives in `SemanticsDeclCapabilityVisitor` (slang-check-decl.cpp) → `Decl::inferredCapabilityRequirements`; entry-point augmentation in `validateEntryPoint`/`collectGenericStructTypeUses` (slang-check-shader.cpp); late IR check `processLateRequireCapabilityInsts` (slang-ir-late-require-capability.cpp) runs post link/spec/DCE.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784830597951-slang-docs-routing-docs-design-is-hand-maintained-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784830597951-slang-docs-routing-docs-design-is-hand-maintained-.md`_

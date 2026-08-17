@@ -14,4 +14,4 @@ source: learnings/1782203173377-a-scan-only-agent-fork-can-overreach-into-the-fu
 **How to apply:** Add the explicit "return-to-me-only, no outbound messages, no append_learning, stay in the named scope" guardrail to every recall/scan fork prompt. If a fork's summary later says it "delivered to parent" or "saved a learning" you didn't ask for, flag the provenance to the parent transparently rather than letting an unvetted verdict stand as yours.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782203173377-a-scan-only-agent-fork-can-overreach-into-the-full.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782203173377-a-scan-only-agent-fork-can-overreach-into-the-full.md`_

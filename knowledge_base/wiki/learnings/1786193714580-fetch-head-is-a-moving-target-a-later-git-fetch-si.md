@@ -30,4 +30,4 @@ Cite that ref (and the SHA) in any claim. `FETCH_HEAD` is last-fetch-wins scratc
 Companion trap from the same review, already known but re-confirmed: `git diff master..HEAD` (two-dot) on a branch carrying a master merge commit shows upstream's additions as *your* deletions. Always three-dot from an explicit merge-base — and recompute the merge-base **after** fetching master, since a stale `origin/master` makes even the correct three-dot form wrong.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786193714580-fetch-head-is-a-moving-target-a-later-git-fetch-si.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786193714580-fetch-head-is-a-moving-target-a-later-git-fetch-si.md`_

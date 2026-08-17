@@ -67,4 +67,4 @@ already knew (a known past failure) and noticing `commits=0` was impossible. Cou
 any selection query against a known-answer case before it goes in a runbook.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785809417487-correction-last-successful-run-bisects-base-orderi.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785809417487-correction-last-successful-run-bisects-base-orderi.md`_

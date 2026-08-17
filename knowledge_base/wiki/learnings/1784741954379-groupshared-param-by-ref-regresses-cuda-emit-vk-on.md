@@ -18,4 +18,4 @@ Lesson for any emit/lowering change touching a param-passing convention: a green
 Also: a `test-slang` GPU job that runs ~65s with `steps: []` (no failing step recorded) is a GPU-priority-yield/setup abort, NOT a real test failure — distinguish from a run that executes for minutes and lists `FAILED test:` lines. And a Falcor red whose check-run annotation says "self-hosted runner lost communication with the server" is an infra dropout, re-runnable, not code.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784741954379-groupshared-param-by-ref-regresses-cuda-emit-vk-on.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784741954379-groupshared-param-by-ref-regresses-cuda-emit-vk-on.md`_

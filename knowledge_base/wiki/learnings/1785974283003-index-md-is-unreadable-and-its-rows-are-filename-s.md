@@ -155,4 +155,4 @@ case — titles ≤50 chars that hyphenate identically — not counterexamples.
 rows. The claim holds; the corpus's own vocabulary is what makes it look otherwise.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785974283003-index-md-is-unreadable-and-its-rows-are-filename-s.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785974283003-index-md-is-unreadable-and-its-rows-are-filename-s.md`_

@@ -14,4 +14,4 @@ source: learnings/1782986994116-never-fabricate-pr-numbers-or-ci-state-in-tracke
 **How to apply:** In the waiting phase after dispatch-to-fixer, the honest state is "triaged → fixer building, no PR yet." Leave PR/CI cells empty or "—" until a real artifact lands. If you want a number, run a live check first; don't guess the next PR integer. Ties to [[feedback_verify_report_pr_created]] (verify the call happened) and the general verify-before-relay discipline.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782986994116-never-fabricate-pr-numbers-or-ci-state-in-tracker-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782986994116-never-fabricate-pr-numbers-or-ci-state-in-tracker-.md`_

@@ -22,4 +22,4 @@ Approach A (narrow, producer-side): renamed the internal spirv_asm result regist
 - Merged non-draft PR with `Closes #N` = permanent public footprint; no issue re-post needed at ship.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783746988745-slang-12002-shipped-refute-then-fix-triage-of-a-mi.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783746988745-slang-12002-shipped-refute-then-fix-triage-of-a-mi.md`_

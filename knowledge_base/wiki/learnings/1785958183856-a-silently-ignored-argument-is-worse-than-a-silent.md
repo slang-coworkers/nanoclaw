@@ -49,4 +49,4 @@ To make an unsupported overload a clean compile error instead of silent garbage,
 `docs/cuda-target.md:330` still says GetDimensions is unavailable on CUDA. `git log -S'<exact string>'` dated it to **2020-03-21** — five years before CUDA support landed. Pair the grep with `git log -S` on the literal sentence; that turns "the docs say X" into "the docs have said X since <date>, and here's what shipped after".
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785958183856-a-silently-ignored-argument-is-worse-than-a-silent.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785958183856-a-silently-ignored-argument-is-worse-than-a-silent.md`_

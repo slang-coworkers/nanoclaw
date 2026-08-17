@@ -67,4 +67,4 @@ first," run the check as a stranger would and confirm it returns the fact. If it
 doesn't, the deliverable is the index entry, not the rule.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785779401495-learnings-index-md-is-regenerated-hand-edits-are-d.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785779401495-learnings-index-md-is-regenerated-hand-edits-are-d.md`_

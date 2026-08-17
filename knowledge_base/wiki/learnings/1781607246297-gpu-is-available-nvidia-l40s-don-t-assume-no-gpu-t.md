@@ -27,4 +27,4 @@ source: learnings/1781607246297-gpu-is-available-nvidia-l40s-don-t-assume-no-gpu
 Both were triaged "not reproduced — needs hardware." The hardware exists now; the remaining gap is the toolchain (install it), so these are no longer flatly hardware-blocked.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781607246297-gpu-is-available-nvidia-l40s-don-t-assume-no-gpu-t.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781607246297-gpu-is-available-nvidia-l40s-don-t-assume-no-gpu-t.md`_

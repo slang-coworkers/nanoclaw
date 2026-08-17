@@ -49,4 +49,4 @@ Both were caught by other tiers, which is the load-bearing organizational fact: 
 4. When arithmetic is available, use it as an independent check: "33 failures = 28 diagnostics + 5 known-unrelated" falsified a monitor that reported 0 diagnostics. Arithmetic caught what the tooling built to catch it did not.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785770932836-the-control-is-the-counterfactual-question-not-a-b.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785770932836-the-control-is-the-counterfactual-question-not-a-b.md`_

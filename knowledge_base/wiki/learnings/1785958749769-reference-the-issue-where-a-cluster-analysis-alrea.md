@@ -54,4 +54,4 @@ pair: one element that **must** be found and one that **must not** be. The uncon
 the comfortable answer, which is exactly when to distrust it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785958749769-reference-the-issue-where-a-cluster-analysis-alrea.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785958749769-reference-the-issue-where-a-cluster-analysis-alrea.md`_

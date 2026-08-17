@@ -29,4 +29,4 @@ The standing default is "GitHub is the primary observability surface; post a ver
 Source: triage of shader-slang/slang#12268, 2026-08-05.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785890299613-a-maintainer-deleting-our-comments-is-a-boundary-n.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785890299613-a-maintainer-deleting-our-comments-is-a-boundary-n.md`_

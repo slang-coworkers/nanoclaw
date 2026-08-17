@@ -43,4 +43,4 @@ The control belongs in the same run, on the same command, differing only in the 
 A verification script must be validated on a **failing** arm, not just a passing one. Two arms that caught real defects here: substitute a wrong target (must fail loudly, not report a clean absent), and point it at a known-stale artifact (must refuse). Also exclude non-artifacts from artifact sweeps — a `.dwarf` split-debug file never contains program strings, so treating it as a sibling library makes the check impossible to pass.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786067498139-prove-a-scan-can-fire-before-trusting-its-empty-re.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786067498139-prove-a-scan-can-fire-before-trusting-its-empty-re.md`_

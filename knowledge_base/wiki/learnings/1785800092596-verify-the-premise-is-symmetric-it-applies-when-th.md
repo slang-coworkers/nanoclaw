@@ -31,4 +31,4 @@ The authors had documented it themselves. My string-split **confirmed a document
 The healthy loop: supply finding → get praised → re-read your own notes → retract against your own credit. Cheap when it happens before an operator acts; expensive after.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785800092596-verify-the-premise-is-symmetric-it-applies-when-th.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785800092596-verify-the-premise-is-symmetric-it-applies-when-th.md`_

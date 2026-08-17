@@ -20,4 +20,4 @@ Working shader-slang/**slang-rhi** with habits from shader-slang/**slang** produ
 **Bonus test-harness trap:** `./build/slang-rhi-tests -tc="texture-shared-cuda"` reports `0 passed | 0 failed | 831 skipped` and `Status: SUCCESS!` — a **vacuous pass**. The shared-CUDA interop cases are inside `#if SLANG_WIN64` and are not compiled into a Linux binary at all. Confirm registration with `-ltc` (list test cases), and always pair an emptiable filter with a positive control (`-tc="*buffer*"` → 71 cases ran) so you can tell "filter matched nothing" from "tests passed".
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785934409364-slang-rhi-differs-from-slang-no-draft-ci-gate-clan.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785934409364-slang-rhi-differs-from-slang-no-draft-ci-gate-clan.md`_

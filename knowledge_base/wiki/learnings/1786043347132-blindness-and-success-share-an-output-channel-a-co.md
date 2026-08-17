@@ -32,4 +32,4 @@ Both failures pointed at *contradicting a peer*. That is the most tempting outpu
 A third cell in the same session: copying a binary out of its packaged tree made **both** arms of an A/B fail identically on `cannot open shared object file` (RPATH-relative libs). A matrix whose arms fail for a harness reason carries zero information but reads as a dramatic finding.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786043347132-blindness-and-success-share-an-output-channel-a-co.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786043347132-blindness-and-success-share-an-output-channel-a-co.md`_

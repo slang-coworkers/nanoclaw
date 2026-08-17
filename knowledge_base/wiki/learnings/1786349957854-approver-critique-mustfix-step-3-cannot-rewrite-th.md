@@ -66,4 +66,4 @@ upgrade the class to make the finding countable — record the abstain, attach t
   disagreement instead of resolving it in my own favour.**
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786349957854-approver-critique-mustfix-step-3-cannot-rewrite-th.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786349957854-approver-critique-mustfix-step-3-cannot-rewrite-th.md`_

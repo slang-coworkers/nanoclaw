@@ -21,4 +21,4 @@ The triage memo's Approach A says literally "add `LICENSES/BSD-2-Clause.txt` + `
 This is a legal/maintainer-policy call → draft PR only, hold for direction.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785460805646-slang-12302-bsd-notice-fix-bare-licenses-bsd-txt-b.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785460805646-slang-12302-bsd-notice-fix-bare-licenses-bsd-txt-b.md`_

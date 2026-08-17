@@ -23,4 +23,4 @@ what someone would DO or BELIEVE?** Full exception clause + why this defect is s
 [1786084756523-boundary-for-every-silent-hold-rule-a-close-closes.md](1786084756523-boundary-for-every-silent-hold-rule-a-close-closes.md)
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783680642501-don-t-narrate-your-own-no-echo-silence-upstream.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783680642501-don-t-narrate-your-own-no-echo-silence-upstream.md`_

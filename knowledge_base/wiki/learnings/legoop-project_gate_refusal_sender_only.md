@@ -36,4 +36,4 @@ all — that's coworker output; per [[feedback_chain_shape_strict]] the orchestr
 escalates to humans, not peers. Separate upstream question, still unstarted.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/legoop-project_gate_refusal_sender_only.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/legoop-project_gate_refusal_sender_only.md`_

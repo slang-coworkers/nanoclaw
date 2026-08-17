@@ -201,4 +201,4 @@ property being claimed.** Exit code doesn't carry *which* failure; the E-code st
 am claiming changes?**
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786201336697-slang-diagnostic-coverage-cannot-be-grepped-by-e-c.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786201336697-slang-diagnostic-coverage-cannot-be-grepped-by-e-c.md`_

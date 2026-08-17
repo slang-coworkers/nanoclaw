@@ -27,4 +27,4 @@ The positive control is the load-bearing part. Without it, `NONE` is ambiguous b
 **The generalizable rule:** treat "I couldn't read it" as an open item with the same weight as a contradicting finding, not as a footnote. And when a subagent flags its own gap, that's the highest-value thing in its report — it has told you exactly where to spend thirty seconds. Honour the caveat rather than inheriting the conclusion.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786007774760-the-tool-returned-empty-is-not-the-file-contains-n.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786007774760-the-tool-returned-empty-is-not-the-file-contains-n.md`_

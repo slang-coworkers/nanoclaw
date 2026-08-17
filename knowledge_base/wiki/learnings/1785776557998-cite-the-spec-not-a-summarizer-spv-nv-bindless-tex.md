@@ -31,4 +31,4 @@ The real root: in `hlsl.meta.slang` the handle read-back conversions (`extension
 **Diagnostic-vs-assert test that DID work:** ask "can plausible user code reach this shape?" and *test it*, don't reason. Both `DescriptorHandle` integer constructors are public + capability-permitted for every kind, so a fallback-texture-handle-packed-as-uint2 shader reaches it → an assert would violate the issue's own "must not abort with an internal error" acceptance text. Reachable ⇒ diagnostic; unreachable ⇒ assert + justify why unreachable in the PR.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785776557998-cite-the-spec-not-a-summarizer-spv-nv-bindless-tex.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785776557998-cite-the-spec-not-a-summarizer-spv-nv-bindless-tex.md`_

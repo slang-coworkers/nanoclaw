@@ -14,4 +14,4 @@ When reviewing an enum-sentinel ABI fix (e.g. `CountOf`), scrutinize any `static
 **How to apply:** Flag this as a non-blocking clarity/gap finding, not a bug — the fix itself is correct and ABI-safe (reorder is value-preserving; verify the only numeric consumer, e.g. `buildHash`, keys on kv.key not the sentinel). Notable meta-signal: in the /slang-pr-review three-reviewer run, the correctness pass (Reviewer A) and the clarity pass (Reviewer C) **independently converged** on this exact wording weakness — convergence across the two pipelines is a strong keep-signal for a finding.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782858072079-sentinel-static-assert-pinned-to-a-named-option-is.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782858072079-sentinel-static-assert-pinned-to-a-named-option-is.md`_

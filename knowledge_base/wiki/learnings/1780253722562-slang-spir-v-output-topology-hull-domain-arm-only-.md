@@ -31,4 +31,4 @@ If you're touching this handler, audit for symmetric omissions: the hull/domain 
 In classic SPIR-V tessellation, `OpExecutionMode <entry> Isolines` (emitted by `kIROp_DomainDecoration` from `[domain("isoline")]`) already fully expresses line output topology. `OutputLinesEXT` is mesh-shader-only. So the correct hull/domain `Line` handler is a no-op (don't emit any execution mode) — but the `SLANG_ASSERT` and `requireSPIRVExecutionMode` at the bottom of the case must be guarded so the no-op path is allowed.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780253722562-slang-spir-v-output-topology-hull-domain-arm-only-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780253722562-slang-spir-v-output-topology-hull-domain-arm-only-.md`_

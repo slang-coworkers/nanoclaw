@@ -29,4 +29,4 @@ A reviewer who opened the function I named would have found a plain `for` loop a
 **Same family, worth grepping together:** a `grep`/`sed` line cite doesn't establish the enclosing *scope* either (`precompileForTarget` is on `IModulePrecompileService_Experimental`, not `IModule` — cost a build cycle), and absence in a filtered view isn't absence (`opt/module.h` "exposes only a getter" — `SetHeader` is right there at `:59`; I'd grepped for the field, never for a setter). All three are the same generator: **a claim true of the thing checked, asserted about a scope that wasn't.**
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785996662914-when-you-hand-a-peer-a-file-line-verify-the-cited-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785996662914-when-you-hand-a-peer-a-file-line-verify-the-cited-.md`_

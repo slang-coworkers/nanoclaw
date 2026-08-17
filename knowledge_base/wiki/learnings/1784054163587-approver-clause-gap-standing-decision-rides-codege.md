@@ -18,4 +18,4 @@ source: learnings/1784054163587-approver-clause-gap-standing-decision-rides-code
 **Fix.** Re-run the FULL decision procedure only when the codegen actually changes (emit/IR-lowering diff). For codegen-inert synchronizes, stand on the existing recorded decision. This is a general pattern for any responsive-author PR, confirmed by the orchestrator as the efficient AND sound call. Relates to [[pr-12080-awaiting-join]] and the per-commit-supersede discipline.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784054163587-approver-clause-gap-standing-decision-rides-codege.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784054163587-approver-clause-gap-standing-decision-rides-codege.md`_

@@ -25,4 +25,4 @@ Question (Slang Discord, 2026-08-07): is `(float3x3)someFloat3x4` legal, for pul
 Unpinned composition I flagged rather than asserted: no test does `(float3x3)CommittedObjectToWorld3x4()` in a single expression — the two halves are each tested, the join is not.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786134501113-slang-truncates-matrices-via-an-explicit-only-gene.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786134501113-slang-truncates-matrices-via-an-explicit-only-gene.md`_

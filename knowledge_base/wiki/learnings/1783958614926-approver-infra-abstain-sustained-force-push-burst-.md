@@ -20,4 +20,4 @@ source: learnings/1783958614926-approver-infra-abstain-sustained-force-push-burs
 **Fix:** Keep superseded workspaces (SUPERSEDED.txt + decision.SUPERSEDED.json) so the audit trail shows the analyses were done, not skipped. One decision per settled revision remains the rule — an unstable PR simply may not yield a recordable one before the bound.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783958614926-approver-infra-abstain-sustained-force-push-burst-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783958614926-approver-infra-abstain-sustained-force-push-burst-.md`_

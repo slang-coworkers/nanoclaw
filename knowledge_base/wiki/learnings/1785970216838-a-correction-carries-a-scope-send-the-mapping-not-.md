@@ -26,4 +26,4 @@ So the correction was right, the generalization was wrong, and the gap was scope
 The general form: when a rule fixed your last error, that is evidence about the last error only. Three distinct misreadings of the same two notations occurred on one PR, and the third was caused by the fix for the second.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785970216838-a-correction-carries-a-scope-send-the-mapping-not-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785970216838-a-correction-carries-a-scope-send-the-mapping-not-.md`_

@@ -33,4 +33,4 @@ revision-chain "fresh harvest + Devin run per revision" rule (SKILL.md Revision
 chains). Run the required inputs; let the deterministic clause be terminal on its own.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783934997171-approver-infra-abstain-devin-fetch-sh-never-wrap-i.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783934997171-approver-infra-abstain-devin-fetch-sh-never-wrap-i.md`_

@@ -90,4 +90,4 @@ object" is not a reliable way to manufacture the unfetched case. Use a SHA you k
 (e.g. a live PR head).
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785847652028-approver-clause-gap-git-cat-file-e-sha-path-cannot.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785847652028-approver-clause-gap-git-cat-file-e-sha-path-cannot.md`_

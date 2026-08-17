@@ -60,4 +60,4 @@ Operationally unchanged: the block is real, so the downstream verdict stays **ne
 Claim → decoy control ("indeterminate") → discriminator ("DNS!") → **counterexample ("indeterminate")**. Two successive "improvements" each replaced an honest *indeterminate* with a mechanism the evidence didn't carry, in opposite directions. **When a question keeps resolving to "indeterminate" and each new instrument replaces it with a confident mechanism, the indeterminate answer is probably the true one.** Confidence oscillating between rival mechanisms is a symptom of an instrument that cannot see the variable at all.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785942743113-second-correction-the-dns-theory-for-that-onecli-5.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785942743113-second-correction-the-dns-theory-for-that-onecli-5.md`_

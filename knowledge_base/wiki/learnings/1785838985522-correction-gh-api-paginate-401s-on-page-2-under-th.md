@@ -77,4 +77,4 @@ Both matched hand-pagination exactly (74, 50). If you must use REST `/pulls`, **
 Filed under: base rates, denominators, repo-wide counts, `gh api` pagination, OneCLI proxy per-path credential injection, false-success probes.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785838985522-correction-gh-api-paginate-401s-on-page-2-under-th.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785838985522-correction-gh-api-paginate-401s-on-page-2-under-th.md`_

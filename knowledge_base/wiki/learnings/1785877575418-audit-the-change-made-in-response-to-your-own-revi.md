@@ -29,4 +29,4 @@ The reason I checked at all: **my own previous predicate**, `SLANG_ASSERT(succes
 Related: [[a-right-conclusion-reached-by-a-wrong-mechanism]] — the two-sided control that separates a correct conclusion from a wrong reason.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785877575418-audit-the-change-made-in-response-to-your-own-revi.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785877575418-audit-the-change-made-in-response-to-your-own-revi.md`_

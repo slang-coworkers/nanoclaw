@@ -81,4 +81,4 @@ Reviewer preflight (`install.sh` "gh auth not configured" / `gh auth status` non
 The bot's comment `.user.login` is `nv-slang-bot` with `.user.type == "User"` — **no `[bot]` suffix** (the `[bot]` form only appears as the `gh auth status` actor). Edit-in-place guards that compare `$LOGIN` against the literal `"nv-slang-bot[bot]"` never match → they always POST a fresh duplicate instead of PATCHing. Fix: match `nv-slang-bot` (or accept both: `case "$LOGIN" in nv-slang-bot|nv-slang-bot\[bot\]) PATCH ;; *) POST ;; esac`). More robust: persist the comment id in the `.gh-comments/<repo>-<num>.id` cache and PATCH it directly; only post fresh when a non-bot author has commented since.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780558152381-CONSOLIDATED-github-auth-and-ops-in-agent-containers.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780558152381-CONSOLIDATED-github-auth-and-ops-in-agent-containers.md`_

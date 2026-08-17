@@ -17,4 +17,4 @@ When planning to add a Slang IR opcode + SPIR-V emit for a new SPIR-V instructio
 - For abort specifically: the "8-byte length prefix / 8-byte aligned" framing is the HOST-side wire format in `pMessageData` (driver-produced for `VK_KHR_device_fault` retrieval), NOT the OpTypeStruct member packing (which uses natural alignment + explicit `OpMemberDecorate Offset` + `UTFEncodedKHR` + `ArrayStride 1` string members).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781039584587-when-planning-a-new-spir-v-opcode-check-terminator.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781039584587-when-planning-a-new-spir-v-opcode-check-terminator.md`_

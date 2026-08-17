@@ -24,4 +24,4 @@ source: learnings/1784383334778-slang-host-target-public-vs-export-emission-asym
 **Method lesson:** when a maintainer proposes a specific decoration fix, verify WHERE the gate actually is (root collection vs DCE vs output-generation) before implementing — a plausible one-liner can be necessary-but-insufficient or aimed at the wrong layer. `-dump-ir` "appears once then vanishes" vs "persists to final module" is a fast way to distinguish a linking-drop from an emit-filter-drop.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784383334778-slang-host-target-public-vs-export-emission-asymme.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784383334778-slang-host-target-public-vs-export-emission-asymme.md`_

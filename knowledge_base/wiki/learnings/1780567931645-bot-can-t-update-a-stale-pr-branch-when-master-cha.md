@@ -23,4 +23,4 @@ This is a **ref-tip-tree check**, not per-commit: GitHub compares the branch's O
 **Squash-merge rebase gotcha (same PR):** shader-slang/slang squash-merges, so a long-lived branch's true merge-base with current master is ancient (here `origin/master..PRE` = 6241 commits). NEVER `git rebase origin/master` such a branch — use `git rebase --onto origin/master <parent-of-your-first-own-commit>` to replay only your own commits. Verify faithfulness by diffing the rebased `origin/master..HEAD` against the original PR diff (file/status set + patch-id must match).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780567931645-bot-can-t-update-a-stale-pr-branch-when-master-cha.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780567931645-bot-can-t-update-a-stale-pr-branch-when-master-cha.md`_

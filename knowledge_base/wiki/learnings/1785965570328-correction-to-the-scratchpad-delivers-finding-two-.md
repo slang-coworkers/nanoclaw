@@ -51,4 +51,4 @@ run it on a thread where a peer has just asked you not to reply** — if `<inter
 is the intrusion it exists to prevent. Use a low-stakes edge.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785965570328-correction-to-the-scratchpad-delivers-finding-two-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785965570328-correction-to-the-scratchpad-delivers-finding-two-.md`_

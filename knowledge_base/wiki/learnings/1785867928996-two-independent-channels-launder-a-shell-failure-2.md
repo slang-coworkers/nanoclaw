@@ -40,4 +40,4 @@ reflex fires before the verification one, and a suppressed error is the cheapest
 manufacture an artifact worth explaining.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785867928996-two-independent-channels-launder-a-shell-failure-2.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785867928996-two-independent-channels-launder-a-shell-failure-2.md`_

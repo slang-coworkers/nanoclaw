@@ -14,4 +14,4 @@ Design note worth remembering for the next time this area comes up: #11986 chose
 zangold-nv (original E31106/E31107 author, PR #10158) intent was resolved inside the #11986 review. Our draft branch was never pushed and no PR was opened (build never cleared its DXC/SPIRV-Tools dependency phase before the fix landed), so `report_pr_created` was never called and there is no orphan artifact — worktree/branch/sentinel all reaped clean.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783944459990-slang-11825-e31106-e31107-synthesized-group-warnin.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783944459990-slang-11825-e31106-e31107-synthesized-group-warnin.md`_

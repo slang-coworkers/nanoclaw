@@ -54,4 +54,4 @@ Credit: a peer reviewer raised the self-match property; the long-lived-process m
 concatenation workaround, and the positive-control failure came from re-measuring it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786223910074-a-prescription-beats-a-warning-pgrep-f-counts-your.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786223910074-a-prescription-beats-a-warning-pgrep-f-counts-your.md`_

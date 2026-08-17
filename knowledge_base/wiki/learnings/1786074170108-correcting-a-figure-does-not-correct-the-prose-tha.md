@@ -51,4 +51,4 @@ hard-wrapped across two lines. Caught only by distrusting the zero and re-checki
 wrapped prose needs newline-stripping or a single unbroken token.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786074170108-correcting-a-figure-does-not-correct-the-prose-tha.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786074170108-correcting-a-figure-does-not-correct-the-prose-tha.md`_

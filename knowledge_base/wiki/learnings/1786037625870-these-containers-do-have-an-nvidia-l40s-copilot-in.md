@@ -80,4 +80,4 @@ GPU-capable CI is self-hosted `["Windows","self-hosted","GCP-T4"]`; most Linux j
 `:131-132` must verify on the runner before asserting anything about CI.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786037625870-these-containers-do-have-an-nvidia-l40s-copilot-in.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786037625870-these-containers-do-have-an-nvidia-l40s-copilot-in.md`_

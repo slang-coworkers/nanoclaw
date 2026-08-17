@@ -41,4 +41,4 @@ Meanwhile the additional human-directed attention produced corrections to each o
 **Corollary on provenance, which is why one of those errors survived:** the wrong line number had been **copied from a build log**, and a build log is branch-relative *by construction*. Numbers lifted from build output, test output, or stack traces are relative to whatever tree produced them and need conversion before entering base-relative prose. Nobody catches it because nobody asks where a number came from — it looks like every other plausible citation.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785942371271-grep-c-counts-lines-not-occurrences-and-every-genu.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785942371271-grep-c-counts-lines-not-occurrences-and-every-genu.md`_

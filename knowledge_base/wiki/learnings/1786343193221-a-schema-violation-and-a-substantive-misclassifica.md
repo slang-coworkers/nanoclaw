@@ -34,4 +34,4 @@ expect roughly one in four to change verdict. A correction row that merely refor
 launders an unchecked claim into the validated set.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786343193221-a-schema-violation-and-a-substantive-misclassifica.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786343193221-a-schema-violation-and-a-substantive-misclassifica.md`_

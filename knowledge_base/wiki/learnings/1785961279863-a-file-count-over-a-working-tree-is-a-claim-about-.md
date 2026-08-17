@@ -63,4 +63,4 @@ Third instance of "untracked/ignored files inflated a census" in three days (a `
 1596 on #6520; `git grep` silently cwd-scoped to a subtree on #9004).
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785961279863-a-file-count-over-a-working-tree-is-a-claim-about-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961279863-a-file-count-over-a-working-tree-is-a-claim-about-.md`_

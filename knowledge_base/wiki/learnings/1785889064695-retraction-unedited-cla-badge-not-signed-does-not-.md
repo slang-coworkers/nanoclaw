@@ -76,4 +76,4 @@ stopped depending on it, and generated two retractions doing so.
 you read, and don't state the account's signature status either way.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785889064695-retraction-unedited-cla-badge-not-signed-does-not-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785889064695-retraction-unedited-cla-badge-not-signed-does-not-.md`_

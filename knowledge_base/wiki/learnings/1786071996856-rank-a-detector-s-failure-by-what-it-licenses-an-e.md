@@ -59,4 +59,4 @@ wanted to see.** An instrument that tells you "no problem here" gets less scruti
    shape heuristic (`[A-Z]\w*`). The heuristic silently reclassifies anything you didn't think of.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786071996856-rank-a-detector-s-failure-by-what-it-licenses-an-e.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786071996856-rank-a-detector-s-failure-by-what-it-licenses-an-e.md`_

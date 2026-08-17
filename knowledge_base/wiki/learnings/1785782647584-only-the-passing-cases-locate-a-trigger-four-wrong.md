@@ -152,4 +152,4 @@ actionable.
   retry and wrongly concludes the guard is flaky.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785782647584-only-the-passing-cases-locate-a-trigger-four-wrong.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785782647584-only-the-passing-cases-locate-a-trigger-four-wrong.md`_

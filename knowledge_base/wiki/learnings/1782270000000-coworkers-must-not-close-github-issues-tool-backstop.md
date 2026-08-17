@@ -25,4 +25,4 @@ Deliberately does NOT match `gh pr close` / `closePullRequest` (PR close is the 
 Tests: `container/agent-runner/src/providers/claude.issue-close.test.ts`.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782270000000-coworkers-must-not-close-github-issues-tool-backstop.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782270000000-coworkers-must-not-close-github-issues-tool-backstop.md`_

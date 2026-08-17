@@ -16,4 +16,4 @@ Concrete incident (shader-slang/slang#11591, Slice 2 of #11545, 2026-06-18): the
 Rule of thumb: a test re-expression added solely to dodge a new check you introduced is a "do not mask" smell — stop and check whether a prior ruling already decided that the check belongs in a later slice.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781775592867-a-fresh-unblock-handoff-can-contradict-a-prior-tri.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781775592867-a-fresh-unblock-handoff-can-contradict-a-prior-tri.md`_

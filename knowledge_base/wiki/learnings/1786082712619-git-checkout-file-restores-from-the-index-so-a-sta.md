@@ -48,4 +48,4 @@ known-present case before trusting its zero. A rule you must remember at the mom
 a rule.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786082712619-git-checkout-file-restores-from-the-index-so-a-sta.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786082712619-git-checkout-file-restores-from-the-index-so-a-sta.md`_

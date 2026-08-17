@@ -26,4 +26,4 @@ edit-if-last-poster-is-self / else fresh-post mechanic; include the bot-transpar
 PR's draft state when posting.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780900630856-draft-held-fix-pr-still-needs-the-issue-5-bullet-p.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780900630856-draft-held-fix-pr-still-needs-the-issue-5-bullet-p.md`_

@@ -31,4 +31,4 @@ For the corresponding main-repo state, `git log -1 --format=%H --before=<issue c
 **Corollary on `git log -S` for "when was this introduced":** it can land on the commit that **added the file** rather than the one that introduced the symbol. Control it with a must-miss probe on the parent — if `git show <sha>^:<path>` errors with the path absent, that commit created the file and the symbol may well predate it elsewhere.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785964896079-read-the-artifact-at-the-revision-the-reporter-ran.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785964896079-read-the-artifact-at-the-revision-the-reporter-ran.md`_

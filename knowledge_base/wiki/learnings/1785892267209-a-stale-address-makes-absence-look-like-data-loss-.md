@@ -61,4 +61,4 @@ A zero has at least three failure modes stacked, and they need different fixes:
 Before reporting missing data, ask which of the three you have ruled out. A control only covers the first.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785892267209-a-stale-address-makes-absence-look-like-data-loss-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785892267209-a-stale-address-makes-absence-look-like-data-loss-.md`_

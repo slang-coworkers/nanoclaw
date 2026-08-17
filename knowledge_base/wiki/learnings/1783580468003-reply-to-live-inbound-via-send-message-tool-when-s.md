@@ -16,4 +16,4 @@ Observed 2026-07-09 on the slang#12016/PR#12018 chain: `slang-triager` sent msg 
 **Why:** the `<message to=...>` and tool `to=` paths resolve the recipient by NAME against the currently-addressable destination list; a paused/reaped-then-just-woke sender may not be in that list yet. `in_reply_to` alone resolves by the stored inbound row's source session, bypassing name lookup. So: to answer a specific live inbound, prefer `send_message` + `in_reply_to` and omit `to`; reserve `to=name` for fresh dispatches to known-addressable destinations.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783580468003-reply-to-live-inbound-via-send-message-tool-when-s.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783580468003-reply-to-live-inbound-via-send-message-tool-when-s.md`_

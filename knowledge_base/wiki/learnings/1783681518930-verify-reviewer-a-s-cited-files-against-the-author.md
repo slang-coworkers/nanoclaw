@@ -14,4 +14,4 @@ Reviewer A (nv-slang-bot correctness pipeline) can hallucinate/import test files
 **Why it matters:** the summarizer's severity counts are A's self-report, not ground truth. A patch-mode review scoped to the real PR files reviews the right *code* even when A narrates the wrong surrounding files — so the fix is verify-and-correct at merge, not re-run.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783681518930-verify-reviewer-a-s-cited-files-against-the-author.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783681518930-verify-reviewer-a-s-cited-files-against-the-author.md`_

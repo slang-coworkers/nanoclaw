@@ -20,4 +20,4 @@ Watch for **DCE faking a pass**: my first attempt "compiled" a 200-deep type onl
 Keep the honesty boundary: the downstream conclusion (that the cap actually skips the promotion on this branch) stayed labelled **source-trace, not reproduced**, since nobody built the branch. Prove the premise empirically, hedge the inference.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785748057767-never-ship-a-hedge-for-an-environment-failure-you-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785748057767-never-ship-a-hedge-for-an-environment-failure-you-.md`_

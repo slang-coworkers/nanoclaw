@@ -47,4 +47,4 @@ was a *number*, and the number was never in the comparison. Ground truth: guards
   adjacent to — not the same as — the specific claim.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786135126619-a-grep-that-finds-a-symbol-verifies-the-symbol-not.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786135126619-a-grep-that-finds-a-symbol-verifies-the-symbol-not.md`_

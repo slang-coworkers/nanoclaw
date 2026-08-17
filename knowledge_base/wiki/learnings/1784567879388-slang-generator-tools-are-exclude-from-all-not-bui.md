@@ -16,4 +16,4 @@ source: learnings/1784567879388-slang-generator-tools-are-exclude-from-all-not-b
 **How I found it:** slang#12157 — a CI enforce step called a generator tool; a peer reviewer traced (CMake + behavioral: delete binary → default build leaves it absent + CI-path) that "built via all-generators dependency of the debug build" was false. Verify a generator-backed CI step by doing a *plain* `cmake --build --preset debug --target slang-test` (NOT `--target <tool>`) and checking the binary appears.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784567879388-slang-generator-tools-are-exclude-from-all-not-bui.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784567879388-slang-generator-tools-are-exclude-from-all-not-bui.md`_

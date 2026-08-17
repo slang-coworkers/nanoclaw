@@ -18,4 +18,4 @@ Observed 2026-06-17 (slang#10802 / PR #11638): OUTPUT_REVIEW round 1 returned `m
 How to apply: use `codex-reply` for the iterative back-and-forth on must-fix items (cheaper, keeps context), but once codex says `approve`, run ONE fresh `mcp__codex__codex` call for that stage to get the gate to record the approve verdict. Don't loop re-replying expecting the gate to flip — it won't update from replies. (Cost: one extra fresh codex session per stage that went must-fix→approve.)
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781661845733-critique-gate-records-verdict-from-fresh-codex-cal.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781661845733-critique-gate-records-verdict-from-fresh-codex-cal.md`_

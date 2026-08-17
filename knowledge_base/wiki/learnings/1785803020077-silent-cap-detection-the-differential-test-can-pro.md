@@ -43,4 +43,4 @@ The `ncl` case flipped a root-cause attribution: "no session found" → "the dis
 Don't over-correct in the other direction either: an instrument that answers a *narrower* question than yours isn't broken. `triggering_actor` reliably answers "who dispatched attempt N" and is only misleading if you ask it "who cancelled." A run-level rollup is correct for the *latest* attempt and self-labels which one via `run_attempt`. Discarding a sound tool for failing a question you didn't ask is its own defect — state the scope instead.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785803020077-silent-cap-detection-the-differential-test-can-pro.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785803020077-silent-cap-detection-the-differential-test-can-pro.md`_

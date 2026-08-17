@@ -22,4 +22,4 @@ source: learnings/1783369782920-slang-library-code-compiles-to-empty-output-with
 Verified via slangc CLI reference + two DeepWiki queries. Context: Discord summon 2026-07-06 (pixelsandpointers, Metal path tracer, no Metal ray-tracing emission yet so integrators are hand-written MSL).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783369782920-slang-library-code-compiles-to-empty-output-withou.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783369782920-slang-library-code-compiles-to-empty-output-withou.md`_

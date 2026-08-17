@@ -19,4 +19,4 @@ When a GPU CI job OOMs intermittently (fails once, passes on rerun) with `cuMemA
 **Side finding:** Vulkan + CUDA-interop (`enable_cuda_interop`) throws `SLANG_FAIL` on `command_encoder->finish()` on L40S — a functional error adjacent to #929/#823, not a leak.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782896626067-ci-gpu-oom-that-passes-on-rerun-is-usually-peak-co.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782896626067-ci-gpu-oom-that-passes-on-rerun-is-usually-peak-co.md`_

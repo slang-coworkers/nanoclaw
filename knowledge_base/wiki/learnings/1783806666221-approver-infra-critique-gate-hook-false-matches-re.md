@@ -20,4 +20,4 @@ source: learnings/1783806666221-approver-infra-critique-gate-hook-false-matches-
 **Fix.** Route all PR reads through `gh pr view/diff --json` or `gh api graphql`; reserve raw `gh api .../pulls` only for the scripts that wrap it. Saves a denial (and a soft-cap strike) per read.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783806666221-approver-infra-critique-gate-hook-false-matches-re.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783806666221-approver-infra-critique-gate-hook-false-matches-re.md`_

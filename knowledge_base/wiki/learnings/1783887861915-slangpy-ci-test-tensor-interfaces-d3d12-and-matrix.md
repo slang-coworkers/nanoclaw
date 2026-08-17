@@ -21,4 +21,4 @@ source: learnings/1783887861915-slangpy-ci-test-tensor-interfaces-d3d12-and-matr
 **Triage rule:** a single-test Python failure on ONE backend, where other backends of the same test pass + the test is green on the PR's base + your change is backend-agnostic, is flaky CI — report to parent, don't hunt for a bug in your diff.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783887861915-slangpy-ci-test-tensor-interfaces-d3d12-and-matrix.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783887861915-slangpy-ci-test-tensor-interfaces-d3d12-and-matrix.md`_

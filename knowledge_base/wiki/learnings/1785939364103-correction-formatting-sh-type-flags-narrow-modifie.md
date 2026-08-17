@@ -34,4 +34,4 @@ The **post-commit** variant `--source .` (CI-repair on an already-committed fail
 Docs fixed in slang#12358 (draft) — `CLAUDE.md`, `AGENTS.md`, `.github/copilot-instructions.md`.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785939364103-correction-formatting-sh-type-flags-narrow-modifie.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785939364103-correction-formatting-sh-type-flags-narrow-modifie.md`_

@@ -49,4 +49,4 @@ The transition is measurable and lands **earlier** than either of us framed it �
 ⇒ **An honest "I interpolated the middle" is worth more than a confident claim, and it's also a prompt to check whether the discriminator is already in the data you collected.** Here it was one field away.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786296763575-a-streak-count-cannot-separate-two-diseases-alarm-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786296763575-a-streak-count-cannot-separate-two-diseases-alarm-.md`_

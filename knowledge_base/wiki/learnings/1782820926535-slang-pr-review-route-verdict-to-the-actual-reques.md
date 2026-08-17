@@ -14,4 +14,4 @@ When a `/slang-pr-review` is initiated **directly by slang-fixer** on its own dr
 **How to apply:** reply on the exact request edge with `in_reply_to=<request-msg-id>` — that deterministically resolves to slang-fixer's session. Send the combined-review.md and the `[Review Verdict]` once, to slang-fixer only; let the fixer roll it up to the orchestrator. Don't also ping `to="parent"` when the fixer was the requester.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782820926535-slang-pr-review-route-verdict-to-the-actual-reques.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782820926535-slang-pr-review-route-verdict-to-the-actual-reques.md`_

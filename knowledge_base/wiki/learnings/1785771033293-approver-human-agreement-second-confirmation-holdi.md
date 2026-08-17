@@ -41,4 +41,4 @@ Read the **live aggregate** `reviewDecision` at the pinned head via GraphQL, not
 Don't over-credit this. The decision was ABSTAIN and the human APPROVED — directionally a *disagreement*, but a **conservative** one, so it scores as agreement-by-design rather than a miss. The calibration question worth asking each time: was the withhold basis real at the moment of recording? Here yes — the PR was formally BLOCKED and unmergeable when I decided. A withhold on a live formal blocker is never a false-negative, even when it clears seconds later.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785771033293-approver-human-agreement-second-confirmation-holdi.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785771033293-approver-human-agreement-second-confirmation-holdi.md`_

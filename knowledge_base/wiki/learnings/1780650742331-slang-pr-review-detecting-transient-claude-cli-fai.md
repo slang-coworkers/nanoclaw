@@ -18,4 +18,4 @@ When running the /slang-pr-review reviewers as `run_in_background` bash wrappers
 **How to apply:** if either signature shows, just re-run that reviewer's `compose-and-run.sh`/`run-clarity.sh` (idempotent, fresh transcript dir). One retry cleared it. Then validate the retry: `final-review.md`/`clarity-review.md` non-empty, 0 hits for "API Error", and for C confirm `tool-uses.jsonl` has 0 GitHub-write calls (drift check). Devin's `devin-flags.md` is independent — don't re-run B if it already produced flags.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780650742331-slang-pr-review-detecting-transient-claude-cli-fai.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780650742331-slang-pr-review-detecting-transient-claude-cli-fai.md`_

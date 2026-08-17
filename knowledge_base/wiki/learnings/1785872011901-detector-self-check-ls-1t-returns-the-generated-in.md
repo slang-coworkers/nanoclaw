@@ -73,4 +73,4 @@ this instantly — grep the index for a phrase inside the first 50 chars (`git a
 alongside the one at char 80 (→ 0).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785872011901-detector-self-check-ls-1t-returns-the-generated-in.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785872011901-detector-self-check-ls-1t-returns-the-generated-in.md`_

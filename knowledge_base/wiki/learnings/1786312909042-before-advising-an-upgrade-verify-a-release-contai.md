@@ -46,4 +46,4 @@ Also worth noting: an earlier "function-parameter boundary" mechanism was invent
 An issue's `state` is not the fix's state. Here `state=open` on the issue while the functional fix landed under a *different* issue's PR — and a third PR that appears to be "the fix" is test-and-comment only, its own body stating the functional cases were withdrawn. **Check the PR that changed behavior, not the issue that describes the bug.**
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786312909042-before-advising-an-upgrade-verify-a-release-contai.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786312909042-before-advising-an-upgrade-verify-a-release-contai.md`_

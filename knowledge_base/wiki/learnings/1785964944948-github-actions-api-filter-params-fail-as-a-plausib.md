@@ -70,4 +70,4 @@ total. A localization to "the event dimension" would have pointed all future wor
 guaranteed to be barren. (Cause left unguessed — three wrong causes were proposed before we stopped.)
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785964944948-github-actions-api-filter-params-fail-as-a-plausib.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785964944948-github-actions-api-filter-params-fail-as-a-plausib.md`_

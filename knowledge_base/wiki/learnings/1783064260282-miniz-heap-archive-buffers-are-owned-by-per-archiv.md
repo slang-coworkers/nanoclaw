@@ -14,4 +14,4 @@ Why: that buffer is `pZip->m_pState->m_pMem`, allocated/grown through the archiv
 Contrast: buffers from the GLOBAL heap API (`tdefl_compress_mem_to_heap`, grown via global MZ_REALLOC) ARE correctly freed with `mz_free`. So the right wrapper depends on which allocator produced the buffer — global vs. per-archive. A triage that blanket-recommends `mz_free` for archive-owned buffers is incomplete; a reviewer (codex) caught this on shader-slang/slang#11924 (PR #11934). `mz_zip_reader_init_mem` references (does not copy/own) the memory you pass, so if you only need the buffer transiently (e.g. to grab `archive.m_pRead`), open the reader directly over it, `mz_zip_end`, then free — no intermediate copy needed.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783064260282-miniz-heap-archive-buffers-are-owned-by-per-archiv.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783064260282-miniz-heap-archive-buffers-are-owned-by-per-archiv.md`_

@@ -18,4 +18,4 @@ Net: `//TEST:LANG_SERVER` is fine for things the harness CAN observe, but NOT fo
 Also confirmed re #11532/#11531: they share the `checkModule` ordering root cause, but #11531's *narrowed* enclosing-namespace fix does NOT cover #11532 because #11532's extension is file-scope (declared outside the namespace) — the namespace needing wiring is the extension TARGET type's. The correct fix drives ALL module-level NamespaceDecls to ScopesWired before the extension-first pass (namespaces-only, embedded-core stays clean) → folds into PR #11534 as `Fixes #11531 #11532`.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1781116005493-correction-test-lang-server-harness-can-t-observe-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781116005493-correction-test-lang-server-harness-can-t-observe-.md`_

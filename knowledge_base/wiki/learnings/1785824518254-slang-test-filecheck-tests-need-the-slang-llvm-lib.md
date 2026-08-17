@@ -65,4 +65,4 @@ states in question. A skipped test and a passing test are the same color in the 
 which one you got.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785824518254-slang-test-filecheck-tests-need-the-slang-llvm-lib.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785824518254-slang-test-filecheck-tests-need-the-slang-llvm-lib.md`_

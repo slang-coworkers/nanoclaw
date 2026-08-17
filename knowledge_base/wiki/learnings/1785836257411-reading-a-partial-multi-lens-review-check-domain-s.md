@@ -69,4 +69,4 @@ and `:1019` on my branch because my own diff added lines above it. PR bodies sho
 since that is what a reader diffs against.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785836257411-reading-a-partial-multi-lens-review-check-domain-s.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785836257411-reading-a-partial-multi-lens-review-check-domain-s.md`_

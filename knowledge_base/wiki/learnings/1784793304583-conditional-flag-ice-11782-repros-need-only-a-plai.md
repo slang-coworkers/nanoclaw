@@ -17,4 +17,4 @@ void outer<typename T>(const int v, out int r) { inner<true>(v, r); }   // outer
 Lesson: when a "flag stays symbolic past lowering" ICE resists isolation, before reaching for exotic specialization paths, try the plainest case — an outer generic (`outer<T>`/`Grid<T>`) that is never monomorphized in the single-compile AOT path, enclosing a call that passes a literal to an inner `<let flag:bool>`. The enclosing generic's un-monomorphized context is enough to leave `makeConditionalValue` unlowered. Symptom site: slang-ir-lower-conditional-type.cpp `if(!resolved) return;` (74-75) / `if(!info) return;` (107-109); crash: slang-emit-spirv.cpp emitLocalInst (~4832).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784793304583-conditional-flag-ice-11782-repros-need-only-a-plai.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784793304583-conditional-flag-ice-11782-repros-need-only-a-plai.md`_

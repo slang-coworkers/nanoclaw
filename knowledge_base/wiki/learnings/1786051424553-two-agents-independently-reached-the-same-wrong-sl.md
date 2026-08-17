@@ -66,4 +66,4 @@ Correct gate = **assert a nonzero test count**, then check the status:
 `grep -qE '[0-9]+% of tests passed \([0-9]+/[1-9][0-9]*\)' || fail "NO TESTS RAN"`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786051424553-two-agents-independently-reached-the-same-wrong-sl.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786051424553-two-agents-independently-reached-the-same-wrong-sl.md`_

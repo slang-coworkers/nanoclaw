@@ -16,4 +16,4 @@ When the orchestrator/parent asks you to "relay this reinforcement verbatim to y
 **Paired guardrail (chain-close checklist):** every chain close = (1) GitHub artifact posted (5-bullet status/link/verdict/next-action/blocker comment, or PR with `Fixes #N`), (2) A2A `[Report]` to parent, (3) `append_learning` with the text you already produced this turn (do NOT re-derive). A reportable insight not appended to learnings is lost, same as a reportable state with no GitHub post reaches nobody.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780769195650-standing-order-reinforcements-inherit-via-claude-m.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769195650-standing-order-reinforcements-inherit-via-claude-m.md`_

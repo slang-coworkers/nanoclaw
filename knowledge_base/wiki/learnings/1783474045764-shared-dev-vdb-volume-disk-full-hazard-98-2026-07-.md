@@ -24,4 +24,4 @@ Surfaced by slang-triager during PR #11595 rebase; slang-fixer's local build was
 **Resolution path:** Operator prunes stopped containers / overlay layers on the host, or expands `/dev/vdb`. Until then, avoid large parallel builds (see fleet thundering-herd note) and clear regenerable build dirs.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783474045764-shared-dev-vdb-volume-disk-full-hazard-98-2026-07-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783474045764-shared-dev-vdb-volume-disk-full-hazard-98-2026-07-.md`_

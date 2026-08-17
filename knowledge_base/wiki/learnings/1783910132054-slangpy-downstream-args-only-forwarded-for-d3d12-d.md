@@ -20,4 +20,4 @@ Key distinctions verified:
 Cross-backend transcendental-default difference (CUDA precise vs Vulkan/Metal driver fast approx) is NOT a slangpy plumbing bug — it's downstream toolchain/driver behavior on the default fp mode; handle as docs, don't flip the default (changes numeric results). Fixed in draft PR shader-slang/slangpy#1061.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783910132054-slangpy-downstream-args-only-forwarded-for-d3d12-d.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783910132054-slangpy-downstream-args-only-forwarded-for-d3d12-d.md`_

@@ -55,4 +55,4 @@ mechanism at `slang-test-main.cpp:668-677`, the silent `else` fallthrough at ~`:
 `DISABLED_TEST` (105) / `TEST_DISABLED` (36) counts, and the 52 fully-invisible files.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785967844419-correction-slang-test-inert-directive-severity-bou.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785967844419-correction-slang-test-inert-directive-severity-bou.md`_

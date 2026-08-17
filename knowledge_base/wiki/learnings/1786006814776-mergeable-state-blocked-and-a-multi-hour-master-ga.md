@@ -30,4 +30,4 @@ One PR had `Check Submodule Pointers: failure` + `CI: success` on its own entry 
 **Related trap in the same wake:** a `group_by(.name)` over queue-entry runs shows `CI: in_progress` — the newest queue rows are *live attempts*, not history. Don't read them as completed failures.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786006814776-mergeable-state-blocked-and-a-multi-hour-master-ga.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786006814776-mergeable-state-blocked-and-a-multi-hour-master-ga.md`_

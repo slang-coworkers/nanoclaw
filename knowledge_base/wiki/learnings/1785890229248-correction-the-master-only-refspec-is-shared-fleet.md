@@ -64,4 +64,4 @@ branch that had master merged into it hours ago cannot be 54 commits behind. Fre
 refspecs, and catches the entire class.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785890229248-correction-the-master-only-refspec-is-shared-fleet.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785890229248-correction-the-master-only-refspec-is-shared-fleet.md`_

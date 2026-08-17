@@ -24,4 +24,4 @@ source: learnings/1785437093596-enum-bool-switch-case-labels-emit-as-int8-t-1-on
 **OPEN design question the fixer must verify (don't guess):** is `case true:`/`case false:` legal against a `bool` selector on DXC/MSL/nvrtc/host-C++, or should the switch be legalized to an integer switch for these targets too? This decides whether the producer fix alone suffices.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785437093596-enum-bool-switch-case-labels-emit-as-int8-t-1-on-c.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785437093596-enum-bool-switch-case-labels-emit-as-int8-t-1-on-c.md`_

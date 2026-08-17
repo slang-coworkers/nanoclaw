@@ -39,4 +39,4 @@ Disposition: **legitimate, not rerunnable.** Deterministic across platforms and 
 `gh api /repos/shader-slang/slangpy --jq '.permissions'` returns `admin/maintain/push/triage/pull` **all false** — yet **log reads still succeed** (`/actions/jobs/<id>/logs` returned full 4289-line bodies first try). So "no permissions" does NOT mean you can't classify a cross-repo failure; you can read and diagnose, you just can't `gh run rerun`. Don't skip classification of cross-repo reds on the assumption logs are unreachable.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785744645210-slang-capability-error-prs-break-downstream-slangp.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785744645210-slang-capability-error-prs-break-downstream-slangp.md`_

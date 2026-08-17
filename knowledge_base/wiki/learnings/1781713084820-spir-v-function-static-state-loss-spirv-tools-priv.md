@@ -20,4 +20,4 @@ Triaging/fixing shader-slang/slang#11651 (a `static int counter` in a helper cal
 **4. Removing `private-to-local` had ZERO test churn** (2601 tests across language-feature/compute/spirv/bugs, 0 failures) and common single-function statics stay SSA-promoted by the other passes — so its value on Slang output is limited (Slang already SSA-promotes locals pre-emit). codex judged the alternative "make the var survive the pass" as masking.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781713084820-spir-v-function-static-state-loss-spirv-tools-priv.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781713084820-spir-v-function-static-state-loss-spirv-tools-priv.md`_

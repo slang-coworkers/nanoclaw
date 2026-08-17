@@ -14,4 +14,4 @@ When a Slang front-end/AST constant-fold or check fix is **target-agnostic** (e.
 **Reviewer rule of thumb:** for any front-end/AST/type-check fold or coercion fix, ask "which backends does this newly let the construct reach, and does each backend's legalization handle it?" Grep for the legalization pass and check WHICH `case CodeGenTarget::*` arms in slang-emit.cpp actually invoke it. WGSL and Metal frequently lack a legalization that Khronos has (or vice-versa). This is a 🟡 test-coverage/robustness gap, usually not a blocker, but the fix should either generalize the legalization or add a `-target <backend>` filecheck line documenting actual behavior. Same cross-backend-reach pattern also surfaced in PR #12262.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785374956687-target-agnostic-front-end-fold-reaches-all-backend.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785374956687-target-agnostic-front-end-fold-reaches-all-backend.md`_

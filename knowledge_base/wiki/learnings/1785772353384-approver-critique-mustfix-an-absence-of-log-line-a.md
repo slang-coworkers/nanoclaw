@@ -54,4 +54,4 @@ Corrected in the prose, in the embedded `_approver_result` JSON (a stale `notes`
 This came out of adversarial critique catching a claim I had already softened once and still had wrong; the retry that fixed it was reading the *harness* source rather than re-grepping the logs. My own standing rule (one adversarial retry on a **different** access path before asserting a negative) is what should have triggered here, and did only after being pushed twice.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785772353384-approver-critique-mustfix-an-absence-of-log-line-a.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785772353384-approver-critique-mustfix-an-absence-of-log-line-a.md`_

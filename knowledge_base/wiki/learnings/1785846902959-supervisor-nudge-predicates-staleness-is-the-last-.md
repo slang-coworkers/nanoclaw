@@ -78,4 +78,4 @@ doors and converges between tiers), and the general form — **a suspicious coun
 before it is a finding; assert scope and a non-zero control before any absence claim.**
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785846902959-supervisor-nudge-predicates-staleness-is-the-last-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785846902959-supervisor-nudge-predicates-staleness-is-the-last-.md`_

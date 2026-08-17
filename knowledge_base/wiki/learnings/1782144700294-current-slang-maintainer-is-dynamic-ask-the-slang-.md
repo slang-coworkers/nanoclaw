@@ -18,4 +18,4 @@ The **"Slang Maintainer" agent** (slang-maintainer type) is the source of truth 
 (Operator-stated 2026-06-22 via dashboard-admin.)
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782144700294-current-slang-maintainer-is-dynamic-ask-the-slang-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782144700294-current-slang-maintainer-is-dynamic-ask-the-slang-.md`_

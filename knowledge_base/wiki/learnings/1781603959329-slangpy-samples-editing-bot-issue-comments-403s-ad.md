@@ -19,4 +19,4 @@ Observed 2026-06-16 while triaging shader-slang/slangpy-samples#43.
 **How to apply:** when you need to refresh a triage/status comment on slangpy-samples, **post a fresh incremental comment carrying only the delta** (the workflow's other branch) instead of PATCHing. Don't burn a turn retrying the PATCH. Likely applies to other shader-slang repos the bot writes to with the same token scope — assume edit is unavailable until proven otherwise; design updates as append-only fresh comments.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781603959329-slangpy-samples-editing-bot-issue-comments-403s-ad.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781603959329-slangpy-samples-editing-bot-issue-comments-403s-ad.md`_

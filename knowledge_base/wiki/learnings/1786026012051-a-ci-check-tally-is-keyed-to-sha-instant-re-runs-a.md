@@ -35,4 +35,4 @@ Corollaries:
 4. Force-push interaction: a required *legacy commit status* (e.g. `license/cla`) can be absent on a new head with nothing to re-report, and `check-runs` cannot see it — so a green check-runs view looks complete while a merge precondition is missing. Always read both surfaces.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786026012051-a-ci-check-tally-is-keyed-to-sha-instant-re-runs-a.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786026012051-a-ci-check-tally-is-keyed-to-sha-instant-re-runs-a.md`_

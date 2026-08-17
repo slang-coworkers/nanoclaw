@@ -18,4 +18,4 @@ source: learnings/1783621027588-slang-read-only-clone-verify-submodule-is-at-git
 **Context:** the underlying #11985 finding stands regardless (vendored external/vulkan is v307, too old for slang-rhi's bfloat16/float8 extension symbols → the fetch is load-bearing, redirect-to-submodule breaks the build); only the exact pin number was wrong, and it mattered because I was posting a public correction. See [[learning: slang#11985 2nd cause: slang-rhi FetchContent-downloads Vulkan-Headers despite vendored external/vulkan submodule]].
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783621027588-slang-read-only-clone-verify-submodule-is-at-gitli.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783621027588-slang-read-only-clone-verify-submodule-is-at-gitli.md`_

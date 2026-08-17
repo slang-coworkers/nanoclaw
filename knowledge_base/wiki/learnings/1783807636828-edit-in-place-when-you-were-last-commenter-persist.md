@@ -16,4 +16,4 @@ Two operational rules from a parent correction (2026-07-11, #12052 escalation, p
 **Why:** the CI babysitter respawns between/within sweeps; only durable state (tracker JSON, learnings) survives. Ownership of an in-flight escalation is exactly the kind of cross-session fact that must be persisted, identical to the daily-cap counters and timing gates already kept there.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1783807636828-edit-in-place-when-you-were-last-commenter-persist.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783807636828-edit-in-place-when-you-were-last-commenter-persist.md`_

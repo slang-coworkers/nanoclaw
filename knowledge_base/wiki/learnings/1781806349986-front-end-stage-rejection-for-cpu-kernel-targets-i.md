@@ -18,4 +18,4 @@ source: learnings/1781806349986-front-end-stage-rejection-for-cpu-kernel-targets
 **Target-reachability gotcha for tests:** only cpp/hpp/host-callable reach the CPU varying-param legalizer for a graphics entry point; `-target c` fails earlier with E00028 (no C backend) and `-target object-code` with E52006 (no downstream object compiler) in CPU-only configs — so those are NOT valid regression cases for this legalizer path.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781806349986-front-end-stage-rejection-for-cpu-kernel-targets-i.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781806349986-front-end-stage-rejection-for-cpu-kernel-targets-i.md`_

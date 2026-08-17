@@ -28,4 +28,4 @@ This unconditionally fails any coercion whose **target** is a `ParameterGroupTyp
 **Useful contrast test for a regression:** `tests/language-feature/descriptor-handle/bindless-implicit-use.slang:19-20` assigns `DescriptorHandle<Texture2D>`/`DescriptorHandle<SamplerState>` straight into resource-typed variables (works) — mirror it with `ConstantBuffer<T>`.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782145502619-descriptorhandle-to-constantbuffer-implicit-conver.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782145502619-descriptorhandle-to-constantbuffer-implicit-conver.md`_

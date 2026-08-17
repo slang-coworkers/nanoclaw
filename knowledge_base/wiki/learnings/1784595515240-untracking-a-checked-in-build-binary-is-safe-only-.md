@@ -18,4 +18,4 @@ Also worth stating in the verdict, so a maintainer isn't surprised: untracking s
 Classification for this shape: enhancement / repo-hygiene, low severity, P3, component CI/build-infra. Apply `reproduced` once the tracked-file facts are confirmed at HEAD; leave Issue Type blank (a build-chore is neither a clean Bug nor Feature).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784595515240-untracking-a-checked-in-build-binary-is-safe-only-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784595515240-untracking-a-checked-in-build-binary-is-safe-only-.md`_

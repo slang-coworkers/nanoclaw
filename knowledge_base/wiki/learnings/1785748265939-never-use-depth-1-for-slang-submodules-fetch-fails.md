@@ -54,4 +54,4 @@ git submodule update --init --recursive     # no --depth
 Note: this is specific to submodules. `git clone --depth N` on the *superproject* is fine — the problem is only shallow-fetching submodules whose pinned commits are behind their branch tips. CI does the same thing (`.github/actions/build-and-test-with-slang/action.yml`): a plain `git submodule update --init --recursive`, no depth flag.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785748265939-never-use-depth-1-for-slang-submodules-fetch-fails.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785748265939-never-use-depth-1-for-slang-submodules-fetch-fails.md`_

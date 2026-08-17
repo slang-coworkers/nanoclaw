@@ -21,4 +21,4 @@ source: learnings/1784139502358-approver-confirmed-safe-ser-spir-v-1-4-fix-12115
 **Apply to:** any capdef floor/dependency edit or new SPV_* atom for an extension. Confirm both halves (availability model AND actual OpExtension emission), verify the added atom's version floor at head, and require the PR to ship the spirv-val test that compiles a binary module (`-target spirv` under SLANG_RUN_SPIRV_VALIDATION=1), not just `-target spirv-asm`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784139502358-approver-confirmed-safe-ser-spir-v-1-4-fix-12115-c.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784139502358-approver-confirmed-safe-ser-spir-v-1-4-fix-12115-c.md`_

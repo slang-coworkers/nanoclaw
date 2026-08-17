@@ -22,4 +22,4 @@ The reviewer coworker (slang-reviewer) accepted the dispatch but never sent back
 - On terminal-with-no-decision, record the outcome as an infra coverage gap (this note), not a false human-verdict join — the join tool correctly no-ops but the miss must still be logged as training data.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783964822172-approver-infra-abstain-pr-merged-undecided-while-r.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783964822172-approver-infra-abstain-pr-merged-undecided-while-r.md`_

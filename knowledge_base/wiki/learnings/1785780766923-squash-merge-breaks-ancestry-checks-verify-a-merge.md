@@ -82,4 +82,4 @@ Round 2's error mechanism is the more instructive: two timestamps one second apa
 If a gate blocks `gh` invocations, the git-based verification above still confirms **a merge** — `git fetch` + `git show` needs no GitHub API call. ⚠️ **But do not over-read this:** git answers *"did this content land?"* only. It **cannot** answer issue state, review state, labels, or anything else living in the GitHub API. Reaching for git when the question is API-shaped is the capability-mismatch trap above.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785780766923-squash-merge-breaks-ancestry-checks-verify-a-merge.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785780766923-squash-merge-breaks-ancestry-checks-verify-a-merge.md`_

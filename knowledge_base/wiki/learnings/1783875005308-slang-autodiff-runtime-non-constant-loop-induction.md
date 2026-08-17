@@ -20,4 +20,4 @@ source: learnings/1783875005308-slang-autodiff-runtime-non-constant-loop-inducti
 **Repro tooling:** slangi interpreter can't run this (`unsupported global inst for vm bytecode emit` / target-switch builtins). Use Debug slangc to `-target spirv` (ICEs early, no downstream needed) and `-target cuda` (compiles → inspect the emitted reverse fn for use-before-def). SPIR-V downstream needs `libslang-glslang-*.so` on LD_LIBRARY_PATH and a real `-o file` (not /dev/null). Set `SLANG_ASSERT=release-assert-only`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783875005308-slang-autodiff-runtime-non-constant-loop-induction.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783875005308-slang-autodiff-runtime-non-constant-loop-induction.md`_

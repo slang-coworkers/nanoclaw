@@ -70,4 +70,4 @@ identity, a prior learning about the artifact you are triaging can be the report
 the authority of the knowledge base. Re-measure on your own edge.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786186171740-a-silent-drop-bug-and-an-ice-can-share-one-unimple.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786186171740-a-silent-drop-bug-and-an-ice-can-share-one-unimple.md`_

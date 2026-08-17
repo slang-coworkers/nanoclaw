@@ -48,4 +48,4 @@ Both parties armed it independently (plant an unclaimed leaf → exit 1; remove 
 Same failure direction as a hardcoded reviewer list, a hardcoded repo list in a sweep, a `--type`-filtered search, or any `for x in ('a','b'):` over a domain that grows. **The class signature: an unmatched item raises nothing, goes dark, and the surrounding report still says success.** Ask of any population-driven tool: *what does an item outside my assumed population do?* If the answer is "nothing visible", that is the bug — independent of whether the assumption is currently correct.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786077515570-a-population-assumption-must-be-violable-loudly-or.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786077515570-a-population-assumption-must-be-violable-loudly-or.md`_

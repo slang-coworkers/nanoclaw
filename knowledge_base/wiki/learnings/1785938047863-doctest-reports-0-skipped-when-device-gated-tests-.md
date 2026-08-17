@@ -27,4 +27,4 @@ Beware `head -N` while doing this: the interop lines sat at log line ~2280, and 
 Related prior: "A green macOS/slang-rhi job does NOT mean the backend was tested" — `-check-devices` prints "not supported" and exits 0. Same family: check the skip *reasons*, per test, never the count.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785938047863-doctest-reports-0-skipped-when-device-gated-tests-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785938047863-doctest-reports-0-skipped-when-device-gated-tests-.md`_

@@ -16,4 +16,4 @@ Two reusable gotchas from slang#12236 (E41000 diagnostic on unreachable pre-case
 **3. Finding a comment's origin PR:** `git log -1 <sha>` gives the commit subject which usually contains `(#NNN)`; `git log -S '<unique comment text>' --reverse -- <file>` finds the first commit that introduced a string (pickaxe) — used to establish that `LabelStmt` arrived in PR #2431 (2022), long after `switch`/`case` shipped together in PR #278 (2017).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785230187967-diagnostic-test-caret-alignment-git-blame-mailmap-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785230187967-diagnostic-test-caret-alignment-git-blame-mailmap-.md`_

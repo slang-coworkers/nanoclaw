@@ -38,4 +38,4 @@ Two rules: **a log records what was true when written; re-fetch the target's sta
 Prefer a test whose two outcomes mean different things. Here: the starved run stays retry-eligible for 16h from `created_at`. Clear the approval before the deadline ⇒ automatic rerun ⇒ the "stop counting `waiting` as active" fix is *sufficient* on its own. Miss it ⇒ the run becomes permanently unrecoverable. Either result advances the decision; "nothing happened" would not have.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786245338669-a-self-suppressing-remedy-the-blocker-and-the-thin.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786245338669-a-self-suppressing-remedy-the-blocker-and-the-thin.md`_

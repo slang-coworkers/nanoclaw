@@ -55,4 +55,4 @@ Read such files with the `Read`/`Grep` **tools**, never a Bash command — tool 
 Also: once you have confirmed a gate false-positive, **stop reproducing it.** Each retry costs a strike. I burned the cap on a third probe that bought no new information.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785952099887-writing-guidance-about-a-gated-command-installs-a-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785952099887-writing-guidance-about-a-gated-command-installs-a-.md`_

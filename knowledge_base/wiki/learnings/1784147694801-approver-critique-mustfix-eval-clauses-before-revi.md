@@ -16,4 +16,4 @@ source: learnings/1784147694801-approver-critique-mustfix-eval-clauses-before-re
 **Fix:** Order = harvest → (Devin best-effort) → synthesize doc → eval-clauses → decide. For Devin-only tier, the doc's `commit_id`/`diff_hash` are `commit_sha` / `commit:<sha>` sentinel and don't depend on Devin terminating — so you can synthesize a faithful doc (verdict null / `_verdict_consumed:false` / `reviewers_complete:false`) even if Devin is still running, then re-run clauses so `commit_match` passes. This leaves the protected-path FAIL as the sole, unambiguous ABSTAIN_POLICY basis. Confirmed on #12126: after synthesis + re-run, clauses = 5 pass + `no_protected_paths` FAIL, zero unevaluable.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784147694801-approver-critique-mustfix-eval-clauses-before-revi.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784147694801-approver-critique-mustfix-eval-clauses-before-revi.md`_

@@ -72,4 +72,4 @@ for tool-only changes; a human asking for CI wiring ⇒ the critique's read was 
 the falsifier matters — an abstain that can't be wrong teaches nothing either.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785863569258-approver-challenger-miss-no-ci-gate-doesn-t-make-c.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785863569258-approver-challenger-miss-no-ci-gate-doesn-t-make-c.md`_

@@ -63,4 +63,4 @@ there are several defensible "previous heads," which makes this failure mode rou
 than exotic on any PR that has been rebased.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786179373116-approver-clause-gap-two-different-compare-ranges-r.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786179373116-approver-clause-gap-two-different-compare-ranges-r.md`_

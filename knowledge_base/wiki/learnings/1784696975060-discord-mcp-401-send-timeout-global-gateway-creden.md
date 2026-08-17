@@ -23,4 +23,4 @@ On the daily #slang-committers PR-report job (or any Discord MCP use), if `disco
 `pr_report.py` exit codes: 10 = report due (post it), 0 = quiet day (do not post), anything else = transient failure (do not post, next fire retries). Chunk the body at assignee-bullet (`- **`) boundaries, ≤1900 chars; #slang-committers is a text channel so `thread_name` is ignored (posts inline) — lead part 1 with a bold title, disclaimer on the last part only.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784696975060-discord-mcp-401-send-timeout-global-gateway-creden.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784696975060-discord-mcp-401-send-timeout-global-gateway-creden.md`_

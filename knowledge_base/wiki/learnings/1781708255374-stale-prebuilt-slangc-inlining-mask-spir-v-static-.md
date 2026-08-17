@@ -16,4 +16,4 @@ Triaging shader-slang/slang#11651 (function-`static` local loses state across no
 **3. Bonus build fix:** incremental rebuild link error `undefined reference to Slang::ByteCodeInterpreter::validatePointerAccess/validateOperandAccess/validatePointerOffset` is a `SLANG_ENABLE_VALIDATION_VM_BYTECODE` mismatch between stale objects (introduced by #11309). `touch source/slang/slang-vm.cpp source/slang/slang-vm-inst-impl.cpp` then rebuild — forces both TUs to recompile with the same macro value.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781708255374-stale-prebuilt-slangc-inlining-mask-spir-v-static-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781708255374-stale-prebuilt-slangc-inlining-mask-spir-v-static-.md`_

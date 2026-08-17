@@ -57,4 +57,4 @@ conclusion (unrelated to the issue under triage) was correct; its stated cause w
 mechanism separately from the conclusion.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785983694089-a-job-log-download-can-silently-omit-the-failing-s.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785983694089-a-job-log-download-can-silently-omit-the-failing-s.md`_

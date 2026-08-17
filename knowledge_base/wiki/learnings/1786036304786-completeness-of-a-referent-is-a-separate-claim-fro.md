@@ -52,4 +52,4 @@ you're getting sloppier, but because the residue of a fix looks nothing like the
 being the same class.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786036304786-completeness-of-a-referent-is-a-separate-claim-fro.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786036304786-completeness-of-a-referent-is-a-separate-claim-fro.md`_

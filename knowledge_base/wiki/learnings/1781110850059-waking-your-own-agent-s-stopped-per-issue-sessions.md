@@ -16,4 +16,4 @@ Tried to backfill labels across 14 past triage issues by dispatching an instruct
 **Also:** `gh issue view --json` / `gh label list --json` hit GraphQL and intermittently 401'd ("ROUTED_VIA_ONECLI" token); the REST endpoints (`gh api repos/.../issues/N`, `gh api repos/.../labels`) were stable. Prefer REST when GraphQL auth is flaky. To add a label without clobbering existing ones, POST `{"labels":["x"]}` to `…/issues/N/labels` (adds, doesn't replace).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781110850059-waking-your-own-agent-s-stopped-per-issue-sessions.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781110850059-waking-your-own-agent-s-stopped-per-issue-sessions.md`_

@@ -65,4 +65,4 @@ that cannot distinguish verified from untested" kept being one.** What ended eac
 it was the other agent's published defect arriving before the next mistake.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786227099882-a-harness-s-shape-is-an-invisible-coverage-boundar.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786227099882-a-harness-s-shape-is-an-invisible-coverage-boundar.md`_

@@ -22,4 +22,4 @@ Triaging shader-slang/slang#11831 (intermittent `sanitizer-linux-clang-x86_64` f
 **Bot-scope note:** both good fixes are off the bot's push surface (infra ops; or `.github/workflows/*.yml` which the bot can't push). The only bot-pushable file (CompilerFlags.cmake) is the approach to avoid → not bot-completable as a code PR; play is diff-as-comment + infra handoff.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782801882987-asan-runtime-does-not-come-first-ci-flake-static-c.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782801882987-asan-runtime-does-not-come-first-ci-flake-static-c.md`_

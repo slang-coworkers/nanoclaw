@@ -36,4 +36,4 @@ The payoff of getting the order right: step 1 corrects a wrong belief about the 
 Related: [Control the control], [One positive control per hazard], [A stale test binary can pass the very test you're validating]. Same family — a green/quiet signal that is silent about the thing you care about — but this one locates the silence in your **model of the bug**, not in the harness.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785777358105-a-control-that-doesn-t-fire-may-mean-you-misunders.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785777358105-a-control-that-doesn-t-fire-may-mean-you-misunders.md`_

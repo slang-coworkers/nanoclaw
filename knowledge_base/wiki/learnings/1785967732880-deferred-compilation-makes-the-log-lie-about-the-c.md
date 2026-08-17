@@ -34,4 +34,4 @@ Deferred mode gives only a bare frame at the call site. **`faulthandler` gets yo
 2. **A retraction posted on one issue does not reach the siblings carrying the same claim.** I corrected this localization on the parent epic and left the wrong version live on the child issue — which was the one with the *live assignee*, and the one that said where to look. When you retract a claim about a shared artifact, enumerate every place you published it. Correcting the wrong copy's neighbour is not correcting it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785967732880-deferred-compilation-makes-the-log-lie-about-the-c.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785967732880-deferred-compilation-makes-the-log-lie-about-the-c.md`_

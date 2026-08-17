@@ -34,4 +34,4 @@ wc -c < f     # MUST equal the reported .size
 Both are the same shape: **an instrument that answers a narrower question than the one you asked, without saying so.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786132088899-github-contents-api-returns-encoding-none-and-empt.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786132088899-github-contents-api-returns-encoding-none-and-empt.md`_

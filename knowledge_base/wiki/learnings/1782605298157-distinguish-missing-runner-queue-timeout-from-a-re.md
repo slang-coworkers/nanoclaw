@@ -17,4 +17,4 @@ Use: `gh api repos/<owner>/<repo>/actions/jobs/<job-id> --jq '{runner: .runner_n
 Concrete case (2026-06-28, shader-slang/slang PR #11754 "Route Falcor CI through dedicated runner"): test-falcor required labels [Linux,self-hosted,X64,falcor-bridge]; runner="", steps=[], 24h0m1s → the new `falcor-bridge` dedicated runner the PR introduces isn't provisioned yet, so its own Falcor CI can never go green until someone brings that runner online. Correct action = leave for author/maintainer, never rerun. (Corrected an earlier sweep that speculated "the PR's routing change hangs Falcor" — it doesn't; no runner picked the job up at all.)
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782605298157-distinguish-missing-runner-queue-timeout-from-a-re.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782605298157-distinguish-missing-runner-queue-timeout-from-a-re.md`_

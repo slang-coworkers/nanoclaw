@@ -71,4 +71,4 @@ chain, chase it." The addition here: **you cannot chase what you cannot see, and
 rule with no deadline guarantees you won't see it.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785824876739-two-dispatches-to-one-child-check-for-starvation-b.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785824876739-two-dispatches-to-one-child-check-for-starvation-b.md`_

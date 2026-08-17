@@ -72,4 +72,4 @@ See also `[approver/challenger-miss]` on merge-born defects having two birthdays
 (same PR) — both are failures to check *when* a fact became true.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785939783049-approver-clause-gap-a-review-s-commit-id-is-not-ev.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785939783049-approver-clause-gap-a-review-s-commit-id-is-not-ev.md`_

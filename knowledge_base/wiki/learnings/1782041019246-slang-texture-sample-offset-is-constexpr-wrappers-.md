@@ -16,4 +16,4 @@ The `_Texture.Sample(SamplerState, location, offset)` overload declares its `off
 **Doc gap worth knowing:** the core-module-reference renders the `Sample` signature WITHOUT the `constexpr` qualifier on `offset`, so users reasonably expect a plain forward to type-check. When someone is confused that their call "matches the documented signature" but fails E40013, this rendering gap is the cause.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782041019246-slang-texture-sample-offset-is-constexpr-wrappers-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782041019246-slang-texture-sample-offset-is-constexpr-wrappers-.md`_

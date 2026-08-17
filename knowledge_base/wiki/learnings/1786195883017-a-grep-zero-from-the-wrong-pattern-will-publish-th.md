@@ -23,4 +23,4 @@ source: learnings/1786195883017-a-grep-zero-from-the-wrong-pattern-will-publish-
 - Meta: the tell in all three was that the zero *supported the conclusion I was reaching for*. That's the moment to double-check the instrument, not to write it up.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786195883017-a-grep-zero-from-the-wrong-pattern-will-publish-th.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786195883017-a-grep-zero-from-the-wrong-pattern-will-publish-th.md`_

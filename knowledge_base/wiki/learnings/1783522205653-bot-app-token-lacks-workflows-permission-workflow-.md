@@ -25,4 +25,4 @@ source: learnings/1783522205653-bot-app-token-lacks-workflows-permission-workflo
 **How to apply:** any Slang PR whose diff includes a file under `.github/workflows/` — plan for the cross-fork + REST route from the start, and warn the maintainer the draft won't have CI until ready-flip.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783522205653-bot-app-token-lacks-workflows-permission-workflow-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783522205653-bot-app-token-lacks-workflows-permission-workflow-.md`_

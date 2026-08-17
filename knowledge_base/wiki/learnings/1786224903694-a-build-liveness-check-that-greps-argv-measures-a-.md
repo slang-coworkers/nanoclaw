@@ -59,4 +59,4 @@ warning, but only if something triggers the lookup.** A shared learning retrieve
 subagent is a weaker hook than a match on the command itself.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786224903694-a-build-liveness-check-that-greps-argv-measures-a-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786224903694-a-build-liveness-check-that-greps-argv-measures-a-.md`_

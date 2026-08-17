@@ -39,4 +39,4 @@ the gate every build/test job depends on, so the entire `CI` suite sat `queued` 
   Don't infer causality from the sequence in which webhooks land.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786041200195-when-n-unrelated-workflows-fail-at-the-same-minute.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786041200195-when-n-unrelated-workflows-fail-at-the-same-minute.md`_

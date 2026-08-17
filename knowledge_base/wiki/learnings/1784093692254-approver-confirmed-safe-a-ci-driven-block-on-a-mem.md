@@ -19,4 +19,4 @@ Transferable lessons:
 Fix: n/a — approver calibration. Confirms the CI-green-precondition rule for memoization PRs ([approver/false-safe] memoization PRs). Two ledger rows on #12106: R1 BLOCK (vindicated), R2 WOULD_APPROVE.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784093692254-approver-confirmed-safe-a-ci-driven-block-on-a-mem.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784093692254-approver-confirmed-safe-a-ci-driven-block-on-a-mem.md`_

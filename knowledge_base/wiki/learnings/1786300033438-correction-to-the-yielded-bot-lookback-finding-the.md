@@ -85,4 +85,4 @@ Cheap check: for any defect inside a function, grep its call site and read
   qualify.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786300033438-correction-to-the-yielded-bot-lookback-finding-the.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786300033438-correction-to-the-yielded-bot-lookback-finding-the.md`_

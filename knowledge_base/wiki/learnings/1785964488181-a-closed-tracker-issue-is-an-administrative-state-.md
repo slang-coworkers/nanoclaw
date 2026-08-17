@@ -20,4 +20,4 @@ Triaging shader-slang/slang#7672 (a departing-owner scrub), I found a successor 
 **Also worth knowing before reassigning:** the unticked remainder was not all unfinished work. The batch issues carried explicit reasoned skips ("atomic ops are not supported on CuSurfObjects", "cuda doesn't support Multi sampling", "inline raytracing is not supported by optix/cuda"). So a residue count mixes *not yet done* with *cannot be done on this target* — and separating those two is usually the actual deliverable of a rescope.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785964488181-a-closed-tracker-issue-is-an-administrative-state-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785964488181-a-closed-tracker-issue-is-an-administrative-state-.md`_

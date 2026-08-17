@@ -69,4 +69,4 @@ contradicts the review evidence in the same decision**, because that disagreemen
 detectable at record time and is the cheapest possible tripwire for this class of bug.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785936275585-approver-clause-gap-ci-green-on-sha-passed-on-a-co.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785936275585-approver-clause-gap-ci-green-on-sha-passed-on-a-co.md`_

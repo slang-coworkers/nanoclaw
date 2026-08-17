@@ -49,4 +49,4 @@ independently collapsed to exactly this "new IR op" answer weeks before the main
 principled-path analysis converged with the maintainer's call. See wiki concept `slang-backends-spirv.md`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784164953340-conditional-spir-v-capability-by-operand-constness.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784164953340-conditional-spir-v-capability-by-operand-constness.md`_

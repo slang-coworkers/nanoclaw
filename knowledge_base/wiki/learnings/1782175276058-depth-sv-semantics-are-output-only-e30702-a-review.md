@@ -18,4 +18,4 @@ Takeaways:
 - Plain `SV_Depth` on the GLSL target writes `gl_FragDepth = ...;` but does NOT emit an `out float gl_FragDepth;` redeclaration (it's a builtin) — so a negative test should assert absence of the directional qualifier/extension and anchor on `gl_FragDepth`, not on an out-declaration.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782175276058-depth-sv-semantics-are-output-only-e30702-a-review.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782175276058-depth-sv-semantics-are-output-only-e30702-a-review.md`_

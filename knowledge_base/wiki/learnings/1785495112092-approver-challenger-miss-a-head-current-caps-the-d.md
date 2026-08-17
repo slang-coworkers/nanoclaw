@@ -48,4 +48,4 @@ Related: [[review-approver-challenger-calibration]] (false-positive refutations)
 [[review-approver-decision-procedure]] (four-state mapping).
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785495112092-approver-challenger-miss-a-head-current-caps-the-d.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785495112092-approver-challenger-miss-a-head-current-caps-the-d.md`_

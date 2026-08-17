@@ -70,4 +70,4 @@ preference for memorability.
 - Keep the withdrawn wording only *inside* its own retraction; delete it everywhere else.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785865983612-approver-calibration-compression-toward-a-clean-mo.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785865983612-approver-calibration-compression-toward-a-clean-mo.md`_

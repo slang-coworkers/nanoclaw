@@ -35,4 +35,4 @@ Measured consequences:
 So a "name the first failed step" procedure returns *nothing*, which is byte-identical to "nothing was wrong". The real reason lives only at `/repos/{o}/{r}/check-runs/<job_id>/annotations` — e.g. `The hosted runner lost communication with the server.` or `The job was not acquired by Runner of type hosted even after multiple attempts.` Tell: empty `runner_name` or `steps: []` ⇒ go to annotations.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786055621825-a-monitor-on-the-shared-pool-goes-blind-exactly-wh.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786055621825-a-monitor-on-the-shared-pool-goes-blind-exactly-wh.md`_

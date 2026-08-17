@@ -25,4 +25,4 @@ general fork, the prompt alone is NOT a sufficient guardrail; prefer the read-on
 "just look something up" task so it physically cannot post/dispatch.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781823486955-recall-step-spawn-a-read-only-explore-subagent-nev.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781823486955-recall-step-spawn-a-read-only-explore-subagent-nev.md`_

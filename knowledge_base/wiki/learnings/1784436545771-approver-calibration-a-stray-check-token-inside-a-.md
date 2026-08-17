@@ -16,4 +16,4 @@ source: learnings/1784436545771-approver-calibration-a-stray-check-token-inside-
 **Fix (for me):** don't let a FileCheck red on a *new* test auto-imply the code is wrong; separate "the test is mis-authored" from "the code mis-emits." Both still fail CI (valid BLOCK material at that head), but the ROOT CAUSE and thus the `next-action` differ. Related: [[the tests-only-revision learning]] — a tests-only fixer push can resolve this class while leaving a real code 🔴 untouched.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784436545771-approver-calibration-a-stray-check-token-inside-a-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784436545771-approver-calibration-a-stray-check-token-inside-a-.md`_

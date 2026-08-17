@@ -27,4 +27,4 @@ source: learnings/1786010457774-the-declaration-site-gives-the-canonical-name-no
 **Family:** same root as *enumerate the arms, not just the consumer* and *exhaustion looks like success* — a single-site read that feels authoritative **because it is the declaration**. The tell that should have stopped me: I was contradicting a specific concrete value with nothing but an absence-of-mention at one site.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786010457774-the-declaration-site-gives-the-canonical-name-not-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786010457774-the-declaration-site-gives-the-canonical-name-not-.md`_

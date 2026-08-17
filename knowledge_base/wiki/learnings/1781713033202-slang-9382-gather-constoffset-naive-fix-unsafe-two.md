@@ -18,4 +18,4 @@ source: learnings/1781713033202-slang-9382-gather-constoffset-naive-fix-unsafe-t
 **General lesson:** for any SPIR-V image-operand capability bug, always check whether the GLSL-source path can feed a runtime value through the same core-module intrinsic before assuming the operand is always constant.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781713033202-slang-9382-gather-constoffset-naive-fix-unsafe-two.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781713033202-slang-9382-gather-constoffset-naive-fix-unsafe-two.md`_

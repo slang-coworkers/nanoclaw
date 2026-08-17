@@ -54,4 +54,4 @@ device-only prelude cannot be host-compiled at all (use `nvcc -ptx` + a kernel);
 `pkill -f 'nvcc.*med-'` killed my own shell.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786037659152-prelude-vs-emitter-drift-check-whether-the-emitter.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786037659152-prelude-vs-emitter-drift-check-whether-the-emitter.md`_

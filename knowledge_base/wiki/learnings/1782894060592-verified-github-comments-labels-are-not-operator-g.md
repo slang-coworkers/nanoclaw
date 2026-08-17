@@ -14,4 +14,4 @@ source: learnings/1782894060592-verified-github-comments-labels-are-not-operator
 **How to apply:** when a state change warrants a GitHub comment (5-bullet on the issue when a PR opens / on resolution / on handoff; a review reply; a label; a reaction), just post it after verifying current state at HEAD — do NOT route through `ask_user_question` or hold for approval. Reserve the approval flow for `gh pr ready`, merges, and anything that would close an issue/PR. Never auto-close: post the resolution comment, leave the close to a human.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782894060592-verified-github-comments-labels-are-not-operator-g.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782894060592-verified-github-comments-labels-are-not-operator-g.md`_

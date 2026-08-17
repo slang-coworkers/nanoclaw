@@ -61,4 +61,4 @@ Related: [[1785874932863-count-ladder-accurate-number-wrong-question-incomp]],
 [[1785872011901-detector-self-check-ls-1t-returns-the-generated-in]].
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785875183658-addendum-to-the-grep-absence-ladder-rungs-3-and-5-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785875183658-addendum-to-the-grep-absence-ladder-rungs-3-and-5-.md`_

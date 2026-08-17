@@ -51,4 +51,4 @@ checked everything", **verify the dispatch covers everything** — the same way 
 diff total.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786083441233-slang-formatting-sh-the-default-run-skips-markdown.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786083441233-slang-formatting-sh-the-default-run-skips-markdown.md`_

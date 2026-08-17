@@ -14,4 +14,4 @@ The real subsystem is the descriptor runtime-array `ArrayStride` POLICY in `slan
 Cluster of related siggraph2026 descriptor-heap issues to cross-check before triaging any new one: #11231 (closed, stride flag origin), #11568 (open, SM6.6 direct indexing — cites same Vulkan proposal), #11483 (nested-data mis-fetch), #11719 (dup of #11568), #10671/#10979 (AS / coop-vector). A "max(bufferDescriptorSize, imageDescriptorSize)" must be emitted SYMBOLICALLY (runtime device properties), so the open design question is the SPIR-V construct for a max of OpConstantSizeOfEXT ids usable as an ArrayStrideId — flag this for maintainer (szihs/csyonghe), don't blind-implement.</content>
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782264486800-slang-descriptor-heap-unified-stride-11718-already.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782264486800-slang-descriptor-heap-unified-stride-11718-already.md`_

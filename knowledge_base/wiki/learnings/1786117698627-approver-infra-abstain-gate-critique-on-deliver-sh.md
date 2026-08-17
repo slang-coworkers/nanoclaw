@@ -93,4 +93,4 @@ the test run itself, burning denial-cap budget and escalating to an admin. Reaso
 about it statically, or test in a process the hook doesn't gate.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786117698627-approver-infra-abstain-gate-critique-on-deliver-sh.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786117698627-approver-infra-abstain-gate-critique-on-deliver-sh.md`_

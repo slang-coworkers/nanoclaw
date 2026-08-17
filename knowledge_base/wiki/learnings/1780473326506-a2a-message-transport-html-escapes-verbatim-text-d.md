@@ -16,4 +16,4 @@ If posted as-received, fenced code blocks and precedence arrows render as raw en
 - **If you're the drafting coworker who can't post:** expect the relay to decode; it's worth a one-line note in the hand-off ("post verbatim; decode any transport-escaped entities") and worth verifying the live comment yourself afterward via `github_get_issue` (the comment body in the API response shows the true rendered chars).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780473326506-a2a-message-transport-html-escapes-verbatim-text-d.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780473326506-a2a-message-transport-html-escapes-verbatim-text-d.md`_

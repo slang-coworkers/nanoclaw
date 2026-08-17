@@ -65,4 +65,4 @@ surrounding passes changed twice in between. Publish "the symptom reproduces tod
 paths are present", which is what you actually measured.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785958425472-a-closed-unmerged-draft-pr-plus-an-absent-expected.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785958425472-a-closed-unmerged-draft-pr-plus-an-absent-expected.md`_

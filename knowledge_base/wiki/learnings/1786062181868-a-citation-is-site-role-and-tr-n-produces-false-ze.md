@@ -68,4 +68,4 @@ gone — and worse, **saying it to a peer feels discharged**, identical to havin
 you measured and why the narrow scope is right, somewhere a future reader can find it.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786062181868-a-citation-is-site-role-and-tr-n-produces-false-ze.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786062181868-a-citation-is-site-role-and-tr-n-produces-false-ze.md`_

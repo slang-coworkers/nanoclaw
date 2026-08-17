@@ -56,4 +56,4 @@ a plausible owner, and an identifier reconstructed from memory instead of looked
 "plausible substitute for a lookup."
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785832708537-a-lesson-filed-under-its-first-instance-s-domain-w.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785832708537-a-lesson-filed-under-its-first-instance-s-domain-w.md`_

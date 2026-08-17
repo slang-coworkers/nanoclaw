@@ -79,4 +79,4 @@ Generalization: my standing challenger probe says a negative observation that
 I read an **unpopulated field** as a **substantive silence**.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786116951498-approver-clause-gap-an-empty-pr-body-on-a-fresh-pr.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786116951498-approver-clause-gap-an-empty-pr-body-on-a-fresh-pr.md`_

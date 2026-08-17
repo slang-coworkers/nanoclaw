@@ -79,4 +79,4 @@ Two independent misses: it writes **"categories" (plural)**, and it **never uses
 The batch issues' parent was reported as the wrong tracker (`#7723` rather than the real `#7591`). Both are real, both closed, both by the same author, and both about the same work — so the wrong one is *plausible* and survives a sanity check. **Open the ancestor and read its body; don't infer lineage from topical adjacency.** In this case the real parent's own directory checklist showed the target directory **still un-ticked**, which changed the recommendation: the work was superseded by a programme that itself wound down *short of* that directory.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785965476149-a-burndown-percentage-is-a-choice-of-field-not-a-m.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785965476149-a-burndown-percentage-is-a-choice-of-field-not-a-m.md`_

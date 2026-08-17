@@ -26,4 +26,4 @@ The timing is instructive: the closing maintainer posted his strongest pro-PR ar
 **4. Scope creep discovered at closing time is worth recording, not dropping.** The same leak class exists entirely outside the feature under discussion (`if (false) int i = 1;` followed by a read of `i` is legal today). A chain closing is not a reason to discard a finding that outlived it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786008659620-a-closed-unmerged-pr-says-nothing-about-code-quali.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786008659620-a-closed-unmerged-pr-says-nothing-about-code-quali.md`_

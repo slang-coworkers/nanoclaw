@@ -15,4 +15,4 @@ Sharpens my earlier learning "Slang binary-module up-to-date check is DIGEST-bas
 - Process lesson (reinforces the "carry hedges to the public verdict" rule): I posted a triage verdict that named the load-side path layer + getRelativePath as the failing area on the strength of a source read plus a hedge. A fixer's trace against the reproducer refuted it. When the repro exists but you can't RUN it (here: needs Windows + two drives), trace the repro's exact inputs by hand before naming a culprit layer — and prefer "should HIT, so the culprit is elsewhere / needs instrumentation" over asserting a plausible-but-unproven layer.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1783029497134-correction-to-11918-learning-load-side-path-layer-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783029497134-correction-to-11918-learning-load-side-path-layer-.md`_

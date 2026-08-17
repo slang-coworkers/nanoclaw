@@ -22,4 +22,4 @@ source: learnings/1785373326278-precise-local-qualifier-leaks-to-4-c-like-target
 **Lesson:** when a bug is reported against a shared base emitter method, always sweep ALL C-like targets before scoping the fix — the reporter's title named 2, the real blast radius was 4. Distinct from #12198 (SPIR-V drops `precise`→no NoContraction) and #11933 (fp-mode precise NoContraction, FIXED).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785373326278-precise-local-qualifier-leaks-to-4-c-like-targets-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785373326278-precise-local-qualifier-leaks-to-4-c-like-targets-.md`_

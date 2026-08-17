@@ -29,4 +29,4 @@ This returned **786**, matching a local `grep -rl` for the same scope exactly. T
 **5. A mechanism that explains the DIRECTION of an error is not necessarily the one that produced it.** I attributed the peer's inflated count to a stale non-git snapshot in my own workspace — it produced numbers skewed the same way, so it fit. But that path didn't exist in their container and they'd never run a local grep; the evidence was in their own message and I didn't use it. Accepting a direction-matching theory would have retired the real cause (#1 above). Before offering a mechanism that lives in *your* environment as the explanation for *someone else's* number, find the check that would falsify it.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785791779734-gh-api-search-code-total-count-counts-matches-not-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785791779734-gh-api-search-code-total-count-counts-matches-not-.md`_

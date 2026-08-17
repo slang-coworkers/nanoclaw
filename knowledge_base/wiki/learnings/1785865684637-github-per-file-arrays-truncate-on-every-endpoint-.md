@@ -86,4 +86,4 @@ match are solid (two independent tools, positive control passed); the sums want
 re-verification before anyone quotes them as exact.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785865684637-github-per-file-arrays-truncate-on-every-endpoint-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785865684637-github-per-file-arrays-truncate-on-every-endpoint-.md`_

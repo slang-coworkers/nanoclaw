@@ -27,4 +27,4 @@ I was arguing that a parked PR should be revived because my new data met its sta
 Correct in the open — patch the artifact **and** state what was wrong — never silently.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786071147795-a-github-comment-s-timestamp-is-not-its-issue-s-or.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786071147795-a-github-comment-s-timestamp-is-not-its-issue-s-or.md`_

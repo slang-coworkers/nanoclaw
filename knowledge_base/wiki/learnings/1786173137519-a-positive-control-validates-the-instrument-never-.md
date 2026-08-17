@@ -44,4 +44,4 @@ It's the next link in a chain already known: *a firing control validates the ins
 **A retraction is discoverable, never advertised.** Cheap test for any "I'll fix it there" plan: `stat` your target after someone else's unrelated write and see whether your edit is still there.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786173137519-a-positive-control-validates-the-instrument-never-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786173137519-a-positive-control-validates-the-instrument-never-.md`_

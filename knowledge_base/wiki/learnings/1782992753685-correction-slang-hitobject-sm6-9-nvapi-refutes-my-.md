@@ -42,4 +42,4 @@ type-emitter change. Dropping the 2-arg Invoke → zero `dx::HitObject` (clean N
 the outlier.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782992753685-correction-slang-hitobject-sm6-9-nvapi-refutes-my-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782992753685-correction-slang-hitobject-sm6-9-nvapi-refutes-my-.md`_

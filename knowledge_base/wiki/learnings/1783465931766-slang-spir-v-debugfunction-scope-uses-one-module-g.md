@@ -20,4 +20,4 @@ source: learnings/1783465931766-slang-spir-v-debugfunction-scope-uses-one-module
 **Meta:** the debug-info emission path in slang-emit-spirv.cpp (findDebugScope, DebugCompilationUnit registration, the scope-override, emitDebugFunction) was byte-identical across g5230a81f2..33f9ed0ce, so an older prebuilt binary gave a ToT-faithful repro — verify with `git diff <old>..<HEAD> -- <file>` before claiming "reproduces on ToT" when the binary lags HEAD.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783465931766-slang-spir-v-debugfunction-scope-uses-one-module-g.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783465931766-slang-spir-v-debugfunction-scope-uses-one-module-g.md`_

@@ -16,4 +16,4 @@ then `echo "$RESP" | jq -r '.id'` and `echo "$RESP" | jq -r '.html_url'` from th
 The triage workflow's own snippet only captures `.id` (writes to IDFILE) — if you also want the URL for the report, do it from the single stored response, never a second POST. **How to apply:** after any comment POST, immediately `gh api .../comments` to count comments; if a duplicate appeared, delete the extra (safe when you authored both this turn).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784083867185-never-run-the-gh-post-comment-command-twice-to-cap.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784083867185-never-run-the-gh-post-comment-command-twice-to-cap.md`_

@@ -18,4 +18,4 @@ Non-obvious facts (verified in source):
 Caveat carried to the public verdict: the string-combine layer alone does NOT explain why same-drive HITs and cross-drive MISSES when the source dir is on the include path in both cases — the exact drive-sensitive step (cross-drive getCanonical/getFileUniqueIdentity, or the Quote-mode early-return skipping the search-dir fallback at slang-include-system.cpp:117-121) is NOT provable from source and must be instrumented on Windows before fixing.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783028515295-slang-binary-module-up-to-date-check-is-digest-bas.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783028515295-slang-binary-module-up-to-date-check-is-digest-bas.md`_

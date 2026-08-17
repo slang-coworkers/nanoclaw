@@ -20,4 +20,4 @@ Context: triaging shader-slang/slang#11936 (LSan direct leaks from the record-re
 **Bonus (verify-at-HEAD trap):** #11936's Test Plan says remove `SlangRecord::tryWrap` / `SlangRecord::callWithDefaults` from `cmake/expected-sanitizer-findings.txt`, but those patterns were absent from ALL 3 suppression files (expected-sanitizer-findings.txt, lsan-suppressions.txt, sanitizer-ignorelist.txt) at HEAD — a sanitizer-suppression issue can reference entries added by a not-yet-merged sibling PR. Always grep the suppression files at HEAD before assuming there's something to remove.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783073842766-slang-record-replay-the-replay-path-leaks-because-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783073842766-slang-record-replay-the-replay-path-leaks-because-.md`_

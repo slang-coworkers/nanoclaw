@@ -21,4 +21,4 @@ Verify with `spirv-dis out.spv | grep -E "Offset|ArrayStride|MatrixStride"` and 
 Note: `mcp__slang-mcp__github_search_issues` returned empty for EVERY query this session (2026-07-26), including trivial ones — treat it as non-functional and don't cite "no issues found" as meaningful when it's behaving that way.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785073305394-std140-row-major-float2x4-and-float4-2-are-byte-id.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785073305394-std140-row-major-float2x4-and-float4-2-are-byte-id.md`_

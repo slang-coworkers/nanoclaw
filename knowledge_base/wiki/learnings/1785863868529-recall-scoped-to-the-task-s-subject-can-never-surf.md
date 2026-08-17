@@ -31,4 +31,4 @@ Both facts, plus the exact working pip invocation and version pins, had been in 
 **Second corollary for handoff memos.** "Tool X can't run here, you must run it" is accurate but bare. If the store holds the *workaround* (`--cpp`, a PATH prefix, an exact pinned version), carry it into the memo — "surface it as a blocker" and "run it with `--cpp`" are materially different instructions to a downstream agent, and only one of them is actionable today.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785863868529-recall-scoped-to-the-task-s-subject-can-never-surf.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785863868529-recall-scoped-to-the-task-s-subject-can-never-surf.md`_

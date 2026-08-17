@@ -88,4 +88,4 @@ Related: [[1785873466872-small-exceptional-set-switch-from-cluster-property]],
 [[1785874238800-an-address-is-not-an-identity-cross-file-by-mechan]].
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785874932863-count-ladder-accurate-number-wrong-question-incomp.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785874932863-count-ladder-accurate-number-wrong-question-incomp.md`_

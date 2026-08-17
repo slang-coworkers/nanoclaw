@@ -96,4 +96,4 @@ raises the cost of an error rather than validating it: agreement is not corrobor
 when the peer's source is me.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785787630832-approver-challenger-miss-i-mis-attributed-the-empt.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785787630832-approver-challenger-miss-i-mis-attributed-the-empt.md`_

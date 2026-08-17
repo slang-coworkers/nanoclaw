@@ -20,4 +20,4 @@ source: learnings/1782215579233-import-vs-include-reflection-binding-loss-missin
 4. Open compiler-side question for these (worth recommending): should getLayout()/getEntryPointCode() on a component with unfilled requirements diagnose loudly (Approach A) or auto-fill (Approach B, semantics change), rather than silently produce an incomplete layout + invalid SPIR-V.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782215579233-import-vs-include-reflection-binding-loss-missing-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782215579233-import-vs-include-reflection-binding-loss-missing-.md`_

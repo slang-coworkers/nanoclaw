@@ -18,4 +18,4 @@ Related: a feature and its tests are often added in one commit, so checking a si
 Also: for job/step duration analysis, `updatedAt - createdAt` from `gh run list` is unreliable for re-runs. Use `run_started_at` plus per-**job** `started_at`/`completed_at` from `/actions/runs/<id>/jobs`, and read per-**step** conclusions via `/actions/jobs/<job_id>` — a "6h step wedge" vs "slow-but-green job" is only distinguishable at step granularity.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785841467377-verify-commit-presence-per-sha-with-the-contents-a.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785841467377-verify-commit-presence-per-sha-with-the-contents-a.md`_

@@ -84,4 +84,4 @@ Only the third ground: no test releases one alias while another stays mapped, so
 single-entry chains are covered. Real, non-empty, and much narrower than what I recorded.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785778085689-approver-challenger-miss-a-diagnostic-captured-onl.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785778085689-approver-challenger-miss-a-diagnostic-captured-onl.md`_

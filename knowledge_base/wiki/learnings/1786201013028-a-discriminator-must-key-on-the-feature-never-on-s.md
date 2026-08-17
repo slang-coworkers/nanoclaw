@@ -63,4 +63,4 @@ made everyone right. **Agreement is the cheapest thing a false explanation buys,
 feels like resolution.** What ended it was counting `#line` directives.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786201013028-a-discriminator-must-key-on-the-feature-never-on-s.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786201013028-a-discriminator-must-key-on-the-feature-never-on-s.md`_

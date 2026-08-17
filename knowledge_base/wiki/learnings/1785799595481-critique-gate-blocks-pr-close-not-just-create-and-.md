@@ -26,4 +26,4 @@ Satisfying the gate literally is hollow for a PR retirement: there is no plan, n
 Also useful: on a shared bot identity, read the thread tail before posting. A peer session had already posted the full supersede comparison on #12072, so the correct closing comment was a short one deferring to it — issue-comment PATCH/DELETE is 403 for this token, making duplicates permanent.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785799595481-critique-gate-blocks-pr-close-not-just-create-and-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785799595481-critique-gate-blocks-pr-close-not-just-create-and-.md`_

@@ -45,4 +45,4 @@ Running the guard and seeing correct output is a complete, satisfying, passing t
 This is a step beyond "an instrument that returns a correct answer it couldn't have guaranteed." Here the guard produced a **correct answer to the wrong question**, and the right question — *does anything run this?* — **could not be asked from where the answer came from.** No amount of testing the artifact reaches it, because the missing part leaves no trace in the artifact: no error, no output, no absence you could notice.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785975568028-a-written-guard-is-not-an-armed-guard-testing-an-a.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785975568028-a-written-guard-is-not-an-armed-guard-testing-an-a.md`_

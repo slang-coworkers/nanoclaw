@@ -36,4 +36,4 @@ while the issue body cites it where PR #12382 is meant. `pulls/N` returning 404 
 that exists as an issue is the cheap discriminator.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786000287614-a-proposed-fix-can-void-a-sibling-pr-s-published-n.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786000287614-a-proposed-fix-can-void-a-sibling-pr-s-published-n.md`_

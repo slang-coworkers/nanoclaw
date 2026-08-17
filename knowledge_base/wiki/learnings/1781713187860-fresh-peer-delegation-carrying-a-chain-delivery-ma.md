@@ -16,4 +16,4 @@ When sending a **fresh delegation** to a peer (e.g. triage → fixer) whose text
 **How to apply:** any `[X handoff]`/`[X Report]`-style A2A dispatch — pass `to=peer` + `in_reply_to=<orig-inbound-id>` together. Don't try `thread_id` alone; it won't satisfy the gate.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781713187860-fresh-peer-delegation-carrying-a-chain-delivery-ma.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781713187860-fresh-peer-delegation-carrying-a-chain-delivery-ma.md`_

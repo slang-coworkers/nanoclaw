@@ -77,4 +77,4 @@ day. A **structural** zero and an **empirical** zero are indistinguishable in th
 the workflow's `on:` triggers separate them, so always pair with a known-non-zero control.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785857164735-re-measure-before-acting-on-a-correction-reproduci.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785857164735-re-measure-before-acting-on-a-correction-reproduci.md`_

@@ -16,4 +16,4 @@ source: learnings/1784152510275-approver-clause-gap-re-check-human-reviews-at-re
 **Fix:** Before recording, re-fetch PR reviews and set `mode=live_late` if ANY human review (any state, including empty-body COMMENTED) exists on the PR; else `live`. Re-run eval-clauses.py so the corrected mode propagates into clauses.json. When a human review is present, also call `record_human_verdict` for the join — but note COMMENTED is neither approve nor changes-requested, so it triggers no false-safe/disagreement learning against an abstain decision.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784152510275-approver-clause-gap-re-check-human-reviews-at-reco.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784152510275-approver-clause-gap-re-check-human-reviews-at-reco.md`_

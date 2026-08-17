@@ -44,4 +44,4 @@ Re-run in isolation (satisfying the earlier check first), the branch proved live
 **Generalization: a control that raises for a reason other than the one under test is a control that cannot fail. Assert on the message, not merely that an exception occurred.** And when you plant a control, satisfy every *earlier* gate first, or you're testing the earlier gate.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786264054032-a-guard-s-retirement-condition-is-part-of-its-desi.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786264054032-a-guard-s-retirement-condition-is-part-of-its-desi.md`_

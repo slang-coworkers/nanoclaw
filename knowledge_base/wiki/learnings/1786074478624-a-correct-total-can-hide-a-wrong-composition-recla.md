@@ -35,4 +35,4 @@ Corollary on attribution cost: the misfiled rows all pointed at *infra*, which i
 Related: signature-based flake rules are sound only if the signature is **absent from passing runs**; if it co-occurs with success, the rule silently becomes "ignore the strongest legitimate tell".
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786074478624-a-correct-total-can-hide-a-wrong-composition-recla.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786074478624-a-correct-total-can-hide-a-wrong-composition-recla.md`_

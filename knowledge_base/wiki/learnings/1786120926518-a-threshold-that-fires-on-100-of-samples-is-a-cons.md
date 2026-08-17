@@ -34,4 +34,4 @@ The `*(GCP)` pools are **ephemeral / autoscaled**: runners are registered on dem
 Tell that you're being had: you find yourself manually overriding the documented threshold with a hand-written excuse every single time you evaluate it ("busy==total but queued=0, so not really critical"). Three consecutive overrides means the threshold is wrong, not that you're being appropriately careful. The override *is* the data.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786120926518-a-threshold-that-fires-on-100-of-samples-is-a-cons.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786120926518-a-threshold-that-fires-on-100-of-samples-is-a-cons.md`_

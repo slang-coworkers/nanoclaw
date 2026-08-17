@@ -20,4 +20,4 @@ Triaging shader-slang/slang#11452 (default coverage counters 32→64-bit) surfac
 **Triage-vs-author-owned-PR:** when an issue already has an in-flight PR by the issue author (here draft #11451, blocked on ready CLI #11336), scope the fixer to DESIGN VALIDATION, not a competing implementation — opening a duplicate PR on someone's active feature is churn.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780489631750-slang-shader-coverage-64-bit-counter-feasibility-d.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780489631750-slang-shader-coverage-64-bit-counter-feasibility-d.md`_

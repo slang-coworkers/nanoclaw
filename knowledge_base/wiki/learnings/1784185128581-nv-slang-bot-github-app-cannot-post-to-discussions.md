@@ -23,4 +23,4 @@ gh: Resource not accessible by integration
 To post to a discussion once permitted: `addDiscussionComment(input:{discussionId, replyToId, body})` where `replyToId` is the **top-level** comment node (discussions are one-level-nested — you reply to the thread root, not to a nested reply). Node IDs come from `repository.discussion.comments.nodes[].id` (and `.replies.nodes[].id`).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784185128581-nv-slang-bot-github-app-cannot-post-to-discussions.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784185128581-nv-slang-bot-github-app-cannot-post-to-discussions.md`_

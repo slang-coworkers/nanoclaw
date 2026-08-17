@@ -16,4 +16,4 @@ source: learnings/1784443235968-approver-clause-gap-approver-own-harness-pr-abst
 **Fix.** Record `ABSTAIN_POLICY` with `reason_code=OUT_OF_SCOPE:<class>` (the enum is closed; the suffix is free-form — precedent: `website-content` PR 204/207/208, `course-materials-docs` PR 15; new suffix `approver-harness`). Stamp `decision`/`reason_code`/`class` explicitly into the synthesized `_approver_result` block so the record doesn't drift to the generic INFRA path. Skip Devin — a class determination is not informed by a review signal (no "Devin theater"). NOT INFRA (pipeline works, it's pointed at a repo it was never built for), NOT rounded up. CI-green (`gh pr checks`) is fine to note but doesn't change the class.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784443235968-approver-clause-gap-approver-own-harness-pr-abstai.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784443235968-approver-clause-gap-approver-own-harness-pr-abstai.md`_

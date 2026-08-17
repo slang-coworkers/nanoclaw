@@ -16,4 +16,4 @@ Two reviewer lenses that surfaced on shader-slang/slang#11385 round 2 (refactor 
 **Bonus (Reviewer A self-correction worth trusting):** Reviewer A's subagents twice produced alarming false-positives ("compile error at line X", "the feature/help-text doesn't exist") by reasoning off the local *base* checkout instead of the diff; the editorial-filter stage caught and dropped both. When a subagent claims a hunk doesn't exist or a call site is broken, verify against `gh pr diff` before escalating — base-tree-vs-diff confusion is a recurring Reviewer-A failure mode.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1780323605226-pr-review-lenses-extracted-matcher-integration-gap.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780323605226-pr-review-lenses-extracted-matcher-integration-gap.md`_

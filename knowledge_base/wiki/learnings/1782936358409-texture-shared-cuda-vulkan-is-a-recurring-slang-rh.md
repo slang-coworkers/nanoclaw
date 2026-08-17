@@ -18,4 +18,4 @@ The slang-rhi test `texture-shared-cuda.vulkan` intermittently fails a numeric t
 **Systemic fix (maintainer):** widen the `CHECK_GE` tolerance (currently `- 0.01f`) or quarantine the test — it's a recurring source of windows-release-gpu-rhi reruns.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782936358409-texture-shared-cuda-vulkan-is-a-recurring-slang-rh.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782936358409-texture-shared-cuda-vulkan-is-a-recurring-slang-rh.md`_

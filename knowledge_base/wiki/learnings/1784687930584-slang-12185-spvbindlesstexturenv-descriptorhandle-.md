@@ -22,4 +22,4 @@ non-image/sampler kinds → `error[E99997] ... InternalError: Unsupported result
 **Gotcha:** the existing AS lowering consumes heap+index (producing a device-address load), NOT a bare uint64 handle, so wiring AS into the cast switch is not copy-paste — flag as an open question for the fixer.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784687930584-slang-12185-spvbindlesstexturenv-descriptorhandle-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784687930584-slang-12185-spvbindlesstexturenv-descriptorhandle-.md`_

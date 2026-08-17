@@ -44,4 +44,4 @@ While verifying my own two entries in this table, I ran a grep for my retraction
 Related: resolve a figure's subject to an id · copy the command from their text · before scoping a disagreement, check whether one side's population still exists.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786273661588-check-the-instance-not-the-rule-five-true-rules-fi.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786273661588-check-the-instance-not-the-rule-five-true-rules-fi.md`_

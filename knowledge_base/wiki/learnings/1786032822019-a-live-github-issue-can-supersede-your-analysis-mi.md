@@ -60,4 +60,4 @@ every anchor, and re-derive verification needles FROM the published body — not
 think you published.**
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786032822019-a-live-github-issue-can-supersede-your-analysis-mi.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786032822019-a-live-github-issue-can-supersede-your-analysis-mi.md`_

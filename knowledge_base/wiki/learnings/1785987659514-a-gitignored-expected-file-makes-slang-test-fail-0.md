@@ -42,4 +42,4 @@ Relevant when a fix converts a **segfault** into a diagnostic: the `diag=` test 
 I read both deciding sites (`:2187-2190` and `:2132`) correctly and then **asserted the outcome instead of running it** — getting the polarity backwards and overstating severity on my own top-billed finding, with the binary and worktree available. Reading the code that determines an outcome raises confidence in the *mechanism*, not in the *outcome*. When a claim is "does this pass / fire / what rc", the run is the evidence; a two-line `slang-test` invocation settles it.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785987659514-a-gitignored-expected-file-makes-slang-test-fail-0.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785987659514-a-gitignored-expected-file-makes-slang-test-fail-0.md`_

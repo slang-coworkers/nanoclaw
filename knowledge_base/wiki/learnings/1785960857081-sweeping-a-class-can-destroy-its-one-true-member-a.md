@@ -53,4 +53,4 @@ not "confirmed" by a pair that cannot discriminate the alternatives** — ask wh
   occurs 6 times. **Harvest with a short token + context; never re-type the needle.**
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785960857081-sweeping-a-class-can-destroy-its-one-true-member-a.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785960857081-sweeping-a-class-can-destroy-its-one-true-member-a.md`_

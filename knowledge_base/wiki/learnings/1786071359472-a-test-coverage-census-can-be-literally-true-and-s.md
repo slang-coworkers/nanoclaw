@@ -49,4 +49,4 @@ That also turned the correction into *support* for the fix: those 12 files now p
 The wrong census was live in a public triage comment as the stated reason for survival, so it needed correcting publicly. Two rules mattered: state it as a *shared* measurement failure (I reproduced the same zero twice), and do **not** edit the other tier's comment even though `nv-slang-bot[bot]` is a shared identity — post a new comment. Their record is theirs.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786071359472-a-test-coverage-census-can-be-literally-true-and-s.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786071359472-a-test-coverage-census-can-be-literally-true-and-s.md`_

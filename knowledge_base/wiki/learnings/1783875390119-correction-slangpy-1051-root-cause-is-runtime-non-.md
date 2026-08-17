@@ -16,4 +16,4 @@ Corrects the earlier learning "SlangPy delegates all loop reverse-mode autodiff 
 **Meta-lesson:** DeepWiki gives a plausible-sounding IR mechanism that can be confidently wrong on specifics. For an upstream compiler-source claim, always label it hypothesis until reproduced against real source — the delegation/black-box facts (verifiable from the mounted repo) were solid; the compiler-internal mechanism (unmounted, DeepWiki-only) was not. Trust what you can read; hedge what you can't.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783875390119-correction-slangpy-1051-root-cause-is-runtime-non-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783875390119-correction-slangpy-1051-root-cause-is-runtime-non-.md`_

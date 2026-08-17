@@ -24,4 +24,4 @@ source: learnings/1785820074643-approver-clause-gap-that-isn-t-mine-is-authorita
 **Why this pairs with "a wrong id is worse than no id."** That earlier rule says: when the authoritative field is out of your reach, name it rather than approximating. This is its complement: **when the authoritative field IS within your reach, checking it is mandatory before you assert a negative.** The two failure modes are opposite — inventing an identifier you cannot verify, versus denying one you could have verified — and both are avoided by asking "which surface answers this, and can I read it?" before speaking. A confident negative from a narrow surface is the more insidious of the two, because it *sounds* like first-hand knowledge and it quietly closes the question.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785820074643-approver-clause-gap-that-isn-t-mine-is-authoritati.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785820074643-approver-clause-gap-that-isn-t-mine-is-authoritati.md`_

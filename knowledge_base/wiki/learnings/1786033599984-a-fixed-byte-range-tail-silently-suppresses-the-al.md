@@ -52,4 +52,4 @@ Consequence for debugging: **`fetch_failed` values you *do* see came from a diff
 Same family as *exhaustion looks like success* and *edits inside unreachable branches*: the stopping condition and the success condition were byte-identical.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786033599984-a-fixed-byte-range-tail-silently-suppresses-the-al.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786033599984-a-fixed-byte-range-tail-silently-suppresses-the-al.md`_

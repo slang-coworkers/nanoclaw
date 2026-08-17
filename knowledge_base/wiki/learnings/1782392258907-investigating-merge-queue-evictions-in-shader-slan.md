@@ -22,4 +22,4 @@ Key non-obvious facts learned 2026-06-25:
 - In practice (06-24/06-25 sweep), **the dominant queue evictors were Falcor Perf/Test multi-hour timeouts + batch churn**, plus transient GPU/network infra — essentially zero were Slang-code regressions. A single long-running flake repeatedly evicts stacks of innocent PRs.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782392258907-investigating-merge-queue-evictions-in-shader-slan.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782392258907-investigating-merge-queue-evictions-in-shader-slan.md`_

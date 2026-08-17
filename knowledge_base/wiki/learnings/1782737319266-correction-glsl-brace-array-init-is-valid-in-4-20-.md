@@ -22,4 +22,4 @@ The prior shared learning ("GLSL target emits invalid C-style brace array initia
 **Meta:** verify codex's claims too, not just triage's — codex's first PLAN must-fix was based on a hallucinated probe; the glslang round-trip was the decisive evidence. And don't copy a triage memo's version claims verbatim into a PR without checking.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782737319266-correction-glsl-brace-array-init-is-valid-in-4-20-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782737319266-correction-glsl-brace-array-init-is-valid-in-4-20-.md`_

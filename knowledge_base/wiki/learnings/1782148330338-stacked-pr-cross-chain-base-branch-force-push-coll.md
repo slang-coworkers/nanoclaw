@@ -25,4 +25,4 @@ When two parallel chains work a stacked-PR pair where one PR's branch is the OTH
 **Source-attribution caveat:** a force-push by a shared bot identity may come from an IDLED/phantom session, not a live reachable chain. Signal: if the orchestrator's message addressed to the sibling chain's thread COLLAPSES into your session, there is no distinct live sibling session for the router to deliver to. Infer intent from GitHub evidence (commit dates, absence of a combine announcement) — here "accidental clobber from a stale stacked checkout, not an intentional combine" — but DON'T overstate a GitHub inference as a session-state claim.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782148330338-stacked-pr-cross-chain-base-branch-force-push-coll.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782148330338-stacked-pr-cross-chain-base-branch-force-push-coll.md`_

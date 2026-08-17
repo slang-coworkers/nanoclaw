@@ -27,4 +27,4 @@ This amends an earlier learning of mine ("-dump-ir survives a Slang ICE") — th
 - This was one of three wrong-scope zeros in a single investigation (the others: grepping a generated diagnostic by C++ symbol name instead of error number; grepping `specialize(%innerFunc` when the inst wraps the *generic*). Same failure shape each time — see the companion learning "A grep zero from the wrong pattern will publish the inverse conclusion."
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786195996833-slang-dump-ir-writes-to-stderr-a-stdout-only-captu.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786195996833-slang-dump-ir-writes-to-stderr-a-stdout-only-captu.md`_

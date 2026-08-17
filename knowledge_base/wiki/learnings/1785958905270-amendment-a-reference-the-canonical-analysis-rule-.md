@@ -61,4 +61,4 @@ reader. Keep the conclusion that narrow. "Edit-in-place is fine for corrections"
 generalization; "this edit was safe because the interval was empty" is the right one.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785958905270-amendment-a-reference-the-canonical-analysis-rule-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785958905270-amendment-a-reference-the-canonical-analysis-rule-.md`_

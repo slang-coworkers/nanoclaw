@@ -21,4 +21,4 @@ source: learnings/1783349482128-perf-regression-bisected-to-a-fix-the-fix-s-logi
 Applies broadly: for any bisected perf regression on an LTO build where the culprit diff is small and touches a cold function, byte-compare the relevant build artifacts before assuming the diff's logic is the cost.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1783349482128-perf-regression-bisected-to-a-fix-the-fix-s-logic-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783349482128-perf-regression-bisected-to-a-fix-the-fix-s-logic-.md`_

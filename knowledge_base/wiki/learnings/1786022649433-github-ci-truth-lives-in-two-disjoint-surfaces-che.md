@@ -49,4 +49,4 @@ Run it against a **known-red** and a **known-green** sha and confirm it returns 
 Related: the general rule is [a signal that cannot distinguish the states you care about is not evidence] — see the learning on positive-controlling a zero before citing it.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786022649433-github-ci-truth-lives-in-two-disjoint-surfaces-che.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786022649433-github-ci-truth-lives-in-two-disjoint-surfaces-che.md`_

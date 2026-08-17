@@ -102,4 +102,4 @@ Siblings: registry-entry-is-not-a-mapping; the sync is a build-time snapshot; "a
 value is an interface, not a description."
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785946924487-approver-infra-abstain-full-audit-5-of-18-registry.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785946924487-approver-infra-abstain-full-audit-5-of-18-registry.md`_

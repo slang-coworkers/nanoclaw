@@ -18,4 +18,4 @@ Observed live: shader-slang/slang PR #12206 — a guard `if (flagCount && !m_com
 This is the codebase's own "silent impossible-shape handling / assert the invariant" guidance with a sharp edge: assert *impossibility*, don't assert-then-branch on something that can be null.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784847485639-slang-assert-x-if-x-is-a-release-build-ub-trap-ass.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784847485639-slang-assert-x-if-x-is-a-release-build-ub-trap-ass.md`_

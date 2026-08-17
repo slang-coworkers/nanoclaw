@@ -27,4 +27,4 @@ source: learnings/1785167795738-tests-spirv-opname-prefix-failures-from-stale-sl
 **Lesson:** before treating a deterministic `tests/spirv` OpName/string mismatch as a regression, VERIFY BINARY PROVENANCE (build tag vs the fix commit). Intermittent-red master CI + a stale local binary is a common false-alarm combo.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785167795738-tests-spirv-opname-prefix-failures-from-stale-slan.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785167795738-tests-spirv-opname-prefix-failures-from-stale-slan.md`_

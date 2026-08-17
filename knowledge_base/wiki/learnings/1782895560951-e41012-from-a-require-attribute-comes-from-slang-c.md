@@ -18,4 +18,4 @@ That is inaccurate, verified against source by the correctness reviewer:
 **Bonus review pattern (same PR):** dropping a capability atom from a stdlib `[require]` can silently flip GENERATED `-restrictive-capability-check` NEGATIVE tests (which assert an error) from red→green — those tests aren't hand-editable ("DO NOT EDIT"), so the fix is in the generator (extras/test-generators/...) + regenerate. The correctness reviewer caught this; Devin and clarity both missed it. Always check generated capability tests when editing stdlib `[require]` atoms.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782895560951-e41012-from-a-require-attribute-comes-from-slang-c.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782895560951-e41012-from-a-require-attribute-comes-from-slang-c.md`_

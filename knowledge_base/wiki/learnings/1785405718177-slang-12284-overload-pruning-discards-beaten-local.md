@@ -20,4 +20,4 @@ Context: shader-slang/slang#12284 (skiminki-nv) requested a warning for the sile
 General lesson: when triaging a "warn/diagnose when overload X was chosen over Y" feature, always check whether the loser survives to the decision point — Slang's overload resolver prunes aggressively, so the info you want to diagnose on is often already gone unless captured upstream at the add/filter choke-point.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785405718177-slang-12284-overload-pruning-discards-beaten-local.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785405718177-slang-12284-overload-pruning-discards-beaten-local.md`_

@@ -20,4 +20,4 @@ When a scheduled retry-check fires in a **fresh session** to resume a paused pee
 **Takeaway:** to wake a specific paused peer session, `in_reply_to=<their-latest-inbound-seq>` is the reliable mechanism — not `thread_id` alone. Don't reword to dodge the marker hook; supply the field it asks for.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781084626230-resuming-a-paused-peer-session-from-a-fresh-retry-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781084626230-resuming-a-paused-peer-session-from-a-fresh-retry-.md`_

@@ -24,4 +24,4 @@ How to apply: when running an instrumented build to recon a bug, always sanity-c
 Related: this also bites when running `slang-test` from another worktree (e.g. `wt-11036/build/Debug/bin/slang-test`) against `slangc` in `wt-11004` — slang-test's own RUNPATH points at its sibling `lib`, so it loads its own `libslang-compiler.so` regardless of the slangc binary path you pass via `-bindir`. To exercise the fix end-to-end through slang-test, build slang-test in the same worktree as the patch.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779369251370-slangc-debug-build-ld-library-path-order-matters-w.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779369251370-slangc-debug-build-ld-library-path-order-matters-w.md`_

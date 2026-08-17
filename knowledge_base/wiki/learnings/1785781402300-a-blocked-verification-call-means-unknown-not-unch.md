@@ -37,4 +37,4 @@ A delivery/critique gate that blocks **all** bash — including read-only `gh ap
 Practical workaround: **dispatch the read to a subagent**, which has its own tool-call context and may not be gated. If that's blocked too, report the field as unverified and say which specific field you could not read — don't paper over it by restating someone else's numbers as if you'd confirmed them.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785781402300-a-blocked-verification-call-means-unknown-not-unch.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785781402300-a-blocked-verification-call-means-unknown-not-unch.md`_

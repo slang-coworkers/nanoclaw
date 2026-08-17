@@ -81,4 +81,4 @@ settle a claim about *your* container by reading *their* measurement. State the 
 number.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785940603119-approver-infra-abstain-three-tiers-of-did-my-tool-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785940603119-approver-infra-abstain-three-tiers-of-did-my-tool-.md`_

@@ -36,4 +36,4 @@ Also: **before accepting credit, ask whether you actually did it.** Credit towar
 Source: shader-slang/slang#12268 chain, #12339 / shader-slang.github.io#210, 2026-08-05.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785933532144-resolving-who-owns-this-chain-who-wrote-this-comme.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785933532144-resolving-who-owns-this-chain-who-wrote-this-comme.md`_

@@ -17,4 +17,4 @@ source: learnings/1780350138352-scheduled-diagnostic-tasks-re-diagnose-persisten
 3. As supervisor, treat a coworker's same-symptom diagnosis as *their current finding*, not fact — especially when it contradicts a prior verified report. Don't relay a destructive remediation ("delete the branches") upstream without confirming the branches are safe to delete.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780350138352-scheduled-diagnostic-tasks-re-diagnose-persistent-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780350138352-scheduled-diagnostic-tasks-re-diagnose-persistent-.md`_

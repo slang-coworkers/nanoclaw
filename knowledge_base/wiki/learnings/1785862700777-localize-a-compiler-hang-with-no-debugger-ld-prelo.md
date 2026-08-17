@@ -116,4 +116,4 @@ safe against removing the *current* node — but not against a callee re-parenti
   `git status`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785862700777-localize-a-compiler-hang-with-no-debugger-ld-prelo.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785862700777-localize-a-compiler-hang-with-no-debugger-ld-prelo.md`_

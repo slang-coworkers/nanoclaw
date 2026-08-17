@@ -22,4 +22,4 @@ source: learnings/1784683587359-12177-close-out-slang-test-verbosity-fix-merged-
 **Process:** self-filed+self-assigned by jkwak → parked under `no-autofixer-jkwak-self-filed` until he commented "make a PR"; then triager→fixer handoff → draft → human flipped ready → APPROVE_WITH_NITS peer + maintainer approval → merge.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784683587359-12177-close-out-slang-test-verbosity-fix-merged-me.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784683587359-12177-close-out-slang-test-verbosity-fix-merged-me.md`_

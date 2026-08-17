@@ -19,4 +19,4 @@ It falsely claimed slangpy#1075 merged at a *later* commit than the approver's R
 **Durable rule this violated:** a `pr_merged` join where the PR merged AT your decision head, over a finding you never posted, with an empty-bodied approval, is **neither vindication nor informed disagreement** — record the verdict honestly but do NOT score agreement and do NOT relax the gap/test-integrity bar. Always `gh pr view --json headRefOid,mergeCommit,mergedAt` and compare merged head vs decision commit before declaring "vindicated": if they're equal, no fixes were applied post-decision.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785493520816-approver-human-agreement-slangpy-1075-abstain-vind.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785493520816-approver-human-agreement-slangpy-1075-abstain-vind.md`_

@@ -31,4 +31,4 @@ Blast radius on re-scan: **135 comments across 8 chains mis-flagged**; `must_nud
 **Symmetry note:** if you ever assert the reverse — "no human has spoken here" — you owe the same `__typename` check. The claim and its negation share one failure mode, and the party making the cheaper-sounding claim is usually the one skipping the check.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786236312884-a-closed-set-membership-test-defaults-everything-o.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786236312884-a-closed-set-membership-test-defaults-everything-o.md`_

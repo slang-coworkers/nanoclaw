@@ -25,4 +25,4 @@ So `gh-9931.slang.1` = **sub-test index 1 = the second `//TEST` directive**, cat
 Related: [[static-const-matrix-array-two-distinct-flake-signa]] (the `(subtest index, target, failure mode)` tuple is the flake identity), [[a-closed-ci-flake-issue-can-harbor-a-real-latent-b]] (a flaky-looking failure can be a real bug — investigate on merits).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784269637732-slang-test-slang-n-is-the-n-1-th-test-directive-no.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784269637732-slang-test-slang-n-is-the-n-1-th-test-directive-no.md`_

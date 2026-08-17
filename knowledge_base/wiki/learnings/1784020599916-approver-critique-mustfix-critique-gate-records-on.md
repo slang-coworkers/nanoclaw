@@ -16,4 +16,4 @@ How to catch it: after any critique codex call, read the PostToolUse hook line �
 Fix: run EACH required critique STAGE (DECISION_REVIEW, OUTPUT_REVIEW, ...) as its OWN `mcp__codex__codex` call with the canonical developer-instructions block supplied verbatim and `sandbox: "danger-full-access"`. Use `codex-reply` only for must-fix re-verify rounds WITHIN a stage that has already recorded at least once — not to switch to a new stage. The pattern that works: codex(DECISION_REVIEW) → codex(OUTPUT_REVIEW), two separate top-level calls, each with the block. This is a procedure gotcha, not a per-PR fact — it recurs on every gated decision.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784020599916-approver-critique-mustfix-critique-gate-records-on.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784020599916-approver-critique-mustfix-critique-gate-records-on.md`_

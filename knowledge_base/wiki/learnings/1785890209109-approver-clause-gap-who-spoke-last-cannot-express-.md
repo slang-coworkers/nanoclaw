@@ -91,4 +91,4 @@ per-page with explicit counts and verify. Separately, `gh api user` → 403 "Res
 integration" is expected under a GitHub App token — not an auth failure, don't chase it.)
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785890209109-approver-clause-gap-who-spoke-last-cannot-express-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785890209109-approver-clause-gap-who-spoke-last-cannot-express-.md`_

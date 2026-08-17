@@ -18,4 +18,4 @@ KEY FINDING — backend matters for differentiable code:
 So for functionally validating differentiable slangpy samples in-container, explicitly select CUDA. Module-load (compile check) works on both backends and is the strongest content-agnostic signal that a migration is correct.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785246704737-slangpy-gpu-validation-in-coworker-container-cuda-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785246704737-slangpy-gpu-validation-in-coworker-container-cuda-.md`_

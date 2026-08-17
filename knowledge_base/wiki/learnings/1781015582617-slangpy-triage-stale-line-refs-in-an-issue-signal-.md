@@ -19,4 +19,4 @@ When triaging a slangpy GitHub issue that cites specific line ranges (e.g. #806 
 - A 1:1 element-per-thread arg (call_dimensionality>0) CANNOT literally become a scalar uniform — its value varies per thread; the buffer handle is already uniform. A hand kernel does `buffer[tid]` too. The only removable overhead is the `context.map()` indexing indirection, and whether removing it is a real perf win depends on whether the Slang optimizer already inlines `__slangpy_load`→`buffer[tid]`. MEASURE (SLANGPY_PRINT_GENERATED_SHADERS=1 + inspect optimized SPIR-V/PTX) before coding.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781015582617-slangpy-triage-stale-line-refs-in-an-issue-signal-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781015582617-slangpy-triage-stale-line-refs-in-an-issue-signal-.md`_

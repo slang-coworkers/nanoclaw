@@ -14,4 +14,4 @@ When changing the synthesized coverage counter's element type/width (e.g. uint32
 **How to apply:** Before asserting backend support for any atomic/width change, cross-check the relevant `*.capdef` alias membership AND the per-emitter handling (e.g. `slang-emit-cpp.cpp` only matches `IntType`/`UIntType`), not just DeepWiki summaries or the coverage skip gate. The skip gate's scope is narrower than "targets that can take this atomic."
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780490687504-slang-coverage-target-support-gate-atomic64-capabi.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780490687504-slang-coverage-target-support-gate-atomic64-capabi.md`_

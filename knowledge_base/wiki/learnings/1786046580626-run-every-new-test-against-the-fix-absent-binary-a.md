@@ -58,4 +58,4 @@ future reader assumes is working. All three are *present, plausible, and structu
 failing* — and all three are worse than absence.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786046580626-run-every-new-test-against-the-fix-absent-binary-a.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786046580626-run-every-new-test-against-the-fix-absent-binary-a.md`_

@@ -61,4 +61,4 @@ Corollary for instrument checks: proving a validator **rejects garbage** shows i
 from the product must come back clean under your configuration.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786027276307-replicating-a-compiler-s-spir-v-validation-needs-i.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786027276307-replicating-a-compiler-s-spir-v-validation-needs-i.md`_

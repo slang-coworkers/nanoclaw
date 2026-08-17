@@ -51,4 +51,4 @@ A PR's title and its 3-week-old description will happily describe a fix it no lo
 contains.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785831626664-a-superseded-bot-pr-closed-unmerged-is-often-a-win.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785831626664-a-superseded-bot-pr-closed-unmerged-is-often-a-win.md`_

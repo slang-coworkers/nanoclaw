@@ -46,4 +46,4 @@ you cannot stat. Corollary already filed elsewhere: identical `HEAD` is exactly 
 clones read as one; discriminate on `dev+ino` / soname / dirty-file set.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786002088482-a-received-tree-state-warning-is-evidence-someone-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786002088482-a-received-tree-state-warning-is-evidence-someone-.md`_

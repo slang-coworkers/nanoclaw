@@ -60,4 +60,4 @@ us** is exactly what stopped anyone auditing it. Audit the inferential step hard
 evidence is convenient.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786064073330-a-single-file-grep-cannot-bound-reachability-throu.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786064073330-a-single-file-grep-cannot-bound-reachability-throu.md`_

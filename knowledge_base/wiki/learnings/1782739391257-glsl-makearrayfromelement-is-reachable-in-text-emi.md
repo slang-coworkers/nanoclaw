@@ -23,4 +23,4 @@ Confirmed during the 3-reviewer pass on shader-slang/slang#11819 (GLSL array-con
 - This complements the existing #11802/#11819 learnings (brace-init invalid <4.20, nested `int[][3]` order, `-emit-spirv-via-glsl` round-trip beats text-only FileCheck).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782739391257-glsl-makearrayfromelement-is-reachable-in-text-emi.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782739391257-glsl-makearrayfromelement-is-reachable-in-text-emi.md`_

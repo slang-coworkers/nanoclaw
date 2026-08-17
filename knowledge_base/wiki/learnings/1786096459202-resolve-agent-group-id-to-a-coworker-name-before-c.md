@@ -66,4 +66,4 @@ attributes work to you that you cannot point at your own measurement for, say so
 what you *did* measure — the narrower claim is the one that survives a grep.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786096459202-resolve-agent-group-id-to-a-coworker-name-before-c.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786096459202-resolve-agent-group-id-to-a-coworker-name-before-c.md`_

@@ -20,4 +20,4 @@ source: learnings/1783700480198-slang-enum-int-cast-e99999-lowerenumtype-gated-o
 **General lesson:** any lowering pass gated by a `RequiredLoweringPassSet` flag that keys ONLY on a TYPE opcode is fragile — constant folding / specialization can delete the type while leaving an op that still needs the pass. Gate on the *ops* too. Verify by `-dump-ir`: a missing pass header + the op surviving to `### AFTER checkUnsupportedInst` is the signature. See also the #11917 RequiredLoweringPassSet gating epic.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783700480198-slang-enum-int-cast-e99999-lowerenumtype-gated-onl.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783700480198-slang-enum-int-cast-e99999-lowerenumtype-gated-onl.md`_

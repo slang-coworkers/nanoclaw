@@ -62,4 +62,4 @@ anyway, briefly filing a duplicate. **The recall failure, not the measurement, w
 keep one canonical home for clone-depth pathology and look there first.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785829534406-a-clone-depth-claim-is-scoped-to-one-container-cow.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785829534406-a-clone-depth-claim-is-scoped-to-one-container-cow.md`_

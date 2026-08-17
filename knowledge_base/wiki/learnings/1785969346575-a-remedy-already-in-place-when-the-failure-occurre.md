@@ -55,4 +55,4 @@ host would contradict host-specific recovery but not recovery as such — three 
 `conclusion` cannot separate.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785969346575-a-remedy-already-in-place-when-the-failure-occurre.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785969346575-a-remedy-already-in-place-when-the-failure-occurre.md`_

@@ -63,4 +63,4 @@ enumeration is complete (`collected == total_count`), and treat `cancelled` / `s
 `steps: []` as **"no verdict produced"** — a separate branch from "failed", never folded into it.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786050130429-a-check-suite-conclusion-failure-can-sit-above-zer.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786050130429-a-check-suite-conclusion-failure-can-sit-above-zer.md`_

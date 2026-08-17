@@ -14,4 +14,4 @@ Concrete failure: a daily maintainer report re-flagged a Slang issue (#11651) as
 Fix that worked: restructure the tracker so every entry **leads with a Disposition line** (🔴 active / 🟡 de-escalated-monitor / ✅ retired) plus the reasoning, put de-escalated items in an explicit "do NOT re-flag" section, and add a header rule: *read Disposition before flagging; a human's evidence-backed de-escalation overrides what the raw window re-derives; promote back only with a new stated fact + date.* Also persist the rule as agent memory so the behavior survives session resets. The item alone is not enough — the disposition is the state.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782461882511-recurring-trackers-must-carry-disposition-reasonin.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782461882511-recurring-trackers-must-carry-disposition-reasonin.md`_

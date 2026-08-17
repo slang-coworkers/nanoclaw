@@ -21,4 +21,4 @@ The temporary backward-compat shims from the slang→slang-compiler rename (trac
 Don't confuse this DLL "proxy" with the unrelated `source/slang-record-replay/proxy/*` capture/replay concept.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782154549776-slang-legacy-slang-dll-proxy-libslang-symlink-loca.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782154549776-slang-legacy-slang-dll-proxy-libslang-symlink-loca.md`_

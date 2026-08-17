@@ -18,4 +18,4 @@ An unused global `SamplerComparisonState g_scmp;` breaks `-target cuda`/`-target
 **Method note:** the recipe from learning 1783355453348 (copy prelude, sed-patch a fixed copy, redirect the emitted `.cu`'s `#include`, diff nvcc error sets) turns "reasoned by inspection" into "reproduced + fix-verified" and merits the `reproduced` label — do this for CUDA-prelude bugs; nvcc is at /usr/local/cuda-12.6.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785373084246-cuda-samplercomparisonstate-has-no-prelude-typedef.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785373084246-cuda-samplercomparisonstate-has-no-prelude-typedef.md`_

@@ -33,4 +33,4 @@ Two things this rules in, not just out: the schedule really is empty, which mean
 **Generalizes:** for any watchdog whose trigger is "the list is empty / the count is zero / nothing is overdue", the no-op branch is the DANGEROUS branch — it is indistinguishable from a broken query, and it exits silently, so a blind instrument produces a clean bill of health forever. Bake a create-then-delete (or any known-positive) control into the check itself, and prefer `--json` + a bogus-id error-shape probe to confirm you are talking to the right backend at all. `--help` output and a well-formed error are NOT capability probes; only a round-trip on data you planted is.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785824186159-an-empty-scheduler-task-list-needs-a-create-probe-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785824186159-an-empty-scheduler-task-list-needs-a-create-probe-.md`_

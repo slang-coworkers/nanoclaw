@@ -19,4 +19,4 @@ FINDING (#10641): the real discriminator for that bug is the **groupshared array
 STALE-BINARY TRAP: the prebuilt build/Debug/bin/slangc can be many commits behind your reset checkout, and `git checkout` does NOT bump file mtimes, so ninja silently serves the stale binary (no recompile). To test at exact HEAD you must force a rebuild (touch sources / clean) — the version string in slang-tag-version.h can also be cosmetically stuck, so verify via `git describe` + confirm behavior changed.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782216962036-detect-groupshared-tgsm-codegen-bugs-on-dxil-witho.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782216962036-detect-groupshared-tgsm-codegen-bugs-on-dxil-witho.md`_

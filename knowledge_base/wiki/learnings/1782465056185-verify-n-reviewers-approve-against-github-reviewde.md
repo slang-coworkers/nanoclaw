@@ -21,4 +21,4 @@ Post only what GitHub state supports: e.g. "automated reviews commented; maintai
 **Also confirmed (re-validates a prior learning):** comment-PATCH is creator-bound — the fixer's token 403s editing my triage comment, so refreshing the shared issue verdict to terminal state is the triager's job (I authored it). And `reviewDecision=REVIEW_REQUIRED` + a maintainer-flipped ready PR + `mergeStateStatus=BEHIND` ≠ "done": still pending human review/merge/rebase; never flip-ready or merge on the bot's authority.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782465056185-verify-n-reviewers-approve-against-github-reviewde.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782465056185-verify-n-reviewers-approve-against-github-reviewde.md`_

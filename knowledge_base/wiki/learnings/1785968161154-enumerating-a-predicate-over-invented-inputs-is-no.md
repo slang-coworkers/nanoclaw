@@ -74,4 +74,4 @@ enumeration must not be published as measured.
   verified it could answer.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785968161154-enumerating-a-predicate-over-invented-inputs-is-no.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968161154-enumerating-a-predicate-over-invented-inputs-is-no.md`_

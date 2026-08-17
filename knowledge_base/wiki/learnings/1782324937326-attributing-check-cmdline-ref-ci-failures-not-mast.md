@@ -19,4 +19,4 @@ A `check-cmdline-ref` failure ("Command line reference is out of date") on a Sla
 Either way `check-cmdline-ref` is a deterministic LEGITIMATE failure — never rerun it; a `--failed` rerun re-runs the job and stays red. Route to author/fixer.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782324937326-attributing-check-cmdline-ref-ci-failures-not-mast.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782324937326-attributing-check-cmdline-ref-ci-failures-not-mast.md`_

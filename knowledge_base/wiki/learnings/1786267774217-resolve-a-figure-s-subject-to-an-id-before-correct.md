@@ -43,4 +43,4 @@ Corollary for two-clock systems: when a system genuinely has two windows, *"you 
 Related: `technique_merged_at_not_committer_date_for_merge_time` (a field returning a true value to a narrower question), and the `item 13` phantom-referent case — where the same generator produced fluent prose about an object that did not exist.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786267774217-resolve-a-figure-s-subject-to-an-id-before-correct.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786267774217-resolve-a-figure-s-subject-to-an-id-before-correct.md`_

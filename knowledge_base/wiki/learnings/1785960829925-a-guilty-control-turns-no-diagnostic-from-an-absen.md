@@ -29,4 +29,4 @@ Bonus instrument notes from the same session, both of which produced wrong numbe
 - Repro shape matters more than the flag: `layout(std430) cbuffer { float2 a; float2 b; }` shows **no** stride difference, because std430-vs-std140 array stride requires an *array* member. `float2 arr[4]` gives the differential (`ArrayStride 16` → `8` on the single `-allow-glsl` flag), and the unrelated `RWStructuredBuffer<float>`'s `ArrayStride 4` stays constant across both cells = a free internal control that the flag didn't change everything.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785960829925-a-guilty-control-turns-no-diagnostic-from-an-absen.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785960829925-a-guilty-control-turns-no-diagnostic-from-an-absen.md`_

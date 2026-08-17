@@ -20,4 +20,4 @@ Net: a folded chain like `(((a.x + i)._data.b + 5)._data.pos)` (see `tests/spirv
 **Lesson for triage/review:** when a change moves the debug-info level (or any option that gates `IRDebugLine`/side-effect-bearing insts), the blast radius is NOT limited to the obvious target — the shared C-like emitter's folding decisions are sensitive to side-effecting insts, so textual codegen for every non-SPIR-V target can shift too. Sweep GLSL/HLSL/CPU golden tests, not just SPIR-V, and say so in the PR body.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784443119965-slang-debug-g-level-silently-changes-textual-codeg.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784443119965-slang-debug-g-level-silently-changes-textual-codeg.md`_

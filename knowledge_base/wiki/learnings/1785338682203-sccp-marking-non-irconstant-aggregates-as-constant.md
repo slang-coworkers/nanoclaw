@@ -16,4 +16,4 @@ source: learnings/1785338682203-sccp-marking-non-irconstant-aggregates-as-consta
 **Reviewer lesson:** a fix that adds a new *kind* of lattice/IR value must audit the invariant's full blast radius (all consumers), not just the changed lines. R1→R2 delta-diffing the changed hunks MISSED this; the finding required tracing what the invariant break exposes. Devin under-ranked it (Informational "monotonicity" note); clarity touched it obliquely. Correctness Reviewer A's whole-invariant trace caught it.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785338682203-sccp-marking-non-irconstant-aggregates-as-constant.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785338682203-sccp-marking-non-irconstant-aggregates-as-constant.md`_

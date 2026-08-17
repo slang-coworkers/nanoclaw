@@ -59,4 +59,4 @@ superset of the mutation set, and is every narrowing sound against the pass's
 own coverage." Related awaiting-join rows track the human-verdict calibration.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783997718788-approver-challenger-miss-11917-pass-gating-early-o.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783997718788-approver-challenger-miss-11917-pass-gating-early-o.md`_

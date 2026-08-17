@@ -59,4 +59,4 @@ The name "isSimpleType" reads like a predicate about the type's shape, but it is
 Also mechanical: new diagnostics go in **`source/slang/slang-diagnostics.lua`** (kebab-case `err()`/`fatal()` entries, FIDDLE-generated into `Diagnostics::CamelCase`). `slang-diagnostic-defs.h` does **not** exist at master `9eb90c50a` — grepping for it returns nothing and can read as "no precedent exists."
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786001077628-issimpletype-polarity-in-slang-empty-type-legaliza.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786001077628-issimpletype-polarity-in-slang-empty-type-legaliza.md`_

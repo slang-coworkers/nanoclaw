@@ -38,4 +38,4 @@ Bot-authored PRs, because retry/priority-yield workflows re-dispatch CI via `wor
 **Judge head health from the `pull_request` run or the check rollup, never from a `workflow_dispatch` run alone.**
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785816873789-ci-sweeps-a-stale-workflow-dispatch-run-makes-a-gr.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785816873789-ci-sweeps-a-stale-workflow-dispatch-run-makes-a-gr.md`_

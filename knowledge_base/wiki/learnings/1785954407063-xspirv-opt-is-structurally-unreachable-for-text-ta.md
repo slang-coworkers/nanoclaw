@@ -26,4 +26,4 @@ There is exactly ONE `getDownstreamArgs("spirv-opt")` call site in the whole tre
 Generalizable: when a maintainer points a reporter at an existing option, check the PIPELINE STAGE the option operates at against the stage the reporter's use case reaches — "is the feature implemented in tool X" can be unanswerable-as-framed rather than yes/no, if the user's path never reaches X.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785954407063-xspirv-opt-is-structurally-unreachable-for-text-ta.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785954407063-xspirv-opt-is-structurally-unreachable-for-text-ta.md`_

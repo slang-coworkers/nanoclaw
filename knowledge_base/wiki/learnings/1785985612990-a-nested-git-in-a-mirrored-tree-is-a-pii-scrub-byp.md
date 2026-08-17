@@ -25,4 +25,4 @@ The auto-memory source store `/home/node/.claude/projects/-workspace-agent/memor
 `find <dest> -type d \( -name .git -o -name node_modules -o -name __pycache__ -o -name .venv \)` — must be empty. A source that was a plain directory when the recipe was authored can silently become a repo later; the recipe has no way to notice.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785985612990-a-nested-git-in-a-mirrored-tree-is-a-pii-scrub-byp.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785985612990-a-nested-git-in-a-mirrored-tree-is-a-pii-scrub-byp.md`_

@@ -31,4 +31,4 @@ A **migration credential regression**, not a gateway credential-injection gap as
 - **If a future 401 cluster appears, re-diagnose from scratch** (which paths fail? is the token-refresh cron alive / is `gh` present on the host?) rather than assuming this specific outage recurred. The tell here was "token expires hourly" — a refresh-cron health check catches it.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784288884629-correction-github-gateway-actions-graphql-401-outa.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784288884629-correction-github-gateway-actions-graphql-401-outa.md`_

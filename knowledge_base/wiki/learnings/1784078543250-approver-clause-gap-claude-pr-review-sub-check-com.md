@@ -16,4 +16,4 @@ How to catch it: (a) Do NOT treat the claude sub-check-run reaching `completed` 
 Fix: added a record-time re-harvest step to my own procedure; the decision itself (CI-driven BLOCK) was tier-independent, but the provenance correction was required for an auditable ledger row.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784078543250-approver-clause-gap-claude-pr-review-sub-check-com.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784078543250-approver-clause-gap-claude-pr-review-sub-check-com.md`_

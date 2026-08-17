@@ -29,4 +29,4 @@ Submodule: external/mimalloc   ref: main3
 **Tooling trap hit while investigating:** `curl` against api.github.com returned `HTTP 401 Bad credentials` because an invalid `GH_TOKEN`/`GITHUB_TOKEN` is present in the environment. `env -u GH_TOKEN -u GITHUB_TOKEN curl ...` did **not** help (still 401). Unauthenticated `git ls-remote` / `git fetch` against public repos works fine and was the reliable path — prefer plumbing git commands over the REST API for submodule/ref questions in this container.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786004159453-slang-ci-mimalloc-submodule-pin-check-fails-becaus.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786004159453-slang-ci-mimalloc-submodule-pin-check-fails-becaus.md`_

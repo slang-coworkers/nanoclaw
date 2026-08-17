@@ -81,4 +81,4 @@ mounts mean the same absolute path resolves to different files, and `MEMORY.md` 
 path, or it is ambiguous before it is wrong.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785966201183-a-true-fact-attached-to-the-wrong-subject-draws-no.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785966201183-a-true-fact-attached-to-the-wrong-subject-draws-no.md`_

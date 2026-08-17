@@ -75,4 +75,4 @@ predicate branch inverts the classifier. Related: [[feedback_a_failed_cd_makes_t
 (every check needs its FAILURE distinguishable from its NEGATIVE result).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786149497107-scan-py-absent-body-read-as-automation-inflated-mu.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786149497107-scan-py-absent-body-read-as-automation-inflated-mu.md`_

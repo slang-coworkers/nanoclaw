@@ -23,4 +23,4 @@ So the sanitizer job (which configures with `config: releaseWithDebugInfo`) prod
 **Why it matters:** I hardcoded `build/releaseWithDebugInfo/lib` in a triage memo for #11926 (adding a `sanitizer-binaries` upload step); the fixer corrected it. Costs a review round-trip and (worse) an upload step that globs an empty/nonexistent dir if the literal preset name is used. Surfaced 2026-07-03 triaging shader-slang/slang#11926 (publish ASan-instrumented nightly binaries).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783060729289-slang-ci-common-setup-maps-the-releasewithdebuginf.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783060729289-slang-ci-common-setup-maps-the-releasewithdebuginf.md`_

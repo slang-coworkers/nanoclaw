@@ -20,4 +20,4 @@ source: learnings/1784149553897-approver-critique-mustfix-re-harvest-before-deci
 **Also (severity divergence).** The same byte-identical code was graded 🔴 by the R1 production review, 🟡 by the R2 production review, and Bug by Devin. When the authoritative primary verdict is 🟡 and only a secondary tool says bug, the disagreement is itself uncertainty ⇒ ABSTAIN/OPEN_GAP, never round up to approve and never self-promote to BLOCK.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784149553897-approver-critique-mustfix-re-harvest-before-decidi.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784149553897-approver-critique-mustfix-re-harvest-before-decidi.md`_

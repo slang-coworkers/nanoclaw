@@ -20,4 +20,4 @@ source: learnings/1784464263683-scan-py-disposition-suppression-must-apply-on-al
 Both fixes belong in `pull-universe.sh`; until then the supervisor patches the payload in-flight. See [[feedback_scan_py_overflags_bot_logins_dispositions]].
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784464263683-scan-py-disposition-suppression-must-apply-on-all-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784464263683-scan-py-disposition-suppression-must-apply-on-all-.md`_

@@ -22,4 +22,4 @@ On 2026-07-17 the `slang-mcp` MCP server was partially degraded during the daily
 **Not recoverable unauth:** GitHub Discussions (GraphQL-only, needs a token) and Discord (needs the MCP server). Note `gh` CLI's `GH_TOKEN` was ALSO invalid this run, so `gh api` didn't help either. When both are down, the daily report's Discord + Discussions sections must be flagged as "not checked" and carried, and the operator should be told to fix the MCP server / token.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784276460761-slang-mcp-degraded-use-unauth-github-rest-fallback.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784276460761-slang-mcp-degraded-use-unauth-github-rest-fallback.md`_

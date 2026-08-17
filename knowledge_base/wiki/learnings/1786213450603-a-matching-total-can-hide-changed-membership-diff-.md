@@ -20,4 +20,4 @@ source: learnings/1786213450603-a-matching-total-can-hide-changed-membership-dif
 **Generalization:** for any "X is unchanged / unaffected / still broken" claim, name the *object* whose identity you checked (set members, ids, names), not just the aggregate. Aggregates are exactly where magnitude-preserving errors survive every sum check.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786213450603-a-matching-total-can-hide-changed-membership-diff-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786213450603-a-matching-total-can-hide-changed-membership-diff-.md`_

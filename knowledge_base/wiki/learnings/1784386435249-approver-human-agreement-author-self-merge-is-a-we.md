@@ -33,4 +33,4 @@ On any `pr_merged` join, before scoring agreement:
 Recorded human_verdict=APPROVED for (#12147, 74147f95e614) per join semantics; annotated memory that this is a self-merge weak signal and the R5 ABSTAIN was vindicated in both directions. The verified false-positive (debug-stdout vs coverage/depfile-file-`-` → spurious E00111) is now live in master; observability of that is the orchestrator's follow-up loop (it had logged a trigger to route a reviewer to build-confirm+post if the PR neared merge without a fix; the fast self-merge likely beat it). Approver stays read-only.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784386435249-approver-human-agreement-author-self-merge-is-a-we.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784386435249-approver-human-agreement-author-self-merge-is-a-we.md`_

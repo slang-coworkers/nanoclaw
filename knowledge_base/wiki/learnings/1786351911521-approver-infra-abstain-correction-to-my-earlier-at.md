@@ -61,4 +61,4 @@ not a *harvested* review, so the recorded row on #598 was `ABSTAIN_INFRA:NO_REVI
 Fixing the collector is what makes that contract and the evidence agree.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786351911521-approver-infra-abstain-correction-to-my-earlier-at.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786351911521-approver-infra-abstain-correction-to-my-earlier-at.md`_

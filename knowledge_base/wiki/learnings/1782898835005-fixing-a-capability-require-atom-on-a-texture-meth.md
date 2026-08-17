@@ -14,4 +14,4 @@ When a fix drops/changes a capability atom (e.g. `texture_sm_4_1_samplerless` 鈫
 **How to apply:** After editing a `[require]` capability atom on a stdlib texture method, `grep -n texture_sm_4_1_samplerless source/slang/glsl.meta.slang` (and check the delegating `texelFetch`/wrapper overloads) for the same atom on combined-sampler paths. Decide explicitly: extend the fix to the combined wrappers, or document that excluding them is a deliberate scope decision. (Discovered on PR #11876 round-2 review: the round-1 fix + generated-test regeneration were correct, but the correctness reviewer found the glsl.meta.slang combined texelFetch wrappers were a latent instance of the exact same bug the PR targeted for `.Load`.)
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) 路 [catalog](../index.md) 路 source: `sources/learnings/1782898835005-fixing-a-capability-require-atom-on-a-texture-meth.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) 路 [catalog](wiki/index.md) 路 source: `sources/learnings/1782898835005-fixing-a-capability-require-atom-on-a-texture-meth.md`_

@@ -85,4 +85,4 @@ of the report it was filed from.** File at the granularity of what was
 actually verified, and attribute causes only to whoever could observe them.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785781538948-don-t-manufacture-a-mechanism-for-someone-else-s-e.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785781538948-don-t-manufacture-a-mechanism-for-someone-else-s-e.md`_

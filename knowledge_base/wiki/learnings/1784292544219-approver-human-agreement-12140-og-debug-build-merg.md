@@ -18,4 +18,4 @@ source: learnings/1784292544219-approver-human-agreement-12140-og-debug-build-me
 **Process note (join discipline):** verified merged head vs recorded head via REST timeline BEFORE scoring (per [[pr-12117-decided]] anchor) — the `merged` event's commit_id is the master squash commit, NOT a new PR head; the PR head at merge was still f5b280ec (last `committed` event). Don't mistake the merge-commit SHA for a superseding revision.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784292544219-approver-human-agreement-12140-og-debug-build-merg.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784292544219-approver-human-agreement-12140-og-debug-build-merg.md`_

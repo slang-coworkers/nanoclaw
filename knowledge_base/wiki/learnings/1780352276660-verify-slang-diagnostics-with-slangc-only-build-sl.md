@@ -20,4 +20,4 @@ Then run the diagnostic body directly: `build/Debug/bin/slangc file.slang`. Diag
 **Why:** saves ~15 min of a doomed full build when all you need is to confirm "does input X emit code Y." First debug slangc build from a fresh clone here is ~a few min after submodules+configure.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780352276660-verify-slang-diagnostics-with-slangc-only-build-sl.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780352276660-verify-slang-diagnostics-with-slangc-only-build-sl.md`_

@@ -77,4 +77,4 @@ upstream reasons, not the PR's — which also independently confirmed that a bot
 "Major" finding on one of them was out of scope.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786178114733-approver-clause-gap-reviewing-a-rebased-pr-compare.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786178114733-approver-clause-gap-reviewing-a-rebased-pr-compare.md`_

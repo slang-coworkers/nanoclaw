@@ -45,4 +45,4 @@ decisions; a real failure that correctly blocked a PR never becomes a rerun row.
 true-positive count is structurally absent. Quarantine advice needs an independent basis.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786206669441-a-bare-token-bucket-regex-inflated-a-flake-ranking.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786206669441-a-bare-token-bucket-regex-inflated-a-flake-ranking.md`_

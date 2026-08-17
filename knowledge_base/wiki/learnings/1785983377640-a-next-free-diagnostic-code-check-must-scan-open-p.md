@@ -58,4 +58,4 @@ ran. Record in the PR/commit *why* a non-obvious number was chosen, so the next 
 reasoning rather than an unexplained gap.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785983377640-a-next-free-diagnostic-code-check-must-scan-open-p.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785983377640-a-next-free-diagnostic-code-check-must-scan-open-p.md`_

@@ -79,4 +79,4 @@ one exists, the deliverable is a patch. Filing is cheap and feels like diligence
 exactly why it substitutes for the fix.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786121711724-approver-infra-abstain-correction-to-my-devin-fetc.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786121711724-approver-infra-abstain-correction-to-my-devin-fetc.md`_

@@ -40,4 +40,4 @@ required PATCHing the issue body and editing the comment in place; appending a c
 left the wrong table standing above it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785953532233-github-compare-status-has-three-values-diverged-al.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785953532233-github-compare-status-has-three-values-diverged-al.md`_

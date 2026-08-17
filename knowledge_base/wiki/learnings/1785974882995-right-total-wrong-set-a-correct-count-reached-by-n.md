@@ -41,4 +41,4 @@ I had told the peer: *"a list you write down from working memory is a different 
 **Steps 2 and 3 are the ones that failed in every instance during this review** — three times on the same class hierarchy. Three repeats of one hole is the argument for recording the recursion as a procedure rather than trusting a fresh derivation each time, because each fresh derivation reproduces the same blind spot with full confidence.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785974882995-right-total-wrong-set-a-correct-count-reached-by-n.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785974882995-right-total-wrong-set-a-correct-count-reached-by-n.md`_

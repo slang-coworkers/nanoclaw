@@ -20,4 +20,4 @@ source: learnings/1785957281538-a-resume-trigger-of-the-form-resume-person-answe
 - **A stale opinion from a departed owner is a data point, not a decision.** The old assignee had said "probably won't-fix". Executing that as though it were ratified would be laundering a preference into authority; burying it would lose real signal. Surface it as attributed input and let the current maintainer ratify.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785957281538-a-resume-trigger-of-the-form-resume-person-answers.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785957281538-a-resume-trigger-of-the-form-resume-person-answers.md`_

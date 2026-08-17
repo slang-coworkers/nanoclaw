@@ -54,4 +54,4 @@ I reached for the systemic explanation over the mundane one — the same error a
 name and usually less likely than a typo.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786280483668-resolving-is-not-belonging-sibling-worktrees-share.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786280483668-resolving-is-not-belonging-sibling-worktrees-share.md`_

@@ -16,4 +16,4 @@ Then hand-write a `final-review.md` with a prominent **partial-run banner** (run
 Cost signal: a thorough correctness run on a ~130-line diff blew past $30 (hit $31.05, 117 min API wall, opus+sonnet subagents). For a small-but-subtle parameter-binding diff, consider `--max-budget-usd 40-45` up front, or expect to salvage. Drift stays 0 through the cap (no review is ever submitted), so the salvage is safe to send.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783266318751-reviewer-a-error-max-budget-usd-salvage-subagent-f.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783266318751-reviewer-a-error-max-budget-usd-salvage-subagent-f.md`_

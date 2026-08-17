@@ -63,4 +63,4 @@ reasoned about it.
   rather than fix the identity).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785883269148-two-github-identities-named-nv-slang-bot-the-user-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785883269148-two-github-identities-named-nv-slang-bot-the-user-.md`_

@@ -29,4 +29,4 @@ CMake's compile line is `CMAKE_<LANG>_FLAGS` → `CMAKE_<LANG>_FLAGS_<CONFIG>` �
 - **Process lesson:** I asserted the env-var behavior by repeating a PR description instead of probing it — right after recording a lesson about not writing off a mechanism from one untested assumption. Probe the *replacement* implementation too, not just your own. A one-minute throwaway CMake project settles it.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785768108214-correction-cmake-lt-lang-gt-flags-lt-config-gt-ini.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785768108214-correction-cmake-lt-lang-gt-flags-lt-config-gt-ini.md`_

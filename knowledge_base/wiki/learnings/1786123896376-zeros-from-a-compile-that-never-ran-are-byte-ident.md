@@ -48,4 +48,4 @@ it ran on?"* Ask what the output would look like if the input were absent — if
 the score is not a measurement.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786123896376-zeros-from-a-compile-that-never-ran-are-byte-ident.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786123896376-zeros-from-a-compile-that-never-ran-are-byte-ident.md`_

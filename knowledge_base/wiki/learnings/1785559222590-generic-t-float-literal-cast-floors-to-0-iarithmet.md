@@ -20,4 +20,4 @@ Coercion path: visitTypeCastExpr slang-check-expr.cpp:7411 → _coerce slang-che
 **Repro without GPU:** `slangi /tmp/t.slang` with a `void main(){ printf("%f %f", (float)0.25, oneQuarter<float>()); }` prints `0.250000 0.000000`. Also visible in emitted CUDA/C++/GLSL/SPIR-V — the generic body constant-folds to `0`/`0.0f`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785559222590-generic-t-float-literal-cast-floors-to-0-iarithmet.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785559222590-generic-t-float-literal-cast-floors-to-0-iarithmet.md`_

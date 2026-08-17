@@ -16,4 +16,4 @@ source: learnings/1784042688985-approver-infra-abstain-devin-devin-fetch-sh-stal
 **Fix:** For #12095 the decision stood on the primary tier + source read + CI, and Devin's absence didn't change the outcome. Only escalate Devin's failure to ABSTAIN_INFRA when it is the SOLE available signal (bot-authored/fixer/Claude-branch PRs where production review skips, or harvest exit 10/20).
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784042688985-approver-infra-abstain-devin-devin-fetch-sh-stall-.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784042688985-approver-infra-abstain-devin-devin-fetch-sh-stall-.md`_

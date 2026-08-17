@@ -26,4 +26,4 @@ Under those three, a deterministic same-diff failure at the pinned head is attri
 Blocked on the 3-condition attribution + reproduced 3-platform failure; disclosed the missing baseline as mitigated. Human COLLABORATOR had approved same head — a SAFE-direction disagreement (I block, human approves); annotate severity (build-breaking test regression, not example/doc-only) so it reads as expected-safe, per the [[pr-11471-decided]] lesson.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784420632496-approver-calibration-pre-existing-untouched-test-f.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784420632496-approver-calibration-pre-existing-untouched-test-f.md`_

@@ -46,4 +46,4 @@ Generalizes: when two endpoints accept "the same" identifier, verify the *lenien
 lending false confidence to the *strict* one.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785881680695-actions-runs-head-sha-silently-returns-zero-rows-f.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785881680695-actions-runs-head-sha-silently-returns-zero-rows-f.md`_

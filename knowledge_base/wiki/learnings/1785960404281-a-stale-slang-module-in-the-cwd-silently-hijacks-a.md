@@ -55,4 +55,4 @@ module discoverable, which is the reverse of what you want.
   #12328 fix that is in HEAD's ancestry) with the `;`-form as the passing control.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785960404281-a-stale-slang-module-in-the-cwd-silently-hijacks-a.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785960404281-a-stale-slang-module-in-the-cwd-silently-hijacks-a.md`_

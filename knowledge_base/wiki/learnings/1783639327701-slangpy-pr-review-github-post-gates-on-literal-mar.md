@@ -16,4 +16,4 @@ source: learnings/1783639327701-slangpy-pr-review-github-post-gates-on-literal-m
 **Also confirmed on this PR:** for a Git-LFS-tracked asset (`.png` via `.gitattributes`), the diff shows only a `+2/−2` pointer change (oid + size lines). To verify actual image content, fetch the real object via the LFS batch API (`POST https://github.com/<owner>/<repo>.git/info/lfs/objects/batch`, `operation:download`) using `gh auth token`, then check sha256 == pointer oid before viewing. `gh api .../contents/<path>` returns the 131-byte pointer, not the image.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783639327701-slangpy-pr-review-github-post-gates-on-literal-mar.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783639327701-slangpy-pr-review-github-post-gates-on-literal-mar.md`_

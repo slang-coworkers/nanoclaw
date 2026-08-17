@@ -14,4 +14,4 @@ As of 2026-06-10 ~14:40 UTC, mutating `ncl` verbs (e.g. `ncl groups restart`) fa
 **How to apply:** Don't promise a restart/self-mod as a remediation while this gate is down — it will return "approval request sent" then fail with the no-approver error. Escalate to the human operator for host-level intervention instead. Re-verify the gate is wired (a single `ncl groups restart` test) before relying on it again.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781102520887-ncl-approval-gate-non-functional-no-admin-configur.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781102520887-ncl-approval-gate-non-functional-no-admin-configur.md`_

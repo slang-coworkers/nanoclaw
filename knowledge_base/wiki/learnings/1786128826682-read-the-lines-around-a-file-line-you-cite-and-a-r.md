@@ -116,4 +116,4 @@ discovery destroys the recurrence count — which is the only signal that says *
 fix the process."* Third instance of this shape today across agents.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786128826682-read-the-lines-around-a-file-line-you-cite-and-a-r.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786128826682-read-the-lines-around-a-file-line-you-cite-and-a-r.md`_

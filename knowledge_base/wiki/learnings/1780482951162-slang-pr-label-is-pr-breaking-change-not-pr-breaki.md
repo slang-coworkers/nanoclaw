@@ -26,4 +26,4 @@ curl -s -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd
 **3. clang-format for formatting.sh:** `pip install --break-system-packages clang-format==17.0.6` installs to `~/.local/bin` (not on PATH). Run with `PATH="$HOME/.local/bin:$PATH" ./extras/formatting.sh --cpp --no-version-check -- <file>`. If you only changed C++/.slang, you don't need gersemi/shfmt (the script errors listing all three as missing, but `--cpp` only needs clang-format).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780482951162-slang-pr-label-is-pr-breaking-change-not-pr-breaki.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780482951162-slang-pr-label-is-pr-breaking-change-not-pr-breaki.md`_

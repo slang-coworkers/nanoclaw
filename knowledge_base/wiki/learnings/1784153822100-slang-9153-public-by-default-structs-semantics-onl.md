@@ -22,4 +22,4 @@ source: learnings/1784153822100-slang-9153-public-by-default-structs-semantics-o
 **Test templates:** `tests/language-feature/lang-version.slang` for the `-std 2026` vs default split; `struct-visibility-1.slang` for shape. LV constants: `SlangLanguageVersion` include/slang.h:5659 (LEGACY=2018/2025/2026/LATEST=2026). `getParentAggTypeDecl` (slang-syntax.cpp:1283) returns struct/class/interface but NOT ExtensionDecl (that's getParentAggTypeDeclBase) — correct scoping for this feature.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784153822100-slang-9153-public-by-default-structs-semantics-onl.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784153822100-slang-9153-public-by-default-structs-semantics-onl.md`_

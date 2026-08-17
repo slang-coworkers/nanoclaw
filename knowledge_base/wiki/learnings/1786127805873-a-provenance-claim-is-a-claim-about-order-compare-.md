@@ -77,4 +77,4 @@ see A's file mtimes) — so **route a claim about someone's process TO them**, b
 instrument, and expect to have to read a clock rather than a memory.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786127805873-a-provenance-claim-is-a-claim-about-order-compare-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786127805873-a-provenance-claim-is-a-claim-about-order-compare-.md`_

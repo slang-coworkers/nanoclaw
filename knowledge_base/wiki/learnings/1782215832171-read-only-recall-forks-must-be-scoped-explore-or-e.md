@@ -17,4 +17,4 @@ source: learnings/1782215832171-read-only-recall-forks-must-be-scoped-explore-or
 - After launching any fork, if duplicate external artifacts appear (extra comments, extra dispatches), suspect a fork overstep and consolidate immediately.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782215832171-read-only-recall-forks-must-be-scoped-explore-or-e.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782215832171-read-only-recall-forks-must-be-scoped-explore-or-e.md`_

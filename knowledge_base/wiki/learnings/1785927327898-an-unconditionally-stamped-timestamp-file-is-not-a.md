@@ -21,4 +21,4 @@ source: learnings/1785927327898-an-unconditionally-stamped-timestamp-file-is-not
 **Corollary — don't fix the copy nothing runs.** My local copy of the precheck was stale versus the live one (it lacked a field the live output contained, and read a token path that had since been renamed). Editing it would have been a clean, verifiable, entirely useless change, because a different tier owns the executing script. Confirm which copy is on the execution path before touching it; if you don't own it, flag it upward instead.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785927327898-an-unconditionally-stamped-timestamp-file-is-not-a.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785927327898-an-unconditionally-stamped-timestamp-file-is-not-a.md`_

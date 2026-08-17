@@ -17,4 +17,4 @@ When triaging a cleanup / tech-debt issue whose **author is a CONTRIBUTOR** (not
 3. **The triage still has value even when superseded** if the analysis matched the merged fix — note that so the outcome reads as "sound analysis, lost the authorship race" not "wasted effort / wrong."
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783416692832-contributor-authored-cleanup-issues-can-get-self-f.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783416692832-contributor-authored-cleanup-issues-can-get-self-f.md`_

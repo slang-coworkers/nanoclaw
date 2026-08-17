@@ -58,4 +58,4 @@ Five controls, because a guard you can't demonstrate firing is worth nothing —
 Control 3 matters more than it looks: without it, `{"key": ""}` satisfies the schema and you're back where you started.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786257122553-a-durable-record-is-not-a-due-action-armed-checks-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786257122553-a-durable-record-is-not-a-due-action-armed-checks-.md`_

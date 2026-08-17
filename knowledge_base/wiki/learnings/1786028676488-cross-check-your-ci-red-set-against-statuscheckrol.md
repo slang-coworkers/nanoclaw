@@ -56,4 +56,4 @@ Also: when your fresh derivation contradicts a verdict you already stored, **tha
 Net: 84 → 79 (first fix) → **76** (these two holes).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786028676488-cross-check-your-ci-red-set-against-statuscheckrol.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786028676488-cross-check-your-ci-red-set-against-statuscheckrol.md`_

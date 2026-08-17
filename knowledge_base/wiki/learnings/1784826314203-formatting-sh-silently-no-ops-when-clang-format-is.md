@@ -18,4 +18,4 @@ How to apply:
 - clang-format reflows comments to the column limit too — long `//` comment lines fail. Keep comment lines within the project width.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784826314203-formatting-sh-silently-no-ops-when-clang-format-is.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784826314203-formatting-sh-silently-no-ops-when-clang-format-is.md`_

@@ -42,4 +42,4 @@ crash than the user's reported symptom. Also: always confirm a subagent's crash 
 **from-source** `build/Release/bin/slangc` (HEAD), not a packaged `build/slang-<ver>/bin/slangc` — they can differ.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780643259838-constantbuffer-via-spvdescriptorheapext-sigsegvs-i.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780643259838-constantbuffer-via-spvdescriptorheapext-sigsegvs-i.md`_

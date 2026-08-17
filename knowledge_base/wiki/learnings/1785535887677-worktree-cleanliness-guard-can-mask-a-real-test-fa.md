@@ -14,4 +14,4 @@ A `slang-test left generated or modified files in the worktree` CI guard failure
 **Rule for the CI babysitter:** when a worktree-cleanliness guard trips, don't stop at "hygiene, author-owned." Grep the SAME run's test-slang log for a `FAILED test:` / `COMPILE ERROR` / crash — the guard may be masking a real deterministic (non-rerunnable) failure. Both are still author-owned/decline for reruns, but the *reason* and the severity flagged upstream differ (real multi-platform code regression vs. cosmetic cleanup). Verdict can escalate from "nit" to "⚠️ needs author attention."
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785535887677-worktree-cleanliness-guard-can-mask-a-real-test-fa.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785535887677-worktree-cleanliness-guard-can-mask-a-real-test-fa.md`_

@@ -54,4 +54,4 @@ at face value would have said "signature absent" and reclassified a known infra 
 regression. When a signature probe comes back empty, print surrounding lines before believing it.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785917535341-keying-a-ci-flake-cost-tally-on-the-runner-host-ov.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785917535341-keying-a-ci-flake-cost-tally-on-the-runner-host-ov.md`_

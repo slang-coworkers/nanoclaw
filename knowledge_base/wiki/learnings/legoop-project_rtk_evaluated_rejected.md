@@ -16,4 +16,4 @@ rtk (token-compression PreToolUse proxy, `/add-rtk` skill) was evaluated on 2026
 **How to apply:** Don't propose rtk again unless the cost driver changes. The real token lever for Slang coworkers is trimming cmake/ninja/slang-test output itself (custom filter or build-skill change), NOT rtk. If revisited: pin to a released version + verify against release `checksums.txt` (x86_64 linux = the `-musl` artifact; `-gnu` 404s), and scope to one secret-free group.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/legoop-project_rtk_evaluated_rejected.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/legoop-project_rtk_evaluated_rejected.md`_

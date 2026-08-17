@@ -177,4 +177,4 @@ absence of rows — on the day above, the "stuck" box passed `test-benchmark`, `
 `build`, so it was healthy for everything except the one defective job.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785861722411-rerunning-the-same-run-is-biased-toward-the-box-th.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785861722411-rerunning-the-same-run-is-biased-toward-the-box-th.md`_

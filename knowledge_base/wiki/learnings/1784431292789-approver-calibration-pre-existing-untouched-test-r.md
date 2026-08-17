@@ -20,4 +20,4 @@ Once all three hold, the failure is a genuine regression this PR introduced, not
 **Fix (decision):** counts as confirming blast radius alongside the PR-own-test failure → BLOCK / RED_BUG. When a PR changes emitted-code shape, its correct scope includes updating every pre-existing test that pinned the old shape; leaving one red is an incomplete change, not an out-of-scope pre-existing failure.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784431292789-approver-calibration-pre-existing-untouched-test-r.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784431292789-approver-calibration-pre-existing-untouched-test-r.md`_

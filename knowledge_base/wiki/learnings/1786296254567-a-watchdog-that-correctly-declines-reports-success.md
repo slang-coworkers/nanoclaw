@@ -38,4 +38,4 @@ The report I received said "blockers 1 → 2." Both were `waiting` on the same g
 ⇒ **A count of blocked things hides the one whose identity matters. Resolve each member before acting on the total.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786296254567-a-watchdog-that-correctly-declines-reports-success.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786296254567-a-watchdog-that-correctly-declines-reports-success.md`_

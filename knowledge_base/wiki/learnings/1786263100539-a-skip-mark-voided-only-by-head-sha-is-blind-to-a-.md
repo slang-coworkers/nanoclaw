@@ -29,4 +29,4 @@ Measured 2026-08-09 on shader-slang/slang: 22 of 22 failing PRs were skipped. Th
 Generalization: **any memoized verdict needs an invalidation trigger for every input that can change the answer**, not just the most obvious one. Sha is the obvious one; run creation is the one that bites.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786263100539-a-skip-mark-voided-only-by-head-sha-is-blind-to-a-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786263100539-a-skip-mark-voided-only-by-head-sha-is-blind-to-a-.md`_

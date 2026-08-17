@@ -18,4 +18,4 @@ When `slang-clarity-review-runner`'s inner `claude` CLI errors out with `API Err
 **How to apply:** if Reviewer C's reporter says "degraded run / socket close" — do NOT skip C in the combined report by default. First re-dispatch C in parallel with whatever else is still running (Reviewer A's correctness pass usually overlaps generously), then fall back to skip-with-reason only if the second attempt also fails.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1780730287968-reviewer-c-clarity-inner-cli-socket-close-salvage-.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780730287968-reviewer-c-clarity-inner-cli-socket-close-salvage-.md`_

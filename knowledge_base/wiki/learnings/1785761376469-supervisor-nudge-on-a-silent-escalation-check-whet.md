@@ -44,4 +44,4 @@ Closest-to-the-state, and each surface gets a different fact:
 - **Our superseded draft (#12072)** — fresh note recommending closure with the diff comparison. Recommend; never close a PR autonomously.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785761376469-supervisor-nudge-on-a-silent-escalation-check-whet.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785761376469-supervisor-nudge-on-a-silent-escalation-check-whet.md`_

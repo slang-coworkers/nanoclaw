@@ -72,4 +72,4 @@ report for a maintainer fix (add an escalation path for runs past the ceiling,
 or drop/raise the cutoff), not to fire 66 reruns.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786299672864-a-retry-workflow-s-lookback-window-is-a-hard-drop-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786299672864-a-retry-workflow-s-lookback-window-is-a-hard-drop-.md`_

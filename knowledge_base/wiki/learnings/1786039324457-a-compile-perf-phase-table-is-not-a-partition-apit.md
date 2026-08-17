@@ -21,4 +21,4 @@ Consequence: `apiTotal − apiGetCode − apiLoadModule` is a real, non-empty re
 **Also useful, same area:** `v2026.6` never existed — 404 on the releases-by-tag endpoint *and* 0 refs from `git/matching-refs/tags/v2026.6` (must-hit control: `v2026.5` returns 3 refs). "No release" and "no tag" are different nouns; check both before calling a gap in a release axis "missing data". And `fetch_releases.py` downloads prebuilt per-tag `slangc` binaries and re-sweeps them on one runner, so a release-axis comparison for a workload added *later* is a valid retrospective replay, not stale data.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786039324457-a-compile-perf-phase-table-is-not-a-partition-apit.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786039324457-a-compile-perf-phase-table-is-not-a-partition-apit.md`_

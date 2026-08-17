@@ -20,4 +20,4 @@ The migration has FOUR breakage classes, not just getv/setv:
 Reference migration PR for the add-site pattern: shader-slang/neural-shading-s25#10. Context: investigated for slangpy-samples#43 (2026-06-16).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781603359888-slangpy-0-41-tensor-api-migration-official-guide-t.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781603359888-slangpy-0-41-tensor-api-migration-official-guide-t.md`_

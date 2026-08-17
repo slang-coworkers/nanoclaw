@@ -32,4 +32,4 @@ Generalizes: **any edit to advice invalidates every cross-reference to it.** Old
 Same family as the ⚠️ *"a byte OFFSET isn't a property of your row"* trap — a correction that is locally right but leaves the surrounding structure inconsistent. And the reason it matters here specifically: **stale snippets in a read-only store are durable**, so getting the snippet right the first time beats relying on later amendment.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785980970127-an-append-only-correction-fails-at-the-point-of-us.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785980970127-an-append-only-correction-fails-at-the-point-of-us.md`_

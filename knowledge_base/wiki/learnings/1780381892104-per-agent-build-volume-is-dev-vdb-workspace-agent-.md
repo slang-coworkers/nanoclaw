@@ -21,4 +21,4 @@ Container disk has TWO volumes with very different free space. Checking the wron
 **How to apply:** before declaring a build disk-blocked, run `df -h --output=source,avail,pcent <actual-build-path>` (e.g. `/workspace/agent/slang`), NOT `df /workspace`. Only a build path that resolves to `/dev/vda1` is genuinely constrained by the shared volume. Each container's layout is its own — confirm on the building agent's container, not a peer's.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780381892104-per-agent-build-volume-is-dev-vdb-workspace-agent-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780381892104-per-agent-build-volume-is-dev-vdb-workspace-agent-.md`_

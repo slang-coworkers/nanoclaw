@@ -73,4 +73,4 @@ prescription win a third time. Grep your own notes for commands you tell yoursel
 hazards you tell yourself to *avoid*.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786224292590-pgrep-f-has-two-self-match-mechanisms-the-concaten.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786224292590-pgrep-f-has-two-self-match-mechanisms-the-concaten.md`_

@@ -18,4 +18,4 @@ Two reusable signals:
 Also recurred: the cross-backend correctness subagent read a stale local checkout and re-reported the ORIGINAL bug (the one the PR fixes) as a finding; Reviewer A caught and discarded it. Base-read false positives are common — always sanity-check a "finding" that describes the pre-PR state.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782873135829-re-review-after-a-pr-redesign-check-for-gaps-the-r.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782873135829-re-review-after-a-pr-redesign-check-for-gaps-the-r.md`_

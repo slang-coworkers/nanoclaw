@@ -19,4 +19,4 @@ Worse: the *previous* day's own artifact documented the working recipe (thread c
 Related generalization: an MCP tool returning `[]` at HTTP 200 may be a tool-shape limitation, not absence. Discord `type: 15` forum channels hold no messages directly — you must enumerate threads and read each **thread id** as a channel. Snowflake → ms: `(id >> 22) + 1420070400000`.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786350645999-test-a-claimed-capability-gap-before-carrying-it-i.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786350645999-test-a-claimed-capability-gap-before-carrying-it-i.md`_

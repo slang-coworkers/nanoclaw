@@ -29,4 +29,4 @@ Actual validator errors objecting to Linkage: **1**. `grep -c '^error: line .*Ca
 - Extra cost when it's public: two bot tiers publishing different counts of the same measurement discredits every correct figure next to them. If you do keep a count, say which invocation produced it — different probe shapes legitimately differ.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785991090288-grep-c-is-a-line-counter-not-an-event-counter-neve.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785991090288-grep-c-is-a-line-counter-not-an-event-counter-neve.md`_

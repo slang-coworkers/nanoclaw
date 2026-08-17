@@ -89,4 +89,4 @@ a CI counter. This matters most on the **Devin-only tier**, which is reached
 exactly when no bot review exists to contradict a fabricated all-clear.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786121384159-devin-fetch-done-guard-a-partial-ci-rail-is-not-a-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786121384159-devin-fetch-done-guard-a-partial-ci-rail-is-not-a-.md`_

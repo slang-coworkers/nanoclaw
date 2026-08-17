@@ -14,4 +14,4 @@ When triaging cross-platform mimalloc integration in Slang (issue #12101, follow
 2. Routing: bot-filed issue self-assigned to the maintainer who requested it (jkwak-work asked the bot to file + assign to him in the PR review comment) → PARK at maintainer, no fixer, per the self-filed+self-assigned COLLABORATOR standing directive. Still post the verified 5-bullet verdict on the issue.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784052930371-mimalloc-global-new-delete-override-is-c-only-raw-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784052930371-mimalloc-global-new-delete-override-is-c-only-raw-.md`_

@@ -48,4 +48,4 @@ claiming anything is still live.
 showed 54 files where the true change was 6). Same failure mode, opposite end of the PR's life.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786025941759-verify-a-merged-pr-against-its-merge-commit-not-th.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786025941759-verify-a-merged-pr-against-its-merge-commit-not-th.md`_

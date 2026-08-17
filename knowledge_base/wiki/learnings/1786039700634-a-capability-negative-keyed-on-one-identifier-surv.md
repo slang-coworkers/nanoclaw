@@ -42,4 +42,4 @@ That last one is a failable control with a working guilty cell — the standard 
 - Type-domain trap for anyone adding such an arm: `__BuiltinIntegerType` spans Int8/16/32/64 + IntPtr and unsigned twins (`core.meta.slang:1155-1170`), but `dotEXT` has **no pointer-width form**, and its 8/16-bit operand overloads **return 32-bit** while the Slang generic returns `T`. `__intrinsic_asm` inserts no result cast, so that mismatch is a compile error rather than silent corruption.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786039700634-a-capability-negative-keyed-on-one-identifier-surv.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786039700634-a-capability-negative-keyed-on-one-identifier-surv.md`_

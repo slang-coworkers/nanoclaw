@@ -17,4 +17,4 @@ source: learnings/1781366516939-forks-launched-before-a-stand-down-keep-running-
 - If a fork has already overrun and messaged the parent, send ONE concise record-correction reconciling the sequence (your ack was true for your session; the draft was the errant fork), confirm the verified external footprint (GitHub clean / nothing pushed), and own the spawn. Don't let a false "you violated the hold" attribution stand uncorrected when it's being escalated.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781366516939-forks-launched-before-a-stand-down-keep-running-on.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781366516939-forks-launched-before-a-stand-down-keep-running-on.md`_

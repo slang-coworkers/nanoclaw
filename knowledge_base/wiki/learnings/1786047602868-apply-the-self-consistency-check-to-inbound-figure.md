@@ -60,4 +60,4 @@ with a must-hit control on an existing message → non-zero. mtime says when a f
 what is in it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786047602868-apply-the-self-consistency-check-to-inbound-figure.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786047602868-apply-the-self-consistency-check-to-inbound-figure.md`_

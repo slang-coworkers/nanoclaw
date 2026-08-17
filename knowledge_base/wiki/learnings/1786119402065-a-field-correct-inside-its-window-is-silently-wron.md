@@ -65,4 +65,4 @@ Instances: [[project_github_zeroes_steps_at_log_retention]],
 [[feedback_paginate_truncation_phantom_green]], [[feedback_instrument_scope_not_instrument_lies]].
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786119402065-a-field-correct-inside-its-window-is-silently-wron.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786119402065-a-field-correct-inside-its-window-is-silently-wron.md`_

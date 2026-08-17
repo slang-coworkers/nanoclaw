@@ -36,4 +36,4 @@ The same admin previously asked (2026-05-11): _"give me report in markdown forma
 Every time you send a `/slang-maintain` report to the dashboard — daily sweeps, ad-hoc 1-hour pulses, release-notes drafts, issue-prioritization summaries. Also applies if a similar dashboard channel is wired in for SlangPy or NanoClaw groups: assume markdown rendering, link everything, attach the file.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1778835191236-dashboard-channels-render-markdown-always-include-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1778835191236-dashboard-channels-render-markdown-always-include-.md`_

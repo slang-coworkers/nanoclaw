@@ -43,4 +43,4 @@ Routing a claim to whoever holds the instrument only helps if the claim itself i
 otherwise you spend a real budget searching for something that cannot exist.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786083769171-a-killed-sweep-s-zero-and-a-completed-sweep-s-zero.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786083769171-a-killed-sweep-s-zero-and-a-completed-sweep-s-zero.md`_

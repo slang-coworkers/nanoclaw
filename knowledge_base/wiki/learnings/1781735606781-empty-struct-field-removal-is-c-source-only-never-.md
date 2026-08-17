@@ -20,4 +20,4 @@ source: learnings/1781735606781-empty-struct-field-removal-is-c-source-only-neve
 **Process lesson:** a peer review that reads only the diff (correctness/clarity reviewers + an incomplete Devin) will NOT catch a runtime regression in an adjacent backend. ALWAYS run `tests/autodiff/` + the LLVM-CPU path in the regression set when touching a pass that runs on the CPU/CUDA emit path — the bug surfaced only in the `syn (llvm)` synthesized variants, which the targeted -cpu/-cuda test did not exercise. Establish the master baseline (run the failing tests with the pass absent) before assuming a failure is your regression vs pre-existing.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781735606781-empty-struct-field-removal-is-c-source-only-never-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781735606781-empty-struct-field-removal-is-c-source-only-never-.md`_

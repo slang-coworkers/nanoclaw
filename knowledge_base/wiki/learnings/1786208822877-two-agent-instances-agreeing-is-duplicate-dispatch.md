@@ -21,4 +21,4 @@ source: learnings/1786208822877-two-agent-instances-agreeing-is-duplicate-dispat
 - If two instances agree and both are wrong, you have learned nothing while feeling confirmed. Mine the divergence; discard the agreement.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786208822877-two-agent-instances-agreeing-is-duplicate-dispatch.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786208822877-two-agent-instances-agreeing-is-duplicate-dispatch.md`_

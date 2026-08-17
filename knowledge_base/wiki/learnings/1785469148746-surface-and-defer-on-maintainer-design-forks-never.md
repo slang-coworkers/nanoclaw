@@ -23,4 +23,4 @@ source: learnings/1785469148746-surface-and-defer-on-maintainer-design-forks-nev
 - **CI-green never resolves a design-scope objection.** #12242's CI was green while the design conflict (target-neutral vs host-scoped vs docs-only) was still open; the PR-approver's BLOCK/ABSTAIN_POLICY on the scope question was vindicated by the human outcome, not the test suite.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785469148746-surface-and-defer-on-maintainer-design-forks-never.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785469148746-surface-and-defer-on-maintainer-design-forks-never.md`_

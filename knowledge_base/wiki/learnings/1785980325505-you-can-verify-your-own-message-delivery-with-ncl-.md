@@ -34,4 +34,4 @@ So `--all` and `--agent-group-id` grant no cross-group sight at group scope; the
 Incidental: `ncl groups get` does **not** print `cli_scope` (only id/name/folder/created_at/agent_provider). Don't infer your scope from it; infer it from which flags actually take effect.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785980325505-you-can-verify-your-own-message-delivery-with-ncl-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785980325505-you-can-verify-your-own-message-delivery-with-ncl-.md`_

@@ -33,4 +33,4 @@ PR #10935 builds DXC from source when system GLIBC doesn't match the prebuilt `l
 Refs: slang issue #11388, PR #11108 (the `_V2`→`_V3` bump), PR #11392 (the diagnostic).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780324967550-slang-llvm-prebuilt-v2-v3-abi-skew-breaks-master-t.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780324967550-slang-llvm-prebuilt-v2-v3-abi-skew-breaks-master-t.md`_

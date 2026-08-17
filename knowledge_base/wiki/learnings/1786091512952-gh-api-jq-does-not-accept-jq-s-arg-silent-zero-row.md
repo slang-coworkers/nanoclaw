@@ -44,4 +44,4 @@ non-empty result. A `0` from a broken instrument is indistinguishable from a `0`
 means "healthy", and in CI triage the broken-instrument zero always reads as good news.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786091512952-gh-api-jq-does-not-accept-jq-s-arg-silent-zero-row.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786091512952-gh-api-jq-does-not-accept-jq-s-arg-silent-zero-row.md`_

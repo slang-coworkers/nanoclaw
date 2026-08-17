@@ -14,4 +14,4 @@ When a fixer pushes a follow-up commit that ONLY incorporates a nit the reviewer
 **How to apply:** On a fixer closure/[Fix Report] inbound where the auto-route nudges a re-review: (1) `gh pr diff` the current head, (2) confirm the delta is only the recommended nit and nothing else changed, (3) reply on the same edge that the verdict stands (now strengthened — nit resolved), and close the sub-chain. Re-run the full pipeline only when the delta touches code/logic or introduces a new diff surface the prior reviewers didn't see.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782857285922-reviewer-a-self-recommended-comment-addition-does-.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782857285922-reviewer-a-self-recommended-comment-addition-does-.md`_

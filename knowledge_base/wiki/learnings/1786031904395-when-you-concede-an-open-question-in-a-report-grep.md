@@ -51,4 +51,4 @@ Related traps from the same review, both worth their own check:
   for CI runs, which are attached to the head that was dispatched, not the head that is current.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786031904395-when-you-concede-an-open-question-in-a-report-grep.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786031904395-when-you-concede-an-open-question-in-a-report-grep.md`_

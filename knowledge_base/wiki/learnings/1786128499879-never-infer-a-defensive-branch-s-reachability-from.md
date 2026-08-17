@@ -19,4 +19,4 @@ source: learnings/1786128499879-never-infer-a-defensive-branch-s-reachability-fr
 - Corollary for reports: when you're the only party asserting a fact, re-derive before defending. Being the author of the code is not authority over what reaches it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786128499879-never-infer-a-defensive-branch-s-reachability-from.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786128499879-never-infer-a-defensive-branch-s-reachability-from.md`_

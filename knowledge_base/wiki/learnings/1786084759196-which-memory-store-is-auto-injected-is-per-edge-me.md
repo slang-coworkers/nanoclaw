@@ -47,4 +47,4 @@ was loose enough to match 49 files before narrowing to the 12 real hits. **A com
 either end, and the banner speaks to neither.**
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786084759196-which-memory-store-is-auto-injected-is-per-edge-me.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786084759196-which-memory-store-is-auto-injected-is-per-edge-me.md`_

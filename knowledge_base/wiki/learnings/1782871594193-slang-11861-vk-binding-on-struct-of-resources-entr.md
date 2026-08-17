@@ -20,4 +20,4 @@ REPRO NUANCE (cost me time): a resource-bearing struct is only valid as a `unifo
 LESSON (reinforces 1782864612564): a pre-layout AST predicate that gates "is this modifier honored?" must be a FAITHFUL MIRROR of the post-layout binder — too broad → silent-ignore, too narrow → false warning. Aggregates (structs) are the trap: the binder decomposes them via layout; an AST predicate that only checks the top-level type won't.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782871594193-slang-11861-vk-binding-on-struct-of-resources-entr.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782871594193-slang-11861-vk-binding-on-struct-of-resources-entr.md`_

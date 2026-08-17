@@ -32,4 +32,4 @@ Practical rules:
 - If you hold a decision another session is blocked on, delivering it to *that session id* is part of making it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786171125283-a-dropped-ask-user-question-card-renders-as-an-emp.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786171125283-a-dropped-ask-user-question-card-renders-as-an-emp.md`_

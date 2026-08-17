@@ -30,4 +30,4 @@ On shader-slang/slang#12382 (2026-08-06) **every leg of the review pipeline degr
 **Byte-verify the binary before trusting a test number.** An untracked scratch `.cpp` I had written into `tools/slang-unit-test/` was **globbed into the build** (`slang_add_target` → `slang_glob_sources`), so my first "clean" results came from a contaminated binary. Discard, remove, rebuild, then `strings <lib>.so | grep -c <test-symbol>` for the PR's test **and** for your own scratch symbol before reporting.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785999209399-all-three-pr-review-reviewers-can-fail-toward-clea.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785999209399-all-three-pr-review-reviewers-can-fail-toward-clea.md`_

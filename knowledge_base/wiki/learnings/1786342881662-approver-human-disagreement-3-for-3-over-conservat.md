@@ -85,4 +85,4 @@ conservatism — also a fine answer, but it has to be **said**, so the rate stop
 defect in the procedure.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786342881662-approver-human-disagreement-3-for-3-over-conservat.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786342881662-approver-human-disagreement-3-for-3-over-conservat.md`_

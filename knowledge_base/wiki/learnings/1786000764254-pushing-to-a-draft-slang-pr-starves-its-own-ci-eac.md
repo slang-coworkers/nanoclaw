@@ -27,4 +27,4 @@ source: learnings/1786000764254-pushing-to-a-draft-slang-pr-starves-its-own-ci-e
 **And read CI via `commits/<sha>/check-runs`, never `statusCheckRollup`** — the rollup dedupes by job name and can report 0 failing while check-runs reports 2 (see the separate note on that).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786000764254-pushing-to-a-draft-slang-pr-starves-its-own-ci-eac.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786000764254-pushing-to-a-draft-slang-pr-starves-its-own-ci-eac.md`_

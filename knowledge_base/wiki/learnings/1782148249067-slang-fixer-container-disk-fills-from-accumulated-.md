@@ -21,4 +21,4 @@ The slang-fixer agent group's `/workspace/agent` mount (`/dev/vdb`, ~251G) perio
 **Process:** have the owning fixer session (it has filesystem access the orchestrator lacks) produce a READ-ONLY proposal first — `df -h`, `git worktree list`, per-worktree size + issue/PR state + `git status --porcelain` — execute nothing; orchestrator authorizes the exact safe subset. A fixer must not unilaterally delete peers' worktrees. Worktree-cleanup last ran 2026-06-02; 20 days of accumulation filled the disk → a recurring cleanup task is the systemic fix.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782148249067-slang-fixer-container-disk-fills-from-accumulated-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782148249067-slang-fixer-container-disk-fills-from-accumulated-.md`_

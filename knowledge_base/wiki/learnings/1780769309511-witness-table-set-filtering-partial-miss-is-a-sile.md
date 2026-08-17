@@ -33,4 +33,4 @@ The asymmetry trap: `specializeLookupWitnessMethod` looked like an analyzer site
 `tests/autodiff/` is the de-facto regression suite for any change to witness-table walking — it exercises the self-referential differential-pair tables (`buildDifferentiablePairWitness` self-edges) that break naive recursion and would trip over-eager asserts. Run it (365/365) alongside the targeted dynamic-dispatch sweep on any miss-handling change.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780769309511-witness-table-set-filtering-partial-miss-is-a-sile.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769309511-witness-table-set-filtering-partial-miss-is-a-sile.md`_

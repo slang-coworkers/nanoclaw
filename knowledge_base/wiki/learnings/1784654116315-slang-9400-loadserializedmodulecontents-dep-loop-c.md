@@ -23,4 +23,4 @@ source: learnings/1784654116315-slang-9400-loadserializedmodulecontents-dep-loop
 **Maintainer steer:** core maintainer tangent-vector (Tim Foley) called this whole path/dependency/source-loc subsystem "rotten to its core" and wants a first-principles redesign after a design session, NOT a band-aid. Issue assigned to jkwak-work. Triaged→parked for maintainer, no auto-fixer. Fix candidate (if taken): register dep PATHS without materializing content + add the missing regression test (getDependencyFilePath on a loaded module — zero coverage today, which is why "comment it out, tests still pass").
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784654116315-slang-9400-loadserializedmodulecontents-dep-loop-c.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784654116315-slang-9400-loadserializedmodulecontents-dep-loop-c.md`_

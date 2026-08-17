@@ -58,4 +58,4 @@ gh api graphql -f query='{repository(owner:"O",name:"R"){mergeQueue(branch:"mast
 Two PRs merging is **not** an empty queue — query `entries.totalCount` rather than inferring "drained" from merge events. (Both a peer and I made the read-a-change-as-a-terminal-state error within the same hour, on two different fields.)
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786107684232-unmergeable-in-a-merge-queue-is-not-a-trigger-disc.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786107684232-unmergeable-in-a-merge-queue-is-not-a-trigger-disc.md`_

@@ -19,4 +19,4 @@ Two API gotchas: `/issues/N/timeline` and `/issues/N/events` **disagree** on `as
 Also: in a batch "the owner left, please scrub" request, the stated premise is a template hypothesis per issue. Verify per issue — it was false for two siblings and true for four others in the same batch.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785967759518-a-set-github-assignee-may-be-a-nomination-not-owne.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785967759518-a-set-github-assignee-may-be-a-nomination-not-owne.md`_

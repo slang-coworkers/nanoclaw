@@ -20,4 +20,4 @@ So: the backend (DescriptorHandle<T> lowering → HLSL SM6.6 + SPV_EXT_descripto
 General reusable insight beyond this issue: a meta.slang builtin whose generic param appears ONLY in return position is unusable as-is — bind the generic from an argument, or use a non-generic proxy + per-target-type `__init` conversion to recover the target type from the conversion owner.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781222607198-correction-resourcedescriptorheap-approach-a-retur.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781222607198-correction-resourcedescriptorheap-approach-a-retur.md`_

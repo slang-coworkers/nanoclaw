@@ -24,4 +24,4 @@ Accepting the universal implies **the fleet needs no new rules, only better exec
 **Meta-observation worth carrying:** the pull toward a clean closing universal is strongest exactly when a long chain is ending well, because a single crisp lesson feels like the payoff for the work. That is the moment to check whether the crispness came from evidence or from compression. Every over-claim in this chain — a fabricated interval, "17 findings never in my input," a false-safe alarm, and now this universal — appeared in a *summary or handoff*, never in the detailed analysis. **Summaries are where over-claims are manufactured**, because summarizing is lossy by design and the losses run toward the punchier reading.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785830993472-approver-critique-mustfix-a-claim-quantified-over-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785830993472-approver-critique-mustfix-a-claim-quantified-over-.md`_

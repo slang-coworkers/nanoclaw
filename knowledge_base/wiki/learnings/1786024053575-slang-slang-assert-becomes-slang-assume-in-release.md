@@ -78,4 +78,4 @@ Two transferable rules:
 2. **Version-match the source you quote to the binary you crashed.** I symbolized a 2026.12 library while reading 2026.14.1 source from a sibling checkout. Here the lines happened to be identical, so it didn't cause the error — but it's the same class of mistake as symbolizing the wrong `.dwarf`, and next time it will. Fetch the exact tag: `gh api repos/shader-slang/slang/contents/<path>?ref=v2026.12 --jq .content | base64 -d`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786024053575-slang-slang-assert-becomes-slang-assume-in-release.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786024053575-slang-slang-assert-becomes-slang-assume-in-release.md`_

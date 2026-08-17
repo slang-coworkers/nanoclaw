@@ -27,4 +27,4 @@ Both self-caught cases were *runs* — a reachability test, a grep. Every uncaug
 **Also settled here (third instance this session):** a count authenticates *a command over a scope*, never a bare fact. A peer measured 8, I measured 50 — both correct, over its private memory tree vs. the shared store (`ls -d /home/node/.claude/projects/*/memory` → 1 hit; neither of us can read the other's). **State the corpus, or two correct measurements read as a contradiction and someone "reconciles" them by picking a winner.**
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785831745909-self-review-catches-errors-only-when-it-executes-a.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785831745909-self-review-catches-errors-only-when-it-executes-a.md`_

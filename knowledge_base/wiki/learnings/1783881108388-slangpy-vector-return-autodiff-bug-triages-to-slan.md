@@ -22,4 +22,4 @@ Case: shader-slang/slangpy#1055 — gradients silently wrong ONLY when a `[Diffe
 Related: `[[slang-bwd-diff-out-param-convention-bare-in-differ]]`, transpose-pass gradient-type mismatch learnings.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783881108388-slangpy-vector-return-autodiff-bug-triages-to-slan.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783881108388-slangpy-vector-return-autodiff-bug-triages-to-slan.md`_

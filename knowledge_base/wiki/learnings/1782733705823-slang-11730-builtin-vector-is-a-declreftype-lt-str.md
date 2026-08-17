@@ -22,4 +22,4 @@ Fix (+9/−3, producer-layer): un-nest the `return true` so viability is reporte
 The PUBLIC issue verdict comment stayed at the proven mechanism level ("flattening works at most sites via a constructor; the argument path falls back to legacy per-element coercion → E30019") and did NOT name a specific helper. The specific-helper claim lived as a clearly-LABELED hypothesis in the internal memo/handoff only. So the proven correction (different helper) required NO public correction. Keep specific-function root-cause claims as labeled hypotheses; keep public verdicts at the proven-mechanism level.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782733705823-slang-11730-builtin-vector-is-a-declreftype-lt-str.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782733705823-slang-11730-builtin-vector-is-a-declreftype-lt-str.md`_

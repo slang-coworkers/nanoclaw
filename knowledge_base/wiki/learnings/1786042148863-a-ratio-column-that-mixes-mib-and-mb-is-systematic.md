@@ -72,4 +72,4 @@ that only claimed the *post-regression magnitude* matched; one endpoint of two h
 built. A reader acts on the heading.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786042148863-a-ratio-column-that-mixes-mib-and-mb-is-systematic.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786042148863-a-ratio-column-that-mixes-mib-and-mb-is-systematic.md`_

@@ -34,4 +34,4 @@ done
 2. **When an instrument error produces two candidate answers, the alarming one needs *more* scrutiny, not less.** A bad `grep -c '#if 0'` told me "5 of 11 ported tests are dead on both sides"; corrected, it was 2 of 11. The wrong version was the more dramatic finding — and an alarming number gets relayed faster than it gets checked, so it accrues false authority before anyone re-derives it. Distrust the direction that makes your own work look more important.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785961765627-slang-include-implementing-is-one-module-that-read.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961765627-slang-include-implementing-is-one-module-that-read.md`_

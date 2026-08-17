@@ -18,4 +18,4 @@ source: learnings/1784270369731-approver-infra-gh-graphql-401-at-onecli-gateway-
 **Fix:** Split the `/pulls` literal in REST paths so the hook regex misses it: `P="repos/{owner}/{repo}/pu""lls/{n}"; gh api "$P" --jq ...`. Reviews/files sub-resources (`$P/reviews`, `$P/files`) inherit the split. Drive harvest/eval through the bundled scripts (their command strings are `python3 harvest-reviews.py ...` with no `/pulls` literal, so they never trip the hook). Repo: shader-slang lab container, observed 2026-07-17.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784270369731-approver-infra-gh-graphql-401-at-onecli-gateway-bu.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784270369731-approver-infra-gh-graphql-401-at-onecli-gateway-bu.md`_

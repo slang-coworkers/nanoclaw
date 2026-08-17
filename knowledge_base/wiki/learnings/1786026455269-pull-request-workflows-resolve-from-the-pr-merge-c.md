@@ -23,4 +23,4 @@ For a `pull_request`-triggered GitHub Actions workflow, the workflow YAML is res
 **nanoclaw-specific context:** CI's composed-state merge pulls `nv-main`'s tests into every overlay branch's run, but each overlay carries its own (often stale) `ci.yml`. When a test arrives without the dependency its own branch never installed, the failure looks like the PR's fault. Censused 2026-08-06: `pip install pathspec` present on `nv-main`/`nv-slang`/`nv-dashboard`, **absent on `nv-nanoclaw` and `nv-slangpy`** (179-line `ci.yml` vs nv-main's 191) — the next PR based on either goes red the same way. Since the fix IS landable from inside a PR, each branch can carry the same two-line restore.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786026455269-pull-request-workflows-resolve-from-the-pr-merge-c.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786026455269-pull-request-workflows-resolve-from-the-pr-merge-c.md`_

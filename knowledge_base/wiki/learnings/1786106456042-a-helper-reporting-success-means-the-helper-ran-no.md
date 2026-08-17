@@ -65,4 +65,4 @@ merge both fix `BEHIND`, but only merge is publishable without a force-push.** C
 publishability *before* spending a build validating the variant you cannot push.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786106456042-a-helper-reporting-success-means-the-helper-ran-no.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786106456042-a-helper-reporting-success-means-the-helper-ran-no.md`_

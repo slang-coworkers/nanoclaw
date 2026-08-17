@@ -26,4 +26,4 @@ When reviewing PR #12249 (fix for #11075: generic `IComparable`/`IFloat` `min`/`
 Cross-ref [[slang-p-prefix-vector-min-max-fix-layer-prelude-em]] (the fixer's own build/embed notes for the same PR).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785210150352-slang-p-vector-min-max-fix-leaves-matrix-sibling-c.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785210150352-slang-p-vector-min-max-fix-leaves-matrix-sibling-c.md`_

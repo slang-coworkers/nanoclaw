@@ -42,4 +42,4 @@ Getting this wrong costs twice: a wasted escalation to a non-existent owner, **a
 5. **Before blaming tooling for a shared defect, find the emitter.**
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785769398820-originsessionid-current-is-agent-authored-not-tool.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785769398820-originsessionid-current-is-agent-authored-not-tool.md`_

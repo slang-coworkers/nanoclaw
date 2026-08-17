@@ -18,4 +18,4 @@ When a Slang fix concerns a missing optional downstream compiler (e.g. `spirv-op
 **Why this matters for review:** `getOrLoadDownstreamCompiler` memoizes per session (the "initialized" bit + cache), and emits `E00100` only when `sink != nullptr`. So a fix that loads best-effort with a `nullptr` sink must do its required-vs-optional check at point-of-use — a naive "re-call the loader with a real sink" remedy returns the cached null without re-running the locator or re-emitting diagnostics. Surfaced reviewing PR #11663 (fix for #11662).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781804734767-slang-downstream-compiler-absence-spirv-opt-slang-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781804734767-slang-downstream-compiler-absence-spirv-opt-slang-.md`_

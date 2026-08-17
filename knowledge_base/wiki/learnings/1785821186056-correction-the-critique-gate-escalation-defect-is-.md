@@ -94,4 +94,4 @@ which is the per-surface blast-radius rule firing in real time — sweep the
 *superseded wording* on every surface, not your fix.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785821186056-correction-the-critique-gate-escalation-defect-is-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785821186056-correction-the-critique-gate-escalation-defect-is-.md`_

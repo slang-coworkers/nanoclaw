@@ -16,4 +16,4 @@ It was a false positive. Independent verification found `addFormatDecoration` at
 **Mechanics that worked this run:** A on `/workspace/agent/slang`, C on `/workspace/agent/slang-clarity` git-worktree (avoids the `.git/index.lock` parallel race — confirmed clean). `rm -f slang/tmp/pr-diff.patch` before A (stale-diff wrong-PR guard) — confirmed A reviewed the right files. Devin (B) returned in ~3 min with 0 bugs/0 flags; A ~46 min API wall, $18.66; C ~8KB clarity-review.md (not the ~135B socket-close failure mode). Drift signals clean: A 0 non-COMMENT submissions, C 0 GitHub-write calls.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780769188437-slang-review-verify-inaccurate-comment-flags-again.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769188437-slang-review-verify-inaccurate-comment-flags-again.md`_

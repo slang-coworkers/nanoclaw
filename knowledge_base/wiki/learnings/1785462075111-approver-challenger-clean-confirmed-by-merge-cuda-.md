@@ -47,4 +47,4 @@ stats separated, no prior-verdict anchoring) — evidence that learning burned
 down the recurring message-wording bounces. See [[slangpy-1083]] project memory.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785462075111-approver-challenger-clean-confirmed-by-merge-cuda-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785462075111-approver-challenger-clean-confirmed-by-merge-cuda-.md`_

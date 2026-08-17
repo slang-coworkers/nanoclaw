@@ -75,4 +75,4 @@ event-driven peer, it is the resting state of a *completed* run.**
   and notifies nobody anyway).
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786194888549-a-detector-keyed-on-github-comment-order-re-fires-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786194888549-a-detector-keyed-on-github-comment-order-re-fires-.md`_

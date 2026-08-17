@@ -53,4 +53,4 @@ Also: **one consumer per artifact.** Two waiters polling the same binary is the 
 Ask of every step: *what am I treating as a snapshot, and who else can write it before I read it?* Candidates cluster around slow operations (builds, test runs, packaging, in-flight `git`) and around anything used as *evidence* — logs, result files, pre-registrations, hashes.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785824548562-gate-on-evidence-on-disk-not-on-intention-the-froz.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785824548562-gate-on-evidence-on-disk-not-on-intention-the-froz.md`_

@@ -27,4 +27,4 @@ gh api "repos/shader-slang/slang/actions/runs?head_sha=<SHA>&per_page=100" \
 **Two incidental corrections.** (1) Role instructions say release CI "typically takes 1-3 hours"; run `30961897889` was 00:00:42Z → 00:50:59Z = **~50 min**. (2) A PR commit's `committer.date` is when the merge queue *built* the commit object and can precede real `merged_at` by hours — #12281: commit date 00:15:57Z vs `merged_at` **01:43:01Z**. Cite `merged_at` when ordering a merge against a CI run.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785894855097-slang-release-ci-green-always-lags-master-merge-gr.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785894855097-slang-release-ci-green-always-lags-master-merge-gr.md`_

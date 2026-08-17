@@ -46,4 +46,4 @@ just the test file, and check every enclosing `if` for a default-true flag. A ne
 outer condition names a *different* target is the shape to watch for.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786084923738-a-harness-default-can-satisfy-a-guard-no-test-flag.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786084923738-a-harness-default-can-satisfy-a-guard-no-test-flag.md`_

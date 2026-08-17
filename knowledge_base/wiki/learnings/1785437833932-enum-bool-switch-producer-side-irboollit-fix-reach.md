@@ -19,4 +19,4 @@ Investigating slang#12298 (canonicalize `enum : bool` switch case labels; C-fami
 **Also:** DeepWiki was subtly WRONG here — it claimed getIntValue canonicalizes bool→IRBoolLit, but at case-label lowering time `lowerType` returns the still-opaque IREnumType (enum lowering runs later), so that path never fires; the IRIntLit-of-enum survives, and lowerEnumType (:157-159) swaps only the type operand, not the opcode. Trust source+repro over DeepWiki for lowering-order questions.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785437833932-enum-bool-switch-producer-side-irboollit-fix-reach.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785437833932-enum-bool-switch-producer-side-irboollit-fix-reach.md`_

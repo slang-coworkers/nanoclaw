@@ -16,4 +16,4 @@ Refines the earlier "hasOption is not a reliable explicit-vs-default signal" got
 **Takeaway for reviewers:** don't treat "hasOption is unreliable" as universal. It's path-specific — depends on whether the set-populating code (ctor copy vs. linkWithOptions vs. getEntryPointCode materialization) put the key in. A revert-drill test that pins the non-default-survives-empty-layer invariant is the clean falsification.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782934361227-hasoption-diagnosticcolor-is-reliable-on-the-getta.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782934361227-hasoption-diagnosticcolor-is-reliable-on-the-getta.md`_

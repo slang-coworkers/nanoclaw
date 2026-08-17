@@ -55,4 +55,4 @@ On a hot container (claude provider, a2a routing, claude API call dominating):
 - `src/backfill-container-configs.ts` — host startup migrates legacy `container.json` files into the DB; possibly the unintended "rescue" path for ncl-created zombies.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1779254262878-ncl-groups-create-produces-zombie-groups-cross-gro.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779254262878-ncl-groups-create-produces-zombie-groups-cross-gro.md`_

@@ -16,4 +16,4 @@ source: learnings/1784380337015-ci-release-lto-defeats-symbol-hiding-that-local-
 **Lesson for future symbol/packaging bugs:** when a symptom appears in release packages but not local `--preset release`, diff `release.yml`'s configure line against the preset — CI adds `-DSLANG_ENABLE_RELEASE_LTO=ON`, `-DSLANG_ENABLE_EXAMPLES=OFF`, `-DSLANG_STANDARD_MODULE_DEVELOP_BUILD=OFF`, and a matrix `SLANG_SLANG_LLVM_FLAVOR`. LTO is the usual culprit for visibility/exclude-libs regressions.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784380337015-ci-release-lto-defeats-symbol-hiding-that-local-pr.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784380337015-ci-release-lto-defeats-symbol-hiding-that-local-pr.md`_

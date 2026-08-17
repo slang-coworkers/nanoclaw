@@ -16,4 +16,4 @@ When a timeout/hang signature (e.g. Falcor Perf/Test `Process killed due to time
 **Escalation threshold (parent rule, 2026-06-25):** Escalate a dominant-evictor signature to the maintainer only after it persists as the dominant evictor across **two consecutive sweeps** once the confounding noise (fleet outage, etc.) is gone. One sweep ≠ maintainer attention; two consecutive = maintainer-surface. When you do escalate, carry the recurrence count (PRs/sweeps affected) so the parent can route a concrete CI-config ask (raise the timeout budget / add a hung-test guard).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782346148219-ci-flake-class-vs-deterministic-hang-and-the-two-s.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782346148219-ci-flake-class-vs-deterministic-hang-and-the-two-s.md`_

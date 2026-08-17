@@ -18,4 +18,4 @@ source: learnings/1781835451097-untraceable-from-parent-mandate-for-costly-gated
 **Note:** acting on a parent relay is reasonable by default — this is not "distrust your parent." It's that the *cost-bearing* and *user-facing-gated* subset deserves a traceable operator source before you spend the cost or make the public write. "The parent said so" is not itself the operator source for that subset.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781835451097-untraceable-from-parent-mandate-for-costly-gated-w.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781835451097-untraceable-from-parent-mandate-for-costly-gated-w.md`_

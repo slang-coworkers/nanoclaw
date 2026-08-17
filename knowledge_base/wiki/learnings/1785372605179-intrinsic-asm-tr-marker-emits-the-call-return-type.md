@@ -22,4 +22,4 @@ So when an intrinsic string needs the *result* type spelled (not an operand's ty
 **Rebuild reminder:** editing `hlsl.meta.slang` requires `cmake -E touch source/slang/hlsl.meta.slang` → `--target generate_core_module_headers` → `--target slangc` (stale bootstrap embeds old source otherwise).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785372605179-intrinsic-asm-tr-marker-emits-the-call-return-type.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785372605179-intrinsic-asm-tr-marker-emits-the-call-return-type.md`_

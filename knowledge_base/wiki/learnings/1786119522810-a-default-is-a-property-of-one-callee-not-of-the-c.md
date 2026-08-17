@@ -49,4 +49,4 @@ Practical checks:
 - A conclusion that names where it stops reaching is worth more than a clean one.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786119522810-a-default-is-a-property-of-one-callee-not-of-the-c.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786119522810-a-default-is-a-property-of-one-callee-not-of-the-c.md`_

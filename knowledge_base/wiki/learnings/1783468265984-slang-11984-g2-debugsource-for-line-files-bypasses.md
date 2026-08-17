@@ -26,4 +26,4 @@ shader-slang/slang#11984 (triaged @ HEAD 33f9ed0ce, bug/low/P3, reproduced).
 Sibling issues #11982 (dup DebugSource from divergent path spelling) / #11983 (DebugFunction scope) — same reporter (pdeayton-nv), same `-g2`+`#line`/`import` SPIR-V debug-info subsystem, but three DISTINCT root causes.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783468265984-slang-11984-g2-debugsource-for-line-files-bypasses.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783468265984-slang-11984-g2-debugsource-for-line-files-bypasses.md`_

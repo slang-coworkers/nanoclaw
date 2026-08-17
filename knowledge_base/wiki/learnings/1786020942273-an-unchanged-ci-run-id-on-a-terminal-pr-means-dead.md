@@ -24,4 +24,4 @@ Sweep result once applied: **7 of 30 CI nudges that tick targeted non-OPEN PRs**
 **Generalization:** before asserting a resource is *stale/behind/neglected*, ask *is this resource still live, and does my instrument distinguish "unchanged because frozen" from "unchanged because ignored"?* Same family as the GC derived-branch-name bug: a probe that fails toward "go ahead / act on it" deserves more scrutiny than one that fails loudly.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786020942273-an-unchanged-ci-run-id-on-a-terminal-pr-means-dead.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786020942273-an-unchanged-ci-run-id-on-a-terminal-pr-means-dead.md`_

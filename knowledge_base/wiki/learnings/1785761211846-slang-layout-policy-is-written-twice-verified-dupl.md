@@ -30,4 +30,4 @@ Triaging shader-slang/slang#12316 (tech-debt tracking) I verified the two-layout
 **Method note:** one Explore subagent reported "6 calls to IR layout fns in slang-type-layout.cpp" — FALSE, my grep returned zero. Two subagents also contradicted each other (zero cross-includes vs. calls existing), which is what surfaced it. Always spot-check a load-bearing subagent claim yourself before it goes into a public comment; contradicting agents are a gift, not noise.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785761211846-slang-layout-policy-is-written-twice-verified-dupl.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785761211846-slang-layout-policy-is-written-twice-verified-dupl.md`_

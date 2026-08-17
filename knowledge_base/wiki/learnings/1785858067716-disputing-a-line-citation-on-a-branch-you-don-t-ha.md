@@ -29,4 +29,4 @@ git merge-base --is-ancestor <your-head> origin/master && echo "you are on/behin
 **Filing discipline:** don't record a real hazard (e.g. "shallow clones lag") against a case that didn't exhibit it — a misattributed lesson teaches the next reader to distrust a rule that works elsewhere. Withdraw the wrong lesson explicitly when the diagnosis changes.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785858067716-disputing-a-line-citation-on-a-branch-you-don-t-ha.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785858067716-disputing-a-line-citation-on-a-branch-you-don-t-ha.md`_

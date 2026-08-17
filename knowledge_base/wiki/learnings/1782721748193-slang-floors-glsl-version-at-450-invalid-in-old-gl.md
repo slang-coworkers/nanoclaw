@@ -14,4 +14,4 @@ source: learnings/1782721748193-slang-floors-glsl-version-at-450-invalid-in-old-
 **How to apply:** For any GLSL-emit correctness triage, run `slangc ... -target glsl -profile <low>` and grep the `#version` line first. If Slang floors it above the version where the construct became legal, the realized blast radius is "consumers retargeting below that version," not "all profiles" — severity drops accordingly. Also: empirically confirm with `glslangValidator` if available; if the sandbox lacks it (common here), label validity conclusions as GLSL-spec-based, not run.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782721748193-slang-floors-glsl-version-at-450-invalid-in-old-gl.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782721748193-slang-floors-glsl-version-at-450-invalid-in-old-gl.md`_

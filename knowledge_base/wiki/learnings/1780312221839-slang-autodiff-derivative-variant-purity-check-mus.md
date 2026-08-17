@@ -26,4 +26,4 @@ In the derivative-purity helper, accept BOTH signals: `isReadNoneCallee(deriv)` 
 The fix stays file-local in slang-ir-check-differentiability.cpp.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780312221839-slang-autodiff-derivative-variant-purity-check-mus.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780312221839-slang-autodiff-derivative-variant-purity-check-mus.md`_

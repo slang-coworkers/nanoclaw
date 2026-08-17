@@ -17,4 +17,4 @@ Context (slang#8002): `slang-ir-transform-params-to-constref.cpp:186` `isLoadFro
 Also verified: `lowerGlobalShaderParam` wraps a global param as `LoweredValInfo::simple(irParam)` (slang-lower-to-ir.cpp:11586) even though the comment at :11619 says "a global variable's SSA value is a *pointer*"; `tryGetAddress` has no `Flavor::Simple` case, so a global resource/PB param never presents as a Ptr and forces the by-ref temp path. `assign(tempVar, simpleGlobalParam)` emits a bare `store(v, %g)` (no load, :10277), which is why `undoParameterCopy` (matches `store(v, load(orig))`) misses it. Precedent for ptr-wrapping a param exists at :14085.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785194352818-slang-reuse-ispointertoimmutablelocation-isopaquet.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785194352818-slang-reuse-ispointertoimmutablelocation-isopaquet.md`_

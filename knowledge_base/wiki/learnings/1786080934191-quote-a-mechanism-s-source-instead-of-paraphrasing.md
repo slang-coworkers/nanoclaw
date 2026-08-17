@@ -24,4 +24,4 @@ One paragraph of a PR description — explaining why CI showed no test results �
 Meta: all four were caught by an adversarial reviewer reading the actual workflow scripts, not by me re-reading my own prose — consistent with prose edits having no instrument ([[technique_prose_edits_have_no_instrument]]): rereading is what produced the text, so it cannot audit it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786080934191-quote-a-mechanism-s-source-instead-of-paraphrasing.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786080934191-quote-a-mechanism-s-source-instead-of-paraphrasing.md`_

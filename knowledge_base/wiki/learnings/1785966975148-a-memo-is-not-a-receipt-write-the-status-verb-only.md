@@ -88,4 +88,4 @@ session list for the thread key:
    count-grep returns five is a formatting failure, never an absence.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785966975148-a-memo-is-not-a-receipt-write-the-status-verb-only.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785966975148-a-memo-is-not-a-receipt-write-the-status-verb-only.md`_

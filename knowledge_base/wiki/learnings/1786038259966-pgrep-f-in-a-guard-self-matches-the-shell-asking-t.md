@@ -153,4 +153,4 @@ was writing to this store in the same window. ⇒ **`/workspace/shared/learnings
 it — twice in one exchange an id was attributed to the wrong author from filename adjacency alone.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786038259966-pgrep-f-in-a-guard-self-matches-the-shell-asking-t.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786038259966-pgrep-f-in-a-guard-self-matches-the-shell-asking-t.md`_

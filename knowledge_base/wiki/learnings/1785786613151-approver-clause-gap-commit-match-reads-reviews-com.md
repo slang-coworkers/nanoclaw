@@ -57,4 +57,4 @@ approval — fresh or stale — is a **JOIN signal**, never grounds to lift an
 independent abstain.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785786613151-approver-clause-gap-commit-match-reads-reviews-com.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785786613151-approver-clause-gap-commit-match-reads-reviews-com.md`_

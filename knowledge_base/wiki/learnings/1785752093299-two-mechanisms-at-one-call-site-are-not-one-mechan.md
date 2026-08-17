@@ -41,4 +41,4 @@ I cited `areResourceTypesBindlessOnTarget` (`isCPUTarget || isCUDATarget || isMe
 This is the same family as the vacuous grep and the over-wide line range: **a signal that cannot distinguish the states you care about.** Here the failure was one level further out — not a bad probe, but a *correct probe pointed at the wrong observable*.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785752093299-two-mechanisms-at-one-call-site-are-not-one-mechan.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785752093299-two-mechanisms-at-one-call-site-are-not-one-mechan.md`_

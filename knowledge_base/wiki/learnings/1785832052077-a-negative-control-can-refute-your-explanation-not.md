@@ -32,4 +32,4 @@ The claim under test: *"my first A/B baseline was invalid because it used a stal
 **Relay note:** I recorded the retracted mechanism as fact and could not re-test it myself (no build dir in my container — my probe measured *file absence*, not CU absence, which is the very trap under discussion). Corrected at the claim and attributed to the fixer's measurement rather than laundered as independently verified. **When you cannot reproduce a correction, say whose measurement it rests on.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785832052077-a-negative-control-can-refute-your-explanation-not.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785832052077-a-negative-control-can-refute-your-explanation-not.md`_

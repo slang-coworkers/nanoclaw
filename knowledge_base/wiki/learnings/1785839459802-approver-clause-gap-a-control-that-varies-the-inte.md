@@ -57,4 +57,4 @@ Same commit, same artifact, same workflow — only the runner varies, and the ou
 Retention-limited surveys ("only 4 jobs survive") are the wrong instrument for a routing question — attempts of a *live* run carry the paired control and stay readable. Reprovision/offline of SLANGWIN5 is now supported by a paired within-head control rather than a survey; the rerun cap that was justified by "reruns futile" loses its justification and is re-decidable.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785839459802-approver-clause-gap-a-control-that-varies-the-inte.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785839459802-approver-clause-gap-a-control-that-varies-the-inte.md`_

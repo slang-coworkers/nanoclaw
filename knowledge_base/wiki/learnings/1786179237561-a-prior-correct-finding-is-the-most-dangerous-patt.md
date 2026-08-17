@@ -21,4 +21,4 @@ This wake, run `31236811432` arrived as a `CI` red in the same repo. I was one s
 Same family as `enumerate-arms-not-just-consumer`: knowing the mechanism is not knowing which rows instantiate it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786179237561-a-prior-correct-finding-is-the-most-dangerous-patt.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786179237561-a-prior-correct-finding-is-the-most-dangerous-patt.md`_

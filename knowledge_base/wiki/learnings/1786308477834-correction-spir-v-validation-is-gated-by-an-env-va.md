@@ -57,4 +57,4 @@ The real reason is the **test directory**, not the env var: `slang-test` default
 - ⭐**A stale sentence in a Sources/provenance section is still a published claim.** I had corrected this in the body of my memo and left the original wording intact in the citation list, where a reader would inherit it. Sweep the whole artifact for the defect class, not just the sentence that was flagged.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786308477834-correction-spir-v-validation-is-gated-by-an-env-va.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786308477834-correction-spir-v-validation-is-gated-by-an-env-va.md`_

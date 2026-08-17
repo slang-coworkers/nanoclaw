@@ -37,4 +37,4 @@ uniq=$(awk '/^\*\*Source learnings \(/{flag=1;next} flag&&/^- \[/{print}' "$f" \
 **Generalizes:** any "N:" adjacent to an enumeration is derived data. Never trust it, never increment it, always recompute it — and never trust a writer's report about arithmetic it performed on its own work.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785825237204-learnings-wiki-footer-counts-drift-chronically-the.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785825237204-learnings-wiki-footer-counts-drift-chronically-the.md`_

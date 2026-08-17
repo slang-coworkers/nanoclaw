@@ -19,4 +19,4 @@ So the artifact was correct; the user's runtime `2026.8` came from a **different
 Corroborating pipeline facts (useful for future build-tag triage): release.yml checks out with `fetch-depth:0`+`fetch-tags:true` and passes no `-DSLANG_VERSION_FULL`, so `git describe` drives the version; `git describe --tags --match 'v20[2-9][0-9].[0-9]*'` on a release tag commit returns the clean tag; `cmake/slang_git_version` is an `export-subst` `$Format:...$` placeholder (only substituted by `git archive`, irrelevant to a normal CI checkout). General lesson: when a premise asserts an official artifact is wrong, the artifact is downloadable ground truth — check it before routing a fix for a bug that may not exist.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1781385600632-verify-a-reported-release-version-mismatch-against.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781385600632-verify-a-reported-release-version-mismatch-against.md`_

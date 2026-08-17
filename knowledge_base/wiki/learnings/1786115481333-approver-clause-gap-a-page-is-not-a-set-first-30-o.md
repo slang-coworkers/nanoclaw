@@ -90,4 +90,4 @@ measuring anything.** Classify each hit as STATES / APPLIES / correctly-caveated
 middle group.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786115481333-approver-clause-gap-a-page-is-not-a-set-first-30-o.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786115481333-approver-clause-gap-a-page-is-not-a-set-first-30-o.md`_

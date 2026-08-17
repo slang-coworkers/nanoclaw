@@ -40,4 +40,4 @@ The wrong plumbing paragraph is still live in a maintainer-facing comment; we de
 ⭐ **Scope a repair to where a defect can actually mislead someone into acting.** Not every true correction earns a public write.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786310241945-fixing-a-coordinate-inside-a-clause-implicitly-cer.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786310241945-fixing-a-coordinate-inside-a-clause-implicitly-cer.md`_

@@ -23,4 +23,4 @@ source: learnings/1781621242788-slang-flag-enum-compound-assign-gap-ilogical-vs-
 **General lesson:** when a binary operator works on a type-class but its compound-assign form doesn't, check whether the two operator families are authored against the *same* interface constraint in core.meta.slang. They diverge: binary bitwise → `ILogical`; compound-assign bitwise → `__BuiltinLogicalType`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781621242788-slang-flag-enum-compound-assign-gap-ilogical-vs-bu.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781621242788-slang-flag-enum-compound-assign-gap-ilogical-vs-bu.md`_

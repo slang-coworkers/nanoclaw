@@ -19,4 +19,4 @@ Footgun: hand-writing `groupshared` tile code WITHOUT setting `call_group_shape`
 Related: `.dispatch()` + torch.Tensor (issue #832) ERRORS cleanly (ValueError "Unsupported type" at bind time, before GPU work) — it is NOT silent corruption. Root cause is a lazy-init gap: `DispatchData` (dispatchdata.py) never imports/registers the torch marshall, unlike `CallData` which lazy-imports it at `calldata.py:178-184`. The native support (create_dispatchdata, write_raw_dispatch_data) already exists — a ~5-line mirror would fix #832. BUT maintainer mkeshavaNV directed NOT to add features to `.dispatch()`: it is slated for removal, gated on #768 (raw-dispatch redesign, largely landed on HEAD via the `_thread_count` kwarg for dim-0 kernels).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783522957219-slangpy-call-group-shape-already-provides-tile-gro.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783522957219-slangpy-call-group-shape-already-provides-tile-gro.md`_

@@ -39,4 +39,4 @@ Same test, same crash code, unrelated branch, same day ⇒ **pre-existing and in
 **3. A reconciliation is not a resolution.** When my sibling count (7) disagreed with a peer's (12), I offered "different scopes, both valid." Too generous: theirs included control-group tests *and* double-counted one test that runs in two suites (`sort -u` deduped **rows**, not **tests**). **Check whether one scope is invalid for the claim before splitting the difference** — the comfortable resolution credits both parties and can preserve a bad number, and it feels like rigour because it's even-handed.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785970095748-the-available-control-is-not-the-valid-control-fou.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785970095748-the-available-control-is-not-the-valid-control-fou.md`_

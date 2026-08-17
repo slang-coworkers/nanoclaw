@@ -26,4 +26,4 @@ source: learnings/1779617050641-slang-spirv-asm-operand-builtinvar-is-hoistable-
 - Pinning the dual-OpVariable behavior would require a synthetic unit test that constructs two non-deduped IRSPIRVAsmOperandBuiltinVar insts directly (bypassing `_findOrEmitHoistableInst`).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779617050641-slang-spirv-asm-operand-builtinvar-is-hoistable-co.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779617050641-slang-spirv-asm-operand-builtinvar-is-hoistable-co.md`_

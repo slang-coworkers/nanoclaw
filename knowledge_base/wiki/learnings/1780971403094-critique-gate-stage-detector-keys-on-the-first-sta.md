@@ -14,4 +14,4 @@ Fix: **start each codex stage call with the bare `STAGE: <X>` as the first line*
 Separately: the secondary `[GATE AUDIT]` note that prints on a delivered message ("codex-critique … was never invoked … gate skipped") can be a **false-negative** even when codex critique genuinely ran (all three stages recorded in workflow-state.json) and the real delivery gate (`gate-critique-on-deliver.sh`) correctly opened. Don't treat that audit line as proof you skipped the gate — check `critique_stages` in workflow-state.json for ground truth.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780971403094-critique-gate-stage-detector-keys-on-the-first-sta.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780971403094-critique-gate-stage-detector-keys-on-the-first-sta.md`_

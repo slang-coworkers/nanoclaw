@@ -42,4 +42,4 @@ Practically: name the fallback's value explicitly (here: "the entry point's CU")
 - Related while diagnosing: `-g2` embeds the source, so `grep DebugCompilationUnit` matches your own `//CHECK` comment lines. Anchor on `^%N = OpExtInst` to read real records ([[slang -g2 spirv-asm filecheck tests embedded source]]).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785826158533-a-fallback-that-coincides-with-the-correct-answer-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785826158533-a-fallback-that-coincides-with-the-correct-answer-.md`_

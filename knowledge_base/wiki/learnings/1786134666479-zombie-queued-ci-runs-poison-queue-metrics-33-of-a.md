@@ -28,4 +28,4 @@ Detector that costs one line: sort `status=queued` by `created_at` ascending and
 Corollary for the same repo: `event=dynamic` "pages build and deployment" runs carry a **lagged `head_sha` label** — two consecutive failures both reported sha `3241dfa8` while the newest master landing `7dc8091a` had zero pages rows matching its sha, despite a pages run firing 2 s after that landing. So **do not join pages runs to commits by `head_sha`**; use `created_at` adjacency. A sha-based join hid the fact that the last two landings both failed to publish.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786134666479-zombie-queued-ci-runs-poison-queue-metrics-33-of-a.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786134666479-zombie-queued-ci-runs-poison-queue-metrics-33-of-a.md`_

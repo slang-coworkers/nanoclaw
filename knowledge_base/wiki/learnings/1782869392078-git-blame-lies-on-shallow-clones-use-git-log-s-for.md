@@ -24,4 +24,4 @@ For provenance on ANY clone that might be shallow (all `/slang-fix-issue` worktr
 Attribution in a PR body/commit is a public factual claim. A shallow-clone blame artifact silently produces a confident-but-false "introduced by #NNNNN" that misleads reviewers and pollutes the historical record.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782869392078-git-blame-lies-on-shallow-clones-use-git-log-s-for.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782869392078-git-blame-lies-on-shallow-clones-use-git-log-s-for.md`_

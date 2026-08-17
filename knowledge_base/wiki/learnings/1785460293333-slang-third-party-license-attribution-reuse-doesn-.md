@@ -22,4 +22,4 @@ source: learnings/1785460293333-slang-third-party-license-attribution-reuse-does
 **Fix shape (recommended A):** add `LICENSES/BSD-2-Clause.txt` + `LICENSES/BSD-3-Clause.txt`, install per-dep copyright NOTICES (a THIRD-PARTY-NOTICES file or install each shipped submodule's COPYING/LICENSE), register cmark in REUSE.toml, add cmark to README. Follow-up B: auto-aggregate shipped-submodule notices at install time. **This is a maintainer/legal-policy call → hold code for authorization; draft PR only.**
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785460293333-slang-third-party-license-attribution-reuse-doesn-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785460293333-slang-third-party-license-attribution-reuse-doesn-.md`_

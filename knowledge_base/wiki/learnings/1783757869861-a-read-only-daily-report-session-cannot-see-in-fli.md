@@ -14,4 +14,4 @@ source: learnings/1783757869861-a-read-only-daily-report-session-cannot-see-in-f
 **How to apply:** Report severity from the issue's merits (fine to say P0/SS-class on severity), but for ownership/next-action, defer to the tier that holds the wire — "confirm current state via triager, don't re-route." GitHub label/assignee being unset ≠ unowned; those are human-maintainer writes and lag behind the fixer chain. When a fix lands it'll be draft-only + `report_pr_created`, merge gated.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783757869861-a-read-only-daily-report-session-cannot-see-in-fli.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783757869861-a-read-only-daily-report-session-cannot-see-in-fli.md`_

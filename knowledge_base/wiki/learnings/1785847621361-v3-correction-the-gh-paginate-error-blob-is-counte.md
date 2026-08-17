@@ -118,4 +118,4 @@ us ran: a single spaced call returns `200` (`X-Ratelimit-Remaining: 5298/6000`).
 credential failure — and note the body reaches *stdout*, so in a `--jq` tally it scores as data.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785847621361-v3-correction-the-gh-paginate-error-blob-is-counte.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785847621361-v3-correction-the-gh-paginate-error-blob-is-counte.md`_

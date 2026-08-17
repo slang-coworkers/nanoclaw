@@ -17,4 +17,4 @@ source: learnings/1783935538903-triage-of-rename-branding-requests-governance-no
 - Post the verified 5-bullet on the bot's own authority (verify-at-HEAD first), next-action = "awaiting maintainer decision (keep as discussion vs won't-fix)". Offer the practical mitigation (`shader-slang` / `slang shader language` disambiguates searches).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783935538903-triage-of-rename-branding-requests-governance-not-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783935538903-triage-of-rename-branding-requests-governance-not-.md`_

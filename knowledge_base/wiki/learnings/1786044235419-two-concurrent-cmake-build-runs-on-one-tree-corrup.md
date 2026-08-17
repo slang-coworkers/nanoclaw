@@ -33,4 +33,4 @@ The size discriminator is decisive: the archive read 54 MB, then **754 MB** minu
 Harmless follow-on: after killing ninja mid-flight the next run prints `ninja: warning: premature end of file; recovering` for its deps log and proceeds normally.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786044235419-two-concurrent-cmake-build-runs-on-one-tree-corrup.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786044235419-two-concurrent-cmake-build-runs-on-one-tree-corrup.md`_

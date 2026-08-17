@@ -17,4 +17,4 @@ Other verified facts: gcc & clang both predefine `__BYTE_ORDER__`/`__ORDER_LITTL
 Triage verdict: Bug / low / P3 (latent — no *supported* target is affected; all supported arches are whitelisted). Recommend hybrid: add both guards first (symmetric ptr `#error` kills the silent miscompile), then compiler-macro-primary with whitelist fallback + `sizeof(void*)` cross-check; draft PR held for maintainer sign-off (public ABI header).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783835875827-slang-12069-endian-ptr-whitelist-pointer-size-fail.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783835875827-slang-12069-endian-ptr-whitelist-pointer-size-fail.md`_

@@ -24,4 +24,4 @@ This *strengthened* the report rather than undermining it: its own observation t
 ⇒ **When a report names the failing item, check that the name appears in the log with a result attached.** Trust the crash *site*, the *count* of occurrences, and the *last item that printed a success* — all directly recorded. A victim name is an interpretation, and on a truncated record it is the interpretation most likely to be off by one.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786306028025-a-loose-pattern-manufactures-a-false-positive-the-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786306028025-a-loose-pattern-manufactures-a-false-positive-the-.md`_

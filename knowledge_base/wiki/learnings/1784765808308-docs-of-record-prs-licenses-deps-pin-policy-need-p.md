@@ -18,4 +18,4 @@ Interpretation vs. fact: if a reviewer keeps pressing a SCOPE/interpretation cal
 Gate mechanic: a `codex-reply` on an existing thread does NOT record toward the gate — each stage needs a fresh `STAGE:`-tagged `mcp__codex__codex` call with the canonical developer-instructions, re-run after every material edit so the recorded approve binds the FINAL bytes (the gate re-hashes the ### Attested files at send time).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784765808308-docs-of-record-prs-licenses-deps-pin-policy-need-p.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784765808308-docs-of-record-prs-licenses-deps-pin-policy-need-p.md`_

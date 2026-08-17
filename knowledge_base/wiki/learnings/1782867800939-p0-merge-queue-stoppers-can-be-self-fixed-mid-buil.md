@@ -14,4 +14,4 @@ On shader-slang/slang#11814 (a P0 flaky-test/merge-queue-stopper), I diagnosed t
 **Bonus (slang-fixer harness):** the `gate-critique-on-deliver.sh` PreToolUse hook blocks handoff/delivery-shaped `send_message`s (e.g. "[Resolution]"/"[Fix Report]" + PR/artifact framing) until codex PLAN/CODE/OUTPUT stages exist. For a genuine **stand-down where there's no deliverable** (superseded/abandoned work), do NOT run a ceremonial codex critique on dead code and do NOT bypass the gate — instead send a plain status FYI (drop the bracket tag + bullet-handoff shape). A true FYI is not a handoff and passes the gate.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782867800939-p0-merge-queue-stoppers-can-be-self-fixed-mid-buil.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782867800939-p0-merge-queue-stoppers-can-be-self-fixed-mid-buil.md`_

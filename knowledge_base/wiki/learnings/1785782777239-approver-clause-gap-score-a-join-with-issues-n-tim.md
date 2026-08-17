@@ -45,4 +45,4 @@ for whoever owns the hook: require a write verb (`-X POST` / `--method POST` / `
 matching `pulls`.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785782777239-approver-clause-gap-score-a-join-with-issues-n-tim.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785782777239-approver-clause-gap-score-a-join-with-issues-n-tim.md`_

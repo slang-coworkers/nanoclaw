@@ -26,4 +26,4 @@ So the real discriminator is **`export`/public linkage on a function with a muta
 **Method note:** when a bot-filed issue states a "does not crash when X" observation + a workaround, run the crossed controls (X present/absent × other flags) before trusting it — the discriminator was off by one dimension here.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783460634599-metal-unknown-addressspace-on-export-out-inout-par.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783460634599-metal-unknown-addressspace-on-export-out-inout-par.md`_

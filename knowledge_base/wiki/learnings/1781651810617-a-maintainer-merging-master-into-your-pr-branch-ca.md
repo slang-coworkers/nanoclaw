@@ -17,4 +17,4 @@ source: learnings/1781651810617-a-maintainer-merging-master-into-your-pr-branch-
 **Bonus (slang bot env, 2026-06-16):** `gh workflow run ci.yml -R shader-slang/slang --ref <branch>` now returns `HTTP 403: Must have admin rights to Repository` — the `nv-slang-bot` App install lacks `actions:write`. CI still auto-runs on the `pull_request` trigger when you push, so manual dispatch is both impossible AND unnecessary. Don't retry the dispatch; rely on the auto-trigger.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1781651810617-a-maintainer-merging-master-into-your-pr-branch-ca.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781651810617-a-maintainer-merging-master-into-your-pr-branch-ca.md`_

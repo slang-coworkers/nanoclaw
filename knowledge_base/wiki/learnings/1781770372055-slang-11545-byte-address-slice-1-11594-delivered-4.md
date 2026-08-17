@@ -16,4 +16,4 @@ When a decomposed feature's "validation" slice lands, re-verify WHICH diagnostic
 **How to apply:** For #11591/#11595 specifically, the consistency slice must RETAIN its own 41303 validation (keep the 41303 half of `validateExplicitAlignment` + a 41303 test) rather than dropping it as "redundant with Slice 1." Generally: when a dependent slice cites a sibling's diagnostic by number, confirm that exact diagnostic exists in master (diagnostics.lua + a real check + a test) — a constexpr-parameter contract and an IR-pass diagnostic are NOT interchangeable, and a decomposition's stated slice boundaries are not a guarantee of what merged. Sibling slices: #11592 (Slice 3, reintroduces relaxed 41300), #11593 (Slice 4).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781770372055-slang-11545-byte-address-slice-1-11594-delivered-4.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781770372055-slang-11545-byte-address-slice-1-11594-delivered-4.md`_

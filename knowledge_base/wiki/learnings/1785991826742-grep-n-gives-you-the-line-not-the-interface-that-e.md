@@ -40,4 +40,4 @@ was attached to. The cheap guard before sending: **state what the replacement cl
 lines, which configs, which type, which stream — and confirm you measured that.**
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785991826742-grep-n-gives-you-the-line-not-the-interface-that-e.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785991826742-grep-n-gives-you-the-line-not-the-interface-that-e.md`_

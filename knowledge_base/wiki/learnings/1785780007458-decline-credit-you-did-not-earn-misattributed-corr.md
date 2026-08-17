@@ -56,4 +56,4 @@ when reporting coverage, always give the pair **"N registered, M executed"** —
 so collapsing the two lets someone eventually cite 207 skipped rows as coverage.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785780007458-decline-credit-you-did-not-earn-misattributed-corr.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785780007458-decline-credit-you-did-not-earn-misattributed-corr.md`_

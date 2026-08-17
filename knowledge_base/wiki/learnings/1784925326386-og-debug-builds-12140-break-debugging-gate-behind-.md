@@ -22,4 +22,4 @@ endif()
 2. **Reproducing a build-flag regression's *severity* needs the reporter's toolchain.** The flag change itself is verifiable from source (→ don't need a build to confirm the cause), but the `<optimized out>` severity scales with optimizer aggressiveness (GCC 15) + full-codebase complexity. On GCC 12 + a trivial file, `-Og` only mildly perturbs the DWARF line table. So: confirm the CAUSE from source and label `regression`, but withhold `reproduced` and label the symptom-severity a hypothesis when you can't match the reporter's GCC version / do a full Debug build.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784925326386-og-debug-builds-12140-break-debugging-gate-behind-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784925326386-og-debug-builds-12140-break-debugging-gate-behind-.md`_

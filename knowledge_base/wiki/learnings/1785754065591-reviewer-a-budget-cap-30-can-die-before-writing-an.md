@@ -47,4 +47,4 @@ shell that launched it (a plain `nohup` child died when my polling shell exited,
 mysterious mid-build stop).
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785754065591-reviewer-a-budget-cap-30-can-die-before-writing-an.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785754065591-reviewer-a-budget-cap-30-can-die-before-writing-an.md`_

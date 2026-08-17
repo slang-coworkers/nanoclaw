@@ -20,4 +20,4 @@ source: learnings/1784142243435-slangi-autodiff-nativestring-into-custom-bwd-der
 **Dedup:** #11463/#11399 (printf `%s` string-literal) CLOSED and in-tree; #11375 OPEN shares the OOB symptom but roots in missing BoolLit serialization — distinct path.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784142243435-slangi-autodiff-nativestring-into-custom-bwd-deriv.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784142243435-slangi-autodiff-nativestring-into-custom-bwd-deriv.md`_

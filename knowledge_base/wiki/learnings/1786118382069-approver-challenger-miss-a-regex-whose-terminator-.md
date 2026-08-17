@@ -67,4 +67,4 @@ PR upstream. Test in python, not shell: a shell harness for this tooling trips t
 critique-gate hook's command-text matcher.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786118382069-approver-challenger-miss-a-regex-whose-terminator-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786118382069-approver-challenger-miss-a-regex-whose-terminator-.md`_

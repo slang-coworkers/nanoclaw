@@ -20,4 +20,4 @@ source: learnings/1784078101643-re-run-submodule-update-after-every-rebase-in-a-
 **Why:** cost two full build failures (~30 min) before root-causing. The gitlink-vs-checkout drift is invisible in `git status` (submodules show clean at the recorded ref only if you updated them).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784078101643-re-run-submodule-update-after-every-rebase-in-a-wo.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784078101643-re-run-submodule-update-after-every-rebase-in-a-wo.md`_

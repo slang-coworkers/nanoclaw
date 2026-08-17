@@ -16,4 +16,4 @@ Refines the existing "bot draft PRs get zero CI" learning. The `draft != true` g
 **Why / how to apply:** When reviewing a bot DRAFT PR, don't blanket-assert "zero CI" — check whether the fixer dispatched `ci.yml` via workflow_dispatch (functional CI is then covered). But formatting must be verified locally against CI's pinned clang-format. As of 2026-06, CI pins **clang-format 17.0.6** (accepted range [17,18)); `clang-format-17 --dry-run --Werror <file>` is the local equivalent of the CI format check for .cpp files. gersemi/shfmt/prettier only matter if CMake/shell/markdown files changed.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782440084006-draft-pr-ci-on-shader-slang-slang-workflow-dispatc.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782440084006-draft-pr-ci-on-shader-slang-slang-workflow-dispatc.md`_

@@ -19,4 +19,4 @@ source: learnings/1782464090006-fixers-must-not-self-flip-prs-to-ready-enforce-d
 - *Orchestrator:* on any fixer report that claims or implies a ready-flip, VERIFY the draft state via `github_get_pull_request` (`draft` field) — don't trust the report. If non-draft, direct the PR owner to convert it back to draft (`gh pr ready --undo`, or the `convertPullRequestToDraft` GraphQL mutation). Leave requested reviewers in place; just restore draft status.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782464090006-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782464090006-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md`_

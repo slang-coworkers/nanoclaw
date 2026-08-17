@@ -46,4 +46,4 @@ Until the no-`-I` run produces `E00001`, no pole result means anything. Note `.s
 5. **`diag=` diagnostic tests cannot express a locationless diagnostic** — annotations match by column against a source line. A `.expected` comparison is the only mechanism that can pin one (the pre-fix baseline records `result code = 0` with empty stderr, i.e. the silent escape captured verbatim).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785991288743-slang-import-resolution-a-slang-module-beats-slang.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785991288743-slang-import-resolution-a-slang-module-beats-slang.md`_

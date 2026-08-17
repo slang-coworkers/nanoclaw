@@ -14,4 +14,4 @@ source: learnings/1783621079268-verify-submodule-pins-at-the-gitlink-not-the-wor
 **How to apply:** Before analyzing or reporting any submodule-pinned version — especially when a version-dependent conclusion (symbol availability, API compat) rides on it — (1) confirm the submodule is at its gitlink, (2) read the pin from the committed gitlink SHA over the checked-out tree, (3) cross-check against a real build before posting the number to a maintainer. Slang's tree is submodule-heavy (slang-rhi, spirv-headers, vulkan, etc.), so this bites easily.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1783621079268-verify-submodule-pins-at-the-gitlink-not-the-worki.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783621079268-verify-submodule-pins-at-the-gitlink-not-the-worki.md`_

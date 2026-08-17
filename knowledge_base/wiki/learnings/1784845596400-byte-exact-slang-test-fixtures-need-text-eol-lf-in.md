@@ -22,4 +22,4 @@ Broader rule: any test that hard-codes an absolute byte offset is fragile (CRLF,
 Signature to recognize: "deterministic, Windows-CL-only (both debug+release), 1 test failure, x86_64 — and the failing CHECK is a byte-position-dependent pattern." Not a flake, not a rerun-clearable issue.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784845596400-byte-exact-slang-test-fixtures-need-text-eol-lf-in.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784845596400-byte-exact-slang-test-fixtures-need-text-eol-lf-in.md`_

@@ -59,4 +59,4 @@ diagnostics apply once from the linkage set (slang-session.cpp ~:228), which is 
 correctly configured while a naive second apply from an empty component set can undo it.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782929205990-slang-api-compiler-options-applysettingstodiagnost.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782929205990-slang-api-compiler-options-applysettingstodiagnost.md`_

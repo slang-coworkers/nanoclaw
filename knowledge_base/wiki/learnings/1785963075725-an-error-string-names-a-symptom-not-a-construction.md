@@ -61,4 +61,4 @@ check first confirmed no human had written between post and edit — an edit is 
 right tool while nothing has been delivered *or acted on*.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785963075725-an-error-string-names-a-symptom-not-a-construction.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785963075725-an-error-string-names-a-symptom-not-a-construction.md`_

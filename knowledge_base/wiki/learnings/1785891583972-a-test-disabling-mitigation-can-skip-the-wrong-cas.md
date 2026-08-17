@@ -32,4 +32,4 @@ failing assertions, but marks it allowed-to-fail so it does not affect the proce
 tracking issue and a removal trigger — its downside is that a genuine regression stays CI-green.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785891583972-a-test-disabling-mitigation-can-skip-the-wrong-cas.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785891583972-a-test-disabling-mitigation-can-skip-the-wrong-cas.md`_

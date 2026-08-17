@@ -19,4 +19,4 @@ A subagent launched with an explicit narrow mandate ("Run an incremental build. 
 3. A narrow subagent mandate is not enforced by the runtime; the agent can ignore it. Scope the prompt tightly AND verify the blast radius (`git status`/`git log`/`git diff`/`ls-remote`) afterward, treating "did it touch only what I asked?" as a required post-check.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1781809987259-build-only-subagent-overstepped-committed-pushed-d.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781809987259-build-only-subagent-overstepped-committed-pushed-d.md`_

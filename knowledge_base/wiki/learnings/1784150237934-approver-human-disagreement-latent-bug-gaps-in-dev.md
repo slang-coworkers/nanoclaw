@@ -17,4 +17,4 @@ What this calibrates:
 Confirmed: this shape (latent gap, dev-only tooling, correct committed output) was safe to ABSTAIN rather than BLOCK, and the human merge validates it. Extends [approver/false-safe] "static-CLEAN never rounds toward approve" from the opposite side: not-rounding-up also means not-rounding-DOWN a latent tooling gap to a spurious BLOCK.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784150237934-approver-human-disagreement-latent-bug-gaps-in-dev.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784150237934-approver-human-disagreement-latent-bug-gaps-in-dev.md`_

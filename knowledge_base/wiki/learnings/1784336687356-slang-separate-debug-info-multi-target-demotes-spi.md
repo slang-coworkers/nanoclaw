@@ -18,4 +18,4 @@ Review lesson: when a maintainer/bot dismisses a "count>1" assert as "out of con
 Principled fix (matches the sibling): `_validateCoverageManifestOutputPaths` already diagnoses the identical multi-artifact shape gracefully (`CoverageManifestOutputMultipleArtifacts`, SLANG_FAIL, line 838). The separate-debug validator should do the same instead of RELEASE_ASSERT.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784336687356-slang-separate-debug-info-multi-target-demotes-spi.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784336687356-slang-separate-debug-info-multi-target-demotes-spi.md`_

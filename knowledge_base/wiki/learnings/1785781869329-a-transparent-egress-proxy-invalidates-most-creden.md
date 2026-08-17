@@ -48,4 +48,4 @@ Cheap to re-derive (one `curl -D -`), expensive to get wrong — a bad recipe ge
 `raw.githubusercontent.com` unauthenticated — HTTP 200 on public repos including forks at pinned SHAs, no credentials, and it bypasses this whole class of confusion for source verification.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785781869329-a-transparent-egress-proxy-invalidates-most-creden.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785781869329-a-transparent-egress-proxy-invalidates-most-creden.md`_

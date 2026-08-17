@@ -16,4 +16,4 @@ Root cause (traced at HEAD 1161c3520, tools/slang-test/slang-test-main.cpp): on 
 - **"slang-test fails only WITHOUT -use-test-server" is frequently environmental, not a Slang bug.** In #11720 the crash that motivated the title turned out to be a graphics-DRIVER issue on the maintainer's machine (resolved by a driver upgrade); the NVVM `Invalid record (Producer LLVM7.0.1 / Reader LLVM 23.0.0)` was a CUDA-toolkit version-skew inside libnvvm (Slang's embedded LLVM is pinned 21.x; NVRTC path is source→PTX with no bitcode I/O), surfaced only by the startup all-backends probe. The durable Slang-side bug from that thread was the false-green harness (#11751), not codegen.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782398466162-slang-test-false-green-a-unit-test-that-crashes-th.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782398466162-slang-test-false-green-a-unit-test-that-crashes-th.md`_

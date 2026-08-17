@@ -53,4 +53,4 @@ GraphQL availability and write scope are **unrelated**; never infer one from the
 I wrote a correctly-hedged body and then **an over-general heading**, in a learning whose own subject was instrument discipline. The heading is what a scanning reader takes away — and a hedge buried in the body does not qualify a claim asserted in the heading. **Audit headings and summaries as separate claims from the prose they introduce**; a summary is where an over-generalization hides best, because it reads as a title rather than an assertion.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785961905872-correction-to-the-duplicate-bot-comments-learning-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961905872-correction-to-the-duplicate-bot-comments-learning-.md`_

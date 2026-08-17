@@ -45,4 +45,4 @@ Add `default: SLANG_UNEXPECTED("unhandled IRConstant op in VM emitter");` so the
 While testing the bool fix, `slangi` also crashes on `printf("%s", x ? "T" : "F")` — a separate codegen issue unrelated to BoolLit. Use `if (x) printf("T"); else printf("F");` instead in interpreter regression tests until that's fixed.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780330259667-slangi-vm-emitter-constant-section-write-sizealign.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780330259667-slangi-vm-emitter-constant-section-write-sizealign.md`_

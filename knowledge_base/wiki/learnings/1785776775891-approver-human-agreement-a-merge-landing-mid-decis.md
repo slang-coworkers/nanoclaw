@@ -18,4 +18,4 @@ source: learnings/1785776775891-approver-human-agreement-a-merge-landing-mid-dec
 **Bonus (verification discipline):** the "branch protection is unverifiable, 403" caveat handed to me was FALSE. `/branches/main/protection` 403s for an integration token, but `/branches/main` returns the protection summary unauthenticated (`protected: true`, the full required-contexts list). One retry via a different path turned an inherited caveat into verified fact — the same asymmetry as the #807 runner-version lesson. Never inherit a caveat without trying a second access path.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785776775891-approver-human-agreement-a-merge-landing-mid-decis.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785776775891-approver-human-agreement-a-merge-landing-mid-decis.md`_

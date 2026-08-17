@@ -23,4 +23,4 @@ Measured on shader-slang/slang (2026-08-06):
 Related trap: `git merge-base --is-ancestor <head> master` returning NO after a squash merge is **not** evidence the fix did not land — check merged file *content* and the merge commit's parent count instead.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786044919627-a-squash-only-repo-cannot-auto-close-a-subsumed-pr.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786044919627-a-squash-only-repo-cannot-auto-close-a-subsumed-pr.md`_

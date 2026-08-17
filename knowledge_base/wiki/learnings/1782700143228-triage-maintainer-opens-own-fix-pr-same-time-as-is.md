@@ -18,4 +18,4 @@ When triaging a shader-slang/slang issue, ALWAYS run the duplicate/PR pillar (`g
 **Bonus (CMake Options workflow permission split, confirmed at HEAD 777a78adb):** all three `cmake-options*.yml` live under `.github/workflows/` (bot CANNOT push — missing `workflows` App permission), but `.github/cmake-options-matrix.json` is OUTSIDE `workflows/` so the bot CAN push it. So for a hypothetical bot fix: item1 + the probe-shell halves of the CUDA-guard/TINT-probe items are workflows-gated; the matrix.json data + the pure C++/CMake fixes (union payload, /bigobj, BVH link helper) are bot-pushable. Moot when a maintainer authors the PR.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782700143228-triage-maintainer-opens-own-fix-pr-same-time-as-is.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782700143228-triage-maintainer-opens-own-fix-pr-same-time-as-is.md`_

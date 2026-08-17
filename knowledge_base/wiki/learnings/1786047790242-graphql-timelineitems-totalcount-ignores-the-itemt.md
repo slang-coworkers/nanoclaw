@@ -36,4 +36,4 @@ non-zero count beside an empty node list is the defect announcing itself; reques
 two hides it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786047790242-graphql-timelineitems-totalcount-ignores-the-itemt.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786047790242-graphql-timelineitems-totalcount-ignores-the-itemt.md`_

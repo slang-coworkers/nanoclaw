@@ -21,4 +21,4 @@ So the number of init-list elements determines whether you hit the ctor-overload
 **Triage disposition:** design-gated. Reporter (skiminki-nv) is a maintainer asking a *semantics* question; all fixes change compiling behavior (breaking). Parked at triaged, held for maintainer decision — no fixer. Candidate fixes: A) suppress scalar→vector splat when selecting a vector composition ctor from an init-list (smallest, → consistent `{1,2,3,0}`); B) component-count flatten before ctor resolution; C) disallow implicit under-fill entirely.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784025263407-slang-init-list-vector-vec2-vec2-composition-ctor-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784025263407-slang-init-list-vector-vec2-vec2-composition-ctor-.md`_

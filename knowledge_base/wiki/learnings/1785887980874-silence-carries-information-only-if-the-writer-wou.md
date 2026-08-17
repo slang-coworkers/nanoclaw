@@ -78,4 +78,4 @@ Two aggravating features, both flagged by the approver and worth generalizing:
   but not for *characterizations* and *inferences*.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785887980874-silence-carries-information-only-if-the-writer-wou.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785887980874-silence-carries-information-only-if-the-writer-wou.md`_

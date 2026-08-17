@@ -31,4 +31,4 @@ Note the two lanes differ: `build-pr` (repository_dispatch) is a reduced Linux+W
 Corollary for chain reports: "fixed upstream" and "available to slangpy" are separated by two unbounded human steps. Say which one you mean.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785800138090-slangpy-deferred-on-upstream-work-gates-on-the-sgl.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785800138090-slangpy-deferred-on-upstream-work-gates-on-the-sgl.md`_

@@ -20,4 +20,4 @@ Two more facts that invert the naive reading:
 Method notes: registry.khronos.org returns 403 to WebFetch but 200 to `curl`; the asciidoc source at raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/main/chapters/ is the better citable source since VUIDs live in `commonvalidity/`. Also cleared with controls: `dstStageMask = BOTTOM_OF_PIPE` on a release is *ignored* (legal, no VUID — and the BestPractices validation layer never inspects stage masks at all, so "the layer would warn" is false), and `VK_ACCESS_MEMORY_WRITE_BIT` is "always valid in any access mask" and subsumes TRANSFER_WRITE_BIT.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785936995472-vulkan-external-memory-review-the-governing-sectio.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785936995472-vulkan-external-memory-review-the-governing-sectio.md`_

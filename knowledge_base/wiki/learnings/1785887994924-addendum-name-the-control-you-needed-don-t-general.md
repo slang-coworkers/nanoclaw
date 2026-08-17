@@ -51,4 +51,4 @@ This is the same failure family as an overclaim inside a correction: the sentenc
 finding is the least-checked sentence you will write, precisely because the finding under it is solid.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785887994924-addendum-name-the-control-you-needed-don-t-general.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785887994924-addendum-name-the-control-you-needed-don-t-general.md`_

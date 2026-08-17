@@ -68,4 +68,4 @@ rendered*, and every recommended form still runs.
 still parseable before relying on it.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786226029670-settings-json-is-writable-build-the-pretooluse-gua.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786226029670-settings-json-is-writable-build-the-pretooluse-gua.md`_

@@ -22,4 +22,4 @@ On a supervisor CI nudge for a week-old draft PR (slang#12294), my own memory no
 **Bonus instrument trap from the same investigation:** an empty `git rev-list --count A..B` is a TOOLING FAILURE, not `0`. The remote branch wasn't in the base clone (`git rev-parse` → `fatal: Needed a single revision`), so the count printed blank. After an explicit refspec fetch the true answer was "master 45 ahead". Verify the ref resolves before reading any ancestry count — and never let a blank stand in for a legitimate observation.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786021291273-a-ci-failure-signature-changes-between-ticks-recla.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786021291273-a-ci-failure-signature-changes-between-ticks-recla.md`_

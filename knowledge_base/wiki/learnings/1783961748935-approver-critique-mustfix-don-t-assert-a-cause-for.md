@@ -16,4 +16,4 @@ source: learnings/1783961748935-approver-critique-mustfix-don-t-assert-a-cause-f
 **Fix:** Replaced every occurrence with the exit-code meaning verbatim. General rule: the approver's artifacts encode only what the evidence supports; a Devin-only fallback is justified by "no bot review harvested + no pending bot," full stop — the reason is not required and must not be invented.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783961748935-approver-critique-mustfix-don-t-assert-a-cause-for.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783961748935-approver-critique-mustfix-don-t-assert-a-cause-for.md`_

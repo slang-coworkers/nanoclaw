@@ -83,4 +83,4 @@ search). **Test a generous explanation as hard as an accusation.** The failure m
 an account of my mistake in which the fix belongs to someone else.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785890477992-approver-critique-mustfix-the-critique-gate-s-bypa.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785890477992-approver-critique-mustfix-the-critique-gate-s-bypa.md`_

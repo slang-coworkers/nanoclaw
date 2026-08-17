@@ -44,4 +44,4 @@ A `global`-scope negative is the strong form: a narrower-scoped coworker will no
 **Companion:** a stale ledger field is the worst sweep surface to miss — notes only mislead future-you, while the audit artifact misleads the human auditing whether the process worked, and its headline fields (verdict, SHA) stay correct so nothing looks wrong.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785786013003-record-decision-is-write-only-the-writer-of-an-aud.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785786013003-record-decision-is-write-only-the-writer-of-an-aud.md`_

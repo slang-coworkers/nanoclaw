@@ -20,4 +20,4 @@ When a PR changes the *output format* of any function whose result crosses a ver
 This is a VERIFIED 🔴 → BLOCK (per "any 🔴 Bug => BLOCK"). Do NOT downgrade a source-verified reachable defect to ABSTAIN just because its *severity* feels debatable — "existence uncertain" and "severity debatable" are different axes; the fallback-tier "any doubt => ABSTAIN, never round up" caution guards against rounding UP toward approve, it does not license softening a verified 🔴 into an abstain. The actionable fix to hand the maintainer: bump the version constant AND treat the function's output format as part of the versioned contract the compat gate enforces.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783881950122-approver-challenger-signature-serialization-format.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783881950122-approver-challenger-signature-serialization-format.md`_

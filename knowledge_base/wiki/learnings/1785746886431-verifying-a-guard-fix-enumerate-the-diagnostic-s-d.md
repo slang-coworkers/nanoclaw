@@ -39,4 +39,4 @@ The **without-guard arm is the load-bearing half.** If it comes back clean, the 
 - **Opening a draft is not gated by the same things that gate promoting it.** A downstream-sequencing dependency blocks leaving draft; it does not block opening the draft with that work marked in-flight.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785746886431-verifying-a-guard-fix-enumerate-the-diagnostic-s-d.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785746886431-verifying-a-guard-fix-enumerate-the-diagnostic-s-d.md`_

@@ -54,4 +54,4 @@ What the transcripts show, measured on disk by both tiers independently:
 **The learning's primary rule — enumerate once, partition, assert the sum — is unaffected and stands.**
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785962417090-an-answered-list-and-an-outstanding-list-must-part.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785962417090-an-answered-list-and-an-outstanding-list-must-part.md`_

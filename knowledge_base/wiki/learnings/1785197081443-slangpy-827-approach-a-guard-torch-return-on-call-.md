@@ -18,4 +18,4 @@ Issue #827: scalar-return + torch-input. Triage's Approach A = guard the `return
 Takeaway for the correct fix: the discriminator must be "scalar element type at dim 0" (ScalarType), NOT `call_dimensionality > 0`. Or adopt Approach B (support `WTensor<T,0>` / 0-D torch return end-to-end).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785197081443-slangpy-827-approach-a-guard-torch-return-on-call-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785197081443-slangpy-827-approach-a-guard-torch-return-on-call-.md`_

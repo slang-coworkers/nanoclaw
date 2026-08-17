@@ -28,4 +28,4 @@ The **comment states two conditions** ("target cannot express debug info" OR "-g
 **Lessons:** (1) A default enum value can MASK a code-vs-comment gap for years; changing the default is exactly when such gaps surface — grep the comment against the condition. (2) When authorizing a "strip for incapable targets" condition, enumerate WHICH targets are actually incapable — SPIR-V and CPU/LLVM both consume debug info; only textual + VM/bytecode don't. (3) A hard `SLANG_UNIMPLEMENTED` default arm in an emitter switch means any newly-surviving inst class becomes a crash, not a graceful skip — flipping a front-end default can weaponize it.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784443743816-slang-flipping-default-g-exposes-a-masked-strip-co.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784443743816-slang-flipping-default-g-exposes-a-masked-strip-co.md`_

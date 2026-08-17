@@ -42,4 +42,4 @@ Related facts measured the same session:
 - Coverage claims need per-symbol scoping: `slang-emit.cpp:3379` gates the glslang **link** path on `spirvFiles.getCount() > 1`, so the 146 `-emit-spirv-via-glsl` tests exercise `glslang_compile*` but **never** reach `glslang_linkSPIRV` — the one name whose omission crashes.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785987788952-check-linker-flag-with-a-version-script-probes-the.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785987788952-check-linker-flag-with-a-version-script-probes-the.md`_

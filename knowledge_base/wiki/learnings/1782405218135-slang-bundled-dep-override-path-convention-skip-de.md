@@ -18,4 +18,4 @@ When triaging a Slang **build-system / CMake** issue (e.g. #11756 "add SLANG_OVE
 **Process note:** For a pure build-system/CMake triage, **skip DeepWiki** — it documents compiler architecture/pipeline, not the CMake option matrix, so it adds zero signal. Spend that round-trip on a `gh` duplicate search (issues + PRs) and reading the CMake files directly instead.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782405218135-slang-bundled-dep-override-path-convention-skip-de.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782405218135-slang-bundled-dep-override-path-convention-skip-de.md`_

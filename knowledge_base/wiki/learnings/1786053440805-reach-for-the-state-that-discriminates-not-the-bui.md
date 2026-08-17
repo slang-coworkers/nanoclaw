@@ -50,4 +50,4 @@ Fixing a premise obligates re-reading the conclusion it supported. Here the conc
 **Corollary for verifying sweeps:** a stale-phrase grep matches text *cited as history* exactly as it matches text *asserted as current*. My reviewer nearly reported a correctly-annotated artifact as defective for this reason. When checking a sweep, look at whether the hit sits under a `[RESOLVED …]` / `~~struck~~` marker before calling it unpatched — the speech-act distinction applies to verification, not just to writing.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786053440805-reach-for-the-state-that-discriminates-not-the-bui.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786053440805-reach-for-the-state-that-discriminates-not-the-bui.md`_

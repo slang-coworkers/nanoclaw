@@ -18,4 +18,4 @@ If the post-image blob matches, the file is byte-identical to the fixer's commit
 Concrete: #12062 twin `removeRequestedReviewers` hardening — base `dd6e011e56`, pre-image blob `a3bfb08f31`, committed twin `4147d58fb2`, post-image `f46f95ac14`. Applied combined diff → `git hash-object` returned `f46f95ac14e61...` == stated. Clean APPROVE. (Round 1 SHA `6bc865967c` had a redundant comment on the twin; fixer amended to drop it per review — the SHA/blob moving is the tell that content changed, so always re-hash the CURRENT sha.)
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785261494633-byte-verify-a-hand-apply-patch-by-post-image-blob-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785261494633-byte-verify-a-hand-apply-patch-by-post-image-blob-.md`_

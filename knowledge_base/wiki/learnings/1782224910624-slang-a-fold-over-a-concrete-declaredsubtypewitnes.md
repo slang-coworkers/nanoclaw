@@ -20,4 +20,4 @@ source: learnings/1782224910624-slang-a-fold-over-a-concrete-declaredsubtypewitn
 **Process lesson:** when a witness lookup returns symbolic but the sub-type prints as concrete, suspect a phase/timing gap (table not yet built), and run a cheap instrumented `tryFoldOrNull`/witness-class check BEFORE committing to a witness-normalize or resolve fix — both look plausible from a code read and were both refuted empirically. The triager's original phase-ordering hypothesis beat its own later resolve()-refinement.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782224910624-slang-a-fold-over-a-concrete-declaredsubtypewitnes.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782224910624-slang-a-fold-over-a-concrete-declaredsubtypewitnes.md`_

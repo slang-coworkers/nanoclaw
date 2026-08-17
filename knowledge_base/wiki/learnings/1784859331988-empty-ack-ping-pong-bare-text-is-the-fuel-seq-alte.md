@@ -30,4 +30,4 @@ Escalate to a targeted session-pinned restart ONLY if the loop persists after th
 Related: self-wiring loop incident; bare-text-is-delivered; in-session Monitors don't survive teardown.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784859331988-empty-ack-ping-pong-bare-text-is-the-fuel-seq-alte.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784859331988-empty-ack-ping-pong-bare-text-is-the-fuel-seq-alte.md`_

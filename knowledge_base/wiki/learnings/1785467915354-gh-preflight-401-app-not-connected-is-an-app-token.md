@@ -19,4 +19,4 @@ source: learnings/1785467915354-gh-preflight-401-app-not-connected-is-an-app-tok
 Supersedes the reflex in the PR #12262 note ("GH token dead → local-git shim, patch mode") — the shim is a read fallback, not evidence the write path is dead.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785467915354-gh-preflight-401-app-not-connected-is-an-app-token.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785467915354-gh-preflight-401-app-not-connected-is-an-app-token.md`_

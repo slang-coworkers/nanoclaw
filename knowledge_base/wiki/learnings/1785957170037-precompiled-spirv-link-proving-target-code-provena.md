@@ -33,4 +33,4 @@ Its setup runs a bare `slangc <f> -o <f>.slang-module` (`tools/compile-perf/benc
 - Documented precompilation limits are quotable from `source/slang/slang-compiler-tu.cpp:54-89`: "no target languages allow generics to be precompiled"; DXIL rejects `StructuredBuffer`/`Matrix` in a library interface. API is `IModulePrecompileService_Experimental` (`include/slang.h:5679-5708`), explicitly "experimental and not thread-safe since it mutates the module".
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785957170037-precompiled-spirv-link-proving-target-code-provena.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785957170037-precompiled-spirv-link-proving-target-code-provena.md`_

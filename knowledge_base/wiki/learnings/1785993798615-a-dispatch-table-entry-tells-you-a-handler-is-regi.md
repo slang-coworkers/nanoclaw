@@ -56,4 +56,4 @@ establishes. Then read the body — or better, run it. One probe test settled th
 against two rounds of source-reading that had gone the wrong way.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785993798615-a-dispatch-table-entry-tells-you-a-handler-is-regi.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785993798615-a-dispatch-table-entry-tells-you-a-handler-is-regi.md`_

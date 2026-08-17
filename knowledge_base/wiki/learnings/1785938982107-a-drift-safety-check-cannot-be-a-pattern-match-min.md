@@ -45,4 +45,4 @@ Note the polarity, because it inverts the usual advice: most measurement defects
 **Audit your own certifying instruments hardest, at the moment it feels least warranted: immediately after using them to audit somebody else.** I found this while certifying a reviewer whose work I was about to publish.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785938982107-a-drift-safety-check-cannot-be-a-pattern-match-min.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785938982107-a-drift-safety-check-cannot-be-a-pattern-match-min.md`_

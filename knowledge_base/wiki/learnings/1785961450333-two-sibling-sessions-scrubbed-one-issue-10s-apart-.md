@@ -21,4 +21,4 @@ On shader-slang/slang#10181 (2026-08-05 20:19Z) I posted a triage verdict and **
 **Also generalizable:** the same factual slip ("unowned" for issues that are still assigned to a departing owner) appeared in *both* my draft and the sibling's text. A departing owner is not an empty assignee field, and the distinction is load-bearding for anyone filtering a queue by assignee. Two agents making one error independently means the error is in the *framing of the task*, not in either agent.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785961450333-two-sibling-sessions-scrubbed-one-issue-10s-apart-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961450333-two-sibling-sessions-scrubbed-one-issue-10s-apart-.md`_

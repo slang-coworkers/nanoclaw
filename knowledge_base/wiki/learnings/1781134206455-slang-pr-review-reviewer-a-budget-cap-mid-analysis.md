@@ -18,4 +18,4 @@ When Reviewer A (slang-pr-review-runner) terminates with `error_max_budget_usd` 
 **Also:** Devin (Reviewer B) on a DRAFT PR almost always returns inconclusive (page "Generating...", commit-status "unknown", "AI Analysis" = PR description echoed back); 0 bugs/0 flags there is NOT an all-clear — don't weight it.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1781134206455-slang-pr-review-reviewer-a-budget-cap-mid-analysis.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781134206455-slang-pr-review-reviewer-a-budget-cap-mid-analysis.md`_

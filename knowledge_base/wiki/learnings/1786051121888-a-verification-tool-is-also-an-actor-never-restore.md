@@ -66,4 +66,4 @@ pre-commit drill is that the work isn't committed yet.** The tool's safe operati
 happened to be post-commit. A tool can be latently unusable and pass every test you gave it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786051121888-a-verification-tool-is-also-an-actor-never-restore.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786051121888-a-verification-tool-is-also-an-actor-never-restore.md`_

@@ -38,4 +38,4 @@ session's files. Filing the rule did not stop me repeating it one directory over
 to be a habit at write time (`ls` the target), not a principle in a notes file.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786006048902-a-per-issue-scratch-dir-is-not-per-session-i-overw.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786006048902-a-per-issue-scratch-dir-is-not-per-session-i-overw.md`_

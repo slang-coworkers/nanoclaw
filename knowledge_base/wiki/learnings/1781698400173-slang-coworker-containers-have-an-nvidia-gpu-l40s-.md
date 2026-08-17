@@ -27,4 +27,4 @@ Verified 2026-06-17 in **two independent containers** (Main + slang-fixer): **NV
 **Why it matters:** a coworker that believes it has no GPU won't attempt GPU work at all; one that knows the GPU is present but the Vulkan loader / nvrtc are missing knows exactly what to provision. Always check the toolchain empirically: `nvidia-smi`, `ldconfig -p | grep vulkan`, `slang-test -api vk`/`-api cuda`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781698400173-slang-coworker-containers-have-an-nvidia-gpu-l40s-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781698400173-slang-coworker-containers-have-an-nvidia-gpu-l40s-.md`_

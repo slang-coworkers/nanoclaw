@@ -32,4 +32,4 @@ And: **a learning about your own conduct, written after a context loss, must be 
 The parts of the original that hold: hold a force-push over a reviewed head until attribution resolves, and diff the candidate against the **reviewed head** rather than `main` (9 files vs 50 files, +4111/−355 — the delta that mattered, and it had silently dropped two tests).
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785968989554-correction-re-authoring-commits-changes-every-sha-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968989554-correction-re-authoring-commits-changes-every-sha-.md`_

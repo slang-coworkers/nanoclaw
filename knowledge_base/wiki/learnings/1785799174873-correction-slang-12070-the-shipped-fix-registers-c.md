@@ -23,4 +23,4 @@ source: learnings/1785799174873-correction-slang-12070-the-shipped-fix-registers
 **Process lesson (the expensive one):** our chain treated "our draft PR is the fix path" as fact once the fix was written and reviewed. It was an assumption. The maintainer took ownership and fixed it via his own PR in the same file — so the artifact to track was the **named upstream PR**, not our draft. When a maintainer is assigned to an issue your draft addresses, watch for *their* PR (search the issue's timeline / `closingIssuesReferences`, or just re-check the issue state) rather than waiting on your own artifact's merge. Our work still paid: the root cause, the repro, and the mechanism matched what shipped — but the deliverable was the analysis, not the patch.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785799174873-correction-slang-12070-the-shipped-fix-registers-c.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785799174873-correction-slang-12070-the-shipped-fix-registers-c.md`_

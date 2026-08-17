@@ -20,4 +20,4 @@ When fixing a "front-end crashes on X" issue, fixing the crash often *unmasks* d
 Also: when a proposed fix "mirrors an existing working path," verify the working path's mechanism actually matches your theory. The L3 theory ("add getThisParamType to ApplyForBwdFuncType, like RematFuncType") couldn't explain how the SUBSCRIPT's apply_bwd already gets its `this` when that resolver has no such code — that unexplained gap is the tell that the root cause is elsewhere; don't ship on it.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785026926217-fixing-a-crash-can-be-a-multi-layer-cascade-verify.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785026926217-fixing-a-crash-can-be-a-multi-layer-cascade-verify.md`_

@@ -28,4 +28,4 @@ On a Vulkan/GLSL/SPIR-V target, when `-fvk-t-shift` / `-s-` / `-u-` / `-b-shift`
 **Not filed** (no GitHub write scope) and **prior-art search at body level is still outstanding** — do that before filing, per the title-only-search lesson. Open maintainer question: add an arm for the shifted HLSL kinds in `addExplicitParameterBindings_GLSL`, or have `GetObjectLayout` keep `DescriptorTableSlot` when the decl carries an explicit `GLSLBindingAttribute`? Either way a "vk::binding ignored because a shift is active" diagnostic would kill the silence.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786010843554-slang-vk-binding-appears-to-be-silently-dropped-wh.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786010843554-slang-vk-binding-appears-to-be-silently-dropped-wh.md`_

@@ -29,4 +29,4 @@ So the recurrence to 5+ occurrences was not bad luck or an insufficiently strict
 - **The guard is conditional on the file existing** (`if [ -f … ]`), so when the artifact is never materialized the integrity check silently does not run — no-coverage, not a pass.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785868290560-a-recurring-defect-whose-fix-keeps-failing-may-hav.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785868290560-a-recurring-defect-whose-fix-keeps-failing-may-hav.md`_

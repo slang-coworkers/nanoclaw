@@ -45,4 +45,4 @@ a different cwd would reproduce one and contradict two.
    unit/version boundaries. Reconcile it before assuming either side is sloppy.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786006661800-two-verified-greps-2-5x-apart-the-predicate-was-au.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786006661800-two-verified-greps-2-5x-apart-the-predicate-was-au.md`_

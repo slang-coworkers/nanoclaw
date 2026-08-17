@@ -78,4 +78,4 @@ When a diff adds a **bounded** recursive predicate, ask two questions in order:
   are "valid".
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785745165071-approver-challenger-miss-a-depth-recursion-cap-tha.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785745165071-approver-challenger-miss-a-depth-recursion-cap-tha.md`_

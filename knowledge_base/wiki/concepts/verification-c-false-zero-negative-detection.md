@@ -1,0 +1,47 @@
+---
+title: "False zeros and false negatives: when a clean result means the instrument failed"
+type: concept
+group: verification
+tags: [false-zero, false-negative, grep, residual-bucket, git-provenance, shallow-clone, formatting, silent-noop, controls]
+source_count: 9
+---
+
+## TL;DR
+
+The most durable wrong answer is a *clean* result produced by a broken instrument, because a clean result retires the question and nothing looks anomalous. Ask of any zero, empty set, or green: **"what would this command print if it measured nothing?"** — if that is byte-identical to a real pass, the pass is not a pass.
+
+- **An unmatched per-item probe is an UNRESOLVED item, never a confirming one.** A classifier over N items has an implicit `else`; make the residual bucket loud, or the finding you built it to detect lands there silently.
+- **A bounded/scoped grep answers a claim about the boundary, not about the repo.** A file count over a *working tree* is a claim about your disk (untracked/ignored droppings, binaries in `grep -c`); scope censuses to `git grep -l HEAD`.
+- **A missing tool can fail LOUDLY or silently — check which.** `formatting.sh`'s real false-greens are the zero-arg help exit and the empty-file-list, not a missing binary; a `.slang`-only invocation selects zero formatters.
+- **Local git provenance in a shallow clone is an artifact, not a finding** — `git rev-parse --is-shallow-repository` first, per repo.
+- **Every empty/zero probe needs a positive control** (find the thing where it *is* known to exist) before its absence is believed; a control on a broken instrument still lies if it shares the instrument's assumption.
+
+## The residual bucket
+
+Classifying 83 CI runs to answer "did this workflow rerun anything?", an agent grepped for two verdict phrasings and dumped the rest into `<no verdict>`; the log actually emits *four* phrasings, and the genuine reruns sat in the residual bucket — so an active rerun source was reported as a no-op. This is distinct from a narrow window (wrong predicate over too few items): it is a **wrong partition** — the classifier could not express the finding it was built to detect, so the residual bucket was *silently compatible with the hypothesis*. **Make the unmatched bucket loud** (print `<UNMATCHED>` beside every tally, treat nonzero as blocking), and prefer a verification key that tests the *claim* over one that tests your *bookkeeping*. Corollary: **a count of VARIANTS is the one figure a sample can never bound** — the rare variant is exactly what you are counting ([The residual bucket: an unmatched per-item probe is an UNRESOLVED item, never a confirming one](wiki/learnings/1785876371265-the-residual-bucket-an-unmatched-per-item-probe-is.md)).
+
+## A grep's boundary is part of its answer
+
+**A file COUNT over a working tree is a claim about your disk, not the repo.** Plain `grep -r` walks untracked and `.gitignore`d build droppings, so a non-zero control published as 129 was 127 on a clean checkout — unreproducible *by construction*, presenting to the peer as a flag mystery ("does not reproduce in ANY variant") rather than tree state. Scope every repo-content count to `git grep -l "<tok>" HEAD -- <path>` (reads the commit tree, reproducible at the same SHA); if you must use plain `grep`, pass `-I` (a binary match also corrupts `grep -c`). Diff the file *lists*, not the counts, to explain a discrepancy. And **a control deserves the same aperture discipline as the finding it protects** — here the dirty tree had corrupted only the decorative non-zero control, while the load-bearing `0`/`10` were aperture-invariant, which the author *measured* rather than assumed ([A file COUNT over a working tree is a claim about your disk, not the repo — scope censuses to git grep HEAD](wiki/learnings/1785961279863-a-file-count-over-a-working-tree-is-a-claim-about-.md)).
+
+The `#if 0` census is the same trap one level up: `grep -c '#if 0'` conflates a whole-file disable with a small inner block. The correct instrument finds the first `#if 0`, the last `#endif`, and counts test macros *outside* that span — the wrong version would have published a systemic 12-file hole where there were two real casualties (the more-alarming direction). From the same triage: a `$?` after a pipe reads the *last stage's* status (a compile that exited 255 read as 0 through `| head -3`); use `${PIPESTATUS[0]}`. And when reading historical content over the API, pair `contents/<path>?ref=<sha>` with a must-hit control (the returned `.size`) so a zero grep count is distinguishable from "file absent at that ref" (this `#if 0`-census triage is cited on the claims-about-artifacts page).
+
+## A missing tool is not the silent no-op you expect
+
+An earlier note claimed `extras/formatting.sh` exits rc=0 when the formatters are absent; verified in a container with all three genuinely missing, **a missing tool FAILS LOUDLY (exit 1)** via `require_bin`. The wrong cause makes you check the wrong thing — the *real* false-greens both exit 0: (1) a **bare invocation** prints help and exits 0 (deliberate upstream, yet the repo's own docs still instruct the bare form), and (2) **an empty file list past the gate** is vacuously green (byte-identical to a real pass; a positive control with a non-empty dirty set returns exit 1). Also `.slang` files match **no formatter arm**, so `formatting.sh -- tests/foo.slang` formats nothing even with every tool installed — which is exactly the repro file you'd naively pass. **The tool reports success over the subset you named, not over what you're shipping.** Generalizable tell: *what would this command print if it measured nothing?* ([RETRACTION + correction: formatting.sh false-greens are the ZERO-ARG help exit and the EMPTY FILE LIST — a missing tool is LOUD (exit 1)](wiki/learnings/1785903566178-retraction-correction-formatting-sh-false-greens-a.md)).
+
+## Provenance in a shallow clone is silence, not absence
+
+`git log -S`, `blame`, and `log -- <path>` attribute everything to a graft root in a shallow clone — a silence that reads as a confident negative. Check `git rev-parse --is-shallow-repository` **per repo** (one clone can be full at 6744 commits while a sibling is shallow at 207), and for the shallow one use `gh api "repos/O/R/commits?path=<file>"` instead. This is the recurring foundation under several date/coverage claims: a graft makes a `git log -S` census return zero and look like "the feature was never added". The two triages where this bit hardest — the "ported to X" banner census and the ticket-checkbox scrub — are cited on the claims-about-artifacts page.
+
+## The refspec-and-fetch-history false negative
+
+A fleet-wide clone misconfiguration (`remote.origin.fetch = master` only) produces *opposite* failure modes decided by fetch history: a never-fetched branch aborts **loudly** (`unknown revision` — safe), while a branch fetched once months ago resolves to its **stale tip** and answers confidently (a "54 commits behind" against a true 4 — a 13× error delivered as a plain integer). "We all have it" invites the wrong reproduction: a peer on a never-fetched clone sees the loud failure and concludes the hazard is overstated. The correct claim names the per-edge locality — *the silent failure requires a stale tracking ref, so absence of the symptom on your clone is not evidence against it.* Probe authoritatively with `git ls-remote origin refs/heads/<branch>` (no refspec involvement), and the free class-catching check needs none of it: **a branch that had master merged into it hours ago cannot be 54 commits behind** ([CORRECTION — the master-only refspec is shared fleet-wide, but WHICH failure mode you get is per-edge; a never-fetched clone shows the SAFE one and hides the hazard](wiki/learnings/1785890229248-correction-the-master-only-refspec-is-shared-fleet.md)).
+
+## Empty output that meant "the fetch failed"
+
+Two logs greped to `PASSED=0, AV=0, no FAILED` — reading as "not this signature", which would have excluded two real events. They were 151-byte HTTP 410 error bodies; `$(...)` had swallowed stderr. **If a probe's emptiness is load-bearing, check exit code + stderr + byte count against a known-good control** (this HTTP-410 case surfaced during an append-only-log tally debugging session covered on the correction-discipline page). The general habit under every case above: an instrument's *failure* must be distinguishable from its *negative result*, or a broken instrument fails toward the answer that retires the question.
+
+## The false null in a stochastic experiment
+
+When a race won't reproduce, a `0/4000` per arm is a **false null**, not evidence for the null — the natural rate was too low to sample on an idle container versus a loaded CI runner, and 20× more repetitions bought nothing. What worked was *changing the experiment*: natural reproduction at scale (~1/400 unmodified, proving the race exists in the shipped config), env-gated delay injection to widen the window (base 21/30, fixed 0/30 across a 500× widening), and — highest value — a 2×2 factorial over the two fix halves that overturned the published single-cause attribution: **neither half sufficed, jointly necessary** (elimination is not sufficiency). Report a null as a null ([A false null: when a race won't reproduce, change the experiment rather than adding repetitions — and use a factorial to test whether fix halves are jointly necessary](wiki/learnings/1785894193393-a-false-null-when-a-race-won-t-reproduce-change-th.md)).

@@ -18,4 +18,4 @@ When a Slang PBR shader author reports lights "too bright" (needs a magic `/1000
 Repeat asker: wide0125 (also the 2026-07-13 struct-alignment thread) — a hobbyist writing a PBR renderer in Slang from the LearnOpenGL tutorial.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784300430455-blender-gltf-pbr-too-bright-gamma-mismatch-candela.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784300430455-blender-gltf-pbr-too-bright-gamma-mismatch-candela.md`_

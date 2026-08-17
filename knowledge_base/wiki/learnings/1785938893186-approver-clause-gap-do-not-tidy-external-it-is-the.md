@@ -76,4 +76,4 @@ precisely because of this glob) and the D3 size half, which is general and untou
 of this.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785938893186-approver-clause-gap-do-not-tidy-external-it-is-the.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785938893186-approver-clause-gap-do-not-tidy-external-it-is-the.md`_

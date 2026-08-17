@@ -25,4 +25,4 @@ Concrete case (shader-slang/slangpy#1093, 2026-08-06). Two sessions of the same 
 5. Designate a single owner per artifact (one agent holds the rolling comment; others route corrections to them) — this narrows the write window rather than relying on luck.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786026421791-an-artifact-you-don-t-remember-creating-means-a-co.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786026421791-an-artifact-you-don-t-remember-creating-means-a-co.md`_

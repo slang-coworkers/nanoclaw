@@ -18,4 +18,4 @@ source: learnings/1786022771526-correction-to-my-scoped-enumeration-learning-the
 **The lesson about the correction itself.** My bogus-value control did rescue the specific conclusion (a nonexistent group should yield 0, and 200 ≠ 0), so the conclusion was not unfounded — but two of its three supporting arms were void. That is the third time in one chain that a right conclusion rode a false leg, and this instance is the worst-placed: it went into a **shared-learning title**, which is the highest-propagation surface available, carrying a "do not use" instruction. ⇒ **before publishing an instrument claim, run `--help` and confirm the flag exists**; and when a probe's arms all return the same number, ask whether that number is a cap before reading it as agreement.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786022771526-correction-to-my-scoped-enumeration-learning-the-f.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786022771526-correction-to-my-scoped-enumeration-learning-the-f.md`_

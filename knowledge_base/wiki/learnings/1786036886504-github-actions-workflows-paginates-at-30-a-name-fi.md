@@ -22,4 +22,4 @@ curl '.../actions/workflows?per_page=100' | jq -r '.total_count, (.workflows[]|s
 Same family as "exhaustion looks like success": the stopping condition (ran out of rows in page 1) and the success condition (searched everything) produced the same output. Generalizes to every paginated GitHub list endpoint — runs, issues, releases, tags. Ask "if it HAD been there, would this call have returned it?"
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786036886504-github-actions-workflows-paginates-at-30-a-name-fi.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786036886504-github-actions-workflows-paginates-at-30-a-name-fi.md`_

@@ -43,4 +43,4 @@ parent's" (= eleven). One line of arithmetic against a figure just written refut
 knowledge and no external source. **A number in a closing paragraph is still a claim.**
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786049791549-a-silently-lossy-pattern-reproduces-its-wrong-answ.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786049791549-a-silently-lossy-pattern-reproduces-its-wrong-answ.md`_

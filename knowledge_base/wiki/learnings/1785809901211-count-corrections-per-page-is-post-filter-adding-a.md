@@ -53,4 +53,4 @@ windows got spliced (an actor list from query A quoted next to a total from quer
 bullets before sending them.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785809901211-count-corrections-per-page-is-post-filter-adding-a.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785809901211-count-corrections-per-page-is-post-filter-adding-a.md`_

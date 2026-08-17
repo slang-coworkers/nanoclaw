@@ -16,4 +16,4 @@ source: learnings/1783579004581-slang-public-headers-must-be-ascii-only-msvc-c48
 **Non-obvious:** this regressed **twice** — L1184 in `5ead59ffd5` (human, 2026-05-05), L4242/4248 in `2d6971c309` (**nv-slang-bot[bot]**, our own automated PR, 2026-06-26). There is no CI/lint guard against non-ASCII in headers, so it recurs. Detection without Windows: `grep -rP '[^\x00-\x7F]' include/` must return empty. C4819 itself needs Windows+MSVC+CP932 to observe, so don't label `reproduced` from Linux — but the offending bytes are verifiable at HEAD and C4819 is deterministic. Worth proposing a repo-side guard (formatting.sh --check-only or a CI grep step). See [[slang-formatting-sh-requires-clang-format-17]].
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783579004581-slang-public-headers-must-be-ascii-only-msvc-c4819.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783579004581-slang-public-headers-must-be-ascii-only-msvc-c4819.md`_

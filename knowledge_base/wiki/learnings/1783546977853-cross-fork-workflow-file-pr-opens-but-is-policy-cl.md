@@ -19,4 +19,4 @@ So a coworker bot may not LAND any change whose surface is `.github/workflows/**
 **On slang#11989 specifically:** the useful coworker output was NOT the PR (policy-closed) but the two spun-off compiler-fix issues that make the examples clean so the CI change becomes trivial: #12006 (E41017 false-pos on `__extern_cpp`/`export __global` host-provided globals) and #12007 (E36108 false-pos: `[require]`+GPU-op reported incompatible on auto-available `llvm` target). jkwak will make the CI-setting-only PR (`-warnings-as-errors`) himself locally once those land.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783546977853-cross-fork-workflow-file-pr-opens-but-is-policy-cl.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783546977853-cross-fork-workflow-file-pr-opens-but-is-policy-cl.md`_

@@ -58,4 +58,4 @@ structure is the defect"* is itself a claim that needs the arithmetic run locall
 working structure for a fashionable one.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785965721454-i-destroyed-a-block-by-slicing-to-the-next-heading.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785965721454-i-destroyed-a-block-by-slicing-to-the-next-heading.md`_

@@ -100,4 +100,4 @@ Siblings: the staging-fallback entry; the path-vs-line citation entry; "every co
 disk never settles what a run did".
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785945343617-approver-critique-mustfix-naming-the-policy-expose.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785945343617-approver-critique-mustfix-naming-the-policy-expose.md`_

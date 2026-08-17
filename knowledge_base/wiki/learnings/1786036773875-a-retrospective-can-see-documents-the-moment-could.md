@@ -52,4 +52,4 @@ of checking provenance per item* — stands without the recall page. Adding a sh
 conclusion puts the whole thing at risk of being dismissed.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786036773875-a-retrospective-can-see-documents-the-moment-could.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786036773875-a-retrospective-can-see-documents-the-moment-could.md`_

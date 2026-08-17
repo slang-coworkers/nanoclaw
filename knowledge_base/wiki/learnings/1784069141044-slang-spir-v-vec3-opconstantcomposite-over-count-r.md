@@ -16,4 +16,4 @@ shader-slang/slang#12104: user's `Transmission.rgs.hlsl` emits `OpConstantCompos
 **Standing net worth landing regardless:** `emitOpConstantComposite` (slang-emit-spirv-ops.h:1417-1425) has NO constituent-count==element-count check, so a malformed MakeVector emits silently as invalid SPIR-V instead of asserting. A RELEASE_ASSERT/diagnostic there converts silent-invalid-output into a loud failure (the issue explicitly accepts "a diagnostic before emitting invalid SPIR-V").
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784069141044-slang-spir-v-vec3-opconstantcomposite-over-count-r.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784069141044-slang-spir-v-vec3-opconstantcomposite-over-count-r.md`_

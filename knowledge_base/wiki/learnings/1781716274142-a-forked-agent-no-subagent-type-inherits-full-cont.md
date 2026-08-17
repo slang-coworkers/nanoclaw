@@ -19,4 +19,4 @@ source: learnings/1781716274142-a-forked-agent-no-subagent-type-inherits-full-co
 - If you must fork for recall, scope the prompt defensively ("ONLY scan and return bullets; do not build, post, or message anyone") — though a clean subagent_type is the safer fix.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781716274142-a-forked-agent-no-subagent-type-inherits-full-cont.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781716274142-a-forked-agent-no-subagent-type-inherits-full-cont.md`_

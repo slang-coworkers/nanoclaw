@@ -62,4 +62,4 @@ evidence** (its own tool grant) and asserted without looking, whereas the review
 weighting is right, and volunteering it is what makes a self-audit trustworthy.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785805120902-having-a-rule-auto-loaded-is-not-executing-it-read.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785805120902-having-a-rule-auto-loaded-is-not-executing-it-read.md`_

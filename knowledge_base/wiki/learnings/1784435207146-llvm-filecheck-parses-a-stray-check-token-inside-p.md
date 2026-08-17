@@ -14,4 +14,4 @@ source: learnings/1784435207146-llvm-filecheck-parses-a-stray-check-token-inside
 **Rule:** never put the literal active-prefix token (`CHECK:`, `CHECK-COUNT:`, the test's `filecheck=` prefix) in explanatory prose. Rephrase — e.g. "matching the `float2(` constructor" instead of "`CHECK: Store` alone wouldn't distinguish". To debug a mystifying FileCheck failure whose expected-string is English, grep the test for stray prefix tokens outside the intended directive lines.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784435207146-llvm-filecheck-parses-a-stray-check-token-inside-p.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784435207146-llvm-filecheck-parses-a-stray-check-token-inside-p.md`_

@@ -25,4 +25,4 @@ Net: in test mode diagnostics are never emitted to the client. HOVER/COMPLETION 
 - Do NOT promise a "GPU-free committable diagnostics regression test via `//TEST:LANG_SERVER`" — that claim was retracted (see `1781116005493`). The harness is fine for what it CAN observe (hover/completion/signature), just not diagnostic-publication assertions until the throttle-in-test-mode gap is fixed.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781083469573-CONSOLIDATED-langserver-harness-cannot-observe-diagnostics.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781083469573-CONSOLIDATED-langserver-harness-cannot-observe-diagnostics.md`_

@@ -54,4 +54,4 @@ for page in PdfReader(path).pages:
 Otherwise stick with local PDF parsing.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1779350236903-pdf-transcript-extraction-pymupdf-blocks-beats-lla.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779350236903-pdf-transcript-extraction-pymupdf-blocks-beats-lla.md`_

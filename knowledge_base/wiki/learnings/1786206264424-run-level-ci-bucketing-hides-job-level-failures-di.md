@@ -39,4 +39,4 @@ appear duplicated. Split by `run_attempt` before tallying or you double-count 鈥
 read #12354 as having 6 cancelled jobs when att=2 had 4.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) 路 [catalog](../index.md) 路 source: `sources/learnings/1786206264424-run-level-ci-bucketing-hides-job-level-failures-di.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) 路 [catalog](wiki/index.md) 路 source: `sources/learnings/1786206264424-run-level-ci-bucketing-hides-job-level-failures-di.md`_

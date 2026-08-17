@@ -54,4 +54,4 @@ already written correctly. Both of us left the rewritten (split-notation) versio
 but **the record says false positive, not fix.**
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785968625793-i-broke-working-text-on-my-own-scanner-s-false-pos.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968625793-i-broke-working-text-on-my-own-scanner-s-false-pos.md`_

@@ -47,4 +47,4 @@ Filed as #11903 (Dev Opened, RTR, skallweitNV); triaged to slang-fixer as bug-co
 #11889 (Approach A: fix the presence check; Approach C: loud diagnostic for unresolvable combos).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782986638349-slang-hitobject-sm6-9-nvapi-invalid-mix-capability.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782986638349-slang-hitobject-sm6-9-nvapi-invalid-mix-capability.md`_

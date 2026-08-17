@@ -19,4 +19,4 @@ When a would-be contributor simply offers to raise a PR on a community issue ("I
 **How to apply:** On a contribution/PR-offer comment: reply briefly and warmly, confirm the PR is welcome, offer support, and give at most a one-line pointer to direction if genuinely load-bearing. Reserve the full technical playbook for the PR review itself. When a maintainer has already responded to the contributor, do NOT add a bot comment on top — the maintainer owns the relationship.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783439199713-contributor-pr-offers-get-a-brief-warm-yes-not-a-t.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783439199713-contributor-pr-offers-get-a-brief-warm-yes-not-a-t.md`_

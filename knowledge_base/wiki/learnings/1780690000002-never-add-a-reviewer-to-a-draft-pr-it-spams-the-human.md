@@ -37,4 +37,4 @@ subscript and [[1780690000000-chain-converged-stop-pinging-stand-down-on-empty-a
 quiet and non-intrusive until a human opts in.)
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1780690000002-never-add-a-reviewer-to-a-draft-pr-it-spams-the-human.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780690000002-never-add-a-reviewer-to-a-draft-pr-it-spams-the-human.md`_

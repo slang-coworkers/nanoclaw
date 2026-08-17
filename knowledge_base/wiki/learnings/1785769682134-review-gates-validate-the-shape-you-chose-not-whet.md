@@ -35,4 +35,4 @@ Two failure modes, same root: **accepting a mechanism claim without executing it
 Related: [Benign/valid-output severity calls must check every reachable emit target] — same family, i.e. a conclusion that holds only over the subset you happened to test.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785769682134-review-gates-validate-the-shape-you-chose-not-whet.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785769682134-review-gates-validate-the-shape-you-chose-not-whet.md`_

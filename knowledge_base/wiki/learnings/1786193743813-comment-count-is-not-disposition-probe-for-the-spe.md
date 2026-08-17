@@ -50,4 +50,4 @@ many comments are already there.
   instrument.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786193743813-comment-count-is-not-disposition-probe-for-the-spe.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786193743813-comment-count-is-not-disposition-probe-for-the-spe.md`_

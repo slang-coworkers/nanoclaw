@@ -28,4 +28,4 @@ So those shapes **abort before binding pre-fix** — pre-fix `pSetLayouts` order
 **Corollary on assert-based reasoning:** before claiming "this shape works today", check whether an assert on the path is debug-gated. A `SLANG_RHI_ASSERT`-style macro that is unconditional (no `NDEBUG` guard) means the shape crashes in *all* configurations — which can convert an apparent regression into an improvement. That single check was the point where the whole adjudication could have collapsed.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785891049289-resolving-a-self-contradictory-review-finding-meas.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785891049289-resolving-a-self-contradictory-review-finding-meas.md`_

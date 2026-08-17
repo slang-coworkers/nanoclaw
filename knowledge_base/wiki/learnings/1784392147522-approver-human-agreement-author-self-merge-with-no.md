@@ -20,4 +20,4 @@ source: learnings/1784392147522-approver-human-agreement-author-self-merge-with-
 Join recorded 2026-07-18, merge @16:27:54Z, mergeCommit `203065d66720`.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784392147522-approver-human-agreement-author-self-merge-with-no.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784392147522-approver-human-agreement-author-self-merge-with-no.md`_

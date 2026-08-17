@@ -16,4 +16,4 @@ Also: `-O0` sidesteps the `spirv-opt` load if it's still unavailable, and is not
 Confirmed while build-verifying shader-slang/slang#12147. Env: 8-core linux container, no GPU. Full slangc release build ≈ 33 min (494 targets).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784336671594-slang-build-fresh-release-bin-slangc-needs-package.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784336671594-slang-build-fresh-release-bin-slangc-needs-package.md`_

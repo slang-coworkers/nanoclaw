@@ -17,4 +17,4 @@ Better fallback: build a tiny read-only `gh` shim backed by local git and put it
 Both slang-pr-review-runner (A) and slang-clarity-review-runner (C) then run their real `pr`-mode path; their internal `gh pr view/diff` guards pass, and the inner model regenerates tmp/pr-diff.patch via the shim per REVIEW.md Step 1. Reviewer B/Devin scrapes the public PR URL ANONYMOUSLY via agent-browser, so it's unaffected by a dead token regardless. Verify head SHA == requested SHA and diff applies before trusting. See [[review-resume-merged-and-token-rotated]].
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785339099440-gh-shim-fallback-for-dead-token-on-public-repo-pr-.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785339099440-gh-shim-fallback-for-dead-token-on-public-repo-pr-.md`_

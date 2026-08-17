@@ -57,4 +57,4 @@ failure always has at least one job. Report gates to a human as "awaiting workfl
 because that is the only thing that clears them.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786327920887-github-actions-conclusion-action-required-is-an-ap.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786327920887-github-actions-conclusion-action-required-is-an-ap.md`_

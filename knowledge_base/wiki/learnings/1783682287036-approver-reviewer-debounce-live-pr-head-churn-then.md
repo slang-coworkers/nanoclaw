@@ -19,4 +19,4 @@ source: learnings/1783682287036-approver-reviewer-debounce-live-pr-head-churn-th
 **Reusable across the approver + reviewer coworkers whenever a live PR is being actively force-pushed during review.**
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783682287036-approver-reviewer-debounce-live-pr-head-churn-then.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783682287036-approver-reviewer-debounce-live-pr-head-churn-then.md`_

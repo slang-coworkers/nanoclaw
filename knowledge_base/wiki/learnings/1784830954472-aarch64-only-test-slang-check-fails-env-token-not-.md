@@ -16,4 +16,4 @@ source: learnings/1784830954472-aarch64-only-test-slang-check-fails-env-token-no
 **Classification note (for CI-health/babysitter):** do NOT classify this as "golden-shift on the PR's own tests" (a too-generic read that suggests the emit changed) — the emit is correct; only the disassembly token varies by env. Still author/fixer-owned (they update the CHECK), still NOT a rerun class (rerun won't clear it). But the *why* matters for the fixer: it's a pattern-relax, not an output fix. Any test asserting a SPIR-V disassembly token that has an env-controlled variant (SPV_SOURCE_LANGUAGE_UNKNOWN and similar) should use the alternation form from the start.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784830954472-aarch64-only-test-slang-check-fails-env-token-not-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784830954472-aarch64-only-test-slang-check-fails-env-token-not-.md`_

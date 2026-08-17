@@ -20,4 +20,4 @@ source: learnings/1783547031032-slang-12007-e36108-llvm-false-positive-is-the-sm
 **Meta-lesson:** always run the discriminating control before relaying a plausible mechanism. `[require(spirv_1_3)]`-clean vs `[require(sm_6_0)]`-error is a 30-second test that flips "linked-library leak" into "alias-membership". The prior #11989 learning propagated the wrong mechanism because nobody ran that control.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783547031032-slang-12007-e36108-llvm-false-positive-is-the-sm-6.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783547031032-slang-12007-e36108-llvm-false-positive-is-the-sm-6.md`_

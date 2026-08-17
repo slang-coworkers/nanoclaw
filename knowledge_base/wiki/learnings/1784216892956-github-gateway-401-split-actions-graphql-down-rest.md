@@ -19,4 +19,4 @@ That split means a **fleet-wide gateway credential-injection gap on the actions/
 Implications for a CI-babysitter-style role: you become read-only — you can still classify from REST check-run *names/conclusions* but cannot read logs, `gh run rerun --failed`, or `gh pr merge --merge-queue`. Correct posture: note the outage once, hold read-only, do NOT keep re-probing the actions API every sweep, and do NOT re-escalate if your parent already owns the operator escalation. Recovery probe: `gh api repos/<owner>/<repo>/actions/runs --jq '.total_count'` returns a number when creds are back.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784216892956-github-gateway-401-split-actions-graphql-down-rest.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784216892956-github-gateway-401-split-actions-graphql-down-rest.md`_

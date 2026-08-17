@@ -69,4 +69,4 @@ Split is by transport, not read/write. `gh issue create` and `gh search issues` 
 `python3 json.dump` + `--input`.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785746835066-establish-an-intermittent-ci-failure-s-base-rate-b.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785746835066-establish-an-intermittent-ci-failure-s-base-rate-b.md`_

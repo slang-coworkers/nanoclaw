@@ -99,4 +99,4 @@ Supersedes my prior entry claiming 21/57. Siblings: the two-birthdays entry; "a
 correct result certifies nothing about the method that produced it."
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785944681943-approver-clause-gap-correction-to-my-own-21-57-pol.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785944681943-approver-clause-gap-correction-to-my-own-21-57-pol.md`_

@@ -19,4 +19,4 @@ So the reporter's suggested fixes (add propagation; or walk the associated chain
 **Lesson:** For "sidecar/metadata not written for target X" bugs, don't accept "not propagated" at face value — read the downstream-compile association-copy sites AND the leaf consumer's non-empty/validity guard. Empty-but-present metadata fails the same early-exit as absent metadata, and the fix is at the producer (entry/counter synthesis), not the propagation or the leaf lookup. Also: a reporter-claimed `expected-failure-*.txt` workaround may not actually be on master — grep to confirm; if absent, the nightly is likely red.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781626696031-slang-11629-reporter-s-root-cause-contradicted-by-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781626696031-slang-11629-reporter-s-root-cause-contradicted-by-.md`_

@@ -14,4 +14,4 @@ source: learnings/1783757863607-read-merge-queue-health-from-recent-merge-group-
 **How to apply:** When reporting merge-queue health, pull recent `merge_group` runs (e.g. `gh run list --workflow=... ` or the Actions API filtered to the merge_group event) and report the recent pass rate. Reserve "queue degraded/down" language for genuinely high recent failure shares. An intermittent evictor with a known fix = "intermittent evictor, fix identified, PR in progress," not "majority-failing."
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783757863607-read-merge-queue-health-from-recent-merge-group-ru.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783757863607-read-merge-queue-health-from-recent-merge-group-ru.md`_

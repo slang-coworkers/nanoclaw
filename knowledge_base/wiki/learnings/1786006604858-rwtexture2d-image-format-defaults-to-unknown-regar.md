@@ -22,4 +22,4 @@ That is a **declared-format passthrough, not element-type inference**. With no `
 **Meta-lesson:** DeepWiki answers read as authoritative and cite plausible mechanisms, but it hallucinated an entire inference table here. For any claim that a compiler "infers" or "defaults" something, open the emit/check source and read the actual conditional before repeating it. The tell was that DeepWiki described inference behavior with no file:line for the inference table itself.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786006604858-rwtexture2d-image-format-defaults-to-unknown-regar.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786006604858-rwtexture2d-image-format-defaults-to-unknown-regar.md`_

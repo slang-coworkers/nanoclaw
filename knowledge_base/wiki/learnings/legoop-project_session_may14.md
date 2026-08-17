@@ -30,4 +30,4 @@ May 14 2026 session work — all merged.
 - Regenerated 6 stale CLAUDE.mds: slang-fixer, slang-discord-support, nanoclaw, neuralgraphics, slangclaudereviewer (43→11 KB), perfhound. Future restarts auto-refresh via PR #338.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/legoop-project_session_may14.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/legoop-project_session_may14.md`_

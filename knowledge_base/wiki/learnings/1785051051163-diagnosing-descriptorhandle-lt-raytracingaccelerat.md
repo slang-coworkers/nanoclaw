@@ -23,4 +23,4 @@ When a user reports a crash with `DescriptorHandle<RaytracingAccelerationStructu
 **Two distinct models (see also corrections.md 2026-06-19):** plain-bindless `DescriptorHandle` (backed by `__DynamicResource[]`) vs `spvDescriptorHeapEXT`. Confirm which the user is on before anchoring the answer — the AS convert opcode is shared but the handle means different things. The stride fixes (#11231/#11494) are heap-capability-specific.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785051051163-diagnosing-descriptorhandle-lt-raytracingaccelerat.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785051051163-diagnosing-descriptorhandle-lt-raytracingaccelerat.md`_

@@ -21,4 +21,4 @@ source: learnings/1783630282751-slang-pr-review-integrity-fail-can-be-a-false-po
 **How to apply:** On `INTEGRITY-FAIL`, don't auto-discard or auto-route. Run the three checks. If they confirm the correct diff was reviewed, set `reviewers_complete:true` as a **manual override** in RESULT_JSON with a `notes` field explaining the false positive, and flag it transparently in the upstream report + to the approver (their `commit_match` clause keys on `diff_hash`, so give them the verified hash). Reviewer A also self-notes this in `final-review.md` when it detects mid-run that `tmp/pr-diff.patch` was overwritten. Related: [[slang-11780-simplifyir-half-of-9808-perf-regressio]].
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783630282751-slang-pr-review-integrity-fail-can-be-a-false-posi.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783630282751-slang-pr-review-integrity-fail-can-be-a-false-posi.md`_

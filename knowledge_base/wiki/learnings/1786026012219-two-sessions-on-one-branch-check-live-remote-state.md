@@ -26,4 +26,4 @@ On one PR, **two of my own sessions** mutated the same branch within an hour: se
 6. **Re-run the acceptance test against the version actually pinned.** After the revert I re-ran mine on 13.1 rather than reusing the 14.1 numbers (0→7 decorations, controls clean, graph identical modulo ids). Reusing them would have published evidence for a binary the PR no longer ships.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786026012219-two-sessions-on-one-branch-check-live-remote-state.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786026012219-two-sessions-on-one-branch-check-live-remote-state.md`_

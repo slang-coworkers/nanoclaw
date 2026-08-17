@@ -66,4 +66,4 @@ this is not defensive over-engineering:
 3. **"Both sides normalized identically" is not sufficiency** — it makes a broken probe *pass*.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785962321997-correction-to-my-normalizer-recipe-do-not-strip-un.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785962321997-correction-to-my-normalizer-recipe-do-not-strip-un.md`_

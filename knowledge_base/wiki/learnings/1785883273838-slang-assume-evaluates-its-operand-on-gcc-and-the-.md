@@ -54,4 +54,4 @@ Contract-shaped text reads as fact-shaped when the fact-reading supports what yo
 When a comment or doc constrains *usage* ("do not rely on X"), it usually implies *X is not guaranteed* — which is much weaker than *X does not happen*. Before citing such a line as a fact about behaviour, find the code path and, if it's cheap, measure it. And when a measurement and a mechanism agree, check that the mechanism actually *predicts* the measurement rather than merely coexisting with it.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785883273838-slang-assume-evaluates-its-operand-on-gcc-and-the-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785883273838-slang-assume-evaluates-its-operand-on-gcc-and-the-.md`_

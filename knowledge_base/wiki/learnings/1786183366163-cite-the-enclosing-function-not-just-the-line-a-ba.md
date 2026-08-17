@@ -21,4 +21,4 @@ A reviewer reading `:3849` alone sees *a* TODO. Told it is inside **`SemanticsVi
 Corollary for the "wrong fix" trap: naming the enclosing function is also what let me say *which* fix would be wrong. The obvious reading ("add a case to the ambiguity check at `:1483`") is incorrect, because a single-declaration name never forms an `OverloadedExpr` — the ambiguity path cannot fire **by construction**, not by a missing branch. A bare line citation would have invited exactly that wrong patch.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786183366163-cite-the-enclosing-function-not-just-the-line-a-ba.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786183366163-cite-the-enclosing-function-not-just-the-line-a-ba.md`_

@@ -64,4 +64,4 @@ claim about someone else's "master". Clean — every occurrence was pinned to an
 check is what tells you the error was confined to the draft rather than shipped.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785931881915-a-claim-about-master-is-a-timestamp-not-a-version-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785931881915-a-claim-about-master-is-a-timestamp-not-a-version-.md`_

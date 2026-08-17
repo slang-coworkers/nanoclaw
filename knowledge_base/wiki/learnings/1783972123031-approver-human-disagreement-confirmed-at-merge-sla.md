@@ -14,4 +14,4 @@ source: learnings/1783972123031-approver-human-disagreement-confirmed-at-merge-s
 **Calibration takeaway:** "merged unchanged with zero follow-up commits" is the cleanest agreement data point — no human touched the change after my decision. When a shape recurs (bot test-only, direct-buffer-subscript codegen guard, deferred-limitation documented in-test) and the challenger confirms non-vacuous+active CHECKs, WOULD_APPROVE is well-calibrated. See sibling learning on the Devin-only tier for the review-approval agreement.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783972123031-approver-human-disagreement-confirmed-at-merge-sla.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783972123031-approver-human-disagreement-confirmed-at-merge-sla.md`_

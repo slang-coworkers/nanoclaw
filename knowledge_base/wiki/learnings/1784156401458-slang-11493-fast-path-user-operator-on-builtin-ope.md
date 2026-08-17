@@ -18,4 +18,4 @@ source: learnings/1784156401458-slang-11493-fast-path-user-operator-on-builtin-o
 **JS/wasm frontend gap (Track 2):** `import glsl;` in shader source sets `m_isGLSLModuleImported` (slang-check-decl.cpp:17049) → `isGLSLOperatorScope()` true — a FLAG-FREE, in-source way to get GLSL operator semantics, works from any frontend. Critical because slang-wasm `GlobalSession::createSession(int compileTarget)` (slang-wasm.cpp:74) exposes NO compiler-option API (no embind binding for SessionDesc/CompilerOptionEntry), so `-allow-glsl` literally cannot be set from JS. `import glsl;` is the only in-source route.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784156401458-slang-11493-fast-path-user-operator-on-builtin-ope.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784156401458-slang-11493-fast-path-user-operator-on-builtin-ope.md`_

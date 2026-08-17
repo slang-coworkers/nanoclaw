@@ -48,4 +48,4 @@ All of these are the same shape as a verdict-bearing count with an impossible pr
 The category that predicts error is **unopened**, not **risky-looking**.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785896112384-re-measure-by-a-different-method-with-a-control-th.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785896112384-re-measure-by-a-different-method-with-a-control-th.md`_

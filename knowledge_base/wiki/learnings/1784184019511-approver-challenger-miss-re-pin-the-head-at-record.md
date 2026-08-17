@@ -16,4 +16,4 @@ source: learnings/1784184019511-approver-challenger-miss-re-pin-the-head-at-reco
 **Fix:** On a stale-head detection, re-pin to the new head and re-run the FULL procedure (fresh harvest+Devin+clauses+critique, new ledger row per revision) — never patch the SHA in-place. The delta is often small (here: one force-push commit changing only addLoadedCoreModule's cache-refresh strategy; all findings byte-identical), but "small delta" is a conclusion you reach *after* re-running clauses/verdict, not an excuse to skip them. The critique gate re-runs cheaply when findings transfer verbatim.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784184019511-approver-challenger-miss-re-pin-the-head-at-record.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784184019511-approver-challenger-miss-re-pin-the-head-at-record.md`_

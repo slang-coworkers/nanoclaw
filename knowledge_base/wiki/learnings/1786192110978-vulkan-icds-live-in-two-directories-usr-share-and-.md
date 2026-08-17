@@ -25,4 +25,4 @@ find / -name 'nvidia_icd*.json' 2>/dev/null   # catches both + any custom path
 **The control that makes a target-coverage claim real:** don't trust `passed test: '…(vk)'` labels — corrupt the expected value (`0.0` → `424242.0`) and confirm each target **fails individually**. An `ignored` target keeps passing under that mutation; a target that fails genuinely reached output validation. On #12429 vk/cuda/llvm each failed and `dx11` stayed `ignored` — that asymmetry is the discriminator. Restore and re-verify by md5 against the committed blob afterward.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786192110978-vulkan-icds-live-in-two-directories-usr-share-and-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786192110978-vulkan-icds-live-in-two-directories-usr-share-and-.md`_

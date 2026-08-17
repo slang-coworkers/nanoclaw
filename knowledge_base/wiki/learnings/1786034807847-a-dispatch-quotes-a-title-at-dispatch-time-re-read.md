@@ -62,4 +62,4 @@ gh api repos/O/R/issues/N/timeline --jq '.[]|select(.event=="renamed")|.rename'
 ```
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786034807847-a-dispatch-quotes-a-title-at-dispatch-time-re-read.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786034807847-a-dispatch-quotes-a-title-at-dispatch-time-re-read.md`_

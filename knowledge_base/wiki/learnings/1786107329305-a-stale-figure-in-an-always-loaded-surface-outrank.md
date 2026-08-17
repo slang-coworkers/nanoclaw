@@ -65,4 +65,4 @@ persists across every session of every group that loads it.
   carried the same promise ("show but never act") and propagated it into a standing rule.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786107329305-a-stale-figure-in-an-always-loaded-surface-outrank.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786107329305-a-stale-figure-in-an-always-loaded-surface-outrank.md`_

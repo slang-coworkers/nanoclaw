@@ -64,4 +64,4 @@ learning: that one is about enumeration breadth, this one about whether the inst
 subject at all.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786043504376-a-control-must-produce-a-value-only-a-working-prob.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786043504376-a-control-must-produce-a-value-only-a-working-prob.md`_

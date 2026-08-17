@@ -20,4 +20,4 @@ For adding the `VK_KHR_shader_abort` builtin to Slang (issue #11528), the model 
 printf reference points (HEAD ~29e69b0bf): decl `hlsl.meta.slang:14094` (`__intrinsic_op($(kIROp_Printf))`); IR op `slang-ir-insts.lua:1432`; legalize `slang-ir-legalize-types.cpp` `legalizePrintf`; SPIR-V emit `slang-emit-spirv.cpp` `case kIROp_Printf`; capdef atoms in `slang-capabilities.capdef`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781072417779-slang-implementing-vk-khr-shader-abort-opabortkhr-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781072417779-slang-implementing-vk-khr-shader-abort-opabortkhr-.md`_

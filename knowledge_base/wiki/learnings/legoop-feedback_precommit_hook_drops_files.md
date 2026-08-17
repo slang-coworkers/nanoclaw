@@ -16,4 +16,4 @@ Symptom seen (PR #554, 2026-06-03): committed a 11-file feature; the resulting c
 **How to apply:** for any multi-path commit on these branches, commit with `git commit --no-verify` (after running `pnpm run format:fix` + tests yourself), then ALWAYS verify with `git show --stat HEAD` that every intended file is present before pushing. Same for `git push` — a pre-push hook re-runs format:fix and can abort the push. Use `--no-verify` on push too when needed. Relates to [[feedback_pr_worktree]] and [[feedback_rebuild_dist_after_merge]].
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/legoop-feedback_precommit_hook_drops_files.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/legoop-feedback_precommit_hook_drops_files.md`_

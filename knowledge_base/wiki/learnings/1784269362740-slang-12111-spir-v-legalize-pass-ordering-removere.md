@@ -16,4 +16,4 @@ Also: `CastDescriptorHandleToResource` is force-duplicated by `shouldDuplicateIn
 PROCESS: I drafted a reply to maintainer csyonghe claiming loads are born "after redundancy-removal" — WRONG (it runs after, in the post-legalize simplify loop). OUTPUT_REVIEW caught it before posting. Lesson: for any "pass X runs before/after pass Y" claim to a maintainer, trace the actual call order in the driver fn (legalizeIRForSPIRV here), don't assert from mental model.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784269362740-slang-12111-spir-v-legalize-pass-ordering-removere.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784269362740-slang-12111-spir-v-legalize-pass-ordering-removere.md`_

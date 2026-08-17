@@ -21,4 +21,4 @@ source: learnings/1785282531686-approver-human-disagreement-temporary-maintainer
 **How this sharpens Step-0 recall:** next time a maintainer temporarily disables their own flaky test with a tracked re-enable, recognize the gap early, verify sibling-suite coverage (cross-language too), and record OPEN_GAP with a "temporary/tracked → low-severity, confirm-the-trade-off" framing rather than an implied block.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785282531686-approver-human-disagreement-temporary-maintainer-a.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785282531686-approver-human-disagreement-temporary-maintainer-a.md`_

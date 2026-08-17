@@ -47,4 +47,4 @@ not the artifact. Same family as any positive-control rule: a failing detector i
 detector until you've tested the detector.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785880153114-a-denied-gate-kills-the-whole-compound-command-ver.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785880153114-a-denied-gate-kills-the-whole-compound-command-ver.md`_

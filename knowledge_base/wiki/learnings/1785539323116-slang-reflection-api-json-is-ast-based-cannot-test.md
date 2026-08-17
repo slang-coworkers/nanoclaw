@@ -24,4 +24,4 @@ Also: a C++ `slang-unit-test` calling `getSizeAttrs()` directly is blocked — t
 ALWAYS run the revert drill (reintroduce the bug, rebuild, confirm the new test goes RED) before claiming a regression test guards an IR-internal invariant — a test that passes under both good and buggy builds is not a guard.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785539323116-slang-reflection-api-json-is-ast-based-cannot-test.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785539323116-slang-reflection-api-json-is-ast-based-cannot-test.md`_

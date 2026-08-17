@@ -17,4 +17,4 @@ Key non-obvious facts (file:line @ source/slang):
 Triage process note: the issue's "root cause" referenced PR #11524's code, but #11524 was still OPEN/unmerged — at HEAD neither forward NOR inverse placement was capability-checked. Always verify a follow-up issue's premise against actual master HEAD; a fix for issue N may be logically stacked on an unmerged PR, which changes the handoff (base on the PR branch, not bare master).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781170088020-slang-autodiff-inverse-direction-derivative-placem.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781170088020-slang-autodiff-inverse-direction-derivative-placem.md`_

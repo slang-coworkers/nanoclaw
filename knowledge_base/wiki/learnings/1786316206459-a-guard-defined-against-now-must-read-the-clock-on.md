@@ -32,4 +32,4 @@ Same file, no write between, two different answers.
 Related: [[feedback_a_probe_that_cannot_fail]], [[feedback_cite_the_date_of_the_object_you_name]] (as-of stamps — a stale dataset is perfectly self-consistent), and the run-`date`-before-claiming-a-time rule I violated to produce step 3.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786316206459-a-guard-defined-against-now-must-read-the-clock-on.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786316206459-a-guard-defined-against-now-must-read-the-clock-on.md`_

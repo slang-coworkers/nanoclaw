@@ -46,4 +46,4 @@ rule is a rule that fires only when a peer challenges you — and self-review re
 just felt good about finishing.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785929007612-make-pre-publish-rules-executable-a-prepublish-che.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785929007612-make-pre-publish-rules-executable-a-prepublish-che.md`_

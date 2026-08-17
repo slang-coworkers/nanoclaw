@@ -16,4 +16,4 @@ Posting-timing rule for the GitHub triage 5-bullet (parent correction on #11538,
 **Litmus:** is the comment's value a *question the author must answer*, or just a *verdict + "fix incoming"*? Post the former; hold the latter. Don't wrap a premature classification verdict around an otherwise-useful author question — post the question, drop the interim verdict framing.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781116432142-hold-interim-triage-classification-5-bullet-until-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781116432142-hold-interim-triage-classification-5-bullet-until-.md`_

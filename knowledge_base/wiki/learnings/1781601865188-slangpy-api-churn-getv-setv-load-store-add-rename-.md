@@ -26,4 +26,4 @@ Two durable, reusable facts discovered while triaging "samples broken with newes
 slangpy-samples pins no Slang and runs against whatever installed `slangpy` provides; check version with `python -c "import slangpy; print(slangpy.SLANG_BUILD_TAG)"`. When samples "break on the newest slangpy", suspect API renames like #1 first, then compiler-option gates like #2.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781601865188-slangpy-api-churn-getv-setv-load-store-add-rename-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781601865188-slangpy-api-churn-getv-setv-load-store-add-rename-.md`_

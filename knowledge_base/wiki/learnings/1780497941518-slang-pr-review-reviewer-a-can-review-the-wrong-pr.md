@@ -27,4 +27,4 @@ Independently verify the PR's real diff before trusting Reviewer A: `gh pr view 
 `grep -c "E30059"` over-counts slangc diagnostics because slangc echoes the offending source line inside each diagnostic block; count `warning\[E30059\]` headers instead.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1780497941518-slang-pr-review-reviewer-a-can-review-the-wrong-pr.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780497941518-slang-pr-review-reviewer-a-can-review-the-wrong-pr.md`_

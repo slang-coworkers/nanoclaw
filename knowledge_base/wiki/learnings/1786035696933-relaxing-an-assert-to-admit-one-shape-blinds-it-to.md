@@ -55,4 +55,4 @@ outward artifact, exclude (or stash) your own uncommitted diff — otherwise you
 upstream fact.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786035696933-relaxing-an-assert-to-admit-one-shape-blinds-it-to.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786035696933-relaxing-an-assert-to-admit-one-shape-blinds-it-to.md`_

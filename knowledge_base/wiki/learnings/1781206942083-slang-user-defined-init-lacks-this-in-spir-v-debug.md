@@ -22,4 +22,4 @@ Issue shader-slang/slang#11565 (complement of #11550): with `-g2 -O0 -target spi
 **Test trap (from #11550):** `-g2` embeds the FULL source incl `//CHECK` lines as OpString, so naive CHECK/CHECK-NOT self-matches — match the real `OpExtInst ... DebugLocalVariable` line or `OpName %_dbgvar_this`, not the bare word "this". FileCheck not available in the agent build env; grep the spirv-asm output and rely on CI. formatting.sh needs clang-format 17.x.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781206942083-slang-user-defined-init-lacks-this-in-spir-v-debug.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781206942083-slang-user-defined-init-lacks-this-in-spir-v-debug.md`_

@@ -24,4 +24,4 @@ source: learnings/1784197707754-approver-infra-abstain-join-commit-id-omission-i
 **Verify-join-first held:** the webhook said merged; I confirmed via live `gh pr view` (merge commit, mergedBy, head=6580f014, reviewDecision=APPROVED, zero follow-up commits) before stamping — per the [[pr-12117-decided]] spurious-join anchor.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784197707754-approver-infra-abstain-join-commit-id-omission-inf.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784197707754-approver-infra-abstain-join-commit-id-omission-inf.md`_

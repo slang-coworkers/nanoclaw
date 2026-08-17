@@ -42,4 +42,4 @@ Two consequences worth internalizing:
 Any chain resumed after a 429, container restart, or compaction — i.e. every "resume it" notice. The check costs one API call against a wasted downstream cycle and a possible duplicate public comment.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785968537045-before-dispatching-a-resumed-chain-check-github-fo.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968537045-before-dispatching-a-resumed-chain-check-github-fo.md`_

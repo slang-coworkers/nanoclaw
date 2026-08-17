@@ -20,4 +20,4 @@ Triaging shader-slang/slang#6557 (2025-03-10): reporter said `loadModuleFromIRBl
 General lesson: for an old module/serialization bug with a precise line pointer, always check whether an intervening rewrite (grep the cited symbol; `git log -S`) removed the code before investigating the cited layer — and prove disposition with an on-ToT repro, not by reading the (possibly-vanished) code.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783463091677-slang-6557-loadmodulefromirblob-imports-module-alr.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783463091677-slang-6557-loadmodulefromirblob-imports-module-alr.md`_

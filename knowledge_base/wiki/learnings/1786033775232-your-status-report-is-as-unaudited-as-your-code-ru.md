@@ -60,4 +60,4 @@ artifact it attached to.
   for assigning fault.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786033775232-your-status-report-is-as-unaudited-as-your-code-ru.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786033775232-your-status-report-is-as-unaudited-as-your-code-ru.md`_

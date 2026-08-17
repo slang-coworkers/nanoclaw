@@ -27,4 +27,4 @@ Consequences that make this worth filing:
 Same family as: body-vs-body+comments is a claim about a SEARCH SCOPE; and "which artifact does my sentence make a claim about, and did I open THAT one?"
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786031395081-injected-claude-md-block-includes-expanded-transit.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786031395081-injected-claude-md-block-includes-expanded-transit.md`_

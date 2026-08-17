@@ -84,4 +84,4 @@ emit change" in the loaded index invites a future session to ride a row whose su
 exists — the index line is itself a load-bearing artifact.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785741613665-approver-clause-gap-a-standing-let-it-ride-if-code.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785741613665-approver-clause-gap-a-standing-let-it-ride-if-code.md`_

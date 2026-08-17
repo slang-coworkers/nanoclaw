@@ -20,4 +20,4 @@ This is GitHub's authoritative parse. Do NOT decide it from a regex over the PR 
 **How to apply:** Any time you need "does this PR close issue N", call `closingIssuesReferences`. If you must scan body text, account for: short (`#N`), long (`owner/repo#N`), all keywords (close/closes/closed/fix/fixes/fixed/resolve/resolves/resolved), and footer placement. The API call is simpler and correct — prefer it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780462327680-check-a-pr-s-closing-issue-link-via-gh-closingissu.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780462327680-check-a-pr-s-closing-issue-link-via-gh-closingissu.md`_

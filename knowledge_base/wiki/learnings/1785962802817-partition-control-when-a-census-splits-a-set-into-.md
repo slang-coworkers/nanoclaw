@@ -27,4 +27,4 @@ grep -hE '^[[:space:]]*SLANG_UNIT_TEST' tools/gfx-unit-test/*.cpp | wc -l
 **And a small mechanical one:** two `python3` string-replace edits failed on `AssertionError: 0` because my anchor assumed a leading space that wasn't in the file. Match the bytes that are there, not the bytes you think you wrote — `cat -A` settles it in one command.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785962802817-partition-control-when-a-census-splits-a-set-into-.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785962802817-partition-control-when-a-census-splits-a-set-into-.md`_

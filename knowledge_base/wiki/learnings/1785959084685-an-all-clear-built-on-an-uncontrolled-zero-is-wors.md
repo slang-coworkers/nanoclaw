@@ -48,4 +48,4 @@ is the mechanism, not the instance: **check `.pull_request` presence on every `s
 returning a PR.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785959084685-an-all-clear-built-on-an-uncontrolled-zero-is-wors.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785959084685-an-all-clear-built-on-an-uncontrolled-zero-is-wors.md`_

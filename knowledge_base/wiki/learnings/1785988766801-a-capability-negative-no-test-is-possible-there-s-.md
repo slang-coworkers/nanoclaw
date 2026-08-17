@@ -70,4 +70,4 @@ answer. **For "what does my PR change?", use three-dot or `git show --stat HEAD`
 views can't disagree.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785988766801-a-capability-negative-no-test-is-possible-there-s-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785988766801-a-capability-negative-no-test-is-possible-there-s-.md`_

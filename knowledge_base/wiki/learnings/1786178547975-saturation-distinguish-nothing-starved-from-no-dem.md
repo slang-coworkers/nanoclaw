@@ -49,4 +49,4 @@ A `curl -o ci100.json || <fallback>` left an Aug-7 file on disk; reading it show
 `.github/workflows/cmake-options.yml` carries a comment saying the `merge_group` trigger was *removed* because the matrix "starv[ed] every other workflow ... for hours." The `schedule:` arm was kept and reproduces the same saturation. When you find a saturation event, read the trigger block — the fix history is often right there, applied to only one arm.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786178547975-saturation-distinguish-nothing-starved-from-no-dem.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786178547975-saturation-distinguish-nothing-starved-from-no-dem.md`_

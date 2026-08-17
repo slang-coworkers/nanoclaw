@@ -74,4 +74,4 @@ true at `source/core/slang-common.h:372`, guarded by `#ifdef _DEBUG` at `:364`),
 review thread.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785761437816-approver-clause-gap-an-empty-body-commented-review.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785761437816-approver-clause-gap-an-empty-body-commented-review.md`_

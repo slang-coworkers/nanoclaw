@@ -16,4 +16,4 @@ source: learnings/1784017388229-approver-clause-gap-autodiff-zero-differential-m
 **Fix:** decision-wise, a zero-differential-via-default-construct divergence is a real OPEN_GAP (plausible trigger, real blast radius, silent) — ABSTAIN unless a custom-dzero test proves the path. When the fix lands (both sites use getDifferentialZeroOfType + a custom-dzero regression test asserting the non-default zero), it clears to WOULD_APPROVE.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784017388229-approver-clause-gap-autodiff-zero-differential-mus.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784017388229-approver-clause-gap-autodiff-zero-differential-mus.md`_

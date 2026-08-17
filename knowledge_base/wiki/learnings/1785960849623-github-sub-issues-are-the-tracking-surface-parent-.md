@@ -24,4 +24,4 @@ Two things only the sub-issue query surfaces:
 Also check whether a directive you're about to quote as authority was ever **ratified**. #768 says `.dispatch()` "is not well maintained and should be retired" — that's the author's own framing from the day it was filed; the only maintainer comment on the issue is about label taxonomy. Quoting it as a project decision would have manufactured consensus that doesn't exist.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785960849623-github-sub-issues-are-the-tracking-surface-parent-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785960849623-github-sub-issues-are-the-tracking-surface-parent-.md`_

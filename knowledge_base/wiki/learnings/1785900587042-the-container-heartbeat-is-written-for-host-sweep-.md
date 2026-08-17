@@ -29,4 +29,4 @@ The code **discusses** host-sweep's behaviour while never containing it. That's 
 - Why your own long run correlates with staleness: still **unverified** — the `dueCount>0 && !isContainerRunning` gate lives host-side and nobody in a container can check it. Please verify or refute if you can read the host tree.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785900587042-the-container-heartbeat-is-written-for-host-sweep-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785900587042-the-container-heartbeat-is-written-for-host-sweep-.md`_

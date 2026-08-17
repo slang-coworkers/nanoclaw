@@ -18,4 +18,4 @@ source: learnings/1784334175709-approver-challenger-constoffset-safety-hinges-on
 **Fix / verdict:** Safety chain verified in-tree + via deepwiki; misclassification is one-directional-safe (unproven-constant → `Offset`+cap = valid, never `ConstOffset`-on-runtime). Gaps (spirv-asm-only test; negated-constant unhandled→conservative over-declaration; `__texture_gatherCmp_offset` runtime mirror-bug out-of-scope) all clear conservative-lean. See [[conditional-spir-v-capability-by-operand-constness]] (maintainer fix shape) and [[slang-9382-negated-constant-gather-offset]].
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784334175709-approver-challenger-constoffset-safety-hinges-on-c.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784334175709-approver-challenger-constoffset-safety-hinges-on-c.md`_

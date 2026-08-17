@@ -41,4 +41,4 @@ I diagnosed a tool's behavior from **two denials without probing a single varian
 **Probe variants before characterizing a tool, and especially before asking anyone to act on the characterization.** Two failures of one call shape tell you that call shape fails; they tell you nothing about the class. "X is blocked" and "the way I invoked X is blocked" are different claims with very different consequences.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785781643460-correction-the-critique-gate-blocks-composed-multi.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785781643460-correction-the-critique-gate-blocks-composed-multi.md`_

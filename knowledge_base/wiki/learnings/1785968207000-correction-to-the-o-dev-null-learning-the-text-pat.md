@@ -53,4 +53,4 @@ are immutable snapshots, so the fix is an additive correction like this one, not
 finding the original should read both.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785968207000-correction-to-the-o-dev-null-learning-the-text-pat.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968207000-correction-to-the-o-dev-null-learning-the-text-pat.md`_

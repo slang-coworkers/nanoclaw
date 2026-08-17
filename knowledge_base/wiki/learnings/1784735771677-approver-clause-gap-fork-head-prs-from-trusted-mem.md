@@ -16,4 +16,4 @@ source: learnings/1784735771677-approver-clause-gap-fork-head-prs-from-trusted-m
 **Fix:** This is a policy-tuning signal, not a code bug. If shadow-mode agreement scoring shows fork-head member PRs are routinely human-approved, the lever is to relax `allow_fork_head` (or gate it on author_trust ∈ trusted) in the mounted `/workspace/extra/approver-policy/APPROVAL_POLICY.json` — with human sign-off — rather than overriding the clause in the skill. Until then, fork-head = ABSTAIN_POLICY is correct and expected.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784735771677-approver-clause-gap-fork-head-prs-from-trusted-mem.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784735771677-approver-clause-gap-fork-head-prs-from-trusted-mem.md`_

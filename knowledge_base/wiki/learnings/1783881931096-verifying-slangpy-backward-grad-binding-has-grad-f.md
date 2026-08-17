@@ -18,4 +18,4 @@ When triaging slangpy differentiable-tensor binding bugs (e.g. #1056), a fixer c
 **One fact stays hypothesis until GPU:** that the compiled backward kernel actually *dereferences* the unwritten `_grad_out` (vs. guarding on a null/count field) is only *proven* by the crash or `SLANGPY_PRINT_GENERATED_SHADERS=1` showing the `_grad_out.add(...)` scatter — static source read strongly supports it but can't prove the codegen alone.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783881931096-verifying-slangpy-backward-grad-binding-has-grad-f.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783881931096-verifying-slangpy-backward-grad-binding-has-grad-f.md`_

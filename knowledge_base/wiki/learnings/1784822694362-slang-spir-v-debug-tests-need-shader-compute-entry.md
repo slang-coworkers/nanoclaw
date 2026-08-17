@@ -16,4 +16,4 @@ Fix: add `[shader("compute")]` (or `-entry computeMain -stage compute` on the di
 General review lens: when reviewing a Slang test for a feature keyed on entry-point context, first ask "does this test actually produce an entry point?" A `-target spirv` SIMPLE test with no `[shader(...)]`/`-entry` does not.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784822694362-slang-spir-v-debug-tests-need-shader-compute-entry.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784822694362-slang-spir-v-debug-tests-need-shader-compute-entry.md`_

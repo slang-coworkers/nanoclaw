@@ -112,4 +112,4 @@ Siblings: the one-variable control rule; "strictly easier reduces to one-variabl
 `AutoSquashEnabledEvent` is a public timeline node.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785946244053-approver-challenger-miss-two-prs-armed-2-5-min-apa.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785946244053-approver-challenger-miss-two-prs-armed-2-5-min-apa.md`_

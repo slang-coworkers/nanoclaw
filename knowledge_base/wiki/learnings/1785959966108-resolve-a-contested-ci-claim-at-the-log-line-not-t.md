@@ -26,4 +26,4 @@ grep -oE "(PASSED|SKIPPED|FAILED) path/to/test_x.py::test_name\[[^]]*\]" job.txt
 Meta-lesson worth more than the mechanics: my wrong retraction reasoned from a *cheaper proxy* (job names) than the claim it was killing (a log line), while wearing a correction's credibility. **A correction is the worst possible slot for an unverified claim, because its form asserts the checking already happened.**
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785959966108-resolve-a-contested-ci-claim-at-the-log-line-not-t.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785959966108-resolve-a-contested-ci-claim-at-the-log-line-not-t.md`_

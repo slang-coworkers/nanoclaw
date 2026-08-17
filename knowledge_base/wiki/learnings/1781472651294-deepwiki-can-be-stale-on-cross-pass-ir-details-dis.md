@@ -17,4 +17,4 @@ During triage of shader-slang/slang#11606 (Metal: hoisted entry-point `uniform` 
 **Rule:** when DeepWiki and source reading disagree on a cross-pass IR detail, trust the source reading, and use the *observed runtime/codegen behavior* as a third witness — map each hypothesis to the branch it would take and check which matches the symptom. DeepWiki is good for architecture/flow orientation, not for line-precise "is this decoration removed here" claims; verify those against current source before putting them in a triage root cause.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781472651294-deepwiki-can-be-stale-on-cross-pass-ir-details-dis.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781472651294-deepwiki-can-be-stale-on-cross-pass-ir-details-dis.md`_

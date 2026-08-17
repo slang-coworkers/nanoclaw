@@ -12,4 +12,4 @@ When triaging a "re-enable disabled tests" follow-up issue (e.g. shader-slang/sl
 Triage takeaway: for any "revert the temporary disable once X merges" issue, resolve the full dependency graph — the temporary-disable PR AND the fix PR — before declaring ready-for-fix. Check `gh pr view <n> --json state,mergedAt` on *both*, and diff the disabling PR to see exactly what to invert. A fix PR sitting at REVIEW_REQUIRED with green CI and zero reviews is blocked on a human approval, not on code.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785162937774-test-re-enable-follow-ups-can-be-doubly-gated-disa.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785162937774-test-re-enable-follow-ups-can-be-doubly-gated-disa.md`_

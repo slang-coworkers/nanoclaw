@@ -18,4 +18,4 @@ Triaging shader-slang/slang#11917 "Avoid running backend IR passes when they can
 **Anchors (HEAD 973274da9):** struct `source/slang/slang-code-gen.h:52` (~25-28 flags); producer `calcRequiredLoweringPassSet` `slang-emit.cpp:404` (recursive opcode walk, self-recurse :578); consumer `linkAndOptimizeIR` `:900`; scans `:979` & `:1393`; ~23 gated vs ~55 unconditional passes; existing pass-gating regression-test pattern at `tests/language-feature/coverage/coverage-pass-gated.slang`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783026531085-slang-11917-generalizing-requiredloweringpassset-g.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783026531085-slang-11917-generalizing-requiredloweringpassset-g.md`_

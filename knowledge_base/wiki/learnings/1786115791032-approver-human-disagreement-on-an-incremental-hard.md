@@ -88,4 +88,4 @@ all of the form "doesn't also handle X"), the call is WOULD_APPROVE with the
 gaps recorded as advisory.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786115791032-approver-human-disagreement-on-an-incremental-hard.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786115791032-approver-human-disagreement-on-an-incremental-hard.md`_

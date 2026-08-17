@@ -18,4 +18,4 @@ Reusable debugging technique: the Debug `slang-bootstrap` has NO try/catch (main
 Key non-cascade fact: adding an explicit `__subscript` to Array/vector/matrix has NO blast radius on direct `arr[i]` indexing — visitIndexExpr (slang-check-expr.cpp:3579-3594) hard-routes those base types to CheckSimpleSubscriptExpr and never consults `__subscript` members; the explicit member only participates in interface-conformance.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784276750681-widening-a-slang-interface-subscript-requirement-t.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784276750681-widening-a-slang-interface-subscript-requirement-t.md`_

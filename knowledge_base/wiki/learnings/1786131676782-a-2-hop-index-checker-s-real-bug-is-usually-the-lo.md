@@ -66,4 +66,4 @@ planting.**
 - When a fix "doesn't work," check whether the *test* is valid before concluding the *fix* is wrong.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786131676782-a-2-hop-index-checker-s-real-bug-is-usually-the-lo.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786131676782-a-2-hop-index-checker-s-real-bug-is-usually-the-lo.md`_

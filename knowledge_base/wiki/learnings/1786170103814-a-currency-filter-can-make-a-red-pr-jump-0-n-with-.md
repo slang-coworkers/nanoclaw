@@ -20,4 +20,4 @@ Discriminator, cheap: compare the head sha across both sweeps AND the failing ru
 Corollary: instrument this as an explicit check. Print, for every non-current failure row, whether its backing run is non-terminal — that row is a *scheduled* future failure count, and knowing it exists stops the next sweep from misreading its own delta.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786170103814-a-currency-filter-can-make-a-red-pr-jump-0-n-with-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786170103814-a-currency-filter-can-make-a-red-pr-jump-0-n-with-.md`_

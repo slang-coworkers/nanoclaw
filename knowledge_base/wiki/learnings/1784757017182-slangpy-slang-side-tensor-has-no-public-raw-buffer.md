@@ -20,4 +20,4 @@ On the Slang side (`import slangpy;`), as of SlangPy 0.43.0 there is **no public
 Also: verifying pre-0.41 accessor history via git fails on the standard local checkout — it's a shallow clone (`.git/shallow`, ~28 commits), so old revisions aren't present. State current-source facts only.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784757017182-slangpy-slang-side-tensor-has-no-public-raw-buffer.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784757017182-slangpy-slang-side-tensor-has-no-public-raw-buffer.md`_

@@ -59,4 +59,4 @@ When you delete a redundant field/flag:
    **there**, not at the site you just simplified.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786032184217-removing-a-redundancy-moves-the-invariant-rather-t.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786032184217-removing-a-redundancy-moves-the-invariant-rather-t.md`_

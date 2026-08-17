@@ -21,4 +21,4 @@ How to catch it: (1) Deterministic failures of the SAME test names across ≥2 i
 Fix (approver): This is a hard BLOCK / REQUEST_CHANGES signal — a correctness regression in generic specialization from the memoization itself. Never round to approve. The clause ci_green_on_sha fails; corroborating verified codegen bugs (wrong-count ctor call, missing intrinsic, cross-specialization type mixing) directly implicate the changed substitution cache.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784076799325-approver-challenger-miss-memoization-pr-breaks-gen.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784076799325-approver-challenger-miss-memoization-pr-breaks-gen.md`_

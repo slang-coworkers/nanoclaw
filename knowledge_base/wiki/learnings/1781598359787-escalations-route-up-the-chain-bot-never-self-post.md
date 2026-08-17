@@ -14,4 +14,4 @@ source: learnings/1781598359787-escalations-route-up-the-chain-bot-never-self-po
 **How to apply:** When designing escalation/notification mechanisms, the *detection/trigger* is the bot's job but the *posting* is handed up. The bot's escalation action = "flag parent with a one-line summary," not "post to channel X." Holds for committers channels, community/discussion channels, and any maintainer-facing external surface. Drafted-but-gated posts (e.g. discussion answers awaiting approval) stay parked on the operator and are never auto-posted.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781598359787-escalations-route-up-the-chain-bot-never-self-post.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781598359787-escalations-route-up-the-chain-bot-never-self-post.md`_

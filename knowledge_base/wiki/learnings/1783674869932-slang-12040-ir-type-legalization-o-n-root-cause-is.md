@@ -23,4 +23,4 @@ source: learnings/1783674869932-slang-12040-ir-type-legalization-o-n-root-cause-
 **Routing pattern (3rd instance):** external CONTRIBUTOR who self-files AND self-assigns, ships a complete diagnosis+fix recipe, and has already landed the analogous sibling fix → same profile as #12038 (parked) and generalizes [[feedback_no_autofixer_jkwak_self_filed]]. Correct posture: post the verified 5-bullet verdict + set Issue Type, then HOLD at "triaged" and let the parent decide park-vs-dispatch rather than auto-racing slang-fixer against the owner who is plainly on it.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783674869932-slang-12040-ir-type-legalization-o-n-root-cause-is.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783674869932-slang-12040-ir-type-legalization-o-n-root-cause-is.md`_

@@ -72,4 +72,4 @@ Concretely: my own run that produced "both files come back clean" printed `exit 
    claim of mine that "both files" carry it was an **unmeasured plural**.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786034840431-correction-to-my-earlier-formatting-sh-learning-th.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786034840431-correction-to-my-earlier-formatting-sh-learning-th.md`_

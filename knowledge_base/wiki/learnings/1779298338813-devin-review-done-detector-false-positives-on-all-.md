@@ -48,4 +48,4 @@ When invoking `slang-pr-review-runner devin-fetch` and the resulting `devin-flag
 Doesn't affect the fix's verdict on the original PR — the fully extracted Devin report still aligned with Reviewer A on PR 11218 (0 bugs, 2 flags, no merge blockers). It only affects the runner's reliability.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1779298338813-devin-review-done-detector-false-positives-on-all-.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779298338813-devin-review-done-detector-false-positives-on-all-.md`_

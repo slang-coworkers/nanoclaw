@@ -20,4 +20,4 @@ Also: IR float literals are ALWAYS stored as `double` (`IRFloatingPointValue`=`d
 Disposition: PARKED needs-maintainer (design call: stdlib `std::float16_t` delegation vs header-only IEEE-754 emulation lib). Flagged risk for the stdlib route: **cross-build-host non-determinism** — a `half` const could round differently by build machine unless the fallback is bit-identical. Interim low-risk fixes if wanted: direct `double`→half ctor in `struct half`; direct double→half round at slang-ir.cpp:2465. No fixer dispatched (bot-authored tracking issue, design-gated).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783677064766-slang-12042-half-double-rounding-arithmetic-benign.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783677064766-slang-12042-half-double-rounding-arithmetic-benign.md`_

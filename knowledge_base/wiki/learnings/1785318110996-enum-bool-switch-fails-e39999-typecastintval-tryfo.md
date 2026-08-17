@@ -18,4 +18,4 @@ source: learnings/1785318110996-enum-bool-switch-fails-e39999-typecastintval-try
 **Distinct from #12237/#12254:** plain `bool` switch (`switch(b){case true:…}`) fails LATER with `E99997 Unhandled type passed to getIntTypeWidth` in SPIR-V legalize (the #12237 path, fixed by #12254). `enum:bool` fails EARLIER in the front-end checker. Different error, different stage.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785318110996-enum-bool-switch-fails-e39999-typecastintval-tryfo.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785318110996-enum-bool-switch-fails-e39999-typecastintval-tryfo.md`_

@@ -20,4 +20,4 @@ Also for `/codex-critique`: you MUST pass `sandbox: "danger-full-access"` (read-
 Separate gotcha from the same session: a backgrounded `cmake --build` resets the persistent Bash working directory to /workspace/agent on completion (a later relative `./build/...` then fails from the wrong dir). The build itself runs in whatever cwd was active at launch (the worktree), so confirm it compiled your change by comparing the object-file mtime to your source-edit mtime, NOT by the post-completion `pwd`.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782439747524-codex-critique-gate-tracks-fresh-call-verdicts-not.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782439747524-codex-critique-gate-tracks-fresh-call-verdicts-not.md`_

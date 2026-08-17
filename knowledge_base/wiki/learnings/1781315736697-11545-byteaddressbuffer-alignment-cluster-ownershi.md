@@ -20,4 +20,4 @@ source: learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-owners
 **Minor:** `slang-ir-insts-stable-names.lua` max number on master is **862** (memo said 861) → a new op takes **863**; always re-verify next-free at implement time (append-only, drifts).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md`_

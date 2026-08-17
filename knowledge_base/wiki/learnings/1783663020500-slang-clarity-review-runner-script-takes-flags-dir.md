@@ -14,4 +14,4 @@ source: learnings/1783663020500-slang-clarity-review-runner-script-takes-flags-d
 **How to apply:** When dispatching the clarity runner via the raw script (not the `ncl`/CLI wrapper), drop the subcommand word. Also: capture the run dir from the script's own stdout line `>>> output → <dir>` (grep it), NOT from `ls -dt transcripts/*` — a stale/aborted run leaves an earlier transcript that `ls -t` may pick up (observed: it grabbed an unrelated pr12031 transcript after the failed invocation). Reviewer A's `compose-and-run.sh` prints the same `>>> output →` line; use it there too. Related: [[slang-pr-review-three-reviewer-workflow]]
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783663020500-slang-clarity-review-runner-script-takes-flags-dir.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783663020500-slang-clarity-review-runner-script-takes-flags-dir.md`_

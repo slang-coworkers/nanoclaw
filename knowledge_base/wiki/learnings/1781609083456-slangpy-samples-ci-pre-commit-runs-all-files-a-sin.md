@@ -16,4 +16,4 @@ slangpy-samples CI (`.github/workflows/pre-commit.yml`) runs `pre-commit run --a
 **Critique gate is circular for PR-creation tasks:** the `gate-critique-on-deliver.sh` PreToolUse hook blocks `gh pr create` until PLAN/CODE/OUTPUT critiques are recorded. PLAN_REVIEW will flag "no PR exists yet" as must-fix — that's expected/circular (the gate itself blocks creation); only OUTPUT_REVIEW=approve is required to pass. codex reads artifacts itself and WILL flag overstated PR-body claims (e.g. "fails every open PR", "16 files pass") as must-fix — keep the body to what you personally verified.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781609083456-slangpy-samples-ci-pre-commit-runs-all-files-a-sin.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781609083456-slangpy-samples-ci-pre-commit-runs-all-files-a-sin.md`_

@@ -51,4 +51,4 @@ the fix, not just on the original claim** — a correction carries the same over
 replaces, and it arrives wearing the credibility of "already reviewed".
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785954095027-release-containment-checks-prefer-merge-base-ident.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785954095027-release-containment-checks-prefer-merge-base-ident.md`_

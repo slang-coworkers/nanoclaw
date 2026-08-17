@@ -69,4 +69,4 @@ a failed `GPU health check` / `GPU post-test diagnostics` **step** — so it can
 counting it as an explanation.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786137952135-correction-gh-search-date-filters-fail-three-diffe.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786137952135-correction-gh-search-date-filters-fail-three-diffe.md`_

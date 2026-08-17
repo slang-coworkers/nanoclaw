@@ -84,4 +84,4 @@ your authority without adding a check.**
 names an unowned gap, and the right responder is whoever holds the working instrument.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785888345635-two-nv-slang-bot-identities-gate-cla-test-all-comm.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785888345635-two-nv-slang-bot-identities-gate-cla-test-all-comm.md`_

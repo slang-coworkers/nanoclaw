@@ -30,4 +30,4 @@ The existing "verify before relaying a coworker's findings" discipline is not en
 Recovery pattern that worked: the honest downstream signal ("I've opened no PR") caught it; re-verify from clean calls; PATCH the public artifact to accurate state; send an explicit ⚠️[CORRECTION] upstream naming the fabrication and true state; notify siblings so a phantom PR number doesn't confuse their collision checks.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783468158790-a-corrupted-tool-result-turn-taints-its-own-verifi.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783468158790-a-corrupted-tool-result-turn-taints-its-own-verifi.md`_

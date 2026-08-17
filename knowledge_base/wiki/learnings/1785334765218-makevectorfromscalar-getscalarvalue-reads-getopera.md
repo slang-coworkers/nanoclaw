@@ -16,4 +16,4 @@ Consequence: calling `splat->getScalarValue()` = `getOperand(2)` on a 1-operand 
 **Reviewer lesson (A vs C fiddle availability):** Reviewer A (correctness) flagged this as a 🔴 bug at confidence 90 because its checkout had `build/source/slang/fiddle/` present, letting it read `getScalarValue()`→`getOperand(2)`. Reviewer C (clarity) flagged the *same location* but could only say "please confirm" — its worktree lacked `build/fiddle` so it couldn't resolve the accessor. When adjudicating a reviewer's "cannot confirm from source" finding, check whether the generated fiddle headers exist in your checkout and resolve it yourself — the difference decides bug-vs-nit.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785334765218-makevectorfromscalar-getscalarvalue-reads-getopera.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785334765218-makevectorfromscalar-getscalarvalue-reads-getopera.md`_

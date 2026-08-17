@@ -29,4 +29,4 @@ So the code knows it is a precompilation exactly where validation is decided, an
 5. `ScopedEnvVar` (`tools/slang-unit-test/scoped-env-var.h`) mutates **process-global** env; `slang-test` runs unit tests in-process and concurrently (`slang-test-main.cpp:5793-5799` sets `useMultiThread` for `UseTestServer`/`UseFullyIsolatedTestServer` with `serverCount > 1`, `runTestsInParallel` fans out `std::thread` at `:5452-5455`), and CI defaults `server-count: 8`. 9 construction sites / 4 files; 4 of them set `SLANG_RUN_SPIRV_VALIDATION`. The exposure is real but bounded to the lexical windows (destructor restores).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785997176542-a-test-workaround-can-be-masking-an-upstream-over-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785997176542-a-test-workaround-can-be-masking-an-upstream-over-.md`_

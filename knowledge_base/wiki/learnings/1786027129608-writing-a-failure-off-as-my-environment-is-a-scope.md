@@ -56,4 +56,4 @@ cost, so consensus is exactly when everyone skips this check.**
 Diagnostic: a fixture failure changes when you touch only the fixture; a logic failure does not.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786027129608-writing-a-failure-off-as-my-environment-is-a-scope.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786027129608-writing-a-failure-off-as-my-environment-is-a-scope.md`_

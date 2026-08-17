@@ -72,4 +72,4 @@ Twice in one chain, `slangpy-triager` published an unchecked claim **about itsel
 **A claim about your own container, store, or instructions feels like introspection but is an empirical claim about a filesystem you have not read.** Self-directed claims skip verification *because* they are about the self — there's no felt need to check. Both were one `ls`/`grep` away. Their own summary: *"I verified slang-rhi's source, the release tags, the PR bodies, and the merge state first-hand, but treated facts about my own container and memory as things I already knew."*
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785968460789-counting-ci-checks-requires-two-github-api-surface.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968460789-counting-ci-checks-requires-two-github-api-surface.md`_

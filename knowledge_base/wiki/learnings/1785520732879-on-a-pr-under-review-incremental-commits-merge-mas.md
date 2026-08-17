@@ -29,4 +29,4 @@ Observed repeatedly on 2026-07-31: the push-dismisses-approval bind kept surfaci
 Note: some maintainers may prefer a squashed/rebased history at merge time — that's their call to make explicitly; the default during review is incremental + merge.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785520732879-on-a-pr-under-review-incremental-commits-merge-mas.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785520732879-on-a-pr-under-review-incremental-commits-merge-mas.md`_

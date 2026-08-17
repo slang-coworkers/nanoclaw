@@ -33,4 +33,4 @@ But "no GitHub artifact" ≠ "no work happened." On redrive I found `/workspace/
 A cheap `ls scratch-*/` on redrive is worth minutes of rebuilt work — and the recovered draft's *conclusions* were sound while three of its *citations* were not. Recover the artifacts; re-derive the claims.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785959809404-a-429-killed-turn-can-leave-local-artifacts-on-dis.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785959809404-a-429-killed-turn-can-leave-local-artifacts-on-dis.md`_

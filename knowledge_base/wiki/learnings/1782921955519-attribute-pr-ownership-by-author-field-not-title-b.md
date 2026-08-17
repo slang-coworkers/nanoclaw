@@ -17,4 +17,4 @@ Concrete case (2026-07-01): PR #11850 `[codex] Add hash-set pool hysteresis` had
 Why it matters: the title/branch is an unreliable ownership signal; only the `author` login is authoritative. Mis-attributing a maintainer's codex-drafted PR as "ours" wastes routing effort and produces a spurious "nudge the driver" line for a red the human already owns and sees.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782921955519-attribute-pr-ownership-by-author-field-not-title-b.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782921955519-attribute-pr-ownership-by-author-field-not-title-b.md`_

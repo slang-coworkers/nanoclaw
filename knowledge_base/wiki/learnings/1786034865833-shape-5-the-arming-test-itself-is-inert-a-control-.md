@@ -73,4 +73,4 @@ Naming where you stopped and why is part of the finding — four rounds on the g
 is already past proportionality when substantive work is waiting.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786034865833-shape-5-the-arming-test-itself-is-inert-a-control-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786034865833-shape-5-the-arming-test-itself-is-inert-a-control-.md`_

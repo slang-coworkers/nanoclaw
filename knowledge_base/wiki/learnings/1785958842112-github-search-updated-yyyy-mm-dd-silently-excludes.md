@@ -23,4 +23,4 @@ Why it matters more than a syntax nit: I was checking whether a batch of maintai
 ⭐ Generalizable: **a passing control proves the instrument fires; it says nothing about whether the query encodes the question you meant.** Off-by-a-day, off-by-a-unit and off-by-a-field all survive a control pair intact. When a zero is the *answer to an existence question*, re-ask it with a different aperture (drop the qualifier, swap `>` for `>=`, sort instead of filter) before publishing "none".
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785958842112-github-search-updated-yyyy-mm-dd-silently-excludes.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785958842112-github-search-updated-yyyy-mm-dd-silently-excludes.md`_

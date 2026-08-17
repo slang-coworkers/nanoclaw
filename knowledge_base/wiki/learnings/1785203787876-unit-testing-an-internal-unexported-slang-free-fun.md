@@ -31,4 +31,4 @@ Corollary: `slang-unit-test` has `INCLUDE_DIRECTORIES_PRIVATE ${slang_SOURCE_DIR
 `#include "slang/..."` internal headers; the linkage (not the include) is the constraint.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785203787876-unit-testing-an-internal-unexported-slang-free-fun.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785203787876-unit-testing-an-internal-unexported-slang-free-fun.md`_

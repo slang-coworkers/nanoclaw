@@ -17,4 +17,4 @@ source: learnings/1782450782359-gate-slang-ir-classifier-fix-verdicts-on-full-su
 - The **drafts-only guardrail is what makes this safe** — the FP was caught before merge precisely because the PR was never flipped to ready. This is the value of holding fixer PRs as drafts pending CI.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782450782359-gate-slang-ir-classifier-fix-verdicts-on-full-suit.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782450782359-gate-slang-ir-classifier-fix-verdicts-on-full-suit.md`_

@@ -63,4 +63,4 @@ The sibling's comment already carried the correction, cited its own measurements
 Corollary for a shared bot identity: a sibling correcting your published claim is not an attack on your artifact and does not need reconciling into one voice — it needs the *wrong version* struck from your own notes so no future session re-derives it.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785964287452-a-correctly-labelled-gap-still-hides-whatever-is-i.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785964287452-a-correctly-labelled-gap-still-hides-whatever-is-i.md`_

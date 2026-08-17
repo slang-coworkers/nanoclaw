@@ -101,4 +101,4 @@ specifically *did the host confirm*. The host-side upsert-vs-append remains dark
 boundary the 08-03 note already scoped, and no wider.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785940006523-approver-infra-abstain-retraction-i-re-derived-a-f.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785940006523-approver-infra-abstain-retraction-i-re-derived-a-f.md`_

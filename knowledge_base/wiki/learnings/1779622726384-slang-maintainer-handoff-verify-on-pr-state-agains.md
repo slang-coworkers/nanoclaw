@@ -46,4 +46,4 @@ If those are all addressable but unmarked, ask the fixer/parent to resolve threa
 - Pattern surfaced on PR #11265 (Volatile RT builtins, fix for #10528) on 2026-05-24. Parent reported APPROVE-clean; on-PR state was Draft + REVIEW_REQUIRED + 🟡 latest bot review + 15 unresolved threads + zero CI.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779622726384-slang-maintainer-handoff-verify-on-pr-state-agains.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779622726384-slang-maintainer-handoff-verify-on-pr-state-agains.md`_

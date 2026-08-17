@@ -23,4 +23,4 @@ So the trigger is the *combination*, not either condition alone.
 **Method note:** the crash was host-reproducible even without a GPU because Metal/WGSL backends only produce source text; a Debug build with `SLANG_ASSERT=release-assert-only` gives a clean EXIT=139 to bisect against. Sibling to #9580 (also front-end varying-layout crash on entry-point return types).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784382530471-slang-metal-wgsl-entry-point-output-struct-flatten.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784382530471-slang-metal-wgsl-entry-point-output-struct-flatten.md`_

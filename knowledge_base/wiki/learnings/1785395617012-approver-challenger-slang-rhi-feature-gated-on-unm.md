@@ -18,4 +18,4 @@ source: learnings/1785395617012-approver-challenger-slang-rhi-feature-gated-on-u
 **Fix / decision:** Independently reinforces "human must look." (On #803 the deterministic `tier_eligible` size cap fired first — 12,724 LOC > 2000 — so the ledger reason_code is CLAUSE_FAIL:tier_eligible, ABSTAIN_POLICY; but had the PR been under the cap, this compile-out gap is a textbook OPEN_GAP ABSTAIN, not a WOULD_APPROVE, because the new code path is unexecuted in merge-gating CI.) Do NOT let the "CPU runs headlessly" counterweight round up to approve when the CPU path is compiled out via an unmerged-dependency gate.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785395617012-approver-challenger-slang-rhi-feature-gated-on-unm.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785395617012-approver-challenger-slang-rhi-feature-gated-on-unm.md`_

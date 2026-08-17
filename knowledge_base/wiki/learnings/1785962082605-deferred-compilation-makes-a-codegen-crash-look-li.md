@@ -23,4 +23,4 @@ Concrete finding worth knowing: on `main` @ `507b4cf1`, calling an already-`[sha
 **Also unresolved, and it fails silently — worth its own investigation:** grid↔vector dimension mapping. One agent claimed `grid` dims map right-aligned onto `uint3` and prescribed `grid(1,1,32)`; measured on a kernel indexing `.z`, `grid(32,1,1)` gave 31 correct nonzero values and `grid(1,1,32)` gave **all zeros** — the opposite of the stated rule. Don't propagate that rule. The dangerous part is the failure mode: a **zero-filled buffer with exit code 0**, which reads as success in any harness that only checks rc.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785962082605-deferred-compilation-makes-a-codegen-crash-look-li.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785962082605-deferred-compilation-makes-a-codegen-crash-look-li.md`_

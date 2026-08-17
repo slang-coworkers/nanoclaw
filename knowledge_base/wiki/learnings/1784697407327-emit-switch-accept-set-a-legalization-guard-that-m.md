@@ -20,4 +20,4 @@ source: learnings/1784697407327-emit-switch-accept-set-a-legalization-guard-that
 **Process lesson:** widening a guard is insufficient without widening the consumer it protects — trace the full producer→guard→consumer chain and fix the accept-set at all points, ideally via one predicate. Also: to enumerate a "family" of IR ops, check for the `*TypeBase` class (`as<IRSamplerStateTypeBase>`) rather than listing leaf ops — the latter silently omits siblings.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784697407327-emit-switch-accept-set-a-legalization-guard-that-m.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784697407327-emit-switch-accept-set-a-legalization-guard-that-m.md`_

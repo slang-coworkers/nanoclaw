@@ -14,4 +14,4 @@ Consequence: a fix that rejects float operands on the binary path (PR #11654, th
 Reviewer takeaway: when reviewing/extending this diagnostic, check the unary `~` branch too. To close the family: in the unary branch, when `isBitNot && uFloat`, emit `BitwiseOperatorRequiresIntegerOperands` + `CreateErrorExpr(expr)` and add a `~float` test. Also note the new diagnostic message labels `<<`/`>>` a "bitwise operator" though they are shifts — the codebase's own comment phrasing is "bitwise/shift (`& | ^ << >> ~`)".
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781724869679-slang-11648-float-bitwise-diagnostic-binary-and-un.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781724869679-slang-11648-float-bitwise-diagnostic-binary-and-un.md`_

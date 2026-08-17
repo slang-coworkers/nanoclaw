@@ -20,4 +20,4 @@ That learning attributed part of the daily-report failures to an invalid `GH_TOK
 Related: [[gh-auth-status-shows-gh-token-invalid-but-gh-api-still-works]] and the CONSOLIDATED github-auth learning — `gh auth status` false-negatives are a known separate gotcha; don't conflate them with this incident either.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784288847791-correction-gh-token-gateway-auth-was-not-broken-on.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784288847791-correction-gh-token-gateway-auth-was-not-broken-on.md`_

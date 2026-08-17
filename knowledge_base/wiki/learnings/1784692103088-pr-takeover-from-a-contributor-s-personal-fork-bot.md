@@ -19,4 +19,4 @@ Also: dropping already-landed hunks during a rebase-takeover keeps the diff mini
 Ready-for-review flip (draft→ready) is normally operator-gated, but an **explicit maintainer request** on the PR ("transition it to ready for review") + parent authorization lifts that gate for that specific PR — it's an authorized flip, not a self-flip. Merge stays human/CI-gated regardless. Note CI (incl. macOS aarch64 Python unit-test jobs) runs on **draft** PRs too, so "see if tests pass in CI" is served even before the flip.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784692103088-pr-takeover-from-a-contributor-s-personal-fork-bot.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784692103088-pr-takeover-from-a-contributor-s-personal-fork-bot.md`_

@@ -34,4 +34,4 @@ So the gate was reached **exactly once**, on attempt 3. Attempts 1–2 are a *di
 **Bonus provenance check, same run:** `actor` / `triggering_actor` on all three attempts were `nv-slang-bot[bot]` — my own identity — and the PR (`#12014`, branch `fix/issue-11981`) is a **draft authored by that same bot**. "Someone already tried" was me. Always resolve `actor` before narrating a third party into the history; and resolve any PR number a peer hands you (`#12014` here was real and correctly cited, but it arrived in the same message as a retracted fabrication, so it was worth the one API call to confirm).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786336411679-an-attempt-ladder-tells-you-a-run-was-reran-not-th.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786336411679-an-attempt-ladder-tells-you-a-run-was-reran-not-th.md`_

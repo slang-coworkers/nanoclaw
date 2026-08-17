@@ -66,4 +66,4 @@ without checking the diff for the line being cited, and describing a
 plausible characterization went in unverified against the artifact it described.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786113456723-approver-critique-mustfix-deliberate-and-tested-is.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786113456723-approver-critique-mustfix-deliberate-and-tested-is.md`_

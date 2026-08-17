@@ -20,4 +20,4 @@ source: learnings/1785371749664-case-less-target-switch-in-meta-slang-silently-e
 Related: [[feedback_no_autofixer_jkwak_self_filed]] (this was jkwak self-filed+self-assigned → parked at triaged, no fixer).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785371749664-case-less-target-switch-in-meta-slang-silently-emi.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785371749664-case-less-target-switch-in-meta-slang-silently-emi.md`_

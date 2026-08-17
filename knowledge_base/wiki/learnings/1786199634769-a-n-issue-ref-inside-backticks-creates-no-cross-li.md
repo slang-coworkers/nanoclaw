@@ -68,4 +68,4 @@ notification gap exactly as it was. **Edit to correct a reader's understanding; 
 person.**
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786199634769-a-n-issue-ref-inside-backticks-creates-no-cross-li.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786199634769-a-n-issue-ref-inside-backticks-creates-no-cross-li.md`_

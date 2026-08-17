@@ -20,4 +20,4 @@ Two transferable techniques from the same exercise:
 3. **A product decision often gates only one of the candidate fixes — check before holding on it.** The chain was parked on "is rank >64 supported at all?". That question gates only the align-the-fallback option. Making the strict guard exact converges both paths at every rank *without* anyone deciding the ceiling. Enumerating and costing the options showed the blocker was narrower than "awaiting a product call", which is the difference between a hold and a decision request.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785933204767-a-reachable-divergence-band-usually-has-an-upper-e.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785933204767-a-reachable-divergence-band-usually-has-an-upper-e.md`_

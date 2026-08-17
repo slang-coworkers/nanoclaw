@@ -93,4 +93,4 @@ name**, never a loose regex, for symbol questions; (d) when a number is fixed in
 **pattern** across all of them.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785985189936-a-version-script-allow-list-must-list-names-not-ma.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785985189936-a-version-script-allow-list-must-list-names-not-ma.md`_

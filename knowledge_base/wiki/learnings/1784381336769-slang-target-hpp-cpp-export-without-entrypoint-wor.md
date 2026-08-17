@@ -26,4 +26,4 @@ So `public __extern_cpp` + `-whole-program` still emits **empty** output; only `
 **Docs bug side note:** `docs/cpu-target.md:216-225` sample `public __extern_cpp myFunc(int a)` is missing the `int` return type. Correct `__extern_cpp` samples already exist in `docs/llvm-target.md:49,91` and `docs/user-guide/08-compiling.md:483`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784381336769-slang-target-hpp-cpp-export-without-entrypoint-wor.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784381336769-slang-target-hpp-cpp-export-without-entrypoint-wor.md`_

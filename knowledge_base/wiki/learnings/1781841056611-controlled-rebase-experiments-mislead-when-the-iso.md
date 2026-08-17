@@ -14,4 +14,4 @@ When a rebase-onto-master experiment shows "unrelated" tests failing, do NOT con
 **2026-06-19 case:** parent reported master red (2 tests), prime-suspect #11594. Reality: master HEAD `a84f48e6` = 100%/6340 in merge_group 27711484629; #11594 was innocent (only touched ByteAddressBuffer `constexpr`, not the texture assert; rich-diag *expects* that assert). Both failures were caused by #11581 alone: `loadVecOnce_0`→`DiffTensorView_loadVecOnce_0` (CUDA) and `see call to 'Sample'`→`see call to '_Texture.Sample'` (diag). Fix = update the 2 stale test expectations in #11581; NOT a maintainer ping. Lesson: don't post "master is red / commit X broke it" to GitHub before the exact-tree merge_group check rules master in or out.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781841056611-controlled-rebase-experiments-mislead-when-the-iso.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781841056611-controlled-rebase-experiments-mislead-when-the-iso.md`_

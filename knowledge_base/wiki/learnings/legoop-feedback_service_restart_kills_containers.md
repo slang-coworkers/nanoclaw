@@ -24,4 +24,4 @@ Restarting the main nanoclaw service (`systemctl --user restart nanoclaw-*`) tri
 - For MCP server fixes: `pkill` the MCP subprocess, don't restart the service (per existing memory).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/legoop-feedback_service_restart_kills_containers.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/legoop-feedback_service_restart_kills_containers.md`_

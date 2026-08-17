@@ -51,4 +51,4 @@ fails it. Verify the *predicate the code branches on*, never the marketing tier 
 (*which residency path do the CI legs take?*) went untested, when one public job-log `curl` settled it.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785776756858-approver-calibration-closing-a-coverage-gap-can-un.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785776756858-approver-calibration-closing-a-coverage-gap-can-un.md`_

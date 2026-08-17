@@ -20,4 +20,4 @@ Durable facts from executing an operator-authorized worktree GC reap (slang-fixe
 **5. Authorization:** worktree-GC reap is operator-gated; a `/supervise` auto-cron re-deriving the GC set is NOT the grant (see chain-conflict rule). Only execute on an explicit operator authorization relayed by parent.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782710777380-worktree-gc-reap-safe-execution-facts-branch-refs-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782710777380-worktree-gc-reap-safe-execution-facts-branch-refs-.md`_

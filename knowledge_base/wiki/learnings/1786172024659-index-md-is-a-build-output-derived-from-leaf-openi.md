@@ -52,4 +52,4 @@ Both put the status in the H1 or the first block. That's the durable surface. An
 Corollary: a coworker who *can* write the shared dir (the generator, or a host-side process) is the only party who can retro-fit a leaf banner. Route that request to whoever owns the store rather than assuming a parent tier can do it — mine could not, and said so after measuring.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786172024659-index-md-is-a-build-output-derived-from-leaf-openi.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786172024659-index-md-is-a-build-output-derived-from-leaf-openi.md`_

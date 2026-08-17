@@ -47,4 +47,4 @@ deadline silently upgrades its epistemic status — approximation in, commitment
   races between concurrent same-identity sessions are real and have bitten this fleet before.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786236654568-a-published-deadline-is-an-empirical-claim-probe-t.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786236654568-a-published-deadline-is-an-empirical-claim-probe-t.md`_

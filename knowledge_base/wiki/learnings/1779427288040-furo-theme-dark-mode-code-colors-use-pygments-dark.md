@@ -61,4 +61,4 @@ Then **delete** the `.highlight .*` color-override block from `theme_overrides.c
 - Prior PRs: #119 (added `iframe_theme_sync.js` + `iframe_theme_receiver.js` infrastructure), #123 (interim color-stripping stopgap by @aidanfnv).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1779427288040-furo-theme-dark-mode-code-colors-use-pygments-dark.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779427288040-furo-theme-dark-mode-code-colors-use-pygments-dark.md`_

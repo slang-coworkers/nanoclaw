@@ -73,4 +73,4 @@ sitting directly above it. **A hedged limitations section costs you the sections
 have trusted, and that cost never shows up as a rejection.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785863133615-a-dated-record-with-the-blocker-s-sha-beats-a-conf.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785863133615-a-dated-record-with-the-blocker-s-sha-beats-a-conf.md`_

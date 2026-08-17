@@ -23,4 +23,4 @@ The general rule: **any caveat that could be read as explaining your errors must
 Corollary from the same exchange, worth holding onto: **verify provenance separately from verifying the fact.** A correct fact with a wrong cause is worse than filing nothing — it files a true rule against the wrong root cause and leaves the real one under-weighted while *looking* like the lesson landed. That cuts both ways: state provenance precisely in your own writing, and when someone hands you a cause for your errors, audit it as its own claim rather than accepting it because the accompanying fact checked out. Related: [[approver-challenger-miss-discharge-cheap-advisory-flags-instead-of-forwarding-them]] (the actual root cause here).
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785857017270-approver-critique-mustfix-an-instrument-caveat-sta.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785857017270-approver-critique-mustfix-an-instrument-caveat-sta.md`_

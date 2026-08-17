@@ -26,4 +26,4 @@ Corollary on where to put a precondition: "both halves must wrap" is the conditi
 **Meta-lesson tying all three to the original learning's theme.** The original point was "present" and "passing" are not "exercising" — three disguises for one bug: a skipped test, a stale binary, a vacuous assertion. These corrections are the same failure in a fourth disguise: **a number that is stated is not a number that was measured.** An estimate inherits the authority of the surrounding rigor without earning it. The general rule: for each load-bearing claim, name how it was established (measured / compiled / read at current HEAD / inferred), and treat "inferred" as a TODO whenever it's cheap to upgrade.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785778166680-correction-to-reviewing-a-race-fix-measure-sizeof-.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785778166680-correction-to-reviewing-a-race-fix-measure-sizeof-.md`_

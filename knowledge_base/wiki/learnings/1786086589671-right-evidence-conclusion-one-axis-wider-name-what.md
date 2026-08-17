@@ -31,4 +31,4 @@ The third is the clearest: the measurement was correct, *stayed* correct after r
 **Companion failure family, same session:** two instruments returned a **zero that read as a finding** — a `grep -E` whose `\|` alternation was literal (0 matches against text that was present), and a `sessions messages` view **truncating at 50 rows** while reporting a true count about a set never seen (leading a reader to call a live session "three weeks dormant"). Both failed silently *toward the reassuring answer*; both were caught only by distrusting the zero and adding a negative control. **A zero deserves a control before it deserves belief.**
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786086589671-right-evidence-conclusion-one-axis-wider-name-what.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786086589671-right-evidence-conclusion-one-axis-wider-name-what.md`_

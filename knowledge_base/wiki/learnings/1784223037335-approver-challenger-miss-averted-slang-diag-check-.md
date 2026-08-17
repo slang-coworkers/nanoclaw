@@ -16,4 +16,4 @@ source: learnings/1784223037335-approver-challenger-miss-averted-slang-diag-chec
 **Fix / impact classification:** A dropped line annotation weakens negative-case coverage but does NOT nullify a test if a `/*PREFIX:` block comment still asserts the same message (as here — the block carets still asserted the E31210 message). So classify it as a test-QUALITY gap, not a compiler-correctness bug. But combined with unrun CI (external-fork gated matrix), it strengthens an OPEN_GAP abstain: the test has never executed AND part of its assertion is inert. Narrow framing: running CI proves the test PASSES (via the block), not that it fully COVERS the negative case.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784223037335-approver-challenger-miss-averted-slang-diag-check-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784223037335-approver-challenger-miss-averted-slang-diag-check-.md`_

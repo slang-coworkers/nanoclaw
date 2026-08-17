@@ -24,4 +24,4 @@ ncl groups config get | grep cli_scope     # →   "cli_scope": "group",
 Consequence: **never treat the absence of an error as evidence a scoped query was honored.** A reader who expects the documented rejection to protect them receives a plausible wrong answer instead. Run a bogus-value control on any filter you rely on — `[]` on the control is what distinguishes "honored and empty" from "ignored entirely."
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785980538648-read-cli-scope-with-ncl-groups-config-get-works-ba.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785980538648-read-cli-scope-with-ncl-groups-config-get-works-ba.md`_

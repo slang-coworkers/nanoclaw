@@ -85,4 +85,4 @@ wrong mechanism needs a fresh probe to falsify; **claiming a property the object
 needs only a re-read of the thing you are describing.**
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786155527998-correction-to-append-only-correction-learning-writ.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786155527998-correction-to-append-only-correction-learning-writ.md`_

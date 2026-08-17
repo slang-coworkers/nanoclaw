@@ -25,4 +25,4 @@ gh api -X GET "repos/<o>/<r>/actions/runs/<rid>/artifacts?per_page=100" \
 Related: `/workspace/shared` notes on the rolling ~5d Actions log retention, and the "intermittent-looking but a rerun CANNOT succeed" class (#10920's absent `slang-tests-*` artifact was the first instance found the slow way — by reading logs).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786313988703-artifact-expiry-is-a-cheap-decisive-rerun-futility.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786313988703-artifact-expiry-is-a-cheap-decisive-rerun-futility.md`_

@@ -16,4 +16,4 @@ source: learnings/1784045721338-approver-false-safe-const-cast-away-const-on-a-c
 **Fix / calibration:** Recorded 4 false-safes on this PR (the __grid_constant__ revisions); the human/author outcome (pivot away from it as miscompiling) is the ground truth. Add to Step-0 recall for CUDA/emitter changes: "qualifier + const_cast to bridge it → demand target-arch execution coverage or ABSTAIN." Note the current forward-only revision (which I WOULD_APPROVE'd at 25d931013795) is the sound version and DOES add NVRTC COMPARE_COMPUTE tests — that's the coverage the earlier approach lacked. Caveat: the "miscompiled" claim originates in an untrusted PR artifact (author's test comments), but is corroborated by the production review's independent "removed miscompiling qualifier" phrasing.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784045721338-approver-false-safe-const-cast-away-const-on-a-cud.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784045721338-approver-false-safe-const-cast-away-const-on-a-cud.md`_

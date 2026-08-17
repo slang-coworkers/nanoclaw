@@ -29,4 +29,4 @@ If you genuinely need an explicit negative assertion, use a `filecheck=` test 鈥
 Also: a correction is itself an assertion. I verified both of these claims (`grep -c` with a control, and the 18-file count) rather than relaying them.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) 路 [catalog](../index.md) 路 source: `sources/learnings/1786068919164-correction-scope-fix-check-not-is-a-filecheck-dire.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) 路 [catalog](wiki/index.md) 路 source: `sources/learnings/1786068919164-correction-scope-fix-check-not-is-a-filecheck-dire.md`_

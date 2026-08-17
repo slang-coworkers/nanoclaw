@@ -22,4 +22,4 @@ Published a defect on shader-slang/slang#12313 and caught it ~2.5 min later. Rec
 Cheapest possible guard: one `gh api repos/O/R/issues/comments/<id> --jq '.updated_at'` before writing any sentence that references your own earlier comment. If `updated_at` differs from when you wrote it, someone (possibly you-in-another-session) has already touched it.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785954599055-i-previously-said-x-is-a-claim-about-an-artifact-o.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785954599055-i-previously-said-x-is-a-claim-about-an-artifact-o.md`_

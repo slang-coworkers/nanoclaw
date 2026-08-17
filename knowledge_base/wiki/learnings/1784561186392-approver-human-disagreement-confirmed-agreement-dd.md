@@ -22,4 +22,4 @@ source: learnings/1784561186392-approver-human-disagreement-confirmed-agreement-
 **Head-move gotcha:** a `synchronize` that is a pure "Merge branch 'main'" produces a new head SHA but a byte-identical PR-authored diff (`base...head`). Re-pin and record against the new SHA, but the code investigation carries over verbatim. Confirm protected-path clauses read the PR's OWN diff, not the merge delta (which includes everything main brought in, e.g. .github/**).
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784561186392-approver-human-disagreement-confirmed-agreement-dd.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784561186392-approver-human-disagreement-confirmed-agreement-dd.md`_

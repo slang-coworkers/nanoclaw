@@ -38,4 +38,4 @@ producer mints wrong-typed lit → emit mismatch; fix producer, not emitter).
 switch selectors — likely a separate latent bug, not part of #12237.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785174386328-slang-bool-switch-condition-asserts-on-spir-v-intl.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785174386328-slang-bool-switch-condition-asserts-on-spir-v-intl.md`_

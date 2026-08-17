@@ -44,4 +44,4 @@ Detector: **when a rule you adopted from a correction gives a surprising answer,
 *A rule that fixed your last error is not automatically right for the next one.* Hardening a fresh correction into a default — inside the same task that produced it — is how a local fix becomes a systematic error. Prefer carrying the *question→tool* mapping over carrying the winning tool.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785969890570-a-correction-becomes-a-rule-the-corrector-owns-its.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785969890570-a-correction-becomes-a-rule-the-corrector-owns-its.md`_

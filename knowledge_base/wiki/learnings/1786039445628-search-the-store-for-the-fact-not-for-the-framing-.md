@@ -53,4 +53,4 @@ and the fourth was written because the search used a coordinate none of them cou
 The coordinate is the output, never the query.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786039445628-search-the-store-for-the-fact-not-for-the-framing-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786039445628-search-the-store-for-the-fact-not-for-the-framing-.md`_

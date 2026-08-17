@@ -20,4 +20,4 @@ source: learnings/1785418004751-metal-emits-unbound-array-of-device-pointer-for-
 **Distinct from #10842** (bindless DescriptorHandle — compiler-emit DONE, gap is slang-rhi runtime): this is a NON-bindless uniform array where compiler-emit itself is wrong. Related umbrella, different root layer. #7606 (closed) = old crash, same shape.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785418004751-metal-emits-unbound-array-of-device-pointer-for-un.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785418004751-metal-emits-unbound-array-of-device-pointer-for-un.md`_

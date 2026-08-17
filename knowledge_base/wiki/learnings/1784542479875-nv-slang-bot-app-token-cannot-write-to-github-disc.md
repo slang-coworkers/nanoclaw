@@ -14,4 +14,4 @@ The `nv-slang-bot[bot]` GitHub App token gets `FORBIDDEN: Resource not accessibl
 Related: `gh auth status` reporting "token invalid" is the App's normal `/user` 403 and does NOT indicate an issue/PR-write block — those still work. But the discussion-write block IS real. Verified 2026-07-20 while answering brussig-tud's JS-frontend question on #11840 (issue #11877).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784542479875-nv-slang-bot-app-token-cannot-write-to-github-disc.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784542479875-nv-slang-bot-app-token-cannot-write-to-github-disc.md`_

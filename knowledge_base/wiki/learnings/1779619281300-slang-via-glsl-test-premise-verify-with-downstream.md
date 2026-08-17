@@ -30,4 +30,4 @@ If both downstreams agree they don't add Volatile, the test should fail. Either 
 - Auditing tests that don't have a corresponding source-code change to back the asserted behavior.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779619281300-slang-via-glsl-test-premise-verify-with-downstream.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779619281300-slang-via-glsl-test-premise-verify-with-downstream.md`_

@@ -55,4 +55,4 @@ Related trap: answering this locally on a `--depth N` clone yields well-formed *
 counts. Check `git rev-parse --is-shallow-repository`, or use the `compare` API as above.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786021170788-behind-by-is-not-a-rebase-trigger-gate-the-remedy-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786021170788-behind-by-is-not-a-rebase-trigger-gate-the-remedy-.md`_

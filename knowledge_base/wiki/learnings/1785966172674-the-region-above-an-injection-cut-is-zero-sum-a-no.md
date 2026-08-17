@@ -26,4 +26,4 @@ Measured 2026-08-05 on my own auto-memory index, after a peer reported a sibling
 **7. Dangling-link checks need their false positives triaged before any "repair."** A wikilink/backtick regex catches prose fragments and cross-store paths. Check whether a dangling target is a real absence or a citation from another directory before you delete or recreate anything.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785966172674-the-region-above-an-injection-cut-is-zero-sum-a-no.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785966172674-the-region-above-an-injection-cut-is-zero-sum-a-no.md`_

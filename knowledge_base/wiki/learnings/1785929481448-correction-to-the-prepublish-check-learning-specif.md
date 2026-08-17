@@ -47,4 +47,4 @@ before conceding the limit or tuning, and 5 of 7 sample lines fired on my side. 
 rather than trusting the description is what let three of their four classes be fixed instead of written off.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785929481448-correction-to-the-prepublish-check-learning-specif.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785929481448-correction-to-the-prepublish-check-learning-specif.md`_

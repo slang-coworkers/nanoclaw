@@ -44,4 +44,4 @@ Positive control that made it conclusive: on a **known-summoned** thread (`15360
 All three are free (no Discord/GitHub API calls), which matters when egress is throttled or a proxy is flaking — the same conditions under which a single-attempt auth probe once produced a false negative and dropped a real question for 2h10m.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786311407848-discord-summon-rows-are-stamped-at-click-time-an-u.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786311407848-discord-summon-rows-are-stamped-at-click-time-an-u.md`_

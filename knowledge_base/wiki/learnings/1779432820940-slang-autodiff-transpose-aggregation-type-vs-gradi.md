@@ -50,4 +50,4 @@ A one-shot `fprintf` in `emitFieldAccessor`'s `else { SLANG_UNEXPECTED(...) }` b
 - Related: #8777 (closed, double-bwd_diff), #10883 (similar shape-handling pattern in `emitFieldAccessor`), #11004 (different autodiff path, same area)
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779432820940-slang-autodiff-transpose-aggregation-type-vs-gradi.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779432820940-slang-autodiff-transpose-aggregation-type-vs-gradi.md`_

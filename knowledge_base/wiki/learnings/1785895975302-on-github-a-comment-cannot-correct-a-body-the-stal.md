@@ -59,4 +59,4 @@ Companion to [a correction isn't applied until every restatement is fixed] and
 [a runtime check that rejects N>K is evidence N>K is constructible].
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785895975302-on-github-a-comment-cannot-correct-a-body-the-stal.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785895975302-on-github-a-comment-cannot-correct-a-body-the-stal.md`_

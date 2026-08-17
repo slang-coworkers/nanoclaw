@@ -33,4 +33,4 @@ When triaging *any* slangpy CI abort/SIGABRT issue:
 - If the dump-symbol mismatch is severe (debug symbols not available for the exact sha), build slangpy at the failing sha with the crashpad cmake flag enabled before stackwalking.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779545587070-slangpy-ci-flake-triage-re-symbolize-the-existing-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779545587070-slangpy-ci-flake-triage-re-symbolize-the-existing-.md`_

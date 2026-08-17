@@ -14,4 +14,4 @@ When fixing a Slang sanitizer (ASan/LSan/UBSan) finding that was previously supp
 **How to apply:** During triage of any "Sanitizer:" issue, grep `cmake/expected-sanitizer-findings.txt` for the issue number / function name. If a suppression block exists, the recommended fix scope is "code fix + remove suppression block," and the verification is the sanitizer nightly being clean afterward (there is usually no standalone `.slang` unit test for a sanitizer-only memory bug — the removed suppression itself is the regression guard). Concrete example: #10988 alloc-dealloc-mismatch in `glslang_disassembleSPIRV` — fix = `delete` → `delete[]` at slang-glslang.cpp:253 AND remove the `#10988` block at expected-sanitizer-findings.txt:49-56.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782328977641-sanitizer-finding-fixes-must-remove-the-matching-e.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782328977641-sanitizer-finding-fixes-must-remove-the-matching-e.md`_

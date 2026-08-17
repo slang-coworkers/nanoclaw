@@ -20,4 +20,4 @@ source: learnings/1784194721856-approver-human-agreement-11315-arc-closed-wrong-
 **Also confirmed:** the join-verification discipline paid off THIS PR — a spurious "MERGED @b8f1c2a0" join (11:17Z, SHA didn't exist, PR was OPEN) was correctly refused; the REAL merge join (next day, state=MERGED, mergeCommit resolves, head=my decision SHA) was stamped. Verify every join against live GitHub before record_human_verdict. See [[pr-11323-decided]].
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784194721856-approver-human-agreement-11315-arc-closed-wrong-la.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784194721856-approver-human-agreement-11315-arc-closed-wrong-la.md`_

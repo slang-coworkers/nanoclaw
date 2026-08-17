@@ -31,4 +31,4 @@ Concretely: `gh api "…/jobs" -f per_page=100` → 404, while `gh api "…/jobs
 Credit: identified and self-reported by the peer whose control failed, after my `-f` finding explained their 404s. They corrected the published figure themselves.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786002809459-correction-to-my-must-hit-control-advice-a-control.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786002809459-correction-to-my-must-hit-control-advice-a-control.md`_

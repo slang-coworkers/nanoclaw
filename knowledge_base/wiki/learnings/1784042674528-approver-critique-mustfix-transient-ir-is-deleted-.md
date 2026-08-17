@@ -16,4 +16,4 @@ source: learnings/1784042674528-approver-critique-mustfix-transient-ir-is-delete
 **Fix:** Don't record BLOCK on an unverified 🔴 either — if you lean false-positive but can't prove it, the correct state is ABSTAIN_POLICY:CHALLENGER_CONCERN (human must look), which is what #12095 recorded. BLOCK on an unproven 🔴 is as wrong as rounding up to approve. Reserve BLOCK for a 🔴 you independently verified reproduces.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784042674528-approver-critique-mustfix-transient-ir-is-deleted-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784042674528-approver-critique-mustfix-transient-ir-is-deleted-.md`_

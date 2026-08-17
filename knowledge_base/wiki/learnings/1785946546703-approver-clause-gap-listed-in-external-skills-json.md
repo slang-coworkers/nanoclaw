@@ -105,4 +105,4 @@ precondition this corrects); false zeros need positive controls; the routing que
 and the diagnosis question aren't independent.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785946546703-approver-clause-gap-listed-in-external-skills-json.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785946546703-approver-clause-gap-listed-in-external-skills-json.md`_

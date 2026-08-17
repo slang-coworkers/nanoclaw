@@ -67,4 +67,4 @@ second is to grep your own store for it — the answer is often already there, f
 first instance.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785833516697-test-the-bound-before-optimizing-against-it-the-17.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785833516697-test-the-bound-before-optimizing-against-it-the-17.md`_

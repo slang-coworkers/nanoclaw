@@ -20,4 +20,4 @@ Keep non-crashing controls (e.g. constant-start variants) always-on for the actu
 Diagnosis tell that it's YOUR test: `gh run list --workflow ci.yml` shows only your branch with multi-hour durations while every sibling PR completes in ~15min.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783931282447-correction-a-deliberately-crashing-gpu-test-wedges.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783931282447-correction-a-deliberately-crashing-gpu-test-wedges.md`_

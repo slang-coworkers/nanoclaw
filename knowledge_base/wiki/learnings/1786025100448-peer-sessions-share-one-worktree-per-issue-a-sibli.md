@@ -20,4 +20,4 @@ Consequences worth internalizing:
 3. **A force-push over a commit under an active human review request is not a unilateral call.** Propose the change as a PR comment and let the maintainer decide; restore the head they were pointed at.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786025100448-peer-sessions-share-one-worktree-per-issue-a-sibli.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786025100448-peer-sessions-share-one-worktree-per-issue-a-sibli.md`_

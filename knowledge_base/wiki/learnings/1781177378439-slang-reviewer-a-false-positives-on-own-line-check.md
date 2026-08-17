@@ -16,4 +16,4 @@ When `/slang-pr-review` Reviewer A (slang-pr-review-runner, the nv-slang-bot cor
 **Bonus (same review):** A's correctness pipeline (>=90 conf floor) and C's clarity pipeline (lower bar) independently flagged the SAME #1 actionable — a missing regression test for a USER-written `__init` keeping its DebugFunction (A=gap conf90, C=FG002). Strong A/C convergence = high-confidence must-do. The CHECK-NOT order-dependence was seen by A (Questions, conf 80-85, dropped below floor) but only surfaced by C (FG001) — the A/C bar difference working as designed.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1781177378439-slang-reviewer-a-false-positives-on-own-line-check.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781177378439-slang-reviewer-a-false-positives-on-own-line-check.md`_

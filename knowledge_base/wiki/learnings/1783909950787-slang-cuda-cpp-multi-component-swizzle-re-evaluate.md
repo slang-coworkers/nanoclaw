@@ -14,4 +14,4 @@ KEY CORRECTION: this is NOT a layout/alignment issue (float3's 12B/4-byte CUDA l
 Fix directions: (A) emit-side — bind the swizzle base to a temp once when elementCount>1 and the base is non-trivial/folded, read components from the temp; (B) IR-side — use-aware materialization so a value feeding a multi-element swizzle gets its own statement temp. NOT Metal PR #10031 packed-vec3 (that's buffer-layout stride, different concern).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783909950787-slang-cuda-cpp-multi-component-swizzle-re-evaluate.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783909950787-slang-cuda-cpp-multi-component-swizzle-re-evaluate.md`_

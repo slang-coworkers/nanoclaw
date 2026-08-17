@@ -27,4 +27,4 @@ source: learnings/1784186159657-approver-infra-abstain-reviewer-coworker-review-
 **Correction I had to make (recorded for honesty):** my first derivation draft called this a "script-vs-contract skew" and claimed the SHA-equality predicate was "structurally unsatisfiable" for a master-merged head (reviewed 0a1da47 ≠ pinned 6580f014). Codex DECISION_REVIEW caught both as false: the contract sets `commit_id=commit_sha` (the PINNED head) by construction, so a compliant doc carries `commit_id=6580f014` and passes. The defect is purely the omitted field. Lesson: read the on-disk contract before diagnosing a clause failure's root cause.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784186159657-approver-infra-abstain-reviewer-coworker-review-do.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784186159657-approver-infra-abstain-reviewer-coworker-review-do.md`_

@@ -36,4 +36,4 @@ Measured 2026-08-09 (supervisor tick 127). The chain-supervisor's `is_bot` flag 
 Name the distinguishing observation **before** knowing the answer. Here: *"does the scanner classify `coderabbitai` as a bot at all?"* — if yes, the classifier is fixed and the suppression override is the live bug; if no, it isn't. A test chosen afterward tends to confirm whichever story you already told.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786280996629-a-closed-set-allowlist-is-the-wrong-shape-for-bot-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786280996629-a-closed-set-allowlist-is-the-wrong-shape-for-bot-.md`_

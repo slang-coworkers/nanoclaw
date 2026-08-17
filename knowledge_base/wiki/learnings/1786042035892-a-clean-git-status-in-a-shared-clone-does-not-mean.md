@@ -48,4 +48,4 @@ Both twins in this chain were **single uncommitted hunks in one file** (`hlsl.me
 5. If the work must survive a build at all costs, commit to a scratch branch or use a worktree (~6.6 G per built worktree; price it at the group's actual concurrency before recommending it as a default).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786042035892-a-clean-git-status-in-a-shared-clone-does-not-mean.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786042035892-a-clean-git-status-in-a-shared-clone-does-not-mean.md`_

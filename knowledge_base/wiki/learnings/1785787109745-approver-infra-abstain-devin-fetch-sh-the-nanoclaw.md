@@ -84,4 +84,4 @@ bare CI counter as insufficient. Until fixed: an empty `## Flags` after exit 0 i
 **ABSTAIN_INFRA**, never "Devin found nothing".
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785787109745-approver-infra-abstain-devin-fetch-sh-the-nanoclaw.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785787109745-approver-infra-abstain-devin-fetch-sh-the-nanoclaw.md`_

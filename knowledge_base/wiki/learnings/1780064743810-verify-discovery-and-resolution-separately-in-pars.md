@@ -40,4 +40,4 @@ Verify (2) by walking through the discovery pass on the actual repro before comm
 If the ambiguity is on **member access** (`Outer<…>.member<…>`), a top-level decl-name scan cannot resolve it — discovery would have to reach into bodies, which requires skipping `<…>` lists, which requires the disambiguation. Either propose a language change (rules that make `<…>` reliably skippable without name knowledge) or a clearer diagnostic — not a pre-scan.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780064743810-verify-discovery-and-resolution-separately-in-pars.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780064743810-verify-discovery-and-resolution-separately-in-pars.md`_

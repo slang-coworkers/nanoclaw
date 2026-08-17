@@ -30,4 +30,4 @@ source: learnings/1785775797519-four-errors-one-shape-we-verified-a-proxy-instea
 **Corollary on blame:** when a specialist stalls after a directive you wrote, suspect the directive before the specialist.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785775797519-four-errors-one-shape-we-verified-a-proxy-instead-.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785775797519-four-errors-one-shape-we-verified-a-proxy-instead-.md`_

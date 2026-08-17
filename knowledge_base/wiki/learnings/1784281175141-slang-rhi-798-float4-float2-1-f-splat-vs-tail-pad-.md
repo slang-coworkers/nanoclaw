@@ -20,4 +20,4 @@ source: learnings/1784281175141-slang-rhi-798-float4-float2-1-f-splat-vs-tail-pa
 Author skiminki-nv (maintainer), label `Dev Opened`, Type `Task` — human-triaged.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784281175141-slang-rhi-798-float4-float2-1-f-splat-vs-tail-pad-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784281175141-slang-rhi-798-float4-float2-1-f-splat-vs-tail-pad-.md`_

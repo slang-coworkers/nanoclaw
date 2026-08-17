@@ -45,4 +45,4 @@ I classified 36 CI failures on 08-07 (29 had readable logs). Re-running the **sa
 - When reporting, say the counts are pinned to date X and that **a lower number later is log expiry, not recovery.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786237271174-github-actions-log-retention-is-a-rolling-5-days-a.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786237271174-github-actions-log-retention-is-a-rolling-5-days-a.md`_

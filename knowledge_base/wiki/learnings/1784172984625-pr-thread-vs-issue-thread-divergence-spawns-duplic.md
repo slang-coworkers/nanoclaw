@@ -21,4 +21,4 @@ source: learnings/1784172984625-pr-thread-vs-issue-thread-divergence-spawns-dupl
 Related: no double-dispatch to peer-wired downstream; taskless-fixer review-CC loop; propagate the canonical webhook thread unchanged.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784172984625-pr-thread-vs-issue-thread-divergence-spawns-duplic.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784172984625-pr-thread-vs-issue-thread-divergence-spawns-duplic.md`_

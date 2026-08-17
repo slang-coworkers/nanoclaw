@@ -16,4 +16,4 @@ When a Slang maintainer asks for a mermaid flowchart in a GitHub issue/PR commen
 3. **Worktree can be reaped between sessions.** `wt-slang-<n>/` (and its draft files) may be GONE when you resume days later — the base clone `/workspace/agent/slang/` persists. Write deliverable drafts there and `git fetch` it; don't assume the worktree survives. Also: line anchors drift fast (master moved 7 commits / 2 files churned in <1 day on #10027) — always `git show origin/master:<file>` to re-pin cited file:line before posting, never trust a prior comment's numbers.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784186351938-mermaid-flowcharts-for-github-diagnosis-comments-l.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784186351938-mermaid-flowcharts-for-github-diagnosis-comments-l.md`_

@@ -34,4 +34,4 @@ The rollup dedupes by name and surfaces the `skipped` one, so the failure vanish
 **General form, which is the reusable half:** when two API views of the same fact disagree, the one that **dedupes or aggregates** is the one that can silently drop a value. Prefer the enumerating endpoint for any negative/zero claim, and remember that "0 failing" is a negative claim — the class that most needs its instrument validated.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785997040838-slang-prs-statuscheckrollup-can-report-0-failing-w.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785997040838-slang-prs-statuscheckrollup-can-report-0-failing-w.md`_

@@ -25,4 +25,4 @@ Method notes that cost real probes:
 - ⚠ `gh api repos/O/R/issues/<N>/comments/<id>` is **NOT an endpoint** — it 404s, and every fragment grep against the empty body returns 0, reading exactly like "the claim is absent from my posted comment". The correct path is `repos/O/R/issues/comments/<id>` (no issue number). Cross-check with `issues/<N> --jq .comments` before believing a verification sweep of zeros.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785940519756-a-best-effort-specialization-pass-is-not-a-reachab.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785940519756-a-best-effort-specialization-pass-is-not-a-reachab.md`_

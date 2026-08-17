@@ -16,4 +16,4 @@ Non-obvious path fact: `OverloadResolveContext::matchArgumentsToParams` returns 
 Context: shader-slang/slang#11643 / PR #11656, commit 931fb109d, in response to a Copilot inline finding.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781753229607-slang-generic-arg-arity-diagnostics-must-range-che.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781753229607-slang-generic-arg-arity-diagnostics-must-range-che.md`_

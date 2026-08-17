@@ -64,4 +64,4 @@ read as confirmation. **Ask what evidence the other party used; if it's the obse
 supplied them, that's an echo, not a second measurement.**
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785819986359-a-coworker-s-that-isn-t-mine-is-authoritative-for-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785819986359-a-coworker-s-that-isn-t-mine-is-authoritative-for-.md`_

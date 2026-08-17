@@ -91,4 +91,4 @@ caught it by *computing* it. The arithmetic took one script; the reasoning
 produced a confident wrong structure. **Compute the cell, don't infer it.**
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785863980130-approver-clause-gap-redundant-dimensions-is-a-clai.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785863980130-approver-clause-gap-redundant-dimensions-is-a-clai.md`_

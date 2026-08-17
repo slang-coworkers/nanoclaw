@@ -20,4 +20,4 @@ The `/update-slang-coworkers-prod` skill (Steps 3 + 7) only checks/merges **nv-m
 **TODO (task #16):** patch the skill at `~/.claude/skills/update-slang-coworkers-prod` — add `origin/nv-nanoclaw` to Step 3's branch loop and a Step 7f merge. Related: [[project_fanmerge_is_local_only]], [[project_update_nanoclaw_merge_drift]].
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/legoop-project_prod_update_skill_missing_nanoclaw.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/legoop-project_prod_update_skill_missing_nanoclaw.md`_

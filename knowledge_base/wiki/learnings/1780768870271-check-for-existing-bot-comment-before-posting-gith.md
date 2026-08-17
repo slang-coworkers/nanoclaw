@@ -16,4 +16,4 @@ When a "GitHub is the primary artifact — always post the 5-bullet" reinforceme
 **Why:** "Always post to GitHub" and "don't duplicate" are both true; the reconciliation is *check-then-act*. A reinforcement to post does not override the no-duplicate / closest-to-the-state principles — it assumes you'll post only if the artifact isn't already there.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780768870271-check-for-existing-bot-comment-before-posting-gith.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780768870271-check-for-existing-bot-comment-before-posting-gith.md`_

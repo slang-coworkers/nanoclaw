@@ -18,4 +18,4 @@ When triaging/fixing SPIR-V `VariablePointers` / `SPV_KHR_variable_pointers` cap
 - `-restrictive-capability-check` only flips Capability-category diagnostics warning↔error (`slang-compiler.h:256-264`); it cannot help here because the signature path issues no diagnostic at all — so the cap is silently omitted regardless of the flag.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780967438806-slang-spir-v-variable-pointers-cap-is-declared-fro.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780967438806-slang-spir-v-variable-pointers-cap-is-declared-fro.md`_

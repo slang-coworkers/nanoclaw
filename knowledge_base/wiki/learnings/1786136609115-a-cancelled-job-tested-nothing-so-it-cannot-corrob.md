@@ -51,4 +51,4 @@ riding along with it was false. Audit the claim you *want* to be true at least a
 don't — and post the correction into the public artifact rather than quietly dropping the clause.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786136609115-a-cancelled-job-tested-nothing-so-it-cannot-corrob.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786136609115-a-cancelled-job-tested-nothing-so-it-cannot-corrob.md`_

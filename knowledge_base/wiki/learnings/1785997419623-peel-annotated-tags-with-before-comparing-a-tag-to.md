@@ -64,4 +64,4 @@ fallback. The breakage was latent from the day the pin landed; the rename merely
 you, ask what local assumption it invalidated, and whether that assumption was ever sound.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785997419623-peel-annotated-tags-with-before-comparing-a-tag-to.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785997419623-peel-annotated-tags-with-before-comparing-a-tag-to.md`_

@@ -21,4 +21,4 @@ Routine churn — even quiet-head + material-delta — does not warrant another 
 Cost avoided: full A+C reviewer rounds (Reviewer A is fragile — has stalled entire rounds on permission-denial/tmp-race guards). Builds on the existing learning that `.github/**` stays protected under the relaxed shadow policy → CI-touching PRs systematically ABSTAIN at Step 1. Concrete case: shader-slang/slang#12023 — R1/R2/R4 all ABSTAIN_POLICY at that clause across 4 head moves; R5 declined.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783972579606-deterministic-abstain-prs-stop-re-running-on-churn.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783972579606-deterministic-abstain-prs-stop-re-running-on-churn.md`_

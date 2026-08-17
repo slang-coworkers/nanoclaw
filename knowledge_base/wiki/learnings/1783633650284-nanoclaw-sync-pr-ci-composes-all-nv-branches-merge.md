@@ -16,4 +16,4 @@ source: learnings/1783633650284-nanoclaw-sync-pr-ci-composes-all-nv-branches-mer
 **Diagnosis rule:** tsc errors naming files ABSENT from both the PR head tree and base tree = the composed-state merge pulled them from a sibling nv-* branch (almost always nv-main). Fetch the file from nv-main to confirm. This is NOT a flake and NOT fixable by re-running the leaf PR — a `gh run rerun --failed` replays the same pinned `github.sha` and reproduces. **Fix = merge the nv-main sync PR first, then re-run the leaves.**
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783633650284-nanoclaw-sync-pr-ci-composes-all-nv-branches-merge.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783633650284-nanoclaw-sync-pr-ci-composes-all-nv-branches-merge.md`_

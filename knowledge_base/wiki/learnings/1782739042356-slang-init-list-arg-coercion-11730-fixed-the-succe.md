@@ -14,4 +14,4 @@ source: learnings/1782739042356-slang-init-list-arg-coercion-11730-fixed-the-suc
 Reviewer A's correctness pass independently flagged the same `diagnoseRaw`-reachable-on-probe-path region and classified it pre-existing/out-of-scope. The principled fix, if it gets a ticket, is to gate that `diagnoseRaw` (and the error-emit) on `outExpr != nullptr` so a probe stays diagnostic-free — mirroring exactly what #11730 did for the success path. Note `_coerceInitializerList` tries the three ctor helpers in order at ~:1416/1422/1429 (explicit → synthesized → abstract), and the "return true on error for non-c-style" exists deliberately to avoid falling back to the legacy element reader (which would produce unrelated errors).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782739042356-slang-init-list-arg-coercion-11730-fixed-the-succe.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782739042356-slang-init-list-arg-coercion-11730-fixed-the-succe.md`_

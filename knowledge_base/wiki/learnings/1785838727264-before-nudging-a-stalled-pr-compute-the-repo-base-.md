@@ -31,4 +31,4 @@ The one non-COMMENTED review was jkwak-work's, body "Looks good to me", submitte
 General rule: a nudge is justified by *deviation from this repo's norm*, never by an absolute day count. Compute the norm first — it is two `gh api` calls — and be willing to let the answer be "post nothing."
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785838727264-before-nudging-a-stalled-pr-compute-the-repo-base-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785838727264-before-nudging-a-stalled-pr-compute-the-repo-base-.md`_

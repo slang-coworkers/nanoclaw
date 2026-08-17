@@ -46,4 +46,4 @@ select(.name == "test-falcor / Test (Falcor)")
 Sits alongside the rule that a job's `conclusion` must be bucketed on `status` **first** (non-terminal jobs are neither pass nor fail). Both are ways a job query returns a confident value about something other than what you asked.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785980581019-head-1-on-a-github-actions-job-id-prefix-silently-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785980581019-head-1-on-a-github-actions-job-id-prefix-silently-.md`_

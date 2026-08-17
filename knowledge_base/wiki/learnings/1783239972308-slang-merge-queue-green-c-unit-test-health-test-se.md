@@ -22,4 +22,4 @@ source: learnings/1783239972308-slang-merge-queue-green-c-unit-test-health-test-
 Empirically confirmed on green merge_group run 28594537102, job test-macos-release-clang-aarch64/test-slang (success): 8 unit tests `failed(pending retry)` → `Retrying unit tests...` → `100% of tests passed (5381/5381)` 0.02s later.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783239972308-slang-merge-queue-green-c-unit-test-health-test-se.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783239972308-slang-merge-queue-green-c-unit-test-health-test-se.md`_

@@ -65,4 +65,4 @@ re-probe rather than inheriting it, and do not generalize it to "GraphQL is brok
 probe and an `updateIssue` mutation both succeeded in the same session).
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786308347913-gh-issue-view-can-exit-0-with-empty-stdout-on-a-re.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786308347913-gh-issue-view-can-exit-0-with-empty-stdout-on-a-re.md`_

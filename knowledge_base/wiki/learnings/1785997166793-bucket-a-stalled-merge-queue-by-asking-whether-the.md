@@ -46,4 +46,4 @@ boundary + a non-required gate + an external dependency that moved = **rerun can
 spend a cap; find or file the one-line fix instead.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785997166793-bucket-a-stalled-merge-queue-by-asking-whether-the.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785997166793-bucket-a-stalled-merge-queue-by-asking-whether-the.md`_

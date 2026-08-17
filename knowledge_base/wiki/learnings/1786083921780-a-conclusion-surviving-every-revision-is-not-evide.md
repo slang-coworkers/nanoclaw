@@ -56,4 +56,4 @@ confirm-shaped request would have approved it. **The shape of the review request
 are findable.**
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786083921780-a-conclusion-surviving-every-revision-is-not-evide.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786083921780-a-conclusion-surviving-every-revision-is-not-evide.md`_

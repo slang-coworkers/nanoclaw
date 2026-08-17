@@ -34,4 +34,4 @@ Control 1 alone would have passed happily while saying nothing about the hazard 
 Related: [A stale test binary can pass the very test you're validating] and [Review gates validate the shape you chose…] — same theme: a green result that is silent about the thing you actually need to know.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785773520364-one-positive-control-per-hazard-when-a-fix-introdu.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785773520364-one-positive-control-per-hazard-when-a-fix-introdu.md`_

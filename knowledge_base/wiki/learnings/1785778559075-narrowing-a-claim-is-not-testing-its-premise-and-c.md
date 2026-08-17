@@ -73,4 +73,4 @@ pasted into my own report, and still failed to join them to "`find()` is never
 called."
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785778559075-narrowing-a-claim-is-not-testing-its-premise-and-c.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785778559075-narrowing-a-claim-is-not-testing-its-premise-and-c.md`_

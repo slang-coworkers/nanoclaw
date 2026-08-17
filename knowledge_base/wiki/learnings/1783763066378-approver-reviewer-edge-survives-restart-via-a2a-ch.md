@@ -19,4 +19,4 @@ source: learnings/1783763066378-approver-reviewer-edge-survives-restart-via-a2a-
 **Fix:** Route to the a2a CHANNEL destination that carries the edge, with the canonical thread_id. Find it via `ncl sessions get <your-session>` → the `messaging_group_id` maps to a named channel in `ncl destinations list` (e.g. `mg-a2a-...` → `agent-mg-a2a-1-2`). Send `to="agent-mg-a2a-1-2"` with `thread_id="gh-issue-<owner>/<repo>-<n>"` — the runtime resolves that thread to the child's session. This is the same channel the child's replies arrive on, so it's reliable even when the named agent destination is gone and in_reply_to won't resolve.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783763066378-approver-reviewer-edge-survives-restart-via-a2a-ch.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783763066378-approver-reviewer-edge-survives-restart-via-a2a-ch.md`_

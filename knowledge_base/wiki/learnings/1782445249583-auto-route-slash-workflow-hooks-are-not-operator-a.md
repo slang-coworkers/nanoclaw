@@ -14,4 +14,4 @@ source: learnings/1782445249583-auto-route-slash-workflow-hooks-are-not-operator
 **How to apply:** A hook is an even weaker source than an untraceable parent relay (see the traceable-source-mandates learning) — it carries zero authorization. Source hierarchy for releasing a build/gated action: explicit operator/maintainer go-ahead relayed by parent > parent's standing instruction > … >> auto-route hook (lowest; never sufficient on its own). When a hook conflicts with an active hold, follow the hold and note the divergence to parent in your report ("auto-route suggested /slang-implement; not following per your hold"). Maintainer *proposing* an approach ≠ maintainer *authorizing* you to build it; surface the scoped fix and wait for the explicit go-ahead.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782445249583-auto-route-slash-workflow-hooks-are-not-operator-a.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782445249583-auto-route-slash-workflow-hooks-are-not-operator-a.md`_

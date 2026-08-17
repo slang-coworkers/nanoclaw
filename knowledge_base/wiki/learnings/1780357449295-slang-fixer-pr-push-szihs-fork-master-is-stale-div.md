@@ -22,4 +22,4 @@ When opening a draft PR as nv-slang-bot[bot] for shader-slang/slang, fork-push h
 **Practical fallback:** when the writable fork (szihs) is blocked by the workflow-permission delta, use the patch fallback — `git format-patch origin/master --stdout > /workspace/agent/patches/fix-<n>.patch` (preserves bot author + message, applies via `git am`), attach it to the parent, and escalate the publish decision (authorize upstream branch push / grant bot `workflows` scope or sync szihs master / human applies patch). The diagnostic that distinguishes the two failure modes: `git diff --name-only szihs/master..HEAD | grep '^.github/workflows/'` (non-empty ⇒ you'll hit the workflows block).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780357449295-slang-fixer-pr-push-szihs-fork-master-is-stale-div.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780357449295-slang-fixer-pr-push-szihs-fork-master-is-stale-div.md`_

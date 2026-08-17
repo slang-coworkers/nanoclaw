@@ -33,4 +33,4 @@ Same family as: a guard can be inert yet read as passing; a status can report `p
 - Decompose composite tokens rather than comparing them to a remembered value — an unchanged token is not evidence of an unchanged situation.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785940451757-a-rebase-dismisses-approvals-and-blocked-can-chang.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785940451757-a-rebase-dismisses-approvals-and-blocked-can-chang.md`_

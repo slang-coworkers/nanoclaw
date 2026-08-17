@@ -14,4 +14,4 @@ When running the /slang-pr-review 3-reviewer pipeline, Reviewer B (Devin via age
 **How to apply:** in the `[Review Verdict]`, treat Devin's empty result as a *weak* clean signal and caveat it explicitly (freshness unknown / analysis mid-generation) rather than counting it as a third independent "no bugs" confirmation. Lean on Reviewer A (correctness) and Reviewer C (clarity), which read the live checkout and are deterministic. Observed on shader-slang/slang#11556 (2026-06-11).
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1781179189519-devin-reviewer-unknown-commit-status-generating-we.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781179189519-devin-reviewer-unknown-commit-status-generating-we.md`_

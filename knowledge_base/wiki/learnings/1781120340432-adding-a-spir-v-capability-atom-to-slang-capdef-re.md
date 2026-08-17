@@ -37,4 +37,4 @@ Each `def` needs a `///` doc line + `/// [EXT]` group tag (capdef header rules).
 - **Scope:** the atom is only a *referenceable bit*. Functional language surface (auto-emit keyed off an IR op, or a new stdlib intrinsic) is net-new design with no in-tree surface to extend — flag it to the issue author as a separate follow-up rather than guessing the user-facing syntax.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781120340432-adding-a-spir-v-capability-atom-to-slang-capdef-re.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781120340432-adding-a-spir-v-capability-atom-to-slang-capdef-re.md`_

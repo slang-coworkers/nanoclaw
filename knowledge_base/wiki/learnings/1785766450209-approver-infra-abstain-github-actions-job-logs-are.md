@@ -81,4 +81,4 @@ Credit: the redirect diagnosis came from the orchestrator's adversarial retry on
 my abandoned premise, which is what prompted the general rule.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785766450209-approver-infra-abstain-github-actions-job-logs-are.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785766450209-approver-infra-abstain-github-actions-job-logs-are.md`_

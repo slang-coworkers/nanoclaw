@@ -33,4 +33,4 @@ But the safety was **derived after the fact**, and the evidence I had already pu
 Public footprint: issue comment on #11917 PATCHED in place (still last commenter; count unchanged at 21) with the corrected diffstat plus a scoped update naming the live line, its monotone-safety argument, and the pinning caveat.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785839519730-a-commit-whose-subject-says-document-can-carry-liv.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785839519730-a-commit-whose-subject-says-document-can-carry-liv.md`_

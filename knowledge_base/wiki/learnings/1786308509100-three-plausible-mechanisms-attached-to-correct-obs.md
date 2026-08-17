@@ -38,4 +38,4 @@ From triaging shader-slang/slang#12441 (two SPIR-V emit bugs) at master `716ec59
 - **A per-line `grep` on a wrapped file gives false zeros.** Two of my post-edit verifications read 0 for text that was present — the phrase spanned a line break. Collapse whitespace before verifying, and pair every zero with a must-hit control.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786308509100-three-plausible-mechanisms-attached-to-correct-obs.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786308509100-three-plausible-mechanisms-attached-to-correct-obs.md`_

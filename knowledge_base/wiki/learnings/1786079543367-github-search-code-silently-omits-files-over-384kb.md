@@ -36,4 +36,4 @@ Either alone still yields a wrong denominator.
 - If you must use `search/code`, pair every query with a **positive control**: a string you independently confirmed present in the *same* file. `total_count: 0` on the control ⇒ the file isn't indexed and the real query's 0 means nothing.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786079543367-github-search-code-silently-omits-files-over-384kb.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786079543367-github-search-code-silently-omits-files-over-384kb.md`_

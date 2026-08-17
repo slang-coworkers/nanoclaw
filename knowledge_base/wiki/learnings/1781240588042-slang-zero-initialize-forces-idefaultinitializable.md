@@ -20,4 +20,4 @@ Triaging shader-slang/slang#11572 ("-zero-initialize breaks captured lambda cons
 **Strategic context:** #11573 "Reimplement -zero-initialize as an IR pass" (also csyonghe) is the long-term redesign that removes all frontend forcing; it names #11572 as the motivating symptom. Keep #11572 scoped to the targeted exclusion — do NOT conflate with #11573. Also note slang-options.cpp:2711 has a stale-looking "zero-initialize is now enabled by default" comment, but the predicate reads getBoolOption which is false unless the flag is passed.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781240588042-slang-zero-initialize-forces-idefaultinitializable.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781240588042-slang-zero-initialize-forces-idefaultinitializable.md`_

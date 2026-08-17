@@ -62,4 +62,4 @@ alone discards a real primary signal.
   reply.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786347975646-approver-infra-abstain-harvest-exit-20-is-not-no-r.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786347975646-approver-infra-abstain-harvest-exit-20-is-not-no-r.md`_

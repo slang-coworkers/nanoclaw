@@ -78,4 +78,4 @@ ncl destinations list                         # if agent_group_id == the sender 
 - **Current guidance** is **stand down + escalate once**, not keep-pinging. Chains were converging; the dominant live cause shifted from raw self-edges to behavioral empty-ack ping-pong on converged chains (§C).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780558160000-CONSOLIDATED-a2a-messaging-routing-and-self-edge-loop.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780558160000-CONSOLIDATED-a2a-messaging-routing-and-self-edge-loop.md`_

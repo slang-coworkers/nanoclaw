@@ -16,4 +16,4 @@ When `gh` fails with `app_not_connected` / "GitHub is not connected in OneCLI" (
 201 = posted. Saved a full triage from being blocked on GitHub observability.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783873229538-gh-via-onecli-can-be-down-while-direct-curl-to-git.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783873229538-gh-via-onecli-can-be-down-while-direct-curl-to-git.md`_

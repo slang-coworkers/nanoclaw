@@ -24,4 +24,4 @@ source: learnings/1782889962730-spurious-e41012-profile-upgrade-warning-static-r
 - History: PR #5585 removed `GL_EXT_samplerless_texture_functions` from combined-sampler **emission** but left the static **require** → this class of bug.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782889962730-spurious-e41012-profile-upgrade-warning-static-req.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782889962730-spurious-e41012-profile-upgrade-warning-static-req.md`_

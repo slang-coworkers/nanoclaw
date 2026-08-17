@@ -14,4 +14,4 @@ Observed 2026-06-23 across the nvrgfx fleet: `2u1g-x570-0558` (driver too old �
 How to handle: classify as INTERMITTENT infra (a rerun can re-land on a healthy VM), so one rerun per affected PR is the correct lever — but a runner that fails the same way 2+ times is CONFIRMED-UNHEALTHY: stop spinning reruns and escalate fleet health to the operator (update/pull the runner driver, or pin an earlier-CUDA container). Not bot-fixable. Grep the failed log for `cuda>=13.0` and the `Runner name:` line to attribute it to a specific runner.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782226877304-cuda-13-0-gpu-ci-runner-driver-mismatch-signature-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782226877304-cuda-13-0-gpu-ci-runner-driver-mismatch-signature-.md`_

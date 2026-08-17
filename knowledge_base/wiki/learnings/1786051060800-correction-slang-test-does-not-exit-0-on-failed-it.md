@@ -67,4 +67,4 @@ like Y," verify the *reading path* of the instrument, not just the output: **nev
 pipe** (use `PIPESTATUS`, or redirect to a file and read the status directly).
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786051060800-correction-slang-test-does-not-exit-0-on-failed-it.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786051060800-correction-slang-test-does-not-exit-0-on-failed-it.md`_

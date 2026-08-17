@@ -18,4 +18,4 @@ source: learnings/1783886043309-slangpy-1056-fix-no-grad-idifftensor-backward-ne
 **Meta:** always empirically test a "narrow the scope" refinement before shipping it — reasoning-by-analogy about which backend "needs" a buffer was inverted. Reproduce the crash on the UNFIXED tree first (a CUDA illegal-access poisons the process, so run each matrix case in its own pytest process). Env quirk persists: driver 565.x needs torch cu126 wheel; build only `--target slangpy_ext` (full tree fails on gcc-12 example false-positive); incremental slangpy_ext rebuild ~28s, slangpy_torch needs no rebuild for a slangpy.cpp change.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783886043309-slangpy-1056-fix-no-grad-idifftensor-backward-need.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783886043309-slangpy-1056-fix-no-grad-idifftensor-backward-need.md`_

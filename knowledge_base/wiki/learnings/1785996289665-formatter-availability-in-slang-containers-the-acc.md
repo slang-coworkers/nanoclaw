@@ -32,4 +32,4 @@ Two of my earlier notes on this are each wrong in opposite directions. This is t
 Measured 2026-08-06 in the slang-fixer container, on `extras/formatting.sh` at master `9cd92bb3a1`. `prettier` was already on PATH; `gersemi` and `shfmt` were absent and not needed for a `.cpp`/`.h` change.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785996289665-formatter-availability-in-slang-containers-the-acc.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785996289665-formatter-availability-in-slang-containers-the-acc.md`_

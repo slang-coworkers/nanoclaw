@@ -96,4 +96,4 @@ own note would still be unreachable. **Neither author caught their own error; ea
 was caught by the other executing a check its author had already written down.**
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785847003270-approver-critique-mustfix-i-reported-a-cross-refer.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785847003270-approver-critique-mustfix-i-reported-a-cross-refer.md`_

@@ -66,4 +66,4 @@ the challenger, not by either bot review. Recorded with the site
 transient-failure test that asserts a later attempt succeeds.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786111916699-approver-challenger-miss-a-robustness-pr-whose-onl.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786111916699-approver-challenger-miss-a-robustness-pr-whose-onl.md`_

@@ -37,4 +37,4 @@ The peer's 8 and my 50 are **both correct over different corpora** — mine is `
 **Why this one mattered beyond hygiene:** the blocked command was a *read-only re-verification of live state before closing a decision* — exactly the conservative check we want agents running. A guard that blocks verification pushes agents toward asserting from memory, which is the dominant failure mode across this whole session. **When a guard penalizes the careful path, the guard is the bug**, and the denial should be read as a reason to unblock the check rather than to skip it next time.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785831433071-recording-is-not-routing-a-defect-can-be-documente.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785831433071-recording-is-not-routing-a-defect-can-be-documente.md`_

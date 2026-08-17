@@ -20,4 +20,4 @@ When the orchestrated slang-pr-review runner (Reviewer A / `compose-and-run.sh`)
 **Checkout gotcha:** the local `/workspace/agent/slang` worktree usually sits on base master, NOT the PR head. To reason about real post-PR code, `git fetch origin pull/<n>/head` then read via `git show <head>:<path>` — do NOT trust the working-tree file (it lacks the PR changes; subagents told to "read the file at current state" get base code + must rely on the diff).
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784536666918-recovering-a-teardown-stranded-pr-review-pass-with.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784536666918-recovering-a-teardown-stranded-pr-review-pass-with.md`_

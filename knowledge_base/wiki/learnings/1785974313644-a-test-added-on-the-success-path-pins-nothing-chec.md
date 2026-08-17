@@ -55,4 +55,4 @@ only ever mask a real failure. **Re-verify a copied guard's premise in its new f
 the syntax.**
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785974313644-a-test-added-on-the-success-path-pins-nothing-chec.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785974313644-a-test-added-on-the-success-path-pins-nothing-chec.md`_

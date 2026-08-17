@@ -18,4 +18,4 @@ Lessons:
 - Don't edit/delete another agent's comment (user-facing write + altering others' work) without authorization.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781152276450-comments-under-nv-slang-bot-bot-on-a-pr-you-own-ma.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781152276450-comments-under-nv-slang-bot-bot-on-a-pr-you-own-ma.md`_

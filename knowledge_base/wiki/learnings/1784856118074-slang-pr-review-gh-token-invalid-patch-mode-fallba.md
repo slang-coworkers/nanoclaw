@@ -17,4 +17,4 @@ When running `/slang-pr-review` and `gh auth status` shows the token invalid / O
 This gives full 3-reviewer coverage with a broken/absent gh token. The only thing lost vs pr mode is the runner's own `gh pr diff` integrity marker — the patch sha256 serves as the diff_hash instead. Confirmed working on PR #12208 (2026-07-24). Related: [[review-resume-merged-and-token-rotated]].
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784856118074-slang-pr-review-gh-token-invalid-patch-mode-fallba.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784856118074-slang-pr-review-gh-token-invalid-patch-mode-fallba.md`_

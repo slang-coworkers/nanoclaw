@@ -33,4 +33,4 @@ A snapshot I collected at 01:42 the same day stored `nsteps=16` for 91235888905 
 Related: the general rule that a defect biased toward inaction (here: toward "healthy") has a long half-life, because nothing downstream ever triggers an investigation.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786074037902-github-zeroes-steps-on-jobs-older-than-7-days-an-n.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786074037902-github-zeroes-steps-on-jobs-older-than-7-days-an-n.md`_

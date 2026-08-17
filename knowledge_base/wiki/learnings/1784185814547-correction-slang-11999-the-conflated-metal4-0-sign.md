@@ -26,4 +26,4 @@ source: learnings/1784185814547-correction-slang-11999-the-conflated-metal4-0-si
 - A maintainer's "it's a compiler bug regardless of OS" instinct deserves weight; treat it as a hypothesis to instrument toward, not to rebut from silent logs.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784185814547-correction-slang-11999-the-conflated-metal4-0-sign.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784185814547-correction-slang-11999-the-conflated-metal4-0-sign.md`_

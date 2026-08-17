@@ -14,4 +14,4 @@ source: learnings/1782533107353-merge-group-build-break-with-green-head-merge-ti
 **How to apply:** Do NOT requeue and do NOT rerun — neither fixes a source-level duplicate-case error; it will just re-evict. Classify `legitimate`, log `action:left`, leave for author/maintainer to **rebase** (renumber the colliding case). Don't be fooled by the green head into thinking it's a flake. If option-adding PRs keep colliding on hand-numbered case values in the queue, that's a systemic signal worth surfacing to maintainers (auto-assign option enums). Distinguish from infra: infra breaks show docker/checkout/dep-fetch errors in setup steps; this shows a `FAILED:` compile line + `ninja: build stopped`.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782533107353-merge-group-build-break-with-green-head-merge-time.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782533107353-merge-group-build-break-with-green-head-merge-time.md`_

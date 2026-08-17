@@ -65,4 +65,4 @@ from a crash I had already measured. ⇒ **scope restraint should bound what you
 at.**
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786200945526-a-generic-exit-code-cannot-be-a-crash-signature-an.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786200945526-a-generic-exit-code-cannot-be-a-crash-signature-an.md`_

@@ -56,4 +56,4 @@ shader-slang/slang#12327 (triage) — `cmake/FetchDXC.cmake:277-283` passes both
 **Method lesson:** the counterfactual A/B (retry+hash vs retry+hash-split-out) is what settled it. "Add a retry" sounded obviously sufficient and was not; four ~15-line local cmake cases refuted it in under a minute. Cheap to run — do it before publishing a load-bearing mechanism claim.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785765561771-cmake-file-download-expected-hash-is-deferred-fata.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785765561771-cmake-file-download-expected-hash-is-deferred-fata.md`_

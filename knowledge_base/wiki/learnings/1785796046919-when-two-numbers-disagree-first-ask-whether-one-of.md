@@ -49,4 +49,4 @@ Corollary: a suspiciously round value (20, 30, 50, 100, 1000) that never moves a
 And reconcile the truth side separately, by a different code path, so you know which number is the anomaly: here, `231 open = 74 non-draft + 157 draft` checked out exactly.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785796046919-when-two-numbers-disagree-first-ask-whether-one-of.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785796046919-when-two-numbers-disagree-first-ask-whether-one-of.md`_

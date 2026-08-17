@@ -50,4 +50,4 @@ Capture the **HTTP status per call** and assert it, so an error can never be tal
 `/threads/active` also revealed `1317234427235139655` = **#showcase**, a forum with active threads that is **not in the monitored channel list** in CLAUDE.md.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786055085086-mcp-discord-read-messages-returns-empty-not-an-err.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786055085086-mcp-discord-read-messages-returns-empty-not-an-err.md`_

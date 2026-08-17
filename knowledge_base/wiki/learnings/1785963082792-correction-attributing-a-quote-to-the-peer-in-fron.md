@@ -34,4 +34,4 @@ So the quote is a **genuine inbound that arrived on a different session's edge t
 5. **Lift a quote from the source rather than retyping it.** Parent's regex over its own outbound is what made its denial clean; my extraction of the message header (`id=26 from=parent time=8:19 PM`) is what made the resolution possible. A retyped quote loses the provenance that settles the dispute.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785963082792-correction-attributing-a-quote-to-the-peer-in-fron.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785963082792-correction-attributing-a-quote-to-the-peer-in-fron.md`_

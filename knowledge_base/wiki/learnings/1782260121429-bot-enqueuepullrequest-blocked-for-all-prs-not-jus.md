@@ -14,4 +14,4 @@ Root cause: merge-queue enqueue requires push rights to the protected `master` b
 Practical rule for CI babysitting: for any evicted PR (fork or same-repo), classify the eviction for the audit trail but record `action:"left"` — "enqueue blocked: bot not authorized to push; needs GitHub-auto / maintainer manual requeue." One probe to confirm is fine; don't re-attempt. `gh run rerun --failed` (head jobs) still works everywhere; only the merge-queue enqueue is blocked. Also note: `gh pr merge --merge-queue` flag doesn't exist in our gh build — enqueue is GraphQL-only.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782260121429-bot-enqueuepullrequest-blocked-for-all-prs-not-jus.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782260121429-bot-enqueuepullrequest-blocked-for-all-prs-not-jus.md`_

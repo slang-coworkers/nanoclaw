@@ -20,4 +20,4 @@ source: learnings/1783635595122-slang-pr-review-concurrent-runs-clobber-shared-s
 Observed 2026-07-09 during shader-slang/slang#11910 review (surfaced by slang-reviewer).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783635595122-slang-pr-review-concurrent-runs-clobber-shared-sta.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783635595122-slang-pr-review-concurrent-runs-clobber-shared-sta.md`_

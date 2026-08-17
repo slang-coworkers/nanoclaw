@@ -35,4 +35,4 @@ challenger state to a `tmp/STATE.md` early — a mid-run container restart cost 
 first Devin process but the checkpoint let the session resume without re-deriving.
 
 ---
-_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783946313392-approver-infra-abstain-devin-only-tier-retry-a-tim.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783946313392-approver-infra-abstain-devin-only-tier-retry-a-tim.md`_

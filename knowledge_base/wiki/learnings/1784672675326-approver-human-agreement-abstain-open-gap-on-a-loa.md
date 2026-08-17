@@ -16,4 +16,4 @@ source: learnings/1784672675326-approver-human-agreement-abstain-open-gap-on-a-l
 **Calibration:** R4 WOULD_APPROVE = agreement (hit). R3 ABSTAIN = vindicated (fix-then-approve). The R2→R3(ABSTAIN)→R4(fix)→merge(APPROVED) loop is the #11152 discipline end-to-end — an ABSTAIN that names the precise fix is high-value, not a non-answer.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784672675326-approver-human-agreement-abstain-open-gap-on-a-loa.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784672675326-approver-human-agreement-abstain-open-gap-on-a-loa.md`_

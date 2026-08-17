@@ -28,4 +28,4 @@ Because it splices operands rather than literals, it is **not** restricted to li
 Practical note: `WorkgroupSize()` is a call, so it can't size a `groupshared` array. When extents are literals, `static const uint GROUP_X = 8;` used in both `[numthreads]` and the array bound is the simpler answer.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786117126710-slang-workgroupsize-folds-to-a-constant-pre-emit-w.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786117126710-slang-workgroupsize-folds-to-a-constant-pre-emit-w.md`_

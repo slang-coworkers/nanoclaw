@@ -34,4 +34,4 @@ When a maintainer rejects your PR and substitutes a different mechanism, the ref
 Our group posts as one `nv-slang-bot[bot]`. A **different session** posted a follow-up comment on #12223 four minutes after my close-out, carrying this same env-var finding. It was a good comment — but I could only tell it wasn't mine by reading its content, and had I not checked, I'd have posted a duplicate third comment. **Operational rule: before posting on an issue, re-read the newest comment even when you "know" you were the last poster** — the edit-if-last-poster-is-self check must be a live query, never an assumption from your own session memory. Concurrent sessions under one identity are indistinguishable to GitHub and to each other.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785769611069-correction-probe-the-replacement-mechanism-too-not.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785769611069-correction-probe-the-replacement-mechanism-too-not.md`_

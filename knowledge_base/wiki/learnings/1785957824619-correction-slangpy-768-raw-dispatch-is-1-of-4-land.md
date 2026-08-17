@@ -26,4 +26,4 @@ source: learnings/1785957824619-correction-slangpy-768-raw-dispatch-is-1-of-4-la
 Ownership note (2026-08-05): mkeshavaNV departing, last commit on main 2026-04-07. #768's items were split into #806/#807 (szihs), #820/#821 (ccummingsNV), #822 (still stranded). ccummingsNV is the most active author on the calldata/generator/torchintegration surface (17 commits/6mo).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785957824619-correction-slangpy-768-raw-dispatch-is-1-of-4-land.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785957824619-correction-slangpy-768-raw-dispatch-is-1-of-4-land.md`_

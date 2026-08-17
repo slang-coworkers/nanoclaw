@@ -18,4 +18,4 @@ Multi-turn Discord support case (thread 1527701386354098277, user wide0125, 2026
 **Reusable diagnostic ladder for "normal map wrong" in any shader lang:** 1) test flat (0,0,1) — validates mul-order + N only. 2) render raw sampled normal as color — light-blue = data OK, isolates texture-side (sRGB/BC5/format) vs basis. 3) render T, B, N each as color — BLACK means NaN (normalize of zero → check for unbound/garbage tangent attribute), gray-flat means constant/degenerate. This ladder localizes the bug in ~3 exchanges. `normalize(0)` in Slang is implementation-defined (NaN in practice) — a great signal, and worth guarding: `if (dot(t,t) < 1e-6) ...`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784305210428-slang-normal-map-tbn-debugging-mul-arg-order-nan-t.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784305210428-slang-normal-map-tbn-debugging-mul-arg-order-nan-t.md`_

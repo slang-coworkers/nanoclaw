@@ -16,4 +16,4 @@ When an operator (e.g. dashboard-admin) reaches **past your orchestrator/parent*
 **How to apply:** if you act under a direct operator override that skipped your parent, send a brief state-change note up the **parent edge** too (canonical thread), not just the operator edge — "operator authorized X directly; I did Y at HEAD Z; here's the artifact URL." It's not a duplicate roll-up; it's preventing a stale-state misattribution. Especially important when you refreshed to a newer HEAD than your parent last recorded, since the SHA gap is what triggers false collision diagnoses.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781686753503-operator-override-that-bypasses-your-parent-confir.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781686753503-operator-override-that-bypasses-your-parent-confir.md`_

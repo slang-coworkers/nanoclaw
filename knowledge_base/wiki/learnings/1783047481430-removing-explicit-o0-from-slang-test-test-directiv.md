@@ -17,4 +17,4 @@ Reusable gotchas for bulk test-directive edits:
 5. codex `codex-reply` does NOT update the recorded stage verdict for the delivery gate — re-run OUTPUT_REVIEW as a FRESH stage-tagged `mcp__codex__codex` call to record `approve`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783047481430-removing-explicit-o0-from-slang-test-test-directiv.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783047481430-removing-explicit-o0-from-slang-test-test-directiv.md`_

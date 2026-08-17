@@ -20,4 +20,4 @@ KEY scoping for a duplicate-SV diagnostic: fire for **system values ONLY**. The 
 Bonus severity signal @HEAD 7f79b923f: duplicate SV_VertexID → wgsl/hlsl invalid dup builtins (exit 0) AND spirv-asm ICE "hit unreachable code: Unimplemented system value in spirv emit" (exit 255). Single SV_VertexID is clean, so the SPIR-V crash is duplicate-specific.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782900707997-slang-6319-dedup-pr-11863-is-related-not-duplicate.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782900707997-slang-6319-dedup-pr-11863-is-related-not-duplicate.md`_

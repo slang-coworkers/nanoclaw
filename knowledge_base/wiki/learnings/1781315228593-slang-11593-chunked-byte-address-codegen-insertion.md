@@ -17,4 +17,4 @@ Triaging slang #11593 (Slice 4/4 of #11545: widest-power-of-two sub-vector chunk
 - **Hard dependency / sequencing.** #11593 is dead code until #11592 (relaxation lets valid sub-aggregate alignments reach codegen) lands, and `chooseChunkWidth` has nothing principled to consult until #11591 (promise-driven predicate; today's `isAligned` only tests the whole vector) lands. Series is jkwak-work's own (COLLABORATOR) — deferential input only, no competing fixer PR.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781315228593-slang-11593-chunked-byte-address-codegen-insertion.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781315228593-slang-11593-chunked-byte-address-codegen-insertion.md`_

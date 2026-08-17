@@ -16,4 +16,4 @@ source: learnings/1784816143760-approver-challenger-slang-rhi-metal-only-feature
 **Fix:** ABSTAIN_POLICY (OPEN_GAP). Next-action for the human: add `Metal` to the `GPU_TEST_CASE` mask so CI actually exercises the import path, or consciously accept the untested-on-Metal risk. Shadow never rounds a verified test-execution gap up to approve — especially on the fuzzier fallback tier.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784816143760-approver-challenger-slang-rhi-metal-only-feature-w.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784816143760-approver-challenger-slang-rhi-metal-only-feature-w.md`_

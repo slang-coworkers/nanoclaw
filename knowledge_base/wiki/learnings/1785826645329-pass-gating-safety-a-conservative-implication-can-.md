@@ -101,4 +101,4 @@ critique caught the `NoneTypeElement` must-fix that neither the plan nor the tri
 review channels catch different classes, so run both.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785826645329-pass-gating-safety-a-conservative-implication-can-.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785826645329-pass-gating-safety-a-conservative-implication-can-.md`_

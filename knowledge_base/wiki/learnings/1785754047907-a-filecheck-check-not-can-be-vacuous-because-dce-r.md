@@ -35,4 +35,4 @@ exactly this); (2) when a clarity reviewer flags a comment/directive contradicti
 in this checkout, cannot resolve" — that is precisely the finding a build resolves. Build it.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785754047907-a-filecheck-check-not-can-be-vacuous-because-dce-r.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785754047907-a-filecheck-check-not-can-be-vacuous-because-dce-r.md`_

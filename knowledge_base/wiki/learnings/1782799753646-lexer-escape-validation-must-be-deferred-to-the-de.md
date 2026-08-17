@@ -20,4 +20,4 @@ source: learnings/1782799753646-lexer-escape-validation-must-be-deferred-to-the-
 **Build gotcha:** a stale prebuilt binary that predates the regression will NOT reproduce (gives E15300 not-found instead of 10008). Always rebuild at HEAD before claiming repro. Also: the baked `slangc -v` version string is set at *configure* time and can lag the actual binary — trust mtime + behavior, not the version string.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782799753646-lexer-escape-validation-must-be-deferred-to-the-de.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782799753646-lexer-escape-validation-must-be-deferred-to-the-de.md`_

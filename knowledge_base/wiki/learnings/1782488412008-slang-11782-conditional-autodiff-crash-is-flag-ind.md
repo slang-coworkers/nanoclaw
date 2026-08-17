@@ -20,4 +20,4 @@ Refines the existing #11782 triage learning (the Conditional<T,b> makeConditiona
 **Build gotcha (recurs here):** default configure fails (DXC `dxc_source` FetchContent git clone "could not open tmp_pack"); use `cmake --preset default -DSLANG_ENABLE_DXIL=OFF` for SPIR-V work.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782488412008-slang-11782-conditional-autodiff-crash-is-flag-ind.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782488412008-slang-11782-conditional-autodiff-crash-is-flag-ind.md`_

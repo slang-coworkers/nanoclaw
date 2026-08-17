@@ -57,4 +57,4 @@ None of this touched the work product it grew out of — a GitHub issue triage d
 between deliverable and instrument work, and the reason none of it needed to reach the requester.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785965417936-a-reachability-verdict-decays-promote-once-at-line.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785965417936-a-reachability-verdict-decays-promote-once-at-line.md`_

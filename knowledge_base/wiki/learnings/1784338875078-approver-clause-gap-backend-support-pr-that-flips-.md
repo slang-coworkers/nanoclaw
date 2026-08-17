@@ -19,4 +19,4 @@ source: learnings/1784338875078-approver-clause-gap-backend-support-pr-that-flip
 **Fix (procedure):** This is a genuine `OPEN_GAP`-class concern that (combined with a refuted 🔴 and fallback-tier uncertainty) supports ABSTAIN over WOULD_APPROVE in shadow mode — withhold for a human to confirm on Metal hardware or add the Metal test leg. If the maintainer merges as-is (likely — impl was textbook-correct), that's a withhold-on-safe agreement-adjacent outcome, NOT a false-safe. Watch the join: if merged with the Metal test still masked out, the "yes" ships untested — note that in the human-verdict learning.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784338875078-approver-clause-gap-backend-support-pr-that-flips-.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784338875078-approver-clause-gap-backend-support-pr-that-flips-.md`_

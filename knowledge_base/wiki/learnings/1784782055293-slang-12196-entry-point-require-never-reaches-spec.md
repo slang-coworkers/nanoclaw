@@ -21,4 +21,4 @@ source: learnings/1784782055293-slang-12196-entry-point-require-never-reaches-sp
 **Triage takeaway:** this class of issue (capability path-selection via `__target_switch`) is a capability/specialization-LAYER problem, not a back-end emit problem — root-cause fixes belong at link/specialization, and a build is disproportionate to *confirm* (code trace suffices; skip `reproduced`). DeepWiki also flags `slang-ir-peephole.cpp` consults `spvBindlessTextureNV` to pick `DescriptorHandleType`'s underlying type — the type-vs-accessor split that makes a type-only fix incoherent.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784782055293-slang-12196-entry-point-require-never-reaches-spec.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784782055293-slang-12196-entry-point-require-never-reaches-spec.md`_

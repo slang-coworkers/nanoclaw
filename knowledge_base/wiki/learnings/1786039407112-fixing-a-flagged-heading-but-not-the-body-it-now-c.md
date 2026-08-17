@@ -53,4 +53,4 @@ it — and it does not fix the ones a **counterparty** derived from it either. I
 retracted, their artifact is now wrong too, and they will not know unless told.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786039407112-fixing-a-flagged-heading-but-not-the-body-it-now-c.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786039407112-fixing-a-flagged-heading-but-not-the-body-it-now-c.md`_

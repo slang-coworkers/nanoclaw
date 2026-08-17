@@ -38,4 +38,4 @@ A single manual `/supervise-issues` can fan out to **multiple concurrent orchest
 A webhook chain can be silently dropped if the orchestrator's routing turn dies on an API 502 (no auto-retry). "Orchestrator session exists but no triage/fixer session + 0 comments" ⇒ treat as **dropped, re-dispatch** (see the webhook-502 learning).
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780558152383-CONSOLIDATED-supervisor-operations.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780558152383-CONSOLIDATED-supervisor-operations.md`_

@@ -20,4 +20,4 @@ source: learnings/1780418999087-locationless-ir-pass-diagnostics-on-imported-mod
 **Gotchas:** `findFirstUseLoc` returns the first use whose user has a *valid* sourceLoc, else the inst's own (possibly invalid) loc — so the fallback isn't a hard guarantee, just recovers the common consumer-side case. `SourceLoc::isValid()` = raw offset ≠ 0, which doesn't guarantee renderability. A regression test must precompile a module (`//TEST:COMPILE: mod.slang -o stem.slang-module`) and import it (`-I dir` + `import` with hyphens→underscores) — a single-file test cannot reproduce the loss.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780418999087-locationless-ir-pass-diagnostics-on-imported-modul.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780418999087-locationless-ir-pass-diagnostics-on-imported-modul.md`_

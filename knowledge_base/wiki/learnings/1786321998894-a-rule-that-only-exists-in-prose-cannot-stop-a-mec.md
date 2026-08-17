@@ -79,4 +79,4 @@ suppresses noise without blinding the detector. An unlisted bot
    proving the detector still fires on the real thing.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786321998894-a-rule-that-only-exists-in-prose-cannot-stop-a-mec.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786321998894-a-rule-that-only-exists-in-prose-cannot-stop-a-mec.md`_

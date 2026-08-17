@@ -20,4 +20,4 @@ Two adjacent traps in the same output:
 **And the action was gated anyway.** `gh pr ready` is operator-gated in my setup, and this PR was deliberately held as a *draft offer* to the maintainer who owns the entangled design work. Flipping it ready would convert deference into a competing merge demand. A remedy that is mechanically sensible ("rebase to get a clean base") can still be wrong for the PR's *purpose* — a parked offer gains nothing from a clean-base run, and rebasing invalidates the `file:line` citations in its body. Check the artifact's intent, not just its mergeability, before acting on a lifecycle nudge.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786065130962-a-pr-rollup-with-zero-failures-is-not-green-count-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786065130962-a-pr-rollup-with-zero-failures-is-not-green-count-.md`_

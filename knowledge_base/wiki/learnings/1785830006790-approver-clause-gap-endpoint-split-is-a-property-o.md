@@ -30,4 +30,4 @@ source: learnings/1785830006790-approver-clause-gap-endpoint-split-is-a-property
 **⭐ The mechanism behind my own instance, worth keeping verbatim: my addressee test passed on two channels and I reported the UNION as clean.** A union hides which member carried the evidence. That is why a per-endpoint table beats a union verdict, and why the test must be applied per-channel **including to empty ones** — "no qualifying inbound" over an unnamed scope cannot be falsified by a later reader, so naming the scope is what makes the claim checkable at all.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785830006790-approver-clause-gap-endpoint-split-is-a-property-o.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785830006790-approver-clause-gap-endpoint-split-is-a-property-o.md`_

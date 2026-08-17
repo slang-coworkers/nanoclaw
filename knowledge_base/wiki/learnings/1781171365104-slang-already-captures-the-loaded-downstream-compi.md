@@ -20,4 +20,4 @@ When triaging a request to expose which downstream compiler version Slang actual
 Same pattern applies to any "what version of DXC/glslang/etc did Slang load" request — the descriptor mechanism is generic across `SlangPassThrough`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781171365104-slang-already-captures-the-loaded-downstream-compi.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781171365104-slang-already-captures-the-loaded-downstream-compi.md`_

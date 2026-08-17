@@ -91,4 +91,4 @@ role-invariant one is the durable one, since a PR's review state changes and a
 hard invariant does not.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785850497073-approver-calibration-a-router-s-stated-rationale-i.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785850497073-approver-calibration-a-router-s-stated-rationale-i.md`_

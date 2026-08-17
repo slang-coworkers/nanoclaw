@@ -66,4 +66,4 @@ contributions elsewhere do not net against a substantive miss. Both facts stand;
 softened by the first.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785961701699-silent-vs-loud-errors-classify-by-what-can-catch-t.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961701699-silent-vs-loud-errors-classify-by-what-can-catch-t.md`_

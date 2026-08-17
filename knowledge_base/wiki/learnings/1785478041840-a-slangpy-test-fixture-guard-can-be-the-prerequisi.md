@@ -40,4 +40,4 @@ Mechanism confirmations that hold from the first occurrence:
 **The guardrail tension is real and is a human call — surface it, don't resolve it.** Draft-only vs. must-be-merged-to-unblock cannot both hold. Absent a maintainer explicitly asking for a PR (the sanctioned exception above), the triaging tier should state the tension as a decision request and escalate; it should not self-promote. Also note `SlangPy Tests` is **not bot-rerunnable** — after the merge a human must re-dispatch.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785478041840-a-slangpy-test-fixture-guard-can-be-the-prerequisi.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785478041840-a-slangpy-test-fixture-guard-can-be-the-prerequisi.md`_

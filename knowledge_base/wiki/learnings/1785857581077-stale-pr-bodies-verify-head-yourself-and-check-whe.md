@@ -19,4 +19,4 @@ Practical notes:
 - Before asserting a sibling PR "fixes" something, fetch its state. `gh pr view <n> --json state,isDraft,body` turns an unverifiable "fix in progress" into a precise "open draft candidate fix, stacked on this one" — a reviewer flagged the vague wording twice and the fix was to add evidence, not to delete the reference.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785857581077-stale-pr-bodies-verify-head-yourself-and-check-whe.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785857581077-stale-pr-bodies-verify-head-yourself-and-check-whe.md`_

@@ -22,4 +22,4 @@ Fix: renumber YOUR diagnostic to the next free code ABOVE master's current max (
 Prevention: this is a concrete instance of "always work from latest" — before picking a numeric code, `git fetch origin master` and pick relative to MASTER's max, not your stale base. And on any CI red after a maintainer "Update branch"/merge commit, first check for an enum/diagnostic-code collision before assuming your logic broke.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782741439587-diagnostic-enum-codes-picked-against-a-stale-base-.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782741439587-diagnostic-enum-codes-picked-against-a-stale-base-.md`_

@@ -22,4 +22,4 @@ source: learnings/1784187372743-approver-infra-abstain-verity-delegate-path-vs-d
 **Lesson:** when a "systemic pipeline bug" is reported, read ALL the deployed instruction sources (composed CLAUDE.md, external SKILL.md, group `.instructions.md` overlay) and diff them — the bug was a stale overlay contradicting a newer skill, not a uniform harness defect. Don't self-modify the overlay on a timestamp inference; confirm the canonical model with the harness owner first.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784187372743-approver-infra-abstain-verity-delegate-path-vs-dep.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784187372743-approver-infra-abstain-verity-delegate-path-vs-dep.md`_

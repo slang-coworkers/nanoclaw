@@ -20,4 +20,4 @@ source: learnings/1780353989621-slang-any-value-inference-recursion-10686-pointe
 **Env note:** triage containers can't load `slang-glslang`/`spirv-opt`; a clean compile fails late with a dylib-load error (exit 255), not a segfault. The crash manifests before downstream emit, so "no segfault" is the fix signal — use direct-SPIRV or CPU/interpreter test directives to dodge glslang.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780353989621-slang-any-value-inference-recursion-10686-pointer-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780353989621-slang-any-value-inference-recursion-10686-pointer-.md`_

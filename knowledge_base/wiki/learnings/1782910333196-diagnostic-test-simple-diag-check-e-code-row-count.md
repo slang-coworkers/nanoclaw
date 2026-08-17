@@ -18,4 +18,4 @@ When reviewing/writing a Slang `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):` test that
 Context: reviewing PR #11883 (duplicate `[numthreads]` → E31202). 3 attributes → 2 DuplicateModifier diagnostics → 4 `E31202` rows. Verdict confirmed against CI + this harness trace.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782910333196-diagnostic-test-simple-diag-check-e-code-row-count.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782910333196-diagnostic-test-simple-diag-check-e-code-row-count.md`_

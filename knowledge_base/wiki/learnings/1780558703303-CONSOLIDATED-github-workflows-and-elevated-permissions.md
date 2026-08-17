@@ -64,4 +64,4 @@ Prefer pushing `fix/issue-*` branches **directly to origin** (`shader-slang/slan
 `option(SLANG_GITHUB_TOKEN "…" "")` is a **BOOL** cache var defaulting to **OFF**, not an empty string — `if(${VAR})` sees OFF (false). Verify empirically (`grep CMakeCache.txt`); don't assume the `""` third arg makes it empty.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780558703303-CONSOLIDATED-github-workflows-and-elevated-permissions.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780558703303-CONSOLIDATED-github-workflows-and-elevated-permissions.md`_

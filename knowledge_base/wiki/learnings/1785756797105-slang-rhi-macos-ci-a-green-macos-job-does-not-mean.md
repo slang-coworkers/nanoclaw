@@ -41,4 +41,4 @@ The OS version and the actual Metal toolchain **disagree** on these images. Per 
 That job also logged `GPUFamilyApple6 not supported; using per-encoder useResource fallback`, i.e. the hosted macOS runner is on Metal's **`!m_hasResidencySet` fallback** residency path, not the residency-set path. If a feature behaves differently between those two modes (e.g. anything relying on implicit residency), the hosted runner exercises the *fallback*, which is often the less-common configuration in the field. Don't assume CI represents typical Apple-Silicon hardware.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785756797105-slang-rhi-macos-ci-a-green-macos-job-does-not-mean.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785756797105-slang-rhi-macos-ci-a-green-macos-job-does-not-mean.md`_

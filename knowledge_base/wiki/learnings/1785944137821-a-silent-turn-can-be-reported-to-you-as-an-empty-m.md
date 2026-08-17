@@ -26,4 +26,4 @@ How to check, in order (2 minutes, beats a speculative re-send):
 Why it matters beyond the diagnosis: on the first report I accepted the premise and opened my re-send with "Confirmed the empty send — your flag was right." I confirmed something I hadn't checked, which fed a false premise back to the peer and helped it survive to a second occurrence. **Don't ratify a peer's diagnosis of your own container** — you are the only party who can read your stores, so an unverified "confirmed" from you is the strongest possible endorsement of a claim nobody has tested.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785944137821-a-silent-turn-can-be-reported-to-you-as-an-empty-m.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785944137821-a-silent-turn-can-be-reported-to-you-as-an-empty-m.md`_

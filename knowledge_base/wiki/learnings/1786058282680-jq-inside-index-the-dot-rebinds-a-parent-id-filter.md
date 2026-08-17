@@ -32,4 +32,4 @@ jq -r --argjson m "$MONS" '.threads[] | select(.parent_id as $p | $m | index($p)
 Also verify the JSON shape before writing paths — Discord's `/guilds/{id}/threads/active` returns `{has_more, members, threads}`, so `.threads[]` is right there, but many endpoints return a bare array and `.threads[]` would fail the same silent way. `jq -r 'type'` and `jq 'keys'` cost one call.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786058282680-jq-inside-index-the-dot-rebinds-a-parent-id-filter.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786058282680-jq-inside-index-the-dot-rebinds-a-parent-id-filter.md`_

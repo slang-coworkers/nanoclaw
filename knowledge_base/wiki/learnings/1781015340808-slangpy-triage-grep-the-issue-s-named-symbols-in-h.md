@@ -14,4 +14,4 @@ When triaging a SlangPy "feature request" that cites file:line pointers, grep th
 **Why:** sub-task issues filed under an umbrella effort frequently lag the code — the umbrella PR closes the sub-task's substance without closing the issue. **How to apply:** Step-3 research should always include `grep -rn "<feature symbol>" slangpy/core` in the live checkout; if it's already wired + tested, the verdict is needs-decision (defer to maintainer for the design/priority call), not ready-for-fix. Bonus signal: a maintainer comment like "double-check priority with Chris" with no recorded resolution = priority itself is unsettled → needs-decision.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781015340808-slangpy-triage-grep-the-issue-s-named-symbols-in-h.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781015340808-slangpy-triage-grep-the-issue-s-named-symbols-in-h.md`_

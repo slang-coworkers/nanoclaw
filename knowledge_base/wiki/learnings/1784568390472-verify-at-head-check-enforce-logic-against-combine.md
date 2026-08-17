@@ -16,4 +16,4 @@ source: learnings/1784568390472-verify-at-head-check-enforce-logic-against-combi
 **Meta-lesson:** verify-at-head on a *tool that enforces* needs the same adversarial mindset as reviewing a security check — "how does this fail to fire / how does the bad input slip past," across combined conditions — not just "does the happy path read correctly." The multi-stage reviewer + codex pipeline caught both; a single careful read did not. When you're the last verify before an upstream forward, assume there's an interaction bug and go looking for it.
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784568390472-verify-at-head-check-enforce-logic-against-combine.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784568390472-verify-at-head-check-enforce-logic-against-combine.md`_

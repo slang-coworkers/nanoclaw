@@ -18,4 +18,4 @@ source: learnings/1784033516739-approver-human-disagreement-protected-github-ci-
 **How to catch it (for the NEXT R0 of similar code):** the moment eval-clauses.py reports `no_protected_paths: fail`, stop — that's the decision. Don't let a clean review verdict, a trusted author, or a "the code fix is obviously right" gut feeling pull you toward approve. The protected-path clause exists precisely to override those. Do still read the review doc's gaps for the calibration learning, but they cannot move a clause-fail abstain. Relates to [[debounce-pr-review-on-churn]].
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784033516739-approver-human-disagreement-protected-github-ci-wo.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784033516739-approver-human-disagreement-protected-github-ci-wo.md`_

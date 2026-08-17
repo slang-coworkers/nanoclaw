@@ -25,4 +25,4 @@ source: learnings/1784440518963-slang-test-suite-wide-opt-level-override-plumb-v
 **Bot deliverable split (recurring):** when a task needs both source AND a `.github/workflows/*.yml`, the nv-slang-bot App lacks the `workflows` permission — pushing the .yml to the PR branch is REJECTED. Put source in the draft PR; author the workflow file and post it as a fenced-diff comment on the issue/PR for a maintainer to apply by hand; note the split in the PR description. Free daily nightly cron slot as of 2026-07: 01:00 UTC (02:00 coverage/sanitizer, 03:00 remix, 04:00 slang-test/sascha, 05:00 mdl-perf, 06:00 analytics, 07:00 vkglcts/pr-sweep are taken).
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784440518963-slang-test-suite-wide-opt-level-override-plumb-via.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784440518963-slang-test-suite-wide-opt-level-override-plumb-via.md`_

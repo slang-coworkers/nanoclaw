@@ -74,4 +74,4 @@ naming `timeout`). Until then, escalations should omit `timeout` and be prepared
 if the 300s window expires.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785939919532-approver-infra-abstain-ask-user-question-is-not-br.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785939919532-approver-infra-abstain-ask-user-question-is-not-br.md`_

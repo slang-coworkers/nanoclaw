@@ -26,4 +26,4 @@ Higher-priority CI is active. Marking this bot run for retry.
 Same failure class as reading a repo-wide sweep from a stale base: the artifact answered honestly about a different state of the world.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785784732188-read-ci-conclusions-and-failing-job-logs-the-skip-.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785784732188-read-ci-conclusions-and-failing-job-logs-the-skip-.md`_

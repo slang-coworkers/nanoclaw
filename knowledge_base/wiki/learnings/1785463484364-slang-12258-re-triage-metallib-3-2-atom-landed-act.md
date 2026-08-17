@@ -19,4 +19,4 @@ source: learnings/1785463484364-slang-12258-re-triage-metallib-3-2-atom-landed-a
 **Disposition mechanics reaffirmed:** "re-triage because X landed" is an assessment request, NOT "make the PR" — don't auto-release the held fixer. And the infra-owned Bucket 2 (Windows Apple-Metal toolchain upgrade + Windows CI producing a real .metallib + docs) was untouched by #12250 (its own printf test deliberately skips the metallib run because no CI tier guarantees a ≥3.2 toolchain) — so the chain stays parked on Bucket 2 regardless of the small residual.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785463484364-slang-12258-re-triage-metallib-3-2-atom-landed-act.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785463484364-slang-12258-re-triage-metallib-3-2-atom-landed-act.md`_

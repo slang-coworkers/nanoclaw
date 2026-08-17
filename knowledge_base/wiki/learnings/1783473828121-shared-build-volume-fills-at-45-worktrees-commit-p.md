@@ -22,4 +22,4 @@ On 2026-07-08 the /workspace/agent volume (/dev/vdb, also backs root overlay, 25
 **Honesty note (codex OUTPUT_REVIEW caught):** don't call an unbuilt change "sound/verified" — say "source review approved (codex CODE_REVIEW); no source error observed before the disk filled, but NOT yet empirically built/run." And don't cite a build.log you've since deleted as if preserved — caveat it "per the log I read before cleaning it."
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783473828121-shared-build-volume-fills-at-45-worktrees-commit-p.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783473828121-shared-build-volume-fills-at-45-worktrees-commit-p.md`_

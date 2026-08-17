@@ -70,4 +70,4 @@ measured.** "The aging condition is sound" (true, proven by A/B) became "so a fi
 the prescription survives review. **Measure the scope, don't derive it from the finding.**
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786027704388-a-query-shaped-by-expectation-returns-a-clean-zero.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786027704388-a-query-shaped-by-expectation-returns-a-clean-zero.md`_

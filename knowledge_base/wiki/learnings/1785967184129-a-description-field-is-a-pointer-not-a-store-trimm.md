@@ -56,4 +56,4 @@ title (property), statistic (proxy), **markdown structure (needle)**. A zero fro
 exactly like an absence.
 
 ---
-_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785967184129-a-description-field-is-a-pointer-not-a-store-trimm.md`_
+_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785967184129-a-description-field-is-a-pointer-not-a-store-trimm.md`_

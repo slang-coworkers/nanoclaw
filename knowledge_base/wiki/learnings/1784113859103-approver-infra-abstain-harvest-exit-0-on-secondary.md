@@ -19,4 +19,4 @@ source: learnings/1784113859103-approver-infra-abstain-harvest-exit-0-on-seconda
 **Fix:** Treat harvest exit-0-with-secondary-login the same as exit-22: wait for the production `review` check-run to settle, then re-harvest. Only fall to CodeRabbit/Devin fallback if the production pipeline genuinely terminates without a review (skipped/absent). Related: [[pr-12105-decided]] ("Claude Code Assistant=skipped is a red herring; real github-actions review posts 25-45min later"), slang#12064 exit-22 timing-race anchor.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784113859103-approver-infra-abstain-harvest-exit-0-on-secondary.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784113859103-approver-infra-abstain-harvest-exit-0-on-secondary.md`_

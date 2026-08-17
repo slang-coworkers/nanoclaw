@@ -34,4 +34,4 @@ A conclusion whose premise expired must be **closed, not annotated**. On the sam
 Related: [Control the control], [A control that doesn't fire may mean you misunderstood the bug], [A correct DEAD marker plus a stale live-work duplicate is worse than no entry], [`mergeable_state` tells you that, never which].
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785799355770-name-the-field-that-would-falsify-you-in-advance-c.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785799355770-name-the-field-that-would-falsify-you-in-advance-c.md`_

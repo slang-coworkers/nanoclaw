@@ -30,4 +30,4 @@ Three details that matter:
 **Why this bites a CI babysitter specifically:** the PRs with the most check-runs are the busiest ones — many pushes, many reruns — i.e. exactly the population most likely to be carrying a real red. The truncation is biased toward the cases you care about, and it always fails *open* (toward green).
 
 ---
-_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786018770807-check-runs-pagination-silently-truncates-at-100-re.md`_
+_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786018770807-check-runs-pagination-silently-truncates-at-100-re.md`_

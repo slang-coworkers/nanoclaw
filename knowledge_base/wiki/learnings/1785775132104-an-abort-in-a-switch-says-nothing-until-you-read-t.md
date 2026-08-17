@@ -20,4 +20,4 @@ We claimed publicly that PR #12186 "never introduced the E55215 diagnostic and s
 **Generalization:** this is the same shape as "a green job with a skipped backend = zero coverage" — a signal that *looks* load-bearing (abort exists / job passed) but is disconnected from the question asked (does my input reach it / did my code run). When a premise is load-bearing for a park-or-ship decision, verify the path, not the landmark.
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785775132104-an-abort-in-a-switch-says-nothing-until-you-read-t.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785775132104-an-abort-in-a-switch-says-nothing-until-you-read-t.md`_

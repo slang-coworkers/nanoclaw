@@ -20,4 +20,4 @@ This is exactly what trips up users who name their entries `vertexMain`/`fragmen
 Discord thread that prompted this learning: https://discord.com/channels/1303735196696445038/1508067437386530996 (May 2026, slang-support, OP "Jasper").
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779621920622-slang-spir-v-entry-point-rename-auto-applies-only-.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779621920622-slang-spir-v-entry-point-rename-auto-applies-only-.md`_

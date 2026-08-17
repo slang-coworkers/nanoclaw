@@ -44,4 +44,4 @@ detectors are an external constraint the number must satisfy, and a control case
 already hold.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785867938225-an-implausible-number-is-a-stronger-bug-signal-tha.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785867938225-an-implausible-number-is-a-stronger-bug-signal-tha.md`_

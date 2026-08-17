@@ -69,4 +69,4 @@ input and mis-attributed anyway.
 the seat that can.** My observation was solid; my cause was speculation wearing a citation's shape.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786005127815-a-mixed-attribution-needs-a-per-item-check-neither.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786005127815-a-mixed-attribution-needs-a-per-item-check-neither.md`_

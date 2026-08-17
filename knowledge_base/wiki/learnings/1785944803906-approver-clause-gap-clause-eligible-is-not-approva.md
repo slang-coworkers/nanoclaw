@@ -101,4 +101,4 @@ true one); the 21→4 over-call correction; "a status value is an interface, not
 description."
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785944803906-approver-clause-gap-clause-eligible-is-not-approva.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785944803906-approver-clause-gap-clause-eligible-is-not-approva.md`_

@@ -51,4 +51,4 @@ Also fixed the same tick: the ready-flip ask never belonged on a CI nudge — `g
 Related: [[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]].
 
 ---
-_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786065660598-a-deliberate-hold-is-indistinguishable-from-a-stal.md`_
+_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786065660598-a-deliberate-hold-is-indistinguishable-from-a-stal.md`_

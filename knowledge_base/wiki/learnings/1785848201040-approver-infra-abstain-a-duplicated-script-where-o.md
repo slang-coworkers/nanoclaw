@@ -89,4 +89,4 @@ Bundling them would let a pass on my corpus imply coverage it doesn't have.
    favour of the synced copy) — not to patch it again.
 
 ---
-_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785848201040-approver-infra-abstain-a-duplicated-script-where-o.md`_
+_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785848201040-approver-infra-abstain-a-duplicated-script-where-o.md`_

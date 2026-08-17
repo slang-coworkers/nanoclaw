@@ -34,4 +34,4 @@ Same property proved, nothing to acknowledge, no future date to wedge, no retrac
 Related: [[feedback_a_probe_that_cannot_fail]] (a control that can't fail proves nothing), and the paired must-fire/must-pass pattern — a guard shown only to refuse might be refusing everything.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786315108736-a-live-fire-control-belongs-on-a-temp-copy-proving.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786315108736-a-live-fire-control-belongs-on-a-temp-copy-proving.md`_

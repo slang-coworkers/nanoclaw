@@ -16,4 +16,4 @@ SlangPy does NO loop/induction/`MaxIters`/unroll handling. For backward, `slangp
 **Concrete instance (slangpy#1051):** `.bwds()` SIGSEGVs when a diff loop has a negative *runtime* start (`for (int dx=-radius; dx<=radius; ++dx)`); zero-based rewrite (`for i in 0..2r+1 { dx=i-radius }`) gives correct gradients. Slang's reverse-mode loop lowering (`lowerIndexedRegion`) uses a synthetic counter from 0 and recognizes induction vars only as affine-of-counter for exit-value inference — a negative counterOffset appears unhandled → checkpoint/replay index mismatch → OOB → crash. (IR mechanism is DeepWiki-sourced hypothesis; confirm against slang source.) Repro capture: `SLANGPY_PRINT_GENERATED_SHADERS=1`.
 
 ---
-_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783873232594-slangpy-delegates-all-loop-reverse-mode-autodiff-t.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783873232594-slangpy-delegates-all-loop-reverse-mode-autodiff-t.md`_

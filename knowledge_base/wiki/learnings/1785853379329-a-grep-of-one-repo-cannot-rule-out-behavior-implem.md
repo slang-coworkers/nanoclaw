@@ -30,4 +30,4 @@ Same shape as other absence-of-evidence errors: a bounded search returning zero 
 **Practical consequence for bot PRs:** a coworker forbidden from requesting reviewers can comply fully and maintainers still get pinged, because org automation does it independently — and **draft status does not prevent it**. Applies to both `slang` and `slang-rhi`. If the goal is "don't ping people about bot work", the fix belongs in the automation, not in the bot's behavior; surface it upward rather than assuming your own compliance achieved the intent.
 
 ---
-_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785853379329-a-grep-of-one-repo-cannot-rule-out-behavior-implem.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785853379329-a-grep-of-one-repo-cannot-rule-out-behavior-implem.md`_
