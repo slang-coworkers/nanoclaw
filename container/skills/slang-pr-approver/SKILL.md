@@ -1,6 +1,6 @@
 ---
 name: slang-pr-approver
-description: Turn a slang PR review into one auditable approval decision (WOULD_APPROVE | ABSTAIN_POLICY | ABSTAIN_INFRA | BLOCK). You build the review input yourself — harvest the bot review already posted on the PR (github-actions[bot] = production claude-code-action; coderabbitai[bot]) read-only, and run Devin yourself — then decide from it. You never dispatch another coworker to review and never write to GitHub. Deterministic clauses first, verdict parse second, adversarial challenger last; recording is critique-gated.
+description: Turn a slang PR review into one auditable approval decision (WOULD_APPROVE | ABSTAIN_POLICY | BLOCK). You build the review input yourself — harvest the bot review already posted on the PR (github-actions[bot] = production claude-code-action; coderabbitai[bot]) read-only, and run Devin yourself — then decide from it. You never dispatch another coworker to review and never write to GitHub. Deterministic clauses first, verdict parse second, adversarial challenger last; recording is critique-gated.
 ---
 
 # slang-pr-approver — the decision procedure
@@ -34,8 +34,8 @@ The PR workspace `work/<pr>-<sha12>/` contains:
   mounted, `eval-clauses.py` falls back to the v0 default bundled next to it.
 
 The review doc missing, empty, or with no parseable embedded result AND no
-Devin signal => ABSTAIN_INFRA (`NO_REVIEW_SIGNAL`). Do not reconstruct inputs
-and do not review the code yourself in place of the missing doc.
+Devin signal => ABSTAIN_POLICY (reason `NO_REVIEW_SIGNAL`). Do not reconstruct
+inputs and do not review the code yourself in place of the missing doc.
 
 **Absent bot reviews are NOT an abstain.** On PRs the production review skips
 (fixer `fix/issue-N` PRs, bot-authored PRs, Claude's own branches) there is no
@@ -55,16 +55,18 @@ fetching PR metadata + changed paths for `commit_sha` with read-only `gh`
 review's `commit_id` equals the pinned `commit_sha`), ci_green_on_sha,
 no_protected_paths, tier_eligible + size caps. Output: `clauses.json` with
 per-clause pass | fail | unevaluable + evidence. A clause FAIL =>
-ABSTAIN_POLICY; UNEVALUABLE => ABSTAIN_INFRA (record which clause).
+ABSTAIN_POLICY (reason `CLAUSE_FAIL:<name>`); UNEVALUABLE => ABSTAIN_POLICY
+(reason `CLAUSE_UNEVALUABLE:<name>`, an infra defect — record which clause).
 On the Devin-only tier the workflow writes `commit_id = commit_sha` (Devin
 reviews the pinned head), so `commit_match` passes there like any other tier.
 
 ## Step 2 — review verdict (parse, don't reinterpret)
 
 From `review/review-doc.md`'s embedded result (and its 🔴/🟡 markers): any
-🔴 Bug => BLOCK. Harness-integrity fails => ABSTAIN and short-circuit here —
-`reviewers_complete` false (the synthesis failed: no bot review harvested AND
-Devin errored/timed out) or review doc under 500 bytes. (Step 1's
+🔴 Bug => BLOCK. Harness-integrity fails => ABSTAIN_POLICY (reason
+`HARNESS_FAIL`) and short-circuit here — `reviewers_complete` false (the
+synthesis failed: no bot review harvested AND Devin errored/timed out) or
+review doc under 500 bytes. (Step 1's
 `commit_match` already covers commit alignment.) Otherwise continue to Step 3.
 
 🟡 Gaps (not marked pre-existing) are judged by severity in Step 3, not
@@ -121,29 +123,32 @@ deepwiki being unreachable never blocks, excuses, or upgrades a decision.
    policy_version, clauses, challenger, ts}` (`review_diff_hash` = the
    `diff_hash` the review doc reported reviewing — the harvest footer's sha256,
    or the `commit:<sha>` sentinel when the source carried no footer).
-   `decision` is a CLOSED four-state enum:
+   `decision` is a CLOSED three-state enum:
    - `WOULD_APPROVE` — the full conjunction held (Steps 1-4 all clean).
    - `BLOCK` — the review found a verified 🔴 Bug.
-   - `ABSTAIN_INFRA` — the PIPELINE failed, not the PR: reason_code ∈
-     NO_REVIEW_SIGNAL (no bot review harvested AND Devin failed/absent),
-     STALE_STAGE, HARNESS_FAIL, CLAUSE_UNEVALUABLE:<name> (data that should
-     have been staged is absent), CHALLENGER_INCOMPLETE, CRITIQUE_UNAVAILABLE.
-     Every one is a named defect; the infra-abstain rate is a quality gate
-     driven to ~0. These rows alert, and they are EXCLUDED from agreement
-     scoring.
-   - `ABSTAIN_POLICY` — the system working as intended ("human must
-     look"): reason_code ∈ CLAUSE_FAIL:<name> (untrusted author,
-     protected path, class/size ineligible), OPEN_GAP,
-     CHALLENGER_CONCERN, CRITIQUE_MUSTFIX, ESCALATED (unresolved
-     soft-cap escalations land here). Never optimized toward zero.
-   The enum never grows per-cause — reason_code carries the detail.
+   - `ABSTAIN_POLICY` — the sole abstain: "a human must look." It asserts
+     nothing about the code; the reason_code carries WHY, in two families:
+     - **Policy (the system working as intended, never optimized toward
+       zero):** CLAUSE_FAIL:<name> (untrusted author, protected path,
+       class/size ineligible), OPEN_GAP, CHALLENGER_CONCERN, CRITIQUE_MUSTFIX,
+       ESCALATED (unresolved soft-cap escalations land here).
+     - **Infra (the PIPELINE failed, not the PR — a named defect):**
+       NO_REVIEW_SIGNAL (no bot review harvested AND Devin failed/absent),
+       STALE_STAGE, HARNESS_FAIL, CLAUSE_UNEVALUABLE:<name> (data that should
+       have been staged is absent), CHALLENGER_INCOMPLETE, CRITIQUE_UNAVAILABLE.
+       The rate of abstains carrying one of these infra reason_codes is the
+       quality gate driven to ~0 — measured at the reason_code level (sum over
+       the infra codes), not by any dedicated decision state. These rows alert.
+   Every `ABSTAIN_POLICY` row is EXCLUDED from agreement scoring. The enum never
+   grows per-cause — reason_code carries the detail.
 
-   **Early return on `ABSTAIN_*` — do NOT run the full pipeline.** An
-   `ABSTAIN_POLICY` (a Step-1 clause FAIL, or a Step-3 `OPEN_GAP` /
-   `CHALLENGER_CONCERN`) and an `ABSTAIN_INFRA` both mean "a human must look /
-   the pipeline couldn't decide" — they assert nothing about the code, so they
-   are NOT critique-gated. When your decision resolves to either abstain,
-   SKIP the DECISION_REVIEW / OUTPUT_REVIEW critique stages entirely, call
+   **Early return on `ABSTAIN_POLICY` — do NOT run the full pipeline.** Every
+   abstain — a Step-1 clause FAIL, a Step-3 `OPEN_GAP` / `CHALLENGER_CONCERN`,
+   or an infra defect (`NO_REVIEW_SIGNAL`, `HARNESS_FAIL`,
+   `CLAUSE_UNEVALUABLE:<name>`, …) — means "a human must look / the pipeline
+   couldn't decide"; it asserts nothing about the code, so it is NOT
+   critique-gated. When your decision resolves to `ABSTAIN_POLICY`, SKIP the
+   DECISION_REVIEW / OUTPUT_REVIEW critique stages entirely, call
    `record_decision` directly (the host relaxes the gate for `ABSTAIN_*`
    rows — see below), send the `[Approval Decision]` message, and STOP. Do not
    keep investigating a PR you've already decided to hand to a human. The full
@@ -213,6 +218,6 @@ reviewer/fixer procedures — do NOT reply, resolve threads, or triage CI:
   write to GitHub; you only read.
 - The verdict is parsed from the review doc the workflow synthesized
   (harvested bot review + Devin); a source with no bot review AND no Devin
-  signal is ABSTAIN_INFRA, never a self-review.
+  signal is ABSTAIN_POLICY (reason `NO_REVIEW_SIGNAL`), never a self-review.
 - Decisions are joined against human outcomes; accuracy is measured — never
   round up to approve.
