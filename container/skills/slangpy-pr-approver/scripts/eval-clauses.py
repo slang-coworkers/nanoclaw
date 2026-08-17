@@ -7,7 +7,7 @@ metadata + the changed paths at the pinned commit (read-only gh) and the
 policy file. The skill reads the output and maps it to a decision:
 
   any clause FAIL        -> ABSTAIN_POLICY (reason CLAUSE_FAIL:<name>)
-  any clause UNEVALUABLE -> ABSTAIN_INFRA  (reason CLAUSE_UNEVALUABLE:<name>)
+  any clause UNEVALUABLE -> ABSTAIN_POLICY (reason CLAUSE_UNEVALUABLE:<name>)
   all PASS               -> continue to the verdict parse (Step 2)
 
 Input: a workspace dir staged by /slangpy-pr-approve, containing
@@ -293,7 +293,7 @@ def main():
     if s["fail"]:
         print(f"  FAIL={s['fail']}  -> ABSTAIN_POLICY")
     if s["unevaluable"]:
-        print(f"  UNEVALUABLE={s['unevaluable']}  -> ABSTAIN_INFRA")
+        print(f"  UNEVALUABLE={s['unevaluable']}  -> ABSTAIN_POLICY (CLAUSE_UNEVALUABLE)")
 
 
 if __name__ == "__main__":
