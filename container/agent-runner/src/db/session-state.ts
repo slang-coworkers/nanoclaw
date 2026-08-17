@@ -18,9 +18,9 @@ function continuationKey(providerName: string): string {
 }
 
 function getValue(key: string): string | undefined {
-  const row = getOutboundDb()
-    .prepare('SELECT value FROM session_state WHERE key = ?')
-    .get(key) as { value: string } | undefined;
+  const row = getOutboundDb().prepare('SELECT value FROM session_state WHERE key = ?').get(key) as
+    | { value: string }
+    | undefined;
   return row?.value;
 }
 
@@ -138,4 +138,48 @@ export function getCurrentInReplyTo(): string | null {
   const age = Date.now() - new Date(row.updated_at).getTime();
   if (!Number.isFinite(age) || age > IN_REPLY_TO_MAX_AGE_MS) return null;
   return row.value;
+}
+
+/**
+ * Live per-session cost-cap state (NanoClaw #1 — the LEAN cost cap).
+ *
+ * Written by the runner as cost accrues, READ by the dashboard's Sessions tab
+ * (which opens outbound.db readonly and JSON.parses this single key). Kept as
+ * ONE JSON row so the dashboard read is atomic and `session_state.updated_at`
+ * gives the escalation freshness. The shape here is the SHARED CONTRACT — the
+ * dashboard read side must match it field-for-field.
+ *
+ *  - status: 'ok'      spent < 0.8 * cap
+ *            'warn'     0.8 * cap <= spent < cap
+ *            'escalated' spent >= cap AND the one-shot escalation has fired
+ *            'stopped'  a human 'stop' override was applied (never for immortal)
+ *  - immortal groups (orchestrator / admin) never reach 'stopped'; their status
+ *    caps at 'escalated' (visibility only).
+ */
+export type CostCapStatus = 'ok' | 'warn' | 'escalated' | 'stopped';
+
+export interface CostCapState {
+  capUsd: number;
+  spentUsd: number;
+  status: CostCapStatus;
+  immortal: boolean;
+  escalatedAt?: string;
+  decision?: 'continue' | 'stop';
+  decidedAt?: string;
+}
+
+const COST_CAP_KEY = 'cost_cap';
+
+export function getCostCap(): CostCapState | undefined {
+  const raw = getValue(COST_CAP_KEY);
+  if (raw === undefined) return undefined;
+  try {
+    return JSON.parse(raw) as CostCapState;
+  } catch {
+    return undefined;
+  }
+}
+
+export function setCostCap(state: CostCapState): void {
+  setValue(COST_CAP_KEY, JSON.stringify(state));
 }

@@ -45,6 +45,18 @@ export interface ContainerConfig {
   model?: string;
   effort?: string;
   timezone?: string;
+  /**
+   * Immortality (NanoClaw #1 cost cap): orchestrator / admin groups escalate
+   * for cost-cap visibility only and are never quiesced. Derived from an
+   * authoritative host field so a renamed orchestrator keeps its exemption.
+   */
+  immortal?: boolean;
+  /**
+   * Per-session soft cost cap (USD). LEAN v1 has no per-group cap table — this
+   * is materialized from the host env `NANOCLAW_COST_T2_USD` when set; otherwise
+   * omitted so the runner applies its own default.
+   */
+  costCapT2Usd?: number;
 }
 
 /**
@@ -60,6 +72,12 @@ export function resolveGroupTimezone(agentGroupId: string): string {
 
 /** Build a `ContainerConfig` from a DB row + agent group identity. */
 export function configFromDb(row: ContainerConfigRow, group: AgentGroup): ContainerConfig {
+  // NanoClaw #1 cost cap. Immortality is an authoritative host signal — the
+  // admin group (`is_admin`) or the orchestrator coworker type ('main'). The
+  // threshold has no per-group table in v1; a fleet-wide host env sets it.
+  const immortal = group.is_admin === 1 || group.coworker_type === 'main';
+  const envCap = Number(process.env.NANOCLAW_COST_T2_USD);
+  const costCapT2Usd = Number.isFinite(envCap) && envCap > 0 ? envCap : undefined;
   return {
     mcpServers: JSON.parse(row.mcp_servers) as Record<string, McpServerConfig>,
     packages: {
@@ -77,6 +95,8 @@ export function configFromDb(row: ContainerConfigRow, group: AgentGroup): Contai
     model: row.model ?? undefined,
     effort: row.effort ?? undefined,
     timezone: row.timezone && isValidTimezone(row.timezone) ? row.timezone : undefined,
+    immortal,
+    ...(costCapT2Usd !== undefined ? { costCapT2Usd } : {}),
   };
 }
 

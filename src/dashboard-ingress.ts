@@ -35,6 +35,8 @@ interface DashboardIngressOptions {
   onCredentialSubmitFn?: (credentialId: string, value: string) => Promise<void>;
   /** Handle credential rejection. */
   onCredentialRejectFn?: (credentialId: string) => Promise<void>;
+  /** Handle a cost-cap override decision from the dashboard (NanoClaw #1). */
+  onCostOverrideFn?: (sessionId: string, decision: 'continue' | 'stop') => Promise<void>;
 }
 
 function generateMessageId(): string {
@@ -120,6 +122,7 @@ export function startDashboardIngress(options: DashboardIngressOptions = {}): Da
   const onQuestionFn = options.onQuestionFn;
   const onCredentialSubmitFn = options.onCredentialSubmitFn;
   const onCredentialRejectFn = options.onCredentialRejectFn;
+  const onCostOverrideFn = options.onCostOverrideFn;
 
   const server = createServer(async (req, res) => {
     if (req.method !== 'POST') {
@@ -269,6 +272,41 @@ export function startDashboardIngress(options: DashboardIngressOptions = {}): Da
         const msg = err instanceof Error ? err.message : String(err);
         const status = msg.startsWith('session not found') ? 404 : 500;
         log.error('Failed to route session-direct dashboard message', { sessionId, err });
+        writeJson(res, status, { error: msg });
+      }
+      return;
+    }
+
+    // Cost-cap override endpoint (NanoClaw #1). Mirrors inbound-session: the
+    // dashboard proxies the admin's Continue/Stop decision here (Bearer-gated),
+    // and we route it into the session's inbound.db + wake the container.
+    if (req.url === '/api/dashboard/cost-override') {
+      const body = await readBody(req, res);
+      if (body === null) return;
+      let parsed: { session_id?: unknown; decision?: unknown };
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        writeJson(res, 400, { error: 'invalid json' });
+        return;
+      }
+      const sessionId = typeof parsed.session_id === 'string' ? parsed.session_id.trim() : '';
+      const decision = typeof parsed.decision === 'string' ? parsed.decision.trim() : '';
+      if (!sessionId || (decision !== 'continue' && decision !== 'stop')) {
+        writeJson(res, 400, { error: 'session_id and decision (continue|stop) required' });
+        return;
+      }
+      if (!onCostOverrideFn) {
+        writeJson(res, 501, { error: 'cost override handler not configured' });
+        return;
+      }
+      try {
+        await onCostOverrideFn(sessionId, decision as 'continue' | 'stop');
+        writeJson(res, 200, { ok: true });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const status = msg.startsWith('session not found') ? 404 : 500;
+        log.error('Failed to route cost-override', { sessionId, decision, err });
         writeJson(res, status, { error: msg });
       }
       return;
