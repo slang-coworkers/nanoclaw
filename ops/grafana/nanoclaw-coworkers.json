@@ -9,7 +9,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "1m",
   "time": {
     "from": "now-6h",
@@ -171,7 +171,7 @@
           "resultFormat": "time_series"
         }
       ],
-      "description": "Running containers with no heartbeat for over an hour \u2014 liveness is not progress."
+      "description": "Running containers with no heartbeat for over an hour — liveness is not progress."
     },
     {
       "type": "stat",
@@ -1014,7 +1014,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 35
+        "y": 45
       }
     },
     {
@@ -1029,7 +1029,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 36
+        "y": 46
       },
       "fieldConfig": {
         "defaults": {
@@ -1162,7 +1162,7 @@
         "h": 8,
         "w": 10,
         "x": 8,
-        "y": 36
+        "y": 46
       },
       "fieldConfig": {
         "defaults": {
@@ -1226,7 +1226,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 36
+        "y": 46
       },
       "fieldConfig": {
         "defaults": {
@@ -1288,7 +1288,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 54
       }
     },
     {
@@ -1303,7 +1303,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 45
+        "y": 55
       },
       "fieldConfig": {
         "defaults": {
@@ -1519,7 +1519,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 45
+        "y": 55
       },
       "fieldConfig": {
         "defaults": {
@@ -1628,7 +1628,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 53
+        "y": 63
       }
     },
     {
@@ -1643,7 +1643,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 54
+        "y": 64
       },
       "fieldConfig": {
         "defaults": {
@@ -1781,7 +1781,7 @@
         "h": 4,
         "w": 3,
         "x": 12,
-        "y": 54
+        "y": 64
       },
       "fieldConfig": {
         "defaults": {
@@ -1862,7 +1862,7 @@
         "h": 4,
         "w": 3,
         "x": 15,
-        "y": 54
+        "y": 64
       },
       "fieldConfig": {
         "defaults": {
@@ -1943,7 +1943,7 @@
         "h": 4,
         "w": 3,
         "x": 18,
-        "y": 54
+        "y": 64
       },
       "fieldConfig": {
         "defaults": {
@@ -2024,7 +2024,7 @@
         "h": 4,
         "w": 3,
         "x": 21,
-        "y": 54
+        "y": 64
       },
       "fieldConfig": {
         "defaults": {
@@ -2093,7 +2093,7 @@
         "h": 4,
         "w": 3,
         "x": 12,
-        "y": 58
+        "y": 68
       },
       "fieldConfig": {
         "defaults": {
@@ -2159,7 +2159,7 @@
         "h": 4,
         "w": 3,
         "x": 15,
-        "y": 58
+        "y": 68
       },
       "fieldConfig": {
         "defaults": {
@@ -2228,7 +2228,7 @@
         "h": 4,
         "w": 3,
         "x": 18,
-        "y": 58
+        "y": 68
       },
       "fieldConfig": {
         "defaults": {
@@ -2290,7 +2290,7 @@
         "h": 4,
         "w": 3,
         "x": 21,
-        "y": 58
+        "y": 68
       },
       "fieldConfig": {
         "defaults": {
@@ -2348,7 +2348,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 62
+        "y": 72
       },
       "collapsed": false,
       "panels": []
@@ -2365,7 +2365,7 @@
         "h": 5,
         "w": 4,
         "x": 0,
-        "y": 63
+        "y": 73
       },
       "targets": [
         {
@@ -2402,7 +2402,7 @@
         "h": 5,
         "w": 4,
         "x": 4,
-        "y": 63
+        "y": 73
       },
       "targets": [
         {
@@ -2456,7 +2456,7 @@
         "h": 5,
         "w": 4,
         "x": 8,
-        "y": 63
+        "y": 73
       },
       "targets": [
         {
@@ -2509,7 +2509,7 @@
         "h": 5,
         "w": 4,
         "x": 12,
-        "y": 63
+        "y": 73
       },
       "targets": [
         {
@@ -2562,7 +2562,7 @@
         "h": 5,
         "w": 4,
         "x": 16,
-        "y": 63
+        "y": 73
       },
       "targets": [
         {
@@ -2616,7 +2616,7 @@
         "h": 5,
         "w": 4,
         "x": 20,
-        "y": 63
+        "y": 73
       },
       "targets": [
         {
@@ -2652,7 +2652,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 63
+        "y": 73
       },
       "targets": [
         {
@@ -2689,7 +2689,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 63
+        "y": 73
       },
       "targets": [
         {
@@ -2726,7 +2726,7 @@
         "h": 5,
         "w": 6,
         "x": 0,
-        "y": 70
+        "y": 80
       },
       "targets": [
         {
@@ -2771,7 +2771,7 @@
         "h": 5,
         "w": 6,
         "x": 6,
-        "y": 70
+        "y": 80
       },
       "targets": [
         {
@@ -2824,7 +2824,7 @@
         "h": 5,
         "w": 12,
         "x": 12,
-        "y": 70
+        "y": 80
       },
       "targets": [
         {
@@ -2847,6 +2847,309 @@
         "overrides": []
       },
       "options": {}
+    },
+    {
+      "type": "row",
+      "title": "Wire-mix — model tier per coworker",
+      "id": 45,
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 35
+      }
+    },
+    {
+      "type": "table",
+      "title": "Model tier per coworker",
+      "id": 46,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 14,
+        "x": 0,
+        "y": 36
+      },
+      "description": "Each coworker's configured model tier, from container_configs (the value `ncl groups config update --model` writes, materialized to container.json and passed to the SDK as the query model). An empty Model means the group inherits the host/provider default, shown as tier 'default' rather than a guessed tier. Activity (5m) is the rolling hook-event count — an approximate turn/work proxy, NOT billed cost. Scan the Tier column for drift.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "no data"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Tier"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "opus": {
+                        "color": "#d03b3b",
+                        "index": 0
+                      },
+                      "sonnet": {
+                        "color": "#3987e5",
+                        "index": 1
+                      },
+                      "haiku": {
+                        "color": "#0ca30c",
+                        "index": 2
+                      },
+                      "default": {
+                        "color": "#898781",
+                        "index": 3
+                      },
+                      "other": {
+                        "color": "#fab219",
+                        "index": 4
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failures"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#898781",
+                      "value": null
+                    },
+                    {
+                      "color": "#fab219",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"events\"), last(\"running\"), last(\"tool_failures\") FROM \"nanoclaw_group\" WHERE $timeFilter GROUP BY \"group\", \"coworker_type\", \"tier\", \"model\", \"provider\"",
+          "rawQuery": true,
+          "resultFormat": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {},
+            "renameByName": {
+              "group": "Coworker",
+              "coworker_type": "Type",
+              "tier": "Tier",
+              "model": "Model",
+              "provider": "Provider",
+              "last": "Activity (5m)",
+              "last_1": "Running",
+              "last_2": "Failures"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "Activity share by tier (5m)",
+      "id": 47,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 5,
+        "x": 14,
+        "y": 36
+      },
+      "description": "Sum of the 5m hook-event activity across all coworkers on each model tier (collector-side rollup, measurement nanoclaw_tier). Shows how the fleet's work splits across opus / sonnet / haiku / default. Activity is a turn/work proxy, not billed cost.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#3987e5",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "no data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "valueMode": "text",
+        "minVizWidth": 8,
+        "minVizHeight": 12,
+        "sizing": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"events\") FROM \"nanoclaw_tier\" WHERE $timeFilter GROUP BY \"tier\"",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "$tag_tier"
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "Coworkers per tier",
+      "id": 48,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 5,
+        "x": 19,
+        "y": 36
+      },
+      "description": "How many coworkers are configured on each model tier right now (nanoclaw_tier.coworkers). Makes tiering drift obvious: if a coworker flips opus↔sonnet, the bar counts move.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#898781"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#898781",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "no data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "valueMode": "text",
+        "minVizWidth": 8,
+        "minVizHeight": 12,
+        "sizing": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"coworkers\") FROM \"nanoclaw_tier\" WHERE $timeFilter GROUP BY \"tier\"",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "$tag_tier"
+        }
+      ]
     }
   ],
   "templating": {

@@ -130,6 +130,30 @@ def parse_iso(s):
         return None
 
 
+def model_tier(model):
+    """Coarse model tier for the per-coworker wire-mix panel.
+
+    Collapses an alias ('opus'/'sonnet'/'haiku') or a full model id
+    (e.g. 'claude-sonnet-5-...', 'bedrock/anthropic.claude-opus-...') to a
+    single tier so coworkers group cleanly, while the raw model id is emitted
+    as its own tag for the detail column. An UNSET model means the group
+    inherits the host/provider default rather than an explicit tier, so it is
+    labelled 'default' -- never guessed. Asserting a tier the config does not
+    state would be exactly the kind of plausible-but-wrong value this
+    collector is written to avoid.
+    """
+    if not model:
+        return "default"
+    m = str(model).lower()
+    if "opus" in m:
+        return "opus"
+    if "sonnet" in m:
+        return "sonnet"
+    if "haiku" in m:
+        return "haiku"
+    return "other"
+
+
 def port_open(port):
     try:
         with socket.create_connection(("127.0.0.1", port), timeout=2):
@@ -154,6 +178,21 @@ def collect_db(now_ms):
         for gid, name, ctype, folder in cur.execute(
                 "SELECT id, name, coworker_type, folder FROM agent_groups"):
             groups[gid] = (name or gid, ctype or "unknown", folder or "")
+
+        # --- per-group provider/model tier (wire-mix) ---
+        # container_configs is the source of truth for a coworker's model
+        # tier: `ncl groups config update --model` writes here, it is
+        # materialized to groups/<folder>/container.json, and the agent-runner
+        # passes it to the SDK as the query model. Read read-only from the same
+        # v2.db connection. Wrapped on its own so a schema surprise degrades to
+        # "no model tag" instead of taking down every db metric below.
+        cfgs = {}   # gid -> (provider, model)
+        try:
+            for gid, provider, model in cur.execute(
+                    "SELECT agent_group_id, provider, model FROM container_configs"):
+                cfgs[gid] = (provider or "", model or "")
+        except Exception as exc:  # noqa: BLE001 - degrade, never crash the pipeline
+            _errors.append(f"cfgs:{exc}")
 
         # --- sessions, per group and fleet-wide ---
         now = time.time()
@@ -231,14 +270,41 @@ def collect_db(now_ms):
             fail_by_folder[folder or ""] = n
         fleet["tool_failures"] = sum(fail_by_folder.values())
 
+        tier_agg = {}   # tier -> {"events", "coworkers", "running"}
         for gid, d in per.items():
             name, ctype, folder = groups.get(gid, (gid, "unknown", ""))
+            provider, model = cfgs.get(gid, ("", ""))
+            tier = model_tier(model)
+            ev = by_folder.get(folder, 0)
+            # provider/model/tier tags feed the wire-mix panels. emit() drops
+            # empty tag values, so an unset model simply omits the model tag;
+            # provider falls back to the baked-in default ('claude') and tier
+            # is always a groupable label ('default' when the model is unset).
             emit("nanoclaw_group",
                  {"running": d["running"], "active": d["active"],
                   "total": d["total"], "stale": d["stale"],
-                  "events": by_folder.get(folder, 0),
+                  "events": ev,
                   "tool_failures": fail_by_folder.get(folder, 0)},
-                 {"group": name, "coworker_type": ctype})
+                 {"group": name, "coworker_type": ctype,
+                  "provider": provider or "claude", "model": model,
+                  "tier": tier})
+            a = tier_agg.setdefault(tier, {"events": 0, "coworkers": 0,
+                                           "running": 0})
+            a["events"] += ev
+            a["coworkers"] += 1
+            a["running"] += d["running"]
+
+        # Per-tier rollup for the wire-mix share panels. Pre-aggregated here
+        # (not via an InfluxQL subquery) so the panel is the same trivial
+        # `last() ... GROUP BY "tier"` idiom as every other bargauge, and so
+        # the arithmetic is done where all the inputs are already in hand.
+        # `events` is the same 5m rolling hook-event count the fleet uses as
+        # its activity proxy -- a stand-in for turns, not billed cost.
+        for tier, a in tier_agg.items():
+            emit("nanoclaw_tier",
+                 {"events": a["events"], "coworkers": a["coworkers"],
+                  "running": a["running"]},
+                 {"tier": tier})
 
         fleet["groups_total"] = len(groups)
         emit("nanoclaw_fleet", fleet)

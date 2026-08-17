@@ -71,3 +71,31 @@ container age. On prod `max_silence_sec` reads ~59800s against a 10800s
 container ceiling, so `sessions.last_active` demonstrably does not track the
 container heartbeat that `container-runner.ts` kills on. A name implying
 otherwise would assert a relationship the data does not support.
+
+## Wire-mix (per-coworker model tier)
+
+The **Wire-mix — model tier per coworker** dashboard row shows, per coworker,
+which model tier it is configured on so tiering drift is obvious at a glance
+(e.g. discord/babysitter/regression on sonnet, orchestrator on opus).
+
+Source of truth is `container_configs` in `v2.db` — the value
+`ncl groups config update --model` writes, which is materialized to
+`groups/<folder>/container.json` and passed to the SDK as the query model. The
+collector reads it read-only and tags each `nanoclaw_group` point with
+`provider`, `model` (raw id), and `tier` (coarse: `opus`/`sonnet`/`haiku`/
+`other`, or `default` when the model is unset), plus a small per-tier rollup
+measurement `nanoclaw_tier` (`events`, `coworkers`, `running`) for the share
+bars.
+
+Two honesty caveats, same spirit as the rest of this file:
+
+- **`tier=default` is not a guess.** An unset model means the group inherits
+  the host/provider default; the panel says `default` rather than asserting a
+  specific tier the config never stated.
+- **"Activity" is not cost.** The share is weighted by the 5m rolling
+  hook-event count (`events`) — a turn/work proxy, not billed dollars. Per-turn
+  `costUsd` exists only in the ephemeral per-session container logs
+  (`groups/<folder>/logs/container-*.log`, `Usage:` lines) and those lines
+  carry no model, so a true cost-by-model split is not derivable from any
+  collector-readable source today. If that changes, wire it in rather than
+  approximating dollars from turns.
