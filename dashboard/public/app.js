@@ -738,20 +738,23 @@ function funnelApproverPanel(decisions, ledger) {
   // Approve = green, block = red, abstain = muted. Matches the funnel row cell
   // (funnelIssueTableHtml's approverColor); literal hex here since the palette
   // object is scoped to funnelFlowHtml.
+  // ABSTAIN_INFRA retired (task #14): folded into ABSTAIN_POLICY + an infra
+  // reason_code. Historical ABSTAIN_INFRA ledger rows still render — the row
+  // cell below falls through to var(--text-muted) for any unmapped decision.
   const decisionColor = {
     WOULD_APPROVE: '#3fb950',
     BLOCK: '#e5534b',
     ABSTAIN_POLICY: 'var(--text-muted)',
-    ABSTAIN_INFRA: 'var(--text-muted)',
   };
   // PR-state pill color (matches the funnel palette): merged=green, open=blue,
   // closed=grey.
   const stateColor = { merged: '#3fb950', open: '#1f6feb', closed: '#6e7681' };
   const by = {};
   for (const d of decisions) by[d.decision] = (by[d.decision] || 0) + 1;
-  const order = ['WOULD_APPROVE', 'BLOCK', 'ABSTAIN_POLICY', 'ABSTAIN_INFRA'];
-  // Always show all four categories (zeros included) so the panel reads as a
-  // stable scoreboard, not a list that hides empty states.
+  const order = ['WOULD_APPROVE', 'BLOCK', 'ABSTAIN_POLICY'];
+  // Show all current decision states (zeros included) so the panel reads as a
+  // stable scoreboard, not a list that hides empty states. Retired states
+  // (ABSTAIN_INFRA) are omitted from the scoreboard but still render per-row.
   const summary = order
     .map((k) => `<span style="color:${decisionColor[k]}">${k} ${by[k] || 0}</span>`)
     .join('<span style="color:var(--border)"> · </span>');
@@ -1267,11 +1270,12 @@ function funnelIssueTableHtml(issues, rows, statusColors) {
   // Verity (PR-approver) shadow-mode decision colors. Approve = green,
   // block = red, abstain = muted. Falls through to '' (blank cell) when no
   // approver ran for the PR.
+  // ABSTAIN_INFRA retired (task #14). Unmapped decisions (incl. historical
+  // ABSTAIN_INFRA rows) fall through to var(--text-muted) below.
   const approverColor = {
     WOULD_APPROVE: statusColors.merged,
     BLOCK: '#e5534b',
     ABSTAIN_POLICY: 'var(--text-muted)',
-    ABSTAIN_INFRA: 'var(--text-muted)',
   };
   html += `<table class="admin-table" style="margin-top:4px;font-size:11px"><thead><tr><th>Inst</th><th>Issue</th><th>PR</th><th>State</th><th>CI</th><th>Stage</th><th>Note</th><th>Approver</th></tr></thead><tbody>`;
   for (const i of actionable) {
