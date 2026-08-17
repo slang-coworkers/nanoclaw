@@ -160,6 +160,9 @@ container/skills/supervise-issues/**
 # Learnings-wiki skill — synthesize shared learnings into a Karpathy wiki (#728).
 container/skills/learnings-wiki/**
 
+# OKF per-group memory synthesis skill — keep always-loaded memory bounded (#15).
+container/skills/okf-synthesis/**
+
 # Upstream-tracking shared skills — allowlisted so upstream-sync PRs can update
 # them on nv-main (same pattern as whatsapp-formatting above). DO NOT hand-edit
 # the prose of these on nv-*: they originate from origin/main/upstream and any
