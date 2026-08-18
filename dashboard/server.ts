@@ -48,7 +48,7 @@ import { refreshDestinationsForAgentGroup } from '../src/modules/agent-to-agent/
 import { CANONICAL_DECISIONS, canonicalizeDecision } from '../src/modules/approvals/decision.js';
 import { kbDoctorUnavailable, readKbDoctorArtifact, type KbDoctorView } from './kb-doctor-artifact.js';
 import { isoWeekStart, isoWeekStartFromMs, sessionIdMs, unitCostByWeek, UNIT_COST_GROUPS } from './unit-cost.js';
-import { priceUsage, normalizeModel, type SessionCostEntry, type TokenUsage } from './session-costs.js';
+import { priceUsage, normalizeModel, MODEL_PRICING, type SessionCostEntry, type TokenUsage } from './session-costs.js';
 
 /**
  * Check if `target` is inside (or equal to) `baseDir`.
@@ -1899,13 +1899,17 @@ interface PerFileCost {
   days: Map<string, { cost: number; tokens: number }>;
   unpriced: boolean; // saw usage from a model MODEL_PRICING doesn't know
   hadSignal: boolean;
+  // Read + parse finished without throwing. A transient read failure leaves this
+  // false; persistPerFileCostCache skips such entries so a one-off error never
+  // freezes a file at $0 across restarts (in-memory only — not persisted).
+  ok: boolean;
 }
 const perFileCostCache = new Map<string, PerFileCost>();
 
 function scanFileCost(path: string, mtimeMs: number): PerFileCost {
   const cached = perFileCostCache.get(path);
   if (cached && cached.mtimeMs === mtimeMs) return cached;
-  const out: PerFileCost = { mtimeMs, days: new Map(), unpriced: false, hadSignal: false };
+  const out: PerFileCost = { mtimeMs, days: new Map(), unpriced: false, hadSignal: false, ok: false };
   // Dedupe by message id. A transcript replays the SAME assistant message on
   // multiple rows when a session is resumed/rewound — each carries an identical
   // `message.id` but a distinct top-level `uuid`. Counting every row double- to
@@ -1950,8 +1954,13 @@ function scanFileCost(path: string, mtimeMs: number): PerFileCost {
       d.tokens += tokens;
       out.days.set(key, d);
     }
+    // Full read + parse completed without throwing — this entry is durable and
+    // safe to persist. A read that throws (catch below) leaves ok=false so
+    // persistPerFileCostCache skips it, rather than freezing a transient failure
+    // as a $0 file across restarts.
+    out.ok = true;
   } catch {
-    /* unreadable — treat as no signal */
+    /* unreadable — treat as no signal (ok stays false: transient, don't persist) */
   }
   perFileCostCache.set(path, out);
   return out;
@@ -2144,6 +2153,9 @@ function refreshSessionCostCache(): void {
       for (const k of perFileCostCache.keys()) if (!livePaths.has(k)) perFileCostCache.delete(k);
     }
     writeCostThresholdFile(next);
+    // Snapshot the freshly-updated + pruned per-file cache so the next process
+    // start is warm (see loadPerFileCostCache). Fail-soft; advisory only.
+    persistPerFileCostCache();
   } catch {
     /* DB not ready */
   } finally {
@@ -2216,6 +2228,133 @@ function writeCostThresholdFile(byPeriod: SessionCostByPeriod): void {
   }
 }
 
+// ---------- Warm-start persistence for the per-file cost cache ----------
+//
+// A cold start otherwise re-parses EVERY per-session transcript (thousands of
+// files on a large install) before the Sessions cost column populates. The
+// in-memory `perFileCostCache` is lost on restart, so this snapshots it to disk
+// after each refresh and reloads it on startup. Because entries are mtime-keyed,
+// the next scan re-parses ONLY files whose mtime changed — a warm start.
+//
+// Fail-soft in every direction: a missing / corrupt / older-schema file falls
+// back to a full cold scan and NEVER throws. This never changes computed output —
+// a warm cache hit returns the same PerFileCost a fresh parse would (numbers
+// round-trip through JSON exactly, and day-key insertion order is preserved), so
+// percentile/threshold output is bit-identical to today; only cold-start latency
+// drops.
+//
+// Two invalidation keys, both mandatory on load:
+//   - COST_CACHE_VERSION    — bump on any PerFileCost SHAPE change.
+//   - COST_MATH_FINGERPRINT — a hash of the cost MATH (the pricing table plus the
+//     priceUsage / normalizeModel / scanFileCost bodies). An mtime keys a file's
+//     RAW content; it cannot see a pricing or parser edit that changes the
+//     COMPUTED cost of otherwise-unchanged files. Folding the math into the tag
+//     means such an edit invalidates the whole persisted cache (and its derived
+//     thresholds) instead of serving stale costs forever. Hashing MODEL_PRICING's
+//     data is required — priceUsage closes over the table, so its .toString()
+//     alone would miss a rate change.
+const COST_CACHE_VERSION = 1;
+const COST_MATH_FINGERPRINT = createHash('sha1')
+  .update(JSON.stringify(MODEL_PRICING))
+  .update('\0')
+  .update(priceUsage.toString())
+  .update('\0')
+  .update(normalizeModel.toString())
+  .update('\0')
+  .update(scanFileCost.toString())
+  .digest('hex')
+  .slice(0, 16);
+function costCachePath(): string {
+  return join(getDataDir(), 'dashboard-cost-cache.json');
+}
+
+// PerFileCost.days is a Map, which JSON can't serialize directly. Carry it as an
+// array of [dayKey, {cost, tokens}] pairs (preserving insertion order so summed
+// floats stay bit-identical) and rebuild the Map on load. `ok` is intentionally
+// NOT persisted: only ok entries are written, so a loaded entry is ok by
+// construction.
+interface PersistedPerFileCost {
+  mtimeMs: number;
+  days: Array<[string, { cost: number; tokens: number }]>;
+  unpriced: boolean;
+  hadSignal: boolean;
+}
+
+function loadPerFileCostCache(): void {
+  try {
+    const p = costCachePath();
+    if (!existsSync(p)) return;
+    const parsed = JSON.parse(readFileSync(p, 'utf-8')) as {
+      version?: number;
+      fingerprint?: string;
+      entries?: Array<[string, PersistedPerFileCost]>;
+    };
+    if (
+      !parsed ||
+      parsed.version !== COST_CACHE_VERSION ||
+      parsed.fingerprint !== COST_MATH_FINGERPRINT ||
+      !Array.isArray(parsed.entries)
+    )
+      return;
+    for (const entry of parsed.entries) {
+      if (!Array.isArray(entry) || entry.length !== 2) continue;
+      const [path, v] = entry;
+      if (typeof path !== 'string' || !v || typeof v.mtimeMs !== 'number' || !Array.isArray(v.days)) continue;
+      const days = new Map<string, { cost: number; tokens: number }>();
+      let malformed = false;
+      for (const dv of v.days) {
+        if (!Array.isArray(dv) || dv.length !== 2) {
+          malformed = true;
+          break;
+        }
+        const [k, ct] = dv;
+        if (typeof k !== 'string' || !ct || typeof ct.cost !== 'number' || typeof ct.tokens !== 'number') {
+          malformed = true;
+          break;
+        }
+        days.set(k, { cost: ct.cost, tokens: ct.tokens });
+      }
+      // A malformed day record means this entry can't be trusted as complete —
+      // skip it entirely so the next scan sees a cache MISS and cold-re-parses
+      // the file, rather than serving a silently-undercounted cost with a
+      // still-trusted mtime.
+      if (malformed) continue;
+      perFileCostCache.set(path, {
+        mtimeMs: v.mtimeMs,
+        days,
+        unpriced: v.unpriced === true,
+        hadSignal: v.hadSignal === true,
+        ok: true,
+      });
+    }
+  } catch {
+    /* fail-soft: a missing/corrupt/older cache just means a full cold scan */
+  }
+}
+
+function persistPerFileCostCache(): void {
+  try {
+    const entries: Array<[string, PersistedPerFileCost]> = [];
+    for (const [path, v] of perFileCostCache) {
+      // Skip transient/failed reads (ok=false): persisting an empty error entry
+      // would suppress that file's cost across every restart until its mtime
+      // changes. Only durable, successfully-parsed entries earn a warm slot.
+      if (!v.ok) continue;
+      entries.push([
+        path,
+        { mtimeMs: v.mtimeMs, days: [...v.days.entries()], unpriced: v.unpriced, hadSignal: v.hadSignal },
+      ]);
+    }
+    const payload = JSON.stringify({ version: COST_CACHE_VERSION, fingerprint: COST_MATH_FINGERPRINT, entries });
+    const outPath = costCachePath();
+    const tmpPath = `${outPath}.tmp-${process.pid}-${Date.now()}`;
+    writeFileSync(tmpPath, payload);
+    renameSync(tmpPath, outPath);
+  } catch {
+    /* fail-soft: the warm-start cache is advisory */
+  }
+}
+
 if (!process.env.VITEST) {
   // Defer the first (cold) scan a few seconds so it never blocks server startup —
   // it reads every transcript once (~seconds on a large install); after that the
@@ -2226,6 +2365,9 @@ if (!process.env.VITEST) {
   ctxStatsTimer.unref?.();
   // Per-session cost shares the same cadence. Offset the cold scan slightly so
   // the two full-transcript passes don't land in the same tick on startup.
+  // Warm the per-file cache from disk first (before the first scan) so the cold
+  // scan re-parses only files whose mtime changed since the last snapshot.
+  loadPerFileCostCache();
   setTimeout(refreshSessionCostCache, 6000).unref?.();
   const sessCostTimer = setInterval(refreshSessionCostCache, 60000);
   sessCostTimer.unref?.();
