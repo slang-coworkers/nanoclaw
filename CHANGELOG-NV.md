@@ -6,15 +6,29 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 446 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 191 |
-| `nv-slang` | slang project spine, skills, workflows | 135 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 67 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 463 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 202 |
+| `nv-slang` | slang project spine, skills, workflows | 136 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 68 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 47 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-08-18
+
+### nv-main (5 PRs)
+- **#1225** `fix(container): add apt.llvm.org for per-group clang-format-17`
+- **#1227** `test(guard): make conformance empty-allowlist test hermetic vs on-disk .env`
+- **#1231** `harden(merge-train): opt-in --reconcile-stale for deeply-stale prod deploys`
+- **#1230** `feat(cost-cap): two-tier per-group p90 + hard $150 ceiling`
+- **#1233** `fix(funnel): count merged PRs by App bot across all repos since Apr 10`
+
+### nv-dashboard (3 PRs)
+- **#1226** `feat(dashboard): per-group p90 map for cost-thresholds.json`
+- **#1232** `perf(nv-dashboard): persist per-file cost cache for warm restarts (+robustness)`
+- **#1234** `feat(nv-dashboard): bot-contributions panel shows merged/total PRs`
 
 ## 📅 2026-08-11
 
