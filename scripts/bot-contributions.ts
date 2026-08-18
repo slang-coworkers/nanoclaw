@@ -110,23 +110,102 @@ async function count(query: string): Promise<number> {
   return 0;
 }
 
+// All merged-PR numbers by the bot in one repo since SINCE (paginated search;
+// search caps at 100/page, and a busy repo like slang has >100).
+async function mergedPrNumbers(repo: string): Promise<number[]> {
+  const q = `repo:${repo} type:pr is:merged author:${BOT_AUTHOR} created:>=${SINCE}`;
+  const nums: number[] = [];
+  for (let page = 1; page <= 20; page++) {
+    let items: any[] | null = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const j = ghJson(`search/issues?q=${encodeURIComponent(q)}&per_page=100&page=${page}`);
+      if (j && Array.isArray(j.items)) {
+        items = j.items;
+        break;
+      }
+      await sleep(2500);
+    }
+    if (!items) break;
+    for (const it of items) if (typeof it.number === 'number') nums.push(it.number);
+    if (items.length < 100) break;
+    await sleep(1500); // stay under the 30-req/min authenticated search cap
+  }
+  return nums;
+}
+
+// Diff stats for one PR: additions/deletions, its own commit count, merge date.
+// The `pulls/{n}` object carries additions/deletions/commits directly, so real
+// code volume needs one core-API GET per PR (5000/hr budget — plenty).
+function prDetail(
+  repo: string,
+  num: number,
+): { additions: number; deletions: number; commits: number; mergedAt: string | null } | null {
+  const j = ghJson(`repos/${repo}/pulls/${num}`);
+  if (!j || typeof j.additions !== 'number') return null;
+  return {
+    additions: j.additions || 0,
+    deletions: j.deletions || 0,
+    commits: j.commits || 0,
+    mergedAt: typeof j.merged_at === 'string' ? j.merged_at : null,
+  };
+}
+
+interface RepoRow {
+  repo: string;
+  mergedPRs: number;
+  totalPRs: number;
+  commits: number;
+  additions: number;
+  deletions: number;
+  firstWeek: string | null;
+  lastWeek: string | null;
+}
+
 async function main(): Promise<void> {
   const discovered = installRepos();
-  const rows: Array<{ repo: string; mergedPRs: number; totalPRs: number; commits: number }> = [];
+  const rows: RepoRow[] = [];
   for (const repo of [...discovered].sort()) {
-    const merged = await count(`repo:${repo} type:pr is:merged author:${BOT_AUTHOR} created:>=${SINCE}`);
-    await sleep(1200); // keep well under the 30-req/min authenticated search cap
     const total = await count(`repo:${repo} type:pr author:${BOT_AUTHOR} created:>=${SINCE}`);
     await sleep(1200);
-    // `commits` is a back-compat alias = mergedPRs so a stale panel still renders
-    // the right number until the dashboard change lands.
-    if (total > 0) rows.push({ repo, mergedPRs: merged, totalPRs: total, commits: merged });
+    if (total === 0) continue; // repo the bot never touched in-window — skip
+    const nums = await mergedPrNumbers(repo);
+    let commits = 0;
+    let additions = 0;
+    let deletions = 0;
+    const dates: string[] = [];
+    for (const num of nums) {
+      const d = prDetail(repo, num);
+      await sleep(350); // gentle, sequential — well inside the core-API budget
+      if (!d) continue;
+      commits += d.commits;
+      additions += d.additions;
+      deletions += d.deletions;
+      if (d.mergedAt) dates.push(d.mergedAt.slice(0, 10));
+    }
+    dates.sort();
+    rows.push({
+      repo,
+      mergedPRs: nums.length,
+      totalPRs: total,
+      commits,
+      additions,
+      deletions,
+      firstWeek: dates[0] ?? null,
+      lastWeek: dates[dates.length - 1] ?? null,
+    });
   }
   rows.sort((a, b) => b.mergedPRs - a.mergedPRs || b.totalPRs - a.totalPRs);
 
   const totals = rows.reduce(
-    (t, r) => ({ mergedPRs: t.mergedPRs + r.mergedPRs, totalPRs: t.totalPRs + r.totalPRs, repos: t.repos + 1 }),
-    { mergedPRs: 0, totalPRs: 0, repos: 0 },
+    (t, r) => ({
+      mergedPRs: t.mergedPRs + r.mergedPRs,
+      totalPRs: t.totalPRs + r.totalPRs,
+      commits: t.commits + r.commits,
+      additions: t.additions + r.additions,
+      deletions: t.deletions + r.deletions,
+      repos: t.repos + 1,
+    }),
+    { mergedPRs: 0, totalPRs: 0, commits: 0, additions: 0, deletions: 0, repos: 0 },
   );
 
   const snapshot = {
@@ -134,19 +213,20 @@ async function main(): Promise<void> {
     bot: BOT_AUTHOR,
     since: SINCE,
     metric: 'merged-prs',
-    // `repos` is the per-repo rows array — the dashboard reads bc.repos[].mergedPRs
-    // (and the `commits` alias). `installRepos` is the raw discovery list.
+    // Per-repo rows carry BOTH PR counts (mergedPRs/totalPRs) and real code
+    // volume (commits/additions/deletions summed from each merged PR's diff, plus
+    // the first/last merge date as the active range). `installRepos` is the raw
+    // discovery list.
     repos: rows,
     installRepos: discovered,
-    // `commits` alias mirrors totals.mergedPRs for back-compat with any old reader.
-    totals: { ...totals, commits: totals.mergedPRs },
+    totals,
   };
 
   mkdirSync(path.dirname(OUT_PATH), { recursive: true });
   writeFileSync(OUT_PATH, JSON.stringify(snapshot, null, 2));
   console.log(
-    `bot-contributions written: ${OUT_PATH} — ${totals.mergedPRs} merged / ${totals.totalPRs} total PRs ` +
-      `by ${BOT_AUTHOR} across ${totals.repos} repos since ${SINCE}`,
+    `bot-contributions written: ${OUT_PATH} — ${totals.mergedPRs} merged / ${totals.totalPRs} total PRs, ` +
+      `${totals.commits} commits +${totals.additions}/-${totals.deletions} across ${totals.repos} repos since ${SINCE}`,
   );
 }
 
