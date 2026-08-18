@@ -11,7 +11,22 @@
  * handled loudly at click time — the requester is told no handler is
  * installed; this test keeps the tree from shipping that state.)
  */
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+// Hermeticity: config.ts resolves the ledger-writer allowlist as
+// `process.env.APPROVAL_LEDGER_WRITERS || envConfig.APPROVAL_LEDGER_WRITERS || ''`,
+// where `envConfig` is captured once at import from the on-disk `.env`. On a box
+// whose `.env` sets APPROVAL_LEDGER_WRITERS (e.g. prod), the "empty allowlist"
+// test's `process.env = ''` override is falsy and falls through to that non-empty
+// file value — so the allowlist is not actually empty and the deny reason changes
+// from the "no writers configured" branch to the "group not on the list" branch,
+// failing the assertion. Mock the env loader to report empty so "empty" means
+// empty regardless of any on-disk `.env`. The other F14 tests set a non-empty
+// `process.env.APPROVAL_LEDGER_WRITERS`, which takes precedence, so they are
+// unaffected. (Mirrors github-webhook-participant-issue.test.ts.)
+vi.mock('../env.js', () => ({
+  readEnvFile: () => ({}) as Record<string, string>,
+}));
 
 // Production barrels — side-effect imports populate the real registries.
 import '../cli/commands/index.js';
@@ -126,6 +141,8 @@ describe('approval-ledger authorization (F14)', () => {
   });
 
   it('an empty allowlist denies everyone — the capability is never implicit', () => {
+    // `= ''` is a truly empty allowlist here: the `../env.js` mock above forces the
+    // envConfig fallback empty, so it can't leak a value from the host's on-disk `.env`.
     process.env.APPROVAL_LEDGER_WRITERS = '';
     const approver: GuardInput = {
       actor: { kind: 'agent', agentGroupId: 'ag-slang-pr-approver', sessionId: 'sess-a' },
