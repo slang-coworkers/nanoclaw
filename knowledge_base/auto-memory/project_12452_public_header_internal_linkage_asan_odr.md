@@ -136,3 +136,31 @@ something because of that. Full derivation: [[feedback_a_retracted_inference_can
 
 **Resume triggers:** a human review lands (esp. one relying on the source-compat sub-note) ·
 head moves off `fe1feac57c06` · merge/close (ledger join) · operator answers the posting question.
+
+## 08-14 synchronize → `b7a49ce14981` — EVIDENCED DEBOUNCE HOLD, no approver re-dispatch
+
+Second `pr_ready_for_review (synchronize)`. Resolved live head → `b7a49ce14981171691e41c507d51f826b7943478`
+(base unchanged `569520560939`). Ran the dispatcher-tier debounce check
+([[feedback_debounce_approver_dispatch_deterministic_abstain]]) instead of re-dispatching:
+
+- `compare/fe1feac57c06...b7a49ce14981` → **ahead 1, 1 file (`include/slang.h`)**, commit
+  *"Correct the linkage mechanism described in the ASan/ODR comments."*
+- ✅**Comment-only, proven:** `.files[].patch | grep '^[+-]' | grep -v '^[+-]\s*//'` → **empty**.
+  Every changed line is a comment; **code tokens byte-identical.** `+23/−2` vs the base is all
+  reworded rationale (the fixup replaces "static prevents a definition" with the correct "static
+  removes the external *name*").
+- Inbound scan (the half you never debounce): no new *substantive* human review. Author
+  `jvepsalainen-nv` posted COMMENTED reviews with **empty bodies** + inline replies that *resolve*
+  prior threads ("Outdated", "Fixed in fe1feac"). No `CHANGES_REQUESTED`, no non-bot issue comment.
+- CI green at new head (combined `success`, 0 non-success/non-skipped check-runs).
+
+⇒ **verdict invariant.** `OPEN_GAP` is about out-of-tree address identity + the missing regression
+guard — both properties of `static constexpr`, untouched by a comment edit. Held; approver stays
+asleep (it reported workflow complete). ⚠️**The posting flag is RE-CONFIRMED, not resolved, at the
+new head:** the fresh `github-actions[bot]` review at `b7a49ce` *still* carries the in-tree-
+enumeration source-compat claim verbatim (*"all uses are by-value … no address is taken, verified
+across source/, include/, tools/, so distinct per-TU copies are harmless"*) — so the public state
+still argues against the decision, and the author's synchronize addressed comment **wording**, not
+the address-identity dimension. Decided-artifact sha (`fe1feac57c06`) is now one revision behind
+head; for a comment-only move the decision transfers, but a ledger row (if it existed) would be
+stale — moot while `APPROVAL_LEDGER_WRITERS` stays unset.

@@ -78,4 +78,21 @@ Before posting a triage that names a cause:
    the cause for the closed-conformance one only and said so publicly. Scope creep in a diagnosis
    is as costly as a wrong one.
 
+## Postscript — the fix shipped, and my *root cause* held while my *target shape* didn't (2026-08-15)
+
+saipraveenb25 (the pass author) merged PR #12459 and closed #12338. The diagnosis this file is
+about — cause is "singleton modulo none", not `Optional` — was correct: his `tryGetSinglePayloadType`
+maps `{FooImpl, none}` → `FooImpl` and rejects multi-payload sets, exactly the predicate I named,
+and I confirmed it on master at source level rather than relaying his claim.
+
+But I had also stated a **target output shape**: `{ConcreteT, bool}`, matching what `Optional<MyFoo>`
+emits. He shipped `{ConcreteT, uint}` deliberately — `bool<->uint` conversions add logic and most GPU
+backends 4-byte-align `bool` anyway. ⭐⭐**Diagnosing the CAUSE correctly does not license predicting
+the SOLUTION shape — the cause is a fact about the current code, the fix shape is a design choice the
+owner makes against constraints (here, backend bool alignment) I wasn't reasoning about.** I stated
+`bool` as "the target", not "one possible target"; it read as a spec and was an over-reach one notch
+past my evidence. Same family as the rule above: I had confirmed what the boxing WAS, and slid into
+asserting what the replacement SHOULD BE without the same rigor. Keep the two claims separate — report
+the cause as established, name a fix shape only as a suggestion the owner is free to override.
+
 Full chain state and IR trace: [[project_12338_optional_existential_reboxing]].

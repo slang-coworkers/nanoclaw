@@ -180,7 +180,46 @@ FLATTENED to 1** ⇒ ⭐⭐⭐**both directions of a broken probe read as a plau
 (`grep -oF` or `4\.5`) and sanity-check any count against a `grep -n` that shows you the LINE.**
 ✅Resolved by re-running literal: `4.5`→**0**, `4.6`→**1**. Body was clean; my instrument wasn't.
 
-**RESUME** = `jvepsalainen-nv` replies (route choice ⇒ dispatch per his answer), **or** the earlier
+### 08-17 — RESOLVED by the maintainer; the drift this issue documented is fixed. No bot post (false-positive `pr_mention`, 0 mentions).
+
+`jvepsalainen-nv` chose a route on 08-05 (comment `5240462238`) and then EXECUTED it; his 08-17 `[Agent]`
+status (`5314559252`) reports the outcome. **Main-verified the load-bearing parts, not relayed:**
+
+- ✅**Drift mechanism RESOLVED.** [PR #12531](https://github.com/shader-slang/slang/pull/12531)
+  ("Agentic tests: consume doc gaps and update tests") **merged 2026-08-14** to master — regenerated the
+  bundles against current language. Every failure in this issue's original table is gone.
+- ✅**Suite recovering, still red for a DIFFERENT reason.** Latest cited run
+  [`31993906894`](https://github.com/shader-slang/slang/actions/runs/31993906894) (08-17, `workflow_id
+  304423282`) = `failure`, but **2 failing / ~6300** (was 20 / ~4600); suite grew ~1700 tests so the
+  *rate* fell further than the count. Red because 2>0, not because of drift.
+- **Remaining redness = 3 non-drift causes, all maintainer-or-bot owned:**
+  - **#12442** HLSL prelude leak (render-test blanks the prelude on the shared global session) → 5th
+    victim `nvapi-front-matter-defines-enable-macro.slang`, deterministic. [PR #12571] records it.
+  - **#12534** test-server malformed replies (transport flake, ~7–8/run, rotates — disjoint failure sets
+    on an IDENTICAL SHA is his proof it's not a test defect). [PR #12573] retries on a fresh server;
+    **mitigates, does not fix** #12534.
+  - **#12535** unorm/snorm `SIGSEGV` (`ModifiedType` missing in `slang-type-layout.cpp` → fell to
+    `SLANG_ASSERT(!"unimplemented…")` = `__builtin_unreachable()` UB under Release/GCC; segfaults Linux,
+    clean exit macOS/Clang). ⭐**Fixed by [PR #12539](https://github.com/shader-slang/slang/pull/12539) —
+    OUR OWN BOT's PR** (`fix/issue-12535`, OPEN, `mergeable_state: blocked`, `nv-slang-bot[bot]`).
+- ⚠️**#12539 is a slang-fixer chain, NOT this one — do NOT dispatch into it from here** (ANCHOR H:
+  no direct Main→fixer on a chain the fixer owns; it routes via its own `fix/issue-12535` branch
+  mapping). Noted for awareness only.
+- ✅Also filed by him, all `reproduced`: **#12440** getStringHash-nonliteral crash, **#12441** SPIR-V
+  invalid modules (sample interp + unorm), **#12442** prelude leak, **#12443** enum `E(N)` in generic
+  array-bound. These are the "tests exposing real compiler bugs" — genuine wins the advisory suite
+  surfaced, which is exactly what an always-red signal could NOT report (this issue's own thesis,
+  vindicated).
+
+**CHAIN RESOLVED on our side.** The tracked problem (drift / always-red-carries-no-signal) is fixed;
+#12351 will close when the maintainer closes it or the 3 PRs land and the nightly goes green. No bot
+action pending — advisory suite, blocks nothing. Handed the resolution to `slang-ci-babysitter`
+(owns comment `5186113055`, closest-to-the-state).
+
+**RESUME** only if: the nightly is still red after #12571/#12573/#12539 all land (a NEW cause), or a
+fresh substantive human comment. ⛔Do not post to #12351 without a real `@nv-slang-bot` mention.
+
+**RESUME (superseded)** = `jvepsalainen-nv` replies (route choice ⇒ dispatch per his answer), **or** the earlier
 triggers below. ⛔**Do not post to #12351 without a
 real `@nv-slang-bot` mention.**
 

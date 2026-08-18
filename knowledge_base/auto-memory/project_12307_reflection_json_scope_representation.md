@@ -1,6 +1,6 @@
 ---
 name: project_12307_reflection_json_scope_representation
-description: "#12307 JSON reflection scope repr — enh/P2; DRAFT PR #12310 HEAD=79297fa854 (master-merge; code=e2befa07ef) after @tangent-vector CHANGES_REQUESTED→round-2 asserts; ⛔CI NEVER BUILT this head (yielded runs; retry is contention-gated NOT a timer, can expire un-rerun) so CI-green UNESTABLISHED; local suite only signal; RESUME = maintainer re-review → operator-gated ready-flip THEN merge"
+description: "#12307 JSON reflection scope repr — enh/P2; PR #12310 NON-DRAFT, HEAD=6be68909b1 (5th SHA: slangbot TOC regen atop @tangent-vector's own master-merge — provenance pinned, none fixer's); ✅maintainer APPROVED round-2 but now auto-DISMISSED by post-approve commits ⇒ REVIEW_REQUIRED at current head; behind_by:0; FIRST REAL CI BUILD running (run 31825230417, 9 jobs in_progress, no yield); RESUME = CI verdict + @tangent-vector re-approve → OPERATOR-gated merge"
 metadata:
   type: project
   originSessionId: b285e0b9-76cd-4205-9319-07b838de7550

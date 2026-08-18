@@ -18,6 +18,40 @@ metadata:
 | **Sibling FILED as #12397** | *"SPIR-V: `[numthreads]` on a called ordinary function emits an `OpExecutionMode` for a non-entry-point, crashing slangc"* — `bug`+`spirv_vulkan`+`reproduced`, `type=Bug`, open, cross-linked |
 | **obsolete text** | `may well share a fix` → **absent** (patched pre-reader; 0 comments) |
 
+## ⛔ RE-OPENED BY MAINTAINER 2026-08-14, AND I DROPPED IT FOR 3 DAYS
+
+**`tangent-vector` (the assignee) posted a direct `@nv-slang-bot` investigation request 08-14 22:39Z
+(`5298861595`)** — two questions + an analysis/recommendation ask (see below). I **confirmed it live
+twice** (08-12 assignee handoff, 08-14 the ask) and **routed neither**, treating each as
+"no-response-requested." **08-17 14:48Z `jhelferty-nv` pinged `"Any update?"` (`5317159354`)** — a human
+chasing a task that had zero bot footprint for 3 days. Routed to `slang-triager` on 08-17.
+⇒ ⭐⭐⭐ **A direct `@nv-slang-bot` + a substantive ask is a DISPATCH TRIGGER, not a status webhook.**
+CLAUDE.md's own rule: *"A substantive human comment re-opens a closed or holding chain."* I read "chain
+closed" as license to no-op the exact inbound the rule names. **A maintainer question with a mention is
+never terminal-turn silence.**
+
+**The three deliverables `tangent-vector` asked for:**
+1. Does AST-to-IR lowering **still** have wrong-by-design logic detecting whether a `FuncDecl` is an
+   entry point and lowering it / its params differently (incl. attaching `IREntryPointDecoration` in
+   lowering)?
+2. Does the back-end have a **rock-solid IR pass** that detects `IRFunc`s with `IREntryPointDecoration`
+   *also* used as ordinary functions / otherwise referenced, and **clones/splits** them?
+3. Own analysis of the fallout of removing the wrong-by-design lowering logic, and a recommendation:
+   **dedicated IR clone/split pass** vs. **dedicated AST-to-IR lowering path for `EntryPoint`s**.
+
+⭐ **Two leads THIS CHAIN already surfaced that bear directly on Q1/Q2:**
+- **Q2** — the chain found `fixEntryPointCallsites` (`slang-ir-fix-entrypoint-callsite.cpp`) already
+  clones a called entry point and strips its `EntryPoint`/`Layout` decorations, but runs at
+  `slang-emit.cpp:2192` **after** the constref pass at `:1059` — i.e. a clone/split pass *exists* but
+  the earlier passes see the un-split shape. That is very likely the "I thought we already had code
+  doing this" tangent-vector refers to. **Verify whether it is rock-solid or just late/incomplete.**
+- **Q1** — closed PR **#9869 (csyonghe), _"Don't rewrite entrypoint `in` to `borrow` during ir
+  lowering"_** is exactly about wrong-by-design entry-point handling in lowering. Start there.
+- Root-cause already pinned (gdb `$rdi=0x0`, null layout decoration on an **orphaned** entry point) is
+  tangent-vector's predicted symptom: an `IRFunc` with `IREntryPointDecoration` but no layout in the
+  back-end. His demand: that shape *"should be ruled out earlier… not hand-waved with a cowardly
+  early-out null test."*
+
 **RESUME TRIGGER (was: triager verdict — discharged):** the **maintainer's ruling** on (a) the
 producer-side fix direction and (b) whether the `SLANG_ASSERT(x); if (!x)` class gets its own issue.
 D3D12/Metal remain **unmeasured and labelled as such** — and the available L40S **cannot** cover them

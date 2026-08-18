@@ -91,7 +91,74 @@ auto-unboxing architecture" investigation vs. fold into #12430.
 no longer the narrow-gate spike. All owed cleanups (auto-close keyword, scratch files, description) are
 now DONE on the public artifact.
 
-**RESUME:** Tim answers the sequencing + issue-tracking questions on PR #12555 → fixer proceeds. If Tim
-authorizes the (a)/(b) fixes, `slang-reviewer` re-runs on the next synchronize (its verdict is held for
-exactly this re-push). This is now a **maintainer-steered multi-step fix**, not a bounded spike — Main
-records + reports up; the fixer owns the PR/maintainer edge and does not need re-dispatch.
+## ⭐ FULL SYSTEMATIC-REFACTOR DIRECTIVE — Tim, 08-17 20:20Z (cmt `5319797866`, verified; fixer ack `5319929857` 20:34Z)
+
+Tim answered the sequencing question by scoping the **whole refactor**, not a subset. Directive:
+**survey every `DeclRefType`→`InterfaceDecl` check in the front-end, classify each as *interface-itself*
+(keep) vs *existential-box value* (convert to `ExistentialType`), implement buckets a–f PLUS the
+open-existential plumbing** (`maybeOpenExistential`/`openExistential` must trigger on `ExistentialType`,
+not interface type — that's root cause (b)), then report updated test results + confounding cases.
+Three corrections he gave, folded in by the fixer (fixer-relayed, comment verified by me; the code
+claims are ITS measurements):
+- **(c) mangling must be a DISTINCT existential-box opcode**, NOT identical to the interface.
+- **(d) do NOT treat `dyn IFoo`/`IFoo` "compatibly"** — a value has `ExistentialType`, never interface
+  type.
+- **The constraint-supertype path shouldn't coerce the interface at all** — Tim reads the build-blocking
+  "exemption" as a likely underlying bug in **default-arg-value checking for a generic type param with a
+  default but no constraints** (`<T = float4>`); the fixer says its pushed code already uses the
+  resolved constraint type (no "exemption").
+⇒ **Now a real multi-file implementation, multi-hour.** Fixer launched a read-only survey subagent
+(classify all interface-type sites) → implement a–f + open-existential conversions → rebuild → full
+suites → `slang-reviewer` → post updated triage. Worktree clean at `b9a9b60e`, master fetched
+`d70456f3`. Fixer checkpoints at survey-complete and build-green.
+
+## Build-10 checkpoint — 08-17 23:36Z (fixer-measured; suite counts are ITS re-measure, not mine)
+
+Build 10 green. **Serial re-measure: dynamic-dispatch 696/696, interfaces 75/75, generics 251/251 —
+all 100%** (the `Ptr<T>` inference regression from build-7's too-aggressive `TryUnifyTypes` unwrap is
+fixed — refined to skip the unwrap when the counterpart is a solvable type param, so `T` binds to the
+box). **Autodiff: 8 files (autodiff-through-`dyn IFoo`) SIGSEGV deterministically in isolation** at
+`-target cpp` codegen; front-end clean.
+⚠️**Fixer HONESTY CORRECTION — it had UNDER-COUNTED these: its failure grep matched `CHECK`/
+signature-mismatch strings but not `SIGSEGV|server killed`, so the crashes were filtered out of the
+count.** Earlier "2 signature files" → actually **8 hard crashes**; the 97% aggregate was right, the
+characterization wrong. That's the filter-must-catch-every-signature trap →
+[[feedback_a_watcher_scoped_to_the_known_hazard_reports_silence_as_all_clear]] (added as its 4th form).
+Also this round: **reverted** the build-8 autodiff derivative-signature edit (didn't fix
+`dynamic-dispatch-material`, *introduced* an autodiff SIGSEGV storm) — the autodiff-diff-through-
+existential cluster will be **reported to Tim as a confounding case, not force-fixed** ("don't force it").
+
+⛔**NOT YET ESTABLISHED — regression vs. pre-existing for the 8 SIGSEGVs.** Fixer's hypothesis is
+*pre-existing-but-newly-reachable* (its type-layout-assert fix removed a wall that may have masked the
+codegen crash), but it is correctly **refusing to claim that without a baseline** — stashing Phase-3,
+building committed Phase-2 head `b9a9b60e`, running those 8. If it's a true Phase-3 regression it
+bisects/reverts. **Do not record the pre-existing framing as fact until the baseline lands.**
+
+## ✅ SYSTEMATIC PASS COMMITTED + PUSHED — 08-18 00:14Z (✅ = verified by me)
+
+Head **`9721410a37`** (`fix/issue-12430`) ✅. **Commit is CLEAN** — no `Co-Authored-By: Claude` (fixer
+amended + force-pushed with lease to strip it; upstream forbids AI attribution) ✅.
+⭐**Diff-size numbers — BOTH true, don't confuse them (verified):** fixer reported "+267/−38, 17 files"
+= the **Phase-3 INCREMENT** (`b9a9b60e...9721410a`), which I confirmed exactly. The **PR-vs-master
+CUMULATIVE** is **+463/−51, 26 files**. The increment is the honest "what this push changed" figure.
+`9721410a` is `ahead=1, behind=0` of `b9a9b60e` ✅ — so the "built the committed base and reproduced"
+baseline lineage is sound.
+
+⭐**The 8 autodiff SIGSEGVs are PROVEN PRE-EXISTING** (fixer built committed base `b9a9b60e` and
+reproduced all 8 identically) — last turn I held this as unestablished; now established. **Core suites
+100%** (dynamic-dispatch 696/696, interfaces 75/75, generics 251/251, serial final binary); autodiff
+878/900 (97%), the 22 sub-failures = the deferred autodiff-diff-through-`dyn IFoo` codegen-crash
+cluster, **not force-fixed** (forcing it destabilized other green autodiff tests). Honest caveat the
+fixer will surface to Tim: `existential-specialized-1` flips 1/4→0/4 (one HLSL-emit sub-test of an
+already-broken file) — same deferred cluster. Reverted the (f) differential-type change as **pure
+cost** (enabled 0 tests, cost that 1 sub-test).
+✅**CI on `9721410a` is cosmetic — re-verified by me on the NEW head** (not carried from the prior
+one): 29/30 checks `skipped`, sole non-skip `check-ci: failure` (priority-yield on a `workflow_dispatch`
+draft run). Retry helper handles the yield; real signal comes on yield-clear or ready-flip.
+
+**RESUME:** `slang-reviewer`'s verdict (~20-30 min; it re-runs on this synchronize, verdict was held for
+exactly this push) → fixer posts consolidated results to Tim on #12555 (peer-review-before-report) →
+handles CI webhook. **Maintainer-steered multi-step refactor** — Main records + reports up; fixer owns
+the PR/maintainer edge, no re-dispatch. ⚠️Standing ops item unchanged: `clang-format-17` still not
+installed (poison `packages_apt` entry, escalated to dashboard) — fixer couldn't run C++ formatting
+locally, relying on CI's format check. See [[feedback_versioned_clang_format_needs_llvm_apt_source]].
