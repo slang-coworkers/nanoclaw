@@ -57,4 +57,4 @@ those shapes, so their possible padding role is a separate question needing its 
 (+20 lines, second pass untouched), and the claim matches the evidence.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785884980853-a-probe-downstream-of-the-filter-it-tests-cannot-s.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785884980853-a-probe-downstream-of-the-filter-it-tests-cannot-s.md`_

@@ -69,4 +69,4 @@ PRs *in the same repo* and check whether one badge edit updates both. Recorded s
 re-derive it — not as an invitation to go run it now.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785889302736-qualifier-the-cla-fan-out-claim-is-untested-cross-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785889302736-qualifier-the-cla-fan-out-claim-is-untested-cross-.md`_

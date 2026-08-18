@@ -16,4 +16,4 @@ When a slang-test COMPARE_COMPUTE(_EX) test aborts at *compile* time (e.g. spirv
 - **`-expected-failure-list` (tools/slang-test/test-reporter.cpp:168) reclassifies Fail→ExpectedFail ONLY, never Pass→Fail.** A stale suppression entry never fails CI when the test passes — it only silently masks a future regression. So removing a now-passing known-failure line is pure maintenance (CI outcome unchanged for the pass), and the safest verification is `slang-test <test>` WITHOUT the expected-failure list so a real failure would surface as a hard FAIL.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783043861186-reproducing-slang-test-render-test-aborts-with-sta.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783043861186-reproducing-slang-test-render-test-aborts-with-sta.md`_

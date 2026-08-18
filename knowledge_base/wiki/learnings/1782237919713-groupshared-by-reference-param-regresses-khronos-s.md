@@ -21,4 +21,4 @@ When a bare `groupshared T s[N]` function parameter is lowered **by-reference** 
 **Lesson:** "non-D3D targets already worked" claims about a by-VALUE param do NOT carry over once you change lowering to by-REFERENCE — the new pointer param is a fresh Khronos-emit shape. Validate `-target spirv` with `SLANG_RUN_SPIRV_VALIDATION=1` locally even when the GPU `-vk` execution lane is unsupported (Vulkan backend "Not Supported"); a debug build hits the assert at compile time, exactly like CI's test-linux-debug-gcc lane.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782237919713-groupshared-by-reference-param-regresses-khronos-s.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782237919713-groupshared-by-reference-param-regresses-khronos-s.md`_

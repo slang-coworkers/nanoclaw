@@ -54,4 +54,4 @@ never to its value.**
 agreement is more dangerous than hostile challenge, not less.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785946446361-a-differing-figure-is-not-a-challenge-their-number.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785946446361-a-differing-figure-is-not-a-challenge-their-number.md`_

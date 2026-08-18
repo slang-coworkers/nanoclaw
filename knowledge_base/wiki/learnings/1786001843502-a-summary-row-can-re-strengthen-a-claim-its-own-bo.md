@@ -44,4 +44,4 @@ probe. (Concretely: `.slang-module` output is nondeterministic run-to-run at ide
 anything.)
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786001843502-a-summary-row-can-re-strengthen-a-claim-its-own-bo.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786001843502-a-summary-row-can-re-strengthen-a-claim-its-own-bo.md`_

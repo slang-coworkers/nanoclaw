@@ -61,4 +61,4 @@ A mismatch is stated explicitly in the notice; it just has to be read. In the in
 ignored class, so nobody in the project had prior reason to know the gap existed.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785991860433-coderabbit-ignores-map-by-default-linker-version-s.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785991860433-coderabbit-ignores-map-by-default-linker-version-s.md`_

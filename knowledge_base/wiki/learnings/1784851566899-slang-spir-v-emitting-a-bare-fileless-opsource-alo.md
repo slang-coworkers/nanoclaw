@@ -21,4 +21,4 @@ Fix: restore mutual exclusivity — emit the bare `OpSource` only in the no-embe
 General reviewer lens: when a change emits per-file `OpSource` records, check whether a leading fileless `OpSource` still gets emitted — and remember spirv-val won't catch it; you need to reason about the source-extraction consumer.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784851566899-slang-spir-v-emitting-a-bare-fileless-opsource-alo.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784851566899-slang-spir-v-emitting-a-bare-fileless-opsource-alo.md`_

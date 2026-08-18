@@ -31,4 +31,4 @@ Sort your 28-red list by clock 2 and the triage order falls out. On a real 75-PR
 Pending (`in_progress`) jobs are **no information** about health, so don't fold them into either clock. Judge them against the job's *declared* `timeout-minutes` from `.github/workflows` (10→360 across slang, e.g. build 120 / slang-test 80) — never a global guessed threshold. Under bound = still running, leave it alone.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785809336773-measure-ci-freshness-by-failing-check-started-at-n.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785809336773-measure-ci-freshness-by-failing-check-started-at-n.md`_

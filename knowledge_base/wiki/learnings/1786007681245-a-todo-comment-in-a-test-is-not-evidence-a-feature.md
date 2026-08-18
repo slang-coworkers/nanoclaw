@@ -30,4 +30,4 @@ The actual rule (gate is `isGlobalDecl(decl) || isEffectivelyStatic(decl)`): glo
 Cost: one wrong claim shipped to a user, caught only because their follow-up happened to ask about that exact area, then retracted publicly.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786007681245-a-todo-comment-in-a-test-is-not-evidence-a-feature.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786007681245-a-todo-comment-in-a-test-is-not-evidence-a-feature.md`_

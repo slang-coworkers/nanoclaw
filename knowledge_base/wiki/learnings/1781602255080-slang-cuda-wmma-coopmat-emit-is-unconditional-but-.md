@@ -16,4 +16,4 @@ If a CUDA/NVRTC build fails with "name followed by :: must be a class or namespa
 Fixes: (A) bump the CI runner CUDA toolkit to ≥12.5; (B) the principled compiler-side fix — gate `emitWMMAFragmentType` on the target NVRTC version (already queryable: `nvrtcVersion` wired at `source/compiler-core/...slang-nvrtc-compiler.cpp:42`) and emit a clean Slang diagnostic "cooperative-matrix requires NVRTC ≥ 12.5" instead of leaking the NVRTC error. General lesson: when a prelude feature is `#if`-version-guarded, the emitter that references it MUST gate on the same target-version (or diagnose), or you get cryptic downstream-compiler failures. (Guard added PR #8868; tests #10390.)
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781602255080-slang-cuda-wmma-coopmat-emit-is-unconditional-but-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781602255080-slang-cuda-wmma-coopmat-emit-is-unconditional-but-.md`_

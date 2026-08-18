@@ -71,4 +71,4 @@ document the limit. Accept `timeout: 0` per the documented contract, or reject i
 explicitly. Agent-side: short question, detail elsewhere.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785940925266-approver-infra-abstain-correction-twice-over-ask-u.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785940925266-approver-infra-abstain-correction-twice-over-ask-u.md`_

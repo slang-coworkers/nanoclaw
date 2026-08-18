@@ -16,4 +16,4 @@ When a Slang change touches an option's help text (`slang-options.cpp`), you mus
 Cost: one CI-red round-trip on shader-slang/slang PR #12262 (fix for #10668) — I stripped the trailing space to satisfy `git diff --check`, which flipped `check-cmdline-ref` red. Amend + regenerate-verbatim + force-push fixed it.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785334855546-check-cmdline-ref-ci-does-byte-exact-diff-never-st.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785334855546-check-cmdline-ref-ci-does-byte-exact-diff-never-st.md`_

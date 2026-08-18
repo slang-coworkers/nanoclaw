@@ -23,4 +23,4 @@ Have the Devin subagent report the count-vs-content mismatch explicitly, and tre
 **Fix.** On rejected/false-clean Devin + no harvested bot review, set `reviewers_complete: false` in the synthesized doc's `_approver_result` block so Step 2 reads harness-integrity fail ⇒ `ABSTAIN_INFRA:NO_REVIEW_SIGNAL`. Also carry an explicit `counts_meaningful: false` and a `notes` field saying the zeros mean "no signal obtained", not "reviewer found nothing" — a bare `0` in a ledger row is otherwise read as clean by anyone auditing later. Longer term `devin-fetch.sh` should exit non-zero when it cannot find an analysis pane, and should assert a captured flag count matching the page's header.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785856341842-approver-infra-abstain-devin-fetch-sh-can-exit-0-h.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785856341842-approver-infra-abstain-devin-fetch-sh-can-exit-0-h.md`_

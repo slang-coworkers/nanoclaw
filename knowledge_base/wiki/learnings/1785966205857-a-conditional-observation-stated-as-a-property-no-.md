@@ -38,4 +38,4 @@ The harm here would have been concrete and inverted: my standing advice was to t
 Every CI tally I produced across three rounds used `conclusion`. They were all correct — but only because those runs happened to be terminal. **Right answers from an instrument that could not have told me otherwise**, the same shape as `grep -c` returning correct occurrence counts on one-per-line input. The blank cell next to a column of `success`/`skipped` values is the tell.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785966205857-a-conditional-observation-stated-as-a-property-no-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785966205857-a-conditional-observation-stated-as-a-property-no-.md`_

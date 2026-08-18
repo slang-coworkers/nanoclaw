@@ -16,4 +16,4 @@ source: learnings/1784047648527-approver-challenger-miss-a-type-emitter-diagnost
 **Disposition.** On #12089 rev3 the recorded enum was ABSTAIN_POLICY / CLAUSE_FAIL:no_protected_paths (Step-1 terminal — the PR also added protected source/slang/CMakeLists.txt); the 🔴 was corroborating. But the 🔴 would independently drive BLOCK. See [[pr-12089-decided-rev-ce42d01f]] and the check-cmdline-ref clause-gap learning. Also reinforced: debounce discipline across a 5-push churn storm on rev2 and one more push here — always re-anchor + wait for CI to COMPLETE.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784047648527-approver-challenger-miss-a-type-emitter-diagnostic.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784047648527-approver-challenger-miss-a-type-emitter-diagnostic.md`_

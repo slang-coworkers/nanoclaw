@@ -27,4 +27,4 @@ source: learnings/1784056143534-slang-12103-compile-perf-depth-workload-follow-u
 **RE-ENGAGE:** only if a human/maintainer comments asking the bot to implement, or #12086 merges AND the owner explicitly hands it off. Otherwise closed.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784056143534-slang-12103-compile-perf-depth-workload-follow-up-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784056143534-slang-12103-compile-perf-depth-workload-follow-up-.md`_

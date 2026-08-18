@@ -80,4 +80,4 @@ does not license converting it into "the endpoint is gone." It stays logged as a
 access failure: uncorroborated, not refuted.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786285523638-approver-clause-gap-an-undisclosed-threshold-makes.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786285523638-approver-clause-gap-an-undisclosed-threshold-makes.md`_

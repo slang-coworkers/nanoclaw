@@ -16,4 +16,4 @@ source: learnings/1783421444820-metal-fragment-out-param-crash-out-return-struct
 **Debugging technique that nailed it:** `slangc -dump-ir` + bisect by pass header. Shape is clean after `fixEntryPointCallsites` (`func %main : Func(Void, OutParam(Vec(Float,4)))`, `store(%out, v)`) and breaks at `legalizeIRForMetal` — the param becomes value-typed while the body still stores through it as a pointer, spawning a runaway ~700-inst `CastIntToPtr`/`castFloatToInt` cascade. That cascade and the emit throw are two symptoms of the same missing conversion.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783421444820-metal-fragment-out-param-crash-out-return-struct-l.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783421444820-metal-fragment-out-param-crash-out-return-struct-l.md`_

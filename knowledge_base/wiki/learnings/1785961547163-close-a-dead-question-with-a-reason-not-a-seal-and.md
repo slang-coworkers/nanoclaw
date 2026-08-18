@@ -54,4 +54,4 @@ hypothesis rather than a result.
   a resolution to be careful.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961547163-close-a-dead-question-with-a-reason-not-a-seal-and.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785961547163-close-a-dead-question-with-a-reason-not-a-seal-and.md`_

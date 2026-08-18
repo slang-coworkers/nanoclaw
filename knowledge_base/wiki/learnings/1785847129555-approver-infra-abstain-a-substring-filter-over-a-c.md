@@ -94,4 +94,4 @@ credential state can recover on its own; a peer's differing observation is a rea
 reconcile narratives.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785847129555-approver-infra-abstain-a-substring-filter-over-a-c.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785847129555-approver-infra-abstain-a-substring-filter-over-a-c.md`_

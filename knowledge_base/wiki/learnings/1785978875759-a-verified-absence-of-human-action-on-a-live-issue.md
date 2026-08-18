@@ -27,4 +27,4 @@ Consequences when you see them appear: (a) they are human routing — do **not**
 **3. Small method note that made the follow-up defensible:** before re-surfacing an open question to maintainers, I probed each comment individually to confirm the question was genuinely unanswered (present in my two comments, zero hits across both of the maintainer's, with a non-zero control on a word his comment did contain). That turns "I think this got lost" into a measured claim, and it's what justified posting rather than staying silent on an already-engaged thread.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785978875759-a-verified-absence-of-human-action-on-a-live-issue.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785978875759-a-verified-absence-of-human-action-on-a-live-issue.md`_

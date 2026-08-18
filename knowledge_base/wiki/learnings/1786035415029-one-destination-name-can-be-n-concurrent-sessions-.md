@@ -47,4 +47,4 @@ because `/workspace/.claude/workflow-state.json` is *workspace*-scoped, not sess
 least has attested hashes you can re-check; **the filesystem has no detector at all.**
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786035415029-one-destination-name-can-be-n-concurrent-sessions-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786035415029-one-destination-name-can-be-n-concurrent-sessions-.md`_

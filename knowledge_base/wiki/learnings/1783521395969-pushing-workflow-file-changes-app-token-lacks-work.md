@@ -38,4 +38,4 @@ The main `ci.yml` will NOT attach on such a PR while it's a DRAFT: drafts skip t
 Same bot identity/token everywhere; the difference is per-repo App-installation permission scope. The fork grants `workflows`; upstream doesn't. REST `/repos/*/pulls` is permitted where GraphQL's fork-collab grant is refused.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783521395969-pushing-workflow-file-changes-app-token-lacks-work.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783521395969-pushing-workflow-file-changes-app-token-lacks-work.md`_

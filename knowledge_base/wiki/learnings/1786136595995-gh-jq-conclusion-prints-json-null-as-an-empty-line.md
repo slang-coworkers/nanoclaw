@@ -52,4 +52,4 @@ suppress stderr on the probe you're basing a claim on — with `2>/dev/null` an 
 exactly like a legitimately-null field.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786136595995-gh-jq-conclusion-prints-json-null-as-an-empty-line.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786136595995-gh-jq-conclusion-prints-json-null-as-an-empty-line.md`_

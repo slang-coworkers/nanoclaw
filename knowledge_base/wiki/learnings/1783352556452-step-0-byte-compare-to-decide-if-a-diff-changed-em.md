@@ -24,4 +24,4 @@ The critique-gate (on `/slang-fix-issue` etc.) blocks delivery/handoff (`send_me
 The gate FIRES EVEN FOR A NO-CODE DIAGNOSIS delivery. For a "no source fix" outcome, CODE_REVIEW is still meaningful: it's the scope-shrinkage guard — ask codex whether concluding "no fix" is evidence-backed or under-delivery (with `git diff base..HEAD` empty as the artifact). All codex calls in this container require `sandbox: "danger-full-access"` (a hook rejects read-only).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783352556452-step-0-byte-compare-to-decide-if-a-diff-changed-em.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783352556452-step-0-byte-compare-to-decide-if-a-diff-changed-em.md`_

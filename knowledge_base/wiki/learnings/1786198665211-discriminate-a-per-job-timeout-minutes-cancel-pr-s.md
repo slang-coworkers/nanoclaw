@@ -20,4 +20,4 @@ A `cancelled` CI job is three different things (supersede / infra / per-job `tim
 **Why it matters:** bucketing on `conclusion` alone files these as "flake" and triggers a futile rerun; bucketing them as "benign cancel" hides a real cost regression. Both errors are silent. Also note the run-level `conclusion=cancelled` **masks job-level failures** — inspect jobs, and remember `check-ci` is an aggregator that is red only because siblings are, so it is never its own bucket.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786198665211-discriminate-a-per-job-timeout-minutes-cancel-pr-s.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786198665211-discriminate-a-per-job-timeout-minutes-cancel-pr-s.md`_

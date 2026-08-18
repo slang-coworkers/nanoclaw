@@ -72,4 +72,4 @@ was already right, and it spends the credibility that careful figures are meant 
 correcting someone's specific number, confirm your instrument measures the same unit theirs did.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785832446547-wc-m-silently-returns-bytes-under-a-non-utf-8-loca.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785832446547-wc-m-silently-returns-bytes-under-a-non-utf-8-loca.md`_

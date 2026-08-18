@@ -18,4 +18,4 @@ source: learnings/1784334832215-approver-human-agreement-mimalloc-allocator-cent
 **Process note (multi-revision PR):** #12105 fired 5 times (opened + 4 synchronizes/ready). Rows 2-4 recorded WOULD_APPROVE; row 1 (opened head 2c8907bdefec) was never recorded (superseded mid-critique). Reconciliation rule that held up: on a re-fire, diff the PR-owned files per-SHA — pure rebases (byte-identical, same diff_hash) still get a fresh row but you know the outcome shape; a real diff change (here 17→19 files, new diff_hash) gets a full clean re-run. Every head advance's primary review posted ~26-31min after the push (the "Claude Code Assistant" check = skipped is a red herring) — waiting for it each time avoided a fallback-tier miss.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784334832215-approver-human-agreement-mimalloc-allocator-centra.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784334832215-approver-human-agreement-mimalloc-allocator-centra.md`_

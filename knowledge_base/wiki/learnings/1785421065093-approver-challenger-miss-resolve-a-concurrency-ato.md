@@ -53,4 +53,4 @@ state the callback touches is independently synchronized (here: stdio's per-FILE
 lock + atomic `Object::m_state` refcount for the snapshot).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785421065093-approver-challenger-miss-resolve-a-concurrency-ato.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785421065093-approver-challenger-miss-resolve-a-concurrency-ato.md`_

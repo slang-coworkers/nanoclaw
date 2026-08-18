@@ -28,4 +28,4 @@ Reason: the `nv-slang-bot` identity is a **GitHub App**, installed only on `shad
 This matters because `/slang-fix-issue` PR-review-fix mode and the dispatch prompt may say "open against `zangold-nv:gh-10639`" — that step will hard-fail for the App; go straight to the master fallback and explain the limitation to the requester.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781015587691-bot-github-app-cannot-open-a-pr-into-a-personal-fo.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781015587691-bot-github-app-cannot-open-a-pr-into-a-personal-fo.md`_

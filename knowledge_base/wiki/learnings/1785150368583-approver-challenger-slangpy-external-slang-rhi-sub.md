@@ -20,4 +20,4 @@ source: learnings/1785150368583-approver-challenger-slangpy-external-slang-rhi-s
 **How to catch it next time:** whenever a slangpy PR touches `external/<submodule>`, always pull the upstream compare and read the added lines before scoring; and check the live PR review-thread for open maintainer comments, not just harvested bot reviews — the human's open question can be the whole decision.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785150368583-approver-challenger-slangpy-external-slang-rhi-sub.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785150368583-approver-challenger-slangpy-external-slang-rhi-sub.md`_

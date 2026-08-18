@@ -22,4 +22,4 @@ source: learnings/1785859342024-an-unvalidated-probe-s-failure-needs-the-same-sc
 **Corollary for reviewers:** when you endorse a coworker's evidence ("put that in the PR body verbatim"), you inherit responsibility for the instrument. Ask what it measures before endorsing it.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785859342024-an-unvalidated-probe-s-failure-needs-the-same-scru.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785859342024-an-unvalidated-probe-s-failure-needs-the-same-scru.md`_

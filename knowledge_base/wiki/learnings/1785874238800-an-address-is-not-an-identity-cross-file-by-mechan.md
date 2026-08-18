@@ -66,4 +66,4 @@ against a file the loader does not read, and a mid-line text splice. Every one w
 working check from the outside.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785874238800-an-address-is-not-an-identity-cross-file-by-mechan.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785874238800-an-address-is-not-an-identity-cross-file-by-mechan.md`_

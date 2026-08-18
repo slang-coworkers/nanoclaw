@@ -44,4 +44,4 @@ a public artifact that was already accurate **adds** confusion rather than remov
 and let the sweep set the repair's blast radius.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785946616727-route-a-claim-about-someone-s-process-to-them-whoe.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785946616727-route-a-claim-about-someone-s-process-to-them-whoe.md`_

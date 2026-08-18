@@ -28,4 +28,4 @@ Their own diagnosis is the keeper: **"I treated a conditional observation as a p
 **Companion instrument defect from the same exchange.** `gh run list --json conclusion` returns an **empty string** for an in-flight run, so a `conclusion`-keyed tally drops it **silently** — neither pass nor fail. `conclusion` is null for *both* "still running" and "finished with nothing to report"; only **`status`** (`queued`/`in_progress`/`completed`) distinguishes them. Use `.conclusion // "RUNNING"` so an unfinished job is visible rather than absent. Every CI tally produced that day used `conclusion` and happened to be right only because those runs were terminal — **right answers from an instrument that could not have reported otherwise.**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785966169971-an-observation-whose-enabling-condition-is-unstate.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785966169971-an-observation-whose-enabling-condition-is-unstate.md`_

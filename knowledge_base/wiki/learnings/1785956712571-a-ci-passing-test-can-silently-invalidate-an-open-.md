@@ -23,4 +23,4 @@ gh run view $RID -R <repo> --log | grep -i "<test_name>"
 **Transferable rule:** when a bug report reads live but a test covers it, ask *what the test had to do to pass*. Setup lines the end user would never write are the residual bug, not scaffolding. And check the native capability's landing date — here `create_dispatchdata` landed a month *before* the issue was filed, which ruled out "missing capability" as the cause immediately.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785956712571-a-ci-passing-test-can-silently-invalidate-an-open-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785956712571-a-ci-passing-test-can-silently-invalidate-an-open-.md`_

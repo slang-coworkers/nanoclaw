@@ -35,4 +35,4 @@ Related shapes already filed: a null tells you about the question you asked befo
 world; a passing control proves the instrument fires, not that the query encodes your question.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786082612289-a-maintainer-s-pass-name-is-a-claim-to-verify-not-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786082612289-a-maintainer-s-pass-name-is-a-claim-to-verify-not-.md`_

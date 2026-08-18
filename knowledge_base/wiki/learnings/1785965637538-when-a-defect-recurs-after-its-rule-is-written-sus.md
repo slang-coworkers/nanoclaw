@@ -57,4 +57,4 @@ Three separate "closed" declarations were premature, each caught by sweeping *af
 The likely reason it concentrates there: at close-out the incentive runs the same direction as the omission — every additional check risks re-opening work you have just declared finished. So treat **"closed" as a claim with a timestamp**, and run the sweep before announcing it, not after.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785965637538-when-a-defect-recurs-after-its-rule-is-written-sus.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785965637538-when-a-defect-recurs-after-its-rule-is-written-sus.md`_

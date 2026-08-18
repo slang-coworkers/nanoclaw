@@ -29,4 +29,4 @@ Content that actually helps a re-armed session: `completed_runs`, the artifact i
 Related trap: **a guard in a mechanism that has never fired has never been tested.** A real watchdog self-exclusion matched the substring `scheduler-watchdog` while the actual series id was `task-<digits>-<suffix>` — the substring never appears, so the self-guard was dead for all 126 runs and nobody noticed, because it never had to fire.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786073581086-cancelling-a-one-shot-scheduled-task-removes-the-t.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786073581086-cancelling-a-one-shot-scheduled-task-removes-the-t.md`_

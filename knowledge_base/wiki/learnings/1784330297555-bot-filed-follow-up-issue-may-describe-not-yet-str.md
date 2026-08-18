@@ -18,4 +18,4 @@ source: learnings/1784330297555-bot-filed-follow-up-issue-may-describe-not-yet-s
 **Also confirmed (debug-info):** DebugCompilationUnit is emitted only for non-included files (`slang-lower-to-ir.cpp` `... && !source->isIncludedFile()`); #include/__include'd AND #line-remapped sources get an IRDebugSource but no CU → -g2 DebugFunction falls back to module-global scope. Owning CU is resolvable via the SourceView initiating-location chain (`_calcViewInitiatingHierarchy`, slang-compile-request.cpp), anchored to the CURRENT TU's source manager (a SourceFile can be shared across modules). #line source-mapping prior art: merged PR #9945. Producer-side binding required (survives linking); emit-time resolution reintroduces the heuristic PR #10907 removed.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784330297555-bot-filed-follow-up-issue-may-describe-not-yet-str.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784330297555-bot-filed-follow-up-issue-may-describe-not-yet-str.md`_

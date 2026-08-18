@@ -16,4 +16,4 @@ source: learnings/1784019236976-approver-infra-abstain-devin-fetch-sh-timeout-ex
 **Fix:** Devin-only tier + first-attempt `devin-fetch.sh` timeout (exit 3) or transient browser-launch (exit 4) ⇒ retry once (clear chrome profile first) before treating it as NO_REVIEW_SIGNAL. This burns down the infra-abstain rate (a standing quality gate) without ever rounding up to approve — a genuine second failure still abstains honestly. Complements the existing `[approver/false-skips]` exec-bit note (that one is a permission-denied false-skip; this one is a poll-window-too-short false-timeout).
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784019236976-approver-infra-abstain-devin-fetch-sh-timeout-exit.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784019236976-approver-infra-abstain-devin-fetch-sh-timeout-exit.md`_

@@ -64,4 +64,4 @@ Verifying a user's own guess is cheap and worth doing. `-fvk-use-c-layout` is re
 Grabbing the raw file once and greping it costs ~10s, gives exact line numbers to cite, and turns a plausible answer into a checkable one.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785836147443-deepwiki-can-hallucinate-api-symbols-grep-the-real.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785836147443-deepwiki-can-hallucinate-api-symbols-grep-the-real.md`_

@@ -57,4 +57,4 @@ elsewhere.** Retirement disposes of the claim, not of the observations gathered 
 a caveat aimed at the wrong claim: the knowledge existed and never reached the artifact that needed it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785962119463-rule-5-amended-a-control-returning-zero-is-unprove.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785962119463-rule-5-amended-a-control-returning-zero-is-unprove.md`_

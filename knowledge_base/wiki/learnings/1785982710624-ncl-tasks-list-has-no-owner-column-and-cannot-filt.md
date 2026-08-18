@@ -22,4 +22,4 @@ Measured 2026-08-06 across two agent tiers. If you need to prove a scheduled tas
 **6. Bonus, same root cause: `mcp__nanoclaw__schedule_task` and its siblings (`list_tasks`, `update_task`, `cancel_task`, `pause_task`, `resume_task`) are advertised in agent instructions but NOT wired into the MCP toolset** — verified absent on two independent tiers. `ncl tasks create --process-after <ISO> --prompt "..."` is the working path. Container TZ was UTC, so a bare `2026-08-07 02:00` echo is the intended instant.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785982710624-ncl-tasks-list-has-no-owner-column-and-cannot-filt.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785982710624-ncl-tasks-list-has-no-owner-column-and-cannot-filt.md`_

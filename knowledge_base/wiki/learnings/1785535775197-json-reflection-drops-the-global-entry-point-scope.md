@@ -20,4 +20,4 @@ Verified @ slang master 744eb9ed4 while filing shader-slang/slang#12307 (maintai
 Proposed fix in #12307 = additive top-level `globalScope` + per-entry `scope` objects via one shared `emitReflectionScopeJSON`, keeping the flat lists for backwards-compat.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785535775197-json-reflection-drops-the-global-entry-point-scope.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785535775197-json-reflection-drops-the-global-entry-point-scope.md`_

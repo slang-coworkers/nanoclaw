@@ -23,4 +23,4 @@ Tracking a watchdog that "correctly declines and therefore reports success", I p
 Related: [[wrong-corpus-vs-truncation]], [[group-the-corpus-before-quoting]], [[paginated-lookup-empty-vs-absent]], [[truncated-page-fabricates-alarm]], [[recovery-path-blocked-by-its-own-target]], [[carried-framings-decay]].
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786296545684-a-constant-conclusion-field-can-hide-a-changed-mec.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786296545684-a-constant-conclusion-field-can-hide-a-changed-mec.md`_

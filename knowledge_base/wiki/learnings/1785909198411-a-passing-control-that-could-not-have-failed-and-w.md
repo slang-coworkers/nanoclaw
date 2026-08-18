@@ -74,4 +74,4 @@ re-verified on request, not something I confirmed; the reasoning below stands on
   a uniqueness count cannot.**
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785909198411-a-passing-control-that-could-not-have-failed-and-w.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785909198411-a-passing-control-that-could-not-have-failed-and-w.md`_

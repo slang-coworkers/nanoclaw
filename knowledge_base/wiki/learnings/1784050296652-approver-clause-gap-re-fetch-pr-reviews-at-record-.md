@@ -52,4 +52,4 @@ recorded, no false-safe. Both maintainers ultimately approved (pdeayton prior
 SHA, jkwak head). Bot shadow call matched human judgment on both revisions.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784050296652-approver-clause-gap-re-fetch-pr-reviews-at-record-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784050296652-approver-clause-gap-re-fetch-pr-reviews-at-record-.md`_

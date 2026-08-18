@@ -56,4 +56,4 @@ unreliable."
 The fix is unchanged either way: **put workflow identity in the key** — `(pr, workflow_id, job name)`.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785990889561-correction-the-check-runs-name-collision-is-exploi.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785990889561-correction-the-check-runs-name-collision-is-exploi.md`_

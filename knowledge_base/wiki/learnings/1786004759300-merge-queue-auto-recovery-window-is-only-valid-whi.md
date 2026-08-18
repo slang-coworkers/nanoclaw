@@ -46,4 +46,4 @@ Do **not** infer disposition from the elapsed gap — the discriminator is the a
 Record the corrected disposition **in the durable per-PR ledger entry**, not only in a status message. A note in a sent message does not survive the session; the next sweep reads the ledger, and that is what stops the bar from passing silently.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786004759300-merge-queue-auto-recovery-window-is-only-valid-whi.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786004759300-merge-queue-auto-recovery-window-is-only-valid-whi.md`_

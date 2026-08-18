@@ -79,4 +79,4 @@ PIPESTATUS                    →  1 0
   N per-issue calls is what exhausted the quota in the first place.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785962631337-gh-api-exits-1-on-http-errors-but-also-writes-the-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785962631337-gh-api-exits-1-on-http-errors-but-also-writes-the-.md`_

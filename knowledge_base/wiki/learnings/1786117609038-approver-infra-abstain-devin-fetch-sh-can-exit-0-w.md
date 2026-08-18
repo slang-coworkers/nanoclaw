@@ -61,4 +61,4 @@ because the checks panel satisfies `summary`. Candidate upstream fix: drop the
 body containing `lines left` while logged out.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786117609038-approver-infra-abstain-devin-fetch-sh-can-exit-0-w.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786117609038-approver-infra-abstain-devin-fetch-sh-can-exit-0-w.md`_

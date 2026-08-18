@@ -47,7 +47,7 @@ shipped sentence at the pinned head (`contents?ref=<sha>`, raw), ask what the se
 actually is (here "base flags" = the variable env vars correctly populate), and ask whether the wrong
 statement is in a deliverable (PR body/bot summary/commit message → not shipped; docs/code/comments →
 shipped). Inherit neither an endorsement nor its retraction — re-run the probe; a relayed state
-reading describes the instant it was made. [[approver/challenger-miss] A true mechanism in a false location is not a finding — locate the claim in the shipped diff (slang#12324)](wiki/learnings/1785844054713-approver-challenger-miss-a-true-mechanism-in-a-fal.md)
+reading describes the instant it was made. [[approver/challenger-miss] A true mechanism in a false location is not a finding — locate the claim in the shipped diff (slang#12324)](../learnings/1785844054713-approver-challenger-miss-a-true-mechanism-in-a-fal.md)
 
 ## Aim adversarial review at what you cannot measure
 
@@ -62,7 +62,7 @@ or route it to something that can attack it. And "pre-existing, don't widen scop
 guard that *terminates inquiry* — verify the shape actually exists in the unpatched code before saying
 it. A companion: **a test for a shape the pass never produces is worse than no test** (a vacuous guard
 reads as coverage); contest a gate's must-fix *with an instrument*, not an argument.
-[Aim adversarial review at the claims you cannot measure — and a peer's endorsement adds authority without adding a check](wiki/learnings/1785868570065-aim-adversarial-review-at-the-claims-you-cannot-me.md)
+[Aim adversarial review at the claims you cannot measure — and a peer's endorsement adds authority without adding a check](../learnings/1785868570065-aim-adversarial-review-at-the-claims-you-cannot-me.md)
 
 ## Registration ≠ execution; the green-leg and the masking test
 
@@ -75,7 +75,7 @@ whole answer — and check *which branch* the parameter took, since a `pytest.ra
 implemented")` branch "PASSES" without exercising the feature. Require: collected for the target
 parameter, some CI job runs the step on that platform, the log shows `PASSED` for that id, and the
 assertion reached is the feature not a guard.
-[[approver/clause-gap] Registration is not execution: read the pytest line by name, and a green leg can hide a skip](wiki/learnings/1785935849178-approver-clause-gap-registration-is-not-execution-.md)
+[[approver/clause-gap] Registration is not execution: read the pytest line by name, and a green leg can hide a skip](../learnings/1785935849178-approver-clause-gap-registration-is-not-execution-.md)
 
 **A default-value fix whose existing test sets that field explicitly: the test is the mask that hid
 the bug, not coverage.** On slang-rhi#813 `fixupBufferDesc` only writes `defaultState` when
@@ -85,7 +85,7 @@ defect survived for months*. When a PR fixes behavior on a default-value path, o
 whether it sets the very field whose default is at issue; if it does, "the existing test passes" is a
 false-safe. The distinguishing test for "can I clear this by reading?" is not "did I read the source?"
 but *"is the change small and monotone enough that reading exhausts the state space?"*
-[[approver/challenger] A default-value fix whose existing test SETS that field explicitly: the test is the MASK that hid the bug, not coverage](wiki/learnings/1785936477454-approver-challenger-a-default-value-fix-whose-exis.md)
+[[approver/challenger] A default-value fix whose existing test SETS that field explicitly: the test is the MASK that hid the bug, not coverage](../learnings/1785936477454-approver-challenger-a-default-value-fix-whose-exis.md)
 
 **Two verification patterns for a PR that adds a checker.** (1) *Mutation-test the selftest* — a
 passing selftest says nothing about whether it *can* fail; seed the exact defect class the PR exists
@@ -95,7 +95,7 @@ distinguish resolved-correctly from resolved-wrongly; drive both implementations
 ground truth including the divergent cases. And "wider" is two-directional: a widened detector must be
 driven against the cases it must *reject*, and a change that fixes a blind spot with no current
 occurrences *closes a hole*, it does not *fix a live bug*.
-[[approver/procedure] Mutation-test a selftest, and check a "resolved" finding behaviorally — a passing test and a deleted symbol both prove nothing](wiki/learnings/1785863623589-approver-procedure-mutation-test-a-selftest-and-ch.md)
+[[approver/procedure] Mutation-test a selftest, and check a "resolved" finding behaviorally — a passing test and a deleted symbol both prove nothing](../learnings/1785863623589-approver-procedure-mutation-test-a-selftest-and-ch.md)
 
 ## Coverage: a live flag chain still needs a trigger-present control
 
@@ -107,7 +107,7 @@ leg took the CMake default `OFF`. Green CI is exactly what a no-op-on-the-defaul
 with this flag ON?* Name it or it does not exist. Zero condition-true coverage on a conditional change
 that undermines the PR's stated purpose = `OPEN_GAP`, not a nit; before citing green CI as safety,
 run the positive control *could this green have gone red given what the change touches?*
-[[approver/challenger-miss] A live flag chain still needs a trigger-present control — CI green on a workflow_dispatch-only path is vacuous by construction](wiki/learnings/1785935492347-approver-challenger-miss-a-live-flag-chain-still-n.md)
+[[approver/challenger-miss] A live flag chain still needs a trigger-present control — CI green on a workflow_dispatch-only path is vacuous by construction](../learnings/1785935492347-approver-challenger-miss-a-live-flag-chain-still-n.md)
 
 ## Determinism is not correctness — the import-API trap
 
@@ -120,7 +120,7 @@ import/adopt/attach APIs, where a descriptor is an assertion about a resource th
 own. Two secondary tells: **"the maintainer did this elsewhere" answers *is this approach sanctioned?*,
 never *is this instance correct?*** and **a trace supporting "X is broken" does not support "therefore
 Y is correct"** — the second needs its own evidence.
-[[approver/challenger-miss] Proving a transform is deterministic is not proving its output matches the world — the 4th round-up on "found it, wrote it down, cleared it"](wiki/learnings/1785937086901-approver-challenger-miss-proving-a-transform-is-de.md)
+[[approver/challenger-miss] Proving a transform is deterministic is not proving its output matches the world — the 4th round-up on "found it, wrote it down, cleared it"](../learnings/1785937086901-approver-challenger-miss-proving-a-transform-is-de.md)
 
 ## A root cause must predict every case, not just the failures
 
@@ -134,7 +134,7 @@ none of the passing cases (`m_memory` is equally uninitialized on d3d12, which p
 path from the failing line to the crash (not from the suspect code outward), get a stack if one exists
 (one platform's silence is not absence of evidence), and count the legs before theorizing. Record
 adjacent-but-unfired defects in a separate field so they are reported without contaminating the causal
-claim. [[approver/challenger-miss] I asserted a crash mechanism without reading the call path — the counterfactual test that catches it](wiki/learnings/1785935824264-approver-challenger-miss-i-asserted-a-crash-mechan.md)
+claim. [[approver/challenger-miss] I asserted a crash mechanism without reading the call path — the counterfactual test that catches it](../learnings/1785935824264-approver-challenger-miss-i-asserted-a-crash-mechan.md)
 
 ## Dating a defect: merges, birthdays, and one-sided joins
 
@@ -148,8 +148,8 @@ this start," enumerate candidates and pick the earliest commit where **all** con
 are true together, testing both parents of a suspected merge; and don't let a report's chosen mechanism
 (a version bump) reset the clock — it changes severity, not onset. Getting the direction wrong inverts
 the ask from "look at something new" to "re-examine something you signed off on."
-[[approver/challenger-miss] A merge-born defect has TWO birthdays — date it from the merge that created the interaction, not the PR's first commit](wiki/learnings/1785939814762-approver-challenger-miss-a-merge-born-defect-has-t.md)
-[[approver/challenger-miss] Date a risk from when the condition arose, not when a bot reported it — and for a semantic conflict, that date is the merge that first co-located both halves (neither parent had it)](wiki/learnings/1785941778863-approver-challenger-miss-date-a-risk-from-when-the.md)
+[[approver/challenger-miss] A merge-born defect has TWO birthdays — date it from the merge that created the interaction, not the PR's first commit](../learnings/1785939814762-approver-challenger-miss-a-merge-born-defect-has-t.md)
+[[approver/challenger-miss] Date a risk from when the condition arose, not when a bot reported it — and for a semantic conflict, that date is the merge that first co-located both halves (neither parent had it)](../learnings/1785941778863-approver-challenger-miss-date-a-risk-from-when-the.md)
 
 **Never characterize a merge without replaying it.** The "textually clean merge, invisible to every
 conflict marker" story was asserted, not measured — the merge actually *conflicted*, in the exact
@@ -160,7 +160,7 @@ parents (≠ both ⇒ hand-mixed). The refinement: the conflict hunk showed only
 while the other half auto-merged 108 lines away — **conflict-region review is itself a one-sided view
 of the join.** The surviving generalization across all these: **a check that only ever sees one side
 of a join cannot see a join defect** — same shape as 17 green CI legs covering none of the diff.
-[[approver/challenger-miss] I filed "textually clean merge" without replaying the merge — it conflicted, in the defect file, and the fix is a conflicted-file probe not a marker-absence one (the other half arrived 108 lines away, auto-merged)](wiki/learnings/1785942198712-approver-challenger-miss-i-filed-textually-clean-m.md)
+[[approver/challenger-miss] I filed "textually clean merge" without replaying the merge — it conflicted, in the defect file, and the fix is a conflicted-file probe not a marker-absence one (the other half arrived 108 lines away, auto-merged)](../learnings/1785942198712-approver-challenger-miss-i-filed-textually-clean-m.md)
 
 ## A control is an instrument — build it to differ by exactly one variable
 
@@ -171,7 +171,7 @@ the string hits 1 in both and discriminates nothing. A negative control only exc
 alternatives it exercises; build it to differ from the positive in **exactly one variable**, and ask
 *is my clean case a strictly easier instance than the real one?* A discriminator is established only
 by the clean run — the conflicting case "confirms" every candidate.
-[[approver/challenger-miss] A negative control that is too easy manufactures a false discriminator — my "clean" case used different files, which would have licensed grepping a string that fails on the real same-file case](wiki/learnings/1785942523284-approver-challenger-miss-a-negative-control-that-i.md)
+[[approver/challenger-miss] A negative control that is too easy manufactures a false discriminator — my "clean" case used different files, which would have licensed grepping a string that fails on the real same-file case](../learnings/1785942523284-approver-challenger-miss-a-negative-control-that-i.md)
 
 **"Strictly easier" reduces to the one-variable rule.** A degenerate case is degenerate *because the
 system special-cases it*, and that special-casing is the hidden second variable — usually the one that
@@ -179,7 +179,7 @@ makes the case look safe (`total_count: 0 → pending` vs a lone context → vac
 different-files vs same-file). Keep one clause: a control must differ in exactly one variable; demote
 "strictly easier" to its diagnostic. Corollary: **the degenerate case is the one the system handles,
 so the failure lives one step in from it** — audit `total_count: 1`, not `0`; test
-same-file-non-overlapping, not different-files. [[approver/clause-gap] "Strictly easier" is not a second axiom — it reduces to the one-variable rule, because a degenerate case always differs by an extra variable (the special-case handling that makes it degenerate)](wiki/learnings/1785942834410-approver-clause-gap-strictly-easier-is-not-a-secon.md)
+same-file-non-overlapping, not different-files. [[approver/clause-gap] "Strictly easier" is not a second axiom — it reduces to the one-variable rule, because a degenerate case always differs by an extra variable (the special-case handling that makes it degenerate)](../learnings/1785942834410-approver-clause-gap-strictly-easier-is-not-a-secon.md)
 
 **A control needs its own adequacy check — print the arm sizes.** A causal claim was refuted on an
 n=2 arm; the adequate re-run (n=29/n=14) merely *softened* the mechanism rather than cleanly refuting
@@ -187,7 +187,7 @@ it. A small-n result that points the right way is the most dangerous kind — a 
 as confirmation. The adequacy check needs its own matcher check (a silent extractor yielded 4 tokens),
 and when a rate is underpowered, **fall back to mechanism-per-case** — causes are per-case facts and
 need no sample. The instrument you just built to check someone else is the one you are least likely to
-check. [[approver/challenger-miss] A control needs its own adequacy check — I refuted a mechanism on n=2 in the same breath as praising myself for testing it](wiki/learnings/1785943660571-approver-challenger-miss-a-control-needs-its-own-a.md)
+check. [[approver/challenger-miss] A control needs its own adequacy check — I refuted a mechanism on n=2 in the same breath as praising myself for testing it](../learnings/1785943660571-approver-challenger-miss-a-control-needs-its-own-a.md)
 
 ## Discharge cheap advisories; scope every absence claim
 
@@ -199,14 +199,14 @@ classes to always discharge, never forward: "do these names/IDs/paths match?" an
 actually set anywhere?" On an ABSTAIN the advisory list *is* the report's entire informational
 payload to the human, so a wrong advisory is the one way an abstain misleads. Note the asymmetry: for
 a *gating* gap, uncertainty ⇒ ABSTAIN; for an *advisory* item, uncertainty ⇒ go look.
-[[approver/challenger-miss] discharge cheap advisory flags instead of forwarding them — a 2-file lookup would have killed a false positive I relayed 4×](wiki/learnings/1785856625138-approver-challenger-miss-discharge-cheap-advisory-.md)
+[[approver/challenger-miss] discharge cheap advisory flags instead of forwarding them — a 2-file lookup would have killed a false positive I relayed 4×](../learnings/1785856625138-approver-challenger-miss-discharge-cheap-advisory-.md)
 
 **Scope every "unused / 0 references" absence claim.** Two boundaries make an in-repo grep
 insufficient: cross-repo reusable workflows (`secrets: inherit` sends *every* caller secret across
 the boundary — check for it first) and code-references ≠ settings-state (the contents API sees files,
 not repo/org secret settings, so "no workflow references it" supports "safe to remove," never "it's
 already gone"). State the scope in the claim: "0 references across N files in `<repo>@<ref>`; callers
-pass explicitly; settings state not inspected." [[approver/challenger-miss] scoping an "unused secret / 0 references" absence claim: state inherit-vs-explicit for reusable-workflow callers, and never conflate code refs with settings state](wiki/learnings/1785856892802-approver-challenger-miss-scoping-an-unused-secret-.md)
+pass explicitly; settings state not inspected." [[approver/challenger-miss] scoping an "unused secret / 0 references" absence claim: state inherit-vs-explicit for reusable-workflow callers, and never conflate code refs with settings state](../learnings/1785856892802-approver-challenger-miss-scoping-an-unused-secret-.md)
 
 ## Read the requirement and the citation before scoring
 
@@ -217,7 +217,7 @@ claim. `grep -c` first (>1 hit ⇒ no single hit supports an attribution), resol
 step, then find the step you care about by name. `contains(matrix.flags, 'unit-test')` appears on many
 steps because it gates the whole job — its presence says nothing about which step you're looking at. A
 false negative-coverage claim is the direction that erodes trust in an abstain.
-[[approver/challenger-miss] A grep hit's line number is not a step attribution — read the enclosing `- name:` before claiming what a CI `if:` guards](wiki/learnings/1785856953525-approver-challenger-miss-a-grep-hit-s-line-number-.md)
+[[approver/challenger-miss] A grep hit's line number is not a step attribution — read the enclosing `- name:` before claiming what a CI `if:` guards](../learnings/1785856953525-approver-challenger-miss-a-grep-hit-s-line-number-.md)
 
 **Parse a requirement's logical form before scoring it — and resolve "who said this?" per utterance.**
 On slang#12080, "either remove the loop **or** justify it strongly" was scored `❌` by checking only
@@ -229,7 +229,7 @@ person, verify the obligation was theirs (author, committer, and pushes are thre
 three different questions). Compounding two true facts through an unchecked bridge produces something
 worse than either error alone. Ownership resolves against the push log (`timeline?event=
 head_ref_force_pushed`, all pages), never the `author` field (preserved across force-push by design).
-[[approver/challenger-miss] I read one branch of a maintainer's disjunction as a broken promise — and attributed our own bot's commitment to a named human engineer](wiki/learnings/1785934117511-approver-challenger-miss-i-read-one-branch-of-a-ma.md)
+[[approver/challenger-miss] I read one branch of a maintainer's disjunction as a broken promise — and attributed our own bot's commitment to a named human engineer](../learnings/1785934117511-approver-challenger-miss-i-read-one-branch-of-a-ma.md)
 
 **"Who spoke last" cannot express "human asked, bot spoke after, human still unanswered."** A
 last-actor predicate mistakes bot noise for a change of turn — on a bot-heavy repo, "human asked, bots
@@ -242,8 +242,8 @@ re-derive characterizations, not just counters. A fix validated by matching anot
 validated by nothing: two agents quoting one measurement is one measurement wearing two names; the
 correct validation is per-case and mechanical. And measure the raw page length for a pagination
 decision, then filter — a `--paginate` walk can splice an `app_not_connected` error into a partial
-array with no error exit. [[approver/clause-gap] "Who spoke last" cannot express "human asked, bot spoke after, human still unanswered" — and a fix validated by matching another agent's verdict is validated by nothing](wiki/learnings/1785890209109-approver-clause-gap-who-spoke-last-cannot-express-.md)
-[[approver/clause-gap] The `>= per_page` pagination guard is BLIND when you jq-filter inside the page — measure the RAW page length, then filter](wiki/learnings/1785933892685-approver-clause-gap-the-per-page-pagination-guard-.md)
+array with no error exit. [[approver/clause-gap] "Who spoke last" cannot express "human asked, bot spoke after, human still unanswered" — and a fix validated by matching another agent's verdict is validated by nothing](../learnings/1785890209109-approver-clause-gap-who-spoke-last-cannot-express-.md)
+[[approver/clause-gap] The `>= per_page` pagination guard is BLIND when you jq-filter inside the page — measure the RAW page length, then filter](../learnings/1785933892685-approver-clause-gap-the-per-page-pagination-guard-.md)
 
 **Enumerate bots by `__typename`/`type == "Bot"`, not by a login convention.** The `[bot]` suffix is
 present in REST `login` and *absent from GraphQL's* — so `endswith("[bot]")` on GraphQL classifies
@@ -252,7 +252,7 @@ actor read as human makes a stale chain look attended). And `slangbot` is `type:
 surfaces (an app-less bot no type rule catches), so the honest design is `type == "Bot"` plus a named
 supplement. A login-shape convention does not transfer across REST and GraphQL; two agents agreeing on
 the wrong `[bot]` filter is the shared-verdict failure again — what settled it was querying both
-surfaces and diffing the logins. [[approver/clause-gap] CORRECTION: my `[bot]`-suffix bot filter is WRONG on GraphQL — the suffix exists in REST and not GraphQL; use `__typename`/`type`, and know that `slangbot` is `User` on both](wiki/learnings/1785890627181-approver-clause-gap-correction-my-bot-suffix-bot-f.md)
+surfaces and diffing the logins. [[approver/clause-gap] CORRECTION: my `[bot]`-suffix bot filter is WRONG on GraphQL — the suffix exists in REST and not GraphQL; use `__typename`/`type`, and know that `slangbot` is `User` on both](../learnings/1785890627181-approver-clause-gap-correction-my-bot-suffix-bot-f.md)
 
 **A bot that edits in place makes "unedited" an observation, not an absence of one.** cla-assistant
 *edits its badge comment in place* when the answer changes (verified on a control: the edit landed 5s
@@ -263,7 +263,7 @@ spoken* — testable against a control, never assumed. The wrong inference here 
 commits re-authored, dismissing a standing approval) look possibly-free, and arrived as *credit*
 chasing the author's own caveat — the exculpatory branch gets audited least; test it first. Probe
 commit authorship with `any(.author.id == <id>)` over all commits, never a single index.
-[[approver/clause-gap] cla-assistant EDITS its badge comment in place — an unedited comment means no re-evaluation, not "maybe already signed"](wiki/learnings/1785887757566-approver-clause-gap-cla-assistant-edits-its-badge-.md)
+[[approver/clause-gap] cla-assistant EDITS its badge comment in place — an unedited comment means no re-evaluation, not "maybe already signed"](../learnings/1785887757566-approver-clause-gap-cla-assistant-edits-its-badge-.md)
 
 **A finding that emerges mid-session needs its own store search, and dedup is per-CLAIM.** The Step-0
 recall covers the question you started with, not the one you ended up answering — treat "I have a new
@@ -273,8 +273,8 @@ stage: a reviewer's adjacent finding is a new claim with its own signature (a *h
 you searched for) — on slang#12361 the maintainer had filed it 30 minutes earlier. Retry zero-hit
 coverage checks in the target's vocabulary before claiming novelty; measure a relayed "reachable"
 claim (a two-state test) rather than relaying it.
-[[approver/challenger-miss] A finding that emerges mid-session needs its OWN store search — the Step-0 recall covered the question you started with, not the one you ended up answering](wiki/learnings/1785863354984-approver-challenger-miss-a-finding-that-emerges-mi.md)
-[Re-run dedup AFTER the critique stage — a reviewer's adjacent finding is a NEW claim needing its own search](wiki/learnings/1785920058963-re-run-dedup-after-the-critique-stage-a-reviewer-s.md)
+[[approver/challenger-miss] A finding that emerges mid-session needs its OWN store search — the Step-0 recall covered the question you started with, not the one you ended up answering](../learnings/1785863354984-approver-challenger-miss-a-finding-that-emerges-mi.md)
+[Re-run dedup AFTER the critique stage — a reviewer's adjacent finding is a NEW claim needing its own search](../learnings/1785920058963-re-run-dedup-after-the-critique-stage-a-reviewer-s.md)
 
 ## Ancillary attribution corrections (same slangpy#925 / #1090 chain)
 
@@ -287,5 +287,5 @@ the import path `:441` — the asymmetry is intra-file (`grep -c` then locate th
 occurrence count of 1 in the wrong scope reads identically to 0). Both confirm the Vulkan defect is
 **pre-existing and newly reached**, not introduced — two cheap queries (`compare` file list, and the
 symbol at the old ref) settle "introduced vs merely reached," a materially different thing to tell an
-author. [[approver/challenger-miss] I named metal-buffer.cpp as the bug site when it is the CONTRAST case — the Vulkan defect is pre-existing and merely newly reached, and #1090 is not an instance of a gitlink hiding a bug](wiki/learnings/1785939319520-approver-challenger-miss-i-named-metal-buffer-cpp-.md)
-[[approver/challenger-miss] vk-buffer.cpp is byte-identical at both submodule shas — and its lone fixupBufferDesc call sits in createBuffer (:340), not the import path (:441): the asymmetry is intra-file](wiki/learnings/1785939465570-approver-challenger-miss-vk-buffer-cpp-is-byte-ide.md)
+author. [[approver/challenger-miss] I named metal-buffer.cpp as the bug site when it is the CONTRAST case — the Vulkan defect is pre-existing and merely newly reached, and #1090 is not an instance of a gitlink hiding a bug](../learnings/1785939319520-approver-challenger-miss-i-named-metal-buffer-cpp-.md)
+[[approver/challenger-miss] vk-buffer.cpp is byte-identical at both submodule shas — and its lone fixupBufferDesc call sits in createBuffer (:340), not the import path (:441): the asymmetry is intra-file](../learnings/1785939465570-approver-challenger-miss-vk-buffer-cpp-is-byte-ide.md)

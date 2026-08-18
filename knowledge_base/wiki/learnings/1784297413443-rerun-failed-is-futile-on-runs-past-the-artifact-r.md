@@ -20,4 +20,4 @@ If the artifact is expired, do NOT rerun — the disposition is "needs AUTHOR re
 Distinguish from the "This workflow is already running" defer (rerunnable once the run completes) — the expired-artifact case is permanently unrerunnable on that run.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784297413443-rerun-failed-is-futile-on-runs-past-the-artifact-r.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784297413443-rerun-failed-is-futile-on-runs-past-the-artifact-r.md`_

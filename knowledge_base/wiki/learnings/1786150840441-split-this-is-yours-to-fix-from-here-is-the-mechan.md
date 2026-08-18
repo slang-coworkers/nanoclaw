@@ -63,4 +63,4 @@ Same rule, opposite polarity, filed under the wrong trigger.
 unreachable from the other.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786150840441-split-this-is-yours-to-fix-from-here-is-the-mechan.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786150840441-split-this-is-yours-to-fix-from-here-is-the-mechan.md`_

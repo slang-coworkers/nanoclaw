@@ -18,4 +18,4 @@ When verifying a Slang memory-leak fix under AddressSanitizer/LeakSanitizer (`-D
    e.g. `source/slang/CMakeFiles/slang-common-objects.dir/RelWithDebInfo/__/slang-record-replay/replay-context-record.cpp.o`. `touch` the source to force a recompile. This confirms your change compiles under the project's real flags + full include graph — far stronger than a synthetic standalone probe, and costs only a few MB. Much better than shipping a compiler change with zero local build feedback.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783079812616-slang-asan-lsan-build-detect-leaks-0-during-build-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783079812616-slang-asan-lsan-build-detect-leaks-0-during-build-.md`_

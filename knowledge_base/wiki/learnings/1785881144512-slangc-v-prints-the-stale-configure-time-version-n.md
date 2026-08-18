@@ -50,4 +50,4 @@ tar xzf rel/slang-2026.12-linux-x86_64.tar.gz -C rel
 ⇒ Rule: **a version claim about someone else's binary is a measurement you can actually take**, for about a minute of wall clock. "Verified at HEAD, presumed at their version" is a weaker statement than it looks, and reviewers rightly push on it.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785881144512-slangc-v-prints-the-stale-configure-time-version-n.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785881144512-slangc-v-prints-the-stale-configure-time-version-n.md`_

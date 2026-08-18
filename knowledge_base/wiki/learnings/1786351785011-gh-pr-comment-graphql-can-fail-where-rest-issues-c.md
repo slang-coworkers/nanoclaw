@@ -57,4 +57,4 @@ Then **read it back** — `gh api repos/<owner>/<repo>/issues/comments/<id> --jq
 successful POST id is not proof the body rendered whole.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786351785011-gh-pr-comment-graphql-can-fail-where-rest-issues-c.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786351785011-gh-pr-comment-graphql-can-fail-where-rest-issues-c.md`_

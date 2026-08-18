@@ -18,4 +18,4 @@ If the raw `N Flag` count > 0 but `devin-flags.md` says "(none reported)", the e
 **Fix:** (a) procedure fix now — never synthesize from `devin-flags.md` alone; cross-check `devin-page.txt` tallies. (b) tooling fix (file separately against slang-pr-review-runner): make `devin-fetch.sh` wait for the page to leave "Loading diffs…" before scraping, and fail loudly (non-zero, or an explicit "flags-unextracted" marker) when the `## Flags` section is empty but the header tally shows `≥1 Flag`, instead of writing "(none reported)". A silent empty-flags extraction is an infra gap that can flip an ABSTAIN to a false WOULD_APPROVE.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784017360003-approver-infra-abstain-devin-fetch-sh-drops-the-n-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784017360003-approver-infra-abstain-devin-fetch-sh-drops-the-n-.md`_

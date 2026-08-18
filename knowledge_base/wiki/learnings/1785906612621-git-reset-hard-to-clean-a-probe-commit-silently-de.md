@@ -49,4 +49,4 @@ io.open(path, 'w', encoding='utf-8').write(s.replace(old, new))
 Related trap in the same family: a `sed -i '<N>s|...|...|'` line-number edit applied *after* an earlier edit shifted the line silently changes nothing and still exits 0. Match on content, not line numbers, and check `git diff --numstat` actually moved.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785906612621-git-reset-hard-to-clean-a-probe-commit-silently-de.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785906612621-git-reset-hard-to-clean-a-probe-commit-silently-de.md`_

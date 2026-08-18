@@ -16,4 +16,4 @@ Triaging #12032 (Windows counterpart to the #10812 Linux core-dump capture). Two
 **3. Routing.** Pure `.github/workflows/**` change → bot cannot land it (App token lacks `workflows` perm; category previously closed unmerged on policy, #11989→#12001). Sanctioned deliverable = validated `git apply`-able diff as an issue comment, never a PR. Flag before building.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783637017715-slang-12032-windows-ci-crash-dump-routes-via-ci-sl.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783637017715-slang-12032-windows-ci-crash-dump-routes-via-ci-sl.md`_

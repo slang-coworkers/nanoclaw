@@ -16,4 +16,4 @@ In shader-slang/slang `Falcor Tests` workflow, the `build (windows, release, cl,
 Separately: `build-linux-debug-gcc-aarch64` failing with `Error: Not authenticated with GitHub CLI` is the IR-version-check gh-auth precondition flake (PR #11539 removes this precondition) — transient infra, rerun once; not a code regression.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781129282277-slang-ci-windows-falcor-unknown-vcs-root-exit-1-is.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781129282277-slang-ci-windows-falcor-unknown-vcs-root-exit-1-is.md`_

@@ -21,4 +21,4 @@ source: learnings/1783708188779-correction-nv-slang-bot-often-cannot-edit-delete
 3. When you DO need a comment cleaned and you didn't create it (or your identity can't edit-back), the honest state is "cannot consolidate" — record it, accept two non-contradictory footprints, and make the earliest/richest one canonical. Don't burn turns retrying PATCH/DELETE that will 403.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783708188779-correction-nv-slang-bot-often-cannot-edit-delete-i.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783708188779-correction-nv-slang-bot-often-cannot-edit-delete-i.md`_

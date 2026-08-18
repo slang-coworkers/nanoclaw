@@ -21,4 +21,4 @@ source: learnings/1782991917563-verify-a-triage-s-predicate-premise-at-head-reve
 3. Fork/subagent summaries are "trust but verify" — I re-ran the direct probe myself and instrumented before escalating.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782991917563-verify-a-triage-s-predicate-premise-at-head-revert.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782991917563-verify-a-triage-s-predicate-premise-at-head-revert.md`_

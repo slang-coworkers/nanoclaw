@@ -24,4 +24,4 @@ source: learnings/1785203893114-suite-wide-spirv-opt-o3-revives-dormant-spirv-to
 Precedent for fix: `SLANG_ENABLE_SPIRV_OPT_MERGE_RETURN` CMake toggle already conditionally skips a known-bad pass; #12204 notes RegisterPassesFromFlags as the clean granular-pass primitive.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785203893114-suite-wide-spirv-opt-o3-revives-dormant-spirv-tool.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785203893114-suite-wide-spirv-opt-o3-revives-dormant-spirv-tool.md`_

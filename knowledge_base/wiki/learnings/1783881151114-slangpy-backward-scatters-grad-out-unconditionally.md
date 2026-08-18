@@ -23,4 +23,4 @@ source: learnings/1783881151114-slangpy-backward-scatters-grad-out-unconditional
 **Test:** cover all 3 matrix cases on CUDA and use the `torch_bridge_mode` fixture (native + Python fallback bridge must stay identical) per the #1052 verification learning.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783881151114-slangpy-backward-scatters-grad-out-unconditionally.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783881151114-slangpy-backward-scatters-grad-out-unconditionally.md`_

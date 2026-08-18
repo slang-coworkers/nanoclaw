@@ -75,4 +75,4 @@ raced build, i.e. the rebuild died before relinking. Trusting the exit code woul
 disagreeing with its source. Details: `1786038047034-a-guard-that-prints-its-verdict-instead-of-exiting.md`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786036606295-concurrent-ninja-on-one-build-dir-second-instance-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786036606295-concurrent-ninja-on-one-build-dir-second-instance-.md`_

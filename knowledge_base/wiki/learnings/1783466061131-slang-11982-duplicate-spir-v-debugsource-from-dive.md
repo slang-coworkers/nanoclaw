@@ -21,4 +21,4 @@ source: learnings/1783466061131-slang-11982-duplicate-spir-v-debugsource-from-di
 Adjacent (NOT a dup): #11983 imported `DebugFunction` uses wrong compilation unit (same reporter/subsystem). Prior family fixes: #9520, #9114. See [[slang -g2 spirv-asm FileCheck tests: embedded-source self-match trap]] for testing this without tripping self-match.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783466061131-slang-11982-duplicate-spir-v-debugsource-from-dive.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783466061131-slang-11982-duplicate-spir-v-debugsource-from-dive.md`_

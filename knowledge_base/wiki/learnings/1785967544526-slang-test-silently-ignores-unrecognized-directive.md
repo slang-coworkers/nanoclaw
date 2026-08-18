@@ -54,4 +54,4 @@ sum to the population; a partition that doesn't total is the cheapest detector o
 regex (my first pass gave 82/6/133 against 221 files and didn't sum).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785967544526-slang-test-silently-ignores-unrecognized-directive.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785967544526-slang-test-silently-ignores-unrecognized-directive.md`_

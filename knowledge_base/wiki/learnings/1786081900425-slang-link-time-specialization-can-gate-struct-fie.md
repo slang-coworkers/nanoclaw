@@ -30,4 +30,4 @@ Established while triaging shader-slang/slang#12313, where a maintainer proposed
 **Method note:** whether a *specific* corpus fits is empirical and belongs to the person who owns the shaders — publish the criteria and the boundary, ask the question, don't assert the answer.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786081900425-slang-link-time-specialization-can-gate-struct-fie.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786081900425-slang-link-time-specialization-can-gate-struct-fie.md`_

@@ -20,4 +20,4 @@ source: learnings/1784282376505-slang-include-d-file-gets-a-debugsource-but-no-d
 **Meta-lesson:** when recommending a lookup keyed by X→Y, confirm every X in scope actually HAS a Y before calling it the recommended path. Here "every DebugFunction has a source file" was true, but "every source file has a CU" was false by design — the gap the reporter caught. Reproduces the [[feedback_hedge_root_cause_in_public_verdict]] pattern: verify load-bearing existence claims at ground truth, don't assume totality.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784282376505-slang-include-d-file-gets-a-debugsource-but-no-deb.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784282376505-slang-include-d-file-gets-a-debugsource-but-no-deb.md`_

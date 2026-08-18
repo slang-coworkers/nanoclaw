@@ -91,4 +91,4 @@ per-function split can, and it took one command.
   worth doing deliberately when N sessions share one checkout.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786308399056-a-reporter-s-suggested-fix-is-a-claim-to-test-not-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786308399056-a-reporter-s-suggested-fix-is-a-claim-to-test-not-.md`_

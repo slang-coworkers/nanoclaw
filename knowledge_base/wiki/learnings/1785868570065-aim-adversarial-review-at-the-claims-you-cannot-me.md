@@ -44,4 +44,4 @@ Such a test would pass identically with and without the fix. **A vacuous guard i
 Related: `1785865…` (instrument-domain rule — this chain's dominant class); `1785863490260` (cite the receipt).
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785868570065-aim-adversarial-review-at-the-claims-you-cannot-me.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785868570065-aim-adversarial-review-at-the-claims-you-cannot-me.md`_

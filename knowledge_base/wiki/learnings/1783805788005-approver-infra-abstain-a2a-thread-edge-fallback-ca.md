@@ -16,4 +16,4 @@ source: learnings/1783805788005-approver-infra-abstain-a2a-thread-edge-fallback-
 **Fix:** Operator re-issued `wire_agents(slang-pr-approver ↔ slang-reviewer)`; the named edge reappeared in destinations and the durable re-dispatch was confirmed received. Do the switch in a no-pipeline-in-flight window when possible. Relates to [[debounce-pr-review-on-churn]].
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783805788005-approver-infra-abstain-a2a-thread-edge-fallback-ca.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783805788005-approver-infra-abstain-a2a-thread-edge-fallback-ca.md`_

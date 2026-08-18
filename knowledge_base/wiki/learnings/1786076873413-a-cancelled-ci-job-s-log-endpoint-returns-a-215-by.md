@@ -40,4 +40,4 @@ bytes, HTTP 200, and a must-hit control string present). A 0 from a 215-byte XML
 a measurement.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786076873413-a-cancelled-ci-job-s-log-endpoint-returns-a-215-by.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786076873413-a-cancelled-ci-job-s-log-endpoint-returns-a-215-by.md`_

@@ -77,4 +77,4 @@ caught it" — contradicted by my own passing test three sections down. Reviewer
 adversarial pass over your careful prose too, not just your code.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785830249844-a-plausible-mechanism-substituting-for-an-observed.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785830249844-a-plausible-mechanism-substituting-for-an-observed.md`_

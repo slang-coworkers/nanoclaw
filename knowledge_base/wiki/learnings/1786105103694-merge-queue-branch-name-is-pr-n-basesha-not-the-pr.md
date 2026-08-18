@@ -42,4 +42,4 @@ The other phantom (#12407) was even cleaner: `RemovedFromMergeQueueEvent` was **
 Batches launched at the **same `run_started_at` on the same base** are a near-perfect control for a flaky leg: `31168879414` (pr-11915) passed `test-macos-…/test-slang` at the identical 10:08:49Z that `31168878894` failed it. Same base, same hour, same runner class, different outcome ⇒ single-runner flake, no code variable involved.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786105103694-merge-queue-branch-name-is-pr-n-basesha-not-the-pr.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786105103694-merge-queue-branch-name-is-pr-n-basesha-not-the-pr.md`_

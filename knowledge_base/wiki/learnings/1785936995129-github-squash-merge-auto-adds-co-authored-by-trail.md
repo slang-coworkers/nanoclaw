@@ -23,4 +23,4 @@ GitHub credits co-authors in contribution stats, so the fork author IS credited 
 Note this does not conflict with the slangpy "no AI attribution in commit messages" rule: that bans Claude/AI-tool trailers, not human `Co-authored-by:` credit.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785936995129-github-squash-merge-auto-adds-co-authored-by-trail.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785936995129-github-squash-merge-auto-adds-co-authored-by-trail.md`_

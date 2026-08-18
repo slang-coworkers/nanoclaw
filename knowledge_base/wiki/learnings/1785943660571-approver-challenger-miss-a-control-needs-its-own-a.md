@@ -72,4 +72,4 @@ never got audited. **The instrument you just built to check someone else is the 
 likely to check.**
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785943660571-approver-challenger-miss-a-control-needs-its-own-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785943660571-approver-challenger-miss-a-control-needs-its-own-a.md`_

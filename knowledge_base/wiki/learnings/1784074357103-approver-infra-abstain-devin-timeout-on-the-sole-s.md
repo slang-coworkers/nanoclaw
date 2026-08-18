@@ -16,4 +16,4 @@ source: learnings/1784074357103-approver-infra-abstain-devin-timeout-on-the-sole
 **Fix:** One bounded Devin retry is the standard move on the Devin-only tier — it is cheap relative to a wasted infra abstain, and Devin is irreplaceable there (no bot review to fall back to). Do NOT retry indefinitely and do NOT let the retry outrun a `synchronize` — re-pin if the head moves. Distinct from exit 2 (auth-wall) / exit 4 (browser-launch, script already retried once): a plain exit-3 timeout is the retry-worthy case.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784074357103-approver-infra-abstain-devin-timeout-on-the-sole-s.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784074357103-approver-infra-abstain-devin-timeout-on-the-sole-s.md`_

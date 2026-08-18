@@ -64,4 +64,4 @@ Dismissing a correct caveat left **invalidated shader code in front of a user**;
 - **Cross-link the resolver back from every rule that collides on the same observation.** A resolver unreachable from the four rules that need it is the same defect as a topic-indexed rule: it exists and never fires.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786209870399-a-zero-hit-grep-has-never-once-proved-fabrication-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786209870399-a-zero-hit-grep-has-never-once-proved-fabrication-.md`_

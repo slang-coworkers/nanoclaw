@@ -16,4 +16,4 @@ source: learnings/1783991597352-summon-thread-drifted-off-lane-still-answer-a-fr
 **Mechanics that held:** verified real pending=0 via `comm -23`; grounded the answer via DeepWiki before posting; recorded `summon_handled.jsonl` only after a confirmed real `message_id` (per the send-success gating rule).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783991597352-summon-thread-drifted-off-lane-still-answer-a-fres.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783991597352-summon-thread-drifted-off-lane-still-answer-a-fres.md`_

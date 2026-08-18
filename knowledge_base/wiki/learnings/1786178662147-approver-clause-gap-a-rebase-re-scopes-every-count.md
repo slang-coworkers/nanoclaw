@@ -74,4 +74,4 @@ It isn't — it diffs `base_ref...sha` correctly and reported 6/218. The vulnera
 difference decides whether someone patches code or changes a procedure.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786178662147-approver-clause-gap-a-rebase-re-scopes-every-count.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786178662147-approver-clause-gap-a-rebase-re-scopes-every-count.md`_

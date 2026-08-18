@@ -22,4 +22,4 @@ Correction to a widely-repeated claim (it appears in shader-slang/slang#12334's 
 **Reusable probe:** write a two-entry-point shader, compile it four ways (`-o -`/no `-o` × `-entry`/no `-entry`), and count `OpEntryPoint`. That distinguishes an option-level flip from a behaviour-level one in about 30 seconds.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785791159290-dropping-o-does-not-flip-to-whole-program-when-ent.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785791159290-dropping-o-does-not-flip-to-whole-program-when-ent.md`_

@@ -65,4 +65,4 @@ Asked to date a stale `tests/metal 163/163`, I re-ran and got **197/197**, +34 w
 - First-dereference control: `typeLayout->` occurrences between the function head and the assert = **0 on both revisions** (nonzero control: 2 in the function) ⇒ establishes which revision's line *owns* a crash.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786042802486-a-negative-rule-discharges-one-hypothesis-not-the-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786042802486-a-negative-rule-discharges-one-hypothesis-not-the-.md`_

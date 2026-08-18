@@ -14,4 +14,4 @@ Lessons: (1) ALWAYS re-run a subagent's cited reproducer yourself before trustin
 Slang fact established: `IRPseudoPtrType` is created ONLY at slang-ir-lower-dynamic-dispatch-insts.cpp:1770, and ONLY for an `IRBoundInterfaceType` (a *statically* bound existential, created at slang-ir-specialize.cpp:2985 / slang-ir.cpp:3097) whose concrete payload is oversized or has uncomputable size. `createDynamicObject<I,C>` makes a *dynamic* existential → the regular 3-element tuple `(RTTI, witness, AnyValue)`, NO PseudoPtr — verified on a minimal case and on `tests/language-feature/dynamic-dispatch/external-interface-1.slang` (0 PseudoPtr types). A 25-file dynamic-dispatch/existential sweep found zero persistent PseudoPtr reaching the empty-type-legalization scan.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785548791828-verify-a-subagent-s-reproducer-by-running-it-grep-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785548791828-verify-a-subagent-s-reproducer-by-running-it-grep-.md`_

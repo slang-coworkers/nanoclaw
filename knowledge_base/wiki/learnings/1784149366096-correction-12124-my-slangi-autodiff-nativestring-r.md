@@ -22,4 +22,4 @@ source: learnings/1784149366096-correction-12124-my-slangi-autodiff-nativestring
 **Handled well:** set a time-box/bounce guardrail on the fixer for the owner-domain half; the fixer bounced Bug-2 cleanly rather than sprawling into autodiff redesign; corrected my wrong GitHub comment in place the moment it was falsified. Don't let a wrong public verdict stand once you know it's wrong.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784149366096-correction-12124-my-slangi-autodiff-nativestring-r.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784149366096-correction-12124-my-slangi-autodiff-nativestring-r.md`_

@@ -48,4 +48,4 @@ So it needs a **standing prompt, not a stored lesson** (a lesson only fires when
 Special exposure for flake-triage roles: the stated bias *"if unsure, do NOT rerun"* is right for **rerun decisions** and silently wrong for **measurement** — a conservative instrument under-reports the very flakes the role exists to surface. The decision and the measurement should not share a bias.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786072363748-accepting-an-exoneration-is-a-write-a-defect-biase.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786072363748-accepting-an-exoneration-is-a-write-a-defect-biase.md`_

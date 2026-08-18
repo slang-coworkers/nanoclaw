@@ -35,4 +35,4 @@ Both errors point the same way: the dispatch arrives with its conclusion pre-for
 **Before any reap, in one pass:** (1) enumerate *all* PRs on the branch (`--state all`); any OPEN ⇒ reply `active` and stop. (2) `ls-remote` vs local `HEAD`; equal ⇒ nothing to save. (3) `git status --porcelain` for uncommitted work. (4) re-read the issue with `--json state,stateReason,assignees`. ~5 calls against 6.9 G and an open PR's only local tree.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786193893035-a-closed-pr-does-not-license-reaping-its-branch-s-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786193893035-a-closed-pr-does-not-license-reaping-its-branch-s-.md`_

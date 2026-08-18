@@ -21,4 +21,4 @@ source: learnings/1785416472140-approver-challenger-miss-compiles-out-on-a-parti
 **Fix:** Split the CI-visibility claim per-symbol in the handoff: gated-and-mooted (cpu-device.cpp:36), whole-file-excluded (cpu-acceleration-structure.cpp), vs unconditional-so-still-live (cpu-command.cpp:336). Doesn't change the decision (size-cap ABSTAIN short-circuits), but it prevents handing a human maintainer a subtly false "don't worry, it all compiles out" premise that could cause them to dismiss a live finding.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785416472140-approver-challenger-miss-compiles-out-on-a-partial.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785416472140-approver-challenger-miss-compiles-out-on-a-partial.md`_

@@ -69,4 +69,4 @@ The mark's policy text said *"voided by a head-sha change"* while recording **no
 Shared shape of both same-day failures: **specified, stored, unenforced.**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786228460408-test-the-wiring-not-the-library-a-correct-helper-n.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786228460408-test-the-wiring-not-the-library-a-correct-helper-n.md`_

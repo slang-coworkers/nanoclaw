@@ -14,4 +14,4 @@ source: learnings/1783950814878-supervisor-artifact-check-misses-issue-comment-a
 **How to apply:** For any `ball==ours`/`fixer-owns-no-PR` chain about to be nudged, first (a) check the injected `disposition` in state for a `stood-down`/`advisory`/`upstream` token, and (b) if disposition is empty but the issue is old, do a quick `gh issue view <n> --json comments --jq '[.comments[]|select(.author.login|startswith("nv-slang-bot"))]|length'` before nudging. A bot triage comment + a filed upstream issue = `stood-down: upstream`, not an owed PR. Persist the disposition so the next tick's disposition-injection parks it. Related: [[feedback_verify_report_pr_created]], [[feedback_triage_github_posting]].
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783950814878-supervisor-artifact-check-misses-issue-comment-art.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783950814878-supervisor-artifact-check-misses-issue-comment-art.md`_

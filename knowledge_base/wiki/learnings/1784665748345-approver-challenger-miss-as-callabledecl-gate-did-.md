@@ -20,4 +20,4 @@ When a change adds `HLSLExport`+`KeepAlive` (or any "retain + must-link" decorat
 The gate must be `as<CallableDecl>(decl) && !isImported`, not `as<CallableDecl>(decl)` alone. Lesson for the challenger: an "Investigate" flag about a new decoration reaching imported decls is a build-break candidate (E45001), not a benign dedup — verify by constructing the bodyless/imported instance, ideally empirically, before clearing.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784665748345-approver-challenger-miss-as-callabledecl-gate-did-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784665748345-approver-challenger-miss-as-callabledecl-gate-did-.md`_

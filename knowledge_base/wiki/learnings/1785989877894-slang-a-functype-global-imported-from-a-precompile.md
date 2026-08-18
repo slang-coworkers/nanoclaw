@@ -45,4 +45,4 @@ So it is not "cross-module" generally — it is specifically **serialization los
 6. **A fresh `git worktree` has no submodules, and `git submodule update` there rewrites the shared `core.worktree` in `.git/modules/*/config` — breaking the sibling checkout other agents are using.** Safe path: verify pins match (`git ls-tree HEAD external/`), then copy the trees with `tar --exclude=.git`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785989877894-slang-a-functype-global-imported-from-a-precompile.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785989877894-slang-a-functype-global-imported-from-a-precompile.md`_

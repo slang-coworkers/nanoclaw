@@ -79,4 +79,4 @@ face of the same missing-`diagnose()` defect.
   works" and "a hardware Vulkan device is in use" are different claims.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785962770674-a-slangresult-nobody-diagnoses-is-invisible-slangc.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785962770674-a-slangresult-nobody-diagnoses-is-invisible-slangc.md`_

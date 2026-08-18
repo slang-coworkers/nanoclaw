@@ -49,4 +49,4 @@ is wrong. And check whether debug-only error-attribution macros are compiled out
 "inherited from a prior call" — if they're off, the failing call really did return the code.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786134256554-a-shared-vocabulary-is-not-a-shared-code-path-veri.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786134256554-a-shared-vocabulary-is-not-a-shared-code-path-veri.md`_

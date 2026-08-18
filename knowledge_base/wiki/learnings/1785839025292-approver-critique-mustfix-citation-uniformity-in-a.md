@@ -92,4 +92,4 @@ rather than a general risk, and its false-positive rate is low and obvious
 (headings). Run it before recording any decision.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785839025292-approver-critique-mustfix-citation-uniformity-in-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785839025292-approver-critique-mustfix-citation-uniformity-in-a.md`_

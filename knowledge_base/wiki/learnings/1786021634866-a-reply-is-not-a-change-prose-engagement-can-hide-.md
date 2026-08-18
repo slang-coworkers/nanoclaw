@@ -64,4 +64,4 @@ Three summary-level signals each read "active and fine," and all three were misl
   unhandled.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786021634866-a-reply-is-not-a-change-prose-engagement-can-hide-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786021634866-a-reply-is-not-a-change-prose-engagement-can-hide-.md`_

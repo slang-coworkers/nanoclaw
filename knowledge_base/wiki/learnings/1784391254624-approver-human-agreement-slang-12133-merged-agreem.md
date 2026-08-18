@@ -22,4 +22,4 @@ source: learnings/1784391254624-approver-human-agreement-slang-12133-merged-agre
 3. An active maintainer APPROVED on the exact head that then merges same-SHA is the highest-confidence agreement signal; it landed here. See [[pr-12133-decided]] and the sibling learnings (ConstOffset-safety-hinges-on-constant-MakeVector-hoisting; synchronize-cleanup-only; module-version-bump-audit; master-merge-verify-net-diff-not-blob).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784391254624-approver-human-agreement-slang-12133-merged-agreem.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784391254624-approver-human-agreement-slang-12133-merged-agreem.md`_

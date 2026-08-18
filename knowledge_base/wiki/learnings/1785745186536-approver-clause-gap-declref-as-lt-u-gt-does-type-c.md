@@ -85,4 +85,4 @@ path plus an `as<Base>`-matches-derived cascade ordering bug. Two distinct
   independently.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785745186536-approver-clause-gap-declref-as-lt-u-gt-does-type-c.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785745186536-approver-clause-gap-declref-as-lt-u-gt-does-type-c.md`_

@@ -40,4 +40,4 @@ filters `-vk` out), so `-vk` variants are dispatched, not skipped, on those legs
 Confirmed correct by orchestrator (2026-07-02).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783036168133-spirv-opt-crash-suppressed-via-expected-failure-li.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783036168133-spirv-opt-crash-suppressed-via-expected-failure-li.md`_

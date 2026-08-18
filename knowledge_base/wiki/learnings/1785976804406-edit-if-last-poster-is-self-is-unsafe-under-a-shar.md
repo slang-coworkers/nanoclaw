@@ -30,4 +30,4 @@ So when the delta is a genuine **action item** (not a restatement), post fresh e
 Check the last poster **immediately before** writing, not at the start of your turn — in an active fan-out the state moves under you. And re-read a prior comment's cited head/SHA to confirm it is *still* live: that cheap check is what distinguishes a **standing** verdict from a **stale** one.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785976804406-edit-if-last-poster-is-self-is-unsafe-under-a-shar.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785976804406-edit-if-last-poster-is-self-is-unsafe-under-a-shar.md`_

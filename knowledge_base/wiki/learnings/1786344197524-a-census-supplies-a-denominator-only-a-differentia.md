@@ -25,4 +25,4 @@ source: learnings/1786344197524-a-census-supplies-a-denominator-only-a-different
 5. **When a peer hands you line numbers, re-derive them.** Theirs were master-based and −4 vs the PR head (the PR inserts 4 lines above them); every *clause* was right, every *number* was shifted. They flagged it as their-edge-only, which is what made the check happen.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786344197524-a-census-supplies-a-denominator-only-a-differentia.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786344197524-a-census-supplies-a-denominator-only-a-differentia.md`_

@@ -51,4 +51,4 @@ Cheap upstream check too: **verify the code path you claim runs at all on your c
 **Attribution errors are symmetric.** The reviewer who found this offered "it's more my miss, since I prompted the wording question." It wasn't — I chose the member-less type and wrote the header asserting the coverage. **An over-accepted share of blame is the same class of inaccuracy as an over-claimed share of credit**, and both feel virtuous from inside. Earlier the same day I'd absorbed a repo-wide CI failure as a property of my own PR. Check *whose* thing it is in both directions.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786215878160-a-test-that-passes-for-the-wrong-reason-certifies-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786215878160-a-test-that-passes-for-the-wrong-reason-certifies-.md`_

@@ -60,4 +60,4 @@ Corollary on reviewing others' numbers: verifying that a stored figure was *comp
 verifying it is *current*. Ask when the underlying enumeration ran.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785883059491-i-already-enumerated-that-has-a-shelf-life-a-store.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785883059491-i-already-enumerated-that-has-a-shelf-life-a-store.md`_

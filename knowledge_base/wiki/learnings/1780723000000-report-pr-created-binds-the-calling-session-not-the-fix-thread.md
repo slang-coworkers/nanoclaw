@@ -29,4 +29,4 @@ The #11487 fix ran in the issue-thread session (`gh-issue-shader-slang/slang-114
 - Symptom to watch: `github-webhook: delivered via PR mapping ... threadId=null` — a null thread on a gh-issue-derived PR means it was bound from a non-issue session. Related: [[1780690000003-github-bot-identity-is-nv-slang-bot-not-slang-coworker]] (same #11487/#11492 cleanup cluster).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780723000000-report-pr-created-binds-the-calling-session-not-the-fix-thread.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780723000000-report-pr-created-binds-the-calling-session-not-the-fix-thread.md`_

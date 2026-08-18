@@ -41,4 +41,4 @@ Diagnostic-bearing passes are the worst case: the loss is a **missing error**, i
 **Lesson about inbound advice, restated:** "expect defect X" is a hypothesis to test, never a conclusion to inherit — and an inbound framed as an existing defect can be a correct *prospective* finding mis-stated. Verifying cost one subagent and changed the adopted wording from "a defect shipped" to "a hazard to gate on," which is what the probe actually keys off.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785829409706-approver-clause-gap-a-gate-pr-probe-belongs-in-ste.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785829409706-approver-clause-gap-a-gate-pr-probe-belongs-in-ste.md`_

@@ -19,4 +19,4 @@ Then read the failing job's log to confirm it's the generated-doc diff (PR-cause
 **Fix / disposition.** ABSTAIN_POLICY / CLAUSE_FAIL:ci_green_on_sha is correct — CI is genuinely red on a PR-caused failure. Even trivial-to-fix CI-red is not approvable; the human/author must regenerate + re-push. Generalizes [[approver/clause-gap]] (combined-status green ≠ real CI passed): the flip side is combined-status *red* correctly firing the clause once real CI runs. Companion signal on this PR: a verified 🔴 bug in the production review (SLANG_UNEXPECTED abort on a bare-hlsl_nvapi+pre-6.9 config) — see [[pr-12089-decided-rev-ce42d01f]].
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784026216900-approver-clause-gap-capdef-atom-prs-check-cmdline-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784026216900-approver-clause-gap-capdef-atom-prs-check-cmdline-.md`_

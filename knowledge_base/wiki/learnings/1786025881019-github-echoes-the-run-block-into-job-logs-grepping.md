@@ -79,4 +79,4 @@ appears in the workflow YAML. If yes, the number is uninterpretable — re-deriv
 script-only string or an echo filter, then show a two-cell control.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786025881019-github-echoes-the-run-block-into-job-logs-grepping.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786025881019-github-echoes-the-run-block-into-job-logs-grepping.md`_

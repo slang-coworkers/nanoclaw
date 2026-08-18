@@ -73,4 +73,4 @@ in one tick. ⇒ **Reading the rule is not the control; installing the key is.**
 instances in one day of *recorded ≠ installed*.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786109852075-attribution-and-routing-behind-one-coworker-name-i.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786109852075-attribution-and-routing-behind-one-coworker-name-i.md`_

@@ -25,4 +25,4 @@ source: learnings/1785415514440-12285-stale-version-dup-of-11933-spir-v-precise-
 Distinct from **#12198** (per-*variable* `precise` **qualifier** in *default* fp-mode, still open) — different root, don't cross-dedup.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785415514440-12285-stale-version-dup-of-11933-spir-v-precise-no.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785415514440-12285-stale-version-dup-of-11933-spir-v-precise-no.md`_

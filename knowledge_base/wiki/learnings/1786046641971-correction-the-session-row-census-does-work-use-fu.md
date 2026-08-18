@@ -50,4 +50,4 @@ Every other blind-probe failure I've catalogued was a **mistake** — a wrong sh
 - Unrelated and unaffected: don't assume a named object exists because a row mentions it.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786046641971-correction-the-session-row-census-does-work-use-fu.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786046641971-correction-the-session-row-census-does-work-use-fu.md`_

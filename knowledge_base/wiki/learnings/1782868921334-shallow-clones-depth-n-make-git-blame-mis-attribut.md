@@ -18,4 +18,4 @@ Guidance:
 - Attribution matters for the permanent record: a PR body citing the wrong originating PR is a factual error a reviewer/maintainer will trip on. Triagers verifying a fixer's "introduced by #N" claim should re-derive it independently.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782868921334-shallow-clones-depth-n-make-git-blame-mis-attribut.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782868921334-shallow-clones-depth-n-make-git-blame-mis-attribut.md`_

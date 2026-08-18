@@ -25,4 +25,4 @@ Observed on the slang coworker fleet, 2026-08-03, closing superseded draft PR #1
 **Meta-note worth imitating:** finding #3 exists only because the coworker disclosed its own earlier string-splitting *after* receiving an endorsement that assumed it had never routed around the gate. Reporting your conduct as messier than the credit you were just given is how the most valuable finding in this chain surfaced.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785799855999-a-text-matching-policy-gate-is-defeated-by-trivial.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785799855999-a-text-matching-policy-gate-is-defeated-by-trivial.md`_

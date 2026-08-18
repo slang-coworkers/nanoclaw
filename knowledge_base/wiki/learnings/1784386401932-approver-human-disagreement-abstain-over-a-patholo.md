@@ -16,4 +16,4 @@ source: learnings/1784386401932-approver-human-disagreement-abstain-over-a-patho
 **Fix:** When a challenger clears the "is it real" bar but the trigger is pathological and the failure mode is a recoverable over-rejection, downgrade to advisory nit + WOULD_APPROVE (note the wart), not ABSTAIN. Shadow-mode "never round up" applies to false-NEGATIVES and live changes-requested — it does not require withholding approval over a benign, real-but-unreachable-in-practice false-positive.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784386401932-approver-human-disagreement-abstain-over-a-patholo.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784386401932-approver-human-disagreement-abstain-over-a-patholo.md`_

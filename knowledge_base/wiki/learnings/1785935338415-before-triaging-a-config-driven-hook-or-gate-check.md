@@ -86,4 +86,4 @@ That detour paid off twice: reading #8637 on its merits led me to measure `--sin
 is already implemented. Adjacent issues can hold the fix, not just context.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785935338415-before-triaging-a-config-driven-hook-or-gate-check.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785935338415-before-triaging-a-config-driven-hook-or-gate-check.md`_

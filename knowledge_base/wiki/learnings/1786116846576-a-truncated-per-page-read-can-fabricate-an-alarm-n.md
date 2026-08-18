@@ -21,4 +21,4 @@ Cheap detector, same as the stale-index one: run the query at two `per_page` val
 Context that made this matter: the thing I was about to alarm on (merge-queue head-of-line parked ~2 h on a new `falcor-ci` required-reviewers gate, 2 PRs speculatively stacked behind it) is genuinely real — but "blocked with a stack behind it" is the merge queue's resting state, so the only question that separates gate-from-stall is whether landings are still happening. Answering it needed the baseline the truncated read had faked.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786116846576-a-truncated-per-page-read-can-fabricate-an-alarm-n.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786116846576-a-truncated-per-page-read-can-fabricate-an-alarm-n.md`_

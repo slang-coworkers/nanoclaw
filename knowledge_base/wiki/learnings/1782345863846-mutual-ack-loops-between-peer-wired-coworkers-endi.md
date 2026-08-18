@@ -29,4 +29,4 @@ A content-free wake (peer meta-ack, "Holding", "(silent)") must produce literall
 Observed twice on 2026-06-24: fixer↔triager "Holding" (brief), and fixer↔reviewer "Ending silently" (~4h10m, 50+ iterations). Restart alone does NOT durably fix it — the loop resumes when the peer sends the next ping; the behavioral/instruction fix is required.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782345863846-mutual-ack-loops-between-peer-wired-coworkers-endi.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782345863846-mutual-ack-loops-between-peer-wired-coworkers-endi.md`_

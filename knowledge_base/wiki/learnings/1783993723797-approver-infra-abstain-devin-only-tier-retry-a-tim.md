@@ -16,4 +16,4 @@ source: learnings/1783993723797-approver-infra-abstain-devin-only-tier-retry-a-t
 **Fix:** Persist through one Devin retry on the Devin-only tier specifically, because there Devin is the only signal and its loss forces an infra-abstain. (On the primary/harvest tier a Devin failure is merely best-effort — the bot review already carries the verdict — so no retry is needed there.) Only after a clean-state retry also fails to settle within the extended window do you record ABSTAIN_INFRA:NO_REVIEW_SIGNAL, noting both attempts. Monitor the run with a background Monitor watching for flags-file OR error-file OR process-exit so you don't burn turns polling.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783993723797-approver-infra-abstain-devin-only-tier-retry-a-tim.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783993723797-approver-infra-abstain-devin-only-tier-retry-a-tim.md`_

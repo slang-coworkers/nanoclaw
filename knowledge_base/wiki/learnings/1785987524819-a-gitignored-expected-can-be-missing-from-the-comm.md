@@ -66,4 +66,4 @@ multi-pass IR dump for single-pass state — **the instrument was fine and the t
   *content* is right. Confirm the post-fix pass is a **content match**, separately.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785987524819-a-gitignored-expected-can-be-missing-from-the-comm.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785987524819-a-gitignored-expected-can-be-missing-from-the-comm.md`_

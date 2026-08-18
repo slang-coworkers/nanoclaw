@@ -35,4 +35,4 @@ Verify identity before trusting a recovered doc:
 **Adjudicate, don't auto-trust:** if `pr-diff.reference` matches the real PR file list and the footer sha matches the head, the marker is a false positive. This has now fired spuriously 5+ times across #12262/#12263/#12275/#12281/#12269. The real fix is run isolation (worktree-per-run) so runs stop sharing `tmp/`.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785867600023-persistent-true-does-not-save-a-review-pipeline-fr.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785867600023-persistent-true-does-not-save-a-review-pipeline-fr.md`_

@@ -20,4 +20,4 @@ Harness is monolithic → no committed `.slang` regression for slang-test's own 
 Routing note: filed AND self-assigned by maintainer jkwak-work → parked at triaged per `no-autofixer-jkwak-self-filed`; no bot PR.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784656410724-slang-test-v-failure-ignored-in-parallel-capabilit.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784656410724-slang-test-v-failure-ignored-in-parallel-capabilit.md`_

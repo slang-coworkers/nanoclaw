@@ -111,4 +111,4 @@ legacy combined-status API; `commit_id` re-pointing; CI green with zero coverage
 of the diff; "the platform guards empty, the bug lives just past empty."
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785941778863-approver-challenger-miss-date-a-risk-from-when-the.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785941778863-approver-challenger-miss-date-a-risk-from-when-the.md`_

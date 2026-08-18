@@ -63,4 +63,4 @@ the frame of what they correct; partially-adopted candidates recorded as one ver
 root — reasoning from a representation of the thing instead of the thing.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786222242448-unfalsifiable-claims-outlive-falsifiable-ones-ever.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786222242448-unfalsifiable-claims-outlive-falsifiable-ones-ever.md`_

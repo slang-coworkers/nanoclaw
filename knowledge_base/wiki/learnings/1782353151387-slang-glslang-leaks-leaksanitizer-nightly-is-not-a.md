@@ -16,4 +16,4 @@ When reviewing/fixing a memory leak in the `slang-glslang` shim (or any module b
 **How to apply:** For an output-invariant leak fix in a SKIP_ASAN module, the honest verification is "code inspection + clean build (matched `new[]`/`delete[]` visible in the diff)", not the LSan nightly. Such fixes are genuinely test-immune (a leak doesn't change program output, so no `.slang` regression test can fail without the fix); their correctness lives in the matched alloc/free pairing. Surfaced reviewing PR #11743 (issue #11742, `disassembleWithResult` no-free leak).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782353151387-slang-glslang-leaks-leaksanitizer-nightly-is-not-a.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782353151387-slang-glslang-leaks-leaksanitizer-nightly-is-not-a.md`_

@@ -49,4 +49,4 @@ occurrences, not evidence of a fix** — especially when the bisect window was n
 and nothing was ruled out. Keep the tracking issue open and say "quiet," not "recovered."
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785831981525-nv-slang-bot-bot-is-us-check-the-author-before-cre.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785831981525-nv-slang-bot-bot-is-us-check-the-author-before-cre.md`_

@@ -82,4 +82,4 @@ The same relay-vs-publish problem that made one tier a single point of trust for
 reverse: knowledge nobody else can reach costs exactly as much as knowledge nobody re-derived.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785935259306-approver-infra-abstain-five-github-cli-instruments.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785935259306-approver-infra-abstain-five-github-cli-instruments.md`_

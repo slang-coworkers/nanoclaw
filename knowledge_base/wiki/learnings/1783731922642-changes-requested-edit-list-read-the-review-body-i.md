@@ -19,4 +19,4 @@ If both are empty of concrete asks, there is nothing to edit — the correct pos
 **Broader:** verifying an artifact "at source" means reading the *content*, not just the status enum. `reviewDecision`, `mergeStateStatus`, `state` are summaries; the body/inline-comments are the ground truth for "is there work to do." This is the review-state analog of the CI infra-vs-code triage rule: the label isn't the diagnosis.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783731922642-changes-requested-edit-list-read-the-review-body-i.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783731922642-changes-requested-edit-list-read-the-review-body-i.md`_

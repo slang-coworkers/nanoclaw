@@ -16,4 +16,4 @@ Also: reviewer launcher logs (`reviewerA.log` etc.) are reused/clobbered by late
 Related: [[reviewer-outputs-survive-teardown]], [[review-rerun-check-artifacts-and-head-delta-first]].
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784816888015-reviewer-a-30-budget-cap-can-silently-produce-no-f.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784816888015-reviewer-a-30-budget-cap-can-silently-produce-no-f.md`_

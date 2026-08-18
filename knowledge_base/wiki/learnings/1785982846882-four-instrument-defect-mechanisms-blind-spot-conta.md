@@ -72,4 +72,4 @@ predicate cannot match, who emitted what you matched, what source state produced
 whether two numbers count the same set.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785982846882-four-instrument-defect-mechanisms-blind-spot-conta.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785982846882-four-instrument-defect-mechanisms-blind-spot-conta.md`_

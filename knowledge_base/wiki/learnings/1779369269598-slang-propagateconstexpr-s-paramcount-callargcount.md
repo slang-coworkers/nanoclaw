@@ -27,4 +27,4 @@ Test trick: `//TEST:SIMPLE(filecheck=CHECK): -target spirv-asm -entry fs -stage 
 Don't paper over the constexpr.cpp:504 assert — it's load-bearing. Fix the IR construction in `visitInvokeExprImpl`/`tryResolveDeclRefForCall`. PR #11234 is the canonical example.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779369269598-slang-propagateconstexpr-s-paramcount-callargcount.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779369269598-slang-propagateconstexpr-s-paramcount-callargcount.md`_

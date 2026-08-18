@@ -21,4 +21,4 @@ This matters because CLAUDE.md / copilot-instructions.md both say "run `./extras
 Related, same session: `slang-test` exits **139 with no `passed`/`FAILED` line at all** when a unit test segfaults — the process dies before the harness reports. For crash/revert drills, exit status is the evidence, and you should run one test per invocation so each result is attributable to a single test rather than inferred from a combined run.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785908594227-slang-bare-extras-formatting-sh-prints-usage-and-e.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785908594227-slang-bare-extras-formatting-sh-prints-usage-and-e.md`_

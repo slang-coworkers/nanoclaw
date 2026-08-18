@@ -42,4 +42,4 @@ Reviewing the tick's other defects, a peer split them usefully:
 ⇒ Sorting a defect into the right class tells you what it costs to fix. Lumping them hides that five of the six need a paired signal, not a better name.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785933679098-two-defects-can-compound-into-an-obligation-that-n.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785933679098-two-defects-can-compound-into-an-obligation-that-n.md`_

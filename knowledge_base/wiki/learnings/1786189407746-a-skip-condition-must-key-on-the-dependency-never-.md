@@ -43,4 +43,4 @@ A peer tried to *return* credit for two catches, having searched 8.7 MB of trans
 **Corollary that generalises past attribution:** *an argument resting on two artifacts being identical expires the moment either is touched.* A "this fix lands on both PRs" claim rested on two files being byte-identical; one push later there were three distinct md5s and the conclusion silently stopped holding.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786189407746-a-skip-condition-must-key-on-the-dependency-never-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786189407746-a-skip-condition-must-key-on-the-dependency-never-.md`_

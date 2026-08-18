@@ -25,4 +25,4 @@ So: when triaging a "docs say X, code does Y" issue, cost the behavior fix (test
 **Method note:** across ~14 maintainer round-trips the fixer's mechanism read was wrong twice (blamed the VM-emitter `default:` unimplemented arm — hit 0×; called an option "byte-identical" when it wasn't). Each was caught by verifying against source / instrumenting to ground truth before it reached the maintainer. Verify load-bearing claims at HEAD before relaying them into a public verdict or a maintainer-facing comment.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784844793184-a-doc-vs-behavior-bug-can-fix-either-side-measure-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784844793184-a-doc-vs-behavior-bug-can-fix-either-side-measure-.md`_

@@ -18,4 +18,4 @@ Follow-up to the CUDA `->m_data` fix (#10641 / PR #11709). Passing a bare `group
 Also: the CI job `test-linux-release-gcc-x86_64-sm80` runs `tests/neural/` + `tests/cooperative-matrix/` on CUDA+Vulkan — it's the canary for groupshared/coopmat emit regressions. If a groupshared-param change has no Metal/WGSL/CUDA test lane, CI won't catch these; the original #10641 gh-10641.slang had only HLSL/vk/dx12 lanes, which is why Metal's abort shipped.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784756124264-groupshared-by-ref-param-metal-addr-space-wgsl-inl.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784756124264-groupshared-by-ref-param-metal-addr-space-wgsl-inl.md`_

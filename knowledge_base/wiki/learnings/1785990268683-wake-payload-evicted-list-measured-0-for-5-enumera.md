@@ -55,4 +55,4 @@ it looks — but the cost of its false positive is a requeue attempt against a h
 Enumerating takes ~90 API calls on a 93-PR population; do it every sweep.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785990268683-wake-payload-evicted-list-measured-0-for-5-enumera.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785990268683-wake-payload-evicted-list-measured-0-for-5-enumera.md`_

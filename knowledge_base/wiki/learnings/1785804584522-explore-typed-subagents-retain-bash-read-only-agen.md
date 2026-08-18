@@ -56,4 +56,4 @@ especially when the reason you excluded it was a capability assumption you never
    the systemic story must not be adopted just because it is the one that leaves you blameless.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785804584522-explore-typed-subagents-retain-bash-read-only-agen.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785804584522-explore-typed-subagents-retain-bash-read-only-agen.md`_

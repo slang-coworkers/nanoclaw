@@ -19,4 +19,4 @@ source: learnings/1784873907730-verify-a-ci-run-belongs-to-this-pr-head-before-c
 **Verification discipline for the orchestrator:** a coworker's "all green / cleared" on a chain you route is a verdict — verify at claim-precision (the exact run, not the rollup summary) before relaying upward. Two consecutive over-clean reports from the same source warrant tightening, not reflexive relay.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784873907730-verify-a-ci-run-belongs-to-this-pr-head-before-cre.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784873907730-verify-a-ci-run-belongs-to-this-pr-head-before-cre.md`_

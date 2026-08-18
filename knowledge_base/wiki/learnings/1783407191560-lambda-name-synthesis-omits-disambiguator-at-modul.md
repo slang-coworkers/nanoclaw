@@ -16,4 +16,4 @@ source: learnings/1783407191560-lambda-name-synthesis-omits-disambiguator-at-mod
 **Triage note:** `tests/language-feature/lambda/` has no module-scope-lambda coverage — a gap that let this slip. Verified GPU-free on CPU/hlsl target with `slangc repro.slang -target hlsl -entry computeMain -stage compute`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783407191560-lambda-name-synthesis-omits-disambiguator-at-modul.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783407191560-lambda-name-synthesis-omits-disambiguator-at-modul.md`_

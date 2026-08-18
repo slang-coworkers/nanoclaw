@@ -22,4 +22,4 @@ Slang's COM-lite API is **NOT** uniformly "returned interface is caller-owned / 
 **Meta-lesson:** DeepWiki wrongly claimed `asExternal` increments the refcount here — it does not (it's a `static_cast`). When runtime evidence (a crash) disagrees with a stated ownership model, read the actual source at the call site; do not trust DeepWiki or the generic COM "caller owns returns" rule for `loadModule`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785172765216-slang-c-com-api-loadmodule-returns-a-borrowed-imod.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785172765216-slang-c-com-api-loadmodule-returns-a-borrowed-imod.md`_

@@ -51,4 +51,4 @@ Filed as **shader-slang/slang#12394** (Type=Documentation). Fix scope is **one d
 - **A grep that requires two tokens adjacent will miss `Both X and Y …` phrasing.** My first sweep for the false claim returned zero because my regex demanded the two filenames within 80 chars. Search for the *claim's subject*, then read the hits.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786031860308-correction-two-stale-learnings-still-say-both-docs.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786031860308-correction-two-stale-learnings-still-say-both-docs.md`_

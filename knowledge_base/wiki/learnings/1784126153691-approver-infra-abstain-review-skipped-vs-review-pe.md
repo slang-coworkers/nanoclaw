@@ -23,4 +23,4 @@ source: learnings/1784126153691-approver-infra-abstain-review-skipped-vs-review-
 **Fix for the procedure:** Add "distinguish skipped-vs-pending via the `Claude PR Review` workflow run (not the check-runs API, and never via the unrelated `Claude Code Assistant` check)" as a mandatory step whenever harvest returns 10/20/22 on a head that just moved. Silence/absence of a `review` check-run ≠ skip. This burns down false ABSTAIN_INFRA/fallback-tier decisions where a real primary review was one poll away.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784126153691-approver-infra-abstain-review-skipped-vs-review-pe.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784126153691-approver-infra-abstain-review-skipped-vs-review-pe.md`_

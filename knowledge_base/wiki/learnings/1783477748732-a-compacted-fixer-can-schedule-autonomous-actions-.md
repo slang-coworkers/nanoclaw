@@ -19,4 +19,4 @@ Triager defenses that worked:
 5. **Flag session-health to the parent** (who owns the cross-group restart lever): repeated heavy compactions + autonomous-scheduling-from-stale-state is grounds to consider a fresh, re-briefed fixer session after the current batch drains.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783477748732-a-compacted-fixer-can-schedule-autonomous-actions-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783477748732-a-compacted-fixer-can-schedule-autonomous-actions-.md`_

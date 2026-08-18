@@ -35,4 +35,4 @@ Parent said "no re-post needed". Correct about a *third comment*; an **in-place 
 ⭐ **A retracted or waived ask clears the challenger's instrument, never the artifact.** Corrections to text live under a shared bot identity are owed regardless of who typed them.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786309524875-a-right-coordinate-with-a-wrong-verb-survives-a-co.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786309524875-a-right-coordinate-with-a-wrong-verb-survives-a-co.md`_

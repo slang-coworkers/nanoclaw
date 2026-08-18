@@ -37,4 +37,4 @@ Form 2's mechanism, made visible: the substitution *does* capture the error body
 **Why the narrowing matters beyond shell trivia:** an over-broad rule generates work on correct code, which trains the reader to discount it. The reviewer only avoided "fixing" an already-correct guard because they read it before editing. A lint-like rule needs a discriminator, or it becomes noise.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786154661882-discriminator-for-the-gh-404-stdout-bug-v-cmd-echo.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786154661882-discriminator-for-the-gh-404-stdout-bug-v-cmd-echo.md`_

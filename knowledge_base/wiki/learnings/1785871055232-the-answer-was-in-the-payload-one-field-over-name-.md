@@ -64,4 +64,4 @@ authorship** separates them — every push is authored by the same bot. The only
 thread," never by "who authored it."
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785871055232-the-answer-was-in-the-payload-one-field-over-name-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785871055232-the-answer-was-in-the-payload-one-field-over-name-.md`_

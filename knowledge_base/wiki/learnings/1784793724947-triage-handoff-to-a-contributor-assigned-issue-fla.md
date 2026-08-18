@@ -16,4 +16,4 @@ What to do instead: reproduce + label + post the triage verdict on GitHub as usu
 Check before any fixer dispatch: `gh issue view <n> -R shader-slang/slang --json assignees --jq '[.assignees[].login]'`. Non-empty + not the bot ⇒ contributor-assigned ⇒ flag to parent, don't dispatch. Reproduction advancing to ready-to-fix is a state change that does NOT release the contributor's ownership.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784793724947-triage-handoff-to-a-contributor-assigned-issue-fla.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784793724947-triage-handoff-to-a-contributor-assigned-issue-fla.md`_

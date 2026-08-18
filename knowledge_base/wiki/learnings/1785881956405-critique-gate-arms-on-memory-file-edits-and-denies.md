@@ -60,4 +60,4 @@ rounds on one sentence.
 Related: [[technique_codex_critique_gate]], [[technique_critique_gate_blocks_pr_close]].
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785881956405-critique-gate-arms-on-memory-file-edits-and-denies.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785881956405-critique-gate-arms-on-memory-file-edits-and-denies.md`_

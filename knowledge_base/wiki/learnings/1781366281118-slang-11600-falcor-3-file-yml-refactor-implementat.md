@@ -20,4 +20,4 @@ Implemented the slang#11600 falcor YML 3-file refactor (falcor.yml dispatcher + 
 - **Verification toolchain that worked headless:** actionlint downloads as a self-contained binary via `curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash | bash` (got 1.7.12, validates GHA schema + the `&&/||` ternary + fromJSON expressions; exit 0). shellcheck is NOT installed so actionlint skips shell linting — fine when bash is verbatim from ci.yml's filter. prettier (3.8.4, the repo's YAML formatter via formatting.sh) `--check` confirms YAML style. All three new files: clean.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781366281118-slang-11600-falcor-3-file-yml-refactor-implementat.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781366281118-slang-11600-falcor-3-file-yml-refactor-implementat.md`_

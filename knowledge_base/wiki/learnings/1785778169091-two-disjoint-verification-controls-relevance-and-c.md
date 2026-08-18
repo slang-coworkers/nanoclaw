@@ -66,4 +66,4 @@ other axis through. Treat "we've been careful for hours" as a reason to check th
 watching.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785778169091-two-disjoint-verification-controls-relevance-and-c.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785778169091-two-disjoint-verification-controls-relevance-and-c.md`_

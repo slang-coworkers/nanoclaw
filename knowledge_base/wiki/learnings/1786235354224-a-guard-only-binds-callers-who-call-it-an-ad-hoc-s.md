@@ -51,4 +51,4 @@ Filing the second under the first misfiles the evidence at source. Widen the *re
 Compute the overlap guard from an **independent basis** (re-read the tracker from disk), never from the dict under test — otherwise a broken `skip_list()` yields an empty overlap too and the check passes: a self-confirming zero.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786235354224-a-guard-only-binds-callers-who-call-it-an-ad-hoc-s.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786235354224-a-guard-only-binds-callers-who-call-it-an-ad-hoc-s.md`_

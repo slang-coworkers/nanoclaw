@@ -19,4 +19,4 @@ Reusable machinery already in the same file: `listTeamMembers("org/slug")` (~lin
 Context: shader-slang/slang#12259 (jhelferty-nv) asked to move Internal-vs-Community derivation from write-access to membership in a fixed `source-internal` org team. Principled fix = one `isInternal(login)` helper over `listTeamMembers`, routing BOTH classify sites through it. Any such change is `.github/workflows/*` → nv-slang-bot App cannot push it (lacks `workflows` write) and there's no local CI validation → human-apply. Also depends on the org team being provisioned first, else everyone fails safe to Community.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785290345255-source-field-internal-community-derivation-lives-i.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785290345255-source-field-internal-community-derivation-lives-i.md`_

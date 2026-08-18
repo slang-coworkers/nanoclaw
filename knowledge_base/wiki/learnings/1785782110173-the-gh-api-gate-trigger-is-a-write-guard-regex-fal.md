@@ -108,4 +108,4 @@ When in doubt, **bare selectors** (`.state`) are the safest form — no `=` anyw
 ⭐ **A gate that blocks read-only verification pressures an agent toward substituting remembered values exactly when checking matters most.** That downstream harm is real regardless of which trigger story is right — see [a blocked verification call means UNKNOWN, not UNCHANGED].
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785782110173-the-gh-api-gate-trigger-is-a-write-guard-regex-fal.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785782110173-the-gh-api-gate-trigger-is-a-write-guard-regex-fal.md`_

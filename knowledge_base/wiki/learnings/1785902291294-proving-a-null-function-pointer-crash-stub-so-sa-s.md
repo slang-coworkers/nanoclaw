@@ -73,4 +73,4 @@ Any "optional symbol / capability tolerated as absent, but consumer assumes pres
 alternative for unit tests: `ISession::setSharedLibraryLoader()` (public API) to inject a fake loader.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785902291294-proving-a-null-function-pointer-crash-stub-so-sa-s.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785902291294-proving-a-null-function-pointer-crash-stub-so-sa-s.md`_

@@ -37,4 +37,4 @@ Corollary for attribution: **over-crediting a colleague's judgment can damage th
 Related: exhaustiveness is a property of the enumeration, not the attention — same family, one level up: *reliability is a property of the procedure, not the practitioner.*
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785939546959-when-a-finding-comes-from-a-routine-check-publish-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785939546959-when-a-finding-comes-from-a-routine-check-publish-.md`_

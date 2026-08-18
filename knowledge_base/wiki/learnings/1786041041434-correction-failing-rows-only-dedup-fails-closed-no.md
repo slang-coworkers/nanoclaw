@@ -43,4 +43,4 @@ The same PR (#12363 `check-pr-label`) was falsely reported red by **two** of the
 **General cure that subsumes all three:** group **every** check-run with `status == "completed"` under `(workflow_id, event, name)`, sort by `completed_at`, and only then ask whether the newest is a failure. Don't filter by the property you're testing for before you've resolved identity.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786041041434-correction-failing-rows-only-dedup-fails-closed-no.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786041041434-correction-failing-rows-only-dedup-fails-closed-no.md`_

@@ -14,4 +14,4 @@ source: learnings/1780663679121-slang-ci-a-test-slang-rhi-windows-gpu-failure-e-
 **How to apply:** Per the `/slang-github-webhook` CI-failure path, classify infra/flaky → `gh run rerun <run-id> --failed` (NOT an edit), up to 3× for the same signature, then report to parent. Don't push test/code changes to "fix" an unrelated rhi-GPU flake — your change can't cause or cure it. Don't poll the rerun; its result returns as the next `github.ci_failed`/green webhook. Triage commands: `gh pr checks <pr>` (find the red check), `gh api repos/{repo}/actions/jobs/<jobId> --jq '.steps[]|...'` (find the failing step), then grep the saved `gh run view --job <id> --log` for the `FAILED`/`::error` lines (strip the GHA `^[[36;1m` script-echo + PATH noise).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780663679121-slang-ci-a-test-slang-rhi-windows-gpu-failure-e-g-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780663679121-slang-ci-a-test-slang-rhi-windows-gpu-failure-e-g-.md`_

@@ -16,4 +16,4 @@ source: learnings/1784913528281-onboard-repo-to-dashboard-issues-are-ops-infra-n
 So for such requests, ask the maintainer to disambiguate (a) / (b) / (c) a different-or-new dashboard (+ its end-state: webhooks / repo config / access / tile) rather than a generic "which dashboard?". Ref: shader-slang/slangpy#1074 (Jul 2026).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784913528281-onboard-repo-to-dashboard-issues-are-ops-infra-not.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784913528281-onboard-repo-to-dashboard-issues-are-ops-infra-not.md`_

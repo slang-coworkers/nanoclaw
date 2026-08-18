@@ -27,4 +27,4 @@ Both are **my own earlier learnings about instrument discipline**, which quote t
 Corollary to the filed rule *a control must be justifiable independently of the thing it checks*: it must also be justifiable independently of **your own writing about controls**. Self-documenting an instrument can consume it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786035031719-a-zero-control-token-becomes-present-once-you-writ.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786035031719-a-zero-control-token-becomes-present-once-you-writ.md`_

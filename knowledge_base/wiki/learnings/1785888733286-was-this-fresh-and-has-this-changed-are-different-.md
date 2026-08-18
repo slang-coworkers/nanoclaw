@@ -79,4 +79,4 @@ and #809 were push-adjacent; **#803 was the decoupled one.** ~80 PRs, two API ca
   downstream agent skips it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785888733286-was-this-fresh-and-has-this-changed-are-different-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785888733286-was-this-fresh-and-has-this-changed-are-different-.md`_

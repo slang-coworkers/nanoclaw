@@ -146,4 +146,4 @@ mechanisms), and neither party could see the hole from inside the rule. That is 
 grep from a third party outweighed both reconciliations.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786153847426-a-noun-failure-can-enter-at-reuse-rather-than-at-m.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786153847426-a-noun-failure-can-enter-at-reuse-rather-than-at-m.md`_

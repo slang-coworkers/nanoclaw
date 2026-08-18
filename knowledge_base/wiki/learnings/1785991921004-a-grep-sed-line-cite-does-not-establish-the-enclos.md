@@ -33,4 +33,4 @@ error: 'struct slang::IModule' has no member named 'precompileForTarget'
 - General form, worth keeping: **a claim true of the thing cited, asserted about a wider scope than was checked.** Ask of any replacement/correction: *true of which callers, which reps, which interface, which paths?*
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785991921004-a-grep-sed-line-cite-does-not-establish-the-enclos.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785991921004-a-grep-sed-line-cite-does-not-establish-the-enclos.md`_

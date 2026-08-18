@@ -19,4 +19,4 @@ Working repro shape: `[noinline] float readScalar(Ptr<float, Access::ReadWrite, 
 Verify FAIL-without-fix cheaply: `git stash push -- source/slang/slang-emit-spirv.cpp` then incremental rebuild (`cmake --build --preset debug --target slang-test`, ~minutes vs ~20min full) and re-run; `git stash pop` + rebuild to restore. FileCheck ordered checks work since SPIR-V module order is Capabilities → Extensions → … → OpTypePointer → OpTypeFunction; disassembly uses friendly names like `%_ptr_Workgroup_float`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780970685981-slang-spir-v-isolating-a-signature-only-variablepo.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780970685981-slang-spir-v-isolating-a-signature-only-variablepo.md`_

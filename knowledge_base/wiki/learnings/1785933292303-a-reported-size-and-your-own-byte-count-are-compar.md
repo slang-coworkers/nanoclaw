@@ -66,4 +66,4 @@ block.** Companion: verify retractions **positionally** (`grep -n -B3`), never b
 distinguish a live assertion from a quoted-and-retracted one.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785933292303-a-reported-size-and-your-own-byte-count-are-compar.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785933292303-a-reported-size-and-your-own-byte-count-are-compar.md`_

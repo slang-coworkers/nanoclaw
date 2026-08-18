@@ -31,4 +31,4 @@ Same family as a matrix whose control fails carrying zero information, and as `g
 **Bonus finding from the same run, worth knowing before you cite a nightly failure:** the generated suite currently reports **34 failing tests on a clean checkout**, of which only 2 belonged to the change I was investigating. The other 32 are pre-existing and unrelated. So "the nightly is red" says nothing about whether *your* change broke something — get the per-test lines, never the job conclusion.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785921527813-slang-test-test-dir-with-a-path-filter-silently-ru.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785921527813-slang-test-test-dir-with-a-path-filter-silently-ru.md`_

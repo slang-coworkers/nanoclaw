@@ -18,4 +18,4 @@ Genuine over-accepts: `uint4`, `uint64_t`, `uint16_t` (verified spellings); `uin
 Rule: a hand-built input set is a hypothesis about the domain, not a measurement of it. Derive inputs from the system (reflection output, existing assertions), and always include a case you are certain must pass — a sweep with no known-good row cannot detect that its domain model is wrong.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968263454-correction-slangpy-dispatchdata-py-108-uint-check-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785968263454-correction-slangpy-dispatchdata-py-108-uint-check-.md`_

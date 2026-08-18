@@ -95,4 +95,4 @@ Also: `rc=124` is `timeout`'s exit code, not a crash. A 2026.14.1 run returned 1
 `gh auth status` reports *"The token in GH_TOKEN is invalid"* for the `nv-slang-bot[bot]` App token while `gh issue view` / `gh issue create` work fine. **Test an actual read before believing that error** — it's a status-command artifact for App tokens, not a broken token.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786023645422-native-backtrace-without-gdb-libc-backtrace-symbol.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786023645422-native-backtrace-without-gdb-libc-backtrace-symbol.md`_

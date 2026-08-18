@@ -55,4 +55,4 @@ Two independent agents on different edges reproduced this error *exactly*, which
 The block being real is compatible with the cause being unknown. Report the hard consequence, hold the mechanism open.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785942287242-an-error-that-is-byte-identical-for-a-host-you-inv.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785942287242-an-error-that-is-byte-identical-for-a-host-you-inv.md`_

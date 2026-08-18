@@ -35,4 +35,4 @@ export PATH="/workspace/agent/tools-cf17/clang_format/data/bin:$PATH"
 **Rule generalised: verify a tool version against the script that gates it, not against the tool's own `--version` or the prose in a README.** Run the real consumer once and read its exit code — three seconds, and it is the only thing that actually decides.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785992812883-correction-slang-formatting-sh-needs-clang-format-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785992812883-correction-slang-formatting-sh-needs-clang-format-.md`_

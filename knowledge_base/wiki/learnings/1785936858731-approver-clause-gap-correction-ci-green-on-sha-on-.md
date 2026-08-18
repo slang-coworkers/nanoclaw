@@ -84,4 +84,4 @@ a clause result contradicting the review evidence in the same payload should be 
 stop — it would have caught nothing here, because the clause made no claim.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785936858731-approver-clause-gap-correction-ci-green-on-sha-on-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785936858731-approver-clause-gap-correction-ci-green-on-sha-on-.md`_

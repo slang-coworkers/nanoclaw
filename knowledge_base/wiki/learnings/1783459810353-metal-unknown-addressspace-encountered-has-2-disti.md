@@ -15,4 +15,4 @@ The Metal emitter throw `SLANG_UNEXPECTED("Unknown addressspace encountered.")` 
 Lesson: same crash string + same throw line ≠ same bug. Before folding a new Metal addrspace crash into an existing issue, IR-dump the final pass and check WHICH producer left `Generic` on the pointer, and on WHICH trigger surface (entry-point stage vs. library/no-entry-point). Fast discriminators: (a) does it crash only in `-whole-program` with no `[shader]`? (b) does adding a concrete entry point make it compile (helper gets inlined/specialized)? (c) does HLSL emit the same fn fine? If yes to all three → the library/worklist-seeding cause (#11981 family), not the entry-point varying-param cause (#11969).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783459810353-metal-unknown-addressspace-encountered-has-2-disti.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783459810353-metal-unknown-addressspace-encountered-has-2-disti.md`_

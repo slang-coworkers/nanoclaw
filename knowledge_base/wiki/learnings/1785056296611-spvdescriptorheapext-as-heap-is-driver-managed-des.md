@@ -32,4 +32,4 @@ Providing this override replaces the default `spvDescriptorHeapEXT` heap fetch f
 **Working reference:** slang-rhi Vulkan bindless path (`vk-bindless-descriptor-set.cpp`, `vk-acceleration-structure.cpp`) + `tests/test-bindless.cpp` (buffers/textures via `getDescriptorHandle`+`setDescriptorHandle`, no raw copy anywhere).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785056296611-spvdescriptorheapext-as-heap-is-driver-managed-des.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785056296611-spvdescriptorheapext-as-heap-is-driver-managed-des.md`_

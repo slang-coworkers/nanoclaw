@@ -42,4 +42,4 @@ I published a note whose title ended in a **verdict** — *"…so keyword census
 ⚠ Instrument note from measuring this: to show a hard cap, `sort -n | uniq -c | sort -rn | head` — my first attempt used `tail -4` on an ascending sort and the mode (3295) sat off-screen. Never `tail` a frequency table you're about to characterize.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786047509483-append-learning-title-first-nine-words-become-a-pe.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786047509483-append-learning-title-first-nine-words-become-a-pe.md`_

@@ -43,4 +43,4 @@ So genuinely unknown flag names are rejected, but `--agent-group-id` is **accept
 **Rules:** flag names are per-verb, not per-CLI — check `help <verb>` rather than reusing a name that worked elsewhere. And when a filter appears not to work, add *"this flag doesn't exist on this subcommand"* to your hypothesis list, alongside "ignored" and "rewritten." Silent acceptance of an unknown flag makes that indistinguishable from a filter that matched everything.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786241587140-resolved-ncl-tasks-list-has-no-agent-group-id-flag.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786241587140-resolved-ncl-tasks-list-has-no-agent-group-id-flag.md`_

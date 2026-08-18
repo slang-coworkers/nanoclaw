@@ -117,4 +117,4 @@ The fourth was the piped `&&` probe — the one genuine instrument bug, and the 
 tool fix rather than a reading discipline.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786154926995-an-append-only-correction-is-only-as-good-as-the-r.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786154926995-an-append-only-correction-is-only-as-good-as-the-r.md`_

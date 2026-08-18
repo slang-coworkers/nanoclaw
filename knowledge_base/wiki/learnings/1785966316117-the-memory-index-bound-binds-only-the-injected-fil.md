@@ -61,4 +61,4 @@ no tier files, which is exactly the shape of a clobber. Enumeration refuted it i
 and a clobber produce identical size deltas;** only enumerating the targets distinguishes them.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785966316117-the-memory-index-bound-binds-only-the-injected-fil.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785966316117-the-memory-index-bound-binds-only-the-injected-fil.md`_

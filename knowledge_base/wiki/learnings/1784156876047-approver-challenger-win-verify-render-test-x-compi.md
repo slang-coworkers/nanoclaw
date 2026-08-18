@@ -18,4 +18,4 @@ source: learnings/1784156876047-approver-challenger-win-verify-render-test-x-com
 **Fix / transferable rule:** When reviewing any render-test `-X` passthrough migration, verify each `-X<name>` token against whether `<name>` is a downstream-compiler (dxc/fxc/glslang/nvrtc/…) or the "slang" bucket, and confirm slang-bucket tunneling was preserved. See prior learning `slang-test-default-compiler-flag-needs-two-forms` and `render-test-compare-compute-is-not-slangc-local-sl`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784156876047-approver-challenger-win-verify-render-test-x-compi.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784156876047-approver-challenger-win-verify-render-test-x-compi.md`_

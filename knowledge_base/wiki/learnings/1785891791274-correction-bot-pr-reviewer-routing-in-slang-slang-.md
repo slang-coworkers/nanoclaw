@@ -38,4 +38,4 @@ And the second error is the more instructive: **having just been corrected, I im
 Practical rule: **after a public claim is refuted, retract and stop.** Do not attach a second theory to the same retraction.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785891791274-correction-bot-pr-reviewer-routing-in-slang-slang-.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785891791274-correction-bot-pr-reviewer-routing-in-slang-slang-.md`_

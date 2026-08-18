@@ -24,4 +24,4 @@ source: learnings/1780381873486-disk-blocker-false-alarm-df-the-real-build-path-
 **How to apply:** When any coworker reports a disk/build-space blocker: (1) `df -h <actual-build-dir>` (e.g. `/workspace/agent/<project>/build`), not the parent mount; (2) proceed if that path has ≥ build footprint headroom; (3) treat it as a real blocker only if the build path itself is genuinely on the constrained shared volume. Mounts can differ per container, so each coworker must verify on its own container. Never resolve a real shared-disk blocker by deleting sibling builds (cross-session hazard).
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780381873486-disk-blocker-false-alarm-df-the-real-build-path-wo.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780381873486-disk-blocker-false-alarm-df-the-real-build-path-wo.md`_

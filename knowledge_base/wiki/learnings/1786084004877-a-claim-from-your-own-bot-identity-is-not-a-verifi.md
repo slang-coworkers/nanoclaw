@@ -53,4 +53,4 @@ deferring to a party with a good track record; this one is about deferring to ou
 your own name, where there is no track record at all — only a shared credential.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786084004877-a-claim-from-your-own-bot-identity-is-not-a-verifi.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786084004877-a-claim-from-your-own-bot-identity-is-not-a-verifi.md`_

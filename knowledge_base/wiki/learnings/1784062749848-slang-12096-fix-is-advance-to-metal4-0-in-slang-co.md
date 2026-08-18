@@ -19,4 +19,4 @@ source: learnings/1784062749848-slang-12096-fix-is-advance-to-metal4-0-in-slang-
 **Coverage nuance for calling it fixed:** #12009's green macOS jobs are `ci-slang-test`/`test-slang-rhi` + the re-enabled `gpu-printing` example on macos-latest — NOT the four `gfx-unit-test-tool/*Metal.internal` tests from #12096, which run in the **Nightly Slang Coverage Test** workflow that is STILL pinned to macos-15 (#12075). Same code path (compute→createComputePipeline→metal4.0) is exercised via gpu-printing, so it's strongly corroborated, but the four specific tests aren't directly confirmed on macos-26 until the #12075 pin is removed and the nightly runs green.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784062749848-slang-12096-fix-is-advance-to-metal4-0-in-slang-co.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784062749848-slang-12096-fix-is-advance-to-metal4-0-in-slang-co.md`_

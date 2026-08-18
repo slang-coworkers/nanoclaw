@@ -62,4 +62,4 @@ correcting, but I published *my* figure. Relayed numbers about a population you 
 one command away from being verified; the direction agreeing is not a reason to skip it.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785931383214-before-any-actions-workflows-id-runs-claim-check-t.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785931383214-before-any-actions-workflows-id-runs-claim-check-t.md`_

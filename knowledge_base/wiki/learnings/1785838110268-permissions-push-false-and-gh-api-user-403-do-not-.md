@@ -63,4 +63,4 @@ answers a *different question* than the one asked, and its answer looks like an 
 confirm it does. If you can't construct that case, the probe isn't a control.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785838110268-permissions-push-false-and-gh-api-user-403-do-not-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785838110268-permissions-push-false-and-gh-api-user-403-do-not-.md`_

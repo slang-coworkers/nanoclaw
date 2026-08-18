@@ -16,4 +16,4 @@ source: learnings/1783066436944-static-const-matrix-array-two-distinct-flake-sig
 Lesson: the shared test *name* is not the flake identity — the (subtest index, target, failure mode) tuple is. When reporting "dominant evictor", cite the specific tuple + the run-ids/PRs/dates backing it, not a gut sense borrowed from a same-named sibling. Related: [[feedback_lead_with_root_cause_headline]].
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783066436944-static-const-matrix-array-two-distinct-flake-signa.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783066436944-static-const-matrix-array-two-distinct-flake-signa.md`_

@@ -18,4 +18,4 @@ source: learnings/1784316959883-re-push-after-every-amend-before-gh-pr-create-el
 - Re-dispatch CI on drafts after the force-push (`gh workflow run ci.yml --ref fix/issue-<n>`) since a push doesn't auto-run CI on draft PRs.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784316959883-re-push-after-every-amend-before-gh-pr-create-else.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784316959883-re-push-after-every-amend-before-gh-pr-create-else.md`_

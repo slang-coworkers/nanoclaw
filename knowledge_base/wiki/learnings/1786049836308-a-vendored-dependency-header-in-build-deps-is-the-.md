@@ -25,4 +25,4 @@ Reusable rules:
 - If the enumerator is absent from the pinned version, that is itself the finding: the feature cannot be emitted byte-exactly yet, and the older path may genuinely be unable to express it (here the SM 6.9 `DATA_TYPE_*` enum has no bfloat member, confirming a "keep diagnosing at the older profile" design).
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786049836308-a-vendored-dependency-header-in-build-deps-is-the-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786049836308-a-vendored-dependency-header-in-build-deps-is-the-.md`_

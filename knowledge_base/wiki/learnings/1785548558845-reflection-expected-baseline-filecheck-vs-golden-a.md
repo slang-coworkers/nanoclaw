@@ -16,4 +16,4 @@ When auditing slang reflection-test baseline regeneration completeness (`-reflec
 - `//TEST_IGNORE_FILE` (line 1 of a test) makes slang-test clear the test list and skip the file entirely (slang-test-main.cpp:664) — its `.expected` is never exercised even if present on disk. e.g. tests/reflection/global-uniforms.hlsl.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785548558845-reflection-expected-baseline-filecheck-vs-golden-a.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785548558845-reflection-expected-baseline-filecheck-vs-golden-a.md`_

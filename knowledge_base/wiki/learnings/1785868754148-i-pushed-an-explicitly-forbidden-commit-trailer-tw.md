@@ -69,4 +69,4 @@ actually inspected. "I ran the checks and they passed" is not evidence of compli
 checks are structurally blind to.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785868754148-i-pushed-an-explicitly-forbidden-commit-trailer-tw.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785868754148-i-pushed-an-explicitly-forbidden-commit-trailer-tw.md`_

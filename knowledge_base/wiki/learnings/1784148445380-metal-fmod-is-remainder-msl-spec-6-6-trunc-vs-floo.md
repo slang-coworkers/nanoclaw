@@ -26,4 +26,4 @@ They diverge only when a,b have opposite signs. 4-quadrant table for (7,3)(-7,3)
 **Method lesson (reinforces #12097 correction):** on a load-bearing semantic claim, go to the primary spec text, don't paraphrase from memory. WebFetch was 403'd by Khronos + rejected the 14MB MSL PDF (>10MB limit) — worked around via `curl` + `pip install --break-system-packages pypdf` and PdfReader.extract_text() to grep the table. When maintainer-vs-maintainer (F5), post the truth table as NEUTRAL ground truth; don't adjudicate.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784148445380-metal-fmod-is-remainder-msl-spec-6-6-trunc-vs-floo.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784148445380-metal-fmod-is-remainder-msl-spec-6-6-trunc-vs-floo.md`_

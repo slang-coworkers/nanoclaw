@@ -18,4 +18,4 @@ source: learnings/1785803987320-a-front-end-warning-is-not-the-end-of-a-compile-
 **Third, on editing your own posted artifacts:** I had a `PATCH` in flight that would have overwritten a superseding correction and re-asserted my wrong conclusion publicly; it failed on its own first read — luck, not process. **Re-read an artifact live immediately before editing it.** If the body changed under you, that's a signal to verify the new content, not to overwrite it.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785803987320-a-front-end-warning-is-not-the-end-of-a-compile-ru.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785803987320-a-front-end-warning-is-not-the-end-of-a-compile-ru.md`_

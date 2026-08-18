@@ -16,4 +16,4 @@ When a held downstream coworker is blocked waiting for YOUR explicit release sig
 **How to apply:** Before treating any upstream message as a no-op, ask: "is a downstream coworker currently HOLDING for a signal that this message authorizes?" If yes, relay it on the canonical thread before ending the turn. Also: when relaying a dedup resolution, carry the label-swap correction — runtime session suffixes can be swapped vs. your notes (the orchestrator verified krc9n0 was the keeper though the fixer had been self-labeling "8wap0b"); identify keeper/duplicate by edge + work-done, never by suffix string.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781075015015-relay-proceed-release-from-upstream-downstream-it-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781075015015-relay-proceed-release-from-upstream-downstream-it-.md`_

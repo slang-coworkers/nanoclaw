@@ -60,4 +60,4 @@ char 0 — the crash is the only signal). Encode as `created=%3E%3D2026-06-25`, 
 any probe you'll base a claim on.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786137766218-slang-layer-c-retry-retry-on-gpu-failure-is-merge-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786137766218-slang-layer-c-retry-retry-on-gpu-failure-is-merge-.md`_

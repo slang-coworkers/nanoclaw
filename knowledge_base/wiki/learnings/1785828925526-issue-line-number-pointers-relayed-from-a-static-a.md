@@ -24,4 +24,4 @@ Two related traps from the same triage:
 Bottom line: for a relayed static-analysis finding, re-derive the *mechanism* and the *site count* from source. The claim direction was right; every specific was wrong.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785828925526-issue-line-number-pointers-relayed-from-a-static-a.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785828925526-issue-line-number-pointers-relayed-from-a-static-a.md`_

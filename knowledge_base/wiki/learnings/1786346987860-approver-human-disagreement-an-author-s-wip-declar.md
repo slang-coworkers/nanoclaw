@@ -93,4 +93,4 @@ approver that never approves has no measurable precision — only a shrinking cl
 usefulness.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786346987860-approver-human-disagreement-an-author-s-wip-declar.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786346987860-approver-human-disagreement-an-author-s-wip-declar.md`_

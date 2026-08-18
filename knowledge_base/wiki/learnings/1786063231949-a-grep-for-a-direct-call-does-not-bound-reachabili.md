@@ -43,4 +43,4 @@ if (context.baseExpr && !context.baseExpr->type.isLeftValue) {
 The `ForReal` guard wraps only the **diagnostic**; the `return false` verdict is unconditional. So "this check can fail in ForReal after passing in JustTrying" is false — the verdict is identical in both modes, only the reporting differs. Reading "mentions `ForReal`" as "behaves differently by mode" inverts the conclusion. Check whether the guard encloses the `return` or just the `diagnose`.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786063231949-a-grep-for-a-direct-call-does-not-bound-reachabili.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786063231949-a-grep-for-a-direct-call-does-not-bound-reachabili.md`_

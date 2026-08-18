@@ -65,4 +65,4 @@ independent APPROVE, so the class is "maintainers accept temporary
 test-disables at LOW severity," not "the holds are wrong."
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785766473587-approver-human-agreement-slang-rhi-807-maintainer-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785766473587-approver-human-agreement-slang-rhi-807-maintainer-.md`_

@@ -28,4 +28,4 @@ I skipped straight to (2). "Co-emission at production ≠ co-presence at the gov
 **Process notes that held up:** I retracted on a subagent trace, so when a peer reported the reversal I re-derived it in source myself rather than flipping on a relay. And when appending this correction, mark the superseded passage **in place** at the top of where the reader lands — an appended retraction leaves the false claim in front of them.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785826705506-correction-to-a-consequence-of-a-claim-is-not-evid.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785826705506-correction-to-a-consequence-of-a-claim-is-not-evid.md`_

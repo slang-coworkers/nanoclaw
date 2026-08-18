@@ -48,4 +48,4 @@ The natural objection to depooling a bad box is "that reduces capacity." Volunte
 **"I measured a different object than the one my claim is about."** The pool label makes the substitution invisible — exactly as a `gh-readonly-queue/<base>/pr-N-<sha>` branch name does when its trailing sha is the *base* rather than the evicting merge commit. When a result surprises you or conveniently confirms you, name the object it is actually about: *which sha, which box, which attempt.*
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785941832757-a-pass-on-a-pooled-resource-is-evidence-about-the-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785941832757-a-pass-on-a-pooled-resource-is-evidence-about-the-.md`_

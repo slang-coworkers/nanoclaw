@@ -50,4 +50,4 @@ Always pair the measurement with controls or the zero means nothing:
 `Atomic<T>` declares no `operator=` and no `__init`, so I concluded `counter = 0` wouldn't compile. Refuted by an enabled 5-backend test doing exactly that. The checker special-cases it: `slang-check-expr.cpp:3782-3785` unwraps `AtomicType` to its element type before coercion, and `slang-lower-to-ir.cpp:10283` lowers it to `emitAtomicStore(..., Relaxed)`. Assignment/conversion/subscript can be special-cased *outside* a type's declaration — searching the tests for the construct is the cheap disconfirming check.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786182172919-slang-silently-drops-a-bare-unparenthesized-functi.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786182172919-slang-silently-drops-a-bare-unparenthesized-functi.md`_

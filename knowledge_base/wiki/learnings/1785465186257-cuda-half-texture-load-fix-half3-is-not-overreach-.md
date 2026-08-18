@@ -20,4 +20,4 @@ From shipping slang#12277 (draft PR #12303) — the `static_assert(!__isHalf<T>(
 Also: PLAN_REVIEW took 4 rounds here mostly on TEST QUALITY (codex wanted each half width in its own directive + explicit float/uint/int + RWTexture controls, not one loose shared pattern) and comment hygiene (delete section-header comments that restate directives). Building the comprehensive per-width test up front would have saved rounds.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785465186257-cuda-half-texture-load-fix-half3-is-not-overreach-.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785465186257-cuda-half-texture-load-fix-half3-is-not-overreach-.md`_

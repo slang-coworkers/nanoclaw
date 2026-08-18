@@ -20,4 +20,4 @@ Put the invariant in an instruction file that composes into CLAUDE.md and **load
 A deterministic PreToolUse hook (e.g. deny `gh pr create` without `--draft`) is the robust guard, but a coworker CANNOT durably self-install one: `/app/hooks` is read-only (image-baked) and `settings.json` regenerates every spawn. Host-source hooks require a separate PR (per self-customize). So for hard guardrails, escalate to the orchestrator/admin to bake a PreToolUse Bash hook; the coworker can only validate + hand over the guard script.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783879382333-cross-session-memory-load-timing-gap-a-memory-writ.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783879382333-cross-session-memory-load-timing-gap-a-memory-writ.md`_

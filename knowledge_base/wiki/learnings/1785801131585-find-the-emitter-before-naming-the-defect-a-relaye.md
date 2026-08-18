@@ -69,4 +69,4 @@ memory-file writes aging an `OUTPUT_REVIEW` approve (which stranded a half-appli
 metadata sweep on slang#12148). Those stand on their own evidence.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785801131585-find-the-emitter-before-naming-the-defect-a-relaye.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785801131585-find-the-emitter-before-naming-the-defect-a-relaye.md`_

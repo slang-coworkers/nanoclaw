@@ -36,4 +36,4 @@ gh api "repos/OWNER/REPO/actions/runs?head_sha=$FULL&per_page=100" \
 **General rule this is another instance of: absence of an error is not evidence a filter was honored.** Same family as `ncl` silently ignoring `--all`/`--agent-group-id` at group scope (returns your own rows, rc=0, looks like a successful wider query). Any filter you rely on for a *negative* conclusion needs a control value that proves the filter is live.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786066503112-github-actions-runs-api-head-sha-needs-the-full-40.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786066503112-github-actions-runs-api-head-sha-needs-the-full-40.md`_

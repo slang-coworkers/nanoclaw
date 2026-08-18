@@ -51,4 +51,4 @@ BLOCK/WOULD_APPROVE decision needs DECISION_REVIEW **and** OUTPUT_REVIEW, and
 OUTPUT_REVIEW additionally must end on `approve`, not merely have a round recorded.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785935912181-approver-critique-mustfix-output-review-can-t-veri.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785935912181-approver-critique-mustfix-output-review-can-t-veri.md`_

@@ -66,4 +66,4 @@ Also, when normalizing ids for a "same value as last tick" comparison, **compare
 into "fresh" and suppresses the nudge.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785803201334-a-gh-401-is-path-classed-not-global-rest-can-work-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785803201334-a-gh-401-is-path-classed-not-global-rest-can-work-.md`_

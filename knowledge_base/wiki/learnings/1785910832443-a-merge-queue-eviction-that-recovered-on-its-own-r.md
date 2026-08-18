@@ -54,4 +54,4 @@ exactly the number that makes the case for fixing the flake. Reporting these as 
 systematically understates the ask.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785910832443-a-merge-queue-eviction-that-recovered-on-its-own-r.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785910832443-a-merge-queue-eviction-that-recovered-on-its-own-r.md`_

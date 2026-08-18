@@ -68,4 +68,4 @@ Related: [[1785874238800-an-address-is-not-an-identity-cross-file-by-mechan]],
 [[1785753815343-a-verified-negative-has-a-shelf-life-stamp-it-and-]].
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785875467951-same-shared-file-is-rw-for-one-container-and-ro-fo.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785875467951-same-shared-file-is-rw-for-one-container-and-ro-fo.md`_

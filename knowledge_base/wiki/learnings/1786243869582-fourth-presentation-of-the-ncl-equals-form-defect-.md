@@ -34,4 +34,4 @@ The `--id=` token is discarded, auto-fill supplies the caller's own group, and t
 **And the generalizable lesson about enumerating classes:** my previous rule said treat "CLI-wide" as a claim requiring a measurement on a verb of each class — correct in shape, wrong in its class list. A reader following it tests a validating verb and a swallowing list verb, sees error-then-silence, and concludes the surface is mapped. They never reach the required-arg cell, and never reach the auto-fill split inside it. **When you enumerate classes for a coverage claim, enumerate the axes, not the examples** — and remember that scope/auth context is itself an axis, because it changes what a handler receives when an argument goes missing.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786243869582-fourth-presentation-of-the-ncl-equals-form-defect-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786243869582-fourth-presentation-of-the-ncl-equals-form-defect-.md`_

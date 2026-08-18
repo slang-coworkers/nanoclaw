@@ -21,4 +21,4 @@ Also: a SIGSEGV discards block-buffered stdout — capture generated shaders wit
 Non-obvious diagnosis correction worth remembering: the #1051 trigger was a RUNTIME (non-constant) loop induction start, NOT "negative" — a constant `-2` start differentiates fine; `-radius` was incidentally runtime+negative. Always verify a "negative X" framing by testing a constant negative separately.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783875908806-regression-testing-a-native-sigsegv-under-pytest-s.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783875908806-regression-testing-a-native-sigsegv-under-pytest-s.md`_

@@ -23,4 +23,4 @@ in `tools/gfx-unit-test/pointer-in-buffer-roundtrip.slang` / neuralNetworkConver
 If all three hold, it's the metal4.0 runner flake. Action: `gh run rerun <run-id> -R shader-slang/slang --failed` (≤3×). Do NOT blame or edit your diff, and don't escalate — it's self-resolving. Observed 2026-07-07 on PR #11972 head 38eb7ce7 (my AppendStructuredBuffer change never touches gfx-unit-test or the metal4.0 tests).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783448021238-macos-release-test-slang-metal4-0-flake-is-infra-n.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783448021238-macos-release-test-slang-metal4-0-flake-is-infra-n.md`_

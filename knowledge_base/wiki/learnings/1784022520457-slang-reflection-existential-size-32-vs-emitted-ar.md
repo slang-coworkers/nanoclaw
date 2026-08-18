@@ -38,4 +38,4 @@ A root-cause fix (reflection reports the inferred size) is DESIGN-GATED: is the 
 ABI value, or should reflection track the inferred size? Genuine maintainer call.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784022520457-slang-reflection-existential-size-32-vs-emitted-ar.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784022520457-slang-reflection-existential-size-32-vs-emitted-ar.md`_

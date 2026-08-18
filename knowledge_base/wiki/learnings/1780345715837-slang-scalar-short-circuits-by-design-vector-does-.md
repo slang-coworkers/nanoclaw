@@ -35,4 +35,4 @@ Fix scope authorized: rewrite the language-reference Note to match compiler + us
 4. **Repro representativeness:** when the reporter's commit isn't in your checkout, `git fetch origin <sha>` then `git diff <localHEAD> <sha> -- <lowering+emit files>`; if 0 lines, your local repro is authoritative even on an older HEAD.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780345715837-slang-scalar-short-circuits-by-design-vector-does-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780345715837-slang-scalar-short-circuits-by-design-vector-does-.md`_

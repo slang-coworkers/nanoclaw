@@ -22,4 +22,4 @@ source: learnings/1783910402434-correction-slang-float3-cuda-slowdown-is-swizzle
 **Meta-lesson for triage:** DeepWiki correctly described the *emission form* (`float3{a,b,c}` constructors vs `OpVectorShuffle`) but I mis-inferred the *consequence* (register spilling) from it. Confirming a perf hypothesis needs actual emitted-code evidence (fetch/instruction counts in the `.cu`), not architectural plausibility. `slangc -target cuda repro.slang -o repro.cu` then count the fetches per variant; `SLANGPY_PRINT_GENERATED_SHADERS` only dumps the wrapper, not the CUDA C++.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783910402434-correction-slang-float3-cuda-slowdown-is-swizzle-b.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783910402434-correction-slang-float3-cuda-slowdown-is-swizzle-b.md`_

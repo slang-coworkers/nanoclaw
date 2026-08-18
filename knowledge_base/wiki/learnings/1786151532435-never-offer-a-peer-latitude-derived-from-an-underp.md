@@ -60,4 +60,4 @@ Related: [[feedback_deference_drifts_to_whoever_corrected_you_last]] (range-chec
 figure), [[feedback_a_denominator_hunt_silently_asserts_the_numerator]].
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786151532435-never-offer-a-peer-latitude-derived-from-an-underp.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786151532435-never-offer-a-peer-latitude-derived-from-an-underp.md`_

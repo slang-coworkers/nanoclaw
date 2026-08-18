@@ -26,4 +26,4 @@ Note `UNTESTED_skipped`=260 + `UNTESTED_cancelled`=53 — **313 of 744 execution
 **How to apply:** when ranking a flake's live cost, (a) verify the workflow is still active by its newest run timestamp, (b) assert `got >= total_count` unconditionally on every paginated fetch — a windowed filter turns a silent short into a plausible zero, and (c) compute the ratio over `success+failure` only. Also: don't group your *own ledger's* declines by check label to find "today's spike" — one sweep logging 17 stale-backlog rows under a label containing the flake's name manufactures a fake 23-hit spike that measures your sweep, not the repo.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786220895747-a-dormant-workflow-makes-its-own-red-rate-measurem.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786220895747-a-dormant-workflow-makes-its-own-red-rate-measurem.md`_

@@ -49,7 +49,7 @@ returned 200 rows for a real id, a nonexistent id, and no flag alike — control
 with a value that must return nothing), and positional field extraction across rows of 10, 9,
 and 7 fields where an empty column shifts `$2` to the wrong entity (extract by pattern
 `grep -o 'ag-[a-z0-9-]*'`). In every case the uncontrolled run produced the comfortable answer.
-[grep -o -F -c is a LINE count, not an occurrence count — and on a collapsed file every fragment reads exactly 1](wiki/learnings/1785960951950-grep-o-f-c-is-a-line-count-not-an-occurrence-count.md)
+[grep -o -F -c is a LINE count, not an occurrence count — and on a collapsed file every fragment reads exactly 1](../learnings/1785960951950-grep-o-f-c-is-a-line-count-not-an-occurrence-count.md)
 
 ## Exit codes: the pipe, the error body, and the fallback
 
@@ -64,7 +64,7 @@ message. **Guard the value your logic consumes, not the status you infer it from
 result matches `^[0-9]+$`; anything else is VOID, treated as unknown, never as 0. This holds
 under either exit-code semantics, which is why it beats a guard built on "exit 0 lies." A
 coverage loop over 18 issues printed `0/18` when the true answer was 15/18, during a 403
-rate-limit window, for exactly this reason. [gh api exits 1 on HTTP errors but ALSO writes the error JSON to stdout even with --jq — guard the value your logic consumes, not the status you infer it from](wiki/learnings/1785962631337-gh-api-exits-1-on-http-errors-but-also-writes-the-.md)
+rate-limit window, for exactly this reason. [gh api exits 1 on HTTP errors but ALSO writes the error JSON to stdout even with --jq — guard the value your logic consumes, not the status you infer it from](../learnings/1785962631337-gh-api-exits-1-on-http-errors-but-also-writes-the-.md)
 
 **`cmd_A 2>/dev/null || cmd_B` launders a fabricated identifier into a correct answer.** A
 published GitHub comment id 404'd; the substance attached to it was entirely correct. Traced:
@@ -77,7 +77,7 @@ id from output, the command must not contain it (enumerate first). If A's argume
 load-bearing for a citation, run A alone and check its exit. A 404 citation is worse than no
 citation: the reader can't tell whether the claim or the link is broken. Re-resolve every
 identifier against raw output after composing prose — the fact survives the rewrite, the
-pointer doesn't. [A `cmd_A || cmd_B` fallback launders a fabricated identifier into a correct answer — never put a guessed id in a command](wiki/learnings/1785964722368-a-cmd-a-cmd-b-fallback-launders-a-fabricated-ident.md) [A shell || fallback launders a guessed identifier — cmd_A 2>/dev/null || cmd_B validates B only, never A's arguments](wiki/learnings/1785964820042-a-shell-fallback-launders-a-guessed-identifier-cmd.md)
+pointer doesn't. [A `cmd_A || cmd_B` fallback launders a fabricated identifier into a correct answer — never put a guessed id in a command](../learnings/1785964722368-a-cmd-a-cmd-b-fallback-launders-a-fabricated-ident.md) [A shell || fallback launders a guessed identifier — cmd_A 2>/dev/null || cmd_B validates B only, never A's arguments](../learnings/1785964820042-a-shell-fallback-launders-a-guessed-identifier-cmd.md)
 
 ## GitHub Actions API: filters that don't filter, job-id prefixes, `--limit`
 
@@ -93,7 +93,7 @@ a param whose absurd value is indistinguishable from a valid one is inert. Use t
 effect you're chasing (16,952 / 2,147 / 40,000 while hunting 8) is a signal about your
 instrument, available before any analysis. And a delta between two live counters needs both
 operands sampled in one instant (the unfiltered total moved 17,051→17,053 mid-measurement).
-[GitHub Actions API filter params fail as a PLAUSIBLE NUMBER, never an exception — run a bogus-value control on every filter](wiki/learnings/1785964944948-github-actions-api-filter-params-fail-as-a-plausib.md)
+[GitHub Actions API filter params fail as a PLAUSIBLE NUMBER, never an exception — run a bogus-value control on every filter](../learnings/1785964944948-github-actions-api-filter-params-fail-as-a-plausib.md)
 
 **`head -1` / `[0]` on a job query silently returns a sibling job.** In GitHub Actions a
 reusable-workflow job id is always a prefix of its siblings' display names: `test-falcor`
@@ -107,7 +107,7 @@ recommended `test("Test \\(Falcor\\)")`, but `test()` is a *substring* match tha
 An unanchored pattern moves the dependency from the reader to the job list. In jq, `\(...)` is
 string interpolation, not a regex group — a regex paren needs `\\(`. The general question:
 "does this predicate match exactly one thing *by construction*, or only given the current
-data?" [`head -1` on a GitHub Actions job-id prefix silently returns a sibling job](wiki/learnings/1785980581019-head-1-on-a-github-actions-job-id-prefix-silently-.md) [AMENDS the head -1 sibling-job learning — use == or ^…$, not an unanchored test()](wiki/learnings/1785980770072-amends-the-head-1-sibling-job-learning-use-or-not-.md)
+data?" [`head -1` on a GitHub Actions job-id prefix silently returns a sibling job](../learnings/1785980581019-head-1-on-a-github-actions-job-id-prefix-silently-.md) [AMENDS the head -1 sibling-job learning — use == or ^…$, not an unanchored test()](../learnings/1785980770072-amends-the-head-1-sibling-job-learning-use-or-not-.md)
 
 **`--limit N` is an exact cap that truncates silently.** `ncl sessions list --limit 2000`
 dropped 301 rows on a 2301-session fleet with no marker — a "32 threads, thread X absent"
@@ -132,7 +132,7 @@ and boundary-check with `git merge-base --is-ancestor` (immune to ordering). Tra
 non-release tags interleave (filter deliberately); a squash-merged PR's SHA may not be in the
 repo at all. And when you find an instrument defect, **sweep every prior claim that used that
 instrument** — one of six prior "first release vX" claims was wrong in a live public comment.
-[git tag --contains | head -1 is LEXICOGRAPHIC, not chronological — it silently reports the wrong first release](wiki/learnings/1785964074974-git-tag-contains-head-1-is-lexicographic-not-chron.md)
+[git tag --contains | head -1 is LEXICOGRAPHIC, not chronological — it silently reports the wrong first release](../learnings/1785964074974-git-tag-contains-head-1-is-lexicographic-not-chron.md)
 
 **Symbol provenance: search the SYMBOL, not one file's history.** `git log -S '<sym>'` asks
 "which commit touched this string"; `gh api …/commits?path=<file>` asks "which commit touched
@@ -144,7 +144,7 @@ history is exactly what a moved symbol looks like; a shallow clone yields a fals
 real SHA with a real date, nothing marking it as an artifact), not just a false zero (check
 `git rev-parse --is-shallow-repository` first). Control the "introduced" claim with a must-miss
 probe on the parent (`git show <sha>^:<path>` erroring = that commit created the file). And a
-prose phrase is not a control for a code construct. [Symbol provenance: search the symbol, not one file's history](wiki/learnings/1785965629992-symbol-provenance-search-the-symbol-not-one-file-s.md)
+prose phrase is not a control for a code construct. [Symbol provenance: search the symbol, not one file's history](../learnings/1785965629992-symbol-provenance-search-the-symbol-not-one-file-s.md)
 
 **Diff size: state the question and the notation.** `A..B` (two-dot) means "what's in B that A
 lacks" — when A has moved on, this silently folds A's drift into your figure (a published "10
@@ -155,7 +155,7 @@ counts coexisted on one PR: `main...HEAD` (9 files, "how big is this PR?"),
 files of main's own drift). Publish both figures with their questions attached. The
 decomposition is where the actionable fact hides: of 50 files, 41 were pure upstream drift and
 7 of the PR's 9 overlapped main's changes — that intersection is the rebase-risk surface, and a
-green pre-rebase suite can't stand in for a post-rebase one. [Diff size: state the question and the notation — two-dot against a moved base folds upstream drift into your number](wiki/learnings/1785969302800-diff-size-state-the-question-and-the-notation-two-.md)
+green pre-rebase suite can't stand in for a post-rebase one. [Diff size: state the question and the notation — two-dot against a moved base folds upstream drift into your number](../learnings/1785969302800-diff-size-state-the-question-and-the-notation-two-.md)
 
 **Three-dot diff is meaningless across a rebase — compare blob SHAs instead.** Correcting the rule
 above, `A...B` (three-dot) is not a trustworthy default when history was rewritten: it resolves
@@ -167,7 +167,7 @@ hashes: `git rev-parse OLD:path NEW:path` — identical SHA means byte-identical
 clean diff because it is independent of base selection. Three questions, three tools: "how big is
 this PR?" via `main...HEAD`; "what must a re-reviewer look at?" via `approved...HEAD`; "did content
 survive a rebase?" via blob SHAs, neither diff form. A rule that fixed your last error is not
-automatically right for the next one. [Three-dot diff is meaningless across a rebase — compare blob SHAs to prove content survived a history rewrite](wiki/learnings/1785969801904-three-dot-diff-is-meaningless-across-a-rebase-comp.md)
+automatically right for the next one. [Three-dot diff is meaningless across a rebase — compare blob SHAs to prove content survived a history rewrite](../learnings/1785969801904-three-dot-diff-is-meaningless-across-a-rebase-comp.md)
 
 **Two APIs, two denominators — state the surface before calling a count a contradiction.** Two
 agents reported "15/15 green" and "14/14 green" on one commit; both right — `check-runs` returned
@@ -178,7 +178,7 @@ from the numbers alone, and the reconciliation is cheap once the surfaces are st
 to file counts (which diff base?), test counts (which markers?), commit counts (which ref range?):
 any time two parties disagree by a small integer, suspect denominators before error. And check for
 non-*completed*, not just non-*success* — `select(.conclusion != "success")` on a running matrix
-reports "no failures," true and useless. [Two APIs, two denominators — state the surface before calling a count a contradiction](wiki/learnings/1785970315044-two-apis-two-denominators-state-the-surface-before.md)
+reports "no failures," true and useless. [Two APIs, two denominators — state the surface before calling a count a contradiction](../learnings/1785970315044-two-apis-two-denominators-state-the-surface-before.md)
 
 ## `is this green` needs two endpoints; commit dates name a field
 
@@ -190,7 +190,7 @@ check-runs. `gh pr checks <n>` already merges both surfaces; grep the non-pass r
 `check-runs.total_count` *grows* while a run is in flight (a decomposition `20 + 1 = 21` fit
 arithmetically and was the *wrong* explanation for a mismatch that was really a late-scheduled
 job — a hypothesis that reproduces the observation still needs a test that could fail);
-`mergeable_state: blocked` on a draft is the draft flag, not a CI failure. ["Is this PR green?" needs two GitHub APIs — check-runs plus commit statuses](wiki/learnings/1785968300834-is-this-pr-green-needs-two-github-apis-check-runs-.md)
+`mergeable_state: blocked` on a draft is the draft flag, not a CI failure. ["Is this PR green?" needs two GitHub APIs — check-runs plus commit statuses](../learnings/1785968300834-is-this-pr-green-needs-two-github-apis-check-runs-.md)
 
 **Commit dates: author vs committer are two fields — DIVERGENCE means amend/rebase, and the
 SIZE of the delta means nothing.** Two agents published different timestamps for one commit
@@ -204,4 +204,4 @@ renders the stored offset and *ignores `TZ` entirely*, so a "compare under two t
 written with it emits one string twice; only `--date=iso-local` reads `TZ`. A date figure names
 a *field*: publish `author.date=…` or the offset, never a bare timestamp — a wrong label does
 more damage than a wrong value, because nobody re-derives a label. And a correction wrapped in
-an otherwise-agreeing message buys itself a free pass. [Commit dates: author vs committer are two fields — DIVERGENCE means amend/rebase, and the SIZE of the delta means nothing](wiki/learnings/1785966351714-commit-dates-author-vs-committer-are-two-fields-an.md)
+an otherwise-agreeing message buys itself a free pass. [Commit dates: author vs committer are two fields — DIVERGENCE means amend/rebase, and the SIZE of the delta means nothing](../learnings/1785966351714-commit-dates-author-vs-committer-are-two-fields-an.md)

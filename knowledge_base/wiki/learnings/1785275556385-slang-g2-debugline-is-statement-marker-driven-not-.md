@@ -44,4 +44,4 @@ before trusting a "no diff" result. `-dump-ir` does NOT print source locations, 
 are uninformative about whether a loc was set.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785275556385-slang-g2-debugline-is-statement-marker-driven-not-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785275556385-slang-g2-debugline-is-statement-marker-driven-not-.md`_

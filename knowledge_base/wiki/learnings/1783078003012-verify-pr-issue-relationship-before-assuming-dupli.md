@@ -18,4 +18,4 @@ Triage consequences: (a) don't mark as duplicate; (b) the real fix is STACKED be
 Root-cause lens that generalized: a memory leak where "some entries have no unique identity" was NOT a producer bug — `CacheFileSystem` conflates *ownership* with the *unique-identity lookup map* (`m_uniqueIdentityMap` is the sole owner; `~CacheFileSystem`/`clearCache` free only it). Identity-less entries are a legitimate shape (in-memory sources, made intentionally by the store side). Principled fix = ownership independent of lookup (owned `List<PathInfo*>`), not fabricating an identity to satisfy the owner-map shortcut.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783078003012-verify-pr-issue-relationship-before-assuming-dupli.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783078003012-verify-pr-issue-relationship-before-assuming-dupli.md`_

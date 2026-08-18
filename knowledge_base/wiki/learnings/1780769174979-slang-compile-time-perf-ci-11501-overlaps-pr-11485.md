@@ -29,4 +29,4 @@ source: learnings/1780769174979-slang-compile-time-perf-ci-11501-overlaps-pr-114
 **Outcome:** Held awaiting maintainer A/B/C decision (fold / separate / sequence-after-merge) posted as a checklist on #11501. No code change; no PR.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769174979-slang-compile-time-perf-ci-11501-overlaps-pr-11485.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780769174979-slang-compile-time-perf-ci-11501-overlaps-pr-11485.md`_

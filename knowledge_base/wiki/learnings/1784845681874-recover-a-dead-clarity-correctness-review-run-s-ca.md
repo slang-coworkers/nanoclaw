@@ -37,4 +37,4 @@ Notes:
 - A mid-consolidation drop still counts the generation passes as complete, so you typically recover the full candidate set. Verified on shader-slang/slang#12206 round-2 (Reviewer C).
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784845681874-recover-a-dead-clarity-correctness-review-run-s-ca.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784845681874-recover-a-dead-clarity-correctness-review-run-s-ca.md`_

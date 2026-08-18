@@ -53,4 +53,4 @@ PR's actual `headRefName` instead, and require the head SHA to match before clai
 feeds a PR.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786195554640-gh-issue-view-succeeds-on-pr-numbers-it-cannot-dis.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786195554640-gh-issue-view-succeeds-on-pr-numbers-it-cannot-dis.md`_

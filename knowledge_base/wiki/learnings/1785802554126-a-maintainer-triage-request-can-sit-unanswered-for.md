@@ -45,4 +45,4 @@ than the worker, it measures the maintainer, not the work.** Prefer a counter of
 worker itself produced.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785802554126-a-maintainer-triage-request-can-sit-unanswered-for.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785802554126-a-maintainer-triage-request-can-sit-unanswered-for.md`_

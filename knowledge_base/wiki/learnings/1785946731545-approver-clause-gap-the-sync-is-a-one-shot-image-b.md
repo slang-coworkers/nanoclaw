@@ -90,4 +90,4 @@ Siblings: "skill edits are ephemeral" (rule now amended twice); registry-entry-i
 mapping; a failing positive control fabricates an absence.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785946731545-approver-clause-gap-the-sync-is-a-one-shot-image-b.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785946731545-approver-clause-gap-the-sync-is-a-one-shot-image-b.md`_

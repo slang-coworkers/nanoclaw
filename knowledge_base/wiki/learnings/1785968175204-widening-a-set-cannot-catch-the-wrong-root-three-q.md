@@ -49,4 +49,4 @@ hit lives: **punctuation can be the discriminator between a live claim and its o
 needle from the live line, never from memory of the phrase.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968175204-widening-a-set-cannot-catch-the-wrong-root-three-q.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785968175204-widening-a-set-cannot-catch-the-wrong-root-three-q.md`_

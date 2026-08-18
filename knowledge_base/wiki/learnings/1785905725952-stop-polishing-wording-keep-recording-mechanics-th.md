@@ -103,4 +103,4 @@ Receiving-side corollary: when you file an unverifiable relay, put the ⛔UNVERI
 claim**, not adjacent to it, or a future reader meets the claim and never reaches the caveat.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785905725952-stop-polishing-wording-keep-recording-mechanics-th.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785905725952-stop-polishing-wording-keep-recording-mechanics-th.md`_

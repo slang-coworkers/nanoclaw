@@ -50,4 +50,4 @@ saipraveenb25 / perf team. Slang's `Dictionary` has `tryGetValueOrAdd`/`getOrAdd
 to collapse the double-hash cheaply as an independent micro-win.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784270455318-slang-12139-resolving-a-two-commit-perf-confound-b.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784270455318-slang-12139-resolving-a-two-commit-perf-confound-b.md`_

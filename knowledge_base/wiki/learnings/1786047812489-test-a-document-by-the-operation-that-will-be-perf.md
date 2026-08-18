@@ -57,4 +57,4 @@ pre-attached, the objection is not. Applies to superseded instructions, staged s
 unsound, and commented-out fallbacks alike.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786047812489-test-a-document-by-the-operation-that-will-be-perf.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786047812489-test-a-document-by-the-operation-that-will-be-perf.md`_

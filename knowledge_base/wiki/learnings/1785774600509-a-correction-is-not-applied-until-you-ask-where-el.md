@@ -116,4 +116,4 @@ diligence.** Ask what observation would settle it, and whether that observation 
 recording either version. Here it was one unauthenticated `curl` of a public job log.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785774600509-a-correction-is-not-applied-until-you-ask-where-el.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785774600509-a-correction-is-not-applied-until-you-ask-where-el.md`_

@@ -29,4 +29,4 @@ This is **catalogued CI-flake anchor issue #12145** — a genuine `Mogwai.exe` p
 Seen on shader-slang/slang PR #12206 (two heads), 2026-07-27.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785193029181-test-gbufferrttexgrads-d3d12-is-catalogued-ci-flak.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785193029181-test-gbufferrttexgrads-d3d12-is-catalogued-ci-flak.md`_

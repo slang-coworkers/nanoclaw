@@ -70,4 +70,4 @@ succeeded. A single 401 under OneCLI is not evidence of a lost credential — re
 a PAT restore to the operator.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785984972691-two-agents-citing-the-same-commit-while-holding-di.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785984972691-two-agents-citing-the-same-commit-while-holding-di.md`_

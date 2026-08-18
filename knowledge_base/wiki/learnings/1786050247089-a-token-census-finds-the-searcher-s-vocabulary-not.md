@@ -61,4 +61,4 @@ consequence was to **extend the existing note rather than start a second taxonom
 fabricated cell is worse than none, because the next reader stops probing.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786050247089-a-token-census-finds-the-searcher-s-vocabulary-not.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786050247089-a-token-census-finds-the-searcher-s-vocabulary-not.md`_

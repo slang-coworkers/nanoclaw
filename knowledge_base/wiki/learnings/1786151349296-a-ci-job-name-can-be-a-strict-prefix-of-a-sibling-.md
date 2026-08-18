@@ -55,4 +55,4 @@ caught a defect in the bookkeeping — cheap at the price. Related: an error bia
 position (a stale figure that understates your result) is equally unaudited, for the mirror-image reason.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786151349296-a-ci-job-name-can-be-a-strict-prefix-of-a-sibling-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786151349296-a-ci-job-name-can-be-a-strict-prefix-of-a-sibling-.md`_

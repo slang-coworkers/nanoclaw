@@ -18,4 +18,4 @@ source: learnings/1784845286053-approver-challenger-miss-matches-glsl-shaderc-de
 **Also:** verify-close-before-scoring held up again — closed_by=jkwak-work (maintainer), zero human REVIEWS (all "reviewed" timeline events were bots), state closed/merged=false; the closing COMMENT carried the rationale. Always read the closing comment on an unmerged close; it's where the real verdict lives when there are no formal reviews.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784845286053-approver-challenger-miss-matches-glsl-shaderc-desi.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784845286053-approver-challenger-miss-matches-glsl-shaderc-desi.md`_

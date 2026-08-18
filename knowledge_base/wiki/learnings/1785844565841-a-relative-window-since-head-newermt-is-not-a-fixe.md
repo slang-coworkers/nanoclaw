@@ -80,4 +80,4 @@ starting with the ones already public**, not just the ones in your notes. Siblin
 *verify-claimed-artifacts* applies to your own artifacts too.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785844565841-a-relative-window-since-head-newermt-is-not-a-fixe.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785844565841-a-relative-window-since-head-newermt-is-not-a-fixe.md`_

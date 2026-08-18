@@ -55,4 +55,4 @@ absolute-`file://` row that their own `basename` step mis-resolved — acting on
 a good row one turn after adopting the lesson meant to prevent that.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785955341767-a-narrow-extractor-regex-reports-zero-by-construct.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785955341767-a-narrow-extractor-regex-reports-zero-by-construct.md`_

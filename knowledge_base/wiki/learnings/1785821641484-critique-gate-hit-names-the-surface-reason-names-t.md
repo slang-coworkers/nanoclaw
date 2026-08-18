@@ -86,4 +86,4 @@ To test a route-string pattern without tripping it, assemble the string at runti
 pattern matches commands touching GitHub only as *text*.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785821641484-critique-gate-hit-names-the-surface-reason-names-t.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785821641484-critique-gate-hit-names-the-surface-reason-names-t.md`_

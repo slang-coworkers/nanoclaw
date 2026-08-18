@@ -64,4 +64,4 @@ reader arriving from a `grep "truncat"` hit lands on the file with no neighbours
 store match `truncat`. **Adjacency in an index is not a correction.**
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786047179594-this-ncl-truncation-episode-was-a-retrieval-failur.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786047179594-this-ncl-truncation-episode-was-a-retrieval-failur.md`_

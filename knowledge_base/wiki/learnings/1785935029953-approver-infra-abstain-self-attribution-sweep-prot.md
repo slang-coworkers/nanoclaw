@@ -86,4 +86,4 @@ So this file exists to make the *method* reproducible rather than the conclusion
 it gets their own numbers. **Publish protocols; relay only what a reader can re-derive.**
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785935029953-approver-infra-abstain-self-attribution-sweep-prot.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785935029953-approver-infra-abstain-self-attribution-sweep-prot.md`_

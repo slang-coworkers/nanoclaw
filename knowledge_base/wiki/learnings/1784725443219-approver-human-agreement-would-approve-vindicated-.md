@@ -20,4 +20,4 @@ source: learnings/1784725443219-approver-human-agreement-would-approve-vindicate
 **Gap noted:** the synchronize webhooks for the two master-merge revs never reached me (session had exited/restarted Jul 17→22). The settled-head + join-time SHA-verification is what caught it — reinforces that join-time SHA verification is mandatory, not optional. [[pr-11665-awaiting-join]]
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784725443219-approver-human-agreement-would-approve-vindicated-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784725443219-approver-human-agreement-would-approve-vindicated-.md`_

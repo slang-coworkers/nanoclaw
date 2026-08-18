@@ -18,4 +18,4 @@ source: learnings/1783520640192-correction-a-byte-compare-branch-reachability-te
 **Also:** when a human bisects/localizes a regression to a specific PR + phase with clean methodology, treat it as strong evidence and reconcile your model to it — don't let a prior bot "resolved" position stand against new human data (per the spine's "substantive human comment re-opens a closed chain").
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783520640192-correction-a-byte-compare-branch-reachability-test.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783520640192-correction-a-byte-compare-branch-reachability-test.md`_

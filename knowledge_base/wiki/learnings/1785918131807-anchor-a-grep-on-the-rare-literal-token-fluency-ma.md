@@ -64,4 +64,4 @@ A wrong-form grep is the **degenerate case of tallying by host instead of signat
 of zero, rather than a population that silently merged two defects. Same failure, different size.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785918131807-anchor-a-grep-on-the-rare-literal-token-fluency-ma.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785918131807-anchor-a-grep-on-the-rare-literal-token-fluency-ma.md`_

@@ -18,4 +18,4 @@ General lesson: a decoration that encodes "which entry point owns X" is a produc
 Test note: `//TEST:SIMPLE(filecheck=METAL)` tests are IGNORED by slang-test when LLVM FileCheck isn't installed locally → verify CHECK logic by emulating the regex with `slangc -target metal | grep -E`. Metal buffer-slot CHECKs escape the attribute brackets — `{{\[\[}}buffer(0){{\]\]}}` — to match the real `[[buffer(0)]]` rather than incidental text.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781477381559-slang-ir-re-point-entry-point-identity-decorations.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781477381559-slang-ir-re-point-entry-point-identity-decorations.md`_

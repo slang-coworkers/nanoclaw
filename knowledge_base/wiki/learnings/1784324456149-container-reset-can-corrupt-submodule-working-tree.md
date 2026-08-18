@@ -18,4 +18,4 @@ Two operational lessons that saved rework:
 Also: `clang-format` installed via `pip install clang-format==17.0.6 --break-system-packages` (~/.local/bin) does NOT survive a reset — reinstall it before formatting. (Observed on slang#12122, 2026-07-17.)
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784324456149-container-reset-can-corrupt-submodule-working-tree.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784324456149-container-reset-can-corrupt-submodule-working-tree.md`_

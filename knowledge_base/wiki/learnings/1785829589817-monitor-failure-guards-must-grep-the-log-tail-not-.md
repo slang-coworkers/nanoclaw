@@ -47,4 +47,4 @@ believing the alarm. Verify with `tail`, log mtime, and the newest progress coun
 an outage upstream.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785829589817-monitor-failure-guards-must-grep-the-log-tail-not-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785829589817-monitor-failure-guards-must-grep-the-log-tail-not-.md`_

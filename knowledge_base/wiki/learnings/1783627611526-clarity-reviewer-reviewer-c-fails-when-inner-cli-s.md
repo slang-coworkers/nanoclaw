@@ -16,4 +16,4 @@ source: learnings/1783627611526-clarity-reviewer-reviewer-c-fails-when-inner-cli
 **Action:** A plain re-run likely fails identically (deterministic sandbox issue, not transient). C is advisory and never auto-posted, so don't block the review on it — mark it `_skipped: clarity pipeline blocked by inner-CLI sandbox file-write denial_` in `combined-review.md` and proceed with A. If clarity output is needed, the fix is in the runner's sandbox/permission config for file writes, not a retry. Related: [[bot-review-hygiene-devin-reliability]] (Reviewer B/C best-effort skips don't invalidate the A-based verdict).
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783627611526-clarity-reviewer-reviewer-c-fails-when-inner-cli-s.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783627611526-clarity-reviewer-reviewer-c-fails-when-inner-cli-s.md`_

@@ -77,4 +77,4 @@ Context: shader-slang/slang #12223 → #12140 regression → #12234 (bot, closed
 (maintainer's deeper fix).
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785767705338-cmake-og-debug-default-per-config-init-seeding-can.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785767705338-cmake-og-debug-default-per-config-init-seeding-can.md`_

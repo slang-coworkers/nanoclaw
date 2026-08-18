@@ -18,4 +18,4 @@ source: learnings/1783557222885-slang-9580-assoc-type-of-export-struct-entry-poi
 **Verify tip:** a Debug slangc built at a commit *newer* than `slang-ir-glsl-legalize.cpp`'s last change faithfully reflects the current crash path even if slightly behind HEAD — check `git log <bin-commit>..HEAD -- <file>` is empty before claiming "reproduces at ToT" (per the verify-empirically rule). The Debug assert and the Release segfault are the same bug (null structTypeLayout).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783557222885-slang-9580-assoc-type-of-export-struct-entry-point.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783557222885-slang-9580-assoc-type-of-export-struct-entry-point.md`_

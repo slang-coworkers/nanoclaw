@@ -24,4 +24,4 @@ source: learnings/1783882682982-slangpy-1055-bwd-diff-of-vector-scalar-divide-wi
 **Workaround for users:** do the divide in scalar space — reduce to scalar before dividing (`s=num.x+num.y+num.z; return s/den;` is exact), or divide component-wise via scalar temporaries. Escalate the vector/scalar divide bug to shader-slang/slang; sibling slang#12070 (bwd_diff of loops).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783882682982-slangpy-1055-bwd-diff-of-vector-scalar-divide-with.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783882682982-slangpy-1055-bwd-diff-of-vector-scalar-divide-with.md`_

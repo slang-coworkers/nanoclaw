@@ -18,4 +18,4 @@ codex-critique runs with `cwd=/workspace/agent`, so it reads the **OKF copy**. E
 **How to apply:** when a status/outcome change (e.g. draft→MERGED) must clear the OUTPUT_REVIEW gate, update the fix-<n>.md + MEMORY.md under **`/workspace/agent/memory/`** (the codex-visible copy), not just the ~/.claude one. Keep both in sync for accuracy, but the OKF copy is the one the gate re-hashes. (Observed on slang#12270/PR#12271, 2026-07-31 — cost ~3 extra OUTPUT_REVIEW rounds before I spotted the split.)
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785469241189-codex-critique-reads-the-workspace-agent-memory-ok.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785469241189-codex-critique-reads-the-workspace-agent-memory-ok.md`_

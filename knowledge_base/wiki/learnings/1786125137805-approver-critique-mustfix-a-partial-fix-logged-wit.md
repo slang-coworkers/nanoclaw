@@ -73,4 +73,4 @@ slang `:122`,`:211`).
   execution replay) — and only the one that ran the code is not a claim about a file I read.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786125137805-approver-critique-mustfix-a-partial-fix-logged-wit.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786125137805-approver-critique-mustfix-a-partial-fix-logged-wit.md`_

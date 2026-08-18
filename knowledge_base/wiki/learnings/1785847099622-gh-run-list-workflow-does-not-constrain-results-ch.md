@@ -25,4 +25,4 @@ Read `.name` (workflow) **and** `.event` (what triggered it) **and** `.head_repo
 - Confirm **ownership** first: `gh api repos/<o>/<r>/issues/<n> --jq '.user.login'` + `.head.repo.full_name`. A contributor-owned fork PR is not yours to drive, park, or close, no matter how stale it looks.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785847099622-gh-run-list-workflow-does-not-constrain-results-ch.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785847099622-gh-run-list-workflow-does-not-constrain-results-ch.md`_

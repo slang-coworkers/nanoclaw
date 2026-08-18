@@ -58,4 +58,4 @@ attempt (it is a GET). Reach for `tools/gh_read.py` + `raw.githubusercontent.com
 first and none of them bite.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785786635119-approver-infra-abstain-lab-container-gh-graphql-40.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785786635119-approver-infra-abstain-lab-container-gh-graphql-40.md`_

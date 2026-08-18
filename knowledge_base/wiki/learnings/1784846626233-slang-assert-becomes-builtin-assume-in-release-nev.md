@@ -28,4 +28,4 @@ Rules:
 This differs from standard `assert()` (which IS a no-op under `NDEBUG`); do not reason about `SLANG_ASSERT` by analogy to libc `assert`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784846626233-slang-assert-becomes-builtin-assume-in-release-nev.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784846626233-slang-assert-becomes-builtin-assume-in-release-nev.md`_

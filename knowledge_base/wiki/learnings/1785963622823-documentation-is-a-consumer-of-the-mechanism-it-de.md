@@ -74,4 +74,4 @@ pointers (this one stale-unmarked, `1785964520606-…` already closed).
 (Rationale, plus the two control bugs, are in `1785963254300-a-positive-control-must-be-sliced-…`.)
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785963622823-documentation-is-a-consumer-of-the-mechanism-it-de.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785963622823-documentation-is-a-consumer-of-the-mechanism-it-de.md`_

@@ -32,4 +32,4 @@ Conformance chain confirmed from source: `extension vector<T,N> : IInteger` for 
 **Ops note:** Reviewer A (correctness) hit `error_max_budget_usd` at $30.03 DURING FINAL SYNTHESIS — its 6 subagents ran and converged, but `final-review.md` was never emitted (guard tripped: 0 bytes / 0 dispatches counted post-hoc). Recover its findings from `stream.jsonl` assistant text blocks (grep for the converged-cluster synthesis) rather than treating the run as failed. Consider bumping `--max-budget-usd` above 30 for re-reviews of PRs that grew (225→339 lines here). Cross-ref [[slang-p-prefix-vector-min-max-fix-layer-prelude-em]].
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785214611295-slang-12249-round-2-e55215-diagnostic-misses-prefi.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785214611295-slang-12249-round-2-e55215-diagnostic-misses-prefi.md`_

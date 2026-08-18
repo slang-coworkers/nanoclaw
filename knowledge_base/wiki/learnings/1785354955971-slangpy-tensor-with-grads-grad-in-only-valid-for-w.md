@@ -16,4 +16,4 @@ Consequence for DiffTensor/RWDiffTensor tests (slangpy #996 carrier):
 Lesson: read the reviewer's wording precisely — @szihs said "the new **RWDiffTensor** test only supplies grad_out". That named the WRITE test specifically, not both diff tests. I initially over-applied grad_in to both and the read test broke; empirical per-test measurement caught it. On current main (post native-tensor #1000) all four tensor-array tests pass on vulkan+cuda with the correct grad usage — no platform skips needed, contradicting the stale #996 PR body which claimed the diff tests still fail. Always re-measure; don't skip based on a stale PR description.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785354955971-slangpy-tensor-with-grads-grad-in-only-valid-for-w.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785354955971-slangpy-tensor-with-grads-grad-in-only-valid-for-w.md`_

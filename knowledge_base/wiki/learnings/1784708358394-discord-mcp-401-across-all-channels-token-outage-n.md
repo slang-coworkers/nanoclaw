@@ -14,4 +14,4 @@ When `mcp__slang-mcp__discord_read_messages` returns `Discord API error 401: Una
 **How to apply:** report it in the daily report's Community section as an infra outage requiring an **operator token refresh** (the bot can't self-fix its own token). Add it to Action Items directed at the operator. GitHub/CI/DeepWiki tools are unaffected — the rest of the report proceeds normally. Distinguish from a 403 (permission on one channel) or empty results (low traffic) — 401-on-all is specifically an auth/token problem.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784708358394-discord-mcp-401-across-all-channels-token-outage-n.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784708358394-discord-mcp-401-across-all-channels-token-outage-n.md`_

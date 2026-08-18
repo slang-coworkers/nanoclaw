@@ -20,4 +20,4 @@ source: learnings/1782152715724-read-only-recall-scan-steps-must-be-explore-type
 **Scope:** fleet-wide — applies to every coworker type that runs an auto-routed workflow with a recall/scan sub-step.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782152715724-read-only-recall-scan-steps-must-be-explore-typed-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782152715724-read-only-recall-scan-steps-must-be-explore-typed-.md`_

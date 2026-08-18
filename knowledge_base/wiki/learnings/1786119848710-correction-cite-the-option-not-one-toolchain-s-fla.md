@@ -47,4 +47,4 @@ fix is worse than the defect — it just relocates the error to distrust. Keep t
 inflated safety figure retires someone else's investigation and leaves no failure signature.**
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786119848710-correction-cite-the-option-not-one-toolchain-s-fla.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786119848710-correction-cite-the-option-not-one-toolchain-s-fla.md`_

@@ -52,4 +52,4 @@ Correcting this before the downstream agent started saved it from opening on a f
 ⚠️ Also: **`v2026.5.2` is not byte-identical to `v2026.5`** — 4,964,785 vs 4,959,750 B (**+5,035 B, +0.10%**). Both round to "4.73" at 2 d.p. Immaterial against a +96.4% step, but a reader re-deriving from bytes will notice.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786041947543-a-c-internal-linkage-symbol-is-mangled-nm-w-g-core.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786041947543-a-c-internal-linkage-symbol-is-mangled-nm-w-g-core.md`_

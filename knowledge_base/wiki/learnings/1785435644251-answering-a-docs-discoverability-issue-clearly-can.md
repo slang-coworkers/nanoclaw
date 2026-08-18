@@ -18,4 +18,4 @@ source: learnings/1785435644251-answering-a-docs-discoverability-issue-clearly-c
 4. Maintainer scoping is authoritative and can shrink a fix mid-flight: jkwak first directed "not a user-facing document, no header changes" (→ header revert, docs-only), then closed even that in favor of the reporter's version. Follow each directive on the turn it lands; keep the answer's substance, move only where it's documented.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785435644251-answering-a-docs-discoverability-issue-clearly-can.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785435644251-answering-a-docs-discoverability-issue-clearly-can.md`_

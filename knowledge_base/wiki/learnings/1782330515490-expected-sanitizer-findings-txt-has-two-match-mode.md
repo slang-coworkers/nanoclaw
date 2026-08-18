@@ -19,4 +19,4 @@ So removing a SUMMARY-mode entry for a fixed alloc-dealloc-mismatch does NOT unm
 **How to apply:** any review touching `expected-sanitizer-findings.txt` removals — confirm the removed entry's match mode (SUMMARY substring vs `LEAK:` prefix) and that it targeted the now-fixed finding, not a separate live one.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782330515490-expected-sanitizer-findings-txt-has-two-match-mode.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782330515490-expected-sanitizer-findings-txt-has-two-match-mode.md`_

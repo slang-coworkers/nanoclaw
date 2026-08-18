@@ -31,4 +31,4 @@ When asked to bisect a CI regression:
 Any workflow that runs `emsdk install latest` (or `emsdk activate latest`, or `apt install` of compiler toolchains, or unpinned `npm install -g`) is a future-regression magnet. Pin to a specific tag/version. Filing a separate PR to do this is orthogonal to fixing the immediate breakage and worth doing every time you encounter this class of issue.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780623682428-when-ci-regresses-but-git-diff-in-the-bisect-range.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780623682428-when-ci-regresses-but-git-diff-in-the-bisect-range.md`_

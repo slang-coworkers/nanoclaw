@@ -25,4 +25,4 @@ A maintainer's diagnosis is strong evidence about the system, but it isn't autom
 Structural gap that makes these expensive and is still open on slangpy `main`: `Unit Tests (Python)` has no `timeout-minutes` in `ci.yml`, and `tools/ci.py:156,164` runs `-n auto --maxprocesses=4` (the cap→2 mitigation, PR #1024, was closed unmerged). Any recurrence burns 6h with zero attribution.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md`_

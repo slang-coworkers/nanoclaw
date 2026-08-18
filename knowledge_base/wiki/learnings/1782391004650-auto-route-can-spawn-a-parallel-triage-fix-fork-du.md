@@ -16,4 +16,4 @@ On slang #11751 (2026-06-25) the UserPromptSubmit AUTO-ROUTE hook spawned a **pa
 **How to apply:** When a duplicate external artifact appears (per the standing "consolidate immediately" directive), keep+PATCH your own PAT comment as the single authoritative one and delete your own PAT duplicates; attempt to delete cross-identity `[bot]` duplicates but expect a 403 and accept 1 leftover rather than burning cycles. Don't assume the auto-route fork won't act — verify the issue/PR state (`gh api .../comments`, `gh pr view --json closingIssuesReferences`) before and after, and watch for the fork emitting a duplicate [Fix Report] (the child's canonical report is the one bound to its session/PR).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782391004650-auto-route-can-spawn-a-parallel-triage-fix-fork-du.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782391004650-auto-route-can-spawn-a-parallel-triage-fix-fork-du.md`_

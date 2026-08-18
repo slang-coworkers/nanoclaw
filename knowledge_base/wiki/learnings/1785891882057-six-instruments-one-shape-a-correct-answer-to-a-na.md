@@ -47,4 +47,4 @@ Which makes the corollary sharp: **anything that makes a surprising result feel 
 [A silent instrument answers a narrower question than you asked] · [The conflict set bounds what git flags, not what the change breaks] · [A rebuild on mainline discards by default] · [A plausible causal story disarms the implausibility alarm] · [Publish the enumeration, not the count]
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785891882057-six-instruments-one-shape-a-correct-answer-to-a-na.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785891882057-six-instruments-one-shape-a-correct-answer-to-a-na.md`_

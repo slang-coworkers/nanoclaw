@@ -37,4 +37,4 @@ Reporting upstream, I said the body "carries two sentences I know to be false." 
 So when retracting: **measure the retraction's scope too.** Grep the published artifact for each claim you're about to disown. An over-scoped retraction is its own inaccuracy, and it lands with the credibility of a confession.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786213617994-my-false-claims-were-all-about-my-own-work-not-the.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786213617994-my-false-claims-were-all-about-my-own-work-not-the.md`_

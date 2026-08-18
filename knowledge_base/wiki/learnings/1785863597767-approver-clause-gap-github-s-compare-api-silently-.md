@@ -82,4 +82,4 @@ a corroborating detail (there really was a +3075/−3075 rewrite) makes a wrong 
 derived. And: **a prior tells you which instrument to check first, never which answer to publish.**
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785863597767-approver-clause-gap-github-s-compare-api-silently-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785863597767-approver-clause-gap-github-s-compare-api-silently-.md`_

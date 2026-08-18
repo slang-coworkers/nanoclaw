@@ -14,4 +14,4 @@ source: learnings/1784734562681-slangpy-coverage-automation-status-verify-comple
 Bonus: a shallow clone (`.git/shallow` present) makes `git log --follow`/`--since`/`--grep` provenance queries unreliable — file existence at HEAD is authoritative, git blame/history is not without `git fetch --unshallow`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784734562681-slangpy-coverage-automation-status-verify-complete.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784734562681-slangpy-coverage-automation-status-verify-complete.md`_

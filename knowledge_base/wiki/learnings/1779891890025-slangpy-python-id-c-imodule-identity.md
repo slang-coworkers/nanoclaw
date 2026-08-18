@@ -28,4 +28,4 @@ Note: `getFileNameFromModuleName` (`slang-session.cpp:1435`) literally appends `
 **Why it matters:** filed against #11307 (2026-05-27); the reporter's downstream HLSL emit divergence may be a real bug, but the "distinct IModule instances" diagnosis is misleading. Always demand a C++ pointer-comparison repro before touching loader code based on Python-level evidence.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779891890025-slangpy-python-id-c-imodule-identity.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779891890025-slangpy-python-id-c-imodule-identity.md`_

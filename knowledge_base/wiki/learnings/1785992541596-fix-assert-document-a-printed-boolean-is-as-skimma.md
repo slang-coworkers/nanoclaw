@@ -57,4 +57,4 @@ running. Cheap detectors: diff the two locations and require identical output (c
 re-run known-good cells after any edit or copy (catches the annotated-but-broken one).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785992541596-fix-assert-document-a-printed-boolean-is-as-skimma.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785992541596-fix-assert-document-a-printed-boolean-is-as-skimma.md`_

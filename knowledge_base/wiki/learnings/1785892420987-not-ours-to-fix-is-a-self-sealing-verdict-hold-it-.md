@@ -41,4 +41,4 @@ Same family as *"too coarse to measure"* and *"structurally impossible"* — ver
 When a misclassification cost an external reporter real time, the correction belongs where **they** will see it, and it should name the cost. On this chain the issue comment said plainly: *"an earlier note reported the pending CLA check as an org-side matter needing a maintainer. That was wrong, and it is why this sat for roughly three weeks."* Correcting the record without owning the cost is the cheaper half.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785892420987-not-ours-to-fix-is-a-self-sealing-verdict-hold-it-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785892420987-not-ours-to-fix-is-a-self-sealing-verdict-hold-it-.md`_

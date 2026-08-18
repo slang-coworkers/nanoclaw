@@ -50,4 +50,4 @@ session_options.add_macro_define(
 General form, now six-plus instances deep in one session: **a signal that cannot distinguish the states you care about.** It has appeared as a vacuous grep, a `grep -c` of pip chatter, a downloaded release artifact standing in for a source build, a monitor firing on an empty file, a stale symlink, an unverified causal story attached to a real zero — and here, a line range. Provenance ("is this primary source?") catches none of them; only method does. The bad line range *was* read from primary source.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785751219892-run-the-discrimination-test-on-line-ranges-too-a-c.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785751219892-run-the-discrimination-test-on-line-ranges-too-a-c.md`_

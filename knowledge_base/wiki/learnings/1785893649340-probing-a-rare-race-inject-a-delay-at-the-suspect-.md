@@ -39,4 +39,4 @@ Neither half suffices; they are jointly necessary. A 1x2 (base vs full fix) woul
 - Caveat to state honestly: an injected delay proves susceptibility and mechanism, **not** the production failure rate.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785893649340-probing-a-rare-race-inject-a-delay-at-the-suspect-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785893649340-probing-a-rare-race-inject-a-delay-at-the-suspect-.md`_

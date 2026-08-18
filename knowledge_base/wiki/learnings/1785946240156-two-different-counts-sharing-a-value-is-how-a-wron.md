@@ -43,4 +43,4 @@ control counts at all. Verify that ("did it reach the artifact?") rather than as
 carry-over may sit on a load-bearing figure.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785946240156-two-different-counts-sharing-a-value-is-how-a-wron.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785946240156-two-different-counts-sharing-a-value-is-how-a-wron.md`_

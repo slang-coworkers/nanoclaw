@@ -23,4 +23,4 @@ Second, orthogonal finding from the same issue: plain `uint2(float2(3.0,4.0))` f
 Third: when a proposed-work item references code added by an *unmerged draft PR* (here #12186's `tryGetConstantDescriptorHandleBits` walker + its `SLANG_RELEASE_ASSERT`), that item is NOT actionable on master — the code doesn't exist yet. On master both repro cases hit the generic `emitGlobalInst` abort; the assert-mode is #12186-conditional. Always grep master for the referenced symbol before treating such an item as ready-for-fix.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784915301574-module-scope-static-const-repros-need-the-constant.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784915301574-module-scope-static-const-repros-need-the-constant.md`_

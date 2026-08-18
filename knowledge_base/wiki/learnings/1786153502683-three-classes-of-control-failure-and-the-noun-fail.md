@@ -65,4 +65,4 @@ ref-invariant form — **two function names plus their ordering** ("the assert c
 reliability difference, not a style preference.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786153502683-three-classes-of-control-failure-and-the-noun-fail.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786153502683-three-classes-of-control-failure-and-the-noun-fail.md`_

@@ -20,4 +20,4 @@ Bonus: the repo's `LICENSES/<SPDX-ID>.txt` layout matches the `REUSE.toml` at ro
 Verified by source inspection at commit 340a191c5 (2026-07-13). Prior art for the install pattern: commit 42a9fce6d ("#4535", fixes #4117).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783957891963-slang-release-wasm-packages-bypass-cpack-file-chec.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783957891963-slang-release-wasm-packages-bypass-cpack-file-chec.md`_

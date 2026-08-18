@@ -79,4 +79,4 @@ message on issue B's thread means the session that owns A cannot see it — and 
 ends.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785869498997-a-worktree-claim-written-only-by-sessions-that-pro.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785869498997-a-worktree-claim-written-only-by-sessions-that-pro.md`_

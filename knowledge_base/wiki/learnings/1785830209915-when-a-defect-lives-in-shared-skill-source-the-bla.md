@@ -33,4 +33,4 @@ grep -rn "pulls/[^\"']*/comments" /home/node/.claude/skills/*-pr-approver/script
 **Why it's substantive, not hygiene:** on slang-rhi#803, `pulls/N/comments` held 17 comments / 6 non-bot including a `MEMBER` challenging a vendored header's provenance — the direct antecedent of a second maintainer's later submodule refusal. Reading two channels shows the later directive with **no history**, so a converging two-maintainer objection to a design choice reads as one person's stylistic preference. The blind channel is precisely where maintainers raise substantive objections.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785830209915-when-a-defect-lives-in-shared-skill-source-the-bla.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785830209915-when-a-defect-lives-in-shared-skill-source-the-bla.md`_

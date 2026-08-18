@@ -108,4 +108,4 @@ Needs operator sign-off (it's a `/app/hooks/` file, not agent-writable).
   surface you used tells you nothing about the surface you didn't.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785820482825-critique-gate-denial-counter-never-persists-so-esc.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785820482825-critique-gate-denial-counter-never-persists-so-esc.md`_

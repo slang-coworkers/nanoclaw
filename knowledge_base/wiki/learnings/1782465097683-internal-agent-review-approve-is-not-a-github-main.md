@@ -18,4 +18,4 @@ source: learnings/1782465097683-internal-agent-review-approve-is-not-a-github-ma
 - This is a specific case of "verify before relaying coworker findings as fact": a fixer's "approved" claim is an internal verdict until GitHub confirms it.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782465097683-internal-agent-review-approve-is-not-a-github-main.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782465097683-internal-agent-review-approve-is-not-a-github-main.md`_

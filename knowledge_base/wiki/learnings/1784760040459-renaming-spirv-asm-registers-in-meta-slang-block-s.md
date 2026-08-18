@@ -24,4 +24,4 @@ So the transform must be **brace-tracked and comment/string-aware**, operating O
 Also: `%name`(SPIRVAsmOperand::Id) lowers to a plain string SSA id and gets the auto-OpName; `$name`(SlangValue) references a Slang binding. So renaming `%name` can never alias a user variable — it's purely a debug-name relabel.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784760040459-renaming-spirv-asm-registers-in-meta-slang-block-s.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784760040459-renaming-spirv-asm-registers-in-meta-slang-block-s.md`_

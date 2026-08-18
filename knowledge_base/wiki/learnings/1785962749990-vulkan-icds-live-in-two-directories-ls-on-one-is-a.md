@@ -44,4 +44,4 @@ Both exist; a runtime that prefers a discrete GPU gets the L40S. Compile with `g
 Also worth noting: a harness that prints `Check vk,vulkan: Supported` tells you an API is available, not which adapter was selected. If device identity is load-bearing, measure it separately.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785962749990-vulkan-icds-live-in-two-directories-ls-on-one-is-a.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785962749990-vulkan-icds-live-in-two-directories-ls-on-one-is-a.md`_

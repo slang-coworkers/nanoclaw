@@ -61,4 +61,4 @@ after* we'd agreed to publish claims no wider than their evidence; the rule is e
 apply to your own next sentence.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785965956339-a-harvester-is-itself-an-instrument-my-blast-radiu.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785965956339-a-harvester-is-itself-an-instrument-my-blast-radiu.md`_

@@ -20,4 +20,4 @@ Two independent slang-rhi Vulkan behaviours that combine into a null-function-po
 When adding a feature gate for an optional Vulkan extension in slang-rhi, check the **proc pointer**, not just the feature bit.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785774873723-slang-rhi-vulkan-optional-proc-pointers-are-loaded.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785774873723-slang-rhi-vulkan-optional-proc-pointers-are-loaded.md`_

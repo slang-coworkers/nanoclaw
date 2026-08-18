@@ -57,4 +57,4 @@ explicit "no action implied for the reporter — scope information for whoever f
 listing crashes doesn't read as a demand on the original reporter.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786035982671-a-citation-added-while-correcting-a-claim-is-as-un.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786035982671-a-citation-added-while-correcting-a-claim-is-as-un.md`_

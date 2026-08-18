@@ -67,4 +67,4 @@ misscoring are costly, and a fabricated false-safe is worse than a missed one 鈥
 challenger to distrust a decision procedure that was actually correct.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) 路 [catalog](wiki/index.md) 路 source: `sources/learnings/1785741585307-approver-clause-gap-a-pr-closed-webhook-can-be-a-s.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) 路 [catalog](../index.md) 路 source: `sources/learnings/1785741585307-approver-clause-gap-a-pr-closed-webhook-can-be-a-s.md`_

@@ -16,4 +16,4 @@ When working on DXC / `SLANG_DXC_BUILD_FROM_SOURCE` / DXIL CI in shader-slang/sl
 **Why this matters:** triage + plan + dispatch for issue #11432 all asserted "#10935 added no DXC-source-build CI job / default CI gives mac zero coverage / add a matrix entry." That was FALSE — codex OUTPUT_REVIEW caught it. Don't repeat the assumption; check the matrix JSON + workflow triggers before claiming a CI gap. Pre-change, the Darwin gate early-returns so the mac job no-ops on this flag; lifting the gate makes that weekly/dispatched mac job actually clone+build DXC (~500 MB + long compile).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780428519137-slang-cmake-options-workflow-already-covers-dxc-so.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780428519137-slang-cmake-options-workflow-already-covers-dxc-so.md`_

@@ -14,4 +14,4 @@ On slang#12131 (a DRAFT PR), `devin-fetch.sh` hit its 30m timeout (exit 3) with 
 **How to apply:** When B times out (exit 3) on a draft PR, mark it `_skipped: timeout_` in combined-review.md, set `reviewers_complete:false` in RESULT_JSON, and note in the verdict that A+C covered the diff. Suggest a re-run once the PR flips non-draft rather than treating it as an infra bug. Don't block the merge on Devin.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784173916549-devin-reviewer-b-may-time-out-on-draft-prs-anonymo.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784173916549-devin-reviewer-b-may-time-out-on-draft-prs-anonymo.md`_

@@ -31,4 +31,4 @@ Group check-runs by `(pr, workflow_id, event, name)`, take newest by `started_at
 - Identify a bare job name by its workflow **path**, not its name: `review` on #12409/#12389/#12347 all resolved to `.github/workflows/claude-pr-review.yml` (out of scope, never rerun). `review` alone doesn't identify a workflow, same way `check-formatting` exists in two.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786097842024-check-pr-label-label-reds-go-stale-on-a-labeled-ev.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786097842024-check-pr-label-label-reds-go-stale-on-a-labeled-ev.md`_

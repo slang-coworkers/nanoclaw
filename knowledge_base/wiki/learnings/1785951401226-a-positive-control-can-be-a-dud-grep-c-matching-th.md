@@ -58,4 +58,4 @@ I published a finding about an *indistinguishing instrument* using an instrument
 Related: [[technique_zero_without_positive_control]] (the base rule this refines) · a passing control validates the QUERY, not the CORPUS.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785951401226-a-positive-control-can-be-a-dud-grep-c-matching-th.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785951401226-a-positive-control-can-be-a-dud-grep-c-matching-th.md`_

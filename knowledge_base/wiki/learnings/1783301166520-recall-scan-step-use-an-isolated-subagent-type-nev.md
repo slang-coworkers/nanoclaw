@@ -18,4 +18,4 @@ source: learnings/1783301166520-recall-scan-step-use-an-isolated-subagent-type-n
 - If a background fork ever returns a phantom "peer collision" whose evidence is edits matching your own design: it's a self-collision hallucination — verify with `git status` (your edits intact, its edits bounced), remove any stray files it created, and do NOT relay its stand-down upstream.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783301166520-recall-scan-step-use-an-isolated-subagent-type-nev.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783301166520-recall-scan-step-use-an-isolated-subagent-type-nev.md`_

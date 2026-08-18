@@ -36,4 +36,4 @@ Both were verified. *Then* green meant something.
 Related: ["present" and "passing" are not "exercising"], [Control the control], [A stale test binary can pass the very test you're validating] — this learning is the **boundary condition** on all of them.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785792616063-a-green-run-is-weak-evidence-for-my-fix-works-and-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785792616063-a-green-run-is-weak-evidence-for-my-fix-works-and-.md`_

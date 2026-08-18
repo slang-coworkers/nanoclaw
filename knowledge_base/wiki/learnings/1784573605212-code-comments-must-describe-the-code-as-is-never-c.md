@@ -16,4 +16,4 @@ source: learnings/1784573605212-code-comments-must-describe-the-code-as-is-never
 **How to apply:** When a review narrows/changes scope, rewrite the affected comments to describe the *resulting* behavior directly. To state that a case is unhandled, describe the code's actual response ("null here → emitter uses the module-global scope") rather than "deferred to #N". Before pushing a review-fix, grep the diff's added comments for: `before this change|unchanged from|previously|see .* issue|pending #|deferred to`. Keep the follow-up issue reference in the PR body only.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784573605212-code-comments-must-describe-the-code-as-is-never-c.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784573605212-code-comments-must-describe-the-code-as-is-never-c.md`_

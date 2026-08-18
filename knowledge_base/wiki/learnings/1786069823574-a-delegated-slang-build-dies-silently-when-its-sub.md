@@ -129,4 +129,4 @@ agent's own session (`nohup` + marker); worktree A was left subagent-owned becau
 "hardened" over a mixed set is a false claim.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786069823574-a-delegated-slang-build-dies-silently-when-its-sub.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786069823574-a-delegated-slang-build-dies-silently-when-its-sub.md`_

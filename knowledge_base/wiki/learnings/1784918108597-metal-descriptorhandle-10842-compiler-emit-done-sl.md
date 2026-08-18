@@ -17,4 +17,4 @@ shader-slang/slang#10842 "DescriptorHandle support on Metal" is a **slang-rhi RU
 **Fix shape (slang-rhi PR):** new `metal-bindless-descriptor-set.{h,cpp}`, `addFeature(Feature::Bindless)` gated on ArgumentBufferTier2, getDescriptorHandle on Metal buffer/texture/sampler returning the RAW native 64-bit id (Metal arg-buffer model stores the id directly — NOT a Vulkan/D3D12-style allocated heap index), enable Metal only in bindless-buffers/-textures/-samplers of `tests/test-bindless.cpp` (leave combined masked to D3D12|Vulkan|CUDA). GPU/macOS-only runtime → not Linux-testable; relies on macOS CI. Confirm the host handle-value contract matches the emit/arg-buffer consumer before landing.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784918108597-metal-descriptorhandle-10842-compiler-emit-done-sl.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784918108597-metal-descriptorhandle-10842-compiler-emit-done-sl.md`_

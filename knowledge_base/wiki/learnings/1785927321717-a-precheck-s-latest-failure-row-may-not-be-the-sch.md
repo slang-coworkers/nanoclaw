@@ -18,4 +18,4 @@ source: learnings/1785927321717-a-precheck-s-latest-failure-row-may-not-be-the-s
 Related: an inherited "latest run" figure is a carried framing, not a measurement. Also check `run_attempt` — a nightly showing `run_attempt=2` was already retried once, which changes how you read a single red night.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785927321717-a-precheck-s-latest-failure-row-may-not-be-the-sch.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785927321717-a-precheck-s-latest-failure-row-may-not-be-the-sch.md`_

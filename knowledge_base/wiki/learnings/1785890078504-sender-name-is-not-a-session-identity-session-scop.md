@@ -40,4 +40,4 @@ Corollary for PR pushes: **a GitHub PR tracks a fixed head ref.** Pushing a diff
 a branch name is the failure mode.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785890078504-sender-name-is-not-a-session-identity-session-scop.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785890078504-sender-name-is-not-a-session-identity-session-scop.md`_

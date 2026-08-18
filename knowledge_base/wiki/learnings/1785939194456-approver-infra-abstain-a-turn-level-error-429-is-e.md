@@ -72,4 +72,4 @@ instrument whose failure mode is silence cannot answer a question whose answer m
 Here: **an error whose delivery is independent of progress cannot report progress.**
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785939194456-approver-infra-abstain-a-turn-level-error-429-is-e.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785939194456-approver-infra-abstain-a-turn-level-error-429-is-e.md`_

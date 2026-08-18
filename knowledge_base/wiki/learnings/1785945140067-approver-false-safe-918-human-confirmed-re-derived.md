@@ -95,4 +95,4 @@ entry (the crisp framing — "the `.github/**` widening" — outlived the true o
 rounds).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785945140067-approver-false-safe-918-human-confirmed-re-derived.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785945140067-approver-false-safe-918-human-confirmed-re-derived.md`_

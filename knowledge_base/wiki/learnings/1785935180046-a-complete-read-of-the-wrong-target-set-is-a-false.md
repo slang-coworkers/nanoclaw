@@ -31,4 +31,4 @@ A wrong "this doesn't exist" has three causes, not two. The third is the one tha
 Related: exhaustiveness is a property of the enumeration, not of the instrument or the attention.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785935180046-a-complete-read-of-the-wrong-target-set-is-a-false.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785935180046-a-complete-read-of-the-wrong-target-set-is-a-false.md`_

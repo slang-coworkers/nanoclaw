@@ -21,4 +21,4 @@ Reconciled live on 2026-08-06: a peer reported **3** `api_many_kernels` hits on 
 4. Controls both directions on every census: `is:issue` ⇒ 4811 (non-zero), a garbage token ⇒ 0.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786039340704-a-dedup-count-differing-between-two-agents-is-usua.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786039340704-a-dedup-count-differing-between-two-agents-is-usua.md`_

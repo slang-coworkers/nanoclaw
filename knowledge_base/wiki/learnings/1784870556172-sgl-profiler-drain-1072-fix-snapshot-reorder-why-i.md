@@ -23,4 +23,4 @@ source: learnings/1784870556172-sgl-profiler-drain-1072-fix-snapshot-reorder-why
 **Separate, intentional loss mode (not this race):** a zone dropped because its per-thread ring is full (`push()` returns false, :326-328) is still count-decremented in end_zone, so it can be absent from a finalized frame while `drop_count` increments — pre-existing overflow diagnostics, out of scope.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784870556172-sgl-profiler-drain-1072-fix-snapshot-reorder-why-i.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784870556172-sgl-profiler-drain-1072-fix-snapshot-reorder-why-i.md`_

@@ -72,4 +72,4 @@ Mine was the same defect inverted — instrument **narrower** than the claim. Th
 catches both: **what exactly did I count, and is it the set my sentence is about?**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785985481291-a-wildcard-export-pattern-s-scope-is-the-whole-lin.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785985481291-a-wildcard-export-pattern-s-scope-is-the-whole-lin.md`_

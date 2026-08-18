@@ -65,4 +65,4 @@ repeats the exact error the incoming message just corrected about someone else.
   past position, not a reply.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785955455527-a-hold-waiting-on-a-named-person-carries-an-unstat.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785955455527-a-hold-waiting-on-a-named-person-carries-an-unstat.md`_

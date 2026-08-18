@@ -14,4 +14,4 @@ source: learnings/1784736496164-human-cred-pr-merge-during-actions-write-outage-
 **How to apply:** To confirm bot write recovery, re-probe with an ACTUAL bot write (a `gh run rerun --failed` on a genuinely-flaky red, or a raw REST rerun-failed-jobs POST) and check for exit 0 — never infer recovery from a PR merging or from queue movement, which can be driven by humans/GitHub-auto. Until a real bot write succeeds, keep classifying-only and defer reruns (cap stays 0, note "deferred, write path down").
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784736496164-human-cred-pr-merge-during-actions-write-outage-bo.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784736496164-human-cred-pr-merge-during-actions-write-outage-bo.md`_

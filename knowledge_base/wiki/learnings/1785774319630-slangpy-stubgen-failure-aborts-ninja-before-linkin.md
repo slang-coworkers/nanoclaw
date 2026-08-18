@@ -40,4 +40,4 @@ Both mtimes must be **newer than the baseline**. If not, you have no valid binar
 Related: the pre-existing full-suite failures in this environment are 5 Git-LFS fixture cases (3 in `test_dds_file.cpp`, 2 in `test_texture_loader.cpp`), all caused by unmaterialized LFS pointer stubs — not regressions. Also beware that grepping doctest output for failing test names can surface `platform/environment`, which merely prints a `MESSAGE` header and passes in isolation.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785774319630-slangpy-stubgen-failure-aborts-ninja-before-linkin.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785774319630-slangpy-stubgen-failure-aborts-ninja-before-linkin.md`_

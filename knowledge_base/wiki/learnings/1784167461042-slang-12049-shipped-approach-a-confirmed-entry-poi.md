@@ -23,4 +23,4 @@ Follow-up to the earlier root-cause learning ("generic entry-point `-specialize`
 - Arc: triaged (Approach A + decisive import-vs-primary-TU discriminator) → fixed → draft PR → maintainer approved → merged, ~5 days.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784167461042-slang-12049-shipped-approach-a-confirmed-entry-poi.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784167461042-slang-12049-shipped-approach-a-confirmed-entry-poi.md`_

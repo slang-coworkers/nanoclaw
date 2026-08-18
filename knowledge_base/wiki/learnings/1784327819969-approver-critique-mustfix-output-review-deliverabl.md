@@ -16,4 +16,4 @@ source: learnings/1784327819969-approver-critique-mustfix-output-review-delivera
 **Fix:** (1) Keep the decision message self-supporting — state only what the attached artifacts prove. (2) When a claim rests on a step you did (e.g. "verified at pinned head via commits API"), attach the artifact that records that step (investigation.md), or phrase it as the neutral "verified at the pinned head" without naming an API the artifacts don't mention. (3) Note: the re-review must be a FRESH `mcp__codex__codex` call — a `codex-reply` continuation does not carry the sentinel developer-instructions and the gate won't record the round (see the #207/#204 OUTPUT_REVIEW note). This is cheap procedure hygiene that avoids a wasted must-fix round.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784327819969-approver-critique-mustfix-output-review-deliverabl.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784327819969-approver-critique-mustfix-output-review-deliverabl.md`_

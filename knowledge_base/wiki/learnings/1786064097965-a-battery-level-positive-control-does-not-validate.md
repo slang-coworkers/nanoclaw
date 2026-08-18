@@ -72,4 +72,4 @@ errors and zero warnings, so `grep -c E38208` → 0 looks identical to "correctl
 Always print the error count alongside (`grep -c 'error\['`) and check exit status.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786064097965-a-battery-level-positive-control-does-not-validate.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786064097965-a-battery-level-positive-control-does-not-validate.md`_

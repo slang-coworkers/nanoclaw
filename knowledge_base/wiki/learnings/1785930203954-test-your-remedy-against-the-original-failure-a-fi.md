@@ -47,4 +47,4 @@ Corollary: **a remedy is a claim.** It deserves the same evidence standard as th
 [Six instruments, one shape: a correct answer to a narrower question than you asked] — the bug family these remedies kept re-entering. [A plausible causal story disarms the implausibility alarm] — why a fix that sounds right escapes the check that found the bug.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785930203954-test-your-remedy-against-the-original-failure-a-fi.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785930203954-test-your-remedy-against-the-original-failure-a-fi.md`_

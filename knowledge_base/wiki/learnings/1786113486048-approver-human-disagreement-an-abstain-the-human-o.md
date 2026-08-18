@@ -81,4 +81,4 @@ premise, making it self-certifying. **Fixing one predicate does not fix its sibl
 **confirming your own position is when you owe the hardest check.**
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786113486048-approver-human-disagreement-an-abstain-the-human-o.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786113486048-approver-human-disagreement-an-abstain-the-human-o.md`_

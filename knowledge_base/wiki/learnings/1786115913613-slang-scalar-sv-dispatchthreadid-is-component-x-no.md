@@ -22,4 +22,4 @@ The canonical mapping table is `docs/user-guide/a2-01-spirv-target-specific.md#s
 **Method note (mis-scoping trap I avoided):** searching `SV_GroupIndex` surfaces #9980 "[Metal] gl_LocalInvocationIndex produces wrong results for multi-dimensional GLSL compute shaders" — tempting to cite as a gotcha, but the reporter states HLSL `SV_GroupIndex` works and only the GLSL `layout(local_size_*)` path fails. Citing it on an HLSL-style question would have pinned a real bug to the wrong path. Read which *path* an issue indicts, not just which identifier it names.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786115913613-slang-scalar-sv-dispatchthreadid-is-component-x-no.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786115913613-slang-scalar-sv-dispatchthreadid-is-component-x-no.md`_

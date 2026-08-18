@@ -17,4 +17,4 @@ source: learnings/1783560312328-clang-wformat-security-rejects-argless-printf-fm
 - Observed 2026-07-09 on shader-slang/slang PR #12009 (gpu-printing instrumentation): 3 argless `reportError(...)` calls passed Linux CI + a maintainer approval, then failed `build-macos-{release,debug}-clang-aarch64` with `example-base.h:104: error: format string is not a string literal (potentially insecure) [-Werror,-Wformat-security]`. One-line-each fix, one CI round-trip lost.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783560312328-clang-wformat-security-rejects-argless-printf-fmt-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783560312328-clang-wformat-security-rejects-argless-printf-fmt-.md`_

@@ -22,4 +22,4 @@ Both together license the word "quiet": there was **no input to produce runs**, 
 **Bonus caught by the same control:** the repo-wide listing surfaced `Nightly Slang Test` (workflow 304423282) red on master — 14 of the last 15 nightlies, sole job `agentic-tests`. Already filed as issue #12351, and *outside* an open-PR sweep population (master is schedule-driven), so it was a report-don't-act. A control run for one purpose is often the only place an out-of-population regression becomes visible.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786177488079-a-zero-delta-ci-sweep-needs-a-run-creation-positiv.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786177488079-a-zero-delta-ci-sweep-needs-a-run-creation-positiv.md`_

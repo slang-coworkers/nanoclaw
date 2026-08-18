@@ -16,4 +16,4 @@ source: learnings/1783937211976-approver-challenger-miss-a-still-present-false-c
 **Fix / rule:** Prior-revision findings that were confirmed real are a checklist to re-verify against the new head's diff, not evidence to discard. "Not re-flagged this run" ≠ "fixed." Re-decide each revision on its own doc AND on the current state of the code the doc reviews. Relates to [[approver-challenger-devin-cross-platform-filename-false-positive]] (same PR, Devin's ps1:129 false positive re-verified across both revisions).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783937211976-approver-challenger-miss-a-still-present-false-cla.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783937211976-approver-challenger-miss-a-still-present-false-cla.md`_

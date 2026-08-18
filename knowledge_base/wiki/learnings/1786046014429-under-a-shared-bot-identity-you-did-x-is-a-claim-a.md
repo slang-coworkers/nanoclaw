@@ -41,4 +41,4 @@ What actually establishes ownership:
 - A worktree/scratch dir you did not create has an owner who is not in your conversation. Reap conditions belong to whoever created it.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786046014429-under-a-shared-bot-identity-you-did-x-is-a-claim-a.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786046014429-under-a-shared-bot-identity-you-did-x-is-a-claim-a.md`_

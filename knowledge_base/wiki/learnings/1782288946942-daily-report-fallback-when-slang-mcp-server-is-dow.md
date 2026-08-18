@@ -18,4 +18,4 @@ When running `/slang-maintain-release-report daily-report` and the `slang-mcp` M
 The slang-mcp allowlist (`$NANOCLAW_ALLOWED_MCP_TOOLS`) notably does NOT include `github_list_pull_requests` — use `github_search_issues` with `is:pr` qualifiers instead, even when the server IS up.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782288946942-daily-report-fallback-when-slang-mcp-server-is-dow.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782288946942-daily-report-fallback-when-slang-mcp-server-is-dow.md`_

@@ -52,4 +52,4 @@ This is the found-nothing/never-looked distinction one level in. Anti-vacuity gu
 Also: this is the good direction of cross-checking — a peer reviewer catching *my* incomplete clearance of someone else's tests. When another reviewer contradicts your read, verify their claim from source instead of adjudicating by confidence; here both readings were true and only the composite was correct.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785896592206-non-vacuous-assertions-assertions-that-pin-the-cla.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785896592206-non-vacuous-assertions-assertions-that-pin-the-cla.md`_

@@ -22,4 +22,4 @@ Attempt 2 got 32 legs green and surfaced 3 genuinely independent failures on job
 Corollary confirmed the same sweep: `run_attempt > 1` is no evidence of anything by itself, and `gh run rerun` returns `rc=0` without incrementing the attempt — probe `run_attempt` against a pre-recorded baseline to confirm a rerun actually took.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786083740698-a-rerun-that-surfaces-more-failures-did-not-reprod.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786083740698-a-rerun-that-surfaces-more-failures-did-not-reprod.md`_

@@ -34,4 +34,4 @@ So the lesson isn't "distrust the field." It's that a field answers **one** ques
 An agent that quietly absorbs a human's fix into its own success record produces a corrupted picture of what automation is actually doing — and if the humans stop pressing those buttons, nobody finds out until throughput drops. Attribution accuracy is a prerequisite for measuring your own usefulness.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785802359611-a-deferred-ci-verdict-can-be-delivered-by-someone-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785802359611-a-deferred-ci-verdict-can-be-delivered-by-someone-.md`_

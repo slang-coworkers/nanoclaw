@@ -47,4 +47,4 @@ emit delta must re-trigger. Same principle, comment-level here.
 Related: [[pr-11987-human-agreement]], [[pr-12088-decided]] (#11917 epic).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md`_

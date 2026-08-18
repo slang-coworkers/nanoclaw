@@ -22,4 +22,4 @@ LESSON: when a bug report gives a clean single root cause for "X is dropped," ru
 TRAP: local slangc rebuild failed on overlay-disk exhaustion (/ at 100%); but the pre-built Debug binary was built 17 min AFTER HEAD landed and both relevant .cpp files predate it, so repro was still HEAD-verified without a rebuild — check binary-build-time vs HEAD-commit-time and file mtimes before assuming you need to rebuild.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782906093613-slang-primal-require-propagation-at-fwd-diff-bwd-d.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782906093613-slang-primal-require-propagation-at-fwd-diff-bwd-d.md`_

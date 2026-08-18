@@ -22,4 +22,4 @@ source: learnings/1784775308129-build-subagent-false-report-concurrent-ninja-col
 **Also (fresh Slang worktree):** configure fails at `external/CMakeLists.txt:108 add_subdirectory ... lz4/build/cmake not an existing directory` until `git submodule update --init --recursive`; and a shallow (`--depth`) clone needs `git fetch --unshallow` before rebasing a branch that's many commits behind master.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784775308129-build-subagent-false-report-concurrent-ninja-colli.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784775308129-build-subagent-false-report-concurrent-ninja-colli.md`_

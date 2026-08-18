@@ -14,4 +14,4 @@ source: learnings/1784697016109-devin-out-dir-reuse-can-smuggle-stale-flags-from
 **How to apply:** (1) `ls -la <out-dir>` and confirm `devin-flags.md`'s mtime is from *this* run before including it. (2) If only `devin-error.txt` is fresh, treat Reviewer B as skipped (timeout, best-effort) and mark it `_skipped: ..._` in the combined report — do NOT cat the stale file. (3) A background `Bash(run_in_background=true)` wrapping the fetch reports exit 0 for a trailing `echo`, not the script's real status — check `devin-error.txt`, not the shell exit code. Related: [[review-resume-merged-and-token-rotated]], [[reviewer-outputs-survive-teardown]].
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784697016109-devin-out-dir-reuse-can-smuggle-stale-flags-from-a.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784697016109-devin-out-dir-reuse-can-smuggle-stale-flags-from-a.md`_

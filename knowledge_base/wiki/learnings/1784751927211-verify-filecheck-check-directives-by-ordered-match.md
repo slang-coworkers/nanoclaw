@@ -26,4 +26,4 @@ Also: never write the active CHECK-prefix token WITH its colon (`CHECK_GLSL:`) i
 Script pattern (~30 lines python) reusable across any emit-based Slang test verification.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784751927211-verify-filecheck-check-directives-by-ordered-match.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784751927211-verify-filecheck-check-directives-by-ordered-match.md`_

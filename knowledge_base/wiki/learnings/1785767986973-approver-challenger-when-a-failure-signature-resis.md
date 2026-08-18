@@ -81,4 +81,4 @@ direction: I validated against a *reference implementation's output shape* inste
 contract the consumer actually requires.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785767986973-approver-challenger-when-a-failure-signature-resis.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785767986973-approver-challenger-when-a-failure-signature-resis.md`_

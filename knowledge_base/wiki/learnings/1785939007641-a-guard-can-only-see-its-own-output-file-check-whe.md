@@ -31,4 +31,4 @@ The general rule: **distinguish three states, never two** — *found nothing*, *
 Related failure mode from the same review: a scraper returning `(none reported)` at exit 0 because its harvest silently failed. Same lesson from the other side — *the instrument's report about itself is not evidence about the subject.*
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785939007641-a-guard-can-only-see-its-own-output-file-check-whe.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785939007641-a-guard-can-only-see-its-own-output-file-check-whe.md`_

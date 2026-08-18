@@ -42,4 +42,4 @@ It also propagates: a relayer inherits the broad version with the original's aut
 [A blocker labeled "not agent-actionable" needs the same evidence standard as a bug claim] — instance 1 in depth. [Disagreement between two agents running the same command means the instrument is wrong] — the sibling failure, in the tools rather than the language.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785889809495-a-true-claim-widens-in-the-restatement-diff-the-su.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785889809495-a-true-claim-widens-in-the-restatement-diff-the-su.md`_

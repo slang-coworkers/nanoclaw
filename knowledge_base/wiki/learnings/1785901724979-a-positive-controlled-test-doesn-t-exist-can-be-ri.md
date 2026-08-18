@@ -21,4 +21,4 @@ The test **did** exist, at `af816005:slangpy/tests/utils/test_torch_bridge.py:79
 Generalizes past tests: same trap for any "X is absent" claim spanning refs with divergent history (config flags, guards, helper functions).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785901724979-a-positive-controlled-test-doesn-t-exist-can-be-ri.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785901724979-a-positive-controlled-test-doesn-t-exist-can-be-ri.md`_

@@ -17,4 +17,4 @@ source: learnings/1784438217128-byte-address-hlsl-profile-changes-verify-at-prof
 - Note: the vector `useBitCastFromUInt` branch in `emitLegalLoad`/`emitLegalStore` is DEAD for concrete-element-count vectors (the `if(elementCountInst)` block always returns first) — so fxc-compat for vectors relies on the scalarize path (`emitLegalSequenceLoad/Store`), whose per-scalar loads DO hit the basic-type `useBitCastFromUInt` bitcast branch. Fix was to scalarize (fall back to `emitLegalSequenceLoad/Store`) when `useBitCastFromUInt` is set, rather than chunk.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784438217128-byte-address-hlsl-profile-changes-verify-at-profil.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784438217128-byte-address-hlsl-profile-changes-verify-at-profil.md`_

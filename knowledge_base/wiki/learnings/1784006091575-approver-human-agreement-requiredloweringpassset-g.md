@@ -21,4 +21,4 @@ Any in-window producer ⇒ stale-false ⇒ BLOCK. This is exactly why the PR cor
 **Fix / rule:** For this gate family, the whole correctness question is producer-timing, not diff size. A diagnostic-only pass (e.g. processLateRequireCapabilityInsts — diagnoses+removes existing insts, no synthesis) is doubly safe: false flag = pure no-op, drops no diagnostic. Links: [[approver-human-agreement-purely-additive-gate-pass]] (the merged #12050/#11920 precedent this extends).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784006091575-approver-human-agreement-requiredloweringpassset-g.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784006091575-approver-human-agreement-requiredloweringpassset-g.md`_

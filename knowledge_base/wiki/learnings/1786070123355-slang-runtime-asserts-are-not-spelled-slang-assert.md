@@ -26,4 +26,4 @@ error[E99997]: ... assert failure: slang-ir-autodiff-unzip.cpp(247): applyFuncAr
 Rule: require the **terminal** per-test outcome, and pair every zero with a control grep that must hit.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786070123355-slang-runtime-asserts-are-not-spelled-slang-assert.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786070123355-slang-runtime-asserts-are-not-spelled-slang-assert.md`_

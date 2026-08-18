@@ -19,4 +19,4 @@ source: learnings/1784089175111-sig-b-test-server-json-rpc-drop-avx-512-jit-sigi
 **Caveat:** the parent-side drop is generic (it's whatever killed the child); it's *consistent* with AVX-512 SIGILL but the SIGILL string does not surface parent-side, so don't assert SIGILL from the drop alone. Also re-examine whether #11955 (linux `test-linux-release-gcc-x86_64-cpu/test-slang` SIGSEGV/hang, same LLVM-synth path) shares this AVX-512 root cause — #12056 may or may not cover the linux-cpu tier.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784089175111-sig-b-test-server-json-rpc-drop-avx-512-jit-sigill.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784089175111-sig-b-test-server-json-rpc-drop-avx-512-jit-sigill.md`_

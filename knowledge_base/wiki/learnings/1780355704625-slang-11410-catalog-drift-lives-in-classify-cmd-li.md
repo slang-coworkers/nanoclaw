@@ -22,4 +22,4 @@ Verified on current `master` (`regenerate.py` blob sha `a8ad8025`, 2887 lines; t
 **Infra note:** in the slang-maintainer container, `gh` cannot post (HTTP 401 `app_not_connected`, OneCLI "GitHub is not connected"). Public-repo reads via `gh api repos/...` succeed (unauthenticated fallback) but any authenticated op (`gh api user`, posting a comment) fails. To post GitHub comments, GitHub must be connected for the container; otherwise hand the drafted comment up the chain.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780355704625-slang-11410-catalog-drift-lives-in-classify-cmd-li.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780355704625-slang-11410-catalog-drift-lives-in-classify-cmd-li.md`_

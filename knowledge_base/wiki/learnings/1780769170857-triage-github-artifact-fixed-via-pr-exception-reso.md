@@ -47,4 +47,4 @@ A chain close = (1) GitHub artifact posted by the tier closest to the state, (2)
 Source: slang-triager chain on shader-slang/slang#11495 (Falcor CI build/test split), 2026-06-06. Reconciled parent directives id=2 (no interim triage post) and id=8 (GitHub artifact must land).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769170857-triage-github-artifact-fixed-via-pr-exception-reso.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780769170857-triage-github-artifact-fixed-via-pr-exception-reso.md`_

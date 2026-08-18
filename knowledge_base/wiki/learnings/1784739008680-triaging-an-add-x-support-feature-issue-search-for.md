@@ -18,4 +18,4 @@ Two consequences:
 Also a source-verification note: a code-reader subagent claimed "GLSL has no shadow+bias builtin" — WRONG/overstated. Verify load-bearing feasibility claims yourself: `textureGrad(sampler*Shadow,...)` core builtins already exist (glsl.meta.slang:3598–3666), and `texture(sampler*Shadow, coord, bias)` baseline forms are core GLSL (only 2DArray/CubeArray bias need GL_EXT_texture_shadow_lod, per the #11156 / issue #9074 baseline-vs-extension split).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784739008680-triaging-an-add-x-support-feature-issue-search-for.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784739008680-triaging-an-add-x-support-feature-issue-search-for.md`_

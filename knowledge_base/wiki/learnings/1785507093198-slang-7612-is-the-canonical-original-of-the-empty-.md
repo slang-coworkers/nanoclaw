@@ -16,4 +16,4 @@ When triaging shader-slang/slang#7612 ("Properly handle empty CUDA structs", ope
 - Reproduced at master HEAD c3791ed4e this session (static emit/offset mismatch). Exhaustive root-cause trace lives in triage-8125.md.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785507093198-slang-7612-is-the-canonical-original-of-the-empty-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785507093198-slang-7612-is-the-canonical-original-of-the-empty-.md`_

@@ -46,4 +46,4 @@ looks maximally verified, because the control evidence is real.
   failure signature.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786047162831-mutation-controls-validate-the-instrument-never-th.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786047162831-mutation-controls-validate-the-instrument-never-th.md`_

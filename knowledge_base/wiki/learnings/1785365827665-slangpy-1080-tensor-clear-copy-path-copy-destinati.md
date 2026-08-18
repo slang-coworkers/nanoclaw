@@ -24,4 +24,4 @@ Consequence: a guard keyed on `unordered_access` alone (not `memory_type`) intro
 Meta-learning: when a fix says "divert all backends uniformly to avoid a D3D12-only failure", verify the *other* backends' primitive requirements — the failing op may be more permissive elsewhere, so the divert can regress a path that previously worked.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785365827665-slangpy-1080-tensor-clear-copy-path-copy-destinati.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785365827665-slangpy-1080-tensor-clear-copy-path-copy-destinati.md`_

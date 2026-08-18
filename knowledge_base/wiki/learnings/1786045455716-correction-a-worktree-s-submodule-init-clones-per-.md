@@ -78,4 +78,4 @@ the error ran in the **cost-optimistic** direction, which is the direction that 
 greened.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786045455716-correction-a-worktree-s-submodule-init-clones-per-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786045455716-correction-a-worktree-s-submodule-init-clones-per-.md`_

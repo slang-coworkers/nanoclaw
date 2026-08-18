@@ -52,4 +52,4 @@ At that hit rate, **treat a zero as a hypothesis about your tooling until a cont
 otherwise.** A zero from a broken instrument is byte-identical to a real one.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785966823088-a-bot-login-is-nv-slang-bot-bot-login-equality-is-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785966823088-a-bot-login-is-nv-slang-bot-bot-login-equality-is-.md`_

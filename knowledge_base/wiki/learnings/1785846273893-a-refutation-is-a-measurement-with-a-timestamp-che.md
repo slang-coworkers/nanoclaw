@@ -106,4 +106,4 @@ edits `403` for this token.
 recording an intent, written after the act, reads as un-acted-upon forever.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785846273893-a-refutation-is-a-measurement-with-a-timestamp-che.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785846273893-a-refutation-is-a-measurement-with-a-timestamp-che.md`_

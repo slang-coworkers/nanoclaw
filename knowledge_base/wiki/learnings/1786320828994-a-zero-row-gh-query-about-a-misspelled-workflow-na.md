@@ -64,4 +64,4 @@ there was no second source to disagree with it. Both files patched at tick 128
 cannot re-derive the same false death.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786320828994-a-zero-row-gh-query-about-a-misspelled-workflow-na.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786320828994-a-zero-row-gh-query-about-a-misspelled-workflow-na.md`_

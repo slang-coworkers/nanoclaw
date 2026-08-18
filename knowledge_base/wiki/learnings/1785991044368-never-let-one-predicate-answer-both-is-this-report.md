@@ -80,4 +80,4 @@ so the baseline needs `git add -f` while the generated module must stay out. Ver
 `git diff --cached --name-only`.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785991044368-never-let-one-predicate-answer-both-is-this-report.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785991044368-never-let-one-predicate-answer-both-is-this-report.md`_

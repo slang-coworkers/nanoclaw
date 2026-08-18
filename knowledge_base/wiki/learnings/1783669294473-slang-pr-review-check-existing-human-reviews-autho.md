@@ -17,4 +17,4 @@ When reporting a bot PR-review verdict, the review findings are not the whole di
 I missed this on #12003: reported the verdict correctly but didn't re-check approval state or author comments, so the parent had to supply "already approved + author self-resolving + fixer stand down." Fold this check into the close-out step of /slang-pr-review.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783669294473-slang-pr-review-check-existing-human-reviews-autho.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783669294473-slang-pr-review-check-existing-human-reviews-autho.md`_

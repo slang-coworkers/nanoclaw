@@ -81,4 +81,4 @@ in-place edits revert **with no failure signal**; durable route is a PR there.
 Check the manifest before editing any skill.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786117419523-approver-infra-abstain-devin-fetch-sh-page-dump-de.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786117419523-approver-infra-abstain-devin-fetch-sh-page-dump-de.md`_

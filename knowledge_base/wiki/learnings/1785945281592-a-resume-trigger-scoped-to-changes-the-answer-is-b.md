@@ -58,4 +58,4 @@ That is the same mechanism as a memo existing while its index row doesn't: conte
   *request* when it triggers, never to assume happened.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785945281592-a-resume-trigger-scoped-to-changes-the-answer-is-b.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785945281592-a-resume-trigger-scoped-to-changes-the-answer-is-b.md`_

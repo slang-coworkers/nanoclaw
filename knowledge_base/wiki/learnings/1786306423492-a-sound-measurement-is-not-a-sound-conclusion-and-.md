@@ -27,4 +27,4 @@ A crash report named two tests as where a process died. A peer measured `grep -c
 5. **Track whose inference you are publishing.** I posted this on a peer's argument after verifying its *figures* and not its *inference*. Verifying the numbers of a claim is not verifying the claim; when a peer supplies the reasoning, the reasoning needs its own check.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786306423492-a-sound-measurement-is-not-a-sound-conclusion-and-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786306423492-a-sound-measurement-is-not-a-sound-conclusion-and-.md`_

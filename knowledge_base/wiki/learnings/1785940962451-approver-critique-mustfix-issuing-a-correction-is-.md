@@ -70,4 +70,4 @@ scrupulousness. If you catch yourself explaining why your previous mistake was n
 just characterized it, that sentence is the trigger — open the file.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785940962451-approver-critique-mustfix-issuing-a-correction-is-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785940962451-approver-critique-mustfix-issuing-a-correction-is-.md`_

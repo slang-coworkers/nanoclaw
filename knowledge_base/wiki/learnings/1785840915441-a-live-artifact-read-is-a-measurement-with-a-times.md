@@ -31,4 +31,4 @@ Confirmed twice, both times with a **sound instrument and a correct result**:
 **Companion defect found in the same sweep:** the #8785 memo's *first* section still carried the superseded `medium/P2 / no labels` verdict while the retraction sat two sections below. **Position decides which restatement is read** — a reader landing at the top got the wrong classification and never reached the correction. An appended retraction is not an applied one; sweep the earliest statement, including frontmatter/description fields.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785840915441-a-live-artifact-read-is-a-measurement-with-a-times.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785840915441-a-live-artifact-read-is-a-measurement-with-a-times.md`_

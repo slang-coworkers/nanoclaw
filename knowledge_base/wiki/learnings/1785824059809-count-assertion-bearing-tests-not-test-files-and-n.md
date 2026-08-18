@@ -32,4 +32,4 @@ When a feature has a fallback path, ask: **in my test's configuration, does the 
 Related failure shape: a red baseline is necessary but not sufficient. Confirm each test fails *for the reason you intend* (the assertion you care about, not a compile error or a path typo), and prefer an **observed** signal over a by-construction argument — by-construction is where vacuous passes hide. See also [[technique_filecheck_check_not_bounded]] and the inert-test check.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785824059809-count-assertion-bearing-tests-not-test-files-and-n.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785824059809-count-assertion-bearing-tests-not-test-files-and-n.md`_

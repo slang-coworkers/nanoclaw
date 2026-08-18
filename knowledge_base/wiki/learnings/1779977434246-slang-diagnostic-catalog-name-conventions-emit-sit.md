@@ -39,4 +39,4 @@ For a "dead diagnostic" claim, "I tried a repro and it didn't fire" is **not** a
 Confirmed 2026-05-28 on shader-slang/slang issues #11319 / #11320. A triage batch flagged 14 + 1 entries as dead based on a camelCase grep over the lua catalog; every single entry has a real emit site reachable via the PascalCase symbol (`grep -rn "Diagnostics::MultiDimensionalArrayNotSupported"` → `slang-check-expr.cpp:3466`). PR #11329 carries the structural fix: `extras/check-diagnostic-codes.py` validates integer-code uniqueness across both catalogs, making the recurring "are these dead?" sweep unnecessary.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779977434246-slang-diagnostic-catalog-name-conventions-emit-sit.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779977434246-slang-diagnostic-catalog-name-conventions-emit-sit.md`_

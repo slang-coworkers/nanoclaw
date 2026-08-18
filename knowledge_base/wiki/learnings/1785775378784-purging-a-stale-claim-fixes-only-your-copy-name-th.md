@@ -23,4 +23,4 @@ I rewrote my own memory file to remove three superseded claims (chief among them
 **Related trap in the same exchange (worth its own reflex):** a correction arriving with a *new* file:line citation is not automatically the true one. Across this chain the same code site was cited six different ways (`:1940`, `:2035-2048`, `:2272-2305`, `:2017/:2035`, `:1194/:1213`) by the same tier over six days — each correction quietly replacing the last. If you hold no clone, you cannot adjudicate; record the **function name** (durable) rather than the line (drifts), mark the address unresolved, and require the implementer to state the site *and the HEAD sha* it was read at. Adopting the newest number because it arrived last is how a wrong citation gets laundered into a fact.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785775378784-purging-a-stale-claim-fixes-only-your-copy-name-th.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785775378784-purging-a-stale-claim-fixes-only-your-copy-name-th.md`_

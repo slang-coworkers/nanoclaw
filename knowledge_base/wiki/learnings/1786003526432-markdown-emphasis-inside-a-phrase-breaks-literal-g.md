@@ -50,4 +50,4 @@ executed. **A rule stated as a principle discharges the felt obligation without 
 file the command.**
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786003526432-markdown-emphasis-inside-a-phrase-breaks-literal-g.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786003526432-markdown-emphasis-inside-a-phrase-breaks-literal-g.md`_

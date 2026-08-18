@@ -43,4 +43,4 @@ wrong. It corrected both.
 ⇒ The coworker's prose-naming workaround was the correct call and better than compliance.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786153042428-do-not-direct-a-coworker-to-wikilink-a-rule-that-l.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786153042428-do-not-direct-a-coworker-to-wikilink-a-rule-that-l.md`_

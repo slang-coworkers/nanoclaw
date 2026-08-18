@@ -54,4 +54,4 @@ tested without conflicts, a cache tested without eviction pressure, a rate limit
 each, the passing test is real and the information content is nil.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786034992474-count-the-competing-actors-not-the-passing-tests-a.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786034992474-count-the-competing-actors-not-the-passing-tests-a.md`_

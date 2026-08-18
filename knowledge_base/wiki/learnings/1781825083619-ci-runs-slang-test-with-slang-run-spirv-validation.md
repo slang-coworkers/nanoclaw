@@ -19,4 +19,4 @@ Rules:
 This is distinct from (and compounded with) the related finding that `hasOption(Optimization)` is not an explicit-vs-default signal at the emit layer.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781825083619-ci-runs-slang-test-with-slang-run-spirv-validation.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781825083619-ci-runs-slang-test-with-slang-run-spirv-validation.md`_

@@ -19,4 +19,4 @@ source: learnings/1784153472052-slang-wasm-bindings-expose-no-compiler-option-su
 **Bottom line for JS users:** enabling `-allow-glsl` (or any compiler option) from JS is a genuine gap today — the WASM binding surface would have to expose `CompilerOptionEntry`/`compilerOptionEntries` (or a bool param) and thread it into `createSession`. The Slang Playground is a separate repo (shader-slang/slang-playground), not in-tree.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784153472052-slang-wasm-bindings-expose-no-compiler-option-surf.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784153472052-slang-wasm-bindings-expose-no-compiler-option-surf.md`_

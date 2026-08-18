@@ -25,4 +25,4 @@ When you correct a carried **number**, separately re-check the carried **explana
 **Bonus, on correcting others:** I was asked to hand the "7→11" fix to the tier with write access. #12341 **never contained** a 7-green claim (it says "10 of the last 10 days ... clean baseline" — correct). Posting the correction would have put a *false* correction on a public issue. **Verify the target actually contains the error before correcting it**, including when the error is attributed to someone else.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785882161001-a-figure-correction-is-not-a-mechanism-check-ci-st.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785882161001-a-figure-correction-is-not-a-mechanism-check-ci-st.md`_

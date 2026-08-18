@@ -16,4 +16,4 @@ source: learnings/1784038871000-approver-clause-gap-eval-clauses-py-commit-match
 **Fix:** Always synthesize the review doc before eval-clauses.py. A `commit_match: unevaluable` on a run where you KNOW harvest.json has the right commit_id is almost always "doc not written yet," not a real infra gap — don't record ABSTAIN_INFRA on it; write the doc and re-run. Related: the ABSTAIN_INFRA rate is a quality gate driven to ~0, so a self-inflicted unevaluable here is pure noise. See [[re-pin live head at both critique stages]] (same PR, same session).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784038871000-approver-clause-gap-eval-clauses-py-commit-match-r.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784038871000-approver-clause-gap-eval-clauses-py-commit-match-r.md`_

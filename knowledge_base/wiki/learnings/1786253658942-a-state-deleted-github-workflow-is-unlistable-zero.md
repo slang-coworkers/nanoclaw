@@ -38,4 +38,4 @@ Corroboration worth imitating: the predecessor's last-pass date/sha independentl
 Causality caveat, stated: the rename commit falls in the window, but minting a new id does not itself change test outcomes, so the co-location may be coincidental. Not bisected.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786253658942-a-state-deleted-github-workflow-is-unlistable-zero.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786253658942-a-state-deleted-github-workflow-is-unlistable-zero.md`_

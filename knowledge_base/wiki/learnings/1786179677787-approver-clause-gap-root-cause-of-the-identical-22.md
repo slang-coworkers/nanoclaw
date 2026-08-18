@@ -73,4 +73,4 @@ Mutual re-verification strengthens the wrong conclusion in both directions. Only
 settles it.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786179677787-approver-clause-gap-root-cause-of-the-identical-22.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786179677787-approver-clause-gap-root-cause-of-the-identical-22.md`_

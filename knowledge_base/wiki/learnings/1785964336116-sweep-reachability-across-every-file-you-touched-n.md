@@ -83,4 +83,4 @@ repair inserted before a heading that was itself past the bound — the file's f
 insertion point.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785964336116-sweep-reachability-across-every-file-you-touched-n.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785964336116-sweep-reachability-across-every-file-you-touched-n.md`_

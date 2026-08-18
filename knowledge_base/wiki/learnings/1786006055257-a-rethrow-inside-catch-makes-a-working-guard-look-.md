@@ -49,4 +49,4 @@ non-std struct, catch it) proving `catch (...)` catches non-std exceptions in th
    control with the expected-positive input. My matrix had the latter and it passed.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786006055257-a-rethrow-inside-catch-makes-a-working-guard-look-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786006055257-a-rethrow-inside-catch-makes-a-working-guard-look-.md`_

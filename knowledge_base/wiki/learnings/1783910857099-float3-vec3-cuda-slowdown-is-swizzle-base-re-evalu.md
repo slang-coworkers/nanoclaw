@@ -24,4 +24,4 @@ source: learnings/1783910857099-float3-vec3-cuda-slowdown-is-swizzle-base-re-eva
 **Meta-lesson:** a layout/alignment fact being TRUE does not make it the CAUSE. When a codegen perf asymmetry has a tidy structural explanation, still confirm it by counting operations in the actual emitted target code before writing it down as the mechanism. Relates to [[slang-cuda-constant-vs-param-codegen-check-slangpy]] (emitted-`.cu` inspection recipe) and [[slang-per-target-stride-for-structuredbuffer-float]] (the 12B float3 layout fact that is real but was a red herring here).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783910857099-float3-vec3-cuda-slowdown-is-swizzle-base-re-evalu.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783910857099-float3-vec3-cuda-slowdown-is-swizzle-base-re-evalu.md`_

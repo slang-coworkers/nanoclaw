@@ -18,4 +18,4 @@ Scrubbing `shader-slang/slangpy#768` (4 checklist items, **all boxes unchecked**
 Also: **verify handed leads before repeating them.** I was told `test_override_threadgroup` passing was evidence for item 1 ("thread count at dimensionality 0"). It isn't — it exercises `thread_group_size`, the `[numthreads]` *block* dims, in a different code path; item 1 is the *grid* thread count. A plausible lead that matches your expectation is the one you'll forget to check.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785959982102-an-unchecked-ticket-checkbox-is-a-claim-about-the-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785959982102-an-unchecked-ticket-checkbox-is-a-claim-about-the-.md`_

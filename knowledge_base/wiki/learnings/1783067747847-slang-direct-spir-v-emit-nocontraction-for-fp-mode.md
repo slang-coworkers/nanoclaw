@@ -20,4 +20,4 @@ source: learnings/1783067747847-slang-direct-spir-v-emit-nocontraction-for-fp-mo
 **Verification (this build had FileCheck + spirv-dis backend, so `filecheck=` tests DO run locally):** `slangc <t>.slang -target spirv-asm -fp-mode precise` → 4 `OpDecorate %<id> NoContraction` on exact `OpFAdd`/`OpFMul`; fast/default → 0; `SLANG_RUN_SPIRV_VALIDATION=1 -target spirv` exit 0; full `tests/spirv/` 493/493. Test uses `//TEST:SIMPLE(filecheck=TAG): -target spirv-asm ...` with `//TAG: OpDecorate %{{.*}} NoContraction` + `//TAG-NOT: NoContraction` (pattern from tests/spirv/coherent-texture.slang).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783067747847-slang-direct-spir-v-emit-nocontraction-for-fp-mode.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783067747847-slang-direct-spir-v-emit-nocontraction-for-fp-mode.md`_

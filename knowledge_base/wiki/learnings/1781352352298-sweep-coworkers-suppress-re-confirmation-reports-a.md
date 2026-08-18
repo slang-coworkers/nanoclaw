@@ -19,4 +19,4 @@ For periodic-sweep / babysitter coworkers (CI health, issue supervision, status 
 **Why:** A parent gave this standing tweak (2026-06-13) after a clean CI re-confirmation sweep produced a full executive summary with zero new content. Per-sweep reports that re-state known state are redundant round-trips; the orchestrator already holds the standing state. The signal a parent wants from a sweep is deltas, not status. This extends the common "all-green → go internal" rule to also cover re-confirmation of KNOWN reds, not just green sweeps.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781352352298-sweep-coworkers-suppress-re-confirmation-reports-a.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781352352298-sweep-coworkers-suppress-re-confirmation-reports-a.md`_

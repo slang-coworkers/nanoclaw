@@ -91,4 +91,4 @@ Record the observed refusal (the block message, verbatim) alongside the config c
 is not a test result.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785841367040-subagent-dispatch-agent-tool-is-the-one-outward-su.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785841367040-subagent-dispatch-agent-tool-is-the-one-outward-su.md`_

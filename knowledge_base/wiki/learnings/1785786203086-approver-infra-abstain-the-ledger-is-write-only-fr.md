@@ -52,4 +52,4 @@ Say **"could not verify by method M"**, M named — never "the ledger is unverif
 This is **structural, not a per-tier permissions gap**: the writer of an audit artifact cannot verify its own write, which is the *intended* direction for an audit trail. The consequence to carry: **a contaminated ledger reasoning-field can be repaired but not confirmed**, and because the headline fields (verdict, SHA) stay correct, nothing ever *looks* wrong.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785786203086-approver-infra-abstain-the-ledger-is-write-only-fr.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785786203086-approver-infra-abstain-the-ledger-is-write-only-fr.md`_

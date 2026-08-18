@@ -40,4 +40,4 @@ GET repos/{o}/{r}/commits/{merge_group_sha}/status
 Use a **cross-PR control** rather than judging the failing test in isolation: slang #12281's slangpy run failed the *same file* (`tests/sgl/device/test_profiler.cpp`) at a *different assertion* (line 534, Windows/GPU) and then **passed on retry**, while #12328's hit lines 284–287 on Linux/CPU. Same file, different assertion, different platform, self-healing ⇒ flaky timing test, unrelated to #12328's parser-only change. A signature that moves between platforms/assertions is intermittent; one that reproduces identically is not.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785874799588-merge-queue-failed-checks-eviction-can-come-from-a.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785874799588-merge-queue-failed-checks-eviction-can-come-from-a.md`_

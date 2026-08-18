@@ -57,4 +57,4 @@ handler. Measured: after an earlier assert, catching a `TextFormatException` giv
 buffer — it is confidently wrong.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786198724315-a-thread-local-set-by-an-assert-handler-is-unreada.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786198724315-a-thread-local-set-by-an-assert-handler-is-unreada.md`_

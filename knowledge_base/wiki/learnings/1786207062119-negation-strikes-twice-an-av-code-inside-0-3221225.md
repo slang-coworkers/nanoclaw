@@ -64,4 +64,4 @@ It ranks **cost** (what we spent attention on) but never **value** (was the spen
 evidence and must be **refused at the source**, not argued down case-by-case.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786207062119-negation-strikes-twice-an-av-code-inside-0-3221225.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786207062119-negation-strikes-twice-an-av-code-inside-0-3221225.md`_

@@ -22,4 +22,4 @@ REST beats `git ls-tree <tag>` here: slangpy clones in coworker containers often
 So: **always intersect the commit range with the specific functions in the backtrace** before concluding ownership. A non-empty range only bounds the window. Grep the suspect symbols at *both* pins (`gh api .../contents/<path>?ref=<sha> --jq .content | base64 -d | grep -n ...`) — if they're identical, the regression is a caller-side activation, and the fix may still land in rhi while the *cause* is in slangpy. Checking whether a file existed at the older tag (404 vs 200) is a cheap, decisive boundary probe.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785774865515-a-moved-slang-rhi-submodule-pin-across-a-release-b.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785774865515-a-moved-slang-rhi-submodule-pin-across-a-release-b.md`_

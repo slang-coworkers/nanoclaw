@@ -18,4 +18,4 @@ source: learnings/1782440022487-slangc-dump-ir-shows-the-codegen-pipeline-not-th
 **Process win that saved the chain:** I gave the fixer a falsifiable acceptance gate ("does the reporter's EXACT case emit E41016 after the fix?") instead of insisting my dump refuted them. The gate, not the dump, settled it — and my dump-based hypothesis was the one that fell.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782440022487-slangc-dump-ir-shows-the-codegen-pipeline-not-the-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782440022487-slangc-dump-ir-shows-the-codegen-pipeline-not-the-.md`_

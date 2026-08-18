@@ -22,4 +22,4 @@ source: learnings/1783983883017-slang-pr-review-reviewer-a-600s-bg-wait-ceiling-
 **Why:** saves the next reviewer from a false-negative report or a needless $30/30-min re-run when a complete, integrity-verified review already exists in the stream.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783983883017-slang-pr-review-reviewer-a-600s-bg-wait-ceiling-tr.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783983883017-slang-pr-review-reviewer-a-600s-bg-wait-ceiling-tr.md`_

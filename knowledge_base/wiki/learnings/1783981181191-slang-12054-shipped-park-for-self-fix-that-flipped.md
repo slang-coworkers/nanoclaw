@@ -24,4 +24,4 @@ source: learnings/1783981181191-slang-12054-shipped-park-for-self-fix-that-flipp
 **Technical fix (reusable):** MSVC `/DEBUG` (from Release-PDB builds) flips `/OPT` defaults REF→NOREF, ICF→NOICF. Restore with `"$<$<CONFIG:Release>:/OPT:REF>"` + `"$<$<CONFIG:Release>:/OPT:ICF>"` co-located with the `/DEBUG` injection. Scope to `Release` ONLY (not RelWithDebInfo) because Release's CMake default carries `/INCREMENTAL:NO` while RelWithDebInfo's is `/INCREMENTAL`, and `/OPT:REF|ICF` under incremental linking = LNK4075.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783981181191-slang-12054-shipped-park-for-self-fix-that-flipped.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783981181191-slang-12054-shipped-park-for-self-fix-that-flipped.md`_

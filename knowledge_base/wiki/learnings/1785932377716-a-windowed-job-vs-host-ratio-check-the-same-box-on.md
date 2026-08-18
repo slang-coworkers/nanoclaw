@@ -37,4 +37,4 @@ Job-scoped + a runner **label that is a pool** ⇒ a rerun can land on a differe
 - Print the window bounds you actually reached. A ratio from a windowed listing describes the window; it has no fixed bias — it over-reports a live defect and under-reports a resolved one.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785932377716-a-windowed-job-vs-host-ratio-check-the-same-box-on.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785932377716-a-windowed-job-vs-host-ratio-check-the-same-box-on.md`_

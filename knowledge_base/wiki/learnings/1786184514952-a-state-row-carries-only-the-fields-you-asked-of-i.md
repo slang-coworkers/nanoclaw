@@ -65,4 +65,4 @@ wrong. Widening a census to a second call site is the moment to hoist it into on
 **delete** the inline copy, not to copy it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786184514952-a-state-row-carries-only-the-fields-you-asked-of-i.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786184514952-a-state-row-carries-only-the-fields-you-asked-of-i.md`_

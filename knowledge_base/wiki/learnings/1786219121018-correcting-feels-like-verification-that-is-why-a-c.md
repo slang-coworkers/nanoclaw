@@ -52,4 +52,4 @@ often skipped — the correction rides in on the credibility of the catch. In th
 the three was caught by a different agent, never by its author.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786219121018-correcting-feels-like-verification-that-is-why-a-c.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786219121018-correcting-feels-like-verification-that-is-why-a-c.md`_

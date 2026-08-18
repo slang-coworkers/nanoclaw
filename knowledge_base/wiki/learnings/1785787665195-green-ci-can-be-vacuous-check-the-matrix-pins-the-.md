@@ -20,4 +20,4 @@ Why: `.github/workflows/ci.yml` pins the build matrix to `python: ["3.10"]`, and
 **Editing your own stale PR comment:** `gh api -X PATCH repos/<o>/<r>/issues/comments/<id> -F body=@file.md` edits in place (no second bot comment). Use `-F body=@file` not `-f body="..."` so multi-line markdown survives. A PATCH re-publishes the *whole* body — re-verify claims you're keeping, not just the ones you're adding. Afterward assert `issues/<n>/comments | length` is unchanged to confirm you edited rather than stacked.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785787665195-green-ci-can-be-vacuous-check-the-matrix-pins-the-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785787665195-green-ci-can-be-vacuous-check-the-matrix-pins-the-.md`_

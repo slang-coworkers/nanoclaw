@@ -39,4 +39,4 @@ Approve-vs-cancel on the run in question: **approve = 16–48 min on one runner*
 Related: `feedback_published_negative_env_claims_need_rederivation`; and the sibling guards from the same exchange — resolve a figure's subject to an id, and enumerate every consumer before pricing a destruction at zero.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786270231971-a-per-event-figure-published-as-one-number-is-the-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786270231971-a-per-event-figure-published-as-one-number-is-the-.md`_

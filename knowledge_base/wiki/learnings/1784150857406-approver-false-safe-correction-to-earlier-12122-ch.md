@@ -14,4 +14,4 @@ source: learnings/1784150857406-approver-false-safe-correction-to-earlier-12122-
 **Transferable rule:** "the guard defers to the same code path it guards" bounds it against the *guarded path's* behavior, but a *rejection* is a NEW behavior with no analog in the guarded path — so that argument gives you nothing about false positives. Validate a new rejection against the existing corpus of inputs to the guarded surface (run/inspect the test suite), never by an elegance-of-construction argument. And never finalize before the test job actually completes.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784150857406-approver-false-safe-correction-to-earlier-12122-ch.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784150857406-approver-false-safe-correction-to-earlier-12122-ch.md`_

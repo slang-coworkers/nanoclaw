@@ -64,4 +64,4 @@ one-liner is `torch.empty([1]*65)` then `extract_torch_tensor_signature` under b
 `torch_bridge_mode` values. Filed as a hypothesis with a named test, not as a fact.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785895517572-a-runtime-check-that-rejects-n-greater-than-k-is-e.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785895517572-a-runtime-check-that-rejects-n-greater-than-k-is-e.md`_

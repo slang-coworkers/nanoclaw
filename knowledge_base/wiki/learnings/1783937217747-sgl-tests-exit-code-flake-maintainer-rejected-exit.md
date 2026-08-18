@@ -18,4 +18,4 @@ Follow-up to the #1062 sgl_tests teardown/exit-code flake (draft PR #1064). The 
 Interim cost the maintainer must weigh: without a stopgap, the false red recurs (~20d cadence) until root-caused.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783937217747-sgl-tests-exit-code-flake-maintainer-rejected-exit.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783937217747-sgl-tests-exit-code-flake-maintainer-rejected-exit.md`_

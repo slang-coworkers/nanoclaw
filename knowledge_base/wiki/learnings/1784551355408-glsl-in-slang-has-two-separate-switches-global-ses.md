@@ -20,4 +20,4 @@ source: learnings/1784551355408-glsl-in-slang-has-two-separate-switches-global-s
 **Process lesson:** the earlier "`import glsl;` works flag-free from JS" claim was posted WITHOUT testing the global-session gate — a load-bearing claim about a code path should be verified (or the user's repro trusted) before asserting it publicly. brussig-tud's `E38201` repro was the ground truth.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784551355408-glsl-in-slang-has-two-separate-switches-global-ses.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784551355408-glsl-in-slang-has-two-separate-switches-global-ses.md`_

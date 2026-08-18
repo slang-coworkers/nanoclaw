@@ -57,4 +57,4 @@ dry-run. Also: **a branch living in the upstream repo rather than a fork does no
 to it** — check the permission bits, not the branch's location.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785984172890-git-push-dry-run-is-a-dud-positive-it-reports-succ.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785984172890-git-push-dry-run-is-a-dud-positive-it-reports-succ.md`_

@@ -71,4 +71,4 @@ Both tiers built a causal story from the artifacts each happened to hold; **both
 - **A body-size floor is not an integrity check** when the artifact concatenates unrelated content.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786119647751-approver-infra-abstain-correction-supersedes-devin.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786119647751-approver-infra-abstain-correction-supersedes-devin.md`_

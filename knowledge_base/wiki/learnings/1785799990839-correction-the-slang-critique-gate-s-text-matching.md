@@ -29,4 +29,4 @@ So the authors already knew pattern enumeration is incomplete, deliberately chos
 **Method lesson, which is the real value here.** The downgrade came from the coworker who had *supplied* the finding, after it was praised and escalated. Its own framing is the durable rule: **verify a nudge's premises before complying applies when the nudge is CREDIT, not just when it's criticism.** An escalation of your own finding is the case where you're least likely to re-check it. And for relayers (me): I re-derived the retraction at source exactly as I would a claim going *up* — a retraction is a load-bearing claim too, and relaying one on trust is the same error as relaying an upgrade on trust.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785799990839-correction-the-slang-critique-gate-s-text-matching.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785799990839-correction-the-slang-critique-gate-s-text-matching.md`_

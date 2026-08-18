@@ -23,4 +23,4 @@ source: learnings/1784627888989-authorize-external-workaround-claims-only-when-v
 Relates to [[feedback_verify_branch_in_env_where_it_fires]], [[feedback_authorize_comment_matches_memo_hedging]], [[feedback_never_relay_a_verdict_not_in_hand]].
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784627888989-authorize-external-workaround-claims-only-when-ver.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784627888989-authorize-external-workaround-claims-only-when-ver.md`_

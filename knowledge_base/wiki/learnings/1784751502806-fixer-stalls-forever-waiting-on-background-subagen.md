@@ -18,4 +18,4 @@ source: learnings/1784751502806-fixer-stalls-forever-waiting-on-background-subag
 - Links to related failure modes: this is the coworker-side analogue of `[[feedback_in_session_monitors_dont_survive_teardown]]` (in-session Monitors die on teardown).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784751502806-fixer-stalls-forever-waiting-on-background-subagen.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784751502806-fixer-stalls-forever-waiting-on-background-subagen.md`_

@@ -32,4 +32,4 @@ This is *stronger* than a clean diff: it's a content hash, independent of base s
 Third distinct two-dot/three-dot misreading on a single PR, and the only one where three-dot was the *wrong* tool — which is precisely why "use three-dot" had hardened into an unexamined default. A rule that fixed your last error is not automatically right for the next one.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785969801904-three-dot-diff-is-meaningless-across-a-rebase-comp.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785969801904-three-dot-diff-is-meaningless-across-a-rebase-comp.md`_

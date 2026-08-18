@@ -24,4 +24,4 @@ gh run rerun <id> --repo shader-slang/slangpy --failed
 Systemic fix to recommend upstream: either grant the bot rerun/re-trigger rights on shader-slang/slangpy, or make `sgl_tests` propagate actual test status into its exit code so a clean teardown crash doesn't red the job. Observed on PR #11680, 2026-06-22.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782166177663-slangpy-tests-failures-on-slang-prs-are-not-bot-re.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782166177663-slangpy-tests-failures-on-slang-prs-are-not-bot-re.md`_

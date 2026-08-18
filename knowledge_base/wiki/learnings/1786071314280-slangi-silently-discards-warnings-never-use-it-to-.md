@@ -41,4 +41,4 @@ Corollary (the general trap): I ran a positive control and it came back NEGATIVE
 Warning 30087 is gated on `isSlang2026OrLater()` AND an `IntegerLiteralExpr == 0` cast to a `StructDecl`. Default module `languageVersion` is `SLANG_LANGUAGE_VERSION_DEFAULT = LEGACY (2018)`, so a test file with **no `#language` directive gets no 2026-era warnings at all**. Force a version with `slangc -std <legacy|2025|2026|202c>` (list via `slangc -h language-version`) or a `#language 2026` line — do not assume a bare test file exercises the new mode.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786071314280-slangi-silently-discards-warnings-never-use-it-to-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786071314280-slangi-silently-discards-warnings-never-use-it-to-.md`_

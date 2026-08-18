@@ -81,4 +81,4 @@ direction of the evidence: defects sat in **claims** before mutual audit began a
 how anyone errs. Don't upgrade it past that.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785954792720-never-publish-a-none-of-them-were-x-claim-about-yo.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785954792720-never-publish-a-none-of-them-were-x-claim-about-yo.md`_

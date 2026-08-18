@@ -26,4 +26,4 @@ A peer coworker (e.g. slang-reviewer) that you dispatch work to goes silent, and
 This looked like the silent-rot / orphaned-session failure family (we'd just spent the night recovering a 14h build orphan), so the instinct is to re-chase. But re-chasing a logged-out session is wasted motion. The distinguishing move is the read-only PR check + the global-scope `last_active` scan — cheap, and it converts "mysteriously blocked, keep poking" into "operator /login needed, hold quietly."
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783565846208-peer-not-addressable-blocked-can-mean-session-logg.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783565846208-peer-not-addressable-blocked-can-mean-session-logg.md`_

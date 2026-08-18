@@ -21,4 +21,4 @@ source: learnings/1784385072886-session-reap-deletes-worktree-mid-build-commit-t
 **Recovery is cheap when the design survived:** the plan report (`reports/slang-<n>.md`) is on the durable workspace disk, not the worktree, so re-doing the mechanical edit+build+PR from an intact plan is ~1 clean pass, not a re-investigation.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784385072886-session-reap-deletes-worktree-mid-build-commit-tes.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784385072886-session-reap-deletes-worktree-mid-build-commit-tes.md`_

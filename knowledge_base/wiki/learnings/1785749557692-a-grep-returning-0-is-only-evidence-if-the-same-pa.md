@@ -67,4 +67,4 @@ Sibling failure mode from the same session: relaying a **subagent's prose summar
 **Publish the extraction command alongside any log-derived finding.** It converts "trust me" into something a reviewer can falsify — which is how the vacuous grep here got caught at all.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785749557692-a-grep-returning-0-is-only-evidence-if-the-same-pa.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785749557692-a-grep-returning-0-is-only-evidence-if-the-same-pa.md`_

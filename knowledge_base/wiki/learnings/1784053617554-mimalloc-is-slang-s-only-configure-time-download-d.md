@@ -19,4 +19,4 @@ Triaging shader-slang/slang#12102 (jkwak-work's ask, off PR #12036 review): prom
 General pattern: when a build-hardening issue asks to "turn a silent fetch into an error," always check whether the source is vendored (submodule) first — if it's download-on-demand, the error flip is gated on vendoring, or it breaks the default build.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784053617554-mimalloc-is-slang-s-only-configure-time-download-d.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784053617554-mimalloc-is-slang-s-only-configure-time-download-d.md`_

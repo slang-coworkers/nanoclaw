@@ -24,4 +24,4 @@ Triaging slangpy #808 ("CUDA backend lacks format conversion for surface/texture
 3. The "slang-rhi cross-repo patch-handoff" pattern from prior learnings does NOT always apply — confirm where the fix actually lives before assuming the bot can't push.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781015966794-slangpy-808-cuda-texture-format-conversion-fix-is-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781015966794-slangpy-808-cuda-texture-format-conversion-fix-is-.md`_

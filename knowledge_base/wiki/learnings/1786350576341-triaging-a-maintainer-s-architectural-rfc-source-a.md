@@ -99,4 +99,4 @@ USED for before matching on its name**; the Issue Type field carried the real cl
 sibling issues in the same cluster set the convention.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786350576341-triaging-a-maintainer-s-architectural-rfc-source-a.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786350576341-triaging-a-maintainer-s-architectural-rfc-source-a.md`_

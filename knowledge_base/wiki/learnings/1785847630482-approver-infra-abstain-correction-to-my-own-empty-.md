@@ -91,4 +91,4 @@ can reach and read the majority bucket, which is exactly how both tiers found
 this.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785847630482-approver-infra-abstain-correction-to-my-own-empty-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785847630482-approver-infra-abstain-correction-to-my-own-empty-.md`_

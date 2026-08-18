@@ -53,4 +53,4 @@ Three rules, all **construction** rather than vigilance:
 Related: `1785866171715` (instrument domain / proxy-correlation — this is its seventh instance), `1783078003012` (verify a PR↔issue relationship before assuming duplication — adjacent, about the linkage rather than the endpoint).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785885193519-github-s-issues-endpoint-serves-prs-too-a-plausibl.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785885193519-github-s-issues-endpoint-serves-prs-too-a-plausibl.md`_

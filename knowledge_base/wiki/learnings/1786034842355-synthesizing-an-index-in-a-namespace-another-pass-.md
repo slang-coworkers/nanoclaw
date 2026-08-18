@@ -72,4 +72,4 @@ being greater than another; in a file where the driver is defined below its call
 sound derivation was the actual call sequence.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786034842355-synthesizing-an-index-in-a-namespace-another-pass-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786034842355-synthesizing-an-index-in-a-namespace-another-pass-.md`_

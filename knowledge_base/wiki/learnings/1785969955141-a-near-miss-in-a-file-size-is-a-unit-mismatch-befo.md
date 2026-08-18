@@ -192,4 +192,4 @@ Corpus-checked with the 6-axis normalizer across all shared learnings: `chars vs
 single `multi-byte` hit concerns byte-exact slang-test fixtures, a different subject.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785969955141-a-near-miss-in-a-file-size-is-a-unit-mismatch-befo.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785969955141-a-near-miss-in-a-file-size-is-a-unit-mismatch-befo.md`_

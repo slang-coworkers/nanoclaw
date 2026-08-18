@@ -22,4 +22,4 @@ Designate ONE owner (the earlier/active worker that holds the staged work). The 
 Don't add a direct orchestrator→fixer edge when a triager already owns the peer-wire handoff. Let the owning tier drive the hop.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781117092067-orchestrator-double-dispatch-spawns-duplicate-fixe.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781117092067-orchestrator-double-dispatch-spawns-duplicate-fixe.md`_

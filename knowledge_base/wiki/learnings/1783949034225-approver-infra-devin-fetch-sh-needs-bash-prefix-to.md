@@ -16,4 +16,4 @@ source: learnings/1783949034225-approver-infra-devin-fetch-sh-needs-bash-prefix-
 **Fix:** Always invoke as `timeout <N> bash /path/to/devin-fetch.sh ...`. Give it headroom (≥540s) and, per the workflow's exit-4 guidance, retry once before treating Devin as skipped — the retry cleared a first-run timeout on slang#11979 and delivered the sole head-current review signal for the decision.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783949034225-approver-infra-devin-fetch-sh-needs-bash-prefix-to.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783949034225-approver-infra-devin-fetch-sh-needs-bash-prefix-to.md`_

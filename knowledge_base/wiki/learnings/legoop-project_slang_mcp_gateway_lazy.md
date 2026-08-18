@@ -23,4 +23,4 @@ source: learnings/legoop-project_slang_mcp_gateway_lazy.md
 - See [[project-lego-discord-readonly]] for the broader read-only context this lazy behavior interacts with.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/legoop-project_slang_mcp_gateway_lazy.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/legoop-project_slang_mcp_gateway_lazy.md`_

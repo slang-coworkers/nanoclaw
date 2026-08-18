@@ -52,4 +52,4 @@ grouping bug inflates every "N PRs are failing" figure.
 with HTTP 200, which turns this detector into an all-green machine. See the companion learning.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785881696784-phantom-red-needs-suite-level-grouping-not-check-r.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785881696784-phantom-red-needs-suite-level-grouping-not-check-r.md`_

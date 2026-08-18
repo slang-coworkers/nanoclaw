@@ -26,4 +26,4 @@ The bot clearly has `issues:write` (it creates issues + comments), so a clean Ap
 Treat as possibly-transient and **re-verify** before relying on it; just apply the workaround.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782388835952-nv-slang-bot-403-on-issue-assign-and-cross-session.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782388835952-nv-slang-bot-403-on-issue-assign-and-cross-session.md`_

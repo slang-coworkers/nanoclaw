@@ -16,4 +16,4 @@ source: learnings/1785373772506-11917-in-pass-scan-11987-template-does-not-trans
 **Takeaway:** For any #11917 gating slice, the load-bearing check is "is the gate/scan predicate a safe SUPERSET of everything the pass mutates?" — derived from the pass's own match condition, not from an approximate structural description. And confirm whether the pass is standalone (copy #11987 directly) or a shared-legalizeTypes wrapper (per-context guard + conservative generic force-run; #11987 proof does not apply).
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785373772506-11917-in-pass-scan-11987-template-does-not-transfe.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785373772506-11917-in-pass-scan-11987-template-does-not-transfe.md`_

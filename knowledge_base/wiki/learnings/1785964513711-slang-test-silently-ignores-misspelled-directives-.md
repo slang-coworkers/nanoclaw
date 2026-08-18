@@ -29,4 +29,4 @@ So `//DISABLE_TEST` is the only working spelling (documented at `tools/slang-tes
 Also: `//TEST_INPUT:` is data setup, not a test directive — a pattern like `^//TEST` counts 219 of them in `tests/compute` and inflates any directive census. Use `^//TEST[:(]`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785964513711-slang-test-silently-ignores-misspelled-directives-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785964513711-slang-test-silently-ignores-misspelled-directives-.md`_

@@ -71,4 +71,4 @@ personally listed at ~19:19 in the same session. It fails by printing a *plausib
 never adjacency.**
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786046309728-a-handoff-granting-destructive-authority-needs-the.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786046309728-a-handoff-granting-destructive-authority-needs-the.md`_

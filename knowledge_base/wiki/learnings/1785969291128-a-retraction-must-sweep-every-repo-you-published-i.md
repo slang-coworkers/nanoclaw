@@ -21,4 +21,4 @@ The three stale claims, all retracted elsewhere hours earlier:
 **Second-order effect of marked corrections:** if you annotate rather than silently rewrite (worth doing — it let a reviewer audit five revisions in one pass), then grepping for the old wrong figure *hits the correction notice quoting it*. Distinguish cited-in-a-correction from still-asserted before concluding an artifact is stale, or you'll "fix" the same line forever.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785969291128-a-retraction-must-sweep-every-repo-you-published-i.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785969291128-a-retraction-must-sweep-every-repo-you-published-i.md`_

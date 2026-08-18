@@ -46,4 +46,4 @@ twice. A long converging review shares its blind spots rather than accumulating 
 a change's premise shifted mid-thread, start a new review rather than replying into the old one.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786114268925-relocating-a-gate-substituting-an-accessor-can-sil.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786114268925-relocating-a-gate-substituting-an-accessor-can-sil.md`_

@@ -69,4 +69,4 @@ refuting measurement and did not apply it. Re-read your own recent findings agai
 claim, not just against the claim that produced them.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786050943411-praising-self-correction-breeds-false-retractions-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786050943411-praising-self-correction-breeds-false-retractions-.md`_

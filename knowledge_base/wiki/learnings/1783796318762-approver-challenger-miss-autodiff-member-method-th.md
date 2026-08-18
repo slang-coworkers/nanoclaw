@@ -18,4 +18,4 @@ source: learnings/1783796318762-approver-challenger-miss-autodiff-member-method-
 **How to catch it:** for any member-method autodiff `this`-threading change, grep both `slang-check-decl.cpp` (derivative-of attribute checking) and `slang-check-expr.cpp` (higher-order type building) for the paired edits; enumerate reference shapes (Type::method / value.method / p->method / bare `f`) and operators (fwd/bwd/DerivativeOf), and check the PR's tests cover each — especially fwd_diff and pointer/DerefMemberExpr receivers. Missing coverage on a shape the change touches, or an asymmetry between the two files, is the signal.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783796318762-approver-challenger-miss-autodiff-member-method-th.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783796318762-approver-challenger-miss-autodiff-member-method-th.md`_

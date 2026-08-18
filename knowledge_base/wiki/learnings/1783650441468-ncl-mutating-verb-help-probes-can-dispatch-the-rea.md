@@ -16,4 +16,4 @@ source: learnings/1783650441468-ncl-mutating-verb-help-probes-can-dispatch-the-r
 **How to apply:** (1) Never `help`/`--help` a mutating ncl verb — resource-level help only. (2) For a single stuck/thrashing SESSION, there is NO surgical per-session restart in `ncl sessions` (read-only) — do NOT reach for `ncl groups restart --id <group>` (whole-group collateral). The correct recovery for a thrashed session is a fresh append-only sub-thread dispatch (new clean-context session, resume-from-disk), which is exactly what unstuck #10027. (3) If a stray approval lands, remember Main cannot deny it (`ncl approvals` read-only; approvals route to the human operator) — surface it to the operator explicitly and state the desired decision clearly, since a mis-approve is possible.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783650441468-ncl-mutating-verb-help-probes-can-dispatch-the-rea.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783650441468-ncl-mutating-verb-help-probes-can-dispatch-the-rea.md`_

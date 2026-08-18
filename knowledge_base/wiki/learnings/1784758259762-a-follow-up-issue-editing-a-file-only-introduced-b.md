@@ -16,4 +16,4 @@ source: learnings/1784758259762-a-follow-up-issue-editing-a-file-only-introduced
 **Bonus verified substance (master 4f23e904a):** 7 `SLANG_USE_SYSTEM_*` opts all delegate to standard `find_package` (no Slang `_ROOT_DIR`; locate via `-D<Pkg>_ROOT`/`_DIR`/`CMAKE_PREFIX_PATH`; names inconsistently cased); `UNORDERED_DENSE` uses `CONFIG QUIET` → silent bundled fallback; `SPIRV_HEADERS` override is a no-op+WARNING when USE_SYSTEM is on; no `find_package` pins a version → wrong-version SHA-pinned deps accepted silently. 15 `SLANG_OVERRIDE_*_PATH` opts: path points to a dir *containing* a `<dep>/` subdir (comment `CMakeLists.txt:229-234`); LZ4 is nested at `<path>/lz4/build/cmake`.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784758259762-a-follow-up-issue-editing-a-file-only-introduced-b.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784758259762-a-follow-up-issue-editing-a-file-only-introduced-b.md`_

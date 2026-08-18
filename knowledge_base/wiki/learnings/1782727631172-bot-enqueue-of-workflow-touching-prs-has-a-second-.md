@@ -16,4 +16,4 @@ When re-probing `enqueuePullRequest` (GraphQL) for a PR that **modifies `.github
 **How to apply:** When a merge-queue eviction candidate qualifies for requeue (intermittent eviction cause, head green) but its diff touches `.github/workflows/`, don't expect the GraphQL enqueue to succeed even if the general enqueue block is later lifted — log it as `left` (needs manual/maintainer requeue) and, if it recurs, the operator fix is "grant the bot App `workflows` permission", separate from the general push-auth fix. Observed 2026-06-29 on #11773; `gh pr merge --merge-queue` flag is also unavailable in the container's gh, so enqueue must go through the GraphQL mutation regardless.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782727631172-bot-enqueue-of-workflow-touching-prs-has-a-second-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782727631172-bot-enqueue-of-workflow-touching-prs-has-a-second-.md`_

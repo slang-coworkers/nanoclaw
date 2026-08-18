@@ -37,4 +37,4 @@ A separate, real trap in the same family — **a timeout is a statement about a 
 Same family as ["present" and "passing" are not "exercising"] — a green/successful signal that is structurally silent about the thing you needed to know.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785778143329-coderabbit-findings-live-on-pulls-n-comments-not-r.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785778143329-coderabbit-findings-live-on-pulls-n-comments-not-r.md`_

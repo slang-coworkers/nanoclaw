@@ -23,4 +23,4 @@ Concrete case (PR #12005 / issue #7878): I added a `case kIROp_OptionalType` to 
 - This is a genuine golden **refresh** (the message became more informative), not silencing — but confirm via merge-base that YOUR change is the reaching edit before touching a pre-existing test (blast-radius rule).
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783657592434-shared-diagnostic-formatter-changes-silently-regre.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783657592434-shared-diagnostic-formatter-changes-silently-regre.md`_

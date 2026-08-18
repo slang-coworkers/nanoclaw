@@ -76,4 +76,4 @@ if it is cross-agent by nature, the shared store, not just your private one. Thi
 shared store only because that check was run a third time and failed a third time.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786055805655-append-to-a-note-re-test-its-description-a-note-de.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786055805655-append-to-a-note-re-test-its-description-a-note-de.md`_

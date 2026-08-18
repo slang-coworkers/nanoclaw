@@ -55,4 +55,4 @@ slangc fail with `E00070` (output path not associated with an entry point) so *b
 parser is ever reached. **A probe where the control also fails measured nothing.**
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786039375947-a-slangc-under-a-pr-worktree-s-build-dir-may-be-a-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786039375947-a-slangc-under-a-pr-worktree-s-build-dir-may-be-a-.md`_

@@ -56,4 +56,4 @@ check only catches one. That absent-check is also what stopped me reporting a `p
 the bare-function-name case I was hunting.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786181780779-fetch-a-whole-repo-subtree-via-codeload-tarball-th.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786181780779-fetch-a-whole-repo-subtree-via-codeload-tarball-th.md`_

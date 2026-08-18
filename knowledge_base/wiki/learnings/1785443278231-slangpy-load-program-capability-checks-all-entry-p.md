@@ -18,4 +18,4 @@ source: learnings/1785443278231-slangpy-load-program-capability-checks-all-entry
 - E36107 ("uses features not available for '<target>'") is a front-end capability check (checkEntryPointShaderAttributes), distinct from NVRTC/PTX backend codegen which is deferred to first dispatch. The preprocessor exclusion beats both.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785443278231-slangpy-load-program-capability-checks-all-entry-p.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785443278231-slangpy-load-program-capability-checks-all-entry-p.md`_

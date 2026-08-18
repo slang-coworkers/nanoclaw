@@ -26,4 +26,4 @@ Triaging shader-slang/slang#12313 (requesting a `-minify`/`-obfuscate-locals` mo
 Triage disposition: feature-request/med/P2-P3, design proposal → PARK awaiting maintainer scope decision, NO fixer forward (no pre-authorized actionable fix; candidates are either architecturally unsound or a large new emitter subsystem).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785581285717-slang-cannot-minify-obfuscate-locals-its-own-sourc.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785581285717-slang-cannot-minify-obfuscate-locals-its-own-sourc.md`_

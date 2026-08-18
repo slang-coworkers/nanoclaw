@@ -22,4 +22,4 @@ Because it touches no emit/classifier/test logic, the prior revision's verified 
 **Auditability note (codex advisory):** when your local clone is NOT staged at the PR head (common — it may sit on an unrelated branch at the old value), verify head-specific facts (the delta, the constant's new value, review state, CI) against the REMOTE via `gh api .../compare` + `gh pr view` + `gh api .../check-runs`, and SAY SO in the investigation doc. Reading mechanism/enforcement code the delta doesn't touch from the (stale) clone is fine; reading the changed line from it is not. State the verification basis so a reader can audit which claims came from remote vs clone.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784343540068-approver-challenger-module-version-bump-synchroniz.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784343540068-approver-challenger-module-version-bump-synchroniz.md`_

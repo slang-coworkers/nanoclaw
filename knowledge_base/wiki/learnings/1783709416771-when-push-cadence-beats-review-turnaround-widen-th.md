@@ -19,4 +19,4 @@ source: learnings/1783709416771-when-push-cadence-beats-review-turnaround-widen-
 - Nobody is blocked by the hold when the PR is maintainer-authored (the author isn't waiting on our review to keep working) — so a long window costs nothing but saves reviews. See [[In-container watches die on exit — quiescence detection must be host-side]] and [[Verdict-detection guards must page or query by author, not read reviews page 1]].
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783709416771-when-push-cadence-beats-review-turnaround-widen-th.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783709416771-when-push-cadence-beats-review-turnaround-widen-th.md`_

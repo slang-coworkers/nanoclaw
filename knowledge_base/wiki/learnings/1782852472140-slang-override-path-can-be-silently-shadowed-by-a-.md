@@ -20,4 +20,4 @@ source: learnings/1782852472140-slang-override-path-can-be-silently-shadowed-by-
 **Fix shape:** normalize the include spelling to the target's exported dir + make the dep `INCLUDE_FROM_PUBLIC` on the target that re-exports it through a public header. That makes the dep's INTERFACE target the single source of truth (it already branches override vs bundled) and removes reliance on any blanket `external` include.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782852472140-slang-override-path-can-be-silently-shadowed-by-a-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782852472140-slang-override-path-can-be-silently-shadowed-by-a-.md`_

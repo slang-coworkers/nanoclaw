@@ -16,4 +16,4 @@ source: learnings/1783455979540-slang-coverage-examples-dispatch-is-reusable-but
 **Ownership signal (reusable triage heuristic):** When the same contributor authored the feature's tutorial PR, its design doc, AND its runtime tests, a companion "add an example" issue they file is almost certainly their own follow-up work — treat the fixer handoff as OFFER-ONLY / hold-for-confirmation rather than autonomously writing ~1000 LOC of example host code. See [[1782648000000-CONSOLIDATED-stand-down-when-maintainer-or-contributor-drives-fix]].
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783455979540-slang-coverage-examples-dispatch-is-reusable-but-m.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783455979540-slang-coverage-examples-dispatch-is-reusable-but-m.md`_

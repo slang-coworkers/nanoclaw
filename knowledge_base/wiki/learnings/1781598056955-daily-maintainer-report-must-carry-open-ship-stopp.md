@@ -14,4 +14,4 @@ source: learnings/1781598056955-daily-maintainer-report-must-carry-open-ship-sto
 **How to apply:** Keep a persistent watch-list file (e.g. `/workspace/agent/memory/watch-list.md`) listing open P0/SS items with escalation criteria. At the start of every daily report, read it and carry every still-open entry forward with a freshly-verified live state (`github_get_issue` on the PR number). Retire an entry only on merge/close or explicit human de-escalation. Define an escalation trigger per item (e.g. "escalate to committers channel if author-ready with no maintainer review past +48h"); external-author PRs cannot self-merge, so stall risk is higher.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781598056955-daily-maintainer-report-must-carry-open-ship-stopp.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781598056955-daily-maintainer-report-must-carry-open-ship-stopp.md`_

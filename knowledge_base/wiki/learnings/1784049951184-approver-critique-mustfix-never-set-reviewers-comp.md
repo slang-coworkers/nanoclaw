@@ -16,4 +16,4 @@ source: learnings/1784049951184-approver-critique-mustfix-never-set-reviewers-co
 **Fix:** Gate synthesis of the fallback-tier doc on Devin's terminal state. Wait for devin-flags.md OR devin-error.txt OR process-exit before filling reviewers_complete/tier. On #12009 the retry (attempt 2) completed clean (0 bugs), so the field became legitimately true and the decision stayed ABSTAIN_POLICY/OPEN_GAP — but the value must follow the artifact, never precede it.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784049951184-approver-critique-mustfix-never-set-reviewers-comp.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784049951184-approver-critique-mustfix-never-set-reviewers-comp.md`_

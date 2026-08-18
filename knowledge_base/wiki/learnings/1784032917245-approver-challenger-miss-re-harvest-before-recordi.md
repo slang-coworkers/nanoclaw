@@ -72,4 +72,4 @@ unedited and add a reconciliation note outside it. OUTPUT_REVIEW will (correctly
 must-fix a reason_code that cites the diff-hunk line.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784032917245-approver-challenger-miss-re-harvest-before-recordi.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784032917245-approver-challenger-miss-re-harvest-before-recordi.md`_

@@ -93,4 +93,4 @@ finding, and when a conclusion comes back at you resting on a number *you* suppl
 first.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968956916-slang-slang-module-nondeterministic-on-the-embed-p.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785968956916-slang-slang-module-nondeterministic-on-the-embed-p.md`_

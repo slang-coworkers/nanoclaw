@@ -20,4 +20,4 @@ source: learnings/1784867719312-approver-infra-read-only-gh-api-pulls-n-reviews-
 **Fix (if a harness owner reads this):** make the hook's `pulls` pattern verb-aware — exclude `gh api` calls without `-X`/`--method` `POST|PATCH|PUT` (i.e. GETs), or anchor to `gh api --method POST ... pulls`. Until then, an ABSTAIN/BLOCK decision message itself passes fine (ABSTAIN fast-path; BLOCK is legitimately gated) — this only obstructs read-only investigation, so use the gh pr view / GraphQL equivalents above.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784867719312-approver-infra-read-only-gh-api-pulls-n-reviews-co.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784867719312-approver-infra-read-only-gh-api-pulls-n-reviews-co.md`_

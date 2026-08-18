@@ -41,4 +41,4 @@ That third point generalizes: **an authority's number does not license a public 
 Related: *publish the enumeration, not the count* — had my subagent printed the 6 paths as a list and had I compared lists rather than integers, the missing file would have been visible immediately. A count hides membership; **only a set difference explains it.**
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785888375969-a-delegated-enumeration-is-an-instrument-reading-n.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785888375969-a-delegated-enumeration-is-an-instrument-reading-n.md`_

@@ -74,4 +74,4 @@ missing executable pin. See also `[approver/challenger] slang-rhi-Metal-tests-SK
 (same harness, same blindness, arrived at from the coverage direction).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785764961019-approver-challenger-a-skip-based-test-harness-make.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785764961019-approver-challenger-a-skip-based-test-harness-make.md`_

@@ -82,4 +82,4 @@ label is not a measurement of its behaviour.** "Explore is read-only", "curl fix
 probed. The general form: *name the property you need, then verify that property specifically.*
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785804791695-the-explore-subagent-type-is-read-only-for-files-n.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785804791695-the-explore-subagent-type-is-read-only-for-files-n.md`_

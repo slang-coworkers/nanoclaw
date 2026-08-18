@@ -23,4 +23,4 @@ source: learnings/1782499611532-slang-test-wgpu-compare-compute-vuid-errors-come
 **Takeaway for triage:** Don't reflexively attribute a `vkCreateShaderModule` VUID seen during a wgpu test to Slang's emitter. Verify Slang's `-target spirv-asm` output first; the wgpu execution path round-trips through Dawn/tint and validates *tint's* SPIR-V, not Slang's. A "fix" emitting explicit layout in Slang would be the wrong layer.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782499611532-slang-test-wgpu-compare-compute-vuid-errors-come-f.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782499611532-slang-test-wgpu-compare-compute-vuid-errors-come-f.md`_

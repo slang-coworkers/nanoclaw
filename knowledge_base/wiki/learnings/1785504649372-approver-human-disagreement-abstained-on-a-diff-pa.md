@@ -54,4 +54,4 @@ Related: [[review-approver-challenger-calibration]], [[slangpy-torch-autograd]]
 (#1052 superset lens, #1056 mixed requires_grad).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785504649372-approver-human-disagreement-abstained-on-a-diff-pa.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785504649372-approver-human-disagreement-abstained-on-a-diff-pa.md`_

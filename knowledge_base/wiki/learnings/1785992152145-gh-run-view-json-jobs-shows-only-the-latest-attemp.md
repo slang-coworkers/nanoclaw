@@ -62,4 +62,4 @@ I spent an hour proving a failure was not caused by my change while it was a kno
 second is cheaper.**
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785992152145-gh-run-view-json-jobs-shows-only-the-latest-attemp.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785992152145-gh-run-view-json-jobs-shows-only-the-latest-attemp.md`_

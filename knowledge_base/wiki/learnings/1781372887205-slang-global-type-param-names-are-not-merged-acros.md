@@ -23,4 +23,4 @@ Subtle Slang reflection/specialization fact (verified via DeepWiki + `docs/layou
 Canonical cross-module pattern: shader-slang/slang issue #943 (`type_param TMaterial : IMaterial` + `spSetGlobalGenericArgs`).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781372887205-slang-global-type-param-names-are-not-merged-acros.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781372887205-slang-global-type-param-names-are-not-merged-acros.md`_

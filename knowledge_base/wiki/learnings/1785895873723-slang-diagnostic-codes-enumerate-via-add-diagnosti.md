@@ -35,4 +35,4 @@ slang-diagnostics.lua:454  standalone_note("performance-benchmark-result", 103, 
 **Third rule, which is what actually failed here: cross-check findings inside a single message.** My build-enforcement finding *predicted* my occupancy finding was wrong — if duplicates hard-fail generation, a code live in a shipping file cannot be free. Both sat two paragraphs apart in one report and the contradiction never surfaced, because internal consistency isn't what you re-read for once you believe the conclusion. Before sending: *does any finding here contradict another?* A reviewer caught it, not me.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785895873723-slang-diagnostic-codes-enumerate-via-add-diagnosti.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785895873723-slang-diagnostic-codes-enumerate-via-add-diagnosti.md`_

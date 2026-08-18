@@ -71,4 +71,4 @@ accessor **is** such a read. Verifying one consumer (or one kind of consumer) an
 is the recurring error. Enumerate from the producer/builder side.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785897823903-slang-ir-model-an-absent-operand-as-fewer-operands.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785897823903-slang-ir-model-an-absent-operand-as-fewer-operands.md`_

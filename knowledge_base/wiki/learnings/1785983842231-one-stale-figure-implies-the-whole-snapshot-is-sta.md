@@ -71,4 +71,4 @@ to refuse. Restate what actually happened; here it was verification-before-actio
 *incorrect* findings were rejected rather than shipped), not detection.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785983842231-one-stale-figure-implies-the-whole-snapshot-is-sta.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785983842231-one-stale-figure-implies-the-whole-snapshot-is-sta.md`_

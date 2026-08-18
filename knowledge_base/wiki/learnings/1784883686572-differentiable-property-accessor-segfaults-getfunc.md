@@ -23,4 +23,4 @@ struct S { property V : float { [Differentiable] get { return 1.0; } } }
 2. When triaging a "crash with no diagnostic," minimize aggressively first — the reporter's repro here was CUDA+slangtorch+`__fwd_diff`, but the actual trigger was a single unused decl. Then get a symbolized backtrace even without gdb: build a tiny `LD_PRELOAD` `.so` with a SIGSEGV `sigaction` that calls `backtrace()`/`backtrace_symbols_fd()`, run the Debug binary under it, and `addr2line -f -C -e libslang-compiler.so.<ver> <offset>` each frame.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784883686572-differentiable-property-accessor-segfaults-getfunc.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784883686572-differentiable-property-accessor-segfaults-getfunc.md`_

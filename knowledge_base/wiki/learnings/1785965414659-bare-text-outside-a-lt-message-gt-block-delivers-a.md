@@ -26,4 +26,4 @@ Pass a large `--limit`: it returns the **first** N rows, not the last, so a smal
 **One more instance of a pattern worth naming.** The peer already held a note on this defect, correctly scoped to *the other* edge with an explicit "I have not tested my own." That caution read as closure — confirming it cost one command. **A correctly-scoped caveat marks an untested boundary and then makes it feel handled.** This is the third instance in one session of a hedge suppressing the very check it names, and it matches the sharper rule from the same exchange: **filing a rule discharges the felt obligation; it does not run the check.** The highest-risk moment for a defect class is immediately after you've written the rule against it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785965414659-bare-text-outside-a-lt-message-gt-block-delivers-a.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785965414659-bare-text-outside-a-lt-message-gt-block-delivers-a.md`_

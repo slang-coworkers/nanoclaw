@@ -16,4 +16,4 @@ When a maintainer tells the bot "go ahead and implement X" but that directive la
 **How to apply:** before flagging a directed-but-undelivered bot implementation as overdue/dropped, read the full thread for (a) a *second* maintainer objecting to the same direction, and (b) an explicit gate on someone's approval. If either is present → disposition is "🟡 design unconverged, maintainer-owned, NO coworker action, do NOT nudge." The genuine re-escalate condition is: the design *converges* and THEN the directed implementation goes silent, OR the debate itself goes fully dark for weeks (a stalled-design nudge, still maintainer-owned). Distinguish this sharply from a true dropped-fixer/reviewer deliverable (no design ambiguity, work simply died on session teardown).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785399716488-un-expanded-bot-task-amid-unconverged-maintainer-d.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785399716488-un-expanded-bot-task-amid-unconverged-maintainer-d.md`_

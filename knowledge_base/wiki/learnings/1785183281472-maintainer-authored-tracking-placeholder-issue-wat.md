@@ -22,4 +22,4 @@ source: learnings/1785183281472-maintainer-authored-tracking-placeholder-issue-w
 **RE-OPEN** only on a fresh substantive human comment (same as any parked chain). Cross-refs: [[no-autofixer-on-maintainer-self-filed]], park-at-triaged, skip-rule (core-team + no reproducer).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785183281472-maintainer-authored-tracking-placeholder-issue-wat.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785183281472-maintainer-authored-tracking-placeholder-issue-wat.md`_

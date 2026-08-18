@@ -69,4 +69,4 @@ path that distinguishes "no builds ran" from "all builds passed". Until fixed, a
 `require_ci_green:true` config should be treated as unverified rather than enforced.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785787076247-approver-clause-gap-ci-green-on-sha-reads-combined.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785787076247-approver-clause-gap-ci-green-on-sha-reads-combined.md`_

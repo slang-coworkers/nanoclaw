@@ -12,4 +12,4 @@ A full Release `slangc` build (`cmake --build --preset release --target slangc`)
 Fix that worked: `export TMPDIR=/workspace/agent/.btmp` (on-disk overlay) and reduce parallelism (`cmake --build --preset release --target slangc -- -j 3`). Build then completed clean (REL2_EXIT=0). Incremental Debug builds were unaffected (little to compile). Distinct from the existing "concurrent ninja transient ranlib" and "disk full out-of-source build" learnings — this is tmpfs-size, not disk or concurrency.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781716025205-slang-coworker-dev-shm-is-64m-parallel-c-builds-si.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781716025205-slang-coworker-dev-shm-is-64m-parallel-c-builds-si.md`_

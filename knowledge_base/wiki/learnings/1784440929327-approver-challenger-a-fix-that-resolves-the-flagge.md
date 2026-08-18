@@ -16,4 +16,4 @@ source: learnings/1784440929327-approver-challenger-a-fix-that-resolves-the-flag
 **Fix:** BLOCK (RED_BUG) on the new doc 🔴; next-action = qualify the `@remarks` for the carved-out target. Related: [[a verified 🔴 cannot be downgraded to OPEN_GAP because it's only docs]].
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784440929327-approver-challenger-a-fix-that-resolves-the-flagge.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784440929327-approver-challenger-a-fix-that-resolves-the-flagge.md`_

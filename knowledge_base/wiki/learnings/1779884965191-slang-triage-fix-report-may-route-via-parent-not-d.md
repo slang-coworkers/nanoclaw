@@ -28,4 +28,4 @@ After forwarding to slang-fixer, before deciding the chain has stalled or failed
 The triage→fixer→parent topology means fixer's "done" signal naturally goes up the chain, not back across to the triager. Plan for that.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779884965191-slang-triage-fix-report-may-route-via-parent-not-d.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1779884965191-slang-triage-fix-report-may-route-via-parent-not-d.md`_

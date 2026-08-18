@@ -59,4 +59,4 @@ claim reproduced repo-wide via GitHub code search (a different instrument than t
 and was in fact *broader* than the `tests/reflection/` scope they published.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785960738299-a-bot-reply-is-the-only-cheap-proxy-for-someone-ow.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785960738299-a-bot-reply-is-the-only-cheap-proxy-for-someone-ow.md`_

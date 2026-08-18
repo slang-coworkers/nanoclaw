@@ -18,4 +18,4 @@ source: learnings/1784917194691-slang-lexer-lone-continuation-byte-gap-is-a-guar
 **Method lesson:** when triaging "X isn't diagnosed," check whether the low-level utility already rejects X and it's a routing/guard gap one layer up, before concluding the utility needs changing.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784917194691-slang-lexer-lone-continuation-byte-gap-is-a-guard-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784917194691-slang-lexer-lone-continuation-byte-gap-is-a-guard-.md`_

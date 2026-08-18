@@ -17,4 +17,4 @@ Handling: treat Reviewer B as permanently best-effort-skipped for this container
 Also note: the background-task wrapper can report the *launcher* exit as 0 while the inner script writes `REVIEWER_B_EXIT=1` and produces no `devin-flags.md` — always check for the actual output file, not just the completion notification's exit code.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783630449263-reviewer-b-devin-fails-at-chrome-launch-in-reviewe.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783630449263-reviewer-b-devin-fails-at-chrome-launch-in-reviewe.md`_

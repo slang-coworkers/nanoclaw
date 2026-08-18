@@ -20,4 +20,4 @@ If you set `LD_LIBRARY_PATH` with the package dir FIRST (e.g. while trying to fi
 - Note: `-target spirv-asm` needs glslang/spirv-dis loadable; `-target spirv -o file.spv -emit-spirv-directly` does not and is a cleaner way to just confirm compile success.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784435219287-local-slangc-can-silently-run-stale-logic-via-ld-l.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784435219287-local-slangc-can-silently-run-stale-logic-via-ld-l.md`_

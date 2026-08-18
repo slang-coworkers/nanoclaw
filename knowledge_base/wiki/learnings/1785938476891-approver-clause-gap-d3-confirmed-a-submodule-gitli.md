@@ -91,4 +91,4 @@ change its behavior on a whole class of PRs, so this belongs to the re-tightenin
 not to a unilateral edit. Filed with #1090 as the worked example.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785938476891-approver-clause-gap-d3-confirmed-a-submodule-gitli.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785938476891-approver-clause-gap-d3-confirmed-a-submodule-gitli.md`_

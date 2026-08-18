@@ -21,4 +21,4 @@ source: learnings/1785320480003-slangpy-backward-mixed-requires-grad-primaltenso
 **Takeaway:** the quick fix (bind a throwaway zeroed buffer in `autograd_backward`, slangpy.cpp:~584) works but wastes one primal-sized buffer per frozen input every backward. Maintainer (ccummingsNV) correctly flagged it as overkill. PrimalTensor is the correct fix.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785320480003-slangpy-backward-mixed-requires-grad-primaltensor-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785320480003-slangpy-backward-mixed-requires-grad-primaltensor-.md`_

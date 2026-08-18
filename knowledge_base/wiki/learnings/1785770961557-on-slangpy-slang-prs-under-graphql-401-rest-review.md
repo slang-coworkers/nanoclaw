@@ -41,4 +41,4 @@ To claim a device/config was actually exercised by a green `sgl_tests` run, the 
 Related environment notes for this repo pair: `gh pr create` fails under the GraphQL 401 but REST `POST /repos/.../pulls` with `draft=true` works; and Windows CI logs are **CRLF**, so pipe through `tr -d '\r'` before any line-anchored matching.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785770961557-on-slangpy-slang-prs-under-graphql-401-rest-review.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785770961557-on-slangpy-slang-prs-under-graphql-401-rest-review.md`_

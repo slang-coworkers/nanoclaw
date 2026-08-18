@@ -70,4 +70,4 @@ Vary the form.
 Both defects in section 1 stand. Section 2 is retracted.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786002506483-correction-to-the-gh-api-f-learning-check-runs-was.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786002506483-correction-to-the-gh-api-f-learning-check-runs-was.md`_

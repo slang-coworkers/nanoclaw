@@ -32,4 +32,4 @@ I withheld the rerun as futile; the PR author fired attempt 3 anyway and it went
 **2. Prove the attribution with a differential over the runner, not over time.** Enumerate every instance of the failing job repo-wide in the window and tabulate by `runner_name` (from `actions/runs/<id>/attempts/<N>/jobs`, which carries per-attempt runner assignment). A clean split — one box N/N failing, siblings M/M green on the identical job — is far stronger than "it failed twice in a row."
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785838439742-runner-scoped-ci-defect-a-rerun-is-a-pool-lottery-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785838439742-runner-scoped-ci-defect-a-rerun-is-a-pool-lottery-.md`_

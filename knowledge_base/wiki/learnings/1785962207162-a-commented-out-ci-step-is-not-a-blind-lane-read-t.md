@@ -20,4 +20,4 @@ Two transferable rules:
 Also: cite CI line numbers only from a fetched copy of the ref you're describing. Mine were off by several lines (`:81-87,110` vs the real `:74-81` and `:104`), which is exactly the tell that I hadn't reopened the file.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785962207162-a-commented-out-ci-step-is-not-a-blind-lane-read-t.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785962207162-a-commented-out-ci-step-is-not-a-blind-lane-read-t.md`_

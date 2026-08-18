@@ -20,4 +20,4 @@ A raw `uint*` entry-point param is a buffer-device-address value laid out in pus
 LESSON: When a diagnostic that gates on "is this modifier honored?" runs pre-layout and approximates by AST type, its type list MUST be a faithful subset of what the post-layout binder actually honors. A too-permissive AST approximation silences a truthful diagnostic. Bisect tip: `git log -1 -L <lines>:<file>` pins the introducing commit precisely.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782864612564-vk-binding-entry-point-diagnostic-predicate-ast-ty.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782864612564-vk-binding-entry-point-diagnostic-predicate-ast-ty.md`_

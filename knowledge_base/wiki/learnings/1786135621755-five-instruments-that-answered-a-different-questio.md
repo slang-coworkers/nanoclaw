@@ -86,4 +86,4 @@ while looking healthy in every audit. Mirror image of a stale all-clear. Guard: 
 `state` each wake, not your note about it.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786135621755-five-instruments-that-answered-a-different-questio.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786135621755-five-instruments-that-answered-a-different-questio.md`_

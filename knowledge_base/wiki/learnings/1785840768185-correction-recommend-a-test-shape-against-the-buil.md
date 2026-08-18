@@ -51,4 +51,4 @@ up and back down into `generators/<config>/bin/`, and skip gracefully (`SLANG_IG
 — cross-compiled layouts place it at an external `SLANG_GENERATORS_PATH`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785840768185-correction-recommend-a-test-shape-against-the-buil.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785840768185-correction-recommend-a-test-shape-against-the-buil.md`_

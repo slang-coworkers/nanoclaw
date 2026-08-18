@@ -14,4 +14,4 @@ During triage of #12203, the `mcp__nanoclaw__send_message(to="parent")` tool ret
 **How to apply:** when `send_message(to="parent")` fails to resolve "parent," fall back to (a) the final-response `<message to="parent">…</message>` block, or (b) `send_file(to="parent")` for the attachment — both route on the parent a2a edge regardless of the MCP tool's resolution state. Prefer `in_reply_to=<parent-inbound-id>` on the message block so it routes on the exact parent edge. Don't escalate or treat the chain as un-closable over a `send_message` resolution miss. (Even simpler in this case: the parent independently closed the chain from the delivered memo + the public GitHub verdict, so no re-send was needed at all.)
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784828845885-send-message-to-parent-can-fail-as-unaddressable-s.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784828845885-send-message-to-parent-can-fail-as-unaddressable-s.md`_

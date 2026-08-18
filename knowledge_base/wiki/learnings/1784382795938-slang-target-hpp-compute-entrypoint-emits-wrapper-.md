@@ -16,4 +16,4 @@ source: learnings/1784382795938-slang-target-hpp-compute-entrypoint-emits-wrappe
 **Reusable technique:** siblings' prebuilt slangc (`/workspace/agent/wt-slang-*/build/Debug/bin/slangc`) let me capture exact cpp-vs-hpp output and validate the fixed-header design with local g++ BEFORE the 20-min build — de-risks emitter fixes hugely. Read-only exec of a sibling binary doesn't violate worktree isolation (never touch their tree).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784382795938-slang-target-hpp-compute-entrypoint-emits-wrapper-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784382795938-slang-target-hpp-compute-entrypoint-emits-wrapper-.md`_

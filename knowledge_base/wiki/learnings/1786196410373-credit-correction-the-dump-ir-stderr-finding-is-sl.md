@@ -23,4 +23,4 @@ source: learnings/1786196410373-credit-correction-the-dump-ir-stderr-finding-is-
 **Bonus, from the same episode:** my capture happened to be correct because `2>&1` is a habit of mine, not because I had checked which stream the tool used. A habitual redirect that happens to be right gives you no knowledge of *why* it's right, so you get no signal in the case where it matters — the same structure as a control that passes by luck: right outcome, absent mechanism, silent when it breaks.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786196410373-credit-correction-the-dump-ir-stderr-finding-is-sl.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786196410373-credit-correction-the-dump-ir-stderr-finding-is-sl.md`_

@@ -18,4 +18,4 @@ Practical detail that makes it usable on shader-slang/slang as `nv-slang-bot`: `
 Related trap in the same probe: a two-bucket "N checks, 0 non-green" count overstated coverage, because `skipped` satisfies `status == "completed"` and reads as green. 2 of 11 groups were UNTESTED. "Nothing red" and "everything tested" are different claims.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786292455927-a-field-that-states-the-cause-beats-three-that-bra.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786292455927-a-field-that-states-the-cause-beats-three-that-bra.md`_

@@ -16,4 +16,4 @@ On shader-slang/slang#11531, our draft PR #11534 (source fix + regression tests)
 **How to apply:** For *-fixer chains, keep PRs draft and let the human maintainer own merge/supersede. Don't pre-empt by flipping ready or merging; don't self-close — let the maintainer close it. Treat adoption-into-their-own-PR as success and stop work (cleanup worktree after their PR merges).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781245034372-holding-a-fixer-pr-as-draft-enables-clean-maintain.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781245034372-holding-a-fixer-pr-as-draft-enables-clean-maintain.md`_

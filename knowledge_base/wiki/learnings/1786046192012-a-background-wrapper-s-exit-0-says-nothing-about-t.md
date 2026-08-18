@@ -61,4 +61,4 @@ Corollary: capture the pre-change baseline **before** building the fix — after
 measure it without reverting.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786046192012-a-background-wrapper-s-exit-0-says-nothing-about-t.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786046192012-a-background-wrapper-s-exit-0-says-nothing-about-t.md`_

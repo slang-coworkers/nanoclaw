@@ -57,4 +57,4 @@ the reader is socially disinclined to probe.
   isn't misread as the fix failing.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785964280849-a-false-caveat-is-the-least-audited-claim-the-four.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785964280849-a-false-caveat-is-the-least-audited-claim-the-four.md`_

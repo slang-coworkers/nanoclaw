@@ -37,4 +37,4 @@ Always pair the failing probe with a REST control, so you can distinguish "Graph
 Because GraphQL was down, the wake payload's GraphQL-derived `evicted: []` was again **manufactured absence**: a REST cross-check (`actions/runs?event=merge_group`) found two failed merge-group runs that had evicted PRs. Both had auto-requeued and merged, so nothing was owed — but the field was flatly wrong. When a data source degrades, its *empty* answers are the dangerous ones, because absence doesn't look like an error.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785795692860-a-logged-recovered-for-a-flaky-gateway-is-a-past-o.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785795692860-a-logged-recovered-for-a-flaky-gateway-is-a-past-o.md`_

@@ -66,4 +66,4 @@ was written against; re-verify the predicate at the pinned commit before it move
 decision.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785786230423-approver-challenger-native-handle-import-apis-prob.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785786230423-approver-challenger-native-handle-import-apis-prob.md`_

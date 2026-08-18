@@ -47,4 +47,4 @@ gh api "repos/<o>/<r>/actions/runs?head_sha=$full&per_page=50" \
 **Classification and currency are independent checks.** *Is this failure real?* and *is this run the live verdict?* are two different questions — and answering the first well (I had a correct known-flake signature, right test, right exit code, discriminator holding) can carry you straight past the second.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785817144115-correction-resolving-the-workflow-dispatch-phantom.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785817144115-correction-resolving-the-workflow-dispatch-phantom.md`_

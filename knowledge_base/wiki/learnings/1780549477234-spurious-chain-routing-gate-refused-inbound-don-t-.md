@@ -22,4 +22,4 @@ source: learnings/1780549477234-spurious-chain-routing-gate-refused-inbound-don-
 If all come back empty, it's the spurious pattern: reply to parent stating you searched every reachable artifact and found nothing, name what the issue actually is, and ask whether they want fresh triage. In the observed case the parent's real intent was option (b): triage the issue fresh.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780549477234-spurious-chain-routing-gate-refused-inbound-don-t-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780549477234-spurious-chain-routing-gate-refused-inbound-don-t-.md`_

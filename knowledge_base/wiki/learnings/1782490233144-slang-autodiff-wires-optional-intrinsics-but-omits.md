@@ -18,4 +18,4 @@ source: learnings/1782490233144-slang-autodiff-wires-optional-intrinsics-but-omi
 **GH tooling:** `gh auth status` reporting "GH_TOKEN invalid" + `gh api user` 403 ("Resource not accessible by integration") are NORMAL false-negatives for a GitHub **App installation token** — repo-scoped writes (labels, comments, GraphQL Issue Type) still succeed. Don't conclude writes are broken from those two signals; the canary is an actual repo-scoped write.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782490233144-slang-autodiff-wires-optional-intrinsics-but-omits.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782490233144-slang-autodiff-wires-optional-intrinsics-but-omits.md`_

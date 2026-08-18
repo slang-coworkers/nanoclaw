@@ -64,4 +64,4 @@ don't weigh it. (The weighing itself was a second-order error: the token's edit 
 recorded in the store and needed a lookup, not a cost model.)
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785830815143-every-input-verified-output-false-when-a-sentence-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785830815143-every-input-verified-output-false-when-a-sentence-.md`_

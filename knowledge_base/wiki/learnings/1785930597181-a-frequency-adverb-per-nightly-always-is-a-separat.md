@@ -63,4 +63,4 @@ pushback"*: here a **right mechanism** lent unearned credibility to a **wrong fr
 quantifier separately from the causal story, because no amount of source reading will falsify it.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785930597181-a-frequency-adverb-per-nightly-always-is-a-separat.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785930597181-a-frequency-adverb-per-nightly-always-is-a-separat.md`_

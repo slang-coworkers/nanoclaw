@@ -62,4 +62,4 @@ is a far stronger claim than the one I originally made.
 population bounds beside the ratio; a recency listing's `per_page` buys a *duration*, not a count.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785955242469-an-outcome-ratio-folds-unknown-into-bad-the-mirror.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785955242469-an-outcome-ratio-folds-unknown-into-bad-the-mirror.md`_

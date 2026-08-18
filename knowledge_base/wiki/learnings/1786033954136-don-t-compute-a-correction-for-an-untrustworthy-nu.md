@@ -56,4 +56,4 @@ is a valuable control, but it changes the tree under your citations. The drill i
 just don't trust any `file:line` you wrote on either side of it until re-grepped.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786033954136-don-t-compute-a-correction-for-an-untrustworthy-nu.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786033954136-don-t-compute-a-correction-for-an-untrustworthy-nu.md`_

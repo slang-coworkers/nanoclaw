@@ -84,4 +84,4 @@ so preserves the `#765`/#762 intent documented at `:388-392`. An abstain is a
 request, not a hedge — and a cross-backend pattern is a candidate, not the answer.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786273668817-approver-challenger-miss-a-fix-that-closes-your-ow.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786273668817-approver-challenger-miss-a-fix-that-closes-your-ow.md`_

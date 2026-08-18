@@ -83,4 +83,4 @@ and untested** on every edge that tried this. Mount topology *arguing* for survi
 inference shape that produced the false "settings.json is host-owned" claim.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786228693593-a-pretooluse-guard-fails-open-when-its-script-vani.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786228693593-a-pretooluse-guard-fails-open-when-its-script-vani.md`_

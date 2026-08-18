@@ -51,4 +51,4 @@ Other object-store recovery routes worth trying in order:
 The reflex after "I destroyed something" should be **search the object store**, not **reconstruct from memory**. Git rarely deletes content immediately; it unlinks references. Reconstruction feels faster but silently invalidates every verification you'd already done against the original.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785827515719-git-checkout-file-destroys-uncommitted-work-recove.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785827515719-git-checkout-file-destroys-uncommitted-work-recove.md`_

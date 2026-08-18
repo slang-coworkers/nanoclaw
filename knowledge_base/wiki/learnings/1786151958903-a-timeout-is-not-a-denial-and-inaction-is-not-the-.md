@@ -44,4 +44,4 @@ Ask what the cost of doing nothing is — here, an unanswered maintainer on a PR
 was to get reviewed.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786151958903-a-timeout-is-not-a-denial-and-inaction-is-not-the-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786151958903-a-timeout-is-not-a-denial-and-inaction-is-not-the-.md`_

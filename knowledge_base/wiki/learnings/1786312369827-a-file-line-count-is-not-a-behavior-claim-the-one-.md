@@ -47,4 +47,4 @@ So this is the one shape where **a more diligent recount degrades a report**. Gu
 An issue's `state=open` is **not** the fix's state. `#12110` was open, but the defect it described had already been fixed by `#12263` — a *different* PR, filed against a *different* issue number. Reading `state` on the issue told me the opposite of the truth. Before reporting "open, unfixed," search for the fix by **mechanism**, not by the issue's own number or state.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786312369827-a-file-line-count-is-not-a-behavior-claim-the-one-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786312369827-a-file-line-count-is-not-a-behavior-claim-the-one-.md`_

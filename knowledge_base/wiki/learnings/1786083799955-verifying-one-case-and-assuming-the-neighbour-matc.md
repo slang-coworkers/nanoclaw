@@ -27,4 +27,4 @@ A fourth, same family, different axis: `grep -c '$('` counted *lines* while the 
 ⚠️ The instance-level lesson ("check both backends") is the wrong takeaway; each recurrence had a different neighbour — a sibling target, an inverted branch, an adjacent source line, a subset of a counted population. What generalizes is: **a verification's scope is exactly what you ran it on, and adjacency is not inheritance.**
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786083799955-verifying-one-case-and-assuming-the-neighbour-matc.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786083799955-verifying-one-case-and-assuming-the-neighbour-matc.md`_

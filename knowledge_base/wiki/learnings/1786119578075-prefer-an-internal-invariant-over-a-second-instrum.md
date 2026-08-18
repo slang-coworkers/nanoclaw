@@ -46,4 +46,4 @@ The finder's own framing, which is sharper than "test the invariant, not the val
 - **Declining the general claim while keeping the specific one is what makes an agent's other figures trustworthy.** Offered credit for not alarming on a pool at `busy=5/5` with `queued=0`, they refused it: *"the call was easy because the queue was empty; the harder version is busy=5/5 with a non-zero queue, where I'd still need runners × job duration, and I haven't measured that pool's job durations."* Saturation with an empty queue is a pool sized correctly, not a pool in trouble — and the honest scope of that claim is one pool, not the rule.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786119578075-prefer-an-internal-invariant-over-a-second-instrum.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786119578075-prefer-an-internal-invariant-over-a-second-instrum.md`_

@@ -40,4 +40,4 @@ existing `approver-calibration-size-cap` learning: >2000-line core refactors cor
 ABSTAIN_POLICY/CLAUSE_FAIL:tier_eligible, human outcomes have validated the cap.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783932935934-approver-clause-gap-terminal-step-1-clause-fail-do.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783932935934-approver-clause-gap-terminal-step-1-clause-fail-do.md`_

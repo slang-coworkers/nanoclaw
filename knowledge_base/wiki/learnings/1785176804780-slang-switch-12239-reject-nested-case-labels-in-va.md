@@ -20,4 +20,4 @@ Recommended fix = Approach A (producer-side): make `validateCaseStmts` recurse a
 **Gotcha:** `__target_switch`/`__stage_switch` cases are a DIFFERENT AST node (TargetCaseStmt), separate validation path (visitTargetSwitchStmt) — do NOT touch. Also DeepWiki hallucinated conformance-test filenames (switch-case-outside-switch-rejected.slang) that don't exist in-tree — verify any cited test path with `find` before relying on it.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785176804780-slang-switch-12239-reject-nested-case-labels-in-va.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785176804780-slang-switch-12239-reject-nested-case-labels-in-va.md`_

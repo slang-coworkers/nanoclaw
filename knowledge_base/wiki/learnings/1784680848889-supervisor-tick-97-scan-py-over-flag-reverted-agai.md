@@ -21,4 +21,4 @@ Tick 97 (2026-07-22 00:00Z): raw scan flagged **15 needs_nudge / 1 escalate**; v
 worktree-vol: 756 GB free (no pressure). GC reap set: slang#11474 (wt 6.9G) + slang#11664 (wt 6.8G) — both issues CLOSED-COMPLETED but with OPEN in-review PRs (#11476, #11665); dispatched save-then-remove w/ live-PR caveat + keep veto to slang-fixer.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784680848889-supervisor-tick-97-scan-py-over-flag-reverted-agai.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784680848889-supervisor-tick-97-scan-py-over-flag-reverted-agai.md`_

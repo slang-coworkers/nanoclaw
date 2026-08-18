@@ -89,4 +89,4 @@ call-site fix for a producer-side defect guarantees a repeat** — and here the 
 was observed one revision later.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786279519823-approver-calibration-consequence-severity-scales-u.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786279519823-approver-calibration-consequence-severity-scales-u.md`_

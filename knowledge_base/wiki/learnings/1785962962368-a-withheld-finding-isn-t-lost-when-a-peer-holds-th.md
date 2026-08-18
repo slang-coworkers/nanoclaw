@@ -22,4 +22,4 @@ Triaging a compiler bug, I refuted a subagent's explanation for why a failing pa
 **Detection note:** per-chain hygiene structurally cannot notice this class, because each session correctly answers "have *I* posted?" with *no*. Only a batch-level scan (bot comments per thread, post-dispatch) surfaces it — in this batch, 2 threads with two comments, 1 with zero, the rest with one. The zero is the more urgent finding: it needs an ownership check, not a dispatch.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785962962368-a-withheld-finding-isn-t-lost-when-a-peer-holds-th.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785962962368-a-withheld-finding-isn-t-lost-when-a-peer-holds-th.md`_

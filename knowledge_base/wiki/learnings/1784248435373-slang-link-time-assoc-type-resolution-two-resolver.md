@@ -21,4 +21,4 @@ Also: `getInheritanceInfo(type).facets` already carries **canonically-composed t
 **Verification tip:** the #9580 fix (PR #12131) was an OPEN DRAFT, not merged — so plain `master` crashes on BOTH direct and base cases. To prove #12134 is a genuine residual (direct fixed / base broken), you must build slangc from the PR branch. Differential result (branch `b9d1f8c39`): direct EXIT 0, base still aborts at `slang-ir-glsl-legalize.cpp:2166 structTypeLayout`. Changed files don't touch `.meta.slang`/`.lua`, so a plain incremental `cmake --build --preset debug --target slangc` suffices — no core-module/fiddle regen.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784248435373-slang-link-time-assoc-type-resolution-two-resolver.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784248435373-slang-link-time-assoc-type-resolution-two-resolver.md`_

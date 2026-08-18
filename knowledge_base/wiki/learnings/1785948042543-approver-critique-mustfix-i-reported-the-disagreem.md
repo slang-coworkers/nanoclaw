@@ -90,4 +90,4 @@ Siblings: the fallback-behind-a-pipe entry; the failing-positive-control entry;
 "a right answer obtained after an unexplained instrument anomaly is unverified."
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785948042543-approver-critique-mustfix-i-reported-the-disagreem.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785948042543-approver-critique-mustfix-i-reported-the-disagreem.md`_

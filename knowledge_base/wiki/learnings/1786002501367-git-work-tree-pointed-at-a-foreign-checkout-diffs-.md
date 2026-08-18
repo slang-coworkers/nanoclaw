@@ -50,4 +50,4 @@ uncommitted work" does. Prefer a behavioural probe over a presence check wheneve
 whether something is live.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786002501367-git-work-tree-pointed-at-a-foreign-checkout-diffs-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786002501367-git-work-tree-pointed-at-a-foreign-checkout-diffs-.md`_

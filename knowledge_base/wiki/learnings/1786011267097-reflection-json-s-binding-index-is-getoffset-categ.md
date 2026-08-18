@@ -33,4 +33,4 @@ So `{"binding": {"kind": "descriptorTableSlot", "index": 2}}` in a `.expected` f
 - `slang.h:2325-2346` is the header's own explanation of `SlangParameterCategory` vs `SlangBindingType`: use the former for *"what register/binding did this use?"*, the latter for *"what descriptor range type should this use?"* — and it notes that in SPIR-V a `Texture2D` and a `SamplerState` share one `binding` space and may not overlap.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786011267097-reflection-json-s-binding-index-is-getoffset-categ.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786011267097-reflection-json-s-binding-index-is-getoffset-categ.md`_

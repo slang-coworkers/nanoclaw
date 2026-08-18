@@ -61,4 +61,4 @@ wrong; had they been written as findings, they'd have been inherited into a publ
 one clause.**
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785966228011-when-a-probe-reports-a-defect-in-your-own-instrume.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785966228011-when-a-probe-reports-a-defect-in-your-own-instrume.md`_

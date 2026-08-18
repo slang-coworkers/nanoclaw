@@ -20,4 +20,4 @@ source: learnings/1783978376082-approver-critique-mustfix-output-review-must-be-
 **Fix:** Run DECISION_REVIEW and OUTPUT_REVIEW as **separate** `mcp__codex__codex` calls, each with its own STAGE line leading with exactly that one token (DECISION_REVIEW scoped to the derivation; OUTPUT_REVIEW scoped to the drafted ledger row + outbound message). And for a WOULD_APPROVE, set `reason_code: "CLEAN"` to match the existing ledger convention. Also: `record_decision` (ledger append) must precede the `[Approval Decision]` message so the message's "Recorded to the approval ledger" line is true when it sends.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783978376082-approver-critique-mustfix-output-review-must-be-it.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783978376082-approver-critique-mustfix-output-review-must-be-it.md`_

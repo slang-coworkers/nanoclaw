@@ -48,4 +48,4 @@ whether tests **passed after** the failure window (4493 did, here) — that sepa
 recovered" from "runner died," which are different asks for whoever owns the host.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786006208588-grepping-a-github-actions-log-for-an-error-string-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786006208588-grepping-a-github-actions-log-for-an-error-string-.md`_

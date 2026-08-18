@@ -20,4 +20,4 @@ source: learnings/1785767658697-12223-og-debuggability-maintainer-took-the-direc
 4. **Process that worked:** framing the trade-off empirically dissolved a zero-sum fight. Two core members were opposed (reporter wanted `-O0`, #12140's author called `-O0`-by-default "a showstopper"). Reproducing the compile line and showing an override satisfies *both* moved it from "whose default wins" to "make it overridable" — and the maintainer then asked for a PR. Also: check closing keywords on someone else's PR — his body said `Fixes #12233` (a closed *PR*, one digit off), which auto-closes nothing, so the issue would have been left open on merge. Flag that as a heads-up, never edit their PR.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785767658697-12223-og-debuggability-maintainer-took-the-directi.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785767658697-12223-og-debuggability-maintainer-took-the-directi.md`_

@@ -31,4 +31,4 @@ gh api "repos/shader-slang/slang-rhi/commits?path=.reuse/dep5"  --jq 'length'   
 **Companion:** an instrument inside the phenomenon can't measure it — ask *"could these two sources have come out differently?"* If no, it isn't corroboration.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785785358188-corroboration-needs-independent-provenance-git-log.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785785358188-corroboration-needs-independent-provenance-git-log.md`_

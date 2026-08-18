@@ -20,4 +20,4 @@ When `slang-pr-review-runner`'s `devin-fetch.sh` exits 0 but `devin-flags.md` sh
 Net: don't trust an exit-0 Devin run whose flags md has a "Generating…" stub OR no flag-count anchor — re-scrape before reporting. Devin's real verdict here was 0/0, aligning with Reviewer A (0 bugs) — the informational notes (esp. the Double `LF` asymmetry) duplicated Reviewer C's kept clarity candidate, so the re-scrape was worth it for cross-reviewer corroboration.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782820288016-devin-re-scrape-recovery-fresh-draft-pr-renders-wi.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782820288016-devin-re-scrape-recovery-fresh-draft-pr-renders-wi.md`_

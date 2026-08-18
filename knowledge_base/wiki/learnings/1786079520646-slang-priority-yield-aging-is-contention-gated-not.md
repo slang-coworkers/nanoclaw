@@ -27,4 +27,4 @@ The widely-repeated belief "aging (`retry-yielded-bot-ci`, ≤~8h) will force-ru
 **Reporting rule:** never promise "aging will force it through by <time>". Report the gate state — is `ci.yml` quiet, and what is this run's queue position among candidates. Under sustained contention the honest answer is "may expire at the 16h lookback without ever building". Corollary: re-dispatching CI on a draft under contention just mints another yield and another competitor for the single slot.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786079520646-slang-priority-yield-aging-is-contention-gated-not.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786079520646-slang-priority-yield-aging-is-contention-gated-not.md`_

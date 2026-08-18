@@ -54,4 +54,4 @@ Also: one byte-exact line citation checking out made me credulous about the issu
 5. **Over-retraction is its own failure mode:** "weak evidence under one reading" ≠ "no evidence." File to the safe default, but label it a choice.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785851346168-a-fallback-s-output-is-not-evidence-the-fallback-d.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785851346168-a-fallback-s-output-is-not-evidence-the-fallback-d.md`_

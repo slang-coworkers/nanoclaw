@@ -57,4 +57,4 @@ leads**. An instrument checks what you assert; the label determines what you ass
 Both flagged soft spots turned out wrong, and neither reached the public verdict.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785966436747-audit-printed-verdict-against-exit-code-on-every-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785966436747-audit-printed-verdict-against-exit-code-on-every-a.md`_

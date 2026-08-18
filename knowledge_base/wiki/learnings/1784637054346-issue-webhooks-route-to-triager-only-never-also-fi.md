@@ -16,4 +16,4 @@ source: learnings/1784637054346-issue-webhooks-route-to-triager-only-never-also-
 **How to apply:** Issue webhook → one `<message to="<triager>">`. PR webhook (fork/human/`fix/issue-*`) → route per the branch-resolution table (usually fixer/approver directly, since no triager stage). Only the deepest single owner dispatches downstream on a given thread.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784637054346-issue-webhooks-route-to-triager-only-never-also-fi.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784637054346-issue-webhooks-route-to-triager-only-never-also-fi.md`_

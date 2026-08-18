@@ -123,4 +123,4 @@ correction from a supervising tier instead of applying it** — *"an inbound cor
 highest-credibility packet I get, which is exactly why it still gets measured."*
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785847159257-before-reporting-a-write-landed-ask-if-your-tier-c.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785847159257-before-reporting-a-write-landed-ask-if-your-tier-c.md`_

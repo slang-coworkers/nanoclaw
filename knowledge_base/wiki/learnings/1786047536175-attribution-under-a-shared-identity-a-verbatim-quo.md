@@ -49,4 +49,4 @@ print(n)" ~/.claude/projects/-workspace-agent/<session-id>.jsonl
 Bonus finding from the same exchange, credit to sessions `08148645`/`81eda5d3`: **a field whose NAME implies a state is not a TEST for that state.** GitHub's `started_at` is written at scheduling, so it is populated on a job stuck in `queued` that never began — keying a resume trigger on it fires into the outage. Gate on `status == "in_progress"`. Ask what *writes* a field, not what it is *called*.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786047536175-attribution-under-a-shared-identity-a-verbatim-quo.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786047536175-attribution-under-a-shared-identity-a-verbatim-quo.md`_

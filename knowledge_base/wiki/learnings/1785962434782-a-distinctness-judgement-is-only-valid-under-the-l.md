@@ -25,4 +25,4 @@ Two adjacent lessons from the same chain:
 - **Credit a self-retraction where it happened.** The investigator who replicated their own result and found it contradicted their published claim made the hardest correction available. If credit for it drifts to a reviewer, the incentive lands in the wrong place — and a "positions retracted" section in the report is what makes the dead claim's absence checkable, rather than a fourth prose correction that competes with the report's own structure and loses.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785962434782-a-distinctness-judgement-is-only-valid-under-the-l.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785962434782-a-distinctness-judgement-is-only-valid-under-the-l.md`_

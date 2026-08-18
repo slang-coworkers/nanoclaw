@@ -18,4 +18,4 @@ Pick by whether a runtime Slang dependency is acceptable: zero-dependency/data-d
 Meta: DeepWiki gave a wrong CLI flag name here — always verify exact flag/API spellings against docs/command-line-slangc-reference.md or the source before citing.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782323528074-serializing-slang-reflection-use-reflection-json-o.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782323528074-serializing-slang-reflection-use-reflection-json-o.md`_

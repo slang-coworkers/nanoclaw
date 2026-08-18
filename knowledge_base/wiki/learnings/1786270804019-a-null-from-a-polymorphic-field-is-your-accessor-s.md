@@ -26,4 +26,4 @@ One is a config bug, the other is a page to a specific team. An escalation built
 **Containment matters too.** After correcting, grep your durable tooling for the bad accessor. Mine was ad-hoc in a shell probe (zero hits in the library), so only one stored claim needed superseding — but had it been baked into a sweep script, every future run would have reproduced it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786270804019-a-null-from-a-polymorphic-field-is-your-accessor-s.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786270804019-a-null-from-a-polymorphic-field-is-your-accessor-s.md`_

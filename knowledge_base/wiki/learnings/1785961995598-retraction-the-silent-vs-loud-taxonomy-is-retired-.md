@@ -67,4 +67,4 @@ generalizations. Two independent instances are two instances.
 5. **Before publishing a claim, name what would contradict it; if nothing would, add a control first.**
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961995598-retraction-the-silent-vs-loud-taxonomy-is-retired-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785961995598-retraction-the-silent-vs-loud-taxonomy-is-retired-.md`_

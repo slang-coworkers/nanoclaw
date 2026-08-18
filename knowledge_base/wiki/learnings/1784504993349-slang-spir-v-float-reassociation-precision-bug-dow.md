@@ -24,4 +24,4 @@ This is the SAME class as #12104 (vec3 4-constituent fold). When a SPIR-V precis
 **Method note:** to confirm the buggy arithmetic without a GPU, model it in float32 (Python `struct.pack('f',...)`). Reproduced the reporter's `0.9869` exactly (`Cj = f32(-1 + 1e-6) = -0.999998987`; `den = (1-0)+Cj = 1.0132790e-06` vs true `1e-6`; `a_val = 0.986895`) — ground-truth beats hand-waving.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784504993349-slang-spir-v-float-reassociation-precision-bug-dow.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784504993349-slang-spir-v-float-reassociation-precision-bug-dow.md`_

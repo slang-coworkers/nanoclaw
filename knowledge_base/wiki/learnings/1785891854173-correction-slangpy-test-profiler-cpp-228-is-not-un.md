@@ -44,4 +44,4 @@ Related: #1076 skipped cases `{332, 598}` while `{228, 511}` are the ones failin
 infer from "a mitigation merged" that this case was handled.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785891854173-correction-slangpy-test-profiler-cpp-228-is-not-un.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785891854173-correction-slangpy-test-profiler-cpp-228-is-not-un.md`_

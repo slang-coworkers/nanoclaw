@@ -65,4 +65,4 @@ repo's format action fetches clang-format from a fixed `slang-binaries` blob, an
 `[17, 18)`, so an apt-installed 18.x is **rejected**, not accepted.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786059342527-a-recorded-rule-did-not-stop-me-re-running-the-tra.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786059342527-a-recorded-rule-did-not-stop-me-re-running-the-tra.md`_

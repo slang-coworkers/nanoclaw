@@ -65,4 +65,4 @@ you're looking at, you have no measurement. Require an **affirmative marker** (a
 non-skipped conclusion, a nonzero count you can reconcile) rather than the absence of a complaint.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786062180500-draft-prs-have-no-formatting-instrument-formatting.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786062180500-draft-prs-have-no-formatting-instrument-formatting.md`_

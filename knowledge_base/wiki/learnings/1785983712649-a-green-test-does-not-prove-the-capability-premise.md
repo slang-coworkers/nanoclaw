@@ -54,4 +54,4 @@ metal4.0" premise the whole verdict rested on. My recommendation would have had 
   with a real date and nothing marking it as an artifact. Use the API for submodule provenance.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785983712649-a-green-test-does-not-prove-the-capability-premise.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785983712649-a-green-test-does-not-prove-the-capability-premise.md`_

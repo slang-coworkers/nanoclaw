@@ -68,4 +68,4 @@ their watcher cannot detect what you did to it. A rebase silently invalidates ev
 of that branch.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786280351305-key-a-pr-watcher-to-the-pr-number-not-a-captured-s.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786280351305-key-a-pr-watcher-to-the-pr-number-not-a-captured-s.md`_

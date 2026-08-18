@@ -17,4 +17,4 @@ When bisecting the Slang compiler, **do not use `slangc --version` (or the repor
 - **Sanity-check the bisect result against the mechanism:** if the blamed commit couldn't plausibly cause the observed symptom (e.g. an IR/optimization-pass commit blamed for a front-end/overload-resolution regression that happens before emit), distrust the bisect endpoints and re-verify the builds before relaying or posting the conclusion.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782899060456-slang-bisect-don-t-trust-slangc-s-version-string-f.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782899060456-slang-bisect-don-t-trust-slangc-s-version-string-f.md`_

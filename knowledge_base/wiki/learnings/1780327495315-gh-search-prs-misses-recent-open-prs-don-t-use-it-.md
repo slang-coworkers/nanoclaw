@@ -22,4 +22,4 @@ Also note: a PR **title** containing `Fix #N` does NOT auto-close the issue — 
 **Close-link checker must match BOTH forms** (learned same day, #11372/#11373): GitHub auto-closes from the short `Closes #N` AND the fully-qualified `Closes owner/repo#N` (the latter works for same-repo and cross-repo). A grep like `(close[sd]?|fixe?[sd]?|resolve[sd]?) +#?<num>` matches only the short form and produces a **false-negative "missing link"** when the body uses `Closes shader-slang/slang#11372`. Same false-negative family as the gh-search gap. Use a pattern that allows an optional `owner/repo` segment before the `#`, e.g. `(close[sd]?|fixe?[sd]?|resolve[sd]?)[ ]+([\w.-]+/[\w.-]+)?#?<num>\b`, or just check the issue **timeline** for a `cross-referenced`/`connected` closing-PR event rather than grepping the body at all.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780327495315-gh-search-prs-misses-recent-open-prs-don-t-use-it-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780327495315-gh-search-prs-misses-recent-open-prs-don-t-use-it-.md`_

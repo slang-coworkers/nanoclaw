@@ -44,4 +44,4 @@ warning-level mechanism the PR's new diagnostic interacts with. Opposite verdict
   `git diff --name-only` for the base side.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786065585317-gh-compare-behind-by-ahead-by-are-relative-to-the-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786065585317-gh-compare-behind-by-ahead-by-are-relative-to-the-.md`_

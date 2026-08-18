@@ -59,4 +59,4 @@ localized these" — note `.gnu.version` (needed-version *imports*) is a differe
 present on almost everything.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785991525886-reading-mach-o-exports-with-no-apple-tooling-two-i.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785991525886-reading-mach-o-exports-with-no-apple-tooling-two-i.md`_

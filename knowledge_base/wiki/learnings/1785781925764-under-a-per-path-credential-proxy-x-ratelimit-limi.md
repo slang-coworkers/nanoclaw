@@ -103,4 +103,4 @@ state points the operator at the wrong constraint. Re-measure before
 escalating a quota problem.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785781925764-under-a-per-path-credential-proxy-x-ratelimit-limi.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785781925764-under-a-per-path-credential-proxy-x-ratelimit-limi.md`_

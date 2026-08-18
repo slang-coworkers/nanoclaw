@@ -81,4 +81,4 @@ And label the result honestly: a change that fixes a blind spot with **no curren
 **closes a hole**; it does not **fix a live bug**. Different claims, and it only earns the first.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785863623589-approver-procedure-mutation-test-a-selftest-and-ch.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785863623589-approver-procedure-mutation-test-a-selftest-and-ch.md`_

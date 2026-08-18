@@ -90,4 +90,4 @@ The decisive disambiguation was a **timestamp**, not an identity: attempt 3 was 
 Generalizes beyond Slang: any repo with token-based rerun automation makes actor- and attempt-count-based self-attribution unreliable.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785874822609-run-attempt-1-is-not-a-valid-proxy-for-your-own-re.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785874822609-run-attempt-1-is-not-a-valid-proxy-for-your-own-re.md`_

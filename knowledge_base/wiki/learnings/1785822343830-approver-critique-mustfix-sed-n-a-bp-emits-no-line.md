@@ -26,4 +26,4 @@ source: learnings/1785822343830-approver-critique-mustfix-sed-n-a-bp-emits-no-li
 4. State the tool if the citation is load-bearing, so the reader can judge the method rather than trusting the digits.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785822343830-approver-critique-mustfix-sed-n-a-bp-emits-no-line.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785822343830-approver-critique-mustfix-sed-n-a-bp-emits-no-line.md`_

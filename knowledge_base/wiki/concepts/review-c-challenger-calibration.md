@@ -54,7 +54,7 @@ retrieve the exact sentences attached to the number, not your memory of them; (2
 proposition those sentences assert true of the items the number covers? (3) was the question
 the number answers the one on the table? **A number is only "mislabelled" if the claim it
 carried was true of its referents under some reading available at the time**
-[[approver/critique-mustfix] Declining an exoneration: my 21 was NOT a mislabelled-but-valid count — the claim attached to it ("made under a policy not in force", contaminated calibration) is false for all 17, and a later question that 21 happens to answer cannot retroactively make the original claim right](wiki/learnings/1785945708506-approver-critique-mustfix-declining-an-exoneration.md).
+[[approver/critique-mustfix] Declining an exoneration: my 21 was NOT a mislabelled-but-valid count — the claim attached to it ("made under a policy not in force", contaminated calibration) is false for all 17, and a later question that 21 happens to answer cannot retroactively make the original claim right](../learnings/1785945708506-approver-critique-mustfix-declining-an-exoneration.md).
 
 ## An inbox is not an addressee
 
@@ -79,7 +79,7 @@ wrong; the defect is entirely in the envelope. The cheaper correct move: supply 
 measurement, name the recommendation, leave the decision where addressed ("here's the 83-byte
 margin; it argues for filing; your call / the operator's"). **INPUT ≠ DECISION** — conflating
 them silently removes a human from a loop they were placed in
-[[approver/critique-mustfix] READ WHO WAS ASKED — the addressee rule has an inbound mirror; I answered a go/no-go put to the operator, holding the outbound half of that exact rule](wiki/learnings/1785944075516-approver-critique-mustfix-read-who-was-asked-the-a.md).
+[[approver/critique-mustfix] READ WHO WAS ASKED — the addressee rule has an inbound mirror; I answered a go/no-go put to the operator, holding the outbound half of that exact rule](../learnings/1785944075516-approver-critique-mustfix-read-who-was-asked-the-a.md).
 
 ## Auditing your own store: two ways a post-hoc audit lies
 
@@ -100,7 +100,7 @@ store audit the peer had done. It produced two distinct lies:
    a ranking); the motivating instance is excluded by construction. **Never report a
    self-audit's clean result as evidence of health** — report it as "these specific pairs,
    chosen by me, after the fix" and state what it structurally cannot see
-   [[approver/challenger-miss] A post-hoc audit measures what you already repaired — and my audit's probe strings came from the rule's NAME, not the text on disk (4 of 6 zeros false)](wiki/learnings/1785944319263-approver-challenger-miss-a-post-hoc-audit-measures.md).
+   [[approver/challenger-miss] A post-hoc audit measures what you already repaired — and my audit's probe strings came from the rule's NAME, not the text on disk (4 of 6 zeros false)](../learnings/1785944319263-approver-challenger-miss-a-post-hoc-audit-measures.md).
 
 ## The two-artifacts trap and its disguises
 
@@ -116,7 +116,7 @@ bare filename plus a range is not one** — a right number in the wrong file rea
 and fails silently in both directions. Resolve the *path* first (treat a 404 as a real
 answer), count basename matches, and identify the enclosing **function** by name
 (`Tensor::with_grads` ≠ `tensor_zeros_like`). Quote path + function + lines, never `file:line`
-alone [[approver/challenger-miss] A file:line citation needs its PATH verified, not just its lines — parallel sgl/ and slangpy_ext/ trees mean the same range exists in two real files with OPPOSITE verdicts, and a right number in the wrong file reads as precision](wiki/learnings/1785945259081-approver-challenger-miss-a-file-line-citation-need.md).
+alone [[approver/challenger-miss] A file:line citation needs its PATH verified, not just its lines — parallel sgl/ and slangpy_ext/ trees mean the same range exists in two real files with OPPOSITE verdicts, and a right number in the wrong file reads as precision](../learnings/1785945259081-approver-challenger-miss-a-file-line-citation-need.md).
 
 **As a control-vs-authoritative read.** Reporting a re-derivation, the approver named three
 policy versions and wrote the *control's* name (`v0-shadow-relaxed`, read as a comparison
@@ -127,7 +127,7 @@ report names ≥2 versions, state each one's role (recorded / in-force / loaded 
 live hazard this surfaced: the poisoned pin was still on disk, so a naive re-run would
 reproduce the original defect — requiring provenance in the record is not bureaucracy, it is a
 *detector*: naming the policy is what exposed the mismatch
-[[approver/critique-mustfix] Naming the policy exposed that I'd written my CONTROL's version into the "loaded" slot — reporting error not reproduced defect, but the workspaces still hold the poisoned pin, so any naive re-run of eval-clauses.py WOULD reproduce it](wiki/learnings/1785945343617-approver-critique-mustfix-naming-the-policy-expose.md).
+[[approver/critique-mustfix] Naming the policy exposed that I'd written my CONTROL's version into the "loaded" slot — reporting error not reproduced defect, but the workspaces still hold the poisoned pin, so any naive re-run of eval-clauses.py WOULD reproduce it](../learnings/1785945343617-approver-critique-mustfix-naming-the-policy-expose.md).
 
 **As two events masquerading as a control.** Two PRs armed 2.5 minutes apart by one actor
 looked like a matched pair; reading #1078's timeline showed it was brought up to date by hand
@@ -137,7 +137,7 @@ stalled the second. **Near-simultaneous events invite treating one as a control 
 other**; a precedent must differ from the case in exactly the variable under test. Reason from
 *what clears the specific block* (a human Update click, which fires auto-merge immediately —
 zero window for a warning comment), not from how long a sibling took
-[[approver/challenger-miss] Two PRs armed 2.5 min apart is not a precedent pair — #1078 was manually brought up to date 10s before arming, so it never tested whether BEHIND self-clears; and #925 is behind by exactly #1078's merge commit](wiki/learnings/1785946244053-approver-challenger-miss-two-prs-armed-2-5-min-apa.md).
+[[approver/challenger-miss] Two PRs armed 2.5 min apart is not a precedent pair — #1078 was manually brought up to date 10s before arming, so it never tested whether BEHIND self-clears; and #925 is behind by exactly #1078's merge commit](../learnings/1785946244053-approver-challenger-miss-two-prs-armed-2-5-min-apa.md).
 
 **As two actors sharing one word.** An `ask_user_question` to the operator timed out, and the
 approver reasoned "if the operator is away, the *Update branch* click is also unlikely." But
@@ -149,7 +149,7 @@ click" is an obvious non-sequitur. And the load-bearing point: the decision it p
 (don't post) was already correct on its own grounds, so a bad timing-reason added to it made
 the whole thing refutable by attacking the timing — **a conclusion supported by a bad reason
 and a good reason is still exposed, because the bad reason is the one that gets quoted. State
-the load-bearing reason alone** [[approver/challenger-miss] I inferred maintainer availability from OPERATOR absence — two different parties, and only the one that doesn't matter is measurable from here; also: a conclusion propped up by a bad reason plus a good one is exposed, because the bad reason is what gets quoted](wiki/learnings/1785950168336-approver-challenger-miss-i-inferred-maintainer-ava.md).
+the load-bearing reason alone** [[approver/challenger-miss] I inferred maintainer availability from OPERATOR absence — two different parties, and only the one that doesn't matter is measurable from here; also: a conclusion propped up by a bad reason plus a good one is exposed, because the bad reason is what gets quoted](../learnings/1785950168336-approver-challenger-miss-i-inferred-maintainer-ava.md).
 
 ## Verify durability before editing
 
@@ -167,7 +167,7 @@ durable" → "durable-until-rebuild"), each from opening one more artifact, none
 artifacts share a timestamp to the second, they came from one event: that fact alone
 characterizes the mechanism. (Writability is not durability — a demand for a control on a
 test can invalidate the test's *premise*, not just its interpretation.)
-[[approver/clause-gap] The sync is a one-shot image-build snapshot, not a recurring cycle — natural experiment: upstream added skills/human-names on 07-31, it is ABSENT locally 5 days later, and all 30 local skills share one mtime to the second (2026-07-27 10:51:13)](wiki/learnings/1785946731545-approver-clause-gap-the-sync-is-a-one-shot-image-b.md).
+[[approver/clause-gap] The sync is a one-shot image-build snapshot, not a recurring cycle — natural experiment: upstream added skills/human-names on 07-31, it is ABSENT locally 5 days later, and all 30 local skills share one mtime to the second (2026-07-27 10:51:13)](../learnings/1785946731545-approver-clause-gap-the-sync-is-a-one-shot-image-b.md).
 
 ## The durable half: every catch was mechanical
 

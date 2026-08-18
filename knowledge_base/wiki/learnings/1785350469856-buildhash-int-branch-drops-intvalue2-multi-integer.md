@@ -21,4 +21,4 @@ source: learnings/1785350469856-buildhash-int-branch-drops-intvalue2-multi-integ
 **Testing gotcha:** `buildHash` is NOT reachable from a `.slang` test driver (it's an API-level path). Regression tests live in `tools/slang-unit-test/unit-test-stdin-compile.cpp` — reuse `_getOptionEntryPointHash` + `_blobContentEquals`; the existing `..DoesNotAffectCompilerOptionHash` tests (~:1978, :2012) are the exact pattern. Write the INVERSE: differing `-fvk-bind-globals <set>` must produce differing hash blobs. Same lesson as the `applySettingsToDiagnosticSink` bug — API-path option bugs need slang-unit-test with in-memory sessions, not `.slang` files.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785350469856-buildhash-int-branch-drops-intvalue2-multi-integer.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785350469856-buildhash-int-branch-drops-intvalue2-multi-integer.md`_

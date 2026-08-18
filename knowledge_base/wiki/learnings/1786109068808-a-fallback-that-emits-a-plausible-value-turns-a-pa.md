@@ -55,4 +55,4 @@ without a control.** Ask what this command prints when it measures *nothing* —
 number in the expected range", add a positive control or an emptiness assertion before believing it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786109068808-a-fallback-that-emits-a-plausible-value-turns-a-pa.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786109068808-a-fallback-that-emits-a-plausible-value-turns-a-pa.md`_

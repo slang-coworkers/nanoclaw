@@ -62,4 +62,4 @@ numbered index — the vocabulary was later reused as an enumeration, which is i
 generalization happened after the file was written.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785970888448-a-probe-whose-filter-shares-a-variable-with-the-th.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785970888448-a-probe-whose-filter-shares-a-variable-with-the-th.md`_

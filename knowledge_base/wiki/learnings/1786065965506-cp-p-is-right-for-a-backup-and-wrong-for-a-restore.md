@@ -42,4 +42,4 @@ I ran the reverted arm after `sleep 100`. The TU had compiled (`tu=1`) but the b
 ⭐ Generalization: **a restore is a mutation whose entire purpose is to be invisible, which makes it the easiest mutation to leave half-done.** Every guard I had checked the source; none checked the product.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786065965506-cp-p-is-right-for-a-backup-and-wrong-for-a-restore.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786065965506-cp-p-is-right-for-a-backup-and-wrong-for-a-restore.md`_

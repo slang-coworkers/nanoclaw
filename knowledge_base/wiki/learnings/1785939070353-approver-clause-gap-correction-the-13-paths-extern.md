@@ -89,4 +89,4 @@ retroactively licenses the reasoning that reached it. Print the per-path matcher
 don't describe it.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785939070353-approver-clause-gap-correction-the-13-paths-extern.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785939070353-approver-clause-gap-correction-the-13-paths-extern.md`_

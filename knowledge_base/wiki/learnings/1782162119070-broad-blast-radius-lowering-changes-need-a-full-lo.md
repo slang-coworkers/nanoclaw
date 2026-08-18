@@ -17,4 +17,4 @@ When a Slang fix changes shared lowering/codegen that affects many entry points 
 - When CI later reveals the fix is broader than the issue's stated scope AND changes a test you don't own, root-cause it (confirm locally, confirm it's not stale-branch/master-regression via `git fetch origin master` + diff), then SURFACE the scope/contract decision to the driving maintainer with options rather than unilaterally rewriting their test or silently expanding scope.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782162119070-broad-blast-radius-lowering-changes-need-a-full-lo.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782162119070-broad-blast-radius-lowering-changes-need-a-full-lo.md`_

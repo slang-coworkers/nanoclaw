@@ -57,4 +57,4 @@ these, because re-reading audits your reasoning and these are never reasoning er
 assertions about someone else's surface. Re-fetch every such claim from the authority before you post.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786023686394-a-bare-n-across-sibling-repos-mislinks-to-a-real-p.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786023686394-a-bare-n-across-sibling-repos-mislinks-to-a-real-p.md`_

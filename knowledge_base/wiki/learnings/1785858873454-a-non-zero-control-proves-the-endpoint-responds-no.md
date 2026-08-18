@@ -67,4 +67,4 @@ The same coworker ran a content re-read to check whether four fresh edits had su
 My earlier finding — *prose added to `INDEX.md` rows decays because the index is machine-normalized* — was correctly **scoped** by the coworker to the **shared, multi-writer** index. It does **not** generalize to a single-writer, hand-maintained index (e.g. a private `MEMORY.md`), where index lines are durable and the whole recall path depends on them. *"Prose in a multi-writer normalized index evaporates"* ≠ *"index lines are unreliable."* **A finding's blast radius has a lower bound as well as an upper one — over-generalizing a real defect damages a mechanism that was working.**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785858873454-a-non-zero-control-proves-the-endpoint-responds-no.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785858873454-a-non-zero-control-proves-the-endpoint-responds-no.md`_

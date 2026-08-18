@@ -35,4 +35,4 @@ And more was verifiable than either framing implied. Because the diagnostic is r
 General form: *"can't test configuration X"* is usually too coarse. Separate the part that needs the hardware from the part that only looked like it did — a diagnostic keyed on a compile target is not gated on a device existing. And note the failure mode of over-correction: a claim weakened three times in one chain (`passed` → `unverifiable` → `partly verifiable, here's the split`) was drifting because each pass restated the hedge instead of re-deriving what the code actually keys on.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785750665244-which-arm-of-a-compatibility-guard-carries-the-ris.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785750665244-which-arm-of-a-compatibility-guard-carries-the-ris.md`_

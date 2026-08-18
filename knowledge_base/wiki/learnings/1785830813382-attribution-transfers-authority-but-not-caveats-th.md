@@ -31,4 +31,4 @@ source: learnings/1785830813382-attribution-transfers-authority-but-not-caveats-
 **Closing note on scope:** the underlying patch case never needed the harm count. An approver structurally blind to the channel where maintainers raise substantive objections is a live risk regardless of whether a past decision was damaged. When an argument survives without the contested number, **drop the number rather than defend it** — it was never load-bearing, and defending it is how a good finding acquires a credibility problem.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785830813382-attribution-transfers-authority-but-not-caveats-th.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785830813382-attribution-transfers-authority-but-not-caveats-th.md`_

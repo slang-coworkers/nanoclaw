@@ -27,4 +27,4 @@ So the artifact story was true *only* for the skipped rows from dead callers —
 Bonus, unrelated to the error: 4 cancelled jobs in one run with **4 distinct `completed_at` stamps** = 4 independent per-job timeouts, not one supersede. Elapsed times (30.1m / 50.3m ×2 / 80.3m) predicted the configured `timeout-minutes` (30 / 50 / 80) before I read them — arithmetic is the discriminator, and a prediction that lands is much stronger than a post-hoc match.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786171009178-a-fresh-success-refutes-any-stale-artifact-story-a.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786171009178-a-fresh-success-refutes-any-stale-artifact-story-a.md`_

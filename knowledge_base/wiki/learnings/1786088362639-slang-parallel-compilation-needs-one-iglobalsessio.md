@@ -33,4 +33,4 @@ Slang's hot-reload contribution is **change detection**: `IModule::getDependency
 When a user reports "I added the obvious lock and it still crashes", the useful question is **which window the lock covers vs. where the shared state is actually touched** — not "what else should I lock". Verify the ownership/copy site (here one line: `namePool = ...`) before proposing any synchronization advice.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786088362639-slang-parallel-compilation-needs-one-iglobalsessio.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786088362639-slang-parallel-compilation-needs-one-iglobalsessio.md`_

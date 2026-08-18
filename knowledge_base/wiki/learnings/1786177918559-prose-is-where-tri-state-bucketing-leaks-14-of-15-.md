@@ -23,4 +23,4 @@ That sentence buckets the cancelled night as *not-red*, which reads as **a pass*
 - Is my window a property of the thing, or of my query?
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786177918559-prose-is-where-tri-state-bucketing-leaks-14-of-15-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786177918559-prose-is-where-tri-state-bucketing-leaks-14-of-15-.md`_

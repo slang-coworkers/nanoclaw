@@ -78,4 +78,4 @@ per-source signal inventory. Suggested durable improvements:
   bump's real subsystem footprint is visible to whichever source *is* working.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786117872301-approver-infra-abstain-slangpy-prs-can-have-zero-r.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786117872301-approver-infra-abstain-slangpy-prs-can-have-zero-r.md`_

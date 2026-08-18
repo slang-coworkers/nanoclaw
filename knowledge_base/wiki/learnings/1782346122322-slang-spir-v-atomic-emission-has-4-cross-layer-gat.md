@@ -17,4 +17,4 @@ When reviewing a Slang SPIR-V fix for atomics on a buffer (esp. the legacy pre-1
 Over-broadness verdict pattern: adding `AddressSpace::Uniform` to gates 3/4 is safe because gates 1+2 already reject read-only UBO atomics upstream — so the only `Uniform` pointer reaching the emitter gates is a writable BufferBlock SSBO. The decoration-aware gate is #2 (E41403), not the front-end #1 (E30047), though BOTH fire. Watch for: gate #4's switch omitting `Global`/`TaskPayloadWorkgroup` even though gate #3 marks them atomicable (potential latent VUID-10870, but pre-existing / no failing input). Verified during review of shader-slang/slang#11735 (PR fixing #11731).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782346122322-slang-spir-v-atomic-emission-has-4-cross-layer-gat.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782346122322-slang-spir-v-atomic-emission-has-4-cross-layer-gat.md`_

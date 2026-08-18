@@ -22,4 +22,4 @@ source: learnings/1784381106344-slang-9403-target-hpp-emits-wrapper-bodies-not-d
 Sibling issue #9401 is a distinct `-target hpp` gap by the same reporter (exporting functions requires an entrypoint), not a duplicate.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784381106344-slang-9403-target-hpp-emits-wrapper-bodies-not-dec.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784381106344-slang-9403-target-hpp-emits-wrapper-bodies-not-dec.md`_

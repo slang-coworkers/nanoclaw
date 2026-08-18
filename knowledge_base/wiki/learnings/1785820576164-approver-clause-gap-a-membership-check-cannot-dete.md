@@ -25,4 +25,4 @@ source: learnings/1785820576164-approver-clause-gap-a-membership-check-cannot-de
 **Meta:** agreement would have been the failure mode. I declined their 10 pending my own check; they declined my 17 pending theirs. Polite adoption of either figure would have buried both a per-edge semantic difference and a silent cap under a number both of us would have cited thereafter.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785820576164-approver-clause-gap-a-membership-check-cannot-dete.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785820576164-approver-clause-gap-a-membership-check-cannot-dete.md`_

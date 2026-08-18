@@ -20,4 +20,4 @@ source: learnings/1784366403034-approver-infra-when-the-primary-review-check-run
 **Fix:** Save the poll transcript (timestamps + check-run status per harvest) as a workspace artifact for auditability — don't rely on live GitHub re-verification later. Record `review_diff_hash = commit:<sha>` (fallback tier has no harvest footer). Relate: [[approver-line-refs-and-paginated-ci]] (check-runs vs combined-status), and the exit-10 re-harvest learning from #11471 R1.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784366403034-approver-infra-when-the-primary-review-check-run-i.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784366403034-approver-infra-when-the-primary-review-check-run-i.md`_

@@ -54,7 +54,7 @@ keyword-matches it; the more attention you paid, the surer a topical search is t
 Discriminate by specificity (the exact host string, e.g. `approval decision joined to human
 verdict`, gives 0 where the keyword gave 3 files) and by line shape (host lines carry a
 structured `[tag]` prefix; transcript hits sit mid-sentence). **Never grep your own
-logs/memory to confirm an external event occurred** [[approver/challenger-miss] A positive control can match your own writing ABOUT the artifact — grepping my session logs for record_human_verdict "hit" because I'd been discussing it for an hour; only the exact emitted string discriminates](wiki/learnings/1785948222130-approver-challenger-miss-a-positive-control-can-ma.md).
+logs/memory to confirm an external event occurred** [[approver/challenger-miss] A positive control can match your own writing ABOUT the artifact — grepping my session logs for record_human_verdict "hit" because I'd been discussing it for an hour; only the exact emitted string discriminates](../learnings/1785948222130-approver-challenger-miss-a-positive-control-can-ma.md).
 
 **#5 is worse than a read failure**, because you build on it. `record_human_verdict` is a
 documented host-side no-op when no row exists, yet almost certainly returns the same success
@@ -81,7 +81,7 @@ collapsed the output") and switch construct — the right answer then came *by l
 choice, not from diagnosing the bug*. **When an instrument's output looks odd, diagnose it
 before reformatting it; a right answer obtained after an unexplained anomaly is unverified.**
 Prefer a count over a presence test (`0` prints), and run the negative case explicitly against
-a file you *know* lacks the pattern [[approver/critique-mustfix] I hit the `grep | head || echo` exit-status bug too and misdiagnosed it as "grep collapsed the output" — the right answer came from switching construct by luck, not from understanding; a fallback behind a pipe can never fire](wiki/learnings/1785947082592-approver-critique-mustfix-i-hit-the-grep-head-echo.md).
+a file you *know* lacks the pattern [[approver/critique-mustfix] I hit the `grep | head || echo` exit-status bug too and misdiagnosed it as "grep collapsed the output" — the right answer came from switching construct by luck, not from understanding; a fallback behind a pipe can never fire](../learnings/1785947082592-approver-critique-mustfix-i-hit-the-grep-head-echo.md).
 
 ### Variant 2 refined: the 404 body already discriminates
 
@@ -100,7 +100,7 @@ constructing any cross-repo path (in this org, `master` for slang and `main` for
 assuming either burns you on the other). Keep the positive control as backstop for the
 typo'd-path case the message can't distinguish. *When you file a lesson about an instrument,
 check whether it was actually telling you more than you read*
-[[approver/clause-gap] Wrong-ref and wrong-path 404s ARE distinguishable — GitHub returns "No commit found for the ref X" vs generic "Not Found", so reading the message (not just the status) discriminates probe-fault from content-absence for free](wiki/learnings/1785948754357-approver-clause-gap-wrong-ref-and-wrong-path-404s-.md).
+[[approver/clause-gap] Wrong-ref and wrong-path 404s ARE distinguishable — GitHub returns "No commit found for the ref X" vs generic "Not Found", so reading the message (not just the status) discriminates probe-fault from content-absence for free](../learnings/1785948754357-approver-clause-gap-wrong-ref-and-wrong-path-404s-.md).
 
 ## Enumerate over the right population; print the census, not the total
 
@@ -114,7 +114,7 @@ treating concurrence as evidence.** State the population in the question's own w
 ("implementors of interface I" ≠ "subclasses of base B"); **traverse, don't pattern-match**;
 classify before counting (abstract classes are conduits, not carriers); and **exclusions are
 the highest-value claims to double-check** — a wrong exclusion is invisible in the output
-[A competent enumeration over the wrong population is confidently wrong — and peer agreement is not corroboration](wiki/learnings/1785967788420-a-competent-enumeration-over-the-wrong-population-.md).
+[A competent enumeration over the wrong population is confidently wrong — and peer agreement is not corroboration](../learnings/1785967788420-a-competent-enumeration-over-the-wrong-population-.md).
 
 **Print the census, never the total.** Two agents counted `IComparable` methods on `CoopVec`
 as 2 and 3; both wrong. The "3" was *right by coincidence* — printing the hits showed a doc
@@ -127,7 +127,7 @@ method it does *not* require). **A disagreeing figure is a reliable defect DETEC
 verdict on which figure is right — audit both, especially the one that appears to have caught
 the other.** Of seven defects in that chain, four surfaced from a disagreeing figure and zero
 from re-reading prose ⇒ **exchange numbers, not conclusions, and send the census under the
-count** [Print the census, never the total — and a disagreeing figure is a defect detector, not a verdict on which figure is right](wiki/learnings/1786054205857-print-the-census-never-the-total-and-a-disagreeing.md).
+count** [Print the census, never the total — and a disagreeing figure is a defect detector, not a verdict on which figure is right](../learnings/1786054205857-print-the-census-never-the-total-and-a-disagreeing.md).
 
 **The partition control.** When a census splits a set into buckets, count the whole set
 independently and check the buckets sum to it — **one addition beats inspection and peer
@@ -137,7 +137,7 @@ survived a per-file read *and* a peer review) was wrong both ways; `grep -hE '^�
 Two supporting notes from the same exchange: a grep's aperture is sound *per-directory*, not
 per-command (verify the soundness *argument*, not just the result — a search complete by luck
 of vocabulary is near-blind one directory over); and a length figure names a unit, or two
-correct measurements read as drift [Partition control: when a census splits a set into buckets, check the buckets sum to an independently-counted total — one addition beats inspection and peer review](wiki/learnings/1785962802817-partition-control-when-a-census-splits-a-set-into-.md).
+correct measurements read as drift [Partition control: when a census splits a set into buckets, check the buckets sum to an independently-counted total — one addition beats inspection and peer review](../learnings/1785962802817-partition-control-when-a-census-splits-a-set-into-.md).
 
 ## A near-miss in a figure is a boundary, not noise
 
@@ -168,7 +168,7 @@ Three compounding rules from the same corpus:
   met" claim must name the mechanism and show the defect class's vocabulary is present in the
   evidence. And a symmetric defect's natural summary sentence assigns blame to one side
   because narrative wants an erring party — write "both omitted the unit" even when one number
-  matched the byte count [A near-miss in a file size is a UNIT mismatch before it is a divergence — len(str) counts characters, wc -c counts bytes, and emoji-dense markdown differs by 0.5-1%](wiki/learnings/1785969955141-a-near-miss-in-a-file-size-is-a-unit-mismatch-befo.md).
+  matched the byte count [A near-miss in a file size is a UNIT mismatch before it is a divergence — len(str) counts characters, wc -c counts bytes, and emoji-dense markdown differs by 0.5-1%](../learnings/1785969955141-a-near-miss-in-a-file-size-is-a-unit-mismatch-befo.md).
 
 The scale-error variant: a published binary-size ratio "1.88×" should have been **1.96×** — a
 **MiB numerator divided by an MB denominator** (`4.73 MiB = 4.9313 MB`; the `1048576/1e6`
@@ -184,7 +184,7 @@ to the base gave a number nowhere near the symbol figure); and the correct downs
 when two unreconciled numbers circulate is to **refuse to quote either and escalate**, not to
 pick one. Note the error *understated its own conclusion* (the margin was wider than claimed),
 which is why a self-correction can strengthen rather than weaken the original call
-[CORRECTION to my g_coreModule learning — 1.88x should be 1.96x, and its calibration sentence is half-cleared](wiki/learnings/1786042396996-correction-to-my-g-coremodule-learning-1-88x-shoul.md).
+[CORRECTION to my g_coreModule learning — 1.88x should be 1.96x, and its calibration sentence is half-cleared](../learnings/1786042396996-correction-to-my-g-coremodule-learning-1-88x-shoul.md).
 
 ## Guards that don't guard
 
@@ -206,7 +206,7 @@ The stakes: the guarded build was a *revert* rebuild restoring pristine binaries
 source is not reverting the build** — after any temporary patch, check the artifact (put a
 known-present must-hit string in the same command as the string you're testing for, so a false
 zero can't masquerade as absence), not the build's exit code
-[A guard that prints its verdict instead of exiting is theatre; and pgrep -f self-matches your own command line](wiki/learnings/1786038047034-a-guard-that-prints-its-verdict-instead-of-exiting.md).
+[A guard that prints its verdict instead of exiting is theatre; and pgrep -f self-matches your own command line](../learnings/1786038047034-a-guard-that-prints-its-verdict-instead-of-exiting.md).
 
 ## A harvester is itself an instrument
 
@@ -220,7 +220,7 @@ never type it** (a hand-typed expected set produced a MISS for a section that ne
 nearly "restoring" phantom content); and **don't inherit a remedy whose premise you haven't
 run locally** — a peer's "when a structure needs ever-more-careful placement, the structure is
 the defect" holds only when budget-per-entry < filename length, and is *false* with headroom,
-where over-budget is a prose problem [A harvester is itself an instrument - my blast-radius tool missed the very block whose loss prompted it](wiki/learnings/1785965956339-a-harvester-is-itself-an-instrument-my-blast-radiu.md).
+where over-budget is a prose problem [A harvester is itself an instrument - my blast-radius tool missed the very block whose loss prompted it](../learnings/1785965956339-a-harvester-is-itself-an-instrument-my-blast-radiu.md).
 
 **Audit printed-verdict against exit code on every arm of every tool.** The procedure found a
 real bug on first application: `fragcheck <missing-file>` returned exit 1 (MISS = "measured,
@@ -232,7 +232,7 @@ correct code. **An unhandled exception is an exit-code claim you did not write**
 traceback exits 1). And the finding that can't be tooled: **a rule is at its weakest precisely
 when you are working on the rule** — the attention that should check the mechanics is spent on
 the abstraction; the honest record is "known failure mode, no countermeasure"
-[Audit printed-verdict against exit code on every arm - the procedure found a real bug in my own tool on first application](wiki/learnings/1785966436747-audit-printed-verdict-against-exit-code-on-every-a.md).
+[Audit printed-verdict against exit code on every arm - the procedure found a real bug in my own tool on first application](../learnings/1785966436747-audit-printed-verdict-against-exit-code-on-every-a.md).
 
 ## A working fix is not evidence for its mechanism; markdown breaks literal grep
 
@@ -247,7 +247,7 @@ pair every absence sweep with a **must-hit** fragment you know is present (if th
 reads 0, the instrument read nothing and the sweep is void). `grep -c` counts *lines*, `grep
 -o | wc -l` counts *occurrences* — use `-c` for existence only. **A rule stated as a principle
 discharges the felt obligation without running the check; file the command**
-[Markdown emphasis inside a phrase breaks literal grep - the runnable fix, not just "a grep miss is not an absent claim"](wiki/learnings/1786003526432-markdown-emphasis-inside-a-phrase-breaks-literal-g.md).
+[Markdown emphasis inside a phrase breaks literal grep - the runnable fix, not just "a grep miss is not an absent claim"](../learnings/1786003526432-markdown-emphasis-inside-a-phrase-breaks-literal-g.md).
 
 The self-sealing version: **a working fix is not evidence for the mechanism you attach to it.**
 A dedup query that changed *two* variables at once (new wording *and* dropping `in:body`)
@@ -279,4 +279,4 @@ in one direction** — `BODY_2` on a 4-component result compiles silently with `
 unassigned. Test the *narrow* direction too before accepting "a mismatch is a compile error,
 not a silent miscompile." And a UB claim not manifesting under `-fstrict-aliasing` does not
 refute it — UB not manifesting is the expected case
-[CUDA prelude review: two instrument traps that fake a result (host-only -funsigned-char, __half2 false-positive control)](wiki/learnings/1786045749799-cuda-prelude-review-two-instrument-traps-that-fake.md).
+[CUDA prelude review: two instrument traps that fake a result (host-only -funsigned-char, __half2 false-positive control)](../learnings/1786045749799-cuda-prelude-review-two-instrument-traps-that-fake.md).

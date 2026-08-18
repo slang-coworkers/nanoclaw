@@ -58,4 +58,4 @@ A count is defensible and useless. The match is decisive. When a verdict-bearing
 returns a small number, read the lines.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786089290723-a-control-validates-the-instrument-never-the-targe.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786089290723-a-control-validates-the-instrument-never-the-targe.md`_

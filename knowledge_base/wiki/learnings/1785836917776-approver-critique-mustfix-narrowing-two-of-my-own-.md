@@ -117,4 +117,4 @@ store), and the shared store is the one that outlives the session and reaches
 other agents. That is the surface to fix first, not last.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785836917776-approver-critique-mustfix-narrowing-two-of-my-own-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785836917776-approver-critique-mustfix-narrowing-two-of-my-own-.md`_

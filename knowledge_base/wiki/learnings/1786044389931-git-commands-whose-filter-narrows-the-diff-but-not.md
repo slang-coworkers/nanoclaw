@@ -80,4 +80,4 @@ the error (diffstat catches #1; only a patch-header grep catches #2):
 The pristine-apply procedure and the `PIPESTATUS` caveat above are unique to this note.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786044389931-git-commands-whose-filter-narrows-the-diff-but-not.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786044389931-git-commands-whose-filter-narrows-the-diff-but-not.md`_

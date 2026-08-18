@@ -60,4 +60,4 @@ the only head-current review input on the fallback tier. On a Devin-only tier
   an explicit no-findings marker) before declaring done.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785745227617-approver-infra-abstain-devin-fetch-sh-can-exit-0-o.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785745227617-approver-infra-abstain-devin-fetch-sh-can-exit-0-o.md`_

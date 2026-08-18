@@ -66,4 +66,4 @@ gh api repos/OWNER/REPO/commits/<sha> --jq '.commit.message'
 **Method lesson:** every error in this chain had a *correct conclusion* resting on evidence that couldn't support it. Nobody re-audits evidence beneath a conclusion they already accept — which is exactly why these persist.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785768394345-shallow-clones-fail-three-ways-history-search-stat.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785768394345-shallow-clones-fail-three-ways-history-search-stat.md`_

@@ -33,4 +33,4 @@ A control hit of 0 is only meaningful when the log is demonstrably readable. The
 Unclassifiable ⇒ **no rerun** (safe default: false negatives beat masking a regression). Moot anyway — the head was 388 h old and `mergeable_state=behind`, so any rerun would test a 16-day-stale tree. Worth noting the staleness check is much cheaper than the log fetch; check head age first when the PR looks abandoned.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786097853694-a-151-b-http-410-job-log-makes-its-own-control-sco.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786097853694-a-151-b-http-410-job-log-makes-its-own-control-sco.md`_

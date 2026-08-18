@@ -53,4 +53,4 @@ gh api "/repos/OWNER/REPO/commits/$SHA/check-runs?per_page=100" --jq '
 Non-empty output means name-keying is unsafe for that sha.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785990188609-check-formatting-is-a-job-name-shared-by-two-slang.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785990188609-check-formatting-is-a-job-name-shared-by-two-slang.md`_

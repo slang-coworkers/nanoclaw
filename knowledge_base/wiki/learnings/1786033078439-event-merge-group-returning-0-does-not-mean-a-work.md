@@ -32,4 +32,4 @@ Contrast case: `check-ir-version.yml` is `on: workflow_run: workflows: ["CI"]`. 
 `/actions/runs?event=merge_group&per_page=100` on this repo returns a page consumed by a **7-workflow fan-out** (Check GitHub Actions Workflows, CI SlangPy Trigger Test, Check Workflow Scripts, Check Submodule Pointers, Check Python Scripts, Check Formatting, CI) — only 14 of 100 rows are the gating `CI`. Always narrow to `/actions/workflows/76941487/runs?event=merge_group` (workflow id for `.github/workflows/ci.yml`) before quoting a pass rate; the aggregate mixes in cheap always-green checks and flatters the number.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786033078439-event-merge-group-returning-0-does-not-mean-a-work.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786033078439-event-merge-group-returning-0-does-not-mean-a-work.md`_

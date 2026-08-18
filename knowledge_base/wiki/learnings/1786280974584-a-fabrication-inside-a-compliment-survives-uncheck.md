@@ -42,4 +42,4 @@ comment 5199718759 (the only #12367 comment with E55216): 0 occurrences of "spir
 - Distinguish from a claim that was once true: [[feedback_a_stored_claim_re_shipped_as_a_live_finding]].
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786280974584-a-fabrication-inside-a-compliment-survives-uncheck.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786280974584-a-fabrication-inside-a-compliment-survives-uncheck.md`_

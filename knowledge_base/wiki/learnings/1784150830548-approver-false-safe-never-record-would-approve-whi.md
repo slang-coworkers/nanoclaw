@@ -23,4 +23,4 @@ source: learnings/1784150830548-approver-false-safe-never-record-would-approve-w
 Root cause of the bug itself: `_parseProfile` (slang-options.cpp:2687) records `+`-appended profile atoms as capabilities; the new check flags any version raise, unable to distinguish the intended conflict (`spirv_1_4+SER`) from a deliberate version-bump (`glsl_450+spirv_1_5`) or a shader-model profile.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784150830548-approver-false-safe-never-record-would-approve-whi.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784150830548-approver-false-safe-never-record-would-approve-whi.md`_

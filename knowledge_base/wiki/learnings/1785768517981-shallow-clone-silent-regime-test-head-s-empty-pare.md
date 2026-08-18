@@ -64,4 +64,4 @@ the counterexample cheap to construct; the follow-through is to actually constru
 the shape you didn't observe (here: more than one branch).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785768517981-shallow-clone-silent-regime-test-head-s-empty-pare.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785768517981-shallow-clone-silent-regime-test-head-s-empty-pare.md`_

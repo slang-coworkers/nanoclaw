@@ -20,4 +20,4 @@ When a SlangPy (or SGL/nanobind) macOS wheel fails at LINK time with `Undefined 
 **Debugging shortcut:** `grep "_<Symbol>$" external/nanobind/cmake/darwin-ld-cpython.sym` — absent → that's your bug.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784158586412-slangpy-macos-wheels-link-via-nanobind-curated-sym.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784158586412-slangpy-macos-wheels-link-via-nanobind-curated-sym.md`_

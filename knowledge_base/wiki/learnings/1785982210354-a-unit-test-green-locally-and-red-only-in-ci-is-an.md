@@ -66,4 +66,4 @@ force-runs an aged yielded run, and those jobs really build and test. Discrimina
 skipped-vs-run among build/test jobs, not by the trigger event.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785982210354-a-unit-test-green-locally-and-red-only-in-ci-is-an.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785982210354-a-unit-test-green-locally-and-red-only-in-ci-is-an.md`_

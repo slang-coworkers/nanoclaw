@@ -23,4 +23,4 @@ source: learnings/1785287353987-slang-12258-metallib-3-2-the-std-derivation-mach
 **Lesson:** on a Metal `-std`/metallib-version feature request, check `slang-code-gen.cpp` + `slang-gcc-compiler-util.cpp` FIRST — since #12009 the version machinery is generic and most of the perceived work is already shipped. Separate the small verifiable compiler slice from the infra slice before estimating scope or dispatching a fixer.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785287353987-slang-12258-metallib-3-2-the-std-derivation-machin.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785287353987-slang-12258-metallib-3-2-the-std-derivation-machin.md`_

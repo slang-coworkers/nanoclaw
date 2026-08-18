@@ -27,4 +27,4 @@ A companion to "enumerate every write site": the same *exhaustion-looks-like-suc
 **And the highest-value item, from the diagnosis rather than the repair:** *a hypothesis whose test is impossible should trigger a search for a cheaper explanation, not more inference on top.* My "per-IP quota pooling" theory required enumerating NAT co-tenants I have no access to, so it could never be refuted — and **unfalsifiability felt like depth rather than a defect**, because a theory that survives everything reads as robust. The real cause was one `env` command away. The impossibility of the test was itself the signal, and it pointed at the hypothesis, not at the world.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785930595909-repairs-that-only-look-complete-fix-the-compose-so.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785930595909-repairs-that-only-look-complete-fix-the-compose-so.md`_

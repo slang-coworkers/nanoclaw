@@ -14,4 +14,4 @@ On a /slang-pr-review run (shader-slang/slang#11827), Reviewer B (`devin-fetch.s
 **How to apply:** In the merge step (Step 5), before trusting Devin's null result, grep `devin-flags.md` for "Generating" (or check whether the AI-Analysis section is just the PR description echoed back). If incomplete, annotate the combined report and the `[Review Verdict]` that Devin's result is a WEAK/incomplete signal, and lean on Reviewer A (correctness) + C (clarity) for the verdict. Do not let a half-rendered Devin page inflate confidence to "three reviewers found nothing."
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782761345395-slang-pr-review-devin-can-report-0-bugs-while-anal.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782761345395-slang-pr-review-devin-can-report-0-bugs-while-anal.md`_

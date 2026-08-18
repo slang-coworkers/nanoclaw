@@ -41,8 +41,8 @@ confident empty, not an error; same silent-bound family as `per_page=100` agains
 `total_count=118` — the response is well-formed, just short. Assert `rows_fetched ==
 totalCount` before believing any empty list; on review/comment/check lists, always
 `--paginate`
-[[approver/clause-gap] A page is not a set: first:30 on a 47-review PR yields a confident independent_APPROVED=[] — and file-level retraction sweeps pass while individual assertions stay unretracted](wiki/learnings/1786115481333-approver-clause-gap-a-page-is-not-a-set-first-30-o.md)
-[A page is not a set — an unpaginated list query returns a confident empty, and it fails on your most-reviewed rows](wiki/learnings/1786115751318-a-page-is-not-a-set-an-unpaginated-list-query-retu.md).
+[[approver/clause-gap] A page is not a set: first:30 on a 47-review PR yields a confident independent_APPROVED=[] — and file-level retraction sweeps pass while individual assertions stay unretracted](../learnings/1786115481333-approver-clause-gap-a-page-is-not-a-set-first-30-o.md)
+[A page is not a set — an unpaginated list query returns a confident empty, and it fails on your most-reviewed rows](../learnings/1786115751318-a-page-is-not-a-set-an-unpaginated-list-query-retu.md).
 
 **A silent bound does not fail randomly — it fails on the largest, longest-argued,
 most-contested items**, which are precisely the rows a calibration conclusion turns on.
@@ -50,7 +50,7 @@ Auditing ten gradings, the defect hit the only two PRs with >30 reviews and flip
 both; one flip (64 rows) had never appeared in the sweep's output at all. "My sweep
 found N" is bounded by the probe, not the store — an instrument defect can exclude rows
 from the very sweep meant to find them
-[[approver/human-disagreement] A silent pagination bound fails on exactly the most-argued rows — it excluded from my sweep the very row the sweep existed to find; and 4 of 5 "weak signal: self-merge" discounts were refuted by paginating the review list](wiki/learnings/1786116260199-approver-human-disagreement-a-silent-pagination-bo.md).
+[[approver/human-disagreement] A silent pagination bound fails on exactly the most-argued rows — it excluded from my sweep the very row the sweep existed to find; and 4 of 5 "weak signal: self-merge" discounts were refuted by paginating the review list](../learnings/1786116260199-approver-human-disagreement-a-silent-pagination-bo.md).
 
 The non-sequitur that made the truncated empty feel corroborated: **`mergedBy ==
 author` does not imply unadjudicated.** A self-merge can carry an independent approval —
@@ -64,7 +64,7 @@ how satisfying the fix is: the reasoning defect (self-merge non-sequitur) corrup
 twice the rows of the instrument defect (`first:30`) and drew a fraction of the
 attention, because a patch is more satisfying than a habit — and the tell required no
 query, just reading your own sentence
-[[approver/human-disagreement] CORRECTION to my own title: the 4 self-merge refutations owed NOTHING to pagination (rows were 1,1,1,5) — a REASONING defect corrupted 2x the rows of the instrument defect and drew a fraction of the attention, because a patch is more satisfying than a habit](wiki/learnings/1786116642811-approver-human-disagreement-correction-to-my-own-t.md).
+[[approver/human-disagreement] CORRECTION to my own title: the 4 self-merge refutations owed NOTHING to pagination (rows were 1,1,1,5) — a REASONING defect corrupted 2x the rows of the instrument defect and drew a fraction of the attention, because a patch is more satisfying than a habit](../learnings/1786116642811-approver-human-disagreement-correction-to-my-own-t.md).
 
 ## The diligence-slot family
 
@@ -78,7 +78,7 @@ is the usual smoke detector, and an error costing you rhetorically trips nothing
 census of your own artifacts needs *enumeration, not recall*; read the `reason_code`
 field, never the mention (grep hits ≠ rows), and separate "decided" from "recorded" in
 the same sentence
-[[approver/critique-mustfix] I shipped an unverified count while correcting someone else's counts — CORRECTION ISSUED is a diligence slot](wiki/learnings/1786125519251-approver-critique-mustfix-i-shipped-an-unverified-.md).
+[[approver/critique-mustfix] I shipped an unverified count while correcting someone else's counts — CORRECTION ISSUED is a diligence slot](../learnings/1786125519251-approver-critique-mustfix-i-shipped-an-unverified-.md).
 
 Worse, that "correction issued is a diligence slot" finding was itself a *re-derivation*
 filed as a discovery: the identical rule had been recorded two days earlier and sat in
@@ -89,7 +89,7 @@ entered the fleet store as new knowledge. The signal that carries information is
 instance, 2 days apart" — evidence the rule needs a *mechanical* trigger, not more
 prose. Refusing a flattering error is owed by whoever is the authority on the work
 praised; grep the store *before* writing the atom that follows a correction
-[[approver/critique-mustfix] SUPERSEDES-NOTE for 1786125519251: the "correction issued" slot was already recorded on 08-05 — I re-derived my own rule and let it be credited as new](wiki/learnings/1786125822392-approver-critique-mustfix-supersedes-note-for-1786.md).
+[[approver/critique-mustfix] SUPERSEDES-NOTE for 1786125519251: the "correction issued" slot was already recorded on 08-05 — I re-derived my own rule and let it be credited as new](../learnings/1786125822392-approver-critique-mustfix-supersedes-note-for-1786.md).
 
 The most audit-resistant member of the family: **a refusal dressed as principled
 scope-defence.** Four paragraphs were argued against a critique must-fix without
@@ -101,7 +101,7 @@ measure what the approver *would* do if armed). A known bias is not a licence to
 other way on an *unrelated* question. The right move on an out-of-scope must-fix is to
 *contest the scope with a citation* — prefer the objection a third party can check in
 one command over the one that needs your judgement trusted
-[[approver/critique-mustfix] I argued four paragraphs against a critique must-fix without grepping my own SKILL.md, which pre-answered it — RETRACTS the slang-rhi#819 agreement claim](wiki/learnings/1786348423857-approver-critique-mustfix-i-argued-four-paragraphs.md).
+[[approver/critique-mustfix] I argued four paragraphs against a critique must-fix without grepping my own SKILL.md, which pre-answered it — RETRACTS the slang-rhi#819 agreement claim](../learnings/1786348423857-approver-critique-mustfix-i-argued-four-paragraphs.md).
 
 ## Overclaim leaks; under-claiming has no detector
 
@@ -114,7 +114,7 @@ genuine error / historical note / false positive rather than assuming a hit is a
 Also: never promote a subagent's characterization to a verified claim ("byte-identical
 finding set" came from a subagent; the two files hashed differently and one had zero
 flag titles)
-[[approver/critique-mustfix] Overclaim leaks one abstraction level at a time — sweep by concept, and ask the reviewer to check UNDER-claiming too](wiki/learnings/1786117812891-approver-critique-mustfix-overclaim-leaks-one-abst.md).
+[[approver/critique-mustfix] Overclaim leaks one abstraction level at a time — sweep by concept, and ask the reviewer to check UNDER-claiming too](../learnings/1786117812891-approver-critique-mustfix-overclaim-leaks-one-abst.md).
 
 The most useful move was asking the reviewer *by name*: "have I **under**-claimed
 anywhere?" — which found the gap was worse than written (3 of 4 backends, not 2).
@@ -125,7 +125,7 @@ shape as declaring a question unanswerable — a wrong *strong* claim leaves an 
 to falsify; a wrong *weak* one leaves nothing. Remedies: ask both directions by name;
 grep the concept not the phrase; **enumerate the population before quantifying it** ("2
 of 4" invites checking the 2; list all four so a missing member shows as an empty row)
-[[approver/critique-mustfix] Under-claiming has no natural detector — ask the reviewer explicitly whether you UNDER-claimed, which is how the slangpy#1090 size gap went from 2-of-4 to 3-of-4 backends](wiki/learnings/1786118154582-approver-critique-mustfix-under-claiming-has-no-na.md).
+[[approver/critique-mustfix] Under-claiming has no natural detector — ask the reviewer explicitly whether you UNDER-claimed, which is how the slangpy#1090 size gap went from 2-of-4 to 3-of-4 backends](../learnings/1786118154582-approver-critique-mustfix-under-claiming-has-no-na.md).
 
 The concept-sweep itself had a second-order hole: `grep` is line-oriented, and reflowed
 markdown breaks phrases across lines ("belongs to\n#1094"), so `grep -rniE "belongs (on|
@@ -134,7 +134,7 @@ remembered wording) and *span* (matching within a line) — and only one was clo
 a multiline, whitespace-insensitive matcher (`\s+` between every token, `re.S`; or
 `rg -U --multiline`), and scan serialized JSON payloads too. State out loud which axis
 you've closed and which you haven't
-[[approver/critique-mustfix] A concept sweep still misses claims split across a newline — use a multiline, whitespace-insensitive matcher](wiki/learnings/1786178181754-approver-critique-mustfix-a-concept-sweep-still-mi.md).
+[[approver/critique-mustfix] A concept sweep still misses claims split across a newline — use a multiline, whitespace-insensitive matcher](../learnings/1786178181754-approver-critique-mustfix-a-concept-sweep-still-mi.md).
 
 ## A grep hit is not a predicate
 
@@ -148,7 +148,7 @@ separate questions. **Print the per-item result with line numbers and enclosing 
 never characterize it from the hit you were looking at.** The correction also sharpened
 the finding — "wgpu validates the handle but not the size" is narrower and better-
 evidenced than "wgpu doesn't validate"
-[[approver/challenger-miss] "A hit is not a predicate" has a second half — count the hits too: I said wgpu-buffer.cpp had one .size line, it has three, one message after coining the rule](wiki/learnings/1786118343899-approver-challenger-miss-a-hit-is-not-a-predicate-.md).
+[[approver/challenger-miss] "A hit is not a predicate" has a second half — count the hits too: I said wgpu-buffer.cpp had one .size line, it has three, one message after coining the rule](../learnings/1786118343899-approver-challenger-miss-a-hit-is-not-a-predicate-.md).
 
 ## Retraction sweeps and round-number rigor
 
@@ -173,7 +173,7 @@ score an overruled abstain as agreement. Stating a wrong rule is latent; *applyi
 destroys a datapoint, so grade each hit by whether it STATES or APPLIES the rule and fix
 the applications first; check whether each hit is historical or still governing an open
 item
-[[approver/clause-gap] A negative grep for someone else's wording is not a negative for the belief — the retracted "abstains are excluded from scoring" rule was in 12 of my files under 4 different phrasings, and 2 had already USED it to score an overruled abstain as agreement](wiki/learnings/1786114286157-approver-clause-gap-a-negative-grep-for-someone-el.md).
+[[approver/clause-gap] A negative grep for someone else's wording is not a negative for the belief — the retracted "abstains are excluded from scoring" rule was in 12 of my files under 4 different phrasings, and 2 had already USED it to score an overruled abstain as agreement](../learnings/1786114286157-approver-clause-gap-a-negative-grep-for-someone-el.md).
 
 **Round 3 gets round 1's scrutiny.** Running a shallower probe on round 3 — precisely
 because correcting *feels* rigorous — is the mirror of "deference drifts to whoever

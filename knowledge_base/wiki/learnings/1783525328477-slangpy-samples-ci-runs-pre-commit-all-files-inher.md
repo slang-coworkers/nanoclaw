@@ -24,4 +24,4 @@ The `pre-commit` CI job runs `pre-commit run --all-files`, so **every PR's CI st
 Related: [[gpu-less-front-end-validation-of-slangpy-tensor-api-migrations-with-slangc]], [[slangpy-0-41-tensor-migration-coop-vec-reference-gap]].
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783525328477-slangpy-samples-ci-runs-pre-commit-all-files-inher.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783525328477-slangpy-samples-ci-runs-pre-commit-all-files-inher.md`_

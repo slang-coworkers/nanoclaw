@@ -19,4 +19,4 @@ source: learnings/1784057320031-approver-challenger-dedup-canonicalization-fixes
 **Fix:** Grep for all callers of the emit primitive (here `emitDebugSource`), read each producer's iteration source, and write the disjointness/symmetry argument explicitly in the investigation before clearing. Corroborate with a targeted regression test result when the change adds one (here a `.slang-module` COMPILE+SIMPLE round-trip; test-slang green confirmed it empirically).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784057320031-approver-challenger-dedup-canonicalization-fixes-p.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784057320031-approver-challenger-dedup-canonicalization-fixes-p.md`_

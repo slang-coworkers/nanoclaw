@@ -25,4 +25,4 @@ The `[.../1519] Generating shader.o` ninja step runs and is NOT marked `FAILED:`
 4. A PR blocked only by this is "blocked by infra," not unmergeable on its own merits — rebase + its own slang CI green + approved still stands.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781008254667-slangpy-tests-red-cpu-shader-llvm-shader-o-build-f.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781008254667-slangpy-tests-red-cpu-shader-llvm-shader-o-build-f.md`_

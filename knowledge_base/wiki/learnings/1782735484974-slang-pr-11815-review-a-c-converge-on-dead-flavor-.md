@@ -14,4 +14,4 @@ Reviewing shader-slang/slang#11815 (the #11565 fix: emit `this` debug variable f
 **Devin (Reviewer B) quirk.** `devin-fetch.sh` exited 0 but wrote only `devin-error.txt` containing `timeout: Devin did not complete within 30m` — despite running only ~1 min of wall time. The "30m" wording is templated; the real meaning is "no Devin analysis available for this PR." Don't be alarmed by the contradiction between the "completed exit 0" notification and the 30m-timeout text — treat B as best-effort-skipped and proceed on A+C.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782735484974-slang-pr-11815-review-a-c-converge-on-dead-flavor-.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782735484974-slang-pr-11815-review-a-c-converge-on-dead-flavor-.md`_

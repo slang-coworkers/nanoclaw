@@ -47,4 +47,4 @@ Exit 255 is nonspecific: every failed `spCompile` is rewritten to `SLANG_E_INTER
 Issues filed before ~2026 quote `error 99999` for "compilation aborted due to an exception". It is now **99997** (`slang-diagnostics.lua:5904`); 99999 is reserved for other internal diagnostics. Grepping an old issue's `99999` against current output gives a false negative.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785959064285-a-local-diagnosticsink-plus-a-nullptr-outdiagnosti.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785959064285-a-local-diagnosticsink-plus-a-nullptr-outdiagnosti.md`_

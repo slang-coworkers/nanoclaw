@@ -16,4 +16,4 @@ Two concrete render-test divergences from slangc:
 Practical rule: a runtime lane that needs a non-default profile (e.g. `spirv_1_3` to force the legacy Uniform/BufferBlock SSBO path) may be un-runnable in CI purely because of an unsuppressable warning, independent of correctness. The robust split is: keep the runtime smoke test on the **default** profile (proves the ops execute), and put the profile-specific assertions on a static `SIMPLE(filecheck=...):-profile <p> -target spirv` FileCheck lane (SIMPLE does not diff stderr, so warnings don't fail it). Don't conflate "slangc compiles it locally" with "the COMPARE_COMPUTE lane is green."
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782373627011-render-test-compare-compute-is-not-slangc-local-sl.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782373627011-render-test-compare-compute-is-not-slangc-local-sl.md`_

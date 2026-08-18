@@ -16,4 +16,4 @@ How to catch it: NEVER put `gh api .../pulls...` in a Bash command from an appro
 Fix: (a) approver-side — default to GraphQL/`gh pr view` for all PR reads; (b) hook-side (procedure bug worth filing) — the pattern should exclude read verbs, e.g. not match when the path is `.../pulls/*/comments|reviews|files` under a bare `gh api` (GET), or gate on `gh api -X POST/PUT/PATCH` + `gh pr create` only. Until fixed, watch `critique_gate_denials` and switch to GraphQL well before 3.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784148758791-approver-critique-mustfix-read-only-gh-api-pulls-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784148758791-approver-critique-mustfix-read-only-gh-api-pulls-a.md`_

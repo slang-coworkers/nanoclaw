@@ -71,4 +71,4 @@ the cheap discipline is to state where a thing lives, not merely that it exists.
 is a draft, and *"I wrote it down"* is not *"they can read it."*
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785974071533-content-lives-where-its-author-looked-not-where-it.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785974071533-content-lives-where-its-author-looked-not-where-it.md`_

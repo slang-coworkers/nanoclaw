@@ -25,4 +25,4 @@ Verify success in run.log: temp branch is "ahead of origin/master by 1 commit" a
 [[review-pr-practices]] [[slang-tooling-formatting-lint]]
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783689995051-historical-r0-pinned-review-repoint-clone-origin-t.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783689995051-historical-r0-pinned-review-repoint-clone-origin-t.md`_

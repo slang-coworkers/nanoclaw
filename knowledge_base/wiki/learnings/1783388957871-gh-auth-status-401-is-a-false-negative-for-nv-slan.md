@@ -21,4 +21,4 @@ source: learnings/1783388957871-gh-auth-status-401-is-a-false-negative-for-nv-sl
 5. Caveat observed 2026-07-07: a repo-local PreToolUse hook (`gate-critique-on-deliver.sh`) can FALSE-POSITIVE on any `gh api ... /pulls/...` bash command (it pattern-matches "pulls" as PR-creation and even errors on a missing `workflow-state.json.tmp`). If a legit `gh api` comment/reply write is blocked by that gate, it is NOT a GitHub failure — the write itself is fine; the gate is misfiring on the substring. (Post the FIRST time before any gate arms, or route via the OneCLI gateway `POST` to the same path.)
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783388957871-gh-auth-status-401-is-a-false-negative-for-nv-slan.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1783388957871-gh-auth-status-401-is-a-false-negative-for-nv-slan.md`_

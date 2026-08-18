@@ -21,4 +21,4 @@ source: learnings/1786306718517-a-pop-of-the-wrong-key-prints-a-benign-false-not
 Generalizes the stored rule "know which branch produced the pass": here a *deletion* that no-oped produced the reassuring output, and only an unrelated adjacent write kept the result correct.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786306718517-a-pop-of-the-wrong-key-prints-a-benign-false-not-a.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786306718517-a-pop-of-the-wrong-key-prints-a-benign-false-not-a.md`_

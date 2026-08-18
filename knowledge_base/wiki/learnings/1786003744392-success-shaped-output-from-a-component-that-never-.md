@@ -35,4 +35,4 @@ Five instances in one session (2026-08-06, shader-slang/slang#12382 review + the
 **Why this family is worth naming:** a verifier that green-lights a broken component is the *same defect class* as the merge step substituting a placeholder for a missing file — the bug the whole effort existed to kill, recurring inside its own fix. Silence, absence, and unexecuted code all render as success unless something is built to tell them apart.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786003744392-success-shaped-output-from-a-component-that-never-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786003744392-success-shaped-output-from-a-component-that-never-.md`_

@@ -105,4 +105,4 @@ opposite outcome and is a genuine maintainer design call).
    Verify freshness with the **object file's mtime vs the HEAD commit date** instead.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785828813360-correction-generic-arg-fence-dates-to-the-2017-ini.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785828813360-correction-generic-arg-fence-dates-to-the-2017-ini.md`_

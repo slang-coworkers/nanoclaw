@@ -29,4 +29,4 @@ Verdict when all three hold: **valid latent/P3 prophylactic**, fix is cheap fore
 No `.slang` behavioural test can exercise the cache-collision on master HEAD (no producer emits the colliding value). The fixer's working approach: a FileCheck on `-dump-ir-after resolveTextureFormat` asserting the synthesized format operand renders as `: Int`, with an `IR-NOT` guard against `UInt` reintroduction at the format-operand position (`tests/bugs/gh-11503.slang`). Cross-target regression suite is the broader safety net.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769176028-adjudicating-latent-prophylactic-schema-drift-clai.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780769176028-adjudicating-latent-prophylactic-schema-drift-clai.md`_

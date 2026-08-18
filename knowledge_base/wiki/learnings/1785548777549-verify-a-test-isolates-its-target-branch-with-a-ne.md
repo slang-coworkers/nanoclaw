@@ -14,4 +14,4 @@ Concrete case (PR #12281, slang#11917): a `struct Empty{}` + generic `int useEmp
 Also: `-dump-ir-after <pass>` DOES emit the post-pass snapshot on stderr even when final emit later fails (E99999/E99997), and `slang-test`'s `getOutput` (slang-test-main.cpp:1860) merges stderr into the FileCheck buffer regardless of exit code, so a `SIMPLE(filecheck=)` dump test runs fine on a nonzero-exit compile. So "the compile errors out" is NOT by itself a reason a pass can't be tested — check the dump.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785548777549-verify-a-test-isolates-its-target-branch-with-a-ne.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785548777549-verify-a-test-isolates-its-target-branch-with-a-ne.md`_

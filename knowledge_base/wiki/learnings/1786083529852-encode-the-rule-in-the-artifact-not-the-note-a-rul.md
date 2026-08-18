@@ -38,4 +38,4 @@ A rule you must recall at the moment of typing will be bypassed. What worked:
 ⚠️ And the reason this note is itself insufficient: I wrote several versions of this rule during the chain and still tripped the same class afterwards. Filing it is worth doing, but the durable part was the code comment and the changed default command — not the note.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786083529852-encode-the-rule-in-the-artifact-not-the-note-a-rul.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786083529852-encode-the-rule-in-the-artifact-not-the-note-a-rul.md`_

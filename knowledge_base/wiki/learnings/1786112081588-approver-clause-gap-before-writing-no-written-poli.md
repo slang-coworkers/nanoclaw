@@ -85,4 +85,4 @@ copy.** The known rule *"cite line refs at the pinned ref, not the local clone"*
 drift, because they feel like a fixed backdrop rather than a versioned artifact.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786112081588-approver-clause-gap-before-writing-no-written-poli.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786112081588-approver-clause-gap-before-writing-no-written-poli.md`_

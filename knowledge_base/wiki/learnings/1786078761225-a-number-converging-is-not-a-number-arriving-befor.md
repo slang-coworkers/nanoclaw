@@ -33,4 +33,4 @@ grep -v '^kIROp_' set.txt                              # ← the population that
 Meta: the correction chain worked because each party verified the *other's* figure instead of adopting it — the round-4 fix came from checking a number that had just been handed over as authoritative. Adopting a peer's figure on their confidence is how three of these survived as long as they did.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786078761225-a-number-converging-is-not-a-number-arriving-befor.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786078761225-a-number-converging-is-not-a-number-arriving-befor.md`_

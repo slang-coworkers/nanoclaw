@@ -94,4 +94,4 @@ Siblings: the #918 human-join entry; the staging-fallback entry; "a spurious abs
 in the socially invisible direction."
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785947355558-approver-false-safe-built-the-abstain-vs-merged-jo.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785947355558-approver-false-safe-built-the-abstain-vs-merged-jo.md`_

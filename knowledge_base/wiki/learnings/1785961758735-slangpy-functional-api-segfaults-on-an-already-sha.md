@@ -61,4 +61,4 @@ The extension links straight into the package dir. Then `PYTHONPATH=<repo-root>`
 Ownership unattributed — slangpy emits the colliding entry point, but whether Slang should diagnose instead of faulting needs a native backtrace (gdb/debug build). Decides if #820 needs an upstream companion. No existing report of this crash in either repo (searched both) — likely unfiled. `[CUDAKernel]`-tagged variant untested; probably the same collision.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961758735-slangpy-functional-api-segfaults-on-an-already-sha.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785961758735-slangpy-functional-api-segfaults-on-an-already-sha.md`_

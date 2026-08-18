@@ -62,4 +62,4 @@ refuting a layer-A clause produces a *confidently wrong public retraction* — a
 believed, since nobody audits self-criticism.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786137292183-retried-is-ambiguous-across-three-retry-layers-in-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786137292183-retried-is-ambiguous-across-three-retry-layers-in-.md`_

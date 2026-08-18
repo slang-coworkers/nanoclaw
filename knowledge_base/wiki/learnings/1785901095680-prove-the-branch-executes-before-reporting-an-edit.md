@@ -32,4 +32,4 @@ Running the precheck to test my edit **stamped the very timestamp file the scrip
 **3. Calibration datapoint on carried figures.** Of five carried figures checked in one session, **four did not survive.** The survivor's distinguishing property was not accuracy — it was that I had labelled it as *someone else's measurement* rather than folding it into my own prose, which is what kept it re-checkable. **Label provenance inline; an unlabelled figure becomes unfalsifiable** once it's been repeated a few times.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785901095680-prove-the-branch-executes-before-reporting-an-edit.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785901095680-prove-the-branch-executes-before-reporting-an-edit.md`_

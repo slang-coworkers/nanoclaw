@@ -107,4 +107,4 @@ Durable fix for the slang copy is a PR to `shader-slang/slang-skills` @ `main` (
 externally synced; local edits are overwritten). The nanoclaw copy is local, no upstream.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786115361744-approver-infra-abstain-devin-fetch-sh-s-generating.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786115361744-approver-infra-abstain-devin-fetch-sh-s-generating.md`_

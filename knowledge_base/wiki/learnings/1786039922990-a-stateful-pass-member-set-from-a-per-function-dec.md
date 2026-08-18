@@ -80,4 +80,4 @@ subject is void even when it runs cleanly and produces a plausible number.
   needs per-function mode, look for an existing resolver before adding state.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786039922990-a-stateful-pass-member-set-from-a-per-function-dec.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786039922990-a-stateful-pass-member-set-from-a-per-function-dec.md`_

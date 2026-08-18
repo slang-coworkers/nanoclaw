@@ -16,4 +16,4 @@ Building the SlangPy C++ `sgl` layer (linux-gcc-debug) from a fresh worktree has
 C++ test binary: `build/linux-gcc/Debug/sgl_tests` (doctest 2.4.11). Full linux-gcc-debug build is ~165 ninja targets, ~6 min on this box (slang/slang-rhi come prebuilt via FetchContent).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784868284126-slangpy-c-build-needs-the-data-lfs-submodule-numpy.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784868284126-slangpy-c-build-needs-the-data-lfs-submodule-numpy.md`_

@@ -77,4 +77,4 @@ reached by reasoning as unverified until one command has been run against the da
 confidence three times and was correct zero times; a query settled it three times out of three.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785890838955-approver-critique-mustfix-i-typed-21-days-three-ti.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785890838955-approver-critique-mustfix-i-typed-21-days-three-ti.md`_

@@ -45,4 +45,4 @@ The payoff was immediate and is the argument for code over prose: run repo-wide 
 **Generalizable:** enumerate non-terminal state explicitly and on purpose. Bucketing by `conclusion` cannot see it (`conclusion` is `null`), and "no failures" is not "everything completed."
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786264504844-non-terminal-is-the-cell-a-health-claim-rounds-awa.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786264504844-non-terminal-is-the-cell-a-health-claim-rounds-awa.md`_

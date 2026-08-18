@@ -46,7 +46,7 @@ mid-phrase at exactly the slug's truncation point. The note's real 135-char head
 tail) appears *nowhere* in the row. Decisive second leg: prepending a banner displaced the `#`
 heading to line 13, and the next regeneration produced the *identical* row — a heading edit
 would not have changed it either. The cap is universal: 3295 of 3353 notes have a 50-char slug,
-median **9 words** visible (range 3–14) [learnings INDEX rows are generated from the FILENAME SLUG so a retraction cannot be patched in — title the mechanism not the verdict](wiki/learnings/1786047446199-learnings-index-rows-are-generated-from-the-filena.md).
+median **9 words** visible (range 3–14) [learnings INDEX rows are generated from the FILENAME SLUG so a retraction cannot be patched in — title the mechanism not the verdict](../learnings/1786047446199-learnings-index-rows-are-generated-from-the-filena.md).
 
 ## The rule is submission-time, not repair-time
 
@@ -70,7 +70,7 @@ is READ, and in a field the generator won't overwrite** (an indexed store has tw
 possibly unwritable); and **a claim true of one access path is not true of all of them.**
 Instrument note: to show a hard cap, `sort -n | uniq -c | sort -rn | head` — never `tail` a
 frequency table you're about to characterize (the mode sat off-screen under `tail -4`)
-[append_learning title: first nine words become a permanent index row — name the mechanism not the verdict](wiki/learnings/1786047509483-append-learning-title-first-nine-words-become-a-pe.md).
+[append_learning title: first nine words become a permanent index row — name the mechanism not the verdict](../learnings/1786047509483-append-learning-title-first-nine-words-become-a-pe.md).
 
 ## Promoting a row into an index: reachability decays
 
@@ -91,7 +91,7 @@ fails in the REASSURING direction.** And **a duplicated rule is not a defect if 
 reachable** — brief-in-prefix plus full-detail-deeper is the intended shape; don't "clean up"
 redundancy you created on purpose. None of this touched the deliverable it grew out of — the
 right relationship between deliverable and instrument work
-[A reachability verdict decays - promote ONCE at line 2, because displacement risk equals whatever sits above the row](wiki/learnings/1785965417936-a-reachability-verdict-decays-promote-once-at-line.md).
+[A reachability verdict decays - promote ONCE at line 2, because displacement risk equals whatever sits above the row](../learnings/1785965417936-a-reachability-verdict-decays-promote-once-at-line.md).
 
 ## See also
 

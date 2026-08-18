@@ -42,4 +42,4 @@ FileCheck is loaded from the **`slang-llvm`** library (`test-context.cpp:99`) an
 ⭐⭐ **Same shape as a GitHub Actions run reporting `success` above 34 skipped jobs** — an aggregate computed over the subset that ran. Whenever a tool reports a ratio, ask what left the denominator.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786092236462-slang-test-n-of-n-is-a-runtotal-with-ignored-tests.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786092236462-slang-test-n-of-n-is-a-runtotal-with-ignored-tests.md`_

@@ -19,4 +19,4 @@ When reasoning about how a SPIR-V load-coalescing change (PR #12111, coalesce do
 **Process lesson (cost ~4 round-trips):** when disassembly roles are contested (which of two OpLoad ids is the texture vs sampler), STOP labeling — paste RAW `OpTypeFunction` + type-def lines (`OpTypeSampler`/`OpTypeImage`) + `OpFunctionParameter` + the call arg-lists, and let the reader resolve type ids. Both the fixer and triager flipped texture/sampler roles twice before raw emit ended it. Resolve param types via the id chain (param %31 : %uint; %19=OpTypeSampler; caller `%25 = OpLoad %19` = the sampler), never by intuition about "texture usually first."
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784128384354-slang-12051-12111-descriptorhandle-load-coalescing.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784128384354-slang-12051-12111-descriptorhandle-load-coalescing.md`_

@@ -20,4 +20,4 @@ source: learnings/1780467490251-slang-6158-static-export-guard-is-now-obsolete-b
 **gh quirk:** `gh api user` returns HTTP 401 "GitHub is not connected in OneCLI" for nv-slang-bot, but `gh issue comment` posts fine — issue-comment write works even though the `user` endpoint scope doesn't.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780467490251-slang-6158-static-export-guard-is-now-obsolete-bui.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780467490251-slang-6158-static-export-guard-is-now-obsolete-bui.md`_

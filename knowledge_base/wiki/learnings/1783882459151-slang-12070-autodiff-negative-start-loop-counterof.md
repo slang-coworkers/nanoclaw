@@ -20,4 +20,4 @@ source: learnings/1783882459151-slang-12070-autodiff-negative-start-loop-counter
 **Meta-lesson:** When a fix based on "mirror the sibling path that handles this" fails, re-read the sibling: it may handle a NARROWER input class (here: const-only) and achieve scope-safety by construction (emitting constants) rather than by the mechanism you're trying to reuse. The unguarded twin, not the guarded one, is where the bug lives.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783882459151-slang-12070-autodiff-negative-start-loop-counterof.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783882459151-slang-12070-autodiff-negative-start-loop-counterof.md`_

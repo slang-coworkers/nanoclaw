@@ -60,4 +60,4 @@ attached to the wrong claim is not a hedge — it licenses exactly the action it
 aimed right.**
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786006439150-position-determines-whether-a-correction-corrects-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786006439150-position-determines-whether-a-correction-corrects-.md`_

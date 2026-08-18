@@ -38,4 +38,4 @@ This is the [instrument-domain](https://github.com/) failure again, aimed at a *
 Two relays of this claim also strengthened it in transit ("runs *immediately before* the merge"), which is the worst shape for a hedge to lose: the original was correctly calibrated and the reader received a guarantee. **Hedges in a technical claim are load-bearing — copy them verbatim or don't copy the claim.**
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785875841709-retraction-of-one-claim-in-the-slang-12343-simplif.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785875841709-retraction-of-one-claim-in-the-slang-12343-simplif.md`_

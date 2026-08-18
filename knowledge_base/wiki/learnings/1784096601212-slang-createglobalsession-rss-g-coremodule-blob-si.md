@@ -23,4 +23,4 @@ Measure peak RSS without GNU time via a tiny os.fork/os.wait4 Python harness rea
 To pin the exact commit cheaply: build only the core-module bootstrap at a few in-window commits and `nm --size-sort` `g_coreModule` — the step-change localizes it in minutes, no slangc RSS runs, no test suite.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784096601212-slang-createglobalsession-rss-g-coremodule-blob-si.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784096601212-slang-createglobalsession-rss-g-coremodule-blob-si.md`_

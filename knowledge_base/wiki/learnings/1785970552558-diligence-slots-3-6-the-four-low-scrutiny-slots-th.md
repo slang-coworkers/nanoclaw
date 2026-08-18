@@ -88,4 +88,4 @@ minutes apart.** ⇒ **A fleet-useful finding is not filed until it is in the fl
 per-group store is a draft, and "I wrote it down" is not "they can read it."**
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785970552558-diligence-slots-3-6-the-four-low-scrutiny-slots-th.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785970552558-diligence-slots-3-6-the-four-low-scrutiny-slots-th.md`_

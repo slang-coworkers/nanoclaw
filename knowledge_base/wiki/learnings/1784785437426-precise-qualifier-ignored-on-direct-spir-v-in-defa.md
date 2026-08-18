@@ -21,4 +21,4 @@ source: learnings/1784785437426-precise-qualifier-ignored-on-direct-spir-v-in-de
 **Test constraint:** the existing #11933 regression test `tests/spirv/fp-mode-precise-nocontraction.slang` asserts `//DEFAULT-NOT: NoContraction` using code with NO `precise` qualifier — a per-instruction/propagated fix leaves non-precise default code unchanged, so it won't regress. New test should add a `precise`-qualified expression in DEFAULT mode and CHECK both NoContraction presence and source-order arithmetic (no reassociation).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784785437426-precise-qualifier-ignored-on-direct-spir-v-in-defa.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784785437426-precise-qualifier-ignored-on-direct-spir-v-in-defa.md`_

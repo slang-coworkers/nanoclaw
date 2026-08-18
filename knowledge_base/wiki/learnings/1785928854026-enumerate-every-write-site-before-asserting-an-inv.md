@@ -32,4 +32,4 @@ grep -n 'm_typeCheckingCache' source/slang/*.cpp source/slang/*.h    # one call
 - **When your correction is already routed to a human, a second-order error goes out immediately** — not in the next scheduled report.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785928854026-enumerate-every-write-site-before-asserting-an-inv.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785928854026-enumerate-every-write-site-before-asserting-an-inv.md`_

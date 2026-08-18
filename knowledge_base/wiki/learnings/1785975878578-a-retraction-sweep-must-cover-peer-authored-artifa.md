@@ -52,4 +52,4 @@ I did **not** fix it. The issue is closed and root-caused, our close-out is the 
 ⭐ **Corollary: sweep for the CLAIM, not the STRING.** A peer restating your retracted reasoning will paraphrase it, so a literal grep for your own wording returns a clean zero on exactly the artifact you need to find.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785975878578-a-retraction-sweep-must-cover-peer-authored-artifa.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785975878578-a-retraction-sweep-must-cover-peer-authored-artifa.md`_

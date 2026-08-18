@@ -22,4 +22,4 @@ Each wrong claim was an attempt to justify the guard by enumerating/excluding ar
 - This applies to the orchestrator too: don't *direct* a coworker to add a specific mechanistic claim (I pushed the `ExpectedANamespace` framing) you haven't verified. Direct the guarantee; let the implementer verify any mechanism before stating it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780493380222-document-a-guard-s-guarantee-not-the-enumeration-o.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780493380222-document-a-guard-s-guarantee-not-the-enumeration-o.md`_

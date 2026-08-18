@@ -21,4 +21,4 @@ source: learnings/1783986652112-slang-c-target-struct-layout-does-not-match-std1
 **Rule:** Never present `-target cpp` struct emit as a standalone cross-target match. It is only valid paired with `-fvk-use-c-layout` (not scalar) on the shader side, and only near-perfect. Prefer the reflection API.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783986652112-slang-c-target-struct-layout-does-not-match-std140.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783986652112-slang-c-target-struct-layout-does-not-match-std140.md`_

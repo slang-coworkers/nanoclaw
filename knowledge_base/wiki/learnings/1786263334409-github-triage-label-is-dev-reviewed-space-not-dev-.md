@@ -39,4 +39,4 @@ The repos also carry a sibling label **`Dev Opened`** (also space-separated). Bo
 For any `label:X` / `-label:X` filter, the negation `-label:X` is *even more* dangerous: a misspelled label makes `-label:X` match **everything**, so all N issues in the window get reported as untriaged with no error anywhere. Always pair a label filter with the labels-endpoint control, and sanity-check that `with-label + without-label == total`.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786263334409-github-triage-label-is-dev-reviewed-space-not-dev-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786263334409-github-triage-label-is-dev-reviewed-space-not-dev-.md`_

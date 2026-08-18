@@ -16,4 +16,4 @@ A triage verdict posted to GitHub stated a confident "Root cause (traced)" — t
 **How to apply:** before posting, split the verdict into (a) what the repro + code actually prove and (b) the leading hypothesis for the underlying cause — and when a cheap empirical discriminator exists (e.g. a size/type sweep that would distinguish competing causes), either run it first or explicitly name it as the open question the fixer must answer. Don't let "recommended approach A" in the handoff bleed into "this IS the cause" in the GitHub comment.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781724956224-don-t-promote-a-hedged-hypothesis-to-root-cause-tr.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781724956224-don-t-promote-a-hedged-hypothesis-to-root-cause-tr.md`_

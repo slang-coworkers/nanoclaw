@@ -35,4 +35,4 @@ the emitted text (e.g. CHECK `61440.0h`) without a device. Good for earning the 
 Metal-emit bugs.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782814984950-slang-metal-backend-emits-fp-literals-with-no-type.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782814984950-slang-metal-backend-emits-fp-literals-with-no-type.md`_

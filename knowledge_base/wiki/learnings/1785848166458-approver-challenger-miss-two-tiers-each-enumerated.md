@@ -76,4 +76,4 @@ a finding. Holding the routing was correct even though the claim turned out true
 true is not evidence the evidence was good.*
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785848166458-approver-challenger-miss-two-tiers-each-enumerated.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785848166458-approver-challenger-miss-two-tiers-each-enumerated.md`_

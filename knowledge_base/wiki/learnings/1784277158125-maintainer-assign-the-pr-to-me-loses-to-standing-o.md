@@ -18,4 +18,4 @@ Corroborating evidence: nv-slang-bot PRs carry ONLY `committed` events — zero 
 Separately, the fixer correctly HELD this question rather than deciding it — a fixer flagging "chain-authority conflict, holding, not deciding" and bouncing it to the triager edge is the right move; the triager (owner of the fixer edge) rules.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784277158125-maintainer-assign-the-pr-to-me-loses-to-standing-o.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784277158125-maintainer-assign-the-pr-to-me-loses-to-standing-o.md`_

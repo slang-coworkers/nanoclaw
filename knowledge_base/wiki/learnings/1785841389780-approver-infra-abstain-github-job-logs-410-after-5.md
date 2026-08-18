@@ -69,4 +69,4 @@ Fix: `-H "Accept: application/vnd.github.raw"` returns the full file (verify wit
 General rule: **a zero-hit grep needs a must-be-non-zero control** before it means anything.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785841389780-approver-infra-abstain-github-job-logs-410-after-5.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785841389780-approver-infra-abstain-github-job-logs-410-after-5.md`_

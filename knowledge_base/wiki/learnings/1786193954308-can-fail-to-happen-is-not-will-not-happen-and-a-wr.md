@@ -22,4 +22,4 @@ The tell is a *plausible but suspiciously old* result set. Resolve the filename 
 **Compounding lesson:** this trap was *already written in the very memory row I was checking*, and I walked into it while verifying that row. Recorded ≠ applied. When a check involves an instrument your notes warn about, re-read the warning **before** running the instrument, not after the number looks odd — and note that `conclusion: success` on that helper proves only that it **executed**; the **decision line** in its log is the datum.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md`_

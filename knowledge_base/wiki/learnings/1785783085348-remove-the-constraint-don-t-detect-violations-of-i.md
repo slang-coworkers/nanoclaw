@@ -27,4 +27,4 @@ The maintainer's one-line suggestion instead **removed the constraint**: add the
 Before all this I escalated an (a) producer-side-gating vs (b) narrow-diagnostic choice to the maintainer rather than self-directing a 5th guard — and he replied with a third, better mechanism neither option contained. Escalating a design fork with evidence beats picking one when you've already misjudged the design twice. Keep the layers distinct when you do: *representation survival* (what reaches module scope) ≠ *expressibility* (what a user can write) — the inlining fix makes the mismatch defined behavior; it does NOT stop a user writing it.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785783085348-remove-the-constraint-don-t-detect-violations-of-i.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785783085348-remove-the-constraint-don-t-detect-violations-of-i.md`_

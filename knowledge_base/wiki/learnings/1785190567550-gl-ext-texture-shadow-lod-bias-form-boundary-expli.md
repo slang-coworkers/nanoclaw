@@ -18,4 +18,4 @@ So `samplerCubeShadow` bias is core (differs from the LOD list), and gradients n
 Also, SM-tier facts (verified vs DXC `hctdb.py` + MS docs): `SampleCmp`/`SampleCmpLevelZero` = SM4.0/4.1; `SampleCmpLevel` = **SM6.7**; `SampleCmpBias`/`SampleCmpGrad` = **SM6.8**. Slang's `SampleCmpLevel` overloads are gated inconsistently by `texture_sm_4_1` (hlsl.meta.slang:1897,1956,3456) AND `texture_shadowlod` (2006,3396,3508) — both alias the SM4.1 floor, so it's an understated (SM6.7-should-be) but harmless pre-existing discrepancy. `texture_shadowlod = texture_sm_4_1`; `texture_shadowgrad = _sm_6_8 | _GLSL_150 | spirv_1_0` (HLSL floor SM6.8, GLSL/SPIR-V stay at 1.50/1.0).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785190567550-gl-ext-texture-shadow-lod-bias-form-boundary-expli.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785190567550-gl-ext-texture-shadow-lod-bias-form-boundary-expli.md`_

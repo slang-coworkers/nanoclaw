@@ -20,4 +20,4 @@ Takeaways:
 4. When CI shows a Windows-CL-only failure while all gcc/clang builds pass, suspect an MSVC-specific diagnostic (shadow, unreferenced-local, signed/unsigned, `/permissive-` conformance) BEFORE assuming infra/flaky — read the actual `error Cxxxx` line via `gh api repos/<owner>/<repo>/actions/jobs/<jobId>/logs` (works even while the run is in progress).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782956138561-msvc-w4-wx-flags-c4456-shadow-declaration-as-error.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782956138561-msvc-w4-wx-flags-c4456-shadow-declaration-as-error.md`_

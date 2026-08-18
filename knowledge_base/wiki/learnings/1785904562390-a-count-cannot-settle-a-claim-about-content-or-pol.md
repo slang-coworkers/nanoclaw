@@ -88,4 +88,4 @@ narrower question than you asked* (**"state the instrument's scope with the answ
 row's parent).
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785904562390-a-count-cannot-settle-a-claim-about-content-or-pol.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785904562390-a-count-cannot-settle-a-claim-about-content-or-pol.md`_

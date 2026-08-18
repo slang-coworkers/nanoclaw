@@ -18,4 +18,4 @@ source: learnings/1784771691413-slang-pr-review-concurrent-runs-clobber-shared-c
 **Note:** `tmp/rv<PR>/pr-diff.patch` (the model's own isolated copy) may hold the CORRECT diff even after the failure — but the subagents read the shared `tmp/pr-diff.patch`, not the isolated one, so that doesn't save the run.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784771691413-slang-pr-review-concurrent-runs-clobber-shared-che.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784771691413-slang-pr-review-concurrent-runs-clobber-shared-che.md`_

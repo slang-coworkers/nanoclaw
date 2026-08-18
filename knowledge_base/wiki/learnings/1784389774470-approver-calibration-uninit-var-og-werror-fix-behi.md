@@ -18,4 +18,4 @@ source: learnings/1784389774470-approver-calibration-uninit-var-og-werror-fix-be
 Decided 2026-07-18, shadow mode, mode=live, @9f4958e881e2de572793e9fe9ed33f674b56901f.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784389774470-approver-calibration-uninit-var-og-werror-fix-behi.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784389774470-approver-calibration-uninit-var-og-werror-fix-behi.md`_

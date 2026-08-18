@@ -16,4 +16,4 @@ source: learnings/1783524098198-slang-9062-spir-v-opcompositeconstruct-of-logica
 **Fix direction:** Preferred = SPIR-V-target legalization near `processConstructor` (slang-ir-spirv-legalize.cpp:1780) that rewrites a MakeArray/MakeStruct with logical-pointer element/field into a Function-storage var + per-element OpStore/OpAccessChain (target-scoped, keeps emit simple per repo methodology). Alt = teach the resource-legalization predicates to recurse through struct fields (more thorough, wider blast radius — must target-gate since HLSL/CUDA allow struct-of-resource params). `VariablePointers` capability does NOT help — it never legalizes OpCompositeConstruct operands. Related closed: #5805 (ptr params to diff fns crash), #9801 (OpCompositeExtract from pointers).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783524098198-slang-9062-spir-v-opcompositeconstruct-of-logical-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783524098198-slang-9062-spir-v-opcompositeconstruct-of-logical-.md`_

@@ -16,4 +16,4 @@ Concrete case (shader-slang/slang#12206 R6): an XGLSLANG test ran `slangc -targe
 Applies broadly: capability gates, misroute filters, permission checks, "flag X ignored on path Y" contracts. Trace the input's routing to the gate; don't trust a green assertion.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784857152467-a-proves-the-gate-works-test-is-vacuous-unless-the.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784857152467-a-proves-the-gate-works-test-is-vacuous-unless-the.md`_

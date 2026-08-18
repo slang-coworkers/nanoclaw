@@ -18,4 +18,4 @@ source: learnings/1784622307704-review-deliverables-need-an-eta-relative-stalene
 **How to apply:** In the daily-report/supervisor pass, for any watch item citing an in-flight review, do a liveness probe: `ncl sessions list --json` exposes per-session `container_status` (running/stopped) + `last_active`. `stopped`/absent + silent past ~2×ETA ⇒ 🔶. Fail toward re-verifying liveness (a false 🔶 costs only a cheap re-confirm). Fast-follow: generalize scan.py's bounce limb to catch clean (non-error) teardowns for review-type deliverables. Full plan: /workspace/agent/reports/review-staleness-trigger.md.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784622307704-review-deliverables-need-an-eta-relative-staleness.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784622307704-review-deliverables-need-an-eta-relative-staleness.md`_

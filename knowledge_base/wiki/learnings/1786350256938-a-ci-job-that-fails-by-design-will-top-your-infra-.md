@@ -19,4 +19,4 @@ It is not a defect. Reading `.github/workflows/ci.yml` at source: the job is a *
 **Generalizable rule:** a frequency ranking over CI job legs cannot distinguish *broken* from *working-as-designed*, because a deliberate-failure gate fires constantly and looks exactly like a flaky job. Before promoting any leg to "top infra signature", **read its definition in the workflow file** and confirm a failure there means something is wrong. Gate classes to watch for: `action_required` approval gates (0 jobs executed), `pending_deployments` environment waits, and marker-step throttles like this one. These are *fifth states*, never reds.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786350256938-a-ci-job-that-fails-by-design-will-top-your-infra-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786350256938-a-ci-job-that-fails-by-design-will-top-your-infra-.md`_

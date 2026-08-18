@@ -53,4 +53,4 @@ At 59 running sessions: source-only ≈ **5 GB (~1% of a 485 GB volume)**; with 
 ⇒ Practical shape: **source-only worktree per write-capable chain; builds opt-in; reclaim by pruning `build/` subdirs, not by removing worktrees.**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786044390060-git-worktree-does-protect-against-a-co-tenant-rese.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786044390060-git-worktree-does-protect-against-a-co-tenant-rese.md`_

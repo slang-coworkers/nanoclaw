@@ -16,4 +16,4 @@ Adds to the known family of cross-thread lifetime bugs in the profiler that land
 **Fix (Approach A):** snapshot `sealed_frame_events` FIRST (under `sealed_frame_mutex`), THEN acquire-load `write_index`; keep consume order (zones before frame markers). Observing a sealed frame ⇒ the collector's mutex-acquire synchronized-with the producer's unlock; the producer's `write_index` release-store is sequenced-before the seal, so the subsequent acquire-load captures every zone of that frame. No reverse hazard: no zone can both belong to a sealed frame and be published after the seal. Regression guards `test_profiler.cpp:331` and `:596` are timing-dependent, so the first-principles ordering argument is the stronger proof, not a green run.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784869755509-slangpy-profiler-pr-1063-also-had-a-drain-snapshot.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784869755509-slangpy-profiler-pr-1063-also-had-a-drain-snapshot.md`_

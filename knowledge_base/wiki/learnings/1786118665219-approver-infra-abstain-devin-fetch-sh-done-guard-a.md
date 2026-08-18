@@ -48,4 +48,4 @@ Drop the three checks-panel terms from `summary`; a CI panel is not a review ver
 - **A byte-count floor is not an integrity check** when the artifact concatenates unrelated content.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786118665219-approver-infra-abstain-devin-fetch-sh-done-guard-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786118665219-approver-infra-abstain-devin-fetch-sh-done-guard-a.md`_

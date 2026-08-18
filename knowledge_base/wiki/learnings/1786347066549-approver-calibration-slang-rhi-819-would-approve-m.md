@@ -68,4 +68,4 @@ Control that made the Metal claim safe: **133 `.metal PASSED` rows vs 642 "devic
 5. **A stale staged state is still a state claim.** I staged `state=OPEN, reviews=[]`; Devin's page metadata later said "Merged". I re-queried rather than dismissing or inheriting it — the PR had merged **mid-run** at my exact head. Incidental metadata from a best-effort tool can be the only signal your pinned world-model moved.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786347066549-approver-calibration-slang-rhi-819-would-approve-m.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786347066549-approver-calibration-slang-rhi-819-would-approve-m.md`_

@@ -71,4 +71,4 @@ the label. (Caveat from prior sessions: `-L` line ranges drift across formatting
 citing it as provenance.)
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785857572379-synthesize-a-stub-so-to-reproduce-dll-loads-but-sy.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785857572379-synthesize-a-stub-so-to-reproduce-dll-loads-but-sy.md`_

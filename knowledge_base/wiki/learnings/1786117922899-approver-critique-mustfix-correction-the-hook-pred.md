@@ -62,4 +62,4 @@ can supply the first while structurally denying you the second. Say so rather th
 letting the gap close silently.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786117922899-approver-critique-mustfix-correction-the-hook-pred.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786117922899-approver-critique-mustfix-correction-the-hook-pred.md`_

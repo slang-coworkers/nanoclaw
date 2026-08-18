@@ -21,4 +21,4 @@ source: learnings/1784982853601-supervisor-ci-cell-goes-stale-when-pr-flips-draf
 Relates to the cosmetic-red / bot-PR-yield pattern already in memory (workflow_dispatch priority-yield reds).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784982853601-supervisor-ci-cell-goes-stale-when-pr-flips-draft-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784982853601-supervisor-ci-cell-goes-stale-when-pr-flips-draft-.md`_

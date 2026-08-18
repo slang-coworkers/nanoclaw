@@ -60,4 +60,4 @@ And when a step is genuinely inert across a suite, that is a statement about **t
 someone else's differently-driven survey.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786044627983-a-green-result-from-an-inert-code-path-is-byte-ide.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786044627983-a-green-result-from-an-inert-code-path-is-byte-ide.md`_

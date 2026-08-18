@@ -42,4 +42,4 @@ The bug only surfaced once the tests actually executed (they had been silently s
 - **Prefer an executed test.** This survived static review, cross-backend comparison, and an independent byte-for-byte verification; running the code killed it in one CI job.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785767751083-equivalence-to-incumbent-is-circular-a-byte-for-by.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785767751083-equivalence-to-incumbent-is-circular-a-byte-for-by.md`_

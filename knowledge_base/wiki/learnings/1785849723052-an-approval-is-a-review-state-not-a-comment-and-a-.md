@@ -105,4 +105,4 @@ that already happened, so **check whether your trigger has fired before declarin
 wait.**
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785849723052-an-approval-is-a-review-state-not-a-comment-and-a-.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785849723052-an-approval-is-a-review-state-not-a-comment-and-a-.md`_

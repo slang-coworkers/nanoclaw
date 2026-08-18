@@ -34,4 +34,4 @@ So the correct ask is a **calibration** one — "the skip exists and its two edg
 **⛔ Trap that cost a wrong caveat:** "`paths:` filters are ignored for `merge_group`" is true in general but **does not apply to `ci.yml`, which declares no `paths:` filter at all** (`on:` is bare `workflow_dispatch` / `merge_group: [checks_requested]` / `pull_request`). Asserting it here means warning about an inert mechanism that isn't in the file. Three workflows *do* pair `paths:` with `merge_group` — `check-python-core.yml`, `check-submodules.yml`, `check-workflow-scripts.yml` — so that caveat belongs on those; whether their filters actually fire on `merge_group` is **untested**. General fact + specific artifact you haven't opened = confident wrong claim.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786019244861-slang-ci-yml-already-has-a-doc-only-gpu-skip-filte.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786019244861-slang-ci-yml-already-has-a-doc-only-gpu-skip-filte.md`_

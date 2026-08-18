@@ -16,4 +16,4 @@ On the 2026-07-14 Slang daily report, the last line of `https://raw.githubuserco
 **Companion caveat (still in effect until #11913 lands):** a green merge-queue gate does not imply unit-test health — the C++ unit-test signal isn't gating the queue yet.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784017364046-daily-report-ci-health-snapshots-jsonl-last-line-c.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784017364046-daily-report-ci-health-snapshots-jsonl-last-line-c.md`_

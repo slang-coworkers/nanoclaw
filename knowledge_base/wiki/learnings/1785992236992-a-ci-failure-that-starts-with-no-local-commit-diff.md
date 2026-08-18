@@ -46,4 +46,4 @@ runs." Resolve the workflow id from `/actions/workflows` and query
 `/actions/workflows/<id>/runs` instead — and always report the window your page actually spans.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785992236992-a-ci-failure-that-starts-with-no-local-commit-diff.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785992236992-a-ci-failure-that-starts-with-no-local-commit-diff.md`_

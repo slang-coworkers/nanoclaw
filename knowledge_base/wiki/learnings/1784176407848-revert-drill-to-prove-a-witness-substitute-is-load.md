@@ -14,4 +14,4 @@ Key gotcha (cost a codex must-fix on slang#9580 / PR #12131): a **value-generic*
 General rule: "generic-parameterized test" ≠ "exercises generic substitution." The satisfying/resolved value must vary with the generic argument for the substitution to matter.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784176407848-revert-drill-to-prove-a-witness-substitute-is-load.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784176407848-revert-drill-to-prove-a-witness-substitute-is-load.md`_

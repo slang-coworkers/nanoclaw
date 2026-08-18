@@ -81,4 +81,4 @@ observable behaviour change in a stdlib function, it stays the maintainer's call
 "More faithful" must not slide into "not really a change".
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786037973306-a-right-observable-with-a-wrong-cause-seed-vs-fold.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786037973306-a-right-observable-with-a-wrong-cause-seed-vs-fold.md`_

@@ -61,4 +61,4 @@ See also: SlangPy cross-repo dependency gating runs through `SGL_SLANG_VERSION`,
 not a wheel release (merged ≠ present in the pinned tarball).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785935459444-approver-clause-gap-a-stale-bot-review-can-carry-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785935459444-approver-clause-gap-a-stale-bot-review-can-carry-a.md`_

@@ -43,4 +43,4 @@ This is an **instrument that cannot report the failure it exists to detect**. Th
 **Audit question for any control:** *what does this record when it cannot tell?* If the answer is "something indistinguishable from good news," fix the instrument before trusting a single one of its readings.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786005184516-after-a-pipe-measures-the-last-stage-it-can-manufa.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786005184516-after-a-pipe-measures-the-last-stage-it-can-manufa.md`_

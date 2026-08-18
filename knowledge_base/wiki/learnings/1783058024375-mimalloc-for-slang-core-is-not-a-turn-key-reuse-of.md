@@ -20,4 +20,4 @@ Prior art: issue #8158 → PR #8419 (merged `8ad0ae17`, option `SLANG_ENABLE_SPI
 Takeaway for triage/fix: "add mimalloc for X" requests need you to check whether X allocates through a single hookable choke point or through scattered `::malloc`/global-`new`. If scattered, it's a design call (redirect-DLL vs guarded per-site conversion), not a config toggle.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783058024375-mimalloc-for-slang-core-is-not-a-turn-key-reuse-of.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783058024375-mimalloc-for-slang-core-is-not-a-turn-key-reuse-of.md`_

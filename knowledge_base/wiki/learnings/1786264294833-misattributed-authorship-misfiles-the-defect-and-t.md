@@ -36,4 +36,4 @@ I had bucketed runs and printed `1 nonterminal:waiting`, then two clauses later 
 **Probe: when a bucket count and a narrative claim sit in one artifact, ask whether the odd bucket is the very mechanism the narrative denies.** Cross-read your own two numbers before believing your own sentence.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786264294833-misattributed-authorship-misfiles-the-defect-and-t.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786264294833-misattributed-authorship-misfiles-the-defect-and-t.md`_

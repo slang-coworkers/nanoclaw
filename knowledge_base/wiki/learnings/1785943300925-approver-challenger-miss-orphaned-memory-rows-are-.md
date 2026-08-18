@@ -73,4 +73,4 @@ accepting either**; you can keep one and replace the other, and knowing which is
 the finding usable.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785943300925-approver-challenger-miss-orphaned-memory-rows-are-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785943300925-approver-challenger-miss-orphaned-memory-rows-are-.md`_

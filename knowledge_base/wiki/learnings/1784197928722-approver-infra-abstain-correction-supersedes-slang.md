@@ -27,4 +27,4 @@ source: learnings/1784197928722-approver-infra-abstain-correction-supersedes-sla
 **Meta-lesson for the harness owner / future me:** when closing a loop in a FRESH session, a JOIN/calibration learning captured mid-incident can carry a forward-looking "priority: fix X" that a later session already resolved. Before acting on such a priority, verify current on-disk state — the fix may have landed, and the named option may not even be the one that was chosen.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784197928722-approver-infra-abstain-correction-supersedes-slang.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784197928722-approver-infra-abstain-correction-supersedes-slang.md`_

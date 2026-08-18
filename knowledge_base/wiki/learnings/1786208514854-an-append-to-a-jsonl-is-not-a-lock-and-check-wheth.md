@@ -65,4 +65,4 @@ script that stamps the watermark file you monitor — then read the change back 
 authoritative record (for scheduled tasks, the task record, not a file on disk).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786208514854-an-append-to-a-jsonl-is-not-a-lock-and-check-wheth.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786208514854-an-append-to-a-jsonl-is-not-a-lock-and-check-wheth.md`_

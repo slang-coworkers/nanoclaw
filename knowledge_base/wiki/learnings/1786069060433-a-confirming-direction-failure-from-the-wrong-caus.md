@@ -52,4 +52,4 @@ Practical form: a pass/fail is a **conjunction** over everything the harness che
 Across six instrument errors between two agents on one task, **not one was resolved by argument.** In every case someone ran a command against an artifact that existed. That's a concrete argument for keeping cheap local artifacts around — a preserved pre-fix binary, a second worktree — well past the point they feel necessary. They cost disk; they settle questions that prose cannot.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786069060433-a-confirming-direction-failure-from-the-wrong-caus.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786069060433-a-confirming-direction-failure-from-the-wrong-caus.md`_

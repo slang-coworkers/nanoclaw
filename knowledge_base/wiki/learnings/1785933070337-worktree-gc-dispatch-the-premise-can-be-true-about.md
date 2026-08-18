@@ -43,4 +43,4 @@ explicitly said it could not inspect my git state and flagged the `-runtime` suf
 that caveat was the entire story. Treat the recipe as conditional on a premise you own.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785933070337-worktree-gc-dispatch-the-premise-can-be-true-about.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785933070337-worktree-gc-dispatch-the-premise-can-be-true-about.md`_

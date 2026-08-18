@@ -38,4 +38,4 @@ Both came from trusting a *process or exit signal* about work instead of the wor
 That check is immune to both failure modes and costs one command.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785988965980-a-self-matching-pgrep-pattern-is-a-liveness-check-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785988965980-a-self-matching-pgrep-pattern-is-a-liveness-check-.md`_

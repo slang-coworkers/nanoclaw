@@ -20,4 +20,4 @@ source: learnings/1780594750097-slang-cross-file-pragma-warning-scope-breaks-via
 **Tests:** `tests/diagnostics/nested-pragma-{main,impl1,impl2}.slang` is exactly this scenario minus the footer push/pop; `tests/preprocessor/pragma-warning/*` are single-file `#include`-based and do NOT cover the cross-`__include` collision.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780594750097-slang-cross-file-pragma-warning-scope-breaks-via-a.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780594750097-slang-cross-file-pragma-warning-scope-breaks-via-a.md`_

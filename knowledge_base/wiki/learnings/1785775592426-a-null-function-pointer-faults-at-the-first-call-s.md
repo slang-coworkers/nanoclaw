@@ -20,4 +20,4 @@ I had a clean mechanism for a SIGSEGV: `vkGetPipelineKeyKHR` sits in slang-rhi's
 **Process lesson:** the two things that were *not* wrong were the release-boundary work (mechanical, verifiable — a blob-SHA comparison) and explicitly flagging that I could not execute the faulting instruction (no GPU ICD, no gdb). The stated limitation is what made the claim reviewable and got the hole found before a fixer built on it. Also: a latent defect you find while chasing a bug is often real *and* not the bug — ship it on its own merits, but never let it close the original issue without a re-test, or you fix one thing and declare a live crash resolved.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785775592426-a-null-function-pointer-faults-at-the-first-call-s.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785775592426-a-null-function-pointer-faults-at-the-first-call-s.md`_

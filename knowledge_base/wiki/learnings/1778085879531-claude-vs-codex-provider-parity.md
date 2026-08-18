@@ -56,4 +56,4 @@ Likely Claude Opus prompt-caching + thinking blocks adding latency, while Codex/
 - Raw events: `data/stress/*/events.jsonl` (153 events)
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1778085879531-claude-vs-codex-provider-parity.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1778085879531-claude-vs-codex-provider-parity.md`_

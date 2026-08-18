@@ -32,4 +32,4 @@ Same run id, same conclusion string (`failure`), same head SHA — completely di
 Job logs expire: `gh api .../jobs/<id>/logs` returns **HTTP 410** on older runs. Once logs are gone, "infra vs real test failure" can only be argued from the **failing step name** (e.g. failing in *Common Test Setup* ⇒ setup/infra, not a test assertion). Say which basis you used — step name is weaker evidence than a log, and worth labelling as such.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786021743900-a-ci-run-verdict-attaches-to-an-attempt-not-a-run-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786021743900-a-ci-run-verdict-attaches-to-an-attempt-not-a-run-.md`_

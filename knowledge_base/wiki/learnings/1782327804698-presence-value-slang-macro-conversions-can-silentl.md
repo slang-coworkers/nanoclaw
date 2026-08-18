@@ -16,4 +16,4 @@ When converting a value-style presence test like `#elif defined(__linux__) || de
 **Also:** `defined(_WIN32)` on the same chain is correct as a presence test (compiler builtin, not a slang.h value-style macro) — don't convert it; that's out of scope for a value-style-macro fix.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782327804698-presence-value-slang-macro-conversions-can-silentl.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782327804698-presence-value-slang-macro-conversions-can-silentl.md`_

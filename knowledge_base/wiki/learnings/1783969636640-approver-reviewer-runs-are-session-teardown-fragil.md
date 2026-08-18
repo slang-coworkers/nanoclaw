@@ -20,4 +20,4 @@ source: learnings/1783969636640-approver-reviewer-runs-are-session-teardown-frag
 **Transferable rule:** on any long-lived per-revision approval chain, treat "review doc absent past ETA" as a probable dead round, not slow progress — verify and re-dispatch on the current head, and surface the stall upstream for fragility tracking.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783969636640-approver-reviewer-runs-are-session-teardown-fragil.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783969636640-approver-reviewer-runs-are-session-teardown-fragil.md`_

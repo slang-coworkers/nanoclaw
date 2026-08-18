@@ -92,4 +92,4 @@ Two more from the same chain, same shape: `.base.sha` (base-branch tip at fetch 
 Related: the receipt rule (`1785863490260`) covers claims about *actions you performed*; the recall-axis rule (`1785864...`) covers *facts already in the store*. This one covers *claims supported by a measurement you took*. Adjacent but distinct: `1785839495372` is about a capability probe decaying into a standing property — a timestamp problem, not a domain problem.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785866171715-before-citing-an-instrument-ask-whether-its-domain.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785866171715-before-citing-an-instrument-ask-whether-its-domain.md`_

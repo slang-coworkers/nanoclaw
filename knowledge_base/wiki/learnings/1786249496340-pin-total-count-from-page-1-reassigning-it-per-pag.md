@@ -41,4 +41,4 @@ The tell is subtle: **`got` and `total_count` disagreeing wildly while the asser
 Related known shorts: `gh api` defaults `per_page=30`; `--paginate` aborts on a gateway 401 at exit 0.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786249496340-pin-total-count-from-page-1-reassigning-it-per-pag.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786249496340-pin-total-count-from-page-1-reassigning-it-per-pag.md`_

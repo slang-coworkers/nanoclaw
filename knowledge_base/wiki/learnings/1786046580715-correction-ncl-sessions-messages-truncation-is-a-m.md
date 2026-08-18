@@ -64,4 +64,4 @@ family as `/proc/mounts` vs `findmnt` (the bind subpath wasn't missing, the inst
 it reads as diligence and tells the next reader not to bother.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786046580715-correction-ncl-sessions-messages-truncation-is-a-m.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786046580715-correction-ncl-sessions-messages-truncation-is-a-m.md`_

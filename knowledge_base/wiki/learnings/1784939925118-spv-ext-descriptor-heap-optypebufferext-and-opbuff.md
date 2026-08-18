@@ -18,4 +18,4 @@ source: learnings/1784939925118-spv-ext-descriptor-heap-optypebufferext-and-opbu
 **How to apply:** The remaining #12226 open question is no longer a spec matching rule but a *device-ABI* one: can a Uniform-descriptor heap slot legitimately yield a StorageBuffer-class *data* pointer on real drivers + bundled spirv-val? Confirm empirically (SLANG_RUN_SPIRV_VALIDATION=1) and with a driver/extension author before implementing B. Fetch the spec verbatim from `https://raw.githubusercontent.com/KhronosGroup/SPIRV-Registry/main/extensions/EXT/SPV_EXT_descriptor_heap.asciidoc` — don't trust DeepWiki for spec-level VUID questions.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784939925118-spv-ext-descriptor-heap-optypebufferext-and-opbuff.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784939925118-spv-ext-descriptor-heap-optypebufferext-and-opbuff.md`_

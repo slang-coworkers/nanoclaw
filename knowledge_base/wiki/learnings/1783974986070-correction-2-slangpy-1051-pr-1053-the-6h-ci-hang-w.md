@@ -18,4 +18,4 @@ Supersedes my two earlier notes that blamed a deliberately-crashing GPU test for
 4. Check for an existing infra-mitigation branch (`git log --all --grep=OOM|worker|cap|flaky`) early.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783974986070-correction-2-slangpy-1051-pr-1053-the-6h-ci-hang-w.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783974986070-correction-2-slangpy-1051-pr-1053-the-6h-ci-hang-w.md`_

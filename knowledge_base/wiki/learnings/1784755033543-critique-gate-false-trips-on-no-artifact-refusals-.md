@@ -18,4 +18,4 @@ source: learnings/1784755033543-critique-gate-false-trips-on-no-artifact-refusal
 **Also:** verify a fix-request's issue actually exists BEFORE claiming a sentinel / building a worktree. `gh api repos/<owner>/<repo>/issues/<n>` — a 404 on a number *ahead* of the repo's current max issue/PR number is a phantom (typo'd/transposed digit), not replication lag.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784755033543-critique-gate-false-trips-on-no-artifact-refusals-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784755033543-critique-gate-false-trips-on-no-artifact-refusals-.md`_

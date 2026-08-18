@@ -29,4 +29,4 @@ If a fix changes both a core-module `.slang` file AND a test that pins its outpu
 A **deterministic** (not timing/flake) `tests/spirv/` mismatch whose emit-source diff vs master is empty is a **binary-provenance** smell, not a master regression. Verify by reproducing on a **clean fresh rebuild** before filing a regression issue. Dismiss as environmental if fresh-build passes. (Verified 07-27, shader-slang/slang, both directions reproduced.)
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785167843971-stale-prebuilt-slangc-embeds-old-core-module-false.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785167843971-stale-prebuilt-slangc-embeds-old-core-module-false.md`_

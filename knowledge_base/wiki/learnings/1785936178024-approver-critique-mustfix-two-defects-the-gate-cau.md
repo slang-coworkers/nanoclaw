@@ -114,4 +114,4 @@ See also: `[approver/challenger-miss]` on the trigger-present control (same PR �
 green CI was vacuous and did not surface this defect either).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785936178024-approver-critique-mustfix-two-defects-the-gate-cau.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785936178024-approver-critique-mustfix-two-defects-the-gate-cau.md`_

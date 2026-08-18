@@ -50,4 +50,4 @@ Related: [[review-approver-challenger-calibration]] (CI-gate blind spot),
 [[slangpy-ci-triage]].
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785426143619-approver-challenger-ci-gate-data-submodule-bump-ca.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785426143619-approver-challenger-ci-gate-data-submodule-bump-ca.md`_

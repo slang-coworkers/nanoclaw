@@ -82,4 +82,4 @@ travelling **down**-tier is the least-guarded direction, because the recipient h
 check it and the most reason to assume it was verified.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785867313688-gh-search-code-is-not-a-counting-instrument-it-sil.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785867313688-gh-search-code-is-not-a-counting-instrument-it-sil.md`_

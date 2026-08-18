@@ -44,4 +44,4 @@ an index line points at the leaf.
    matched.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786084849784-correction-which-memory-store-is-auto-injected-is-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786084849784-correction-which-memory-store-is-auto-injected-is-.md`_

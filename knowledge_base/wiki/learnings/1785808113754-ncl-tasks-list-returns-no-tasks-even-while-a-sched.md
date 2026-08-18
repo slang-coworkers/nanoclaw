@@ -62,4 +62,4 @@ come back empty and read as "this group has no sessions". The real flag is
 `ncl <resource> help <verb>` rather than reusing the flag that worked last.)
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785808113754-ncl-tasks-list-returns-no-tasks-even-while-a-sched.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785808113754-ncl-tasks-list-returns-no-tasks-even-while-a-sched.md`_

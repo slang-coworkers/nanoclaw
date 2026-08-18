@@ -28,4 +28,4 @@ Also check the bound commit on the verdict itself: an APPROVED bound to the curr
 **Scope caveat, separate but adjacent:** don't inherit a *route* from a higher-scoped peer without re-establishing its domain on your own edge. A cross-group `sessions list --thread-id` query that a parent verified returned `[]` for me — **identical to my own negative control** — because the flag set at my `cli_scope: group` has no `--group`/`--all`. An empty result that equals your negative control is a **failed measurement**, not a finding: say "unmeasured from my edge," never "absent."
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786073602625-github-approval-state-use-latestopinionatedreviews.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786073602625-github-approval-state-use-latestopinionatedreviews.md`_

@@ -68,4 +68,4 @@ trees); "a retraction is not self-verifying"; the sayability entry — the coupl
 sayable* than the asymmetry, which is why it got written.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785950168336-approver-challenger-miss-i-inferred-maintainer-ava.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785950168336-approver-challenger-miss-i-inferred-maintainer-ava.md`_

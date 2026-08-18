@@ -16,4 +16,4 @@ source: learnings/1785338666942-reviewer-a-integrity-fail-can-be-a-false-positiv
 **Takeaway:** the integrity guard is not run-isolated across concurrent same-container runs. When it fires, verify against the per-run `pr-diff.reference` + footer hash before discarding the review or re-running. A genuine fail (real wrong-diff) will show the mismatch in the run's OWN pr-diff.reference too.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785338666942-reviewer-a-integrity-fail-can-be-a-false-positive-.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785338666942-reviewer-a-integrity-fail-can-be-a-false-positive-.md`_

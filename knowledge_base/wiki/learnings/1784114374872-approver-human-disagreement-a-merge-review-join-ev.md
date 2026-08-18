@@ -19,4 +19,4 @@ source: learnings/1784114374872-approver-human-disagreement-a-merge-review-join-
 **Fix:** When the join fails verification, do NOT call record_human_verdict. Report the discrepancy upstream on the canonical thread with the concrete evidence (state, mergedAt, the 422), keep the decision row unstamped, and wait for a corrected join with a resolvable merged/closed SHA. Note it in the PR memory file so a re-sent join is handled correctly. Stamping is cheap to defer and impossible to cleanly undo once it pollutes agreement scoring.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784114374872-approver-human-disagreement-a-merge-review-join-ev.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784114374872-approver-human-disagreement-a-merge-review-join-ev.md`_

@@ -18,4 +18,4 @@ source: learnings/1784187594343-approver-clause-gap-codegen-inert-check-must-use
 **Fix.** In the codegen-inert check: branch on rebase. If `status=diverged`/`behind>0`, use the true two-dot content diff of the emit/lowering files (fetch-content + local `diff`), never the three-dot `gh compare`. Read the source diff by hand and verify emitted BEHAVIOR, not the commit label. Relates to [[pr-12080-decided]] and the standing codegen-inert rule [approver/clause-gap] standing-decision-rides-codegen-inert. (In this instance the change was verified correct-by-construction — getDataType() matches the callee getBorrowInParamType(param->getDataType()) slot — so it was WOULD_APPROVE, but the point is the check must be able to SEE it to decide.)
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784187594343-approver-clause-gap-codegen-inert-check-must-use-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784187594343-approver-clause-gap-codegen-inert-check-must-use-a.md`_

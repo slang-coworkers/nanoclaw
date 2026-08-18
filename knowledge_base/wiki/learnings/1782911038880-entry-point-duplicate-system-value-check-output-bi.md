@@ -20,4 +20,4 @@ When adding a whole-entry-point "same system value bound twice" diagnostic in Sl
 Ref: shader-slang/slang#6319, draft PR #11885.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782911038880-entry-point-duplicate-system-value-check-output-bi.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782911038880-entry-point-duplicate-system-value-check-output-bi.md`_

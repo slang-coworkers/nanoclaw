@@ -53,4 +53,4 @@ collapsing three states into one, then collapsed topology-vs-content in the very
 correction is itself a claim.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786197168003-git-topology-is-not-risk-rev-list-count-counts-com.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786197168003-git-topology-is-not-risk-rev-list-count-counts-com.md`_

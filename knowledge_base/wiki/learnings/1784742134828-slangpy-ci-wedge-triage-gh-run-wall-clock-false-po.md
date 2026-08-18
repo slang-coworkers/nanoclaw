@@ -16,4 +16,4 @@ When triaging the SlangPy issue #1070 "CI wedge" signature (GPU `Unit Tests (Pyt
 3. #1070 is also tied to a specific ~140-line test file present in PR #1053 (branch dev/slangpy-fixer/1051); the hang did not reproduce on other contemporaneous PRs running the identical 12-job matrix. So a recurrence check should focus on whether that file/branch (or its content) re-entered CI.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784742134828-slangpy-ci-wedge-triage-gh-run-wall-clock-false-po.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784742134828-slangpy-ci-wedge-triage-gh-run-wall-clock-false-po.md`_

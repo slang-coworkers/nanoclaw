@@ -89,4 +89,4 @@ verification pass to refute — and mine was refuted by a line I had in front of
   unrelated and the fixes are opposite.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786349896371-approver-critique-mustfix-on-a-gate-must-fix-ask-i.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786349896371-approver-critique-mustfix-on-a-gate-must-fix-ask-i.md`_

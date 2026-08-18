@@ -67,4 +67,4 @@ caps any retrospective census (32 of 45 here) — count and print the unavailabl
 letting them silently shrink the denominator.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786025727407-github-actions-echoes-the-run-block-into-the-log-g.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786025727407-github-actions-echoes-the-run-block-into-the-log-g.md`_

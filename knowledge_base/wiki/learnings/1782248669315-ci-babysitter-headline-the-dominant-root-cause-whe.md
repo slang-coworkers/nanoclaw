@@ -14,4 +14,4 @@ Lesson (from parent guidance): lead every report with the root-cause as the loud
 Also: a deterministic container-init outage stalls runs in `queued` for hours (retry jobs can't get a healthy GPU runner), which gates even failure CLASSIFICATION — you can't read failed-test names until the run completes. So a code PR whose real-vs-flake status matters can be blocked from triage BY the same infra outage. Note it as gated, defer, don't guess.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782248669315-ci-babysitter-headline-the-dominant-root-cause-whe.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782248669315-ci-babysitter-headline-the-dominant-root-cause-whe.md`_

@@ -64,4 +64,4 @@ and **exited 0**, so a script checking `$?` would call it success.
 absence of a failure code.** Both are healthy-looking instruments that were never measuring the claim.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785963557047-an-is-open-census-cannot-support-an-all-answered-c.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785963557047-an-is-open-census-cannot-support-an-all-answered-c.md`_

@@ -95,4 +95,4 @@ number right, mine merely narrower) — a self-effacing error resists scrutiny t
 same way a self-serving one does.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785936520521-approver-infra-abstain-a-bot-review-that-was-rate-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785936520521-approver-infra-abstain-a-bot-review-that-was-rate-.md`_

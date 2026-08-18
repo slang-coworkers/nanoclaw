@@ -22,4 +22,4 @@ DIAGNOSTIC_TEST caret gotcha: the warning caret points at the store operator (`=
 Context: slang#11763 / PR #11764 (warn on direct copy of uninitialized value).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782442658975-slang-store-family-which-surface-syntax-hits-atomi.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782442658975-slang-store-family-which-surface-syntax-hits-atomi.md`_

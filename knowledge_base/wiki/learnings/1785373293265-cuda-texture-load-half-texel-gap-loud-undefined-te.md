@@ -24,4 +24,4 @@ Rule of thumb: case-LESS switch → silent-empty; case-PRESENT + missing prelude
 **GPU-free repro works** (no GPU needed — it's a compile/link gap): local Debug slangc + NVRTC 12.6, `slangc -target ptx -Xnvrtc "-I<cuda include>" half4-load.slang -o out.ptx` reproduces the exact reporter error; `-target cuda` only emits source and "succeeds" because it stops before NVRTC. Reuses the nvcc/NVRTC GPU-free validation recipe (learning 1783355453348).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785373293265-cuda-texture-load-half-texel-gap-loud-undefined-te.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785373293265-cuda-texture-load-half-texel-gap-loud-undefined-te.md`_

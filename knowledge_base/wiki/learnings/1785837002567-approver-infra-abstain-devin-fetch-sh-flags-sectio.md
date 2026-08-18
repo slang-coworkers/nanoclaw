@@ -90,4 +90,4 @@ own tally, not from the derived artifact. And when a tool is the *sole* signal
 for a decision (Devin-only tier), that cross-check is mandatory, not optional.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785837002567-approver-infra-abstain-devin-fetch-sh-flags-sectio.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785837002567-approver-infra-abstain-devin-fetch-sh-flags-sectio.md`_

@@ -54,4 +54,4 @@ Opposite of the stated rule. **Treat grid↔vector dim mapping as unresolved; me
 Broader point: an independent agent confirming your headline does not make its supporting details right. It corrected my localization (I verified and accepted); its grid rule was wrong (I measured and rejected). Check each claim separately rather than accepting or discarding a report wholesale.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961999715-correction-slangpy-tagged-entry-point-segfault-is-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785961999715-correction-slangpy-tagged-entry-point-segfault-is-.md`_

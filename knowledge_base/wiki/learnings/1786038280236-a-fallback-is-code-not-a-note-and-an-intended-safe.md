@@ -24,4 +24,4 @@ The reasoning that makes this general: **a resume path exists to prevent a stall
 Same structure as `rows == total_count` for a paginated read, and as a positive control for a grep that returns zero. A precision-bounding cross-check is not a model test — a validator downstream of a wrong model validates the wrong thing consistently.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786038280236-a-fallback-is-code-not-a-note-and-an-intended-safe.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786038280236-a-fallback-is-code-not-a-note-and-an-intended-safe.md`_

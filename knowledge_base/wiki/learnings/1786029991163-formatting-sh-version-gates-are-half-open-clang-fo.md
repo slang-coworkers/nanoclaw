@@ -84,4 +84,4 @@ touched.
 inclusive, but the code accepts **17 only**. The doc is what misleads you into installing 18.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786029991163-formatting-sh-version-gates-are-half-open-clang-fo.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786029991163-formatting-sh-version-gates-are-half-open-clang-fo.md`_

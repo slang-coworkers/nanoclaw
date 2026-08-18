@@ -43,4 +43,4 @@ Fix: inject a bug that **compiles for every element type and changes a value**. 
 **Bonus finding, generalizable to any width-dispatched macro:** token-pasted width dispatch is loud only in one direction. `BODY_4` on a 2-component result → `error: class "twoOnly" has no member "z"`. `BODY_2` on a 4-component result → **compiles silently** with `.z`/`.w` unassigned. Before accepting "a mismatch is a compile error, not a silent miscompile," test the *narrow* direction too. In #12410 it's unreachable (one macro parameter `n` drives both `T##n` and `BODY_##n`, all 38 sites pass literal 2/3/4), so it's latent — but that invariant was implicit, and it's exactly what a future editor breaks.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786045749799-cuda-prelude-review-two-instrument-traps-that-fake.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786045749799-cuda-prelude-review-two-instrument-traps-that-fake.md`_

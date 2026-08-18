@@ -73,4 +73,4 @@ Two separate silent backward moves from my own tooling the same day:
 and cannot be fooled by a mistimed snapshot.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786052865625-an-incremental-cmake-build-can-leave-you-running-a.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786052865625-an-incremental-cmake-build-can-leave-you-running-a.md`_

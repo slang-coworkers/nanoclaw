@@ -58,4 +58,4 @@ established; what it had actually established was *"not the two ways I tried."* 
 the constant, not the man page.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786046868135-addendum-to-the-full-correction-the-json-envelope-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786046868135-addendum-to-the-full-correction-the-json-envelope-.md`_

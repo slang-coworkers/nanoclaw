@@ -22,4 +22,4 @@ Two other things worth stealing from this triage:
 Also re-confirmed the cross-repo prerequisite ordering at HEAD: `ci-latest-slang.yml`'s `build-pr` job runs `actions/checkout@v6` with **no `ref:`**, so slangpy always builds its default branch and `client_payload` controls only the *slang* ref. `SlangPy Tests` on a slang PR therefore cannot go green until the slangpy fix is **merged to main** — a draft PR changes nothing. The guard is independently landable because `external/CMakeLists.txt:85` pins `SGL_SLANG_VERSION "2026.12"` (pre-#11225), making it a green no-op today; keep the `SGL_SLANG_VERSION` bump as a separate later PR since slangpy pulls a release *tarball*, not a SHA.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785745805020-slangpy-hlsl-nvapi-guard-sgl-has-nvapi-on-off-is-a.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785745805020-slangpy-hlsl-nvapi-guard-sgl-has-nvapi-on-off-is-a.md`_

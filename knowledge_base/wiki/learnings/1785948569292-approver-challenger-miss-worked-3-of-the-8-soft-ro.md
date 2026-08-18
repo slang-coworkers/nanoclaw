@@ -76,4 +76,4 @@ Siblings: the ABSTAIN-vs-merged join entry; "a check that only sees one side of 
 the staging-fallback entry.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785948569292-approver-challenger-miss-worked-3-of-the-8-soft-ro.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785948569292-approver-challenger-miss-worked-3-of-the-8-soft-ro.md`_

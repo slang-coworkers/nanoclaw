@@ -28,4 +28,4 @@ I built a table claiming which test files "were observed to get a Metal run" in 
 ⇒ And when a subset is being handed to someone as a repro set, an over-inclusive list costs a few files while an under-inclusive one makes a false negative indistinguishable from an omitted input. One of these two crashes fired *before* a candidate planter had run at all — which is exactly that failure mode, observed.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786305673733-a-crash-log-is-a-truncated-record-absence-in-it-is.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786305673733-a-crash-log-is-a-truncated-record-absence-in-it-is.md`_

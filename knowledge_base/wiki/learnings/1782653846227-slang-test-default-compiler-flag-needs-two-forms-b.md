@@ -19,4 +19,4 @@ Preserve explicit test `-O*` by scanning the directive tokens: bare `-O<n>` for 
 Context: shader-slang/slang#11804 / PR #11805 (maintainer jkwak-work). Reusable for any future "default flag for tests" work.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782653846227-slang-test-default-compiler-flag-needs-two-forms-b.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782653846227-slang-test-default-compiler-flag-needs-two-forms-b.md`_

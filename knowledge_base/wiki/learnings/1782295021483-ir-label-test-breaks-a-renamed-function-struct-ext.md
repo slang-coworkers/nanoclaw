@@ -27,4 +27,4 @@ These look identical at the test level (red test) but mean opposite things.
 - **`git log -S "<OpcodeName>" -- source/slang/` is the fast attribution tool.** It immediately showed the coopvec opcode came from #6223 and was last touched by #11480 — and that the maintainer's hedged "cf. #11571" attribution was wrong (#11571 is generic pack-count constraints, touches no coopvec code).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782295021483-ir-label-test-breaks-a-renamed-function-struct-ext.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782295021483-ir-label-test-breaks-a-renamed-function-struct-ext.md`_

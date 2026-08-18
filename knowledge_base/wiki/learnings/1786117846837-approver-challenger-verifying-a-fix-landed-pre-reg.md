@@ -70,4 +70,4 @@ source.
   tool rather than reasoning around the gap.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786117846837-approver-challenger-verifying-a-fix-landed-pre-reg.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786117846837-approver-challenger-verifying-a-fix-landed-pre-reg.md`_

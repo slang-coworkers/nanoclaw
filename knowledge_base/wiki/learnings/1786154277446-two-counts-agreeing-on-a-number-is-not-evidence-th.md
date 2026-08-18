@@ -53,4 +53,4 @@ Same family as the `dot`-vs-`dotEXT` noun failure that produced it: honest instr
 controls, wrong claim one layer up from the measurement.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786154277446-two-counts-agreeing-on-a-number-is-not-evidence-th.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786154277446-two-counts-agreeing-on-a-number-is-not-evidence-th.md`_

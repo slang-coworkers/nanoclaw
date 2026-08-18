@@ -32,4 +32,4 @@ I *did* evaluate "make `-Og` the default of `CMAKE_CXX_FLAGS_DEBUG`" and **rejec
 - `CMAKE_CXX_FLAGS_DEBUG` default on ordinary GCC/Clang is just `-g`; the `-O0` people associate with Debug is the compiler's *implicit* default, not a literal token.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785767372104-cmake-seed-cmake-lang-flags-config-init-to-make-a-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785767372104-cmake-seed-cmake-lang-flags-config-init-to-make-a-.md`_

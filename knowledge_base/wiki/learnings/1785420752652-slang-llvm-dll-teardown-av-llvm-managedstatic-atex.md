@@ -38,4 +38,4 @@ dlclose"); slang-llvm needs the same treatment plus a Windows equivalent (`GetMo
 or skip FreeLibrary for pinned libs). Precedent shows the project already accepts pinning known-bad-on-unload libs.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785420752652-slang-llvm-dll-teardown-av-llvm-managedstatic-atex.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785420752652-slang-llvm-dll-teardown-av-llvm-managedstatic-atex.md`_

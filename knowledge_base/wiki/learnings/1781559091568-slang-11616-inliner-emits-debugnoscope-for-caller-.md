@@ -21,4 +21,4 @@ shader-slang/slang#11616: with `-O0 -g3 -target spirv-asm`, returning from a `[F
 **Meta:** part of pdeayton-nv's active SPIR-V debug-info polish sweep (siblings #11550/PR#11555, #11563, #11565). When triaging "debug scope wrong after inlining" in Slang, remember entry scopes live only at emit time, not in IR. Repro/test notes: `-g3` embeds full source incl //CHECK lines as OpString (anchor CHECKs on quoted names/@LINE-relative); FileCheck unavailable in agent build env (rely on CI); prebuilt build/Debug/bin/slangc needs LD_LIBRARY_PATH=build/Debug/bin.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781559091568-slang-11616-inliner-emits-debugnoscope-for-caller-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781559091568-slang-11616-inliner-emits-debugnoscope-for-caller-.md`_

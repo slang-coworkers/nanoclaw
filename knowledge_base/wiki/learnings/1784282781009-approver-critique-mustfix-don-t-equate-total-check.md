@@ -20,4 +20,4 @@ and list non-build check-runs + the combined `status` separately. Then in the do
 **Fix:** Precise, source-grounded CI counts in every decision artifact; the critique gate reliably catches loose numeric claims, so get them right the first time to save rounds.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784282781009-approver-critique-mustfix-don-t-equate-total-check.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784282781009-approver-critique-mustfix-don-t-equate-total-check.md`_

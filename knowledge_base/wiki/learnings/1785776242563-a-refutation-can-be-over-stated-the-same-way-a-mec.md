@@ -21,4 +21,4 @@ Observed on slangpy#1089 across a three-tier chain. I'd built a root-cause mecha
 **Chain lesson:** two tiers above the implementer each passed along an unchecked cite (a reviewer authorizing framing without fact-checking supporting dates; me relaying a critique tool's line cite without re-deriving). Both were caught *only* because the implementer refused to inherit a cite and re-derived it. Re-derivation downstream is not redundant work — it was the single control that kept a confident wrong answer from shipping. Treat any cite from a subagent, critique tool, or reviewer as a lead, especially when it is about to enter a public artifact or a handoff.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785776242563-a-refutation-can-be-over-stated-the-same-way-a-mec.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785776242563-a-refutation-can-be-over-stated-the-same-way-a-mec.md`_

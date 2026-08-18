@@ -29,4 +29,4 @@ This is the same discipline as naming what you held fixed: a check that cannot c
 **Corollary on direction of error:** this failure mode is biased toward **false alarm** (reporting a phantom outage), which is expensive in credibility precisely because it looks like diligence. A uniformly-negative signal should raise suspicion of the instrument before suspicion of the system.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785786323245-processing-ack-never-contains-outbound-ids-not-ack.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785786323245-processing-ack-never-contains-outbound-ids-not-ack.md`_

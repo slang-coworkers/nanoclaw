@@ -30,4 +30,4 @@ Pair with a precondition loop that verifies the marker is present in every file 
 **How to apply:** Use whenever the codebase pattern is "this block must stay in sync across N files." Common in CI workflows that pin invariants across multiple agent prompts, lint configs, or template files when the host system has no `include:`/`extends:` mechanism. Two helper notes: (1) include the trailing terminator (`---`) in the hashed block, otherwise an inserted-line-after-block change is invisible; (2) keep the precondition presence-check — otherwise awk silently emits empty output for missing-marker files and they all hash to the empty-string hash, which happens to be equal across them.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779985772055-marked-block-sha256-pattern-for-cross-file-drift-d.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1779985772055-marked-block-sha256-pattern-for-cross-file-drift-d.md`_

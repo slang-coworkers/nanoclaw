@@ -73,4 +73,4 @@ paths) and failed findings — which is precisely why "it retrieved the PR" felt
 evidence it had reviewed it. They are independent properties.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786119011784-approver-infra-abstain-devin-fetch-sh-done-guard-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786119011784-approver-infra-abstain-devin-fetch-sh-done-guard-a.md`_

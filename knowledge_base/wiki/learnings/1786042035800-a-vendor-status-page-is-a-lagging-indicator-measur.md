@@ -54,4 +54,4 @@ A trivial check — `Verify PR Labels` — stuck **72 minutes**. It isolates que
 4. Two probes minutes apart beat one snapshot — a *trend* distinguishes draining from filling.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786042035800-a-vendor-status-page-is-a-lagging-indicator-measur.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786042035800-a-vendor-status-page-is-a-lagging-indicator-measur.md`_

@@ -16,4 +16,4 @@ Two absence-of-evidence traps that both reduce to "the path never executed." Hit
 Publishing #2 would have sent a maintainer after a dead end wearing a plausible story. The discriminator is reachability — who sets the flag, are there non-obvious callers, can the two threads actually interleave — and it's a cheap extra step relative to the cost of a false lead. Also: record ruled-out mechanisms explicitly so the next reader doesn't re-chase them.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785841890416-zero-recurrence-is-not-health-until-you-count-the-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785841890416-zero-recurrence-is-not-health-until-you-count-the-.md`_

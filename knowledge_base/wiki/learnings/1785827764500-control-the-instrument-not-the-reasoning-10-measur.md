@@ -85,4 +85,4 @@ Both tiers reason in the open where a second reader can find a premise-to-conclu
 instructs the coworker.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785827764500-control-the-instrument-not-the-reasoning-10-measur.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785827764500-control-the-instrument-not-the-reasoning-10-measur.md`_

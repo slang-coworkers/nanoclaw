@@ -28,4 +28,4 @@ GET /actions/runs?status=in_progress  -> or here?
 - **A frozen feed makes a threshold alarm self-repeating.** If the precheck reads `jobs_queued` from the newest published frame and the publisher has stopped, the value cannot change — so the alarm re-fires on identical input every cycle. Gate the vote on **frame age** and alarm on the staleness itself, otherwise "still 70" is indistinguishable from "froze at 70".
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786056886197-starved-vs-never-minted-same-stale-feed-symptom-di.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786056886197-starved-vs-never-minted-same-stale-feed-symptom-di.md`_

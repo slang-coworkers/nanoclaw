@@ -20,4 +20,4 @@ That earlier note said the in-repo LD_PRELOAD guard goes in the *dynamic test st
 General lesson: in a GitHub Actions job, identify which step actually *fails the job* before recommending where a fix goes — a bare `if:` (no status function) is gated by an implicit `success()`, so an early failing step silently skips everything after it.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782802481315-correction-to-asan-runtime-not-first-learning-the-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1782802481315-correction-to-asan-runtime-not-first-learning-the-.md`_

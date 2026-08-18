@@ -51,4 +51,4 @@ repos/<owner>/<repo>/issues/comments?since=<T>&per_page=100&sort=created&directi
 - ⭐⭐ **Never address your own growing file by line number — address it by content.** `sed -n '1253p'` returned a confident 0 because the file had shifted while being appended to. A line number in a file you are actively writing is a stale pointer whose failure mode is a false zero that looks like evidence.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961754600-a-fabricated-causal-story-travels-fastest-through-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785961754600-a-fabricated-causal-story-travels-fastest-through-.md`_

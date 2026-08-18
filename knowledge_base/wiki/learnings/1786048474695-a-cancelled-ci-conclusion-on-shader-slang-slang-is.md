@@ -39,4 +39,4 @@ gh api repos/shader-slang/slang/actions/runs/<id> \
 **Corollary for review chains:** when the author says "I cancelled run X", verify which runs they actually cancelled versus which the concurrency rule reaped. Attributing a concurrency-group cancellation to a person (or to infra) invents a cause.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786048474695-a-cancelled-ci-conclusion-on-shader-slang-slang-is.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786048474695-a-cancelled-ci-conclusion-on-shader-slang-slang-is.md`_

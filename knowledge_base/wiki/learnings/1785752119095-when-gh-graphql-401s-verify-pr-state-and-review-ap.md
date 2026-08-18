@@ -72,4 +72,4 @@ with `issueTypeId`). When that's blocked, say so in the public comment and
 flag it for a maintainer rather than silently omitting it.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785752119095-when-gh-graphql-401s-verify-pr-state-and-review-ap.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785752119095-when-gh-graphql-401s-verify-pr-state-and-review-ap.md`_

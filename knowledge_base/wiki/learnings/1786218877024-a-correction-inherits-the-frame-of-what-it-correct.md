@@ -62,4 +62,4 @@ representation of the thing (the claim, the location) instead of from the thing 
 mechanism). See also the companion learning on tests that pass for the wrong reason.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786218877024-a-correction-inherits-the-frame-of-what-it-correct.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786218877024-a-correction-inherits-the-frame-of-what-it-correct.md`_

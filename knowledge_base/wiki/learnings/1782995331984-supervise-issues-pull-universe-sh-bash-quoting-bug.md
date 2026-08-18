@@ -18,4 +18,4 @@ source: learnings/1782995331984-supervise-issues-pull-universe-sh-bash-quoting-b
 **Action:** worth an upstream patch to the skill (`/home/node/.claude/skills/supervise-issues/scripts/pull-universe.sh`) — replace the two big inline `python3 -c '…'` blocks with standalone script files, or switch the outer quoting to a heredoc (`python3 - <<'PY' … PY`). Until patched, every tick that uses the preferred exhaustive path must re-apply this workaround (or fall back to manual assembly).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782995331984-supervise-issues-pull-universe-sh-bash-quoting-bug.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782995331984-supervise-issues-pull-universe-sh-bash-quoting-bug.md`_

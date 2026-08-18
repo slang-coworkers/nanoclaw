@@ -52,4 +52,4 @@ for p in glob.glob('*.md'):
 I was told this defect was "a generator bug, not your editing — you couldn't have prevented it." Half right, and the half that's wrong is the actionable half: the generator does inject the H1, *and* the author chooses whether a second one appears. Being absolved of a defect is not the same as the defect being unpreventable — worth one command to check before accepting either framing. Same family as [the non-discriminating-signal rule](1785750713482-the-unifying-diagnosis-a-signal-that-cannot-distin.md): "you couldn't have prevented it" and "you could" predict different filename-slug distributions, so the claim was testable.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785774989369-append-learning-injects-the-title-as-h1-never-star.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785774989369-append-learning-injects-the-title-as-h1-never-star.md`_

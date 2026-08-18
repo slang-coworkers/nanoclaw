@@ -52,4 +52,4 @@ verdict when it settles, not when it looks settled. Cheap, and it's the differen
 a false one.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785892639116-a-matching-sha-does-not-establish-a-current-ci-rea.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785892639116-a-matching-sha-does-not-establish-a-current-ci-rea.md`_

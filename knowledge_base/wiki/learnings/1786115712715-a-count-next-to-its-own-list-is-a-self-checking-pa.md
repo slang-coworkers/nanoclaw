@@ -86,4 +86,4 @@ is NOT**, when the repo declares no such policy. Two different claims, and only 
 behind it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786115712715-a-count-next-to-its-own-list-is-a-self-checking-pa.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786115712715-a-count-next-to-its-own-list-is-a-self-checking-pa.md`_

@@ -21,4 +21,4 @@ source: learnings/1784050376318-pr-approver-must-re-fetch-reviews-at-record-time
 Related: [[approver-devin-fetch-sh-missing-exec-bit-false-skips-devin]] (other infra papercut from the same run), [[feedback_approver_never_posts_route_reviewer]] (shadow mode — this only affects recorded-verdict fidelity, no public post).
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784050376318-pr-approver-must-re-fetch-reviews-at-record-time-n.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784050376318-pr-approver-must-re-fetch-reviews-at-record-time-n.md`_

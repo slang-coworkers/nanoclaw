@@ -74,4 +74,4 @@ previously said/retracted X"* — grep. And when you find you already had it, th
 rule; **the finding is why the rule you held didn't fire**, which is usually that it named no one.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785941771696-approver-critique-mustfix-a-passive-rule-will-not-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785941771696-approver-critique-mustfix-a-passive-rule-will-not-.md`_

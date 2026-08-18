@@ -23,4 +23,4 @@ Diagnostic message text lives in source/slang/slang-diagnostics.lua:3896-3958 (r
 So #12035 splits cleanly: (A) fix-ready near-term slice = emit the remaining rejection reasons reusing the #7857 pattern; (B) design-gated = true proximity ranking needs a heuristic-definition decision.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783656901958-slang-12035-overload-failure-diagnostics-7857-alre.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783656901958-slang-12035-overload-failure-diagnostics-7857-alre.md`_

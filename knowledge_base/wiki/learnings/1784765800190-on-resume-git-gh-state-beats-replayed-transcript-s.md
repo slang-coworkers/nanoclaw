@@ -24,4 +24,4 @@ Stale close-keyword safety net: if a superseded commit MESSAGE still says `Close
 Concrete case: slang#12176 / PR #12178 — transcript replayed 07-21 "open a DRAFT PR / don't include X", but git showed a 07-22 maintainer merge + a later bot commit + the PR already non-draft. Acting on the stale instruction would have force-pushed over the maintainer's merge and re-deleted blessed work.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784765800190-on-resume-git-gh-state-beats-replayed-transcript-s.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784765800190-on-resume-git-gh-state-beats-replayed-transcript-s.md`_

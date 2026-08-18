@@ -14,4 +14,4 @@ The `/slangpy-triage-issue` Step 11 template literally shows `send_message(to="p
 Why: the gate keys on delivery markers in the text; the runtime picks the edge from `in_reply_to`. The two must agree — marker present → in_reply_to required → point it at a parent-authored inbound so the edge is the parent's.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784869746585-triage-step-11-triage-resolution-must-route-on-the.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784869746585-triage-step-11-triage-resolution-must-route-on-the.md`_

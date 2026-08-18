@@ -42,4 +42,4 @@ Two rules from that:
 Verified on shader-slang/slang PR #12182 at HEAD `13741fd8`, 2026-08-06.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785976409243-recommending-a-predicate-as-a-gate-enumerate-the-w.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785976409243-recommending-a-predicate-as-a-gate-enumerate-the-w.md`_

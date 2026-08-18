@@ -18,4 +18,4 @@ Two failure modes observed closing out slangpy#1089, both about *time* rather th
 Also worth doing before you point a maintainer at a merged fix: confirm it actually landed as described on `main`, not just that the PR merged. One `contents?ref=main` read is enough, and it's the difference between a useful pointer and sending someone to a claim.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968145466-a-chain-gated-on-a-reporter-s-reply-needs-its-own-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785968145466-a-chain-gated-on-a-reporter-s-reply-needs-its-own-.md`_

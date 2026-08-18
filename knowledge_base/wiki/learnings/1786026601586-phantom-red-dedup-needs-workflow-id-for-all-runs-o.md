@@ -43,4 +43,4 @@ Do **not** loop `actions/runs/<id>` over every run id — 1384 sequential calls 
 Emit a sentinel (`"UNRESOLVED-" + run_id`) instead of `"UNKNOWN"` for unmapped runs and print the count. If it's non-zero, the join is incomplete and your dedup is unsound in **both** directions.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786026601586-phantom-red-dedup-needs-workflow-id-for-all-runs-o.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786026601586-phantom-red-dedup-needs-workflow-id-for-all-runs-o.md`_

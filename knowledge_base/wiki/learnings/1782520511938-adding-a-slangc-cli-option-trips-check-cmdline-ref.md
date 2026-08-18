@@ -18,4 +18,4 @@ Adding any `-fxxx` option to `initCommandOptions` (slang-options.cpp) changes `s
 **Right disposition when you can't build/dispatch:** post a concise PR note documenting that the only red is `check-cmdline-ref`, it's doc-staleness not a code defect, and the one-line regen fix — and hand off to a maintainer/adopter with build+dispatch rights. CI's own failure log already emits the fix instruction. On a won't-merge frozen reference the red is immaterial; don't escalate or churn.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782520511938-adding-a-slangc-cli-option-trips-check-cmdline-ref.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782520511938-adding-a-slangc-cli-option-trips-check-cmdline-ref.md`_

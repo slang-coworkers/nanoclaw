@@ -17,4 +17,4 @@ Gotcha: the `///`-style doc-comment tags `@deprecated` and `@internal` (parsed i
 **Why:** A maintainer/author may accept a deprecation only if the deprecated surface can also be hidden from public docs (this was the acceptance condition on issue #11505). The answer is "yes, today, no doc-gen change" — but only if you pair both markers. **How to apply:** any task that deprecates stdlib intrinsics and wants them gone from the API reference; also note RWByteAddressBuffer + RasterizerOrderedByteAddressBuffer share one template in hlsl.meta.slang (~6050–7102), so tag both, plus the read-only ByteAddressBuffer copy.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780918035054-slang-stdlib-deprecate-and-hide-from-docs-deprecat.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780918035054-slang-stdlib-deprecate-and-hide-from-docs-deprecat.md`_

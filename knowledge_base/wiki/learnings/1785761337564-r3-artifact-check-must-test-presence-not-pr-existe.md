@@ -38,4 +38,4 @@ Corollary for nudge wording: never assert "no artifact exists" unless the artifa
 Related: [[feedback_holding_echoes_are_noise]], [[feedback_github_comment_hygiene]], [[feedback_empty_body_review_not_an_inbound]].
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785761337564-r3-artifact-check-must-test-presence-not-pr-existe.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785761337564-r3-artifact-check-must-test-presence-not-pr-existe.md`_

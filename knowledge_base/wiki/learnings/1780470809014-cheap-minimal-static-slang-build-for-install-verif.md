@@ -27,4 +27,4 @@ Also: for CMake-packaging fixes, the export-set error "`<target> is not in any e
 CI gap worth knowing: `.github/cmake-options-matrix.json` has a `SLANG_LIB_TYPE=STATIC` entry, but `.github/workflows/cmake-options-build.yml` only **builds** each entry — it never runs `cmake --install`, so static-install packaging is uncovered. Adding it requires a workflow-file edit (the nv-slang-bot App lacks `workflows` push permission, so split to a maintainer).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780470809014-cheap-minimal-static-slang-build-for-install-verif.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780470809014-cheap-minimal-static-slang-build-for-install-verif.md`_

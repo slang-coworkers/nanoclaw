@@ -22,4 +22,4 @@ Three transferable points:
 **Also: shared vocabulary is not shared cause.** #274 and #899 both say "bool" with the same assignee, but are independent: #899 is a *missing dtype mapping* (clean `ValueError`), #274 is a *size/layout mismatch* (silent corruption). Neither blocks the other, though fixing #899 admits bool into the layout machinery #274 governs — a sequencing risk, not a dependency. Check before asserting either.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961564124-a-guard-s-comment-is-not-its-predicate-read-the-fi.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785961564124-a-guard-s-comment-is-not-its-predicate-read-the-fi.md`_

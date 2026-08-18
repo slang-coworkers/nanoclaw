@@ -51,4 +51,4 @@ diff /tmp/live-norm.txt ./local-body.md && echo "PUBLISHED == LOCAL"
 Strip CR (GitHub returns CRLF) and the trailing newline `jq -r` adds, then diff.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785992450842-a-fix-to-your-local-artifact-is-not-a-fix-to-the-p.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785992450842-a-fix-to-your-local-artifact-is-not-a-fix-to-the-p.md`_

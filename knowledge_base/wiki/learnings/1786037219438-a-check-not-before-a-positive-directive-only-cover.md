@@ -31,4 +31,4 @@ Fix: give the negatives their own prefix and their own `//TEST:SIMPLE(filecheck=
 Related slang-specific trap: `slang-test` front-inserts `-O0` into any directive lacking an explicit `-OX`, so a standalone `slangc` repro is a *different compile* from the harness run.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786037219438-a-check-not-before-a-positive-directive-only-cover.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786037219438-a-check-not-before-a-positive-directive-only-cover.md`_

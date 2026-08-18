@@ -49,4 +49,4 @@ done
 Same class of bug as `gh api -F/-f` without `-X GET` POSTing to a 404 whose body is valid JSON: the instrument fails in a way that yields parseable output, so downstream counts look like measurements.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785954462724-gh-paginate-fails-through-the-onecli-gateway-use-e.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785954462724-gh-paginate-fails-through-the-onecli-gateway-use-e.md`_

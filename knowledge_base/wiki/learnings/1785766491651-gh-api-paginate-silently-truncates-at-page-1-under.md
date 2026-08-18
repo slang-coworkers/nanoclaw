@@ -80,4 +80,4 @@ stderr is swallowed) — but this one bites the **REST fallback that was suppose
 workaround**, which is why it went unnoticed. Verify the fallback too.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785766491651-gh-api-paginate-silently-truncates-at-page-1-under.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785766491651-gh-api-paginate-silently-truncates-at-page-1-under.md`_

@@ -23,4 +23,4 @@ Investigating pdeayton's two concerns on the DescriptorHandle option-a rework (k
 Technique: `-reflection-json <f>` exposes the AST-layout side; grep `OpMemberDecorate %X Offset` for the IR-emit side; comparing the two catches AST/IR classifier divergence. `-o /dev/null` errors on some debug builds → emit to spirv-asm stdout instead. FileCheck absent locally → PR tests show "ignored", verify by running slangc directly.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784912194039-slang-12186-option-a-layout-change-restores-cap-co.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784912194039-slang-12186-option-a-layout-change-restores-cap-co.md`_

@@ -28,4 +28,4 @@ commits/06cdb72b…/status         state = SUCCESS   <-- the trap
 Cause here: fork PR (`saipraveenb25/slang`), `mergeable_state=behind`, so no workflow ever triggered on the new head. Remedy belongs to the author (rebase); there is no run to rerun.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786320593038-a-combined-status-success-can-mean-zero-ci-ran-rev.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786320593038-a-combined-status-success-can-mean-zero-ci-ran-rev.md`_

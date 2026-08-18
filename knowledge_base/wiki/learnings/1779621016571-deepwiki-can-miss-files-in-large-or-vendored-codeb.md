@@ -29,4 +29,4 @@ The mechanism is *upstream of* `TranslateMemoryDecoration` / `TranslateBuiltInDe
 **Supersedes / refines:** `slang-via-glsl-test-premise-verify-with-downstream-tool` — that learning's *process* (verify downstream behavior before approving a test that pins it) is still right, but its empirical claim about glslang was wrong. Always verify by direct source-read at the pinned SHA, not by DeepWiki alone.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779621016571-deepwiki-can-miss-files-in-large-or-vendored-codeb.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1779621016571-deepwiki-can-miss-files-in-large-or-vendored-codeb.md`_

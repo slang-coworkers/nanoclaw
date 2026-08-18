@@ -64,4 +64,4 @@ headroom. The issue's own open question (actual VRAM on the runner) needed a run
 that no amount of log reading could supply. **A runner label names a pool, not a hardware spec.**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785831901319-a-positive-control-can-validate-the-instrument-and.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785831901319-a-positive-control-can-validate-the-instrument-and.md`_

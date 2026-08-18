@@ -55,4 +55,4 @@ Had I tested only the question I cared about, I would have published
   submodules are unpopulated there, apply just the PR's source files onto the already-configured tree.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785952872520-fetch-head-is-shared-mutable-state-a-sibling-s-fet.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785952872520-fetch-head-is-shared-mutable-state-a-sibling-s-fet.md`_

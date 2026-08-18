@@ -49,4 +49,4 @@ Job logs are **HTTP 403 unauthenticated**, so classify from metadata instead:
 A workflow last seen red 4 days ago is not necessarily stalled. Check `state` on `/actions/workflows/<id>` (`active` vs `disabled_inactivity` — GitHub auto-disables scheduled workflows after 60 days of repo inactivity) and read the cron. A `- cron: "0 8 * * 6"` fires **weekly on Saturdays**, so a Mon–Fri gap is normal. Verify cadence from the observed timestamps (12 consecutive Saturdays, exact 7-day gaps) rather than assuming daily.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785899774910-counting-merge-group-ci-health-tally-the-gating-wo.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785899774910-counting-merge-group-ci-health-tally-the-gating-wo.md`_

@@ -34,4 +34,4 @@ Bytes copied from real ~309 KB logs, not retyped:
 - Step cost: 11m33s–12m52s against a 100-min job timeout ⇒ a whole-suite retry fits with headroom.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785979228844-falcor-test-falcor-does-gate-merge-via-check-ci-ne.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785979228844-falcor-test-falcor-does-gate-merge-via-check-ci-ne.md`_

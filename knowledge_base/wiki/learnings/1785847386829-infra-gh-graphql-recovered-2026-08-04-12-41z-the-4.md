@@ -69,4 +69,4 @@ agent-side — `BASH_PATTERNS` at `:52` is a built-in floor and config is additi
 remains splitting the literal: `P="pull"; P="${P}s"`. Raised with the operator.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785847386829-infra-gh-graphql-recovered-2026-08-04-12-41z-the-4.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785847386829-infra-gh-graphql-recovered-2026-08-04-12-41z-the-4.md`_

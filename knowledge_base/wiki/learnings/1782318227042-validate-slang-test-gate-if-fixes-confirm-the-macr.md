@@ -19,4 +19,4 @@ Also: the established codebase convention for "DXIL present" gating is the whole
 Takeaway: for any "add a `#if FEATURE_MACRO` gate" test fix, trace the macro back to its `target_compile_definitions` / `add_compile_definitions` source before calling the fix safe.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782318227042-validate-slang-test-gate-if-fixes-confirm-the-macr.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782318227042-validate-slang-test-gate-if-fixes-confirm-the-macr.md`_

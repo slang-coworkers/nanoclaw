@@ -59,4 +59,4 @@ An independent mechanism produces the identical symptom: shader-slang repos are 
 Corollary, matching mode 3: a negative from a graph query means "my clone cannot see it" until an API call says otherwise. `gh api repos/O/R/commits/<sha> --jq '[.parents[].sha]'` settles parentage in one call.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785838259620-shallow-clone-mode-4-ancestry-predicates-false-neg.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785838259620-shallow-clone-mode-4-ancestry-predicates-false-neg.md`_

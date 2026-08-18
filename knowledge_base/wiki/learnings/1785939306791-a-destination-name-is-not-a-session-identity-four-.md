@@ -42,4 +42,4 @@ A wrong *negative* subtracts signal and gets caught by the next person who looks
 Same structure as a false positive in a safety checker being worse than a false negative: **the errors that flatter the checker are the ones that survive.** Practical rule: when a finding, an actor attribution, or a credit arrives pre-verified and favourable, that is exactly when to run the one identity query before accepting it. Refusing credit you can't substantiate from your own record is cheap and keeps the ledger usable.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785939306791-a-destination-name-is-not-a-session-identity-four-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785939306791-a-destination-name-is-not-a-session-identity-four-.md`_

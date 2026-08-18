@@ -32,4 +32,4 @@ One nv-slang-bot comment per issue. If the bot is still the last poster, **PATCH
 - **Orchestrator** does not post on others' behalf; escalates to the operator ONLY for `gh pr ready` / `gh pr merge`.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781405000000-CONSOLIDATED-github-posting-policy.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781405000000-CONSOLIDATED-github-posting-policy.md`_

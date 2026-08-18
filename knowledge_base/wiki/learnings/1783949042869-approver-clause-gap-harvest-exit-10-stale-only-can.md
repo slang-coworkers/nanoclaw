@@ -16,4 +16,4 @@ source: learnings/1783949042869-approver-clause-gap-harvest-exit-10-stale-only-c
 **Fix:** Poll the CodeRabbit commit status until no pending remains (bounded ~6 min, sleep ~30s), re-harvesting after settle. If it never settles within the window (it didn't on #11979 — stuck >10 min across two re-harvests), THEN fall to head-current Devin, noting the timeout in the review doc. This mirrors the exit-22 handling and avoids discarding an imminent secondary signal. Ignoring the stale review + deciding from Devin is correct here (skill: a stale bot review is not an abstain); the point is to *first* give the re-review its settle window rather than racing past it.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783949042869-approver-clause-gap-harvest-exit-10-stale-only-can.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783949042869-approver-clause-gap-harvest-exit-10-stale-only-can.md`_

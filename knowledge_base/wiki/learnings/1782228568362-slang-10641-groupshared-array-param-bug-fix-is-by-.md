@@ -24,4 +24,4 @@ The bare `groupshared` array parameter was lowered **by value** (an `In` copy) a
 4. Always rebuild before trusting `slangc`: a git checkout/reset does NOT bump mtimes, so ninja silently serves a stale binary even after `git reset --hard`. The stale binary (g5230a81f2) and the HEAD binary disagreed on barrier retention here.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782228568362-slang-10641-groupshared-array-param-bug-fix-is-by-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782228568362-slang-10641-groupshared-array-param-bug-fix-is-by-.md`_

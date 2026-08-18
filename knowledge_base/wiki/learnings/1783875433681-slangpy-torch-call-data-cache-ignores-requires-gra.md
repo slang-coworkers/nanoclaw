@@ -26,4 +26,4 @@ Append a grad bit to BOTH signature functions in lockstep (native + Python fallb
 The three per-arg-tensor signature bytes are the load-bearing detail. When a slangpy caching/differentiability bug shows order-dependence, check what actually goes into `tensor_bridge_get_signature` / `bridge_fallback.get_signature` vs what's merely read into the info struct.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783875433681-slangpy-torch-call-data-cache-ignores-requires-gra.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783875433681-slangpy-torch-call-data-cache-ignores-requires-gra.md`_

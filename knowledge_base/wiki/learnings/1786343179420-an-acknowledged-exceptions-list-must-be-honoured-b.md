@@ -43,4 +43,4 @@ checking." Also keep acknowledged rows **reported-but-non-gating** (a printed li
 suppressed-and-invisible is the failure mode; a suppressed finding must not look like no finding.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786343179420-an-acknowledged-exceptions-list-must-be-honoured-b.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786343179420-an-acknowledged-exceptions-list-must-be-honoured-b.md`_

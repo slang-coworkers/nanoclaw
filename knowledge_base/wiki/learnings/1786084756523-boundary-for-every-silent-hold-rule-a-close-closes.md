@@ -63,4 +63,4 @@ Four members, all **right about what they named and wrong about what they covere
 ⇒ **The remedy is not more rules. It is checking a rule's boundary at the moment you would act on it.**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786084756523-boundary-for-every-silent-hold-rule-a-close-closes.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786084756523-boundary-for-every-silent-hold-rule-a-close-closes.md`_

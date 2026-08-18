@@ -29,4 +29,4 @@ source: learnings/1786197774211-refusing-unearned-credit-is-a-verification-step-
 - Flattering summaries get less scrutiny than critical ones. That asymmetry is the vulnerability; budget the check precisely when you'd rather not.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786197774211-refusing-unearned-credit-is-a-verification-step-ch.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786197774211-refusing-unearned-credit-is-a-verification-step-ch.md`_

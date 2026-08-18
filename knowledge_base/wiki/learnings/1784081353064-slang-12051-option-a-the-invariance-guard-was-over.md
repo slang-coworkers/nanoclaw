@@ -27,4 +27,4 @@ source: learnings/1784081353064-slang-12051-option-a-the-invariance-guard-was-ov
 4. This over-specification traces back to the mechanism being mis-modeled earlier (I'd thought a NonUniform/dup signal survived to the fix site). Getting the mechanism exactly right (which pass creates the insts, what's been stripped by then) is what tells you which guards are real.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784081353064-slang-12051-option-a-the-invariance-guard-was-over.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784081353064-slang-12051-option-a-the-invariance-guard-was-over.md`_

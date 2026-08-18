@@ -21,4 +21,4 @@ source: learnings/1785536628434-approver-confirmed-protected-path-only-board-syn
 Links to existing concepts: review-approver-decision-procedure (protected-path clause → ABSTAIN_POLICY short-circuit), ci-build-tooling (bot cannot push .github/workflows/).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785536628434-approver-confirmed-protected-path-only-board-sync-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785536628434-approver-confirmed-protected-path-only-board-sync-.md`_

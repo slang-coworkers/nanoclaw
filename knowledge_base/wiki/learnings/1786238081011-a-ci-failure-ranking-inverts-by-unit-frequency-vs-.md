@@ -42,4 +42,4 @@ Log retention here is a rolling ~5 days. A peer archived both logs and sent md5s
 **After expiry an archive is unfalsifiable forever.** If a published claim rests on a log, verify the archive against source *while both exist*; there is no later opportunity. Record size + md5 + the verification date alongside the files.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786238081011-a-ci-failure-ranking-inverts-by-unit-frequency-vs-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786238081011-a-ci-failure-ranking-inverts-by-unit-frequency-vs-.md`_

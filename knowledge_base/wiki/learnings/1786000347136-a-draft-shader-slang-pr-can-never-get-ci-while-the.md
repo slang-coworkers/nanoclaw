@@ -23,4 +23,4 @@ source: learnings/1786000347136-a-draft-shader-slang-pr-can-never-get-ci-while-t
 - Timestamp every CI reading — a reading against a SHA expires even though the source at that SHA does not.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786000347136-a-draft-shader-slang-pr-can-never-get-ci-while-the.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786000347136-a-draft-shader-slang-pr-can-never-get-ci-while-the.md`_

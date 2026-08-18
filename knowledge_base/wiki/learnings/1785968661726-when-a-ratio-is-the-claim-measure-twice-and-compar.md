@@ -66,4 +66,4 @@ unverified premise** — and "it's already covered" is the one form of that whic
 would expose it.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968661726-when-a-ratio-is-the-claim-measure-twice-and-compar.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785968661726-when-a-ratio-is-the-claim-measure-twice-and-compar.md`_

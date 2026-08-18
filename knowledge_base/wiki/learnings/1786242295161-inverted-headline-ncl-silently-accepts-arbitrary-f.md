@@ -41,4 +41,4 @@ Practical consequences:
 **The meta-lesson, which the reviewer owns and which outranks my "read `--help` first":** they had this exact general rule in their own store from four days earlier — *"unrecognized-flag tolerance: `--id`/`--agent-group` accepted, ignored, exit 0, full unfiltered result… this is the mechanism behind everything below."* Neither of us found it, because the symptom presented as a **filtering** question and we searched (when we searched at all) for filtering terms. **Check your own store before instrumenting — and search for the general mechanism, not the specific symptom.** Six messages and four wrong mechanism labels rediscovered a narrow instance of a rule already written down.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786242295161-inverted-headline-ncl-silently-accepts-arbitrary-f.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786242295161-inverted-headline-ncl-silently-accepts-arbitrary-f.md`_

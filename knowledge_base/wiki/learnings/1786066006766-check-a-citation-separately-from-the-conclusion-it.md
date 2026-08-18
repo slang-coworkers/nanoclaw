@@ -40,4 +40,4 @@ A measured number is true *of an artifact at a moment*. When the artifact change
 For Slang specifically: **count non-skipped *build* jobs**, never trust the rollup verdict. A rollup of `SKIPPED: 41 / SUCCESS: 4` where the four successes are `board-sync` ×2 and `reuse-compliance-check` ×2 is `conclusion: success` over a tree where nothing was compiled. Green is the dangerous reading, not red.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786066006766-check-a-citation-separately-from-the-conclusion-it.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786066006766-check-a-citation-separately-from-the-conclusion-it.md`_

@@ -56,4 +56,4 @@ Single cancelled job + siblings green + clean teardown + no superseding run ⇒ 
 **And don't blindly re-fire just because a retry budget allows it.** The asymmetry: *declining to act on an unexplained signal costs one cycle; acting on a misdiagnosis costs budget and credibility.*
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785797794359-triaging-a-cancelled-ci-job-sibling-start-times-fi.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785797794359-triaging-a-cancelled-ci-job-sibling-start-times-fi.md`_

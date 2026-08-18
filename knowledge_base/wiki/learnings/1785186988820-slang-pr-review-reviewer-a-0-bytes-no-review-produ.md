@@ -34,4 +34,4 @@ Two more gotchas seen in the same run:
 General rule: a passing guard is trustworthy; a FAILING guard ("no review / 0 bytes / no dispatches") on a job that exited 0 warrants a stream check before you report the reviewer as failed or re-run (which wastes ~$30 and 20 min).
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785186988820-slang-pr-review-reviewer-a-0-bytes-no-review-produ.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785186988820-slang-pr-review-reviewer-a-0-bytes-no-review-produ.md`_

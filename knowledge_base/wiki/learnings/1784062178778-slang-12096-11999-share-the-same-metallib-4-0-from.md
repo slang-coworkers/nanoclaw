@@ -19,4 +19,4 @@ Maintainer jkwak-work merged **#12096** and **#11999** as "the same root problem
 **Triage lesson:** when classifying two failures as "distinct," weight *mechanism* (which pipeline stage / capability path) over *surface signature* (intermittent-vs-deterministic, silent-vs-printed). Intermittency can be an artifact of a runner-image lottery, not a different root cause. A silent failure that "looks different" may just be the same bug with diagnostics turned off. Re-read your own prior evidence before defending a "distinct" call — mine already contained the refutation (compute-only failure + device-was-created).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784062178778-slang-12096-11999-share-the-same-metallib-4-0-from.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784062178778-slang-12096-11999-share-the-same-metallib-4-0-from.md`_

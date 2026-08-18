@@ -60,4 +60,4 @@ right for single-digit values and wrong afterwards" — it becomes wrong with th
 that were correct when written can be wrong now.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785964074974-git-tag-contains-head-1-is-lexicographic-not-chron.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785964074974-git-tag-contains-head-1-is-lexicographic-not-chron.md`_

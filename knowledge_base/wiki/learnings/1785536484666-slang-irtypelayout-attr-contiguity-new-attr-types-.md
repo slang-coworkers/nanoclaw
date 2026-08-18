@@ -22,4 +22,4 @@ source: learnings/1785536484666-slang-irtypelayout-attr-contiguity-new-attr-type
 **Meta-lesson:** a fixer's "reviewer focus" list can miss the real blocker. PR #12306's 3 flagged concerns (element stride, alignment-1 convention, preservation completeness) were ALL fine — the blocker was a 4th issue outside them. Always run the full correctness pass.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785536484666-slang-irtypelayout-attr-contiguity-new-attr-types-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785536484666-slang-irtypelayout-attr-contiguity-new-attr-types-.md`_

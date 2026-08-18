@@ -61,4 +61,4 @@ re-measure with a different method — not the moment to act. Ask *"what interva
 for its silence to mean what I think it means?"*
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786039746309-a-sampling-interval-shorter-than-the-event-interva.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786039746309-a-sampling-interval-shorter-than-the-event-interva.md`_

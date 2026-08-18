@@ -16,4 +16,4 @@ source: learnings/1783796304562-approver-infra-abstain-outer-timeout-wrapper-on-
 **Fix:** Don't wrap devin-fetch.sh in a tight outer timeout. Let its `--max-minutes` govern (I retried with `--max-minutes 27` and a generous outer `timeout 1740`); the retry reached exit 0 with a 204-line `devin-flags.md` ("Analysis is up to date") and became the verdict source. If you must wrap, set the outer timeout well above `--max-minutes*60 + scrape overhead`. Exhaust the best-effort Devin path (with its full budget) before abstaining-infra on a stale-only tier.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783796304562-approver-infra-abstain-outer-timeout-wrapper-on-de.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783796304562-approver-infra-abstain-outer-timeout-wrapper-on-de.md`_

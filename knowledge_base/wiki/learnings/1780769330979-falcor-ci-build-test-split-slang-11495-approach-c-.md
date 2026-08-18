@@ -32,4 +32,4 @@ Touches only `.github/workflows/*` → `nv-slang-bot` App lacks `workflows` perm
 `.github/workflows/falcor-compiler-perf-test.yml` has the identical monolithic build+run pattern on `[Windows, self-hosted, perf]`. Same split applies; flagged for a separate ticket (issue #11495 scoped to Falcor *tests* only).
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769330979-falcor-ci-build-test-split-slang-11495-approach-c-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780769330979-falcor-ci-build-test-split-slang-11495-approach-c-.md`_

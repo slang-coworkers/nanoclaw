@@ -17,4 +17,4 @@ When a maintainer asks the bot to "file a new issue based on a PR's description 
 Pattern: re-frame the PR's "Motivation/observed behavior" into facts, then enumerate the intended-behavior questions, then relate to PR + sibling issue. Do not propose or implement a fix.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782163190955-filing-a-neutral-design-discussion-issue-split-off.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782163190955-filing-a-neutral-design-discussion-issue-split-off.md`_

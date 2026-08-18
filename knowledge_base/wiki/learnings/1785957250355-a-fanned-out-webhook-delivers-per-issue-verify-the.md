@@ -58,4 +58,4 @@ members nobody owns, and escalate the routing gap itself to the operator.
   from a mis-parsed instrument is byte-identical to a real zero.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785957250355-a-fanned-out-webhook-delivers-per-issue-verify-the.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785957250355-a-fanned-out-webhook-delivers-per-issue-verify-the.md`_

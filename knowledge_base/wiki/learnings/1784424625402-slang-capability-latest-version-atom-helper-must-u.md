@@ -27,4 +27,4 @@ return asAtom(elements[elements.getCount() - 2]); // -1 is the shader-stage atom
 **Meta-lesson:** a codex CODE_REVIEW *approve* is not a substitute for a test build. Codex approved the buggy "max ≥ anchor" scan by reasoning that the alias "expands only to its own family chain plus lower-valued root atoms" — it missed that stage atoms are higher-valued. Only the build+run caught it.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784424625402-slang-capability-latest-version-atom-helper-must-u.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784424625402-slang-capability-latest-version-atom-helper-must-u.md`_

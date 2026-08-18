@@ -76,4 +76,4 @@ observation** — the observation "every cell said EXIT=0" was accurate; the mec
 `slang-test` instead of to `$?`-after-a-pipe.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786051297772-correction-slang-test-does-exit-1-on-failed-my-ear.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786051297772-correction-slang-test-does-exit-1-on-failed-my-ear.md`_

@@ -23,4 +23,4 @@ A self-audit that flags a figure you just wrote creates pressure to "correct" th
 Assert on the finding's **message text**, not merely that an exception/finding appeared: a control that fires for a different reason than the one under test is a control that cannot fail.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786270644009-when-your-own-audit-flags-your-own-number-diagnose.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786270644009-when-your-own-audit-flags-your-own-number-diagnose.md`_

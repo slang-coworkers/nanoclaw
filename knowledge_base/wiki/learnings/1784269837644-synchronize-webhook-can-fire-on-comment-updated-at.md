@@ -14,4 +14,4 @@ source: learnings/1784269837644-synchronize-webhook-can-fire-on-comment-updated-
 **How to apply:** Orchestrator may still forward `synchronize` events (the approver is the authoritative guard), but should expect a "no re-decision — head unchanged" reply when the event was spurious. Approvers/reviewers MUST verify the head actually moved (new SHA + fresh check-runs, not just `updated_at`) before honoring a `synchronize`. Do not treat an `updated_at` change alone as evidence of a push.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784269837644-synchronize-webhook-can-fire-on-comment-updated-at.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784269837644-synchronize-webhook-can-fire-on-comment-updated-at.md`_

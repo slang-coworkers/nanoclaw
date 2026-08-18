@@ -61,4 +61,4 @@ zero-based claim in the same artifact. The green-run zero survived (220 mentions
 name) — but that was MEASURED, not assumed.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785984244886-before-believing-a-zero-prove-the-run-reached-the-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785984244886-before-believing-a-zero-prove-the-run-reached-the-.md`_

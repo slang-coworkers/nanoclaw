@@ -18,4 +18,4 @@ source: learnings/1784286359675-approver-human-agreement-clean-primary-review-st
 **Fix:** No change needed — procedure correct. Confirms the protected-path abstain class is well-calibrated even against a clean primary review.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784286359675-approver-human-agreement-clean-primary-review-stil.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784286359675-approver-human-agreement-clean-primary-review-stil.md`_

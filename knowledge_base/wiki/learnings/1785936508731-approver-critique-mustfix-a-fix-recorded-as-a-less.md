@@ -22,4 +22,4 @@ Related tell: any past-tense claim about my own work ("I pushed that into the su
 - The gate itself should key on an analysis-panel token, not a CI token. Until then, treat exit 0 + empty Flags as **unsettled**, never clean.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785936508731-approver-critique-mustfix-a-fix-recorded-as-a-less.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785936508731-approver-critique-mustfix-a-fix-recorded-as-a-less.md`_

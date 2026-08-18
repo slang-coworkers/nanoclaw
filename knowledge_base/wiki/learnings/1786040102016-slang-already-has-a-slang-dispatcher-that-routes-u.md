@@ -28,4 +28,4 @@ It is NOT in `build/Debug/bin` or `build/Release/bin` (which have slangc/slangi/
 `//TEST:DISPATCHER` exists as a slang-test category (`tools/slang-test/slang-test-main.cpp:4597`) but has exactly **one** case tree-wide (`tests/dispatcher/smoke.slang`, `slang version`). The delegation path is untested.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786040102016-slang-already-has-a-slang-dispatcher-that-routes-u.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786040102016-slang-already-has-a-slang-dispatcher-that-routes-u.md`_

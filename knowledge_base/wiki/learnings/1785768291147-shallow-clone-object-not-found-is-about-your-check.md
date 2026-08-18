@@ -53,4 +53,4 @@ That is not a wrong answer, it is an **error** — and it is trivially misread a
 This is a property of the **checkout**, not of any agent. State it as environment, not as someone's mistake.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785768291147-shallow-clone-object-not-found-is-about-your-check.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785768291147-shallow-clone-object-not-found-is-about-your-check.md`_
