@@ -75,6 +75,15 @@ export interface ContainerConfig {
 const DEFAULT_COST_CAP_T2_USD = 100;
 
 /**
+ * Absolute floor for the auto-sourced cap (USD). A brand-new agent group (or one
+ * with no priced sessions in the window) has no per-group and possibly no fleet
+ * p90 — without a floor its cap could resolve to ~$0 and escalate on the first
+ * turn. The floor guarantees every group escalates somewhere sane. Not applied to
+ * an explicit NANOCLAW_COST_T2_USD operator override (that wins outright).
+ */
+const MIN_COST_CAP_T2_USD = 10;
+
+/**
  * Resolve the per-session cost cap (USD) materialized into every group's
  * container.json (NanoClaw #1 cost cap v2).
  *
@@ -94,21 +103,27 @@ export function resolveCostCapT2Usd(groupFolder?: string): number {
   const env = Number(process.env.NANOCLAW_COST_T2_USD);
   if (Number.isFinite(env) && env > 0) return env;
 
+  let cap = DEFAULT_COST_CAP_T2_USD;
   try {
     const parsed = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'cost-thresholds.json'), 'utf8')) as {
       p90Usd?: unknown;
       perGroupP90Usd?: Record<string, unknown>;
     };
-    if (groupFolder && parsed.perGroupP90Usd && typeof parsed.perGroupP90Usd === 'object') {
-      const g = Number(parsed.perGroupP90Usd[groupFolder]);
-      if (Number.isFinite(g) && g > 0) return g;
+    const g =
+      groupFolder && parsed.perGroupP90Usd && typeof parsed.perGroupP90Usd === 'object'
+        ? Number(parsed.perGroupP90Usd[groupFolder])
+        : NaN;
+    if (Number.isFinite(g) && g > 0) {
+      cap = g;
+    } else {
+      const p90 = Number(parsed.p90Usd);
+      if (Number.isFinite(p90) && p90 > 0) cap = p90;
     }
-    const p90 = Number(parsed.p90Usd);
-    if (Number.isFinite(p90) && p90 > 0) return p90;
   } catch {
     // Fail-soft — missing/corrupt thresholds file falls through to the default.
   }
-  return DEFAULT_COST_CAP_T2_USD;
+  // Floor the auto-sourced value so a new/zero-p90 group never caps near $0.
+  return Math.max(MIN_COST_CAP_T2_USD, cap);
 }
 
 /**

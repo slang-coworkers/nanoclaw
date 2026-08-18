@@ -116,6 +116,12 @@ let costCeilingUsd = 0;
 // One-shot dedup for the immortal ceiling re-escalation (in-memory: a respawn
 // re-alerting a still-over-ceiling immortal session is acceptable and rare).
 let costCeilingEscalated = false;
+// Set true when a non-immortal session crosses the ceiling mid-turn. The event
+// loop reads it right after recordTurnCost and ends the IN-FLIGHT stream, so the
+// hard stop is "no more tokens" (not merely "no new messages next poll"). Reset
+// only on a genuine session reset (resetCostForNewSession) — a 'continue' cannot
+// clear it, mirroring the absolute ceiling.
+let costCeilingHardStop = false;
 
 /** Current UTC day as "YYYY-MM-DD" — the daily-window bucket key. */
 function utcDayKey(): string {
@@ -193,6 +199,7 @@ function resetCostForNewSession(): void {
   costEscalatedAt = undefined;
   costStopRequested = false;
   costCeilingEscalated = false;
+  costCeilingHardStop = false;
   costDecision = undefined;
   costDecidedAt = undefined;
   persistCostCap();
@@ -246,6 +253,11 @@ function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void 
       costDayKey = today;
       costSpentUsd = 0;
       costEscalatedAt = undefined;
+      // Re-arm the immortal ceiling re-escalation for the new day — otherwise a
+      // day-1 crossing latches it forever and every later day's ceiling breach
+      // goes silent, killing the only visibility signal for a group class we
+      // deliberately never block.
+      costCeilingEscalated = false;
       // New day → back to the p90/day allotment; a prior day's 'continue' raise
       // does not carry over (the bound is per-day).
       costCapUsd = costAllotmentUsd;
@@ -278,23 +290,34 @@ function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void 
   // One-shot soft escalation on first crossing of the cap. Dedupe via
   // escalatedAt so a warm session that keeps spending only escalates once per
   // allotment (a 'continue' override clears escalatedAt and raises the cap).
-  if (costSpentUsd >= costCapUsd && !costEscalatedAt) {
-    costEscalatedAt = new Date().toISOString();
-    emitCostEscalation();
+  // Tier-2 hard ceiling takes precedence over the Tier-1 escalation for this turn:
+  // one large turn can cross both, so fire ONE notification (the ceiling one)
+  // rather than two near-identical payloads.
+  const crossedCeiling = costCeilingUsd > 0 && costSpentUsd >= costCeilingUsd;
+  let firedCeiling = false;
+  if (crossedCeiling) {
+    if (!costImmortal) {
+      // HARD STOP: signal the event loop to end THIS in-flight turn (no more
+      // tokens), and set the quiesce marker for subsequent polls.
+      costCeilingHardStop = true;
+      if (!costStopRequested) {
+        costStopRequested = true;
+        emitCostEscalation('ceiling');
+        firedCeiling = true;
+      }
+    } else if (!costCeilingEscalated) {
+      // Immortal is never blocked — re-escalate once per day for visibility.
+      costCeilingEscalated = true;
+      emitCostEscalation('ceiling');
+      firedCeiling = true;
+    }
   }
 
-  // Tier-2 hard ceiling. Non-immortal → HARD STOP: set the quiesce marker so the
-  // loop takes no new work, and fire one escalation on the stop transition.
-  // Immortal → NEVER blocked; re-escalate once for visibility so a human can fund
-  // it (this is what surfaces, rather than silently blocks, a runaway orchestrator).
-  if (costCeilingUsd > 0 && costSpentUsd >= costCeilingUsd) {
-    if (!costImmortal && !costStopRequested) {
-      costStopRequested = true;
-      emitCostEscalation();
-    } else if (costImmortal && !costCeilingEscalated) {
-      costCeilingEscalated = true;
-      emitCostEscalation();
-    }
+  // Tier-1 soft escalation on first cap crossing. Mark escalatedAt for dedup even
+  // when the ceiling already fired, but skip the second notification.
+  if (costSpentUsd >= costCapUsd && !costEscalatedAt) {
+    costEscalatedAt = new Date().toISOString();
+    if (!firedCeiling) emitCostEscalation('cap');
   }
   persistCostCap();
 }
@@ -305,23 +328,30 @@ function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void 
  * is the ONLY signal — the runner cannot block on a reply; the human decision
  * returns asynchronously as a `cost_override` inbound row.
  */
-function emitCostEscalation(): void {
+function emitCostEscalation(reason: 'cap' | 'ceiling'): void {
   const sessionId = process.env.NANOCLAW_SESSION_ID || '';
   writeMessageOut({
     id: generateId(),
     kind: 'system',
     content: JSON.stringify({
       action: 'cost_escalation',
+      // 'cap' = Tier-1 soft escalation; 'ceiling' = Tier-2 (hard stop for
+      // non-immortal, visibility-only for immortal). Lets the human tell a
+      // "please decide" from a "this was hard-stopped / is running away".
+      reason,
       sessionId,
       spentUsd: Number(costSpentUsd.toFixed(4)),
       capUsd: Number(costCapUsd.toFixed(4)),
+      ...(costCeilingUsd > 0 ? { ceilingUsd: Number(costCeilingUsd.toFixed(4)) } : {}),
       immortal: costImmortal,
       window: costWindow,
     }),
   });
   log(
-    `Cost cap escalation: spent=$${costSpentUsd.toFixed(2)} >= cap=$${costCapUsd.toFixed(2)} ` +
-      `(immortal=${costImmortal}, window=${costWindow})`,
+    `Cost cap escalation (${reason}): spent=$${costSpentUsd.toFixed(2)} ` +
+      `cap=$${costCapUsd.toFixed(2)}` +
+      (costCeilingUsd > 0 ? ` ceiling=$${costCeilingUsd.toFixed(2)}` : '') +
+      ` (immortal=${costImmortal}, window=${costWindow})`,
   );
 }
 
@@ -342,6 +372,22 @@ function applyCostOverride(msg: MessageInRow): void {
   }
   const now = new Date().toISOString();
   if (decision === 'continue') {
+    // A Tier-2 ceiling hard stop is ABSOLUTE for non-immortal groups: Continue
+    // cannot buy past it (that is the whole point of the ceiling). Only a new
+    // session / /clear resets spend below it. Record the decision for the UI but
+    // do NOT clear the stop or raise the cap — otherwise gate (runs) and status
+    // (still 'stopped' by the stateless ceiling check) would disagree and each
+    // press would silently buy one more turn.
+    if (!costImmortal && costCeilingUsd > 0 && costSpentUsd >= costCeilingUsd) {
+      costDecision = 'continue';
+      costDecidedAt = now;
+      persistCostCap();
+      log(
+        `cost_override continue IGNORED — spend $${costSpentUsd.toFixed(2)} is at/over the ` +
+          `$${costCeilingUsd.toFixed(2)} hard ceiling; /clear to reset`,
+      );
+      return;
+    }
     costStopRequested = false;
     costEscalatedAt = undefined;
     costCapUsd += costAllotmentUsd;
@@ -1354,7 +1400,22 @@ export async function processQuery(
 
       // Cost cap (NanoClaw #1): reprice each turn's usage, accrue lifetime
       // spend, persist, and fire the one-shot soft escalation on cap crossing.
-      if (event.type === 'usage') recordTurnCost(event);
+      if (event.type === 'usage') {
+        recordTurnCost(event);
+        // Tier-2 ceiling: end the IN-FLIGHT stream immediately (no more tokens),
+        // mirroring the mid-query 'stop' override — not merely block the next poll.
+        // Without this a single runaway turn (the case the ceiling exists for)
+        // runs to completion unbounded.
+        if (costCeilingHardStop) {
+          log(
+            `Cost ceiling $${costCeilingUsd.toFixed(2)} reached mid-turn — ending stream to ` +
+              `hard-stop (spent=$${costSpentUsd.toFixed(2)})`,
+          );
+          endedForCommand = true;
+          query.end();
+          break;
+        }
+      }
 
       if (event.type === 'init') {
         queryContinuation = event.continuation;

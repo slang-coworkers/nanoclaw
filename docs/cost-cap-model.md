@@ -36,5 +36,11 @@ Cost is role-dependent, so a single number can't fit all. Each group's cap = **i
 - **Ceiling:** operator-set in `.env` (`NANOCLAW_COST_T2_CEILING_USD`).
 - **Live state:** `outbound.db` → `session_state.cost_cap` = `{ capUsd, spentUsd, status, immortal, window, decision }`; the dashboard **Sessions** tab renders spend / cap / status with Continue / Stop.
 
+## Floors & caveats
+- **$10 minimum.** The auto-sourced cap is floored at **$10** — a brand-new group (no per-group and maybe no fleet p90 yet) still escalates somewhere sane, never at ~$0. An explicit `NANOCLAW_COST_T2_USD` override bypasses the floor.
+- **The ceiling stops the in-flight turn**, not just the next message: on crossing it the runner ends the active stream immediately (no more tokens). **Continue cannot buy past the ceiling** for non-immortal groups — only a new session / `/clear` resets spend below it.
+- **Immortal Tier-1 is a loose visibility threshold, not a bound.** Its cap is the per-*session* p90 applied over a per-*day* window, so it's approximate — deliberately, since immortal is never hard-stopped. The human (funding via Continue) is the real bound.
+- **Turning the ceiling off doesn't auto-resume** already-stopped sessions — they clear via Continue / `/clear`, consistent with the reversible model.
+
 ## One line
 > Every session is capped at **its role's own recent p90** (escalate to a human there), under a hard **$150 ceiling** that stops runaway — except the orchestrator, which only ever escalates and waits for a human to fund it.
