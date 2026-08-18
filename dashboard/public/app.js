@@ -1071,21 +1071,28 @@ function regressionQualityHtml(rq) {
 
 // Table of nv-slang-bot's per-repo commits / additions / deletions, from the
 // /api/bot-contributions snapshot. Shown under the issue funnel.
-// Metric is MERGED PRs by the App bot (app/nv-slang-bot) since bc.since — see
+// Metric is MERGED PRs by the App bot (app/nv-slang-bot) since bc.since, plus
+// real code volume (commits/additions/deletions summed from each merged PR's
+// diff, and the first/last merge date as the active range). See
 // scripts/bot-contributions.ts for why PRs, not stats/contributors commits
 // (squash-merges collapse commit attribution → single digits).
 function botContributionsHtml(bc) {
   if (!bc || !Array.isArray(bc.repos)) return '';
-  const t = bc.totals || { mergedPRs: 0, totalPRs: 0 };
-  // Back-compat: older snapshots exposed `commits`; new ones use mergedPRs/totalPRs.
+  const t = bc.totals || {};
+  // Back-compat: pre-fix snapshots had only `commits`; new ones add mergedPRs/totalPRs.
   const merged = (o) => Number((o.mergedPRs != null ? o.mergedPRs : o.commits) || 0);
   const total = (o) => Number((o.totalPRs != null ? o.totalPRs : merged(o)) || 0);
+  const num = (v) => Number(v || 0);
   const rows = bc.repos
     .map(
       (r) => `<tr>
         <td style="padding:3px 10px 3px 0"><code>${esc(r.repo)}</code></td>
         <td style="text-align:right;padding:3px 10px;font-weight:600">${fmtNum(merged(r))}</td>
         <td style="text-align:right;padding:3px 10px;color:var(--text-muted)">${fmtNum(total(r))}</td>
+        <td style="text-align:right;padding:3px 10px">${fmtNum(num(r.commits))}</td>
+        <td style="text-align:right;padding:3px 10px;color:#3fb950">+${fmtNum(num(r.additions))}</td>
+        <td style="text-align:right;padding:3px 10px;color:#f85149">−${fmtNum(num(r.deletions))}</td>
+        <td style="text-align:right;padding:3px 10px;color:var(--text-muted);font-size:10px">${r.firstWeek ? `${esc(r.firstWeek)} → ${esc(r.lastWeek)}` : r.error ? esc(r.error) : '—'}</td>
       </tr>`,
     )
     .join('');
@@ -1096,17 +1103,25 @@ function botContributionsHtml(bc) {
         <span style="font-size:10px;color:var(--text-muted)">merged PRs${since}${bc.generatedAt ? ` · snapshot: ${formatTime(bc.generatedAt)}` : ''}</span>
         <button data-action="refresh-botc" class="admin-action-btn" style="margin-left:auto;font-size:10px;padding:1px 8px">Refresh</button>
       </div>
-      <table style="border-collapse:collapse;font-size:12px;width:100%;max-width:420px">
+      <table style="border-collapse:collapse;font-size:12px;width:100%;max-width:760px">
         <thead><tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase">
           <th style="text-align:left;padding:3px 10px 3px 0">Repo</th>
           <th style="text-align:right;padding:3px 10px">Merged PRs</th>
           <th style="text-align:right;padding:3px 10px">Total PRs</th>
+          <th style="text-align:right;padding:3px 10px">Commits</th>
+          <th style="text-align:right;padding:3px 10px">Additions</th>
+          <th style="text-align:right;padding:3px 10px">Deletions</th>
+          <th style="text-align:right;padding:3px 10px">Active range</th>
         </tr></thead>
         <tbody>${rows}
           <tr style="border-top:2px solid var(--border);font-weight:700">
             <td style="padding:4px 10px 4px 0">Total</td>
             <td style="text-align:right;padding:4px 10px">${fmtNum(merged(t))}</td>
             <td style="text-align:right;padding:4px 10px;color:var(--text-muted)">${fmtNum(total(t))}</td>
+            <td style="text-align:right;padding:4px 10px">${fmtNum(num(t.commits))}</td>
+            <td style="text-align:right;padding:4px 10px;color:#3fb950">+${fmtNum(num(t.additions))}</td>
+            <td style="text-align:right;padding:4px 10px;color:#f85149">−${fmtNum(num(t.deletions))}</td>
+            <td></td>
           </tr>
         </tbody>
       </table>
