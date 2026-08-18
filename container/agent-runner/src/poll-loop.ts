@@ -109,6 +109,13 @@ let costDecidedAt: string | undefined;
 // Quiesce marker: a 'stop' override was applied — take no NEW work. Never set
 // for immortal groups.
 let costStopRequested = false;
+// Tier-2 hard ceiling (USD; 0 = disabled). A NON-immortal session that reaches
+// it hard-stops (quiesce, no more work) regardless of Tier-1 continues; an
+// immortal one is never blocked — the ceiling only re-escalates for visibility.
+let costCeilingUsd = 0;
+// One-shot dedup for the immortal ceiling re-escalation (in-memory: a respawn
+// re-alerting a still-over-ceiling immortal session is acceptable and rare).
+let costCeilingEscalated = false;
 
 /** Current UTC day as "YYYY-MM-DD" — the daily-window bucket key. */
 function utcDayKey(): string {
@@ -141,6 +148,7 @@ function initCostTracking(providerName: string): void {
     return;
   }
   costAllotmentUsd = cfg.costCapT2Usd && cfg.costCapT2Usd > 0 ? cfg.costCapT2Usd : 0;
+  costCeilingUsd = cfg.costCeilingT2Usd && cfg.costCeilingT2Usd > 0 ? cfg.costCeilingT2Usd : 0;
   costImmortal = cfg.immortal === true;
   costWindow = costImmortal ? 'daily' : 'lifetime';
   costEnabled = costAllotmentUsd > 0 && providerName === 'claude';
@@ -184,6 +192,7 @@ function resetCostForNewSession(): void {
   costCapUsd = costAllotmentUsd;
   costEscalatedAt = undefined;
   costStopRequested = false;
+  costCeilingEscalated = false;
   costDecision = undefined;
   costDecidedAt = undefined;
   persistCostCap();
@@ -191,6 +200,10 @@ function resetCostForNewSession(): void {
 
 /** Current status band from spent/cap/escalation/stop state. */
 function computeCostStatus(): CostCapStatus {
+  // Tier-2 hard ceiling: a non-immortal session past the ceiling reads 'stopped'
+  // even without an explicit 'stop' decision, and survives a respawn statelessly
+  // (the check is on spend, not a persisted flag). Immortal is never hard-stopped.
+  if (!costImmortal && costCeilingUsd > 0 && costSpentUsd >= costCeilingUsd) return 'stopped';
   if (costStopRequested && !costImmortal) return 'stopped';
   if (costSpentUsd >= costCapUsd) return 'escalated';
   if (costSpentUsd >= WARN_FRACTION * costCapUsd) return 'warn';
@@ -268,6 +281,20 @@ function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void 
   if (costSpentUsd >= costCapUsd && !costEscalatedAt) {
     costEscalatedAt = new Date().toISOString();
     emitCostEscalation();
+  }
+
+  // Tier-2 hard ceiling. Non-immortal → HARD STOP: set the quiesce marker so the
+  // loop takes no new work, and fire one escalation on the stop transition.
+  // Immortal → NEVER blocked; re-escalate once for visibility so a human can fund
+  // it (this is what surfaces, rather than silently blocks, a runaway orchestrator).
+  if (costCeilingUsd > 0 && costSpentUsd >= costCeilingUsd) {
+    if (!costImmortal && !costStopRequested) {
+      costStopRequested = true;
+      emitCostEscalation();
+    } else if (costImmortal && !costCeilingEscalated) {
+      costCeilingEscalated = true;
+      emitCostEscalation();
+    }
   }
   persistCostCap();
 }
