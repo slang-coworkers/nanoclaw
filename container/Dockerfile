@@ -90,6 +90,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
        fi \
     && rm -rf /var/lib/apt/lists/*
 
+# LLVM apt repo — versioned clang-format-NN (slang CI pins clang-format-17) is
+# not in Debian bookworm default repos. Add official apt.llvm.org so per-group
+# container_config apt installs (packages_apt) resolve it.
+RUN curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key -o /usr/share/keyrings/apt-llvm.asc \
+    && echo "deb [signed-by=/usr/share/keyrings/apt-llvm.asc] http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-17 main" > /etc/apt/sources.list.d/llvm-toolchain-17.list
+
 # GPU packages: CUDA toolkit, Vulkan, X11/GL (only when ENABLE_GPU=1)
 # libglvnd0 is load-bearing for Vulkan: the nvidia container runtime injects
 # the driver (nvidia_icd.json + libGLX_nvidia.so.0) at runtime, but that ICD's
