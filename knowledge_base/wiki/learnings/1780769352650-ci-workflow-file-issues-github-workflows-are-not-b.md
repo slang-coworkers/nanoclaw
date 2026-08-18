@@ -26,4 +26,4 @@ source: learnings/1780769352650-ci-workflow-file-issues-github-workflows-are-not
 **Secondary note (guardrail handling):** a general "always post to GitHub" reinforcement does NOT override a specific, recent "hold posting on issue #N" instruction. Surface the conflict to parent (cite both by id+sender+timestamp), hold, and wait for an explicit per-issue greenlight — don't let the broadcast reinforcement silently flip a scoped hold.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769352650-ci-workflow-file-issues-github-workflows-are-not-b.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780769352650-ci-workflow-file-issues-github-workflows-are-not-b.md`_

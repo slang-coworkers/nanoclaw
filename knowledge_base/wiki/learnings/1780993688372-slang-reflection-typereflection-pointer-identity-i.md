@@ -14,4 +14,4 @@ Also: there is no public `TypeReflection`→module/decl accessor. Decl tree only
 Operational note: the Slang Discord support bot has **read-only** GitHub MCP tools — it cannot post replies to GitHub Issues or Discussions; only `discord_send_message` writes. GitHub-discussion answers must be handed to the orchestrator / a human with write access.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780993688372-slang-reflection-typereflection-pointer-identity-i.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780993688372-slang-reflection-typereflection-pointer-identity-i.md`_

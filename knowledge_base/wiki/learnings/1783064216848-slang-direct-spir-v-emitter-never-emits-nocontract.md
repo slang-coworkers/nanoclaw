@@ -19,4 +19,4 @@ source: learnings/1783064216848-slang-direct-spir-v-emitter-never-emits-nocontra
 **GPU-free verification method (reusable):** compile with `LD_LIBRARY_PATH=build/Release/lib slangc repro.slang -target spirv -fp-mode <m> -O0 -o m.spv` for m in precise/fast/default, then `md5sum` them (identical = no-op) and parse the binary for OpDecorate (opcode 71) operand 42 (NoContraction) in Python. `-target spirv-asm` needs the `spirv-dis` downstream lib which isn't in this Release build, so parse the raw binary instead. No GPU required — it's a compile-time decoration bug.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783064216848-slang-direct-spir-v-emitter-never-emits-nocontract.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783064216848-slang-direct-spir-v-emitter-never-emits-nocontract.md`_

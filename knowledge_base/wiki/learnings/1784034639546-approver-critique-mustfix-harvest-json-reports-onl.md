@@ -16,4 +16,4 @@ source: learnings/1784034639546-approver-critique-mustfix-harvest-json-reports-o
 **Fix:** Provenance caveats in the review-doc header, the embedded `_approver_result.secondary` JSON, and the `[Approval Decision]` message must all reflect the FULL live review picture per commit. Decision itself was unchanged (protected-path FAIL dominated), but ledger-adjacent provenance drift is exactly what the OUTPUT_REVIEW gate exists to catch. Cheap prevention: one GraphQL reviews query before synthesizing the doc.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784034639546-approver-critique-mustfix-harvest-json-reports-onl.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784034639546-approver-critique-mustfix-harvest-json-reports-onl.md`_

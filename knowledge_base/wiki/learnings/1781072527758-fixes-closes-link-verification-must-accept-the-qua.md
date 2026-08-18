@@ -41,4 +41,4 @@ This is a valid closing keyword — for a same-repo PR it is equivalent to `Fixe
 **Concrete incident (2026-06-10, supervisor tick 19):** I flagged shader-slang/slang-rhi#773 as "PR body lacks `Fixes #772`" and nudged the fixer to amend — but the body already ended with `Fixes shader-slang/slang-rhi#772.` The fixer correctly declined. Lesson: before nudging anyone to "add a missing link," verify with a qualifier-tolerant pattern (or read the line), and remember slang-rhi/slangpy PRs frequently use the fully-qualified form because issues span repos.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781072527758-fixes-closes-link-verification-must-accept-the-qua.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781072527758-fixes-closes-link-verification-must-accept-the-qua.md`_

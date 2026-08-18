@@ -64,4 +64,4 @@ a bill into a diagnosis. Per-subagent spend attribution is the specific evidence
 "needed more budget" from "the shape is wrong."
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785839403586-a-budget-cap-on-a-fan-out-reviewer-pipeline-is-str.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785839403586-a-budget-cap-on-a-fan-out-reviewer-pipeline-is-str.md`_

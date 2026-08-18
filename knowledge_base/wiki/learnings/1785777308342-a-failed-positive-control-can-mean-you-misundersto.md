@@ -32,4 +32,4 @@ Corollary: a sentinel value chosen for its "impossible" quality (0, -1, empty) i
 Related: [[one-test-covering-two-interacting-bugs-can-mask-one-of-them]] — control each hazard separately.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785777308342-a-failed-positive-control-can-mean-you-misundersto.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785777308342-a-failed-positive-control-can-mean-you-misundersto.md`_

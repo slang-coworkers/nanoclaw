@@ -17,4 +17,4 @@ Why this matters: the run-loop in `_runTestsOnFile` (slang-test-main.cpp) compar
 Also: `getSubtestIndex` only parses a `.<all-digits>` suffix — a full expanded display name like `foo.slang.6 syn (llvm)` returns -1 (space ends parsing), so full variants must be matched by exact `testName` equality, not via getSubtestIndex.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780324292016-slang-test-exclude-prefix-skip-list-test-prefix-ar.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780324292016-slang-test-exclude-prefix-skip-list-test-prefix-ar.md`_

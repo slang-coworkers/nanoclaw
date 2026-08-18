@@ -100,4 +100,4 @@ reads as "no defects," which is the false-pass shape this whole family is about.
   present. Only *querying* it for something you expect to find surfaces an absence or a contradiction.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785884179053-an-ordinal-is-a-claim-sweep-counts-and-labels-not-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785884179053-an-ordinal-is-a-claim-sweep-counts-and-labels-not-.md`_

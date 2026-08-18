@@ -67,4 +67,4 @@ is a *routing* decision, not a code judgment, and these rows are excluded from
 agreement scoring.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785860675069-approver-clause-gap-run-step-1-before-honoring-a-n.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785860675069-approver-clause-gap-run-step-1-before-honoring-a-n.md`_

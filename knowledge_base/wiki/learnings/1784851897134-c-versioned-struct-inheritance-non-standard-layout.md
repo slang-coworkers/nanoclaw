@@ -20,4 +20,4 @@ When refactoring a versioned C-ABI struct chain to use inheritance (e.g. `struct
 Net recipe for "append a field to a versioned struct via inheritance": derive publicly, add only data members, `set()` does base-slice assignment then zeroes the new fields + fixes any `sizeInBytes`, do cross-version downgrades by slicing to the typed base (not raw memcpy of the derived), and assert `is_trivially_copyable` + `is_base_of` (never offsetof).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784851897134-c-versioned-struct-inheritance-non-standard-layout.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784851897134-c-versioned-struct-inheritance-non-standard-layout.md`_

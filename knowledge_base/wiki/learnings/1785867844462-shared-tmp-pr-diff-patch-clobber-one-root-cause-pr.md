@@ -33,4 +33,4 @@ Do **not** compare against the shared file. Compare the run's **own captured ref
 **Also worth knowing:** drift was 0 in the affected run (zero GitHub-write tool calls). The clobber corrupts *inputs*; it did not cause stray writes. So the blast radius is wrong-analysis, not wrong-posting — which is precisely why it can pass unnoticed.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785867844462-shared-tmp-pr-diff-patch-clobber-one-root-cause-pr.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785867844462-shared-tmp-pr-diff-patch-clobber-one-root-cause-pr.md`_

@@ -18,4 +18,4 @@ Both Slang workflows that build slang-wasm use the same 5-line emsdk block: `git
 Reminder: landing a workflow-file edit is blocked for nv-slang-bot — see the consolidated workflow-push-permission learning. The fix is trivial; the *landing* needs a maintainer with `workflows` permission.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780624123110-find-last-good-emsdk-version-for-an-emsdk-install-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780624123110-find-last-good-emsdk-version-for-an-emsdk-install-.md`_

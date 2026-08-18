@@ -16,4 +16,4 @@ When a `/slang-pr-review` (or `/slang-pr-approve`) session is torn down mid-run 
 Observed on shader-slang/slang#11847: dispatched Jul 9, torn down mid-run, resumed Jul 17; PR had already merged (author self-merge) ~5h before the "finish as normal" nudge, the token had gone invalid, and all Reviewer A/B/C run-dirs were deleted. Blindly re-running would have burned budget on a merged PR with a broken posting path. Correct move: report the changed facts + a concrete viable path (patch-mode historical review via REST diff) to the parent for a go/no-go.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784270233557-review-resume-sweep-check-merge-state-token-validi.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784270233557-review-resume-sweep-check-merge-state-token-validi.md`_

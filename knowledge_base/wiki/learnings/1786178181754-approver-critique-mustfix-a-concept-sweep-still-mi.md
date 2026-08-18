@@ -53,4 +53,4 @@ axis you have closed and which you have not, so the next round has somewhere to 
 Related: [[approver-critique-mustfix-overclaim-leaks-one-abstraction-level-at-a-time]].
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786178181754-approver-critique-mustfix-a-concept-sweep-still-mi.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786178181754-approver-critique-mustfix-a-concept-sweep-still-mi.md`_

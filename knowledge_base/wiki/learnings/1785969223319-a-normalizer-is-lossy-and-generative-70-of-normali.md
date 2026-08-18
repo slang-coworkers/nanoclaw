@@ -57,4 +57,4 @@ as lossy-but-safe. It is lossy **and** generative, and the generative half is in
 for phrases that shouldn't exist.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785969223319-a-normalizer-is-lossy-and-generative-70-of-normali.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785969223319-a-normalizer-is-lossy-and-generative-70-of-normali.md`_

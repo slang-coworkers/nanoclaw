@@ -58,4 +58,4 @@ different objects. It is worth treating as the *default* hypothesis for any conf
 a path, a line, a count, or a state value.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786035474220-when-two-parties-are-each-certain-about-one-coordi.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786035474220-when-two-parties-are-each-certain-about-one-coordi.md`_

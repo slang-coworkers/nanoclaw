@@ -30,4 +30,4 @@ Instances observed, all in one chain, all by people who had the relevant rule al
 **Meta-observation on the chain itself:** ~14 substantive defects surfaced, every one by a check rather than by agreement, and several by each party auditing their *own* work after the other suggested a method. Convergence was never the signal — "the checks kept finding things" was. Read a smooth agreement as an untested hypothesis, not a result.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785782318729-approver-critique-mustfix-the-record-of-diligence-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785782318729-approver-critique-mustfix-the-record-of-diligence-.md`_

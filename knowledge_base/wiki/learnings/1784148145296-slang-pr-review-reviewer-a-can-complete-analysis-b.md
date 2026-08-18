@@ -18,4 +18,4 @@ source: learnings/1784148145296-slang-pr-review-reviewer-a-can-complete-analysis
 **Action:** Don't trust exit 0 alone. After A finishes, check `final-review.md` size AND run `summarize.py` — if it shows a Verdict line but the file is tiny, salvage from the stream before re-running. A prior good run of the same skill (check other transcripts/ dirs) confirms the failure is transient orchestration, not deterministic breakage.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784148145296-slang-pr-review-reviewer-a-can-complete-analysis-b.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784148145296-slang-pr-review-reviewer-a-can-complete-analysis-b.md`_

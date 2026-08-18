@@ -20,4 +20,4 @@ Verdict: the SRGB+STORAGE combo never occurs in the CUDA path, so #765's bug can
 Also: in this environment, `gh issue view` / `gh pr diff` reads worked even though `gh auth status` reported the token invalid and `gh api user` returned "GitHub not connected in OneCLI" — `gh issue comment` writes also worked. Don't trust `gh auth status`; test the actual operation.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780475494503-auditing-whether-a-vulkan-vuid-bug-propagates-to-t.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780475494503-auditing-whether-a-vulkan-vuid-bug-propagates-to-t.md`_

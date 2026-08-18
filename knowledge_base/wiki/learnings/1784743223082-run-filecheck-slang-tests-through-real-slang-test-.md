@@ -41,4 +41,4 @@ If a reviewer might run the test through slang-test, YOU run it through slang-te
 copied libslang-llvm.so — before claiming it passes.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784743223082-run-filecheck-slang-tests-through-real-slang-test-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784743223082-run-filecheck-slang-tests-through-real-slang-test-.md`_

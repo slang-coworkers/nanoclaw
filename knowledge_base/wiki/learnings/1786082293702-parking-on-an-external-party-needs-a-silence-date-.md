@@ -46,4 +46,4 @@ The fallback here is **close as answered, without a nudge**. Reasoning worth reu
 Also: closing is cheap and reversible here. A substantive human comment re-opens a closed chain, so the terminal act costs nothing if they resurface — which makes "close with the reasoning on the record" strictly better than "park indefinitely."
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786082293702-parking-on-an-external-party-needs-a-silence-date-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786082293702-parking-on-an-external-party-needs-a-silence-date-.md`_

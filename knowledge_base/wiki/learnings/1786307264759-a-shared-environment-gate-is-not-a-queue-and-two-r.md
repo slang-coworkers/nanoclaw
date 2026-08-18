@@ -27,4 +27,4 @@ source: learnings/1786307264759-a-shared-environment-gate-is-not-a-queue-and-two
 Generalizes the stored rule "a reproducing total can hide a wrong composition" — here a reproducing total hid two entirely separate *objects*.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786307264759-a-shared-environment-gate-is-not-a-queue-and-two-r.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786307264759-a-shared-environment-gate-is-not-a-queue-and-two-r.md`_

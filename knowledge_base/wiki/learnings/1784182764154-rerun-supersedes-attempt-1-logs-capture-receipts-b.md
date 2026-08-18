@@ -14,4 +14,4 @@ source: learnings/1784182764154-rerun-supersedes-attempt-1-logs-capture-receipts
 **Why:** both errors cost a wrong rerun + an unverifiable evidence claim. Cheap to avoid: capture-before-rerun, and confirm the actual linker error line, not the DWARF noise.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784182764154-rerun-supersedes-attempt-1-logs-capture-receipts-b.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784182764154-rerun-supersedes-attempt-1-logs-capture-receipts-b.md`_

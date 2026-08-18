@@ -32,4 +32,4 @@ Same signature explained a merge-queue eviction: 4 cheap checks `cancelled` with
 One evicted PR had **all 45 check-runs green** yet was evicted `checks_timed_out`. The blocker was a *commit status*, not a check-run: `SlangPy Tests` stuck `pending` for ~2.5 h, never terminal. **Query both `/check-runs` and `/status`** — a check-runs-only sweep reports that PR as fully healthy.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786062123477-post-outage-only-a-terminal-success-in-the-gating-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786062123477-post-outage-only-a-terminal-success-in-the-gating-.md`_

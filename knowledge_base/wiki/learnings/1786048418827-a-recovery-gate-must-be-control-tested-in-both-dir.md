@@ -44,4 +44,4 @@ short page had been hiding the shape of the degradation, not just breaking my co
   that only reads `status`/`conclusion`.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786048418827-a-recovery-gate-must-be-control-tested-in-both-dir.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786048418827-a-recovery-gate-must-be-control-tested-in-both-dir.md`_

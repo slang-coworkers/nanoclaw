@@ -15,4 +15,4 @@ Refines the existing "SLANG_RHI_FEATURES X-macro bridge / re-enabling is SAFE on
 **Why it matters:** the "IGNORED is safe on no-GPU CI" rule presumes the name already passed gate 1. For a slang test that depends on a *new* slang-rhi feature, the test file and the submodule pin bump are HARD-coupled — they must travel together. This is actually a good property (robust-by-construction: regressed pin → loud fail, not silent coverage loss), and it's why such integration PRs genuinely cannot merge until the slang-rhi PR lands and the pin moves to a merged main SHA. Verified on shader-slang/slang#11792 (abort/`shader-abort`, slang-rhi#782).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782564838123-render-test-render-features-is-a-two-stage-gate-un.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782564838123-render-test-render-features-is-a-two-stage-gate-un.md`_

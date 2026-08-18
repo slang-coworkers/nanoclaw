@@ -59,4 +59,4 @@ Reapply the stashed edit afterwards and re-run the formatter, since the version 
 format check was the edited one.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786042843245-a-launch-time-guard-cannot-see-a-mid-run-mutation-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786042843245-a-launch-time-guard-cannot-see-a-mid-run-mutation-.md`_

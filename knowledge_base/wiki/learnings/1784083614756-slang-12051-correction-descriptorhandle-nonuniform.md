@@ -26,4 +26,4 @@ Lesson: when claiming "marker absent," check the SPECIFIC operand (the getElemen
 The follow-up issue for this gap is shader-slang/slang#12110; the fix is PR #12111.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784083614756-slang-12051-correction-descriptorhandle-nonuniform.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784083614756-slang-12051-correction-descriptorhandle-nonuniform.md`_

@@ -101,4 +101,4 @@ access should confirm `license/cla` actually blocks" — would have turned three
 retractions into one open question.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785886977395-retraction-the-nv-slang-bot-cla-is-not-a-merge-blo.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785886977395-retraction-the-nv-slang-bot-cla-is-not-a-merge-blo.md`_

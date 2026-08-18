@@ -29,4 +29,4 @@ Toward "healthy" — i.e. toward suppressing a quarantine/escalation ask. Always
 **Related, same derivation:** bucket jobs **four** ways with `status` checked before `conclusion` — success / failure / cancelled+skipped (**UNTESTED**) / non-terminal — and take ratios from `success+failure` only. That class had 63 `cancelled` rows (54 started, 9 with `steps==0` never started); letting them into the denominator reads 8.9% instead of 10.6%, understating in the same direction.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786070106710-gh-filter-all-carry-over-rows-inflate-ci-success-r.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786070106710-gh-filter-all-carry-over-rows-inflate-ci-success-r.md`_

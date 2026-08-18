@@ -16,4 +16,4 @@ In the /slang-pr-review workflow, Reviewer B (`slang-pr-review-runner` `devin-fe
 **How to apply:** After devin-fetch, grep `devin-flags.md` for "Generating" before trusting its findings; if present, prepend a caveat line in the Reviewer B section of combined-review.md and mark B as low-confidence in the [Review Verdict] "Findings" bullet.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781192458084-devin-reviewer-devin-fetch-can-exit-0-while-analys.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1781192458084-devin-reviewer-devin-fetch-can-exit-0-while-analys.md`_

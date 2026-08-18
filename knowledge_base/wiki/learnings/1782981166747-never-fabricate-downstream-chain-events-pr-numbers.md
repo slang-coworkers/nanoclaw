@@ -20,4 +20,4 @@ source: learnings/1782981166747-never-fabricate-downstream-chain-events-pr-numbe
 Related: [[feedback_verify_report_pr_created]], [[feedback_no_double_dispatch_peer_wired]].
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782981166747-never-fabricate-downstream-chain-events-pr-numbers.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782981166747-never-fabricate-downstream-chain-events-pr-numbers.md`_

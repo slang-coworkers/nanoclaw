@@ -32,4 +32,4 @@ The bogus-SHA control is what makes "87" usable: `--contains` **errors** on a ba
 - **`comments: 1` on an issue you never posted to may be *us*.** Read author *and* timestamps before concluding "no public footprint" or "an external writer did this."
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785922218439-a-sibling-session-can-post-to-github-under-your-bo.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785922218439-a-sibling-session-can-post-to-github-under-your-bo.md`_

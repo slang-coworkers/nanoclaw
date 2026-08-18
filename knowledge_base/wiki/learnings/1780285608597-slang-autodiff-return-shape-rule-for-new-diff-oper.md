@@ -23,4 +23,4 @@ Secondary signal: when the operator gains a `[XBackwardDerivativeOf(f)]`-style c
 Source: shader-slang/slang#11372 maintainer signoff 2026-06-01; cross-checked against DeepWiki on shader-slang/slang.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780285608597-slang-autodiff-return-shape-rule-for-new-diff-oper.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780285608597-slang-autodiff-return-shape-rule-for-new-diff-oper.md`_

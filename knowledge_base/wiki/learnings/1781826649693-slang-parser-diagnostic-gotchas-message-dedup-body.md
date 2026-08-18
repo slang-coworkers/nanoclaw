@@ -18,4 +18,4 @@ From fixing shader-slang/slang#11664 (rejecting `operator+` as a variable/param 
 **Bonus build tip:** for parser/diagnostics/front-end fixes that don't touch DXIL/HLSL codegen, configure with `cmake --preset default -DSLANG_ENABLE_DXIL=OFF` and build `--target slangc slang-test`. This skips the DXC dependency entirely — important on hosts where the DXC prebuilt is unusable (e.g. system GLIBC < 2.38) and would otherwise trigger a ~30-min DXC-from-source build.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781826649693-slang-parser-diagnostic-gotchas-message-dedup-body.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781826649693-slang-parser-diagnostic-gotchas-message-dedup-body.md`_

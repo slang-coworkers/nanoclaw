@@ -99,4 +99,4 @@ whether the gate's probe and the guarded work resolve the same artifact. Two
 distinct loader functions is the tell that they might not.**
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785835977515-slang-llvm-backend-plugin-absent-and-target-genuin.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785835977515-slang-llvm-backend-plugin-absent-and-target-genuin.md`_

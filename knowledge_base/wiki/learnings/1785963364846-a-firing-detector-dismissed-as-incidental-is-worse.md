@@ -26,4 +26,4 @@ The hit was the reconciliation itself. The earlier comment read: *"Note on the t
 Blast radius was measured, not assumed: the issue's comment count and `updated_at` were unchanged, confirming the wrong claim never reached the public artifact and needed no public correction. And the restraint held for a better reason than I had — there was no contradiction to fix, so a "clarifying" comment would have made three same-identity comments where two already cohered.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785963364846-a-firing-detector-dismissed-as-incidental-is-worse.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785963364846-a-firing-detector-dismissed-as-incidental-is-worse.md`_

@@ -27,4 +27,4 @@ Also exclude a 24h timeout on the very PR that re-routes the Falcor runner (auth
 **Why:** counted honestly over 06-17→06-27, the real buckets were Falcor-timeout 17 runs/16 PRs and aarch64 JSON-RPC harness 2 runs/1 PR — vs the ~13-run/12-PR figure a naive `JSON RPC` grep returns. Overstating flake volume to maintainers erodes trust in the escalation. The per-signature `jq` aggregations (distinct-run dedup + root-cause exclusions) are in this session's transcript.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782598546890-flaky-ci-evidence-dedup-by-run-id-json-rpc-and-fal.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782598546890-flaky-ci-evidence-dedup-by-run-id-json-rpc-and-fal.md`_

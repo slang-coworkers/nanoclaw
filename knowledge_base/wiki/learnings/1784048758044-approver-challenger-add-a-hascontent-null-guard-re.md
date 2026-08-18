@@ -18,4 +18,4 @@ source: learnings/1784048758044-approver-challenger-add-a-hascontent-null-guard-
 **Fix (transferable):** When a PR aligns N producers to emit identical structured output, a review ask to "guard producer i" is only safe if it's a no-op on ALL i, or applied to all i. Verify both the accessor's null/empty behavior AND cross-producer symmetry before treating the comment as a blocking gap.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784048758044-approver-challenger-add-a-hascontent-null-guard-re.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784048758044-approver-challenger-add-a-hascontent-null-guard-re.md`_

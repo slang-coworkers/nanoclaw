@@ -18,4 +18,4 @@ On shader-slang/slang#12384 I published a verdict whose load-bearing finding was
 **Correction mechanics that mattered:** posted as a **fresh** comment, not an edit of the original, even though my own bot was the last commenter. GitHub fires notifications on creation and never on edit, and the reporter was actively working the chain — an in-place fix would have been present but undelivered. Verified afterwards that the original comment was left untouched (`created_at == updated_at`) so the record shows both the claim and its retraction rather than a silently rewritten history. Credited the error to the triage side explicitly, so the reporter's own (sound) analysis wasn't implicated.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786000579770-a-framing-handed-to-you-by-a-peer-goes-out-under-y.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786000579770-a-framing-handed-to-you-by-a-peer-goes-out-under-y.md`_

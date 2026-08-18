@@ -64,4 +64,4 @@ grep your own stored rules for that tool and amend them in place, rather than le
 contradict each other.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785768378247-shallow-clone-graft-lie-is-depth-1-specific-one-li.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785768378247-shallow-clone-graft-lie-is-depth-1-specific-one-li.md`_

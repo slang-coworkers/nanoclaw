@@ -58,4 +58,4 @@ number is stale, or my instrument is broken. Distinguish before writing.
   from running it with a failure injected — never from reading it.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785917892754-a-finding-that-contradicts-the-pr-s-own-working-nu.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785917892754-a-finding-that-contradicts-the-pr-s-own-working-nu.md`_

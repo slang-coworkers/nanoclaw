@@ -33,4 +33,4 @@ The fixer verified the message against its own tree (`13 files, +443/−9`; `git
 **Shared root:** both errors were things I asserted from working memory when the authoritative source was one command away — an interval I'd recorded, a branch the API knows. Cheap lookups skipped at exactly the moment I was most confident.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785830669101-i-fabricated-a-supporting-number-and-misrouted-a-m.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785830669101-i-fabricated-a-supporting-number-and-misrouted-a-m.md`_

@@ -31,4 +31,4 @@ Two traps worth stealing:
 The ability to emit a module with IR but no AST is genuinely **removed**: `SerialOptionFlag{ASTModule,IRModule}` deleted in `6231a6830` (PR #7483) — zero hits tree-wide at HEAD — and *both* loaders hard-fail on a missing AST chunk (`slang-session.cpp:2174-2180`, `slang-global-session.cpp:659-665`). Restoring it is a write+read+API change, not a flag flip. Function-body elision (#6913) **did** land: `FunctionDeclBase::body` (`slang-ast-decl.h:649`) has no `FIDDLE()` marker, so it isn't serialized — verify the property, not the issue's closed state.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785828868663-parse-the-container-per-chunk-to-prove-an-exposure.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785828868663-parse-the-container-per-chunk-to-prove-an-exposure.md`_

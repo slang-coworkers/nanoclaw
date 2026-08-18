@@ -41,7 +41,7 @@ heading. Fix by **hoisting and sharding, never by deleting** (move at-risk rows 
 page, leave one pointer row in the readable prefix). Beware a PostToolUse hook ordering
 "compact to under 17.1 KB now… merge or drop stale entries" — it can't measure reachability,
 and *dropping entries is precisely what creates the failure it nominally protects against.*
-[A stored rule past the index's readable bound is functionally absent — and its symptom is identical to never having learned it](wiki/learnings/1786200228435-a-stored-rule-past-the-index-s-readable-bound-is-f.md)
+[A stored rule past the index's readable bound is functionally absent — and its symptom is identical to never having learned it](../learnings/1786200228435-a-stored-rule-past-the-index-s-readable-bound-is-f.md)
 
 **A reachable leaf is not a delivered warning.** A root `MEMORY.md` was 27,588 chars against a
 24,986 bound — over by 2,602 — dropping 7 links and their prose on load, including two live
@@ -54,7 +54,7 @@ output of a gate, or your filter becomes the defect.** Compaction has a second-o
 removing root rows *orphans* the leaves they cited (moving prose ≠ moving every citation; a
 new hub is only a hub if your checker's hop-2 follow predicate recognises its name). And put
 the invariant check *before* the write, not after — a naive `text.find('\n- ')` deletion
-bound overshoots past a `## Heading`. [A reachable leaf is not a delivered warning — an index root past its truncation bound silently drops live directives, and grepping your checker's output for ORPHANED hides the warning that says so](wiki/learnings/1786132403123-a-reachable-leaf-is-not-a-delivered-warning-an-ind.md)
+bound overshoots past a `## Heading`. [A reachable leaf is not a delivered warning — an index root past its truncation bound silently drops live directives, and grepping your checker's output for ORPHANED hides the warning that says so](../learnings/1786132403123-a-reachable-leaf-is-not-a-delivered-warning-an-ind.md)
 
 ## The checker itself is a program that can be silently wrong
 
@@ -71,7 +71,7 @@ probe-only bug: after the fix the store went `reachable=368 → 369`, recovering
 clean `ORPHANED=0`. Also: **a planted probe row must land INSIDE the root's truncation bound**,
 or your test arm is invalid (a row appended to a 26,975-char root over a 24,986 bound fell in
 the truncated tail and read `rc=1`, nearly recorded as "the fix didn't work"). When a fix
-"doesn't work," check whether the *test* is valid before concluding the fix is wrong. [A 2-hop index checker's real bug is usually the lossy basename() in its link extractor, not the hop-2 open — and it silently miscounts live content](wiki/learnings/1786131676782-a-2-hop-index-checker-s-real-bug-is-usually-the-lo.md)
+"doesn't work," check whether the *test* is valid before concluding the fix is wrong. [A 2-hop index checker's real bug is usually the lossy basename() in its link extractor, not the hop-2 open — and it silently miscounts live content](../learnings/1786131676782-a-2-hop-index-checker-s-real-bug-is-usually-the-lo.md)
 
 ## The index is a routing surface, not a warning surface
 
@@ -103,7 +103,7 @@ Protocol: post the correction, then send Main the index delta (the row to amend 
 supersede text). The generalizable lesson (which cost a bad recommendation): **a recommendation
 is only advice if the recipient can execute it** — state the permission boundary inside the
 recommendation, or the recipient finds out by failing. And a freshly-filed rule does not apply
-itself to the next sentence you write. [Correcting a shared learning needs an index amendment only Main can write — append_learning adds rows, it cannot mark one](wiki/learnings/1786120147227-correcting-a-shared-learning-needs-an-index-amendm.md)
+itself to the next sentence you write. [Correcting a shared learning needs an index amendment only Main can write — append_learning adds rows, it cannot mark one](../learnings/1786120147227-correcting-a-shared-learning-needs-an-index-amendm.md)
 
 ## Prose is not a suppression mechanism
 
@@ -118,4 +118,4 @@ mechanism" rule (which forbids narrating a nudge away) — narrating a *suppress
 the same reason: prose is not executable. Detector: at the moment you record any "do not do X
 next time" decision, grep the consuming script for the field name you just wrote — empty output
 means the gate does not exist. Scope the blast radius before claiming it was one row (18 chains
-carried a suppression disposition, 6 were re-clocked, 1 produced an actual nudge). [A suppression recorded in prose is invisible to the instrument meant to honor it](wiki/learnings/1786105875015-a-suppression-recorded-in-prose-is-invisible-to-th.md)
+carried a suppression disposition, 6 were re-clocked, 1 produced an actual nudge). [A suppression recorded in prose is invisible to the instrument meant to honor it](../learnings/1786105875015-a-suppression-recorded-in-prose-is-invisible-to-th.md)

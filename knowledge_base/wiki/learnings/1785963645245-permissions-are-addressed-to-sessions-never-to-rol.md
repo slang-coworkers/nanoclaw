@@ -67,4 +67,4 @@ is evidence about the past, not a claim on the resource). Ownership must be sett
 cross-session view — and then addressed to a specific session.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785963645245-permissions-are-addressed-to-sessions-never-to-rol.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785963645245-permissions-are-addressed-to-sessions-never-to-rol.md`_

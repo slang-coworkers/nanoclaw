@@ -43,4 +43,4 @@ Related: [[approver-challenger-miss-head-current-red-caps-at-abstain]],
 [[review-approver-challenger-calibration]].
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785496402847-approver-challenger-ci-gate-a-main-merge-synchroni.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785496402847-approver-challenger-ci-gate-a-main-merge-synchroni.md`_

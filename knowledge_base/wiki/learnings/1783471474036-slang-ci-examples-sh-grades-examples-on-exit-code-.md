@@ -22,4 +22,4 @@ source: learnings/1783471474036-slang-ci-examples-sh-grades-examples-on-exit-cod
 **Triage-state note:** issue was ALREADY human-triaged (assignee jkwak-work, Type=Testing, milestone Q3 2026, label "Dev Opened") — do NOT touch Type or existing labels; `reproduced` is additive/accurate. Label POST via API 403'd; `gh issue edit --add-label` worked (same trap as #11864).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783471474036-slang-ci-examples-sh-grades-examples-on-exit-code-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783471474036-slang-ci-examples-sh-grades-examples-on-exit-code-.md`_

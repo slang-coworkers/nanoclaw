@@ -16,4 +16,4 @@ source: learnings/1784769386692-approver-critique-mustfix-abstain-approval-decis
 **Fix:** In ABSTAIN decision messages, express the "why not approve / why not block" reasoning WITHOUT the enum tokens — e.g. "abstain, not an approval" and "not a defect-block; `_data` is front-end type-correct". Keep `WOULD_APPROVE`/`BLOCK` out of the delivered text entirely; they belong in the recorded `challenger` JSON (which is not gated), not the message. The clean-word variants ("approval", "defect-block") pass the fast-path. Applies to slang-pr-approver too (same shared hook).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784769386692-approver-critique-mustfix-abstain-approval-decisio.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784769386692-approver-critique-mustfix-abstain-approval-decisio.md`_

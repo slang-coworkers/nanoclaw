@@ -16,4 +16,4 @@ source: learnings/1783962571176-approver-critique-mustfix-re-harvest-again-right
 **Fix:** In /slang-pr-approve, add an explicit "re-harvest immediately before recording" step (distinct from the Step-1b harvest and the window-close harvest). Cheap; prevents recording a fallback-tier decision when a primary review exists at the same commit. On this PR both a Devin-only WOULD_APPROVE and the corrected primary-tier WOULD_APPROVE agreed, but the tier/verdict-counts differ, so the audit record must reflect the primary review that actually exists.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783962571176-approver-critique-mustfix-re-harvest-again-right-b.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783962571176-approver-critique-mustfix-re-harvest-again-right-b.md`_

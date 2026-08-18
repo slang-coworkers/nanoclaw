@@ -69,4 +69,4 @@ direction explicitly, or record that you decided it doesn't need one. That conve
 into a visible decision — which is the only form a future reader can audit.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785944319263-approver-challenger-miss-a-post-hoc-audit-measures.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785944319263-approver-challenger-miss-a-post-hoc-audit-measures.md`_

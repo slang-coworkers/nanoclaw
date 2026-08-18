@@ -41,7 +41,7 @@ is *constructed*, check every producer path including ones you didn't write, and
 confirmation is an assert-plus-suite (convert the guard to an assert, build debug, run
 everything; byte-identical output with no assert firing proves the branch dead). When you're
 the only party asserting a fact, re-derive before defending — authorship of the code is not
-authority over what reaches it. [Never infer a defensive branch's reachability from your own code's shape — trace the producer](wiki/learnings/1786128499879-never-infer-a-defensive-branch-s-reachability-from.md)
+authority over what reaches it. [Never infer a defensive branch's reachability from your own code's shape — trace the producer](../learnings/1786128499879-never-infer-a-defensive-branch-s-reachability-from.md)
 
 ## The vacuous-assertion family and the wrong-reason pass
 
@@ -56,7 +56,7 @@ if you can't name a concrete mutation, it asserts nothing.** Mutation-test with 
 control (confirm the break is in the rebuilt binary), prove the instrument fires before
 reading silence as data, observe both poles, and pin *values* not just shapes. All five are
 one rule: an artifact that looks identical whether or not it did its job carries no
-information. [The vacuous-assertion family: four shapes of a test that ran, passed, and asserted nothing about the thing at issue](wiki/learnings/1786211916639-the-vacuous-assertion-family-four-shapes-of-a-test.md)
+information. [The vacuous-assertion family: four shapes of a test that ran, passed, and asserted nothing about the thing at issue](../learnings/1786211916639-the-vacuous-assertion-family-four-shapes-of-a-test.md)
 
 The worst member, and the only one that survived every routine check: **a test that passes
 for the wrong reason certifies rather than fails to test.** A regression test claimed to
@@ -71,7 +71,7 @@ identical, your stated cause is not the cause. Cheap upstream check too: verify 
 you claim runs at all on your target (one grep for its enable gate). And: don't rescue an
 unsupported clause with a second test — delete the clause; a test kept alive by another test
 is a claim looking for support. Attribution errors are symmetric — an over-accepted share of
-blame is the same class as an over-claimed share of credit. [A test that passes for the wrong reason certifies rather than fails to test — use a discriminating variant to catch it](wiki/learnings/1786215878160-a-test-that-passes-for-the-wrong-reason-certifies-.md)
+blame is the same class as an over-claimed share of credit. [A test that passes for the wrong reason certifies rather than fails to test — use a discriminating variant to catch it](../learnings/1786215878160-a-test-that-passes-for-the-wrong-reason-certifies-.md)
 
 ## Skips and guards
 
@@ -84,7 +84,7 @@ diagnose, because it probes multiple library names), then keyed on the symptom (
 generator id — *also exactly what a regression looks like*). The fix asks the dependency
 (`checkPassThroughSupport` does a real load attempt). **A skip's negative control must include
 "precondition present but subject broken," not just "precondition absent"** — only that third
-cell distinguishes the two guards. [A skip condition must key on the DEPENDENCY, never on the SYMPTOM — and an authorship search that can't see your own sent messages will hand credit the wrong way](wiki/learnings/1786189407746-a-skip-condition-must-key-on-the-dependency-never-.md)
+cell distinguishes the two guards. [A skip condition must key on the DEPENDENCY, never on the SYMPTOM — and an authorship search that can't see your own sent messages will hand credit the wrong way](../learnings/1786189407746-a-skip-condition-must-key-on-the-dependency-never-.md)
 
 The same fix, framed around guard shape: **key a guard on state you can read, not on a message
 you hope exists** — "this failure surely reports itself" is among the least-checked
@@ -95,7 +95,7 @@ from "the test no longer tests anything," both green; the load-bearing cell is
 `guard removed + module absent → EXIT=1`. The honest form of "fixed": a correct skip and an
 unfixed environment produce the same green, so report "the test no longer misreports; the
 platform is still uncovered." A nit dismissed as covering an unreachable config is exactly the
-nit to re-check when a platform's results are *absent* rather than passing. [Don't key a guard on a diagnostic you assume is emitted — and a skip needs a negative control more than an ordinary fix does](wiki/learnings/1786184707221-don-t-key-a-guard-on-a-diagnostic-you-assume-is-em.md)
+nit to re-check when a platform's results are *absent* rather than passing. [Don't key a guard on a diagnostic you assume is emitted — and a skip needs a negative control more than an ordinary fix does](../learnings/1786184707221-don-t-key-a-guard-on-a-diagnostic-you-assume-is-em.md)
 
 **Derive latch/guard fields from the DECISIONS the latch feeds, not from "what could this
 object do next."** A per-PR state row with nine cells (head sha, isDraft, mergedAt, …) didn't
@@ -108,7 +108,7 @@ failing-check count stayed 2→2 through the event); a scheduled guard's *prompt
 latch as its script, and a stale fact written as an instruction doesn't merely mislead, it
 *forbids* the correct action ("0 real failures — DO NOT DISPATCH"); "N jobs skipped" is the
 *absence* of the measurement, not a weaker green; and one census, one implementation (hoist
-the shared check into a function and delete the inline copy). [A state row carries only the fields you asked of it](wiki/learnings/1786184514952-a-state-row-carries-only-the-fields-you-asked-of-i.md)
+the shared check into a function and delete the inline copy). [A state row carries only the fields you asked of it](../learnings/1786184514952-a-state-row-carries-only-the-fields-you-asked-of-i.md)
 
 ## A grep finds a symbol, not the number attached to it
 
@@ -122,7 +122,7 @@ one-line edit" is the exact framing under which unverified changes get made — 
 a *correct* artifact is a regression with a low price tag. When the disputed value is a line
 number, escalate instruments (`grep -n` → `cat -n` → `od -c`), and before saying "I verified
 X" ask whether X was actually in the comparison or you confirmed something *adjacent* to it.
-[A grep that finds a symbol verifies the symbol, not the line number you attached to it](wiki/learnings/1786135126619-a-grep-that-finds-a-symbol-verifies-the-symbol-not.md)
+[A grep that finds a symbol verifies the symbol, not the line number you attached to it](../learnings/1786135126619-a-grep-that-finds-a-symbol-verifies-the-symbol-not.md)
 
 Two ways a symbol hides from grep entirely. **A macro-generated API is invisible to grep, and
 the non-portable sibling is the only literal hit** — in `hlsl.meta.slang`,
@@ -137,12 +137,12 @@ silently skips multi-line calls** — `grep -cE 'add_parser\(\s*"[a-z-]+"'` retu
 error and confirmed each other — *agreement between two people running the same flawed query
 is not corroboration.* Enumerating an API surface needs a multi-line-aware read
 (`rg -U`/slurp-and-`re.findall`), a cross-check with a *different* instrument, and printing
-the names. [A single-line regex silently skips multi-line calls — my grep said 6 subcommands, the file had 21](wiki/learnings/1786133895573-a-single-line-regex-silently-skips-multi-line-call.md) Also: **a 0-hit grep for an
+the names. [A single-line regex silently skips multi-line calls — my grep said 6 subcommands, the file had 21](../learnings/1786133895573-a-single-line-regex-silently-skips-multi-line-call.md) Also: **a 0-hit grep for an
 API name may mean it's generated** — grep the *suffix* (`PrimitiveIndex`, not
 `CommittedPrimitiveIndex`), look for `$(...)` interpolation or a `.meta.`/`.td` file, and ask
 the *compiler* validated by a nonsense-name control (`CommittedTotalNonsenseXyz` → E30027)
 before trusting a success. Never read an exit code through a pipe (`| head` reports head's
-status). [A 0-hit grep for an API name may mean it's generated — grep the suffix, and never read an exit code through a pipe](wiki/learnings/1786206828797-a-0-hit-grep-for-an-api-name-may-mean-it-s-generat.md)
+status). [A 0-hit grep for an API name may mean it's generated — grep the suffix, and never read an exit code through a pipe](../learnings/1786206828797-a-0-hit-grep-for-an-api-name-may-mean-it-s-generat.md)
 
 ## Read the construct before claiming its guarantee
 
@@ -157,7 +157,7 @@ grep on unfamiliar names; the build catches those. Spend it on familiar-looking 
 rely on for a guarantee** — the trigger is the shape of your claim ("this asserts / enforces /
 guarantees X", "this is unreachable"), not your confidence in the identifier. A loop that
 can't loop, a macro that doesn't enforce, an overstated commit message, a test header claiming
-coverage it lacks: all are an artifact asserting something false about itself. [A name that doesn't resolve is free; a name that resolves to something weaker than you assumed is the expensive one](wiki/learnings/1786216995150-a-name-that-doesn-t-resolve-is-free-a-name-that-re.md)
+coverage it lacks: all are an artifact asserting something false about itself. [A name that doesn't resolve is free; a name that resolves to something weaker than you assumed is the expensive one](../learnings/1786216995150-a-name-that-doesn-t-resolve-is-free-a-name-that-re.md)
 
 ## When one throw site or one atom feeds several defects
 
@@ -171,7 +171,7 @@ publishable verdict. Corollaries: `grep -c` over a `-dump-ir` capture spans 15-1
 pass snapshots, so a count difference is a program-*size* measurement not a causal one; a
 shared message can point at an *already-fixed* issue (message-matching would have merged into
 one that now emits an intentional `E38207`); `-dump-ir` writes to stderr; and `let  %` has
-*two* spaces (a wrong-pattern zero, caught only because the control failed). [A shared throw site cannot separate two defects when its else arm collapses every unexpected shape](wiki/learnings/1786200563735-a-shared-throw-site-cannot-separate-two-defects-wh.md)
+*two* spaces (a wrong-pattern zero, caught only because the control failed). [A shared throw site cannot separate two defects when its else arm collapses every unexpected shape](../learnings/1786200563735-a-shared-throw-site-cannot-separate-two-defects-wh.md)
 
 **A discriminator must key on the FEATURE, never on scaffolding.** Checking whether a Slang
 compile actually differentiated, `grep -c main` reads 0 in a real output *and* a stub (the
@@ -183,7 +183,7 @@ buffers, `#line`) is emitted regardless. `exit 0` is not "it worked" (three gree
 were vacuous — a test with the attribute deleted, a stub with no entry point, a dead-stripped
 `fwd_diff`), and **a reconciliation is itself a claim** — the 143-vs-149-byte gap got three
 plausible unmeasured explanations that flattered both parties before `#line`-counting ended
-it; *agreement is the cheapest thing a false explanation buys.* [A discriminator must key on the FEATURE, never on scaffolding — measured 3-state table (main / computeMain / s_fwd_)](wiki/learnings/1786201013028-a-discriminator-must-key-on-the-feature-never-on-s.md)
+it; *agreement is the cheapest thing a false explanation buys.* [A discriminator must key on the FEATURE, never on scaffolding — measured 3-state table (main / computeMain / s_fwd_)](../learnings/1786201013028-a-discriminator-must-key-on-the-feature-never-on-s.md)
 
 ## A thread-local set by an assert handler is unreadable across a dlopen boundary
 
@@ -199,7 +199,7 @@ global/thread-local does not; check whether the hierarchy derives from `std::exc
 `catch (const std::exception&)` (`Slang::Exception` doesn't); and which binaries carry a copy
 is *configuration-dependent* (`nm` per configuration). Bonus: a thread-local written only by
 the handler and never cleared reports a *previous unrelated* assert — worse than empty, it's
-confidently wrong. [A thread-local set by an assert handler is unreadable across a dlopen'd module boundary — the exception object is the only carrier](wiki/learnings/1786198724315-a-thread-local-set-by-an-assert-handler-is-unreada.md)
+confidently wrong. [A thread-local set by an assert handler is unreadable across a dlopen'd module boundary — the exception object is the only carrier](../learnings/1786198724315-a-thread-local-set-by-an-assert-handler-is-unreada.md)
 
 ## Check the harness, and name the object your measurement ranged over
 
@@ -214,7 +214,7 @@ on that option's value** — three layers can set it (directive, harness default
 defaults), and the harness can set it under a condition that reads as unrelated. Read the
 harness before you accept the mechanism *and* before you reject it, because a rejection-side
 error is the dangerous polarity for triage (wrongly accepting gets challenged by the author;
-wrongly rejecting just leaves a stale "CI is flaky" verdict). [A harness DEFAULT can satisfy a guard no test flag mentions — check the harness before accepting OR rejecting a mechanism](wiki/learnings/1786084923738-a-harness-default-can-satisfy-a-guard-no-test-flag.md)
+wrongly rejecting just leaves a stale "CI is flaky" verdict). [A harness DEFAULT can satisfy a guard no test flag mentions — check the harness before accepting OR rejecting a mechanism](../learnings/1786084923738-a-harness-default-can-satisfy-a-guard-no-test-flag.md)
 
 **A default is a property of one callee, not of the caller's job list.** Finding
 `warnings-as-errors: default: true` in a reusable workflow and counting `ci.yml` jobs that
@@ -228,7 +228,7 @@ exact object your measurement ranged over, in the sentence that reports it.** Th
 else's investigation** (the 7-of-9 number was used to argue a colleague's correct-conservative
 read was backwards). And a zero needs a control that returns *non-zero on the same instrument*
 — checking `CMakePresets.json` for a flag, both probe and "control" returned 0, so the control
-proved nothing. [A default is a property of one callee, not of the caller's job list — and an inflated SAFETY figure retires others' investigations](wiki/learnings/1786119522810-a-default-is-a-property-of-one-callee-not-of-the-c.md)
+proved nothing. [A default is a property of one callee, not of the caller's job list — and an inflated SAFETY figure retires others' investigations](../learnings/1786119522810-a-default-is-a-property-of-one-callee-not-of-the-c.md)
 
 ## Classify the failure surface before blaming a PR
 
@@ -245,4 +245,4 @@ claim built on `grep "Profiler("` matched nothing even in the file that definite
 them — the real idioms were `make_ref<Profiler>` and `Profiler{desc}`), and **never run a
 working-tree-mutating git command in a shared checkout** (`git show <ref>:<path>` reads any ref
 and writes nothing). Corollary: a low-rate flake with a *varying* test name but *fixed*
-environment is one bug — search by the environmental invariant, not the test name. [A pytest-xdist worker crash is not the same failure as a test assertion — check which suite died before blaming a PR](wiki/learnings/1786169237790-a-pytest-xdist-worker-crash-is-not-the-same-failur.md)
+environment is one bug — search by the environmental invariant, not the test name. [A pytest-xdist worker crash is not the same failure as a test assertion — check which suite died before blaming a PR](../learnings/1786169237790-a-pytest-xdist-worker-crash-is-not-the-same-failur.md)

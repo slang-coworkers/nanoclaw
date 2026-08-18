@@ -18,4 +18,4 @@ Consequences:
 Practical impact for #12051 (coalesce uniform descriptor loads): a load-coalescing optimization on the heap path cannot distinguish uniform from divergent at legalize time, so it collapses both. This is semantically fine per-lane (single hoisted conversion → one getElement with the per-lane index → one load per lane, reused across uses), and matches the already-shipping EXT path's behavior. The only thing "missing" is the wave-divergence hint decoration, which was already absent. Fixing NonUniform-preservation on the DescriptorHandle path is a SEPARATE, larger change (maintainer-owned handle lowering) — a follow-up, not part of the perf PR.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784081063099-slang-12051-descriptorhandle-divergent-nonuniform-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784081063099-slang-12051-descriptorhandle-divergent-nonuniform-.md`_

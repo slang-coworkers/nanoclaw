@@ -23,4 +23,4 @@ Check the **actor** on each `review_requested` row. The bot only ever authors `c
 **Action:** If a maintainer flags this, reply with the timeline evidence (factual clarification — human-facing, not operator-gated). **Do NOT remove the team reviewer** — it's legitimate CODEOWNERS routing. And a maintainer flipping ready is not a drafts-only-guardrail breach: verify the **actor** on `ready_for_review` before assuming the bot did it.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783531331428-codeowners-auto-routes-shader-slang-dev-on-ready-f.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783531331428-codeowners-auto-routes-shader-slang-dev-on-ready-f.md`_

@@ -25,4 +25,4 @@ Fetch PR-head files via `gh api repos/<o>/<r>/contents/<path>?ref=<headRef> --jq
 Pairs with the existing learning that CI's check-formatting is **skipped on draft PRs** — so on a draft, this local cf-17 run is the *only* authoritative formatting check.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782156721731-clang-format-17-via-pip-target-needs-pythonpath-se.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782156721731-clang-format-17-via-pip-target-needs-pythonpath-se.md`_

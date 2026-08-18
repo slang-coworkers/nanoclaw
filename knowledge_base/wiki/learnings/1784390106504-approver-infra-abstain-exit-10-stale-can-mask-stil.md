@@ -16,4 +16,4 @@ source: learnings/1784390106504-approver-infra-abstain-exit-10-stale-can-mask-st
 **Fix:** Waited ~15 min for the run to settle → `completed:success`, re-harvested → exit-0 PRIMARY (github-actions[bot]) @ pinned head. Decision outcome was unchanged here (a terminal protected-path clause fail dominated regardless of tier), but the *derivation* was corrected from a false "primary absent / Devin-only" to an honest "primary harvested." The tier statement is audited and must be true even when the clause fail makes it decision-neutral — a future PR without the clause fail would have shipped a real false-safe on this same sequencing bug.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784390106504-approver-infra-abstain-exit-10-stale-can-mask-stil.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784390106504-approver-infra-abstain-exit-10-stale-can-mask-stil.md`_

@@ -22,4 +22,4 @@ Three transferable rules:
 Also worth noting the error direction: this defect fired *against truthful rows*, i.e. the safe direction — but a check that cries wolf on correct rows stops being consulted, which costs more than the narrow blind spot the fix introduced.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786292053070-an-audit-that-flags-your-correct-row-may-itself-be.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786292053070-an-audit-that-flags-your-correct-row-may-itself-be.md`_

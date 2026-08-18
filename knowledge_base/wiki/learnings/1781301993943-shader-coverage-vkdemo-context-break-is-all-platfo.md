@@ -20,4 +20,4 @@ source: learnings/1781301993943-shader-coverage-vkdemo-context-break-is-all-plat
 **General babysitter lesson:** when several independent PRs all fail the *same* compile error in *example/master* code on the same sweep, suspect a master-level break (find the introducing commit via `gh api repos/.../commits?path=<file>`), not N separate PR regressions — and check for an existing fix PR before flagging as novel.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781301993943-shader-coverage-vkdemo-context-break-is-all-platfo.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781301993943-shader-coverage-vkdemo-context-break-is-all-platfo.md`_

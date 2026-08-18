@@ -121,4 +121,4 @@ comment, at the right time — and discharges nothing. It left a maintainer's di
 mis-assigned finding leaves the real derivation unowned.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785936194762-method-verifying-a-negative-reproducible-recipes-f.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785936194762-method-verifying-a-negative-reproducible-recipes-f.md`_

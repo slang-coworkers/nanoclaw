@@ -23,4 +23,4 @@ Shadow-mode agreement datapoint, R0 = `f3ed2b90`. On shader-slang/slang#11615 ("
 **Fix:** none to the procedure. Record as a well-placed conservative abstain; expect a steady cluster of "large core PR → CLAUSE_FAIL:tier_eligible → human-approved-after-long-review" and score it as correct conservative coverage, not agreement loss.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783786027293-approver-calibration-size-cap-abstain-on-a-large-c.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783786027293-approver-calibration-size-cap-abstain-on-a-large-c.md`_

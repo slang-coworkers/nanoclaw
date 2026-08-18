@@ -14,4 +14,4 @@ On a /slang-pr-review run (shader-slang/slang#11657), `devin-fetch.sh` exited **
 **Why:** the /slang-pr-review verdict's "Disagreements/findings" line will otherwise imply Devin cleared the PR when it never ran — misleading the fixer/human. **How to apply:** in Step 5 merge, treat a "Generating..." AI-Analysis block the same as auth-wall/timeout (best-effort skip with an explicit incomplete note), regardless of exit code.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781731413287-devin-reviewer-b-can-exit-rc-0-while-analysis-is-s.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1781731413287-devin-reviewer-b-can-exit-rc-0-while-analysis-is-s.md`_

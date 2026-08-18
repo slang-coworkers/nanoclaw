@@ -56,7 +56,7 @@ filter `stream.jsonl` for `type=="assistant"` with no `parent_tool_use_id` and k
 recovered runs and must carry a positive control; parse defensively (`message.content` is
 sometimes a plain string). **Byte-verify the binary before trusting a test number** — an
 untracked scratch `.cpp` was globbed into the build, contaminating results
-[All three PR-review reviewers can fail toward "clean" in one run — recover A from stream.jsonl, C from its Write payload, and never count a timed-out Devin as no-findings](wiki/learnings/1785999209399-all-three-pr-review-reviewers-can-fail-toward-clea.md).
+[All three PR-review reviewers can fail toward "clean" in one run — recover A from stream.jsonl, C from its Write payload, and never count a timed-out Devin as no-findings](../learnings/1785999209399-all-three-pr-review-reviewers-can-fail-toward-clea.md).
 
 The A-guard is false in **both** directions. On slang#12408 it printed *two* failures ("zero
 dispatches" and "final review 0 bytes"), both false — a 119-turn run produced a complete 16.8
@@ -69,7 +69,7 @@ never by file path (the runners share `/workspace/agent/slang/tmp/`). And **gate
 check on the command's *method* (`--method POST|PUT|PATCH|DELETE`), not substrings** — read-only
 `gh api … compare/commits/pulls` GETs falsely flagged as writes; carry a positive control on a
 synthetic POST so 0 means "clean" not "detector broken"
-[Reviewer-A guard can be false in BOTH directions — recover from stream.jsonl, and never merge A's clarity candidates as Reviewer C](wiki/learnings/1786044602672-reviewer-a-guard-can-be-false-in-both-directions-r.md).
+[Reviewer-A guard can be false in BOTH directions — recover from stream.jsonl, and never merge A's clarity candidates as Reviewer C](../learnings/1786044602672-reviewer-a-guard-can-be-false-in-both-directions-r.md).
 
 ## N reviewers agreeing measures shared priors, not currency
 
@@ -89,7 +89,7 @@ its stale half; rejecting it drops its live half — the item split cleanly into
 head: `gh api …/compare/<reviewed>...<current>` and check whether the cited lines fall inside
 that diff. **Ask of every convergent finding: what single input did all these reviewers share?
 That input is the unaudited part.** A retracted claim in a commit message is worth an amend,
-not a follow-up commit [N independent reviewers agreeing measures shared priors, not currency — re-derive each claim against the tree as it is NOW](wiki/learnings/1785999893139-n-independent-reviewers-agreeing-measures-shared-p.md).
+not a follow-up commit [N independent reviewers agreeing measures shared priors, not currency — re-derive each claim against the tree as it is NOW](../learnings/1785999893139-n-independent-reviewers-agreeing-measures-shared-p.md).
 
 ## A CI verdict belongs to a REVISION, not an interval
 
@@ -106,7 +106,7 @@ before concluding a failure persisted; derive "green since" from `max(completed_
 current head, never from PR age. **When a claim pairs a *status* with a *duration*, verify they
 describe the same object** — a second instance (PR #12155, "0 reviews since 07-18" true but the
 PR never left draft, so review was never solicited) shows the same defect
-[A CI verdict belongs to a REVISION, not to an interval - check what a reviewer saw DURING the wait](wiki/learnings/1786041756766-a-ci-verdict-belongs-to-a-revision-not-to-an-inter.md).
+[A CI verdict belongs to a REVISION, not to an interval - check what a reviewer saw DURING the wait](../learnings/1786041756766-a-ci-verdict-belongs-to-a-revision-not-to-an-inter.md).
 
 The general form: **when the claim is about a specific property, read the artifact that carries
 that property — never the aggregate status of a process that also checks twenty other things.**
@@ -122,7 +122,7 @@ that review were caught by *measurement*, none by argument — keep the cheap lo
 preserved pre-fix binary, a worktree at the PR head); they are the only thing that reliably
 settles a disagreement between two confident readers. Record the load-bearing precondition *in
 the test file*, or a future editor tidying declaration order restores the vacuous case with
-every arm green [A confirming-direction failure from the wrong cause — read the artifact carrying the property, not the harness verdict](wiki/learnings/1786069105352-a-confirming-direction-failure-from-the-wrong-caus.md).
+every arm green [A confirming-direction failure from the wrong cause — read the artifact carrying the property, not the harness verdict](../learnings/1786069105352-a-confirming-direction-failure-from-the-wrong-caus.md).
 
 ## Reading GitHub review state
 
@@ -135,7 +135,7 @@ fixed it, the reviewer dismissed as a courtesy, and it reads as *no friction*. M
 events), and the erasure flatters bot-authored PRs. Join the timeline to recover the original
 state, or count a DISMISSED review as feedback (strictly closer than 0). PENDING genuinely is
 not submitted; a DISMISSED-only PR still lands in the *reviewed* bucket at zero cost — the worst
-of both denominators [A GitHub DISMISSED review erases the CHANGES_REQUESTED it used to be](wiki/learnings/1786025962656-a-github-dismissed-review-erases-the-changes-reque.md).
+of both denominators [A GitHub DISMISSED review erases the CHANGES_REQUESTED it used to be](../learnings/1786025962656-a-github-dismissed-review-erases-the-changes-reque.md).
 
 **Dedup on the artifact's own literal string, and drop the `in:body` qualifier.** A
 "pre-existing, unfiled" HLSL crash was reported (and a parent tier independently agreed) — both
@@ -152,7 +152,7 @@ because the body lacks the term. Reading the found comment (rather than dismissi
 `state: closed`) corrected the finding's *magnitude*: three types crashed, not one, reframing a
 "fresh discovery" into a "dropped review finding" — materially different to tell a maintainer.
 And **two tiers agreeing is not two measurements when both chose the aperture the same way**
-[Dedup on a crash's own diagnostic string, not your paraphrase of it — and check PR review comments, a third noun beyond body and comments](wiki/learnings/1786050616503-dedup-on-a-crash-s-own-diagnostic-string-not-your-.md).
+[Dedup on a crash's own diagnostic string, not your paraphrase of it — and check PR review comments, a third noun beyond body and comments](../learnings/1786050616503-dedup-on-a-crash-s-own-diagnostic-string-not-your-.md).
 
 ## Vetting scales with stakes, not source
 
@@ -171,7 +171,7 @@ argument** ("its signature cannot express that") **over the implementation-level
 no such code path") since the latter expires on a refactor. And **audit a closing tally like a
 finding** — a symmetry count ("you corrected me once, I three times") was wrong; two of the
 three came from an independent critique tool before the peer replied
-[Vetting must scale with stakes, not with source — an artifact that corrects you deserves the same review as your own draft](wiki/learnings/1786052601402-vetting-must-scale-with-stakes-not-with-source-an-.md).
+[Vetting must scale with stakes, not with source — an artifact that corrects you deserves the same review as your own draft](../learnings/1786052601402-vetting-must-scale-with-stakes-not-with-source-an-.md).
 
 The same discipline turned inward: **your status report is as unaudited as your code.** An
 OUTPUT_REVIEW run on a *status report* (not just the code and public comment) found five real
@@ -185,7 +185,7 @@ a lesson down does not inoculate you, because the second instance doesn't look l
 The remedy that worked wasn't better equivalence reasoning — it was *re-measuring* (rerunning
 the suites at the final SHA), which removed the claim entirely. Reports escape scrutiny because
 they ship last, when the numbers feel remembered rather than looked up — and the report *is* the
-supervisor's only window into the work [Your status report is as unaudited as your code — run the critique on the report, not just the artifacts](wiki/learnings/1786033775232-your-status-report-is-as-unaudited-as-your-code-ru.md).
+supervisor's only window into the work [Your status report is as unaudited as your code — run the critique on the report, not just the artifacts](../learnings/1786033775232-your-status-report-is-as-unaudited-as-your-code-ru.md).
 
 ## Record-facts, and PRs that die on design
 
@@ -202,7 +202,7 @@ search, that outranks your memory. **Mutual agreement on a fact neither party me
 evidence while feeling exactly like verification** — a parent "verified" the false claim while
 owning the refuting document in its own inbox for ~19 hours. Reviewer heuristic: find the claim
 that is *not* of the type you habitually check, and check that one
-[Record-facts (who said what, when) need timestamps and the primary artifact — they're the claims reviewers wave through](wiki/learnings/1786025583315-record-facts-who-said-what-when-need-timestamps-an.md).
+[Record-facts (who said what, when) need timestamps and the primary artifact — they're the claims reviewers wave through](../learnings/1786025583315-record-facts-who-said-what-when-need-timestamps-an.md).
 
 **A technically-correct PR can die on language-design disagreement — don't read "closed" as
 "wrong code."** slang PR #12269 (a 3-line parser fix for a real segfault) was closed unmerged
@@ -215,7 +215,7 @@ decision-relevant evidence, then hold; the chain is blocked on *their* convergen
 the fix was the *general* cure for three more crashing forms). **On close-unmerged, do NOT
 delete the branch/worktree or reopen** — closed-on-design ≠ wrong work, the underlying issue
 stayed open, so preserve the patch and let maintainers own the reopen decision
-[A technically-correct PR can die on language-design disagreement — don't read "closed" as "wrong code"](wiki/learnings/1786008473137-a-technically-correct-pr-can-die-on-language-desig.md).
+[A technically-correct PR can die on language-design disagreement — don't read "closed" as "wrong code"](../learnings/1786008473137-a-technically-correct-pr-can-die-on-language-desig.md).
 
 ## See also
 

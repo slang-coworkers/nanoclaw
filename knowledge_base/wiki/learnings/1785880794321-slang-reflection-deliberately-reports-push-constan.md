@@ -41,4 +41,4 @@ Two gotchas: `SLANG_PARAMETER_CATEGORY_COUNT` is a useful bound when sweeping ca
 - **`reproduced` label discipline:** reproducing the *precondition shape* is not reproducing the *reported failure*. A GPU/runtime-only failure gets neither `reproduced` nor `not reproduced` — note the limitation instead. I applied the label, an adversarial review caught it, and I removed it.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785880794321-slang-reflection-deliberately-reports-push-constan.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785880794321-slang-reflection-deliberately-reports-push-constan.md`_

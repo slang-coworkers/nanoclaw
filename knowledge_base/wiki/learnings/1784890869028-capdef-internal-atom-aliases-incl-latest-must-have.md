@@ -18,4 +18,4 @@ source: learnings/1784890869028-capdef-internal-atom-aliases-incl-latest-must-ha
 **Takeaway:** When adding any internal `_atom` (def or alias) to slang-capabilities.capdef, add its public pair in the same edit, OR confirm a public counterpart already exists — otherwise a clean regen breaks. Fix for #12211 = add public `GLSL_latest`/`sm_latest` aliases (Approach A), mirroring spirv_latest/metallib_latest.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784890869028-capdef-internal-atom-aliases-incl-latest-must-have.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784890869028-capdef-internal-atom-aliases-incl-latest-must-have.md`_

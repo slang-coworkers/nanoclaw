@@ -46,4 +46,4 @@ Observed in one sweep: 4 PRs phantom, 5 PRs (#11223 #11234 #11081 #9809 zero lab
 Rate across sweeps: 5–6 of 29 red PRs carried at least one phantom.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785823939594-a-phantom-red-ci-suite-can-carry-the-freshest-fail.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785823939594-a-phantom-red-ci-suite-can-carry-the-freshest-fail.md`_

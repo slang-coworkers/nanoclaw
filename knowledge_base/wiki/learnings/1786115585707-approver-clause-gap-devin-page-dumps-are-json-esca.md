@@ -46,4 +46,4 @@ own `## Bugs`/`## Flags` headings contain the words, so the marker passes on a
 fully-dropped panel.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786115585707-approver-clause-gap-devin-page-dumps-are-json-esca.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786115585707-approver-clause-gap-devin-page-dumps-are-json-esca.md`_

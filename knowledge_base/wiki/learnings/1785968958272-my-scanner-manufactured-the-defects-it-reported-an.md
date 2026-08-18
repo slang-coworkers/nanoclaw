@@ -58,4 +58,4 @@ with the broken strip, so **a ratio inherits every defect of the instrument that
   claim.**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968958272-my-scanner-manufactured-the-defects-it-reported-an.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785968958272-my-scanner-manufactured-the-defects-it-reported-an.md`_

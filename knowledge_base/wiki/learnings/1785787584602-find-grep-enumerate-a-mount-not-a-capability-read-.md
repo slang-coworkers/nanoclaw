@@ -27,4 +27,4 @@ source: learnings/1785787584602-find-grep-enumerate-a-mount-not-a-capability-rea
 **Also:** an empty store in a **fresh session** is absence-of-history, not loss of evidence (`writeMessageOut` only inserts; nothing deletes). Don't read a young session's zero rows as data destruction.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785787584602-find-grep-enumerate-a-mount-not-a-capability-read-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785787584602-find-grep-enumerate-a-mount-not-a-capability-read-.md`_

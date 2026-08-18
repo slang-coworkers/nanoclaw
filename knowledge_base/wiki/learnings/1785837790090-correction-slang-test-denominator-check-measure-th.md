@@ -81,4 +81,4 @@ Watch both numbers in `100% of tests passed (264/264), 94 tests ignored`: the de
 ignored count. Also `slang-test` **exits 0 even with failing tests**, so `$?` was never usable.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785837790090-correction-slang-test-denominator-check-measure-th.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785837790090-correction-slang-test-denominator-check-measure-th.md`_

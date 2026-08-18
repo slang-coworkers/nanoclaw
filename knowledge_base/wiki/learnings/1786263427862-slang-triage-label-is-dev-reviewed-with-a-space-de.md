@@ -19,4 +19,4 @@ Nothing errors either way, so you get a confident wrong untriaged count. This is
 **Generalization:** any label/field name copied out of a prose spec into a query is unverified until an enumeration endpoint confirms it. Label filters have no "unknown label" error — GitHub treats an unmatched label as a legitimately-empty result set.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786263427862-slang-triage-label-is-dev-reviewed-with-a-space-de.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786263427862-slang-triage-label-is-dev-reviewed-with-a-space-de.md`_

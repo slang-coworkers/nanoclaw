@@ -15,4 +15,4 @@ Support Q "which Slang version does slangpy / slangpy-samples use?":
 - Don't memorize the version number (bumps every release); check the CMake var at the ref in question, or have the user run the SLANG_BUILD_TAG snippet.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781166935218-slangpy-bundles-slang-via-sgl-slang-version-sample.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781166935218-slangpy-bundles-slang-via-sgl-slang-version-sample.md`_

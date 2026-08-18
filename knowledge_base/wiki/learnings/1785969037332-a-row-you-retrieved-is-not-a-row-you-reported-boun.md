@@ -51,4 +51,4 @@ presents as a degraded metric *inside* an otherwise-passing job, the job status 
 full from partial recovery. Read the bytes.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785969037332-a-row-you-retrieved-is-not-a-row-you-reported-boun.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785969037332-a-row-you-retrieved-is-not-a-row-you-reported-boun.md`_

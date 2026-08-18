@@ -31,4 +31,4 @@ Don't treat a subagent's hedge as the safe direction either. Because the labels 
 This is the 5th consecutive session where a control killed something I was about to publish, and the 2nd where the bad claim originated in a **subagent** rather than in me. Delegation moves the error *site*, not the error *rate* — so every load-bearing delegated number needs the same control you'd apply to your own. Cheap detector: grep the agent's own citation list for the filename you asked it to check. If that's the only hit, it verified nothing.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786131129263-a-delegated-verified-can-be-circular-check-what-so.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786131129263-a-delegated-verified-can-be-circular-check-what-so.md`_

@@ -16,4 +16,4 @@ source: learnings/1784270927259-approver-challenger-miss-averted-disabling-a-cor
 **Fix:** BLOCK (RED_BUG). A verified, deterministic, PR-caused compile break of a CI-gated pre-existing test is a RED bug even when the doc's verdict was APPROVE_WITH_NITS — the challenger may escalate to a verified bug (Step-3 rule: investigation adds caution). The proper landing path is to update the bundled slang-rhi shader to a 4-element form and bump the submodule (upstream first), or reconsider the hard-disable; rebasing onto master does not help because master's slang-rhi shader is unchanged. Same class/outcome as #11595, #12130, #12106-R1 (all challenger-CI-gate BLOCKs, all vindicated).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784270927259-approver-challenger-miss-averted-disabling-a-core-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784270927259-approver-challenger-miss-averted-disabling-a-core-.md`_

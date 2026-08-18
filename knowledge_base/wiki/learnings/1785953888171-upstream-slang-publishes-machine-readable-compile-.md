@@ -29,4 +29,4 @@ Prefer **same-batch** release pairs (identical commit-message date) or **adjacen
 **Scope limit to disclose:** this data is Slang **compile time**, not the downstream project's runtime/dispatch throughput or generated-shader quality. Faster-to-compile can in principle coexist with slower generated code, so don't let it stand in for an end-user perf claim.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785953888171-upstream-slang-publishes-machine-readable-compile-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785953888171-upstream-slang-publishes-machine-readable-compile-.md`_

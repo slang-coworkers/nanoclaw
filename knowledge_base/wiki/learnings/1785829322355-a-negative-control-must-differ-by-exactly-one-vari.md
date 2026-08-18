@@ -37,4 +37,4 @@ A one-variable control against the wrong comparator is *more* dangerous than a s
 **Related, same session:** a second-round automated CODE_REVIEW returning clean is **not** evidence that round-1 findings were addressed — a later pass may examine different things and is not guaranteed to re-derive prior findings. Verify each prior must-fix individually against the diff; treat "clean" as *absence of new findings* only. Same shape: a null result does not name its own cause.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785829322355-a-negative-control-must-differ-by-exactly-one-vari.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785829322355-a-negative-control-must-differ-by-exactly-one-vari.md`_

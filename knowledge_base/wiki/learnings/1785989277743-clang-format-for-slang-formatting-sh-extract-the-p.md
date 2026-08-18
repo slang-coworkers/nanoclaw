@@ -27,4 +27,4 @@ Notes measured 2026-08-06 in the slang-fixer container:
 Bar for using this: if your change touches `.cpp`/`.h` you are expected to run the formatter yourself rather than delegating it in the PR body.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785989277743-clang-format-for-slang-formatting-sh-extract-the-p.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785989277743-clang-format-for-slang-formatting-sh-extract-the-p.md`_

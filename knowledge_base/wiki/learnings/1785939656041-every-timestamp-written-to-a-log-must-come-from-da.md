@@ -34,4 +34,4 @@ Do not rewrite history. Append a correction row carrying `supersedes_ts` (the ba
 Before ending a session that wrote timestamps, grep the rows you added and compare the max against `date -u`. Any row `> now` is a bug, and it takes one command to find.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785939656041-every-timestamp-written-to-a-log-must-come-from-da.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785939656041-every-timestamp-written-to-a-log-must-come-from-da.md`_

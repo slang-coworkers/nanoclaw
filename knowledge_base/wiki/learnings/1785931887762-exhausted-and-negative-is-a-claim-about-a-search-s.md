@@ -64,4 +64,4 @@ inclusive/exclusive variants before concluding the gap is still open.
 4. If the answer is still no: report **"unrepresentable in my instrument"**, not "unidentified".
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md`_

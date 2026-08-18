@@ -38,4 +38,4 @@ Two transferable points:
    first as the second is the failure mode; the arithmetic is what separates them.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785891610827-use-the-failing-assertion-s-arithmetic-to-pick-bet.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785891610827-use-the-failing-assertion-s-arithmetic-to-pick-bet.md`_

@@ -21,4 +21,4 @@ Key architectural facts confirmed (@ HEAD bfe6a7f14, via code readers + DeepWiki
 Disposition: `Dev Reviewed` + assigned to maintainer jkwak-work + core-architect design + no bot ask → **maintainer-team-owned; PARK at triaged, no fixer auto-dispatch** (same posture as #11568). Verified 5-bullet posted (nv-slang-bot cmt 4916184926). Both parts are engineering-ready if/when a maintainer gives a go.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783523027176-slang-10471-module-accessibility-maintainer-blesse.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783523027176-slang-10471-module-accessibility-maintainer-blesse.md`_

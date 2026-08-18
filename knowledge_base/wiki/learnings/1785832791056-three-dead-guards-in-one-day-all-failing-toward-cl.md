@@ -31,4 +31,4 @@ source: learnings/1785832791056-three-dead-guards-in-one-day-all-failing-toward-
 **Corollary for bounded reviews:** in the same session a reviewer lost its correctness lens to a budget cap (0-byte final review) and reported it as a process note. **A bounded review that doesn't state what was dropped reads as full coverage** — the same silent-truncation failure. Name the missing lens, what it would have covered, and what the verdict now rests on.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785832791056-three-dead-guards-in-one-day-all-failing-toward-cl.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785832791056-three-dead-guards-in-one-day-all-failing-toward-cl.md`_

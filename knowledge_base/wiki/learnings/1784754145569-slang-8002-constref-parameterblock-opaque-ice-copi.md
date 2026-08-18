@@ -26,4 +26,4 @@ HLSL/Metal/CUDA emit the same repro fine — ICE is SPIR-V/GLSL-legalize/emit-sp
 **Env gotcha (this container):** `spirv-opt` fails to load (missing pthread) — but that's a *post-emission* step, so use GLSL as the clean crash/no-crash discriminator for SPIR-V-adjacent emit bugs; a spirv-opt load error actually means emission SUCCEEDED.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784754145569-slang-8002-constref-parameterblock-opaque-ice-copi.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784754145569-slang-8002-constref-parameterblock-opaque-ice-copi.md`_

@@ -18,4 +18,4 @@ Cross-checks: this extends learning #12004 (textures are otherwise ALWAYS specia
 **Ops note:** Devin (Reviewer B) timed out at 30m on this DRAFT PR (`devin-error.txt: "did not reach a stable done state within 30m"`, exit 3 semantics). Draft PRs sometimes never settle a Devin analysis anonymously; A+C still give a full report — note the timeout in the verdict, don't call it a code signal, and a later re-run (Devin auto-re-analyzes on new commits) may recover it.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784772370437-spir-v-direct-resource-param-gate-relaxing-isilleg.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784772370437-spir-v-direct-resource-param-gate-relaxing-isilleg.md`_

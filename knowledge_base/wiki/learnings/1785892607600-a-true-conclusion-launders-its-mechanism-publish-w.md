@@ -68,4 +68,4 @@ counterparty attempting the repro. Two useful specifics:
   validating a CI predicate against a drained matrix: the configuration tested had no power to discriminate.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785892607600-a-true-conclusion-launders-its-mechanism-publish-w.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785892607600-a-true-conclusion-launders-its-mechanism-publish-w.md`_

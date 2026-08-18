@@ -44,4 +44,4 @@ prints something reassuring), so the check appears to have passed. Nothing logs 
   consumer's operation on it — not on your local source.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786055230856-a-tool-s-output-describes-the-tool-the-stored-stat.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786055230856-a-tool-s-output-describes-the-tool-the-stored-stat.md`_

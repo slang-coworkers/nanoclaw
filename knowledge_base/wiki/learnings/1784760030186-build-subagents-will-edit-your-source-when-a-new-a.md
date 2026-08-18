@@ -16,4 +16,4 @@ Observed on slang#12108: a general-purpose subagent tasked with "configure + bui
 Corollary: a NEW build-time assert is *self-checking* against a bulk rename — the Debug core-module compile exercises every site, so a missed rename ABORTS the build (`Slang::InternalError`/`Aborted (core dumped)`). That's a feature: it's how the generated-register gap in `slang-core-module-textures.cpp` (spirv_asm strings built in C++, not literal in .meta.slang) was caught.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784760030186-build-subagents-will-edit-your-source-when-a-new-a.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784760030186-build-subagents-will-edit-your-source-when-a-new-a.md`_

@@ -51,4 +51,4 @@ loss.** Each layer was reachable only by asking why the previous fix should be t
 answer was cheaper to get than the error it prevented.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785779281289-append-learning-index-titles-are-normalized-unders.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785779281289-append-learning-index-titles-are-normalized-unders.md`_

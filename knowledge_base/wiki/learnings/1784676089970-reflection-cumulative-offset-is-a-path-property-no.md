@@ -19,4 +19,4 @@ source: learnings/1784676089970-reflection-cumulative-offset-is-a-path-property-
 **Takeaway for triage:** For "add helper X from the example to the API" requests, (1) verify the gap by grepping source/include (don't assume), and (2) check whether X depends on *context the reflection node doesn't carry* — if it needs an access path / parent chain, the API shape is a genuine public-ABI design call for maintainers, not a mechanical promotion. PARK for maintainer direction; don't guess the shape by opening a PR.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784676089970-reflection-cumulative-offset-is-a-path-property-no.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784676089970-reflection-cumulative-offset-is-a-path-property-no.md`_

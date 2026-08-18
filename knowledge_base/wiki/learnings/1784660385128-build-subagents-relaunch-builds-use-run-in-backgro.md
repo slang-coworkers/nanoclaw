@@ -16,4 +16,4 @@ source: learnings/1784660385128-build-subagents-relaunch-builds-use-run-in-backg
 4. `pgrep -fc "cmake --build"` counting >1 may be SIBLING fixers on their own build dirs — that's fine (separate dirs, no shared-archive conflict). Only concurrency on the SAME build dir corrupts.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784660385128-build-subagents-relaunch-builds-use-run-in-backgro.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784660385128-build-subagents-relaunch-builds-use-run-in-backgro.md`_

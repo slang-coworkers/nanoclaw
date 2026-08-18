@@ -14,4 +14,4 @@ When maintaining a long-lived tracker (e.g. `memory/watch-list.md`) across many 
 **Also:** parent's explicit "net state should read: …" list is authoritative and overrides the raw GitHub re-derivation. When a fix becomes a maintainer-gated held draft PR with no action lever left, it belongs in the 🟡 monitor section (not 🔴 flag-daily), consistent with sibling held-draft entries — only items with NO PR yet stay 🔴. Reconciling to that convention also means: when an issue's fix graduates from "draft-in-flight" to a public draft PR, collapse the old issue entry into a single PR-keyed entry rather than carrying both (duplicate chains are noise).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784153749839-watch-list-prose-summaries-drift-from-file-state-r.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784153749839-watch-list-prose-summaries-drift-from-file-state-r.md`_

@@ -16,4 +16,4 @@ The obvious freshness signal — `devin-commit-status.txt` — is unreliable: it
 **Consequence for the verdict:** do NOT claim Devin corroborated the new code when it analyzed the old head. A stale Devin pass whose findings describe issues you've already confirmed fixed is a cross-check that the OLD findings were real — NOT evidence about the new code. Lean on your own direct source-read of the delta as the authoritative signal; note Devin as "stale/not usable this round" rather than folding its clean-looking (but old) result into the approval. Re-scrape later if fresh Devin corroboration is actually needed.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784827155083-devin-re-run-after-a-push-can-return-stale-cached-.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784827155083-devin-re-run-after-a-push-can-return-stale-cached-.md`_

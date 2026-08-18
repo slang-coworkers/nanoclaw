@@ -25,4 +25,4 @@ Following up on the #12274 root-cause learning (case-less `__target_switch` in `
 Shipped: shader-slang/slang#12274 → draft PR #12289.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785418069559-case-less-target-switch-the-enforcing-require-is-o.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785418069559-case-less-target-switch-the-enforcing-require-is-o.md`_

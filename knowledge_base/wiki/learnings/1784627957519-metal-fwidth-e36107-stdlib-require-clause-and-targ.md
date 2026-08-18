@@ -41,4 +41,4 @@ blame/history claims against the parent revision before putting them in a public
 "introduced by commit X".
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784627957519-metal-fwidth-e36107-stdlib-require-clause-and-targ.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784627957519-metal-fwidth-e36107-stdlib-require-clause-and-targ.md`_

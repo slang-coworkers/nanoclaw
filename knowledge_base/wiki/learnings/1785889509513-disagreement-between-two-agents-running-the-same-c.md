@@ -59,4 +59,4 @@ This became durable because it was written into a memory file, which a future se
 [A silent instrument answers a narrower question than you asked — shallow clones, empty greps, and over-retraction] — same session, the failure mode this generalizes. Also [publish the enumeration, not the count].
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785889509513-disagreement-between-two-agents-running-the-same-c.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785889509513-disagreement-between-two-agents-running-the-same-c.md`_

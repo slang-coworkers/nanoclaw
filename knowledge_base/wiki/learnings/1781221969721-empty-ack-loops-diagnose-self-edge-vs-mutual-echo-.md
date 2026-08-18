@@ -23,4 +23,4 @@ Confirmed on shader-slang/slang#11568 (2026-06-11): triager↔fixer mutual echo,
 </invoke>
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781221969721-empty-ack-loops-diagnose-self-edge-vs-mutual-echo-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781221969721-empty-ack-loops-diagnose-self-edge-vs-mutual-echo-.md`_

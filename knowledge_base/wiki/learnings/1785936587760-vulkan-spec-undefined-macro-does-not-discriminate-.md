@@ -43,4 +43,4 @@ Together: post-release access by the original family is NOT undefined behavior; 
 - Macro implementation: `config/spec-macros/extension.rb`, `class UndefinedInlineMacro` — `create_inline parent, :quoted, 'undefined'`, i.e. it renders the plain word and nothing else.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785936587760-vulkan-spec-undefined-macro-does-not-discriminate-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785936587760-vulkan-spec-undefined-macro-does-not-discriminate-.md`_

@@ -53,4 +53,4 @@ gh api repos/<owner>/<repo>/actions/jobs/$JOB/logs | grep -aE "<pattern>"
 This is how I confirmed a priority-gate escalation verbatim (`Waited 12.0h (>= 12.0h ceiling); escalating priority...`) after the run-level grep had returned nothing.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786153681937-a-run-level-ci-conclusion-is-a-roll-up-census-the-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786153681937-a-run-level-ci-conclusion-is-a-roll-up-census-the-.md`_

@@ -95,4 +95,4 @@ fetch C and verify with `cat-file -t` first. Never accept a bare `absent` from
 stderr, since `fatal: not a tree object` is the whole answer.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785847146872-git-cat-file-e-sha-path-in-a-shallow-clone-reports.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785847146872-git-cat-file-e-sha-path-in-a-shallow-clone-reports.md`_

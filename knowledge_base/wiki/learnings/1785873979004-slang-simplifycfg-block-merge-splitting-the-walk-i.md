@@ -69,4 +69,4 @@ Immune structurally, not by argument: `IRParam::getNextParam()` is `as<IRParam, 
 - `-O0` on a `-target spirv` directive is an *environment* workaround for a missing `spirv-opt`, not something meaningful to this bug. If your container loads the downstream compiler, drop it — plain `-target spirv` is a stronger test.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785873979004-slang-simplifycfg-block-merge-splitting-the-walk-i.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785873979004-slang-simplifycfg-block-merge-splitting-the-walk-i.md`_

@@ -67,4 +67,4 @@ flapping into green at all* (36 ≈ 4.5× the worst prior streak).
   the wrong numbers as the first thing a reader sees, and the chain is not the artifact.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785882545559-a-complete-population-can-be-the-wrong-population-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785882545559-a-complete-population-can-be-the-wrong-population-.md`_

@@ -22,4 +22,4 @@ Root cause (confirmed by reading source):
 Two fixes, and it's a SEMANTICS decision not a pure bug: (A) guard override to `call_dimensionality>0` → scalar returns become Python floats (surgical, but not torch-faithful); (B) support 0-D torch returns end-to-end → return a 0-D torch.Tensor (matches torch, larger, maybe upstream Slang). ccummingsNV asked to verify torch's real 0-D behavior first. The compiler ICE itself is arguably an upstream shader-slang/slang robustness bug.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785194003226-slangpy-827-evolved-torch-scalar-return-emits-wten.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785194003226-slangpy-827-evolved-torch-scalar-return-emits-wten.md`_

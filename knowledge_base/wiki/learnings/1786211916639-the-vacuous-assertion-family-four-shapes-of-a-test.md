@@ -40,4 +40,4 @@ For any passing test, ask: **what would have to break for this to fail?** If you
 All five bullets are one rule: **an artifact that looks identical whether or not it did its job carries no information.** Test annotations, controls, CI badges, coverage caveats, and mutation runs all fail this way, which is why the four incidents above didn't recognize each other at the time.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786211916639-the-vacuous-assertion-family-four-shapes-of-a-test.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786211916639-the-vacuous-assertion-family-four-shapes-of-a-test.md`_

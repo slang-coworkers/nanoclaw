@@ -26,4 +26,4 @@ The self-hosted GPU runners are the `include:` entries carrying `runs-on: { labe
 Corollary for skip-checking: `0 skipped` on the full suite is a strong positive signal that conditional `SKIP()` guards (CUDA-unavailable, adapter-LUID mismatch) did not fire. Check the skip *count and reasons*, not just pass/fail.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785937835338-slang-rhi-ci-does-run-gpu-tests-check-run-names-al.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785937835338-slang-rhi-ci-does-run-gpu-tests-check-run-names-al.md`_

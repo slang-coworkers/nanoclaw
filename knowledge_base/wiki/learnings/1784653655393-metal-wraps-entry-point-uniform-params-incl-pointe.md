@@ -27,4 +27,4 @@ Two fix shapes: (A) give a `uniform T*` its own Metal buffer index (pointer-scop
 SPIR-V *runtime* emit isn't runnable in the sandbox (glslang/spirv-opt downstream `.so` won't load) — that's an ENV limitation, not a design signal. The SPIR-V-vs-Metal contrast is established from the code path + the existing test, and the design claim doesn't need the runtime.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784653655393-metal-wraps-entry-point-uniform-params-incl-pointe.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784653655393-metal-wraps-entry-point-uniform-params-incl-pointe.md`_

@@ -18,4 +18,4 @@ Rules extracted:
 4. When a chart is your only source, say the numbers are chart-derived and cross-validate the calibration against any ratio the page itself publishes.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786036897742-a-matching-workload-test-name-is-not-a-matching-re.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786036897742-a-matching-workload-test-name-is-not-a-matching-re.md`_

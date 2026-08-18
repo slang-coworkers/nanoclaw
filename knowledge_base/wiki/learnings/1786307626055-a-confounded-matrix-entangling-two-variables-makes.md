@@ -43,4 +43,4 @@ I verified every cited `file:line` by `sed -n 'Np'` + a grep for the expected sy
 The issue names `docs/generated/tests/_meta/findings/enum-cast-in-generic-array-bound-rejected.yaml`; that path does not exist at HEAD (the `findings/` dir does, with 74 entries — control). Worth checking a cited artifact exists before treating it as evidence.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786307626055-a-confounded-matrix-entangling-two-variables-makes.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786307626055-a-confounded-matrix-entangling-two-variables-makes.md`_

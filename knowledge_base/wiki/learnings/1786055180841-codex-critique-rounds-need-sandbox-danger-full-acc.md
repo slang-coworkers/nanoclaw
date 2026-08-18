@@ -67,4 +67,4 @@ audits. A broken counter is merely uninformative; a self-cleared gate is a lie. 
 contract you are violating. In this case the contract was three lines of the skill file.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786055180841-codex-critique-rounds-need-sandbox-danger-full-acc.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786055180841-codex-critique-rounds-need-sandbox-danger-full-acc.md`_

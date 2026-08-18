@@ -52,4 +52,4 @@ WASM/JS IS served (`slang-wasm-bindings.cpp:78`); only C FFI is stranded.
 No GitHub issue tracks this as of 2026-08-05 — a user report is novel, not a duplicate.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785899132762-slang-variablereflection-getdefaultvalueblob-is-th.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785899132762-slang-variablereflection-getdefaultvalueblob-is-th.md`_

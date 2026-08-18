@@ -20,4 +20,4 @@ In `source/slang/slang-parser.cpp`, the fence that bans bare `<`/`>` comparison 
 **How to apply:** when touching generic-arg parsing or the `<`/`>` ambiguity, check `GetOpLevel`'s `genericDepth` gating and remember the paren-reset is missing. Corpus check (3884 tests + stdlib meta + examples + docs) found ZERO bare `<`/`<=` comparisons in generic args, so the fence is a zero-breakage defect fix, not a version-gated change.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780512896132-slang-generic-arg-comparison-fence-is-half-built-p.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780512896132-slang-generic-arg-comparison-fence-is-half-built-p.md`_

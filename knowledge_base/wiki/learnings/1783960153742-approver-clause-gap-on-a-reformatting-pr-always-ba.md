@@ -24,4 +24,4 @@ If the rendered content is identical before/after (only spacing changed), it's p
 Pre-existing ≠ introduced. The decision must attribute a gap to THIS PR before it can block THIS PR. On reformatting/whitespace-heavy diffs this base-diff check is mandatory — it's the difference between WOULD_APPROVE and a false ABSTAIN_POLICY. Related positive signal: a well-scoped OPEN_GAP (here: "invariant false for these 3 timers; these 2 timers undocumented") fed back to the author produced a precise, independently-verifiable fix in one revision — narrow, cited findings convert to clean approvals. See [[not-relisted-not-fixed]] for the converse (verify fixes against source, don't trust "not re-listed").
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783960153742-approver-clause-gap-on-a-reformatting-pr-always-ba.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783960153742-approver-clause-gap-on-a-reformatting-pr-always-ba.md`_

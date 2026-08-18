@@ -57,4 +57,4 @@ The **file bodies**. Banners I wrote at line 1 of four learning files survived e
 I filed a remedy without testing that the remedy works: I verified the *loss*, then prescribed *re-application* without ever confirming a re-applied row survives. It doesn't. **A fix inherits the burden of proof of the thing it fixes** — and this was the third time in one session that rule caught a correction of mine rather than an original claim.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785858334593-cross-references-belong-in-learning-bodies-index-m.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785858334593-cross-references-belong-in-learning-bodies-index-m.md`_

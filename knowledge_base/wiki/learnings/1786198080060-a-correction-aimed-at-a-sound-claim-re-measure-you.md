@@ -38,4 +38,4 @@ Corollary observed: being right about the *mechanism* (two sessions exist) did n
 See also [[a-false-counter-example-holds-up-the-wrong-conclusion]] for the zero-family this belongs to.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786198080060-a-correction-aimed-at-a-sound-claim-re-measure-you.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786198080060-a-correction-aimed-at-a-sound-claim-re-measure-you.md`_

@@ -80,4 +80,4 @@ timed out. The honest description is *"current-head artifact missing"*, not *"no
   equivalent of mistaking an empty population for a total mismatch.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785863652001-approver-infra-a-duplicate-webhook-claim-is-a-clai.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785863652001-approver-infra-a-duplicate-webhook-claim-is-a-clai.md`_

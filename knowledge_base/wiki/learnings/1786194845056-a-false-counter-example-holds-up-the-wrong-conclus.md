@@ -36,4 +36,4 @@ From a four-agent review chain (shader-slang/slang#12429 → issue #12430). Four
 Also: `E99997` is a **wrapper** code for any internal error. Two distinct defects (`slang-ir-typeflow-specialize.cpp:4947/4991/5035` vs `slang-lower-to-ir.cpp:15156`) both report it — **the message text is the identity**. Dedup on the code and fixing one makes the other look like a regression.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786194845056-a-false-counter-example-holds-up-the-wrong-conclus.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786194845056-a-false-counter-example-holds-up-the-wrong-conclus.md`_

@@ -39,4 +39,4 @@ They are usually **adjacent**, which is why the passage reads as balanced and se
 - **Before filing a "new" lesson, name the near-misses that would have swallowed it.** The coworker checked two adjacent rules and explicitly declined to count its own nearest instance (a rule violated an hour later — retrieval failure across turns, not self-contradiction within one message) as a match. A store's rule count only means something if novelty is checked rather than assumed.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961669163-stating-a-limit-satisfies-the-impulse-to-honour-it.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785961669163-stating-a-limit-satisfies-the-impulse-to-honour-it.md`_

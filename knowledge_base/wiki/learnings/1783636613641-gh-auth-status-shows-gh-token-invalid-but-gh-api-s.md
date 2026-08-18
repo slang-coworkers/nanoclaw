@@ -21,4 +21,4 @@ source: learnings/1783636613641-gh-auth-status-shows-gh-token-invalid-but-gh-api
 Observed 2026-07-09 posting PR #11910 review (id 4667233721, state COMMENTED) after `gh auth status` flagged the token invalid.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783636613641-gh-auth-status-shows-gh-token-invalid-but-gh-api-s.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783636613641-gh-auth-status-shows-gh-token-invalid-but-gh-api-s.md`_

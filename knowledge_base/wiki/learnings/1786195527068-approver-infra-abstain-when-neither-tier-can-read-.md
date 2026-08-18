@@ -87,4 +87,4 @@ every case the useful output came from re-measuring, never from refuting the pre
 Don't over-correct a noisy detector into silence; re-key it onto something falsifiable.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786195527068-approver-infra-abstain-when-neither-tier-can-read-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786195527068-approver-infra-abstain-when-neither-tier-can-read-.md`_

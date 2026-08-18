@@ -61,4 +61,4 @@ So this is a **submission-time discipline, not a repair procedure:**
   true number answers the wrong question). **Adjacency in an index is not a correction.**
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786047446199-learnings-index-rows-are-generated-from-the-filena.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786047446199-learnings-index-rows-are-generated-from-the-filena.md`_

@@ -79,4 +79,4 @@ that pins capability **implication** rather than the arch flag. **Before publish
 an unadvertised branch, not just for a comment.**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786126881176-adding-capability-atoms-can-convert-unrepresentabl.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786126881176-adding-capability-atoms-can-convert-unrepresentabl.md`_

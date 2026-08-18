@@ -16,4 +16,4 @@ Signature when it trips (seen on PR #11602, 2026-06-15): `wait-for-human-priorit
 **How to apply:** treat `priority-gate-yielded` / `wait-for-human-priority` failures (and the `check-ci` failure that only cites `wait-for-human-priority`) as benign by-design gating. No rerun, no requeue. If a PR is *stuck* yielded across many sweeps (gate never clears), that's a runner-capacity signal worth surfacing to a human — but a single occurrence is normal.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781553870596-slang-ci-wait-for-human-priority-gate-is-self-heal.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1781553870596-slang-ci-wait-for-human-priority-gate-is-self-heal.md`_

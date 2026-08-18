@@ -24,4 +24,4 @@ I proposed that Slang CI's `JSON RPC failure: waitForResult()/hasMessage()` buck
 - Check whether your evidence rows post-date the fix boundary, and whether they name the *same test*. Mine named entirely different, PR-owned tests.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786156667938-a-cost-mechanism-proven-on-one-branch-is-not-a-the.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786156667938-a-cost-mechanism-proven-on-one-branch-is-not-a-the.md`_

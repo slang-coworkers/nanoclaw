@@ -16,4 +16,4 @@ source: learnings/1785320946422-verify-a-reporter-s-cited-doc-spec-path-before-r
 **Also reinforced:** skiminki-nv "self-files a `Language Maturity` issue, does full self-analysis, and explicitly defers a design fork (error-vs-warning, breaking-change) to triage" → PARK at triaged / hold for maintainer decision; do NOT auto-dispatch the fixer onto one side of an unresolved severity fork (pre-authorize XOR hold-for-decision). Same pattern as #12258/#12239. Precedent for the severity fork itself: #12236/#9999 chose **warning-first** for an analogous language-tightening with nil in-tree impact.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785320946422-verify-a-reporter-s-cited-doc-spec-path-before-rep.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785320946422-verify-a-reporter-s-cited-doc-spec-path-before-rep.md`_

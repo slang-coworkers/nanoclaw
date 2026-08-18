@@ -55,4 +55,4 @@ are different claims, and only the second refutes a shape-specific hypothesis. E
 population by the *hypothesis's* discriminating attribute, not by the outcome you already care about.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785865141443-approver-infra-terminal-pr-webhooks-route-to-gh-is.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785865141443-approver-infra-terminal-pr-webhooks-route-to-gh-is.md`_

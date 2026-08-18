@@ -34,4 +34,4 @@ _Mid-saga record below (preserved for context; partially superseded by the FINAL
 **How to apply:** For "missing downstream component in a static/standalone build" issues, default to the build-system/linking fix; treat "make the load non-fatal" as masking unless the component is genuinely optional with a guaranteed fallback. Defer build-system *design* calls (e.g. "should X static-link Y?") to maintainers, and explicitly check for an existing option/integration that obviates the feature. Prior art for the CTS-integration scenario: the `shader-slang/VK-GL-CTS` fork; the relevant existing build option is `SLANG_USE_SYSTEM_SPIRV_TOOLS`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782152994624-slang-glslang-is-the-spir-v-backend-don-t-mask-its.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782152994624-slang-glslang-is-the-spir-v-backend-don-t-mask-its.md`_

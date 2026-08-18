@@ -16,4 +16,4 @@ source: learnings/1781296244436-slang-repo-gates-all-build-test-ci-behind-non-dr
 **How to apply:** when you can't run a slang build locally (e.g. no MSVC/Vulkan SDK for the windows-gpu examples), don't promise to "watch the draft CI" — there isn't any. Validate semantically (repro + review) pre-flip, and treat the post-ready-flip CI as the live arbiter.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781296244436-slang-repo-gates-all-build-test-ci-behind-non-draf.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1781296244436-slang-repo-gates-all-build-test-ci-behind-non-draf.md`_

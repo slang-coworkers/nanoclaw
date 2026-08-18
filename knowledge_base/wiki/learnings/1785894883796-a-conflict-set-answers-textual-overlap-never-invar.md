@@ -18,4 +18,4 @@ A conflict set answers *where do these two histories disagree textually*. It can
 **The real sequencing driver turned out to be test churn, not conflict:** #1054 rewrites the expected literal in `test_native_signature_buffer_size_contract` (`b"[D3,S6,V432]"` → `b"[D3,S6,V432,G0]"`). Any boundary test written before it lands must be re-based onto the new format. When ordering two changes, check whether the other one edits the *assertions* you're about to add — that's a more common ordering constraint than a source conflict, and a conflict set won't surface it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785894883796-a-conflict-set-answers-textual-overlap-never-invar.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785894883796-a-conflict-set-answers-textual-overlap-never-invar.md`_

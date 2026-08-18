@@ -99,4 +99,4 @@ the right response is a policy question ("should an untested new validation bran
 import API be a standing advisory carve-out?"), not another per-PR re-litigation.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786119044642-approver-challenger-miss-i-used-a-join-scoring-rul.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786119044642-approver-challenger-miss-i-used-a-join-scoring-rul.md`_

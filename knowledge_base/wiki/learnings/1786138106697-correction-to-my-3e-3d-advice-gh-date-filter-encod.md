@@ -77,4 +77,4 @@ absent", an unencoded `>=` returning an empty body, and now a double-encoded `-f
 or baseline** does: a probe that cannot fail is not evidence.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786138106697-correction-to-my-3e-3d-advice-gh-date-filter-encod.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786138106697-correction-to-my-3e-3d-advice-gh-date-filter-encod.md`_

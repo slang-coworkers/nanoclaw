@@ -40,7 +40,7 @@ the old 2026.12 branch); vs the fix it is `ahead_by=134 behind_by=1` → `diverg
 assets are named `slang-2026.12.0.1-<platform>` so it configures and downloads cleanly while
 lacking the fix. A green build on it would prove nothing. Rules: enumerate releases, don't guess
 a tag list; sort by publish date, not version order; map all statuses with a catch-all that
-shouts; positive-control with `compare/<sha>...<sha>` → `identical`. [GitHub compare status has THREE values — `diverged` also means absent, and a guessed tag list misses the trap tag](wiki/learnings/1785953532233-github-compare-status-has-three-values-diverged-al.md)
+shouts; positive-control with `compare/<sha>...<sha>` → `identical`. [GitHub compare status has THREE values — `diverged` also means absent, and a guessed tag list misses the trap tag](../learnings/1785953532233-github-compare-status-has-three-values-diverged-al.md)
 
 That correction itself introduced two errors, sharpened in a follow-up: (1) it is *four* REST
 compare statuses reported for HEAD relative to BASE, not three; (2) prefer the unambiguous form
@@ -52,7 +52,7 @@ the shipped binary behaves** — a release could carry a cherry-pick under anoth
 claim is "release X lacks the fix," download the asset and run the repro with controls (a
 `slangc -v` + behavior table turned an inference into a cheap measurement). Meta: a *correction*
 carries the same overclaim risk as what it replaces, wearing the credibility of "already
-reviewed." [Release-containment checks: prefer merge-base identity, don't cross ahead_by/behind_by, and test the shipped binary — tag ancestry isn't behavior](wiki/learnings/1785954095027-release-containment-checks-prefer-merge-base-ident.md)
+reviewed." [Release-containment checks: prefer merge-base identity, don't cross ahead_by/behind_by, and test the shipped binary — tag ancestry isn't behavior](../learnings/1785954095027-release-containment-checks-prefer-merge-base-ident.md)
 
 **A verification is bound to the tag it ran against.** A fixer verified every version-interpolated
 download path resolved in the **2026.14.1** archives, then pinned **2026.13.1** — Slang asset
@@ -61,7 +61,7 @@ filenames embed the version, so the check covered nothing that shipped (re-runni
 was *tested* against the identifier in the *diff*; if they differ, re-run rather than reason. Same
 shape for benchmark-on-commit-A-merge-B and positive-control-on-main-ship-a-branch. "Earliest
 release containing the fix" ≠ "latest release" — verify containment of *every* commit you claim,
-per tag. [A verification is bound to the tag it ran against](wiki/learnings/1785960675828-a-verification-is-bound-to-the-tag-it-ran-against.md)
+per tag. [A verification is bound to the tag it ran against](../learnings/1785960675828-a-verification-is-bound-to-the-tag-it-ran-against.md)
 
 ## Commit and PR provenance
 
@@ -75,7 +75,7 @@ the file. The discriminating query is `/pulls/N/files` — or cite the commit SH
 imports before writing a supersession story (`842f6a93` changed 534 files and introduced two
 paths *simultaneously*, so "one superseded the other" was never true). The commits API caps its
 `files` array at 300 with no truncation flag — get real totals from `git show --shortstat` on a
-full clone. [A (#N) in a commit subject is untrusted provenance — and /pulls/N resolving proves nothing](wiki/learnings/1785960862161-a-n-in-a-commit-subject-is-untrusted-provenance-an.md)
+full clone. [A (#N) in a commit subject is untrusted provenance — and /pulls/N resolving proves nothing](../learnings/1785960862161-a-n-in-a-commit-subject-is-untrusted-provenance-an.md)
 
 **Silently-fixed issues: check whether the closing PR ever named the issue.** Scrubbing 7 stale
 issues, two were fixed months ago and stayed open purely because the closing PR didn't reference
@@ -86,7 +86,7 @@ implementing commit even when no metadata connects them — absence of a timelin
 snake_case shipped library) makes a name grep a *convention* test, not an existence test; a
 user-space workaround file is evidence the library *lacks* the feature; and "co-authored" needs
 verifying (`git log --format=%B` for the trailer; `gh pr view --json reviews` distinguishes a
-reviewer from an author). [Silently-fixed issues: check whether the closing PR ever named the issue](wiki/learnings/1785962249242-silently-fixed-issues-check-whether-the-closing-pr.md)
+reviewer from an author). [Silently-fixed issues: check whether the closing PR ever named the issue](../learnings/1785962249242-silently-fixed-issues-check-whether-the-closing-pr.md)
 
 **Read the artifact at the revision the reporter ran, not the PR head.** When an issue cites an
 open PR or branch, the config the reporter exercised is the branch state *at the issue's
@@ -96,7 +96,7 @@ accelerated path, at the filing-time commit the file hardcoded `vulkan` with no 
 file, opposite conclusion about which code path was covered. A path that exists today may have
 been added after the report (a `static_assert` landing 4 months later would be an anachronism to
 cite), and a path they used may since have been deleted. Get the `created_at`, list the PR's
-commits with dates, pick the newest at or before it. [Read the artifact at the revision the reporter ran, not the PR head](wiki/learnings/1785964896079-read-the-artifact-at-the-revision-the-reporter-ran.md)
+commits with dates, pick the newest at or before it. [Read the artifact at the revision the reporter ran, not the PR head](../learnings/1785964896079-read-the-artifact-at-the-revision-the-reporter-ran.md)
 
 ## Sub-issues, assignees, and ownership
 
@@ -108,7 +108,7 @@ per-item assignees (items already reassigned to an active engineer — reporting
 reassignment" from the parent body would send a maintainer to redo completed work) and
 look-alikes that are not duplicates (a title-match under a *different* parent with strictly
 broader acceptance criteria). Also check whether a directive you'd quote as authority was ever
-*ratified* — an author's own framing on the day of filing is not a project decision. [GitHub sub-issues are the tracking surface; parent checkboxes are a stale mirror](wiki/learnings/1785960849623-github-sub-issues-are-the-tracking-surface-parent-.md)
+*ratified* — an author's own framing on the day of filing is not a project decision. [GitHub sub-issues are the tracking surface; parent checkboxes are a stale mirror](../learnings/1785960849623-github-sub-issues-are-the-tracking-surface-parent-.md)
 
 **Enumerate every owner before calling work unowned.** "The assignee left, scrub this" was
 reported as "no live decision-maker" from a single assignee name — enumerating sub-issues showed
@@ -117,7 +117,7 @@ reported as "no live decision-maker" from a single assignee name — enumerating
 are different recommendations. `gh pr list -R O/R --author LOGIN --state merged` checks whether a
 person is actually gone. Companion trap: check *which* instrument someone used before warning
 about its limits (a 534-file count measured with `git show --shortstat` was not subject to the
-commits-API 300-cap the reviewer cautioned about). [Enumerate every owner before calling work unowned — and check which instrument was used](wiki/learnings/1785961133670-enumerate-every-owner-before-calling-work-unowned-.md)
+commits-API 300-cap the reviewer cautioned about). [Enumerate every owner before calling work unowned — and check which instrument was used](../learnings/1785961133670-enumerate-every-owner-before-calling-work-unowned-.md)
 
 **A set GitHub assignee may be a nomination, not ownership.** "No reassignment needed — @X owns
 it" from a populated `assignees` field was wrong: both `assigned` events had `actor: <the
@@ -129,7 +129,7 @@ third-party assignment is nomination — read `timeline` (authoritative; `/event
 reassignment precedent needs its *recorded motive*, not just its outcome — a sibling reassignment
 performed *by the departing owner himself* ("I believe you've started looking at it") was
 context-driven, transferring nothing to a third issue. Read the `timeline` for who acted and when
-relative to departure. [A set GitHub assignee may be a nomination, not ownership — check the assigned actor](wiki/learnings/1785967759518-a-set-github-assignee-may-be-a-nomination-not-owne.md) [A reassignment precedent needs its recorded motive, not just its outcome](wiki/learnings/1785956697836-a-reassignment-precedent-needs-its-recorded-motive.md)
+relative to departure. [A set GitHub assignee may be a nomination, not ownership — check the assigned actor](../learnings/1785967759518-a-set-github-assignee-may-be-a-nomination-not-owne.md) [A reassignment precedent needs its recorded motive, not just its outcome](../learnings/1785956697836-a-reassignment-precedent-needs-its-recorded-motive.md)
 
 ## Line-number disputes: compare refs before conceding
 
@@ -143,4 +143,4 @@ discriminator identifier whose *absence elsewhere* is what your argument needs �
 claim cited by the enclosing function name `getPipelineCacheKey` is refuted by a same-named D3D12
 twin; cite the backend-specific API `vkGetPipelineKeyKHR` (0 hits in `src/cuda/`). The strongest
 distinctness argument is "the code this crash dies in cannot execute on that path," not "we
-observed the other backend too." [When two careful readers disagree on a line number, compare refs before either concedes](wiki/learnings/1785962772085-when-two-careful-readers-disagree-on-a-line-number.md)
+observed the other backend too." [When two careful readers disagree on a line number, compare refs before either concedes](../learnings/1785962772085-when-two-careful-readers-disagree-on-a-line-number.md)

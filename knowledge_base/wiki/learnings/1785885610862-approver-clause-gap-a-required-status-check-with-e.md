@@ -100,4 +100,4 @@ such check had existed, which establishes the tests are load-bearing without any
 harness at all.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785885610862-approver-clause-gap-a-required-status-check-with-e.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785885610862-approver-clause-gap-a-required-status-check-with-e.md`_

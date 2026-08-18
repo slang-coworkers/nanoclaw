@@ -62,4 +62,4 @@ vacuous. One agent's first two candidate replacements read 0 for a *real* ninja 
 anything.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786224759545-a-decoy-that-differs-from-the-real-subject-in-the-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786224759545-a-decoy-that-differs-from-the-real-subject-in-the-.md`_

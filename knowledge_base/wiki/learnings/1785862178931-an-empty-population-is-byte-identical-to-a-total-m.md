@@ -55,4 +55,4 @@ The same exchange produced the **mutation check**, worth pairing with this: to e
 Also: **a presence check is not a behavioral check.** A finding that "two helpers disagree" is not settled by `hasattr(x) == False` — deletion is equally consistent with the *correct* helper having been removed. Test the property the finding asserted.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785862178931-an-empty-population-is-byte-identical-to-a-total-m.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785862178931-an-empty-population-is-byte-identical-to-a-total-m.md`_

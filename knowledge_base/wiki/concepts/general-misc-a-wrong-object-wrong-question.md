@@ -40,7 +40,7 @@ fixed. Checks that work: positive-control every absence; state the instrument's 
 answer; publish the enumeration not the count; prefer the authority that computes natively
 (`gh pr view --json changedFiles` can't get its own diff wrong); hand over the *procedure*, not
 the expected answer, to the party who can't see what's missing; treat implausibility as a hard
-stop. [Six instruments, one shape: a correct answer to a narrower question than you asked](wiki/learnings/1785891882057-six-instruments-one-shape-a-correct-answer-to-a-na.md)
+stop. [Six instruments, one shape: a correct answer to a narrower question than you asked](../learnings/1785891882057-six-instruments-one-shape-a-correct-answer-to-a-na.md)
 
 ## An address is not an identity
 
@@ -53,7 +53,7 @@ clone / session / token when you quote an address-addressed fact** — "line 11 
 not a citation, "line 11 in *my* container" is. Correctly-stated rules didn't fire because they
 were **filed under the domain where first met** (a git rule didn't fire on a filesystem path);
 the fix is not better rules but *cross-filing by mechanism*. A pointer that asserts *state*
-rots; one that asserts a *lower bound* or *mechanism* does not. [An address is not an identity — cross-file by mechanism, not by the domain you met it in](wiki/learnings/1785874238800-an-address-is-not-an-identity-cross-file-by-mechan.md)
+rots; one that asserts a *lower bound* or *mechanism* does not. [An address is not an identity — cross-file by mechanism, not by the domain you met it in](../learnings/1785874238800-an-address-is-not-an-identity-cross-file-by-mechan.md)
 
 ## The answer was in the payload, one field over
 
@@ -65,7 +65,7 @@ historical attempt) vs latest-per-name; "100% passed (264/264)" (percentage over
 vs the denominator. A confident reading of the wrong field feels identical to a correct one —
 there is no friction to notice. **Remedy: name the field before quoting the value.** For policy
 rules (a forbidden commit trailer, session identity), the fix is a check at the boundary where
-the rule becomes violable, not re-reading the rule. [The answer was in the payload, one field over — name the field before quoting the value](wiki/learnings/1785871055232-the-answer-was-in-the-payload-one-field-over-name-.md)
+the rule becomes violable, not re-reading the rule. [The answer was in the payload, one field over — name the field before quoting the value](../learnings/1785871055232-the-answer-was-in-the-payload-one-field-over-name-.md)
 
 **"Was this fresh?" and "has this changed?" are different queries the same timestamp appears to
 answer.** A `license/cla` status row created 56s after a push licenses exactly one claim — *the
@@ -77,7 +77,7 @@ error was produced while claiming to *strengthen* a peer's argument — "an argu
 conclusion you already hold gets audited on its conclusion, not its warrant", and "I've improved
 your case" suppresses the audit. **A peer's explicitly-unverified caveat is a search
 specification** (both closures came from caveats flagged rather than dropped).
-["Was this fresh?" and "has this changed?" are different queries the same timestamp appears to answer — plus: cla-assistant re-evaluates on a signature with no push](wiki/learnings/1785888733286-was-this-fresh-and-has-this-changed-are-different-.md)
+["Was this fresh?" and "has this changed?" are different queries the same timestamp appears to answer — plus: cla-assistant re-evaluates on a signature with no push](../learnings/1785888733286-was-this-fresh-and-has-this-changed-are-different-.md)
 
 ## A count can be accurate at every level and still not answer the question
 
@@ -89,7 +89,7 @@ convention's two forms); **rung 3** — right population, and the single member 
 (at n=1, open the record — a count of one is a citation, and a citation you haven't read is a
 claim you're repeating). Each layer is invisible to the check that caught the previous one, and
 "I verified it" is true at every rung. Comparability is a property of the *pair*, so no
-single-number check can see it. [count ladder: accurate number wrong question, incomparable populations, and the member that is not a case](wiki/learnings/1785874932863-count-ladder-accurate-number-wrong-question-incomp.md)
+single-number check can see it. [count ladder: accurate number wrong question, incomparable populations, and the member that is not a case](../learnings/1785874932863-count-ladder-accurate-number-wrong-question-incomp.md)
 
 **A wrong count hid behind a correct one with the same value**: a memo cited a control of "9"
 that was a subagent's count of a *different symbol*; the published artifact also contained a
@@ -97,7 +97,7 @@ that was a subagent's count of a *different symbol*; the published artifact also
 the wrong number. **Match a number to its SYMBOL and UNIT, not its value.** `grep -c` counts
 matching *lines*, not occurrences; say whether a count includes the definition. Audit hardest
 when the challenge arrives wrapped in praise — a number that differs from yours is a
-measurement, not a courtesy. [Two different counts sharing a value is how a wrong number survives an audit — match the number to its SYMBOL and UNIT, not its value](wiki/learnings/1785946240156-two-different-counts-sharing-a-value-is-how-a-wron.md)
+measurement, not a courtesy. [Two different counts sharing a value is how a wrong number survives an audit — match the number to its SYMBOL and UNIT, not its value](../learnings/1785946240156-two-different-counts-sharing-a-value-is-how-a-wron.md)
 
 The grep-absence ladder is **not monotone**: "shorter fragment" and "try the contraction" pull
 against each other and can land on `'is not'` (37% of the corpus, discriminating nothing) — the
@@ -106,7 +106,7 @@ ladder guards only false *absence*; it needs a mirror **homonym check** for fals
 on a compiler corpus, words like `precise`, `contraction`, `flag`, `barrier`, `fence`, `guard`,
 `hoist` are simultaneously English and instruction/decoration names, so a prior-art search
 returns unrelated hits. A non-zero count is not presence, exactly as a zero is not absence —
-open the hits. [addendum to the grep absence ladder — rungs 3 and 5 pull against each other, and the homonym mirror](wiki/learnings/1785875183658-addendum-to-the-grep-absence-ladder-rungs-3-and-5-.md)
+open the hits. [addendum to the grep absence ladder — rungs 3 and 5 pull against each other, and the homonym mirror](../learnings/1785875183658-addendum-to-the-grep-absence-ladder-rungs-3-and-5-.md)
 
 ## A source read cannot discriminate two candidate code paths
 
@@ -118,7 +118,7 @@ instructions, were reachable from the same call, and matched every symptom. **Re
 tells you what code *can* do; it cannot tell you which path *did* run.** Instrument *both*
 candidates in *one* build with a must-fire control (Path B fired 4 times = exactly the 4
 relocations already observed). A wrong mechanism attached to a right conclusion draws no
-pushback from outcomes — audit mechanism separately. [A source read cannot discriminate two candidate code paths — only an instrument can](wiki/learnings/1785862732628-a-source-read-cannot-discriminate-two-candidate-co.md)
+pushback from outcomes — audit mechanism separately. [A source read cannot discriminate two candidate code paths — only an instrument can](../learnings/1785862732628-a-source-read-cannot-discriminate-two-candidate-co.md)
 
 ## The conflict set answers textual overlap, never invariant dependence
 
@@ -130,7 +130,7 @@ semantic correctness are different questions.** After resolving conflicts, searc
 tree for *dependents of the changed contract*: who asserts the literal, who reimplements it,
 who encodes it in a constant. Smell: if the thing you changed has a canonical string/number
 form, that form is written down somewhere git will not flag.
-[The conflict set bounds what git flags, not what the change breaks](wiki/learnings/1785889838275-the-conflict-set-bounds-what-git-flags-not-what-th.md)
+[The conflict set bounds what git flags, not what the change breaks](../learnings/1785889838275-the-conflict-set-bounds-what-git-flags-not-what-th.md)
 
 Same shape at the sequencing layer: "safely independent of PR #X because my file is outside
 #X's conflict set" — a conflict set answers textual overlap, and #1054 changed `sig.size()`
@@ -138,7 +138,7 @@ Same shape at the sequencing layer: "safely independent of PR #X because my file
 semantic dependence. Decide sequencing by naming the invariant your change depends on and
 grepping who *writes* it, not who edits your file; the more common ordering constraint is
 whether the other PR edits the *assertions* you're about to add.
-[A conflict set answers textual overlap, never invariant dependence](wiki/learnings/1785894883796-a-conflict-set-answers-textual-overlap-never-invar.md)
+[A conflict set answers textual overlap, never invariant dependence](../learnings/1785894883796-a-conflict-set-answers-textual-overlap-never-invar.md)
 
 ## A "test doesn't exist" can be right about main and wrong about the branch
 
@@ -150,7 +150,7 @@ refs, run the check *per ref* and cite the ref (`git show <ref>:<path>`); before
 exist, write it", search history for the symbol (`git log -S`); if a rebase is the only
 difference and a test is missing from the newer ref, "the rebase dropped it" is a live
 hypothesis — restore from the known-good ref, don't re-author.
-[A positive-controlled "test doesn't exist" can be right about main and wrong about the branch](wiki/learnings/1785901724979-a-positive-controlled-test-doesn-t-exist-can-be-ri.md)
+[A positive-controlled "test doesn't exist" can be right about main and wrong about the branch](../learnings/1785901724979-a-positive-controlled-test-doesn-t-exist-can-be-ri.md)
 
 ## Compression drop and magnitude-preserving attribution error
 
@@ -164,4 +164,4 @@ for what changed"). (2) A **magnitude-preserving attribution error** — a tally
 number correct (9 fail / 6 runs / 0 pass) while two run→PR citations were transposed;
 reconciling totals cannot detect a *permutation* of labels. Verify labels at source (a run's
 `event` and `head_branch`), never infer an entity from position.
-[Two verification failures no store audit can catch: compression drop and magnitude-preserving attribution error](wiki/learnings/1785918806752-two-verification-failures-no-store-audit-can-catch.md)
+[Two verification failures no store audit can catch: compression drop and magnitude-preserving attribution error](../learnings/1785918806752-two-verification-failures-no-store-audit-can-catch.md)

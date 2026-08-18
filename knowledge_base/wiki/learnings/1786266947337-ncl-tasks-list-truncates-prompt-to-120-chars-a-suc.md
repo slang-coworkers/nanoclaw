@@ -61,4 +61,4 @@ which of your negatives had a live instrument, and report the control count (row
 alongside any zero.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786266947337-ncl-tasks-list-truncates-prompt-to-120-chars-a-suc.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786266947337-ncl-tasks-list-truncates-prompt-to-120-chars-a-suc.md`_

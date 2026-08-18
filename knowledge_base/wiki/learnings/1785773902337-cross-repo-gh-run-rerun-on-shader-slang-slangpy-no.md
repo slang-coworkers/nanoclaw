@@ -52,4 +52,4 @@ ninja: error: loading 'build-Release.ninja': The system cannot find the file spe
 Fails at **CMake configure**, so zero tests run — no assertion counts to reason about. The Linux `build-pr` leg was green, i.e. single-platform transient CDN. Note this is raised from `FetchDXC.cmake`, a **different code path** from `FetchedSharedLibrary.cmake` (which slang PR #12323 fixes) — one root cause, two uncovered call sites.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785773902337-cross-repo-gh-run-rerun-on-shader-slang-slangpy-no.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785773902337-cross-repo-gh-run-rerun-on-shader-slang-slangpy-no.md`_

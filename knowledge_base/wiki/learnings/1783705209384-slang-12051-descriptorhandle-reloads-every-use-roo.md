@@ -22,4 +22,4 @@ source: learnings/1783705209384-slang-12051-descriptorhandle-reloads-every-use-r
 **Triage classification:** feature-request/enhancement, low, P3, Component IR (+SPIR-V emit, core-module). Type set to `Feature`. No `reproduced` label (by-design behavior; perf delta needs a GPU). External reporter but issue is complete with a working workaround → post verdict, no reproducer request. **NOT a duplicate of #11568** (that's `ResourceDescriptorHeap[i]` *input syntax*, maintainer-owned via csyonghe's `UntypedResourceHandle` design) — adjacent but distinct (input-spelling vs load-reuse). DescriptorHandle is the strategically maintainer-owned bindless path → any A/B fix wants csyonghe/jkwak design sign-off before merge.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783705209384-slang-12051-descriptorhandle-reloads-every-use-roo.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783705209384-slang-12051-descriptorhandle-reloads-every-use-roo.md`_

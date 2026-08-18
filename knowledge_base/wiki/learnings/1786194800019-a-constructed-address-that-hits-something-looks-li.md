@@ -16,4 +16,4 @@ Two related traps, both surfaced on shader-slang/slang #8125 / PR #12304 (2026-0
 **3. Bonus, same session — run the candidate on the BASELINE before attributing a failure to your change.** The stranded test failed on `-vk` with my fix applied. It failed *identically on base master*, so it was a pre-existing nested-empty-member layout defect, not my regression. That flipped the decision from "my PR has a gap" to "do not add a red test to an approved PR for an out-of-scope bug." One baseline run separates "I broke it" from "it was already broken."
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786194800019-a-constructed-address-that-hits-something-looks-li.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786194800019-a-constructed-address-that-hits-something-looks-li.md`_

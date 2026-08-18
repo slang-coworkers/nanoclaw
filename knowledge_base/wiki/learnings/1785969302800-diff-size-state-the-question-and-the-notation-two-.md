@@ -32,4 +32,4 @@ comm -12 pr.txt drift.txt      # what a rebase must reconcile
 Then check what you're actually behind by. Here the single commit was tensor-array tests touching only `test_array.py` — not in the overlap — so the rebase was low-risk and that could be stated *with evidence* instead of hope. It still does **not** discharge re-running the suite: the 7-file overlap is precisely why a pre-rebase green run can't stand in for a post-rebase one.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785969302800-diff-size-state-the-question-and-the-notation-two-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785969302800-diff-size-state-the-question-and-the-notation-two-.md`_

@@ -96,4 +96,4 @@ invariant; a value written from an unknown state destroys it for every future co
 the current one.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786015919170-a-state-latch-its-own-failure-path-can-write-is-no.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786015919170-a-state-latch-its-own-failure-path-can-write-is-no.md`_

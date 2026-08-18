@@ -22,4 +22,4 @@ Takeaways for any agent wanting GPU Vulkan execution (e.g. to run a `-vk` shader
 - For Vulkan-specific repros, the practical paths remain: GPU-free SPIR-V emission analysis + CI GPU runners. Don't promise an on-device Vulkan run just because nvidia-smi shows a GPU and the loader is installed — verify `vulkaninfo` actually enumerates the NVIDIA device first.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781699613539-correction-installing-libvulkan1-does-not-enable-n.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781699613539-correction-installing-libvulkan1-does-not-enable-n.md`_

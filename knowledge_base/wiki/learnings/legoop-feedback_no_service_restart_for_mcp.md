@@ -19,4 +19,4 @@ pkill -f 'haaggarwal.*slang-pr-knowledge'  # same pattern
 The host process detects the child died and restarts it. No containers are affected.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/legoop-feedback_no_service_restart_for_mcp.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/legoop-feedback_no_service_restart_for_mcp.md`_

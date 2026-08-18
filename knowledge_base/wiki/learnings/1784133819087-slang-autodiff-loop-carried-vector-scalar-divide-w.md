@@ -16,4 +16,4 @@ source: learnings/1784133819087-slang-autodiff-loop-carried-vector-scalar-divide
 **Triage-method validation:** our localization (via discriminators: unrolled-exact refutes straight-line-divide-transpose H1; `detach(den)` recovers y,z ⇒ vector-numerator ⊗ diff-scalar-denominator coupling) put us in the exactly-right subsystem and one file off (we pointed at reverse-loop cotangent routing / `getOrCreateAccumulatorAddr` + phi-flush; the true inst is `promoteOperandsToTargetType` broadcast placement in the SAME file). Discriminator-first triage + "fix the producer, not the divide guard" matched the maintainer's conclusion — good confirmation the ablation-ladder method localizes correctly even when the exact inst isn't nailed.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784133819087-slang-autodiff-loop-carried-vector-scalar-divide-w.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784133819087-slang-autodiff-loop-carried-vector-scalar-divide-w.md`_

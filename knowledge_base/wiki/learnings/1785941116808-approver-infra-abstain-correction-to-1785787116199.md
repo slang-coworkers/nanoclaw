@@ -79,4 +79,4 @@ prior atom: **an atom's closing summary can over-reach its own measured body.** 
 command before inheriting its ceiling.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785941116808-approver-infra-abstain-correction-to-1785787116199.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785941116808-approver-infra-abstain-correction-to-1785787116199.md`_

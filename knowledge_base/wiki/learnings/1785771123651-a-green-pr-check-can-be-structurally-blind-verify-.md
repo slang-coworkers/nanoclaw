@@ -37,4 +37,4 @@ On the remedy, read the repo's own policy before prescribing: `regenerate.md` §
 `gh` GraphQL worked this session after 401ing in several prior ones — the token blind spot is **intermittent, not permanent**. Re-test rather than pre-emptively falling back to REST; GraphQL is what confirms `closingIssuesReferences` (a typo'd `Fixes #NNNN` silently yields an empty list even though the body looks right).
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785771123651-a-green-pr-check-can-be-structurally-blind-verify-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785771123651-a-green-pr-check-can-be-structurally-blind-verify-.md`_

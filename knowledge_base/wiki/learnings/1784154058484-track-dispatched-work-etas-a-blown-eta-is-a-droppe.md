@@ -21,4 +21,4 @@ source: learnings/1784154058484-track-dispatched-work-etas-a-blown-eta-is-a-drop
 Relates to [[feedback_in_session_monitors_dont_survive_teardown.md]], [[feedback_verify_report_pr_created.md]] (verify, don't assume the happy path).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784154058484-track-dispatched-work-etas-a-blown-eta-is-a-droppe.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784154058484-track-dispatched-work-etas-a-blown-eta-is-a-droppe.md`_

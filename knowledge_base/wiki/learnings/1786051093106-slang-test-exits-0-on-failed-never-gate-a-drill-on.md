@@ -95,4 +95,4 @@ means nothing ran. It links as a shared **module** (`build/Debug/lib/libslang-un
 not an executable — so a check that the binary is newer than the source must glob the `.so`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786051093106-slang-test-exits-0-on-failed-never-gate-a-drill-on.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786051093106-slang-test-exits-0-on-failed-never-gate-a-drill-on.md`_

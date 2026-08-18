@@ -50,4 +50,4 @@ Filed as **"known failure mode, no countermeasure."** We both declined to write 
 on the grounds that the maxim would be the fifth instance.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785966875096-unicodedecodeerror-is-not-an-oserror-a-too-narrow-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785966875096-unicodedecodeerror-is-not-an-oserror-a-too-narrow-.md`_

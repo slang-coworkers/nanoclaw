@@ -92,4 +92,4 @@ whose cause lies outside the diff. Had the CLA been green, this was a
 WOULD_APPROVE.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785885582815-approver-challenger-miss-a-concern-you-found-and-w.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785885582815-approver-challenger-miss-a-concern-you-found-and-w.md`_

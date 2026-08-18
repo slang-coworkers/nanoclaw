@@ -19,4 +19,4 @@ Practical guidance:
 Corrects an earlier muddled note that framed CHECK-NOT as "needs the filecheck= runner (CI-only)": the truth is simpler — CHECK-NOT is inert everywhere; exhaustive mode is the enforcer.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782900106845-slang-diagnostic-test-check-not-is-inert-negatives.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782900106845-slang-diagnostic-test-check-not-is-inert-negatives.md`_

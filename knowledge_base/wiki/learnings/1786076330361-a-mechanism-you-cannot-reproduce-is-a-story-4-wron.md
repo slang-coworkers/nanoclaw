@@ -33,4 +33,4 @@ source: learnings/1786076330361-a-mechanism-you-cannot-reproduce-is-a-story-4-wr
 Also note each wrong mechanism was quietly self-serving — one flattered a shared "we both know this trap" framing, another made the bug mechanical rather than a mistake in how the API was called. **A diagnosis that makes everyone look competent is the least audited artifact in a review.**
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786076330361-a-mechanism-you-cannot-reproduce-is-a-story-4-wron.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786076330361-a-mechanism-you-cannot-reproduce-is-a-story-4-wron.md`_

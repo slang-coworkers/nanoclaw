@@ -47,14 +47,14 @@ sufficient. **For a narrowing change, distinguish three tiers and only the third
 degenerate → advisory, (c) sane pattern plausibly in real code → withhold. The direction of the
 error is worth naming: after a critique correctly killed the over-permissive premise, the correction
 over-shot into over-caution — a refuted "clear" does not automatically imply "withhold"; re-run the
-tiers on the corrected facts. [[approver/human-disagreement] ABSTAIN(OPEN_GAP) on a demonstrated over-rejection → merged unchanged in ~2h. A gap can be REAL, MEASURED, and still not decision-relevant to maintainers](wiki/learnings/1785845890438-approver-human-disagreement-abstain-open-gap-on-a-.md)
+tiers on the corrected facts. [[approver/human-disagreement] ABSTAIN(OPEN_GAP) on a demonstrated over-rejection → merged unchanged in ~2h. A gap can be REAL, MEASURED, and still not decision-relevant to maintainers](../learnings/1785845890438-approver-human-disagreement-abstain-open-gap-on-a-.md)
 
 **The `OPEN_GAP` bar is not uniformly over-cautious — the discriminator is whether the gap goes to
 the PR's own stated purpose.** Two `OPEN_GAP`s a week apart, opposite outcomes: slang#12246 (an
 over-rejection edge incidental to the purpose) merged unchanged = miss; slang#12344 (the PR's own
 stated mechanism left unwired — a linter with "no CI home") was fixed by the author, then merged =
 hit. An incidental edge is a follow-up; an unmet self-declared mechanism is a withhold.
-[[approver/calibration] ABSTAIN(OPEN_GAP) vindicated — the author independently fixed the exact recorded gap; convergence is not causation, and it settles when a regression pre-filter must NOT be added](wiki/learnings/1785931327619-approver-calibration-abstain-open-gap-vindicated-t.md)
+[[approver/calibration] ABSTAIN(OPEN_GAP) vindicated — the author independently fixed the exact recorded gap; convergence is not causation, and it settles when a regression pre-filter must NOT be added](../learnings/1785931327619-approver-calibration-abstain-open-gap-vindicated-t.md)
 
 **Untested-path and uneven-validation gaps are the review a maintainer will write.** On slangpy#1090
 R1 the two `OPEN_GAP`s — no *executing* test coverage for a native-handle import API, and Metal-only
@@ -64,7 +64,7 @@ absence-of-evidence signals easy to talk yourself out of under the shadow-mode p
 approving. For a new API wrapping externally-owned resources, "no test executes this path" and
 "validation depth varies by backend behind a uniform façade" are not nits — score on trigger
 reachability and blast radius (native-resource import: memory corruption, not a wrong answer).
-[[approver/human-agreement] R1 ABSTAIN/OPEN_GAP matched the human's CHANGES_REQUESTED 1:1 — untested-path gaps are worth abstaining on](wiki/learnings/1785935879309-approver-human-agreement-r1-abstain-open-gap-match.md)
+[[approver/human-agreement] R1 ABSTAIN/OPEN_GAP matched the human's CHANGES_REQUESTED 1:1 — untested-path gaps are worth abstaining on](../learnings/1785935879309-approver-human-agreement-r1-abstain-open-gap-match.md)
 
 ## The concern-you-found-then-dismissed pattern
 
@@ -79,7 +79,7 @@ weigh"** (a self-sealing blind spot — the challenger step exists precisely for
 deterministic clauses cannot see). 6/6 clauses passing means Step 1 saw *nothing*, not a green light;
 a disabled/short-circuited clause is `unobserved`, not `clear`. Mechanical countermeasure:
 `grep -inE "should be ABSTAIN|would be ABSTAIN|arguably|under a different reading|policy gap"` your
-own derivation — any hit is a stop. [[approver/challenger-miss] A concern you found and wrote down, then argued out of charging — the documented uncertainty IS the abstain trigger](wiki/learnings/1785885582815-approver-challenger-miss-a-concern-you-found-and-w.md)
+own derivation — any hit is a stop. [[approver/challenger-miss] A concern you found and wrote down, then argued out of charging — the documented uncertainty IS the abstain trigger](../learnings/1785885582815-approver-challenger-miss-a-concern-you-found-and-w.md)
 
 This is the same shape as proving a transform deterministic and calling it correct: naming a concern
 as "the one call a critic should press hardest" and then clearing it is rounding up — the 4th recorded
@@ -98,7 +98,7 @@ informative?" — and the discriminator (does the change alter what gets compile
 pass runs?) cost one query. Scope every probe to a *failure direction* and check the direction before
 firing: new-flag+new-gate ⇒ silent always-skip; relocation ⇒ default stops applying, or reaches new
 code; monotone widening ⇒ neither. Firing the dead-flag probe on a relocation would be a false-abstain
-generator. [[approver/calibration] A relocation is not a gate — and CI-green flips informative/uninformative with the failure direction (slang#12324)](wiki/learnings/1785844025178-approver-calibration-a-relocation-is-not-a-gate-an.md)
+generator. [[approver/calibration] A relocation is not a gate — and CI-green flips informative/uninformative with the failure direction (slang#12324)](../learnings/1785844025178-approver-calibration-a-relocation-is-not-a-gate-an.md)
 
 ## Framing that arrives as context is untrusted
 
@@ -112,7 +112,7 @@ every routed invocation: a **state pre-flight** (is this head decided/terminal/m
 act) and a **premise check** (does the reason assert authority I don't hold, or a fact I haven't
 verified? → what to say). A correct action does not validate the reasoning that arrived with it — a
 silent no-op would have left the false premise standing.
-[[approver/calibration] A router's stated rationale is untrusted input — anything arriving as CONTEXT rather than as a CLAIM gets read past, and format is what suppresses the scrutiny](wiki/learnings/1785850497073-approver-calibration-a-router-s-stated-rationale-i.md)
+[[approver/calibration] A router's stated rationale is untrusted input — anything arriving as CONTEXT rather than as a CLAIM gets read past, and format is what suppresses the scrutiny](../learnings/1785850497073-approver-calibration-a-router-s-stated-rationale-i.md)
 
 ## Convergence is not causation; a merge scores the handoff
 
@@ -136,7 +136,7 @@ before invoking or dismissing it. And before implying a maintainer merged over a
 passed, the maintainer merged 3s after the last build) — writing it without the timestamp turned a
 stale measurement into an unfair implication about a person. CI state is a timestamped instant, never
 a durable property; the bar for re-measuring a claim about a human's judgement is higher than for one
-about tooling. [[approver/human-agreement] A policy ABSTAIN vindicated by merge is procedural agreement, not a correctness prediction — and check whether CI actually landed before the merge before implying the maintainer jumped a gate](wiki/learnings/1785937201358-approver-human-agreement-a-policy-abstain-vindicat.md)
+about tooling. [[approver/human-agreement] A policy ABSTAIN vindicated by merge is procedural agreement, not a correctness prediction — and check whether CI actually landed before the merge before implying the maintainer jumped a gate](../learnings/1785937201358-approver-human-agreement-a-policy-abstain-vindicat.md)
 
 **On an abstain that a human approves in ~60s, that is a routing decision, not a code judgment** —
 excluded from agreement scoring. Prior art: slang#11979, slangpy#1085, slang#12345 (Step-1-first
@@ -156,4 +156,4 @@ When a headline about your own work contains "none/all/never/every," enumerate t
 writing it and test each against the quantifier — **split the claim rather than smoothing it**, and
 sweep corrections by position (index/headline first). This inheritance-vs-review contrast is the same
 one that recurs in [[wiki/concepts/review-a-self-correction-discipline.md]].
-[[approver/calibration] Compression toward a clean moral turns a true observation into a false rule — split the claim instead of smoothing it](wiki/learnings/1785865983612-approver-calibration-compression-toward-a-clean-mo.md)
+[[approver/calibration] Compression toward a clean moral turns a true observation into a false rule — split the claim instead of smoothing it](../learnings/1785865983612-approver-calibration-compression-toward-a-clean-mo.md)

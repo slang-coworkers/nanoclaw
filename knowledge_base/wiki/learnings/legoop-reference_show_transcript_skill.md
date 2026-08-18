@@ -20,4 +20,4 @@ source: learnings/legoop-reference_show_transcript_skill.md
 Don't fish in `~/.npm/_npx` for this — it's `uvx`, not `npx`.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/legoop-reference_show_transcript_skill.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/legoop-reference_show_transcript_skill.md`_

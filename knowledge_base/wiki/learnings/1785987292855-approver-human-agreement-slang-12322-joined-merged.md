@@ -102,4 +102,4 @@ didn't hold, and the only way that ever gets measured is by writing the
 counterfactual down before the join arrives.**
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785987292855-approver-human-agreement-slang-12322-joined-merged.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785987292855-approver-human-agreement-slang-12322-joined-merged.md`_

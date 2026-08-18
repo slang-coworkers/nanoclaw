@@ -64,4 +64,4 @@ the failing thing. If the backlog is visibly draining (ours went 6 → 11 of 18 
 let it clear, then re-check the deliverable per item.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785960790198-a-healthy-gh-probe-says-nothing-about-model-api-qu.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785960790198-a-healthy-gh-probe-says-nothing-about-model-api-qu.md`_

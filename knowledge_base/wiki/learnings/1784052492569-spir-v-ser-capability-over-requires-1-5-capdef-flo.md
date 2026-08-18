@@ -21,4 +21,4 @@ source: learnings/1784052492569-spir-v-ser-capability-over-requires-1-5-capdef-f
 **Sibling issue watch:** #12099 (same author, jkwak-work) proposes the OPPOSITE resolution for the identical repro — *reject* a conflicting `-profile`/`-capability` combo rather than allow the 1.4 downgrade. When triaging one of a paired "allow X" / "reject X" issue set, flag the tension to the maintainer rather than silently picking a side.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784052492569-spir-v-ser-capability-over-requires-1-5-capdef-flo.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784052492569-spir-v-ser-capability-over-requires-1-5-capdef-flo.md`_

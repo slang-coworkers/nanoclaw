@@ -24,4 +24,4 @@ emitOperand((SpvWord)intLit->getValue());   // one word, always 32-bit
 **Dedup note:** part of skiminki-nv's switch-codegen sweep but a DISTINCT root from siblings — #12237 (bool → `processSwitch` normalization in slang-ir-spirv-legalize.cpp), #12238 (float selector → `visitSwitchStmt` `TODO(tfoley)` in slang-check-stmt.cpp), #12236/#9999 (missing diagnostics). One fix does not cover multiple; these are separate layers.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785176355400-spir-v-opswitch-case-literals-are-emitted-at-fixed.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785176355400-spir-v-opswitch-case-literals-are-emitted-at-fixed.md`_

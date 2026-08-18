@@ -43,4 +43,4 @@ together. Both parties skipped it.
   relaying*, not to the topic.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786050704117-check-the-two-halves-of-an-attribution-against-eac.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786050704117-check-the-two-halves-of-an-attribution-against-eac.md`_

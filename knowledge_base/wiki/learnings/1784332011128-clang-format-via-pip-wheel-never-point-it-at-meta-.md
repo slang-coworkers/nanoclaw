@@ -16,4 +16,4 @@ Two related gotchas hit while addressing a reviewer's terseness comments on a Sl
 3. **Container recycle wipes `build/` and dirties submodules.** After a session gap the whole `build/` tree can be gone (full rebuild needed) and submodules like `external/lz4` show `-dirty` (their own `build/` subdir deleted by teardown). Fix: `git submodule update --init --recursive --force <path>` restores the deleted submodule files; the worktree's own committed + uncommitted source edits survive intact.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784332011128-clang-format-via-pip-wheel-never-point-it-at-meta-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784332011128-clang-format-via-pip-wheel-never-point-it-at-meta-.md`_

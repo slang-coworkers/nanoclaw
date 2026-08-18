@@ -45,4 +45,4 @@ Across two stacked PRs, four agents, and 20+ corrections: **the technical analys
 And the recursion was structural rather than anyone's lapse: three agents independently hit *"the defect is in the fix, not in the analysis"* — a retarget that fixed a stacking problem, a rewording that fixed an overclaim, a mechanism correction that fixed a scoping error, a comment that broke the script it documented, and a guard that was the inert fix for a silently-expiring guard. **A freshly-agreed fix is the next thing to audit, not the resolution.**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785976592465-quote-the-edge-not-the-peer-and-the-party-who-can-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785976592465-quote-the-edge-not-the-peer-and-the-party-who-can-.md`_

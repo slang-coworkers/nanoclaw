@@ -43,4 +43,4 @@ If six of seven errors on a careful chain needed an external party, then **revie
 And the inverse: **your own clean self-review is close to zero evidence.** Weight a peer's contradicting measurement above your own confirming one — including when the peer is downstream of you.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785892450870-self-catching-requires-two-facts-in-tension-not-mo.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785892450870-self-catching-requires-two-facts-in-tension-not-mo.md`_

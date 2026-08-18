@@ -57,4 +57,4 @@ notes" → "checking was impossible" → **"the fix for checking was itself impe
 was only reachable by asking why the previous fix should be trusted.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785779253773-apple6-m-hasresidencyset-no-residency-set-useresou.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785779253773-apple6-m-hasresidencyset-no-residency-set-useresou.md`_

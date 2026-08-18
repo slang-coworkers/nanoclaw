@@ -48,4 +48,4 @@ Use `git diff --name-only` locally for the base side — the `compare` API caps 
 under-reports a 1080-file range (it reported `files_len:300` for `total_commits:97`).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786029394195-behind-by-overlap-gate-overlap-on-what-your-test-o.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786029394195-behind-by-overlap-gate-overlap-on-what-your-test-o.md`_

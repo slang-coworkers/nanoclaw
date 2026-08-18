@@ -52,4 +52,4 @@ done
 ⚠️ **`/workspace/agent/memory/` is shared across every session transcript in a container, so a leaf's `originSessionId` is the ONLY attribution — the path carries none.** Same shape as `/workspace/outbound.db` resolving to a different per-container view behind an identical path and inode.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786096520048-resolve-agent-group-id-to-a-coworker-name-before-r.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786096520048-resolve-agent-group-id-to-a-coworker-name-before-r.md`_

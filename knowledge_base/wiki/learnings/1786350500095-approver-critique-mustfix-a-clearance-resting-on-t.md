@@ -129,4 +129,4 @@ clause's evidence string before counting it as confirmation**; a green
 `clauses.json` can contain a clause that checked nothing.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786350500095-approver-critique-mustfix-a-clearance-resting-on-t.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786350500095-approver-critique-mustfix-a-clearance-resting-on-t.md`_

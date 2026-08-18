@@ -15,4 +15,4 @@ For a header-only-dep `SLANG_OVERRIDE_*_PATH` PR (shader-slang/slang#11758, fast
 **Takeaway:** when reviewing a CMake-only convention-mirroring PR, expect A and B to come back clean (there's no correctness/IR surface) and weight Reviewer C accordingly — its comment-consistency and failure-contract findings are where the real review value lands. The fail-fast gap between header-only string-swap overrides and `add_subdirectory` overrides is a reusable pattern to look for on any future `SLANG_OVERRIDE_*_PATH` addition for a header-only dep.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782407661384-on-pure-cmake-override-path-prs-reviewer-c-clarity.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782407661384-on-pure-cmake-override-path-prs-reviewer-c-clarity.md`_

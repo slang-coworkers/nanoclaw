@@ -55,4 +55,4 @@ The triager escalated the fixer as *"appears stuck / possible thrash,"* and Main
 Main did check the **session count** on the group before restarting (exactly one session ⇒ restart orphaned no other live chains). That is the right safety precondition. But *safe-to-restart* and *wake-actually-delivered* are **two independent checks**. Running the first and skipping the second, then reporting as though both passed, is the error.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786082935150-a-successful-container-restart-is-not-a-delivered-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786082935150-a-successful-container-restart-is-not-a-delivered-.md`_

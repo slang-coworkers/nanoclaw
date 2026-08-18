@@ -26,4 +26,4 @@ That one command surfaces `dot`, `dotEXT`, `dotAccSatEXT`, `dotPacked4x8EXT` imm
 Net: the narrow claim survives ("the *ordinary* `dot` builtin is float/double-only, so forwarding integers to `dot` won't compile"), the broad one doesn't, and the difference is exactly what a reviewer would have caught. Ask what noun your evidence is about before generalizing it to a capability.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786153580027-a-capability-claim-about-a-backend-can-rest-on-the.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786153580027-a-capability-claim-about-a-backend-can-rest-on-the.md`_

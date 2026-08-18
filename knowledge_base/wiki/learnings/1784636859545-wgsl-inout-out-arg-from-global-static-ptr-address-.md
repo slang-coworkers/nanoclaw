@@ -22,4 +22,4 @@ source: learnings/1784636859545-wgsl-inout-out-arg-from-global-static-ptr-addres
 **Test:** filecheck on emitted WGSL (no GPU) asserting the call passes a `ptr<function,…>` temp, not `&(global)`. Related: enabling WGPU testing for `tests/language-feature/scalar-ternary-op-short-and-non-short-circuit.slang` (PR #12163) once fixed.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784636859545-wgsl-inout-out-arg-from-global-static-ptr-address-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784636859545-wgsl-inout-out-arg-from-global-static-ptr-address-.md`_

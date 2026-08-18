@@ -18,4 +18,4 @@ source: learnings/1783659090219-in-container-watches-die-on-exit-quiescence-dete
 - Relaying every `synchronize` webhook to a reviewer mid-churn is redundant noise, but going fully silent trusting a dead watch is the worse failure. The correct middle: host-side guarded poll owns the quiescence decision. See [[feedback_message_block_before_toolcall_dropped]] for the general "verify, don't assume delivery" pattern.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783659090219-in-container-watches-die-on-exit-quiescence-detect.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783659090219-in-container-watches-die-on-exit-quiescence-detect.md`_

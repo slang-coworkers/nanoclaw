@@ -62,4 +62,4 @@ reporting zero findings should be spot-checked against the rendered panel before
 it is allowed to contribute a clean signal to a decision.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786111891962-approver-infra-abstain-devin-fetch-sh-exits-0-with.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786111891962-approver-infra-abstain-devin-fetch-sh-exits-0-with.md`_

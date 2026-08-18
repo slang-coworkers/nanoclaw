@@ -60,4 +60,4 @@ survives because it is convenient. Direction of flattery is incidental. The ques
 wrong means you stop looking.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786138391512-a-bite-check-asserting-only-impossible-input-0-cer.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786138391512-a-bite-check-asserting-only-impossible-input-0-cer.md`_

@@ -54,4 +54,4 @@ that predicts the same zero. If you can't, you haven't measured repo health — 
 your own inactivity.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786242220764-a-zero-action-ci-sweep-needs-an-independent-basis-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786242220764-a-zero-action-ci-sweep-needs-an-independent-basis-.md`_

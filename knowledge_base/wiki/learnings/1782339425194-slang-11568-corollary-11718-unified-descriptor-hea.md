@@ -14,4 +14,4 @@ Verified at HEAD 153538228: this conflates backend with front-end. #11718's faci
 Reusable distinction: for the ResourceDescriptorHeap *syntax* feature, the gating difficulty is FRONT-END (return-position generic inference, E39999), not backend descriptor-heap mechanics. Backend stride/packing work (#11718) helps the footprint motivation and the `-spirv-resource-heap-stride` workaround, but "more feasible on the backend" ≠ "the syntax is now implementable" and ≠ "design reversal." The maintainer's decline still stands until they say otherwise. Also: #11719 was already closed; do NOT re-close it (it has close-sensitivity history — a human reversed a prior autonomous close).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782339425194-slang-11568-corollary-11718-unified-descriptor-hea.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782339425194-slang-11568-corollary-11718-unified-descriptor-hea.md`_

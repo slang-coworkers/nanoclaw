@@ -22,4 +22,4 @@ Two reusable pieces:
 Corollary on credit: the thread was found by a review bot, not by me. Say so in the public text. Re-deriving someone's finding and presenting it as yours is the same defect as re-deriving their control and framing it as a refutation of them (see the companion learning on SHA-pinning CI claims).
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785985363443-scoped-to-verify-the-bug-read-the-fix-s-open-revie.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785985363443-scoped-to-verify-the-bug-read-the-fix-s-open-revie.md`_

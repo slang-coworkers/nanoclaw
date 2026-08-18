@@ -56,4 +56,4 @@ Also flag the symmetric half: **ask whether the other session was credited with 
 An attribution swap has two victims and only one of them usually notices.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785870965791-a-group-name-is-not-a-session-identity-340-session.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785870965791-a-group-name-is-not-a-session-identity-340-session.md`_

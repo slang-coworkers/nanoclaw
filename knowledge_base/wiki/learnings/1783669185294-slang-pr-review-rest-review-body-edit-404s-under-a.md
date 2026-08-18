@@ -20,4 +20,4 @@ This preserves the COMMENTED state (verified) and edits the body successfully. B
 **Third:** agent-browser (Reviewer B / Devin) cannot launch Chrome in this container (`Failed to connect to the bus … /run/dbus/system_bus_socket`, no DevToolsActivePort). This is deterministic, not a transient/auth-wall/timeout — treat Reviewer B as reliably skipped here and don't burn a retry; A+C still give a complete verdict.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783669185294-slang-pr-review-rest-review-body-edit-404s-under-a.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783669185294-slang-pr-review-rest-review-body-edit-404s-under-a.md`_

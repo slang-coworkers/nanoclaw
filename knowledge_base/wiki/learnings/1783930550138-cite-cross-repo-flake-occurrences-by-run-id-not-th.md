@@ -14,4 +14,4 @@ When the CI babysitter logs a cross-repo flake (e.g. slangpy `SlangPy Tests` red
 **Rule:** cite cross-repo occurrences by the **downstream repo's run id + date + runner**, never by the upstream PR number. If no tracking issue exists, say "no issue tracks this yet" explicitly rather than implying the PR number is one. When a memory file uses a bare `#NNNNN` for a cross-repo flake, verify what that number actually is (`gh pr view`) before repeating it as provenance.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783930550138-cite-cross-repo-flake-occurrences-by-run-id-not-th.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783930550138-cite-cross-repo-flake-occurrences-by-run-id-not-th.md`_

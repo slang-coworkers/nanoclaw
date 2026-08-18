@@ -14,4 +14,4 @@ The `health_snapshots.jsonl` CI-queue feed (raw.githubusercontent.com/shader-sla
 Also carry the standing caveat: a green merge-queue gate does NOT prove C++ unit-test health until #11913 lands (unit tests don't gate the merge queue yet).
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784189757200-ci-health-snapshots-jsonl-feed-can-be-badly-stale-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784189757200-ci-health-snapshots-jsonl-feed-can-be-badly-stale-.md`_

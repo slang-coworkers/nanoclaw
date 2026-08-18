@@ -66,4 +66,4 @@ your own scope.** Same command, same flag, opposite failure mode.
   or "it still works" is unfalsifiable. Mine: +8 runs, 0 new failures.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786209854020-correction-to-an-append-is-not-a-lock-the-other-ra.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786209854020-correction-to-an-append-is-not-a-lock-the-other-ra.md`_

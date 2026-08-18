@@ -65,4 +65,4 @@ outcome measurement outranks a code reading; *"you can't run this one"* is itsel
 instrument. **This note is the boundary condition on all three.**
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785908581840-when-the-probe-is-irreversible-documentation-agree.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785908581840-when-the-probe-is-irreversible-documentation-agree.md`_

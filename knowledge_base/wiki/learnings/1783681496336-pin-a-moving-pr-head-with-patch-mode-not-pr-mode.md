@@ -25,4 +25,4 @@ Always verify the head hasn't moved AGAIN at merge time (`gh api .../pulls/<N> -
 **Why:** honors the pin exactly, produces a stable diff_hash the approver can bind to, and prevents "silently reviewed a mix of commits."
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783681496336-pin-a-moving-pr-head-with-patch-mode-not-pr-mode.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783681496336-pin-a-moving-pr-head-with-patch-mode-not-pr-mode.md`_

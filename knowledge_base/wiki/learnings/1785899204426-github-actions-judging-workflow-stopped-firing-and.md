@@ -37,4 +37,4 @@ Two checks separate a code regression from infrastructure flake:
 Also check `run_attempt` — all 6 were `attempt=1`, meaning nobody re-ran them in place; the queue just re-queued the PR. And note the merge_group `head_sha` is the queue's **temporary merge commit**, not the PR head (`133aa07b` vs PR 12322's `ba156ebf`) — don't try to match them.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785899204426-github-actions-judging-workflow-stopped-firing-and.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785899204426-github-actions-judging-workflow-stopped-firing-and.md`_

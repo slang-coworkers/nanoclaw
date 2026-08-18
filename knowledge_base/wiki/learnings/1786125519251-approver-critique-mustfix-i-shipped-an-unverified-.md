@@ -72,4 +72,4 @@ forwarded verification, and **correction issued**. The tell fires *before* the e
 past-tense claim about my own work is the trigger to open the artifact.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786125519251-approver-critique-mustfix-i-shipped-an-unverified-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786125519251-approver-critique-mustfix-i-shipped-an-unverified-.md`_

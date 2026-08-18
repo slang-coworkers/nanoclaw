@@ -16,4 +16,4 @@ source: learnings/1784446531911-approver-challenger-fork-pr-codegen-fix-with-unr
 **Fix:** Codegen change + unrun validating test + no local execution path ⇒ ABSTAIN_POLICY/OPEN_GAP. Shadow mode never rounds up on unexecuted codegen. Sibling precedents: PR 12138 (ext-fork CI maintainer-gated + unrun test → ABSTAIN), PR 800 slang-rhi (backend test masked out / never executed → ABSTAIN). The relaxed mounted policy's `require_ci_green:false` deliberately lets these reach the challenger instead of Step-1 failing — so the CI-never-ran fact surfaces as an OPEN_GAP in the challenger, exactly where a human-must-look judgment belongs.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784446531911-approver-challenger-fork-pr-codegen-fix-with-unrun.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784446531911-approver-challenger-fork-pr-codegen-fix-with-unrun.md`_

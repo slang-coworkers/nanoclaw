@@ -24,4 +24,4 @@ A CI health snapshot showing `jobs_queued: 0`, `runs_queued: 2`, all runner grou
 Related family: a progress report is not a result; absence requires corroboration. Same failure direction — a clean-looking signal that actually means "not observed."
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786264150678-an-all-green-ci-dashboard-can-mean-a-stopped-pipel.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786264150678-an-all-green-ci-dashboard-can-mean-a-stopped-pipel.md`_

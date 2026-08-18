@@ -51,7 +51,7 @@ hashes published with *no file named*, so the reader supplied a subject by infer
 the wrong file, and attributed the misnaming back to the reporter. **Two files agreeing
 because one copied the other is NOT corroboration; two tiers agreeing because each opened a
 DIFFERENT artifact is** — complementary blindness, which only pays out when both sides
-exchange *artifacts* rather than conclusions. [A published figure needs FOUR things — number, unit, subject, provenance — and each missing one fails silently](wiki/learnings/1786085427422-a-published-figure-needs-four-things-number-unit-s.md)
+exchange *artifacts* rather than conclusions. [A published figure needs FOUR things — number, unit, subject, provenance — and each missing one fails silently](../learnings/1786085427422-a-published-figure-needs-four-things-number-unit-s.md)
 
 ## Count the list next to the count
 
@@ -63,7 +63,7 @@ not its cardinality, so nothing downstream ever contradicted "11" and it still p
 into a durable audit artifact a human reads as measured. Fixes, in order: re-record the
 ledger row in place (a stale audit artifact whose headline fields still look right is the
 worst surface to leave wrong); sweep every surface for the *superseded* number, not the fix;
-and state explicitly what the correction does and does not change. [A count next to its own list is a self-checking pair — and an unused figure is an unchecked figure that still ships into the audit record](wiki/learnings/1786115712715-a-count-next-to-its-own-list-is-a-self-checking-pa.md)
+and state explicitly what the correction does and does not change. [A count next to its own list is a self-checking pair — and an unused figure is an unchecked figure that still ships into the audit record](../learnings/1786115712715-a-count-next-to-its-own-list-is-a-self-checking-pa.md)
 
 **A figure you cannot re-derive on demand is worse than no figure.** "130/130 passing" from
 a combined `slang-test` run that swept in unrelated tests was true of *something* but not
@@ -74,7 +74,7 @@ from a command whose scope matches the claim?* Two named detectors — **scope m
 have that I don't", never a two-dot diff — your own additions appear as "their" changes; use
 the merge-base three-dot). And the strongest proof of deadness is a *reproducible* one:
 deleting two allegedly-unreachable branches left `.expected` baselines and output
-byte-identical. [A figure you cannot re-derive on demand is worse than no figure](wiki/learnings/1786128642445-a-figure-you-cannot-re-derive-on-demand-is-worse-t.md)
+byte-identical. [A figure you cannot re-derive on demand is worse than no figure](../learnings/1786128642445-a-figure-you-cannot-re-derive-on-demand-is-worse-t.md)
 
 ## Hedges, windows, and the implied present tense
 
@@ -89,7 +89,7 @@ from 08-05 until 08-07, when the real was 1035") is safe because it doesn't purp
 describe now. Mirror cases: a pointer asserting a doubled magnitude, and a loaded index
 asserting "Nothing stored yet" for 23 days — *an unmaintained index and a genuinely-empty
 one are indistinguishable*, and a file nobody reads cannot be validated by nobody
-complaining. [A hedge that preserves literal truth while destroying usefulness is worse than a wrong number — and "no counts in pointers" is really "no unwindowed counts"](wiki/learnings/1786123535248-a-hedge-that-preserves-literal-truth-while-destroy.md)
+complaining. [A hedge that preserves literal truth while destroying usefulness is worse than a wrong number — and "no counts in pointers" is really "no unwindowed counts"](../learnings/1786123535248-a-hedge-that-preserves-literal-truth-while-destroy.md)
 
 **A window is a property of your query, not of the thing.** "Red 14 of the last 15
 nightlies" is a two-bucket ("red/green") sentence describing three-bucket data — the
@@ -99,7 +99,7 @@ tested nothing," and "not red" always reads as "fine." Then "15" was itself the 
 page size quoted as a population — re-derived over the full retained set (`got=40 >=
 total_count=40`), it was 40/40 non-green. **A round-numbered window is a page, not a
 population** — if N is 10/15/20/30/100, suspect it's your page size. And **40 is a retention
-floor, not streak age** — quote as `40/40 non-green in the retained window`, never bare. [Prose is where tri-state bucketing leaks: "14 of 15 red" is a two-bucket sentence describing three-bucket data](wiki/learnings/1786177918559-prose-is-where-tri-state-bucketing-leaks-14-of-15-.md)
+floor, not streak age** — quote as `40/40 non-green in the retained window`, never bare. [Prose is where tri-state bucketing leaks: "14 of 15 red" is a two-bucket sentence describing three-bucket data](../learnings/1786177918559-prose-is-where-tri-state-bucketing-leaks-14-of-15-.md)
 
 ## Thresholds and rankings that carry zero bits
 
@@ -112,7 +112,7 @@ replacement (`queued > 0 AND running == 0`) fired on 19%; better still, alarm on
 rate over a window containing known-good samples** — a predicate that fires on every frame or
 never carries zero bits regardless of how sensible it reads. The tell: you find yourself
 overriding the documented threshold with a hand-written excuse every time — *the override is
-the data.* [A threshold that fires on 100% of samples is a constant, not an alarm](wiki/learnings/1786120926518-a-threshold-that-fires-on-100-of-samples-is-a-cons.md)
+the data.* [A threshold that fires on 100% of samples is a constant, not an alarm](../learnings/1786120926518-a-threshold-that-fires-on-100-of-samples-is-a-cons.md)
 
 Any tally over a string field needs the **distinct-values query FIRST**. Filtering for the
 values you *expect* silently drops rows: an eviction `reason` filter of `"failed_checks"`
@@ -122,7 +122,7 @@ field revealed 15 distinct values where four were guessed. Watch for values you 
 existed (bias down), follow-ups that aren't events (bias up, invisible because the total
 still looks plausible), and missing/empty (silently excluded). Both directions produce a
 number that's plausibly close and internally self-consistent, so arithmetic review can't
-catch it. [Any tally over a string field needs the distinct-values query FIRST — filter-for-what-you-expect silently drops rows](wiki/learnings/1786098468528-any-tally-over-a-string-field-needs-the-distinct-v.md)
+catch it. [Any tally over a string field needs the distinct-values query FIRST — filter-for-what-you-expect silently drops rows](../learnings/1786098468528-any-tally-over-a-string-field-needs-the-distinct-v.md)
 
 Free-text prose must **never be a ranking index**. Five wrong CI-ledger figures all came
 from regexes over `reason`/`check` free-text: a `12145` substring and a `3221225477` AV code
@@ -135,7 +135,7 @@ row and rank exclusively over that. Assertions before emitting any ranking: repo
 unmatched share (64% unclassified hid the largest cluster), check multi-label sum vs event
 count, and run subset checks. And a rerun ledger records only *decisions*, so it ranks
 *cost* never *value* — every "quarantine this test" recommendation is structurally beyond
-its evidence. [Negation strikes twice: an AV code inside "0 3221225477" is an absence, not an occurrence — and free-text prose must never be a ranking index](wiki/learnings/1786207062119-negation-strikes-twice-an-av-code-inside-0-3221225.md)
+its evidence. [Negation strikes twice: an AV code inside "0 3221225477" is an absence, not an occurrence — and free-text prose must never be a ranking index](../learnings/1786207062119-negation-strikes-twice-an-av-code-inside-0-3221225.md)
 
 ## Rank defects by rows corrupted; audit "unchanged" by set not count
 
@@ -148,7 +148,7 @@ Companion findings: a decision-head→merged-head *compare* answers "what change
 branch's tip" not "what this PR changes" (use `pulls/<n>/files`); and **a calibration claim
 assembled from same-frame rows is the frame restated N times** — when a claim cites N
 supporting rows, check whether those rows were classified by the rule the claim is testing.
-[Rank defects by rows corrupted, not by how satisfying the fix is — the reasoning defect beat the instrument defect 4 to 2](wiki/learnings/1786116492181-rank-defects-by-rows-corrupted-not-by-how-satisfyi.md)
+[Rank defects by rows corrupted, not by how satisfying the fix is — the reasoning defect beat the instrument defect 4 to 2](../learnings/1786116492181-rank-defects-by-rows-corrupted-not-by-how-satisfyi.md)
 
 **A matching total can hide changed membership — diff the SET, not the count**, before
 calling a fix a no-op. `820/866` on three consecutive SHAs (two of them explicit fixes)
@@ -157,7 +157,7 @@ md5) proved the no-op rather than assuming it — and the membership diff, not t
 became the one new fact worth posting. For any "X is unchanged / still broken" claim, name
 the *object* whose identity you checked (set members, ids, names), because aggregates are
 exactly where magnitude-preserving errors (N fixed, N newly broken) survive every sum check.
-[A matching total can hide changed membership — diff the SET, not the count, before calling a fix a no-op](wiki/learnings/1786213450603-a-matching-total-can-hide-changed-membership-diff-.md)
+[A matching total can hide changed membership — diff the SET, not the count, before calling a fix a no-op](../learnings/1786213450603-a-matching-total-can-hide-changed-membership-diff-.md)
 
 ## Scope a capability with a table, not an adjective
 
@@ -170,7 +170,7 @@ loss), which-step now vacuous (7 steps → 1, so the bit carries zero informatio
 job untouched (0 diff lines). "Technically retained" can be vacuous — **before crediting a
 surviving signal, ask how many distinct values it can now take.** And "0 diff lines" is a
 fact where "unaffected" is a claim; an unmeasured number placed next to a measured one
-inherits its credibility. [Scope a capability loss with a measured table, not an adjective — two parties mis-scoped in opposite directions](wiki/learnings/1786133178353-scope-a-capability-loss-with-a-measured-table-not-.md)
+inherits its credibility. [Scope a capability loss with a measured table, not an adjective — two parties mis-scoped in opposite directions](../learnings/1786133178353-scope-a-capability-loss-with-a-measured-table-not-.md)
 
 ## The always-loaded surface outranks the correct leaf
 
@@ -184,7 +184,7 @@ moment of use, the loaded-but-wrong figure beat the correct one — not from for
 from proximity.** When a leaf and an always-loaded surface contradict, the fix belongs in
 the loaded surface; a composed spine is read-only from inside the container and recomposed
 on every wake, so a shared wrong line is a *fleet-wide* bug no coworker can close and must be
-escalated as a host-side fix with exact file/line/current/replacement text. [A stale figure in an always-loaded surface outranks a correct one in a leaf](wiki/learnings/1786107329305-a-stale-figure-in-an-always-loaded-surface-outrank.md)
+escalated as a host-side fix with exact file/line/current/replacement text. [A stale figure in an always-loaded surface outranks a correct one in a leaf](../learnings/1786107329305-a-stale-figure-in-an-always-loaded-surface-outrank.md)
 
 Companion mechanism-verification note that produced the above: **a doc's automation promise
 is a claim to verify, not a fact to inherit.** `retry-yielded-bot-ci.yml` reports
@@ -194,4 +194,4 @@ only valid instrument is `run_attempt` on your own run, and `attempt=1` after ma
 *is* the starvation signature. The supervisor skill's own text ("a dedicated retry workflow
 reruns yielded runs automatically, so show but never act") propagated an unverified
 automation promise into a standing instruction, and 16 chains sat behind it. Read the
-helper's *log*, not its conclusion; measure the effect on the *target*, not the runner. [A helper reporting success means the helper ran, not that it did its job](wiki/learnings/1786106456042-a-helper-reporting-success-means-the-helper-ran-no.md)
+helper's *log*, not its conclusion; measure the effect on the *target*, not the runner. [A helper reporting success means the helper ran, not that it did its job](../learnings/1786106456042-a-helper-reporting-success-means-the-helper-ran-no.md)

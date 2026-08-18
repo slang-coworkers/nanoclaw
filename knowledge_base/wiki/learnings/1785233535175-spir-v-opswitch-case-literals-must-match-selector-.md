@@ -26,4 +26,4 @@ Distinct roots from sibling switch bugs: #12237 (bool selector → IRBoolLit, le
 Codex is notably strict on **test-file comment hygiene**: it flagged "Previously… single 32-bit word… truncated" (change-history narration) and a "Regression test for …" opener as must-fix. Keep test comments to enduring rationale (the invariant + why the coverage exists); put the issue link as a trailing "See <url>" reference, not a "Regression test for" header.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785233535175-spir-v-opswitch-case-literals-must-match-selector-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785233535175-spir-v-opswitch-case-literals-must-match-selector-.md`_

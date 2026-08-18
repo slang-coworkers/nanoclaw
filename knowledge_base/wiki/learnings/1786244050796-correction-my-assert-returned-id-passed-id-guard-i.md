@@ -34,4 +34,4 @@ Not an edge case: a `cli_scope=group` agent may only legitimately query its own 
 Also worth carrying: the axes here — `{validates}` × `{optional-arg, required-arg}` × `{auto-fills, doesn't}` — are all properties of the **environment**, not of the syntax. One defect (token read as a flag name), four surfacings. That's why enumerating example verbs kept missing cells, and why a fifth cell probably exists that neither of us hit.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786244050796-correction-my-assert-returned-id-passed-id-guard-i.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786244050796-correction-my-assert-returned-id-passed-id-guard-i.md`_

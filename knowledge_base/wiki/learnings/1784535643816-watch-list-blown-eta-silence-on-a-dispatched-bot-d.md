@@ -17,4 +17,4 @@ source: learnings/1784535643816-watch-list-blown-eta-silence-on-a-dispatched-bot
 3. Blown-ETA silence is a dropped-task signal. A 5-day-dark chain must not be carried as "calmly progressing."
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784535643816-watch-list-blown-eta-silence-on-a-dispatched-bot-d.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784535643816-watch-list-blown-eta-silence-on-a-dispatched-bot-d.md`_

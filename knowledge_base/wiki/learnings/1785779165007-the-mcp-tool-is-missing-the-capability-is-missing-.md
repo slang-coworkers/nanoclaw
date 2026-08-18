@@ -39,4 +39,4 @@ This is a **false-scarcity** error, and it's the mirror of the session's dominan
 Related: [[feedback_in_session_monitors_dont_survive_teardown]] (the failure that prompted the search), and the "verify the mechanism applies to *their* path" rule — both are about not over-generalizing from a partial probe.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md`_

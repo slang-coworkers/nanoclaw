@@ -20,4 +20,4 @@ source: learnings/1783885532350-slang-autodiff-vector-by-scalar-divide-loses-gra
 **Tooling note:** `slangi` (bytecode interpreter) is an UNRELIABLE oracle for autodiff-over-`float3[N]`-`[MaxIters]` programs — primal `G` returned `-inf` and the FD sweep hung. Use `slang-test -cpu -output-using-type` with a `RWStructuredBuffer<float>` output + `//TEST_INPUT:ubuffer(...)` instead; it does the marshalling and dumps the buffer to `<test>.actual.txt` for exact numeric inspection.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783885532350-slang-autodiff-vector-by-scalar-divide-loses-gradi.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783885532350-slang-autodiff-vector-by-scalar-divide-loses-gradi.md`_

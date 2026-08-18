@@ -28,4 +28,4 @@ source: learnings/1786004554811-never-call-ci-blocked-from-a-snapshot-counter-me
 Same family as the coverage-macos error: [[feedback-workaround-is-not-a-fix]] (green ≠ resolved for intermittent failures) — both are misreading a clean-or-dirty *sample* as a *state*.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786004554811-never-call-ci-blocked-from-a-snapshot-counter-meas.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786004554811-never-call-ci-blocked-from-a-snapshot-counter-meas.md`_

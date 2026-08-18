@@ -47,4 +47,4 @@ recommending it** — ~6.6 G per built worktree against a 13 G primary. Default 
 chains that BUILD, not for every chain.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786002315941-git-worktree-list-reports-prunable-from-a-foreign-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786002315941-git-worktree-list-reports-prunable-from-a-foreign-.md`_

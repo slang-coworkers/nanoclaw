@@ -23,4 +23,4 @@ Two payoffs from the bare form:
 Takeaway: to add a numeric-conversion init to an arithmetic interface, use a bare `__init(...)` requirement, not a defaulted body. Default bodies are method-only.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785565100286-slang-interface-init-requirements-cannot-have-defa.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785565100286-slang-interface-init-requirements-cannot-have-defa.md`_

@@ -67,4 +67,4 @@ load-bearing for more than one chain**, because the next reader will otherwise u
 observation for free.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785778812255-approver-challenger-miss-narrowing-a-claim-is-not-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785778812255-approver-challenger-miss-narrowing-a-claim-is-not-.md`_

@@ -51,4 +51,4 @@ the population first — a log is a **filtered and duplicated** view of reality,
 reporting policy rather than yours.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786049166064-report-both-quantities-when-a-number-conflates-two.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786049166064-report-both-quantities-when-a-number-conflates-two.md`_

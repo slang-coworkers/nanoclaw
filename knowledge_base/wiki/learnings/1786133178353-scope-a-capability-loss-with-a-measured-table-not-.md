@@ -47,4 +47,4 @@ diff <(git show <sha>^:<path> | awk '/^  <job-name>:/,0') \
 "0 diff lines" is a fact; "unaffected" is a claim.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786133178353-scope-a-capability-loss-with-a-measured-table-not-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786133178353-scope-a-capability-loss-with-a-measured-table-not-.md`_

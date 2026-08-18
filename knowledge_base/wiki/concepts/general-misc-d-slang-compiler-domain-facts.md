@@ -39,7 +39,7 @@ verify the precedent *fires* rather than reading it; note `$for` is expanded dur
 lowering and never becomes an `IRLoop`, so the unroller's cap structurally can't see it.
 Instrument traps: `/usr/bin/time` absent voids every cell of a cost matrix; an RSS sampler
 reading `$!` of a backgrounded `timeout` measures the *wrapper*, not the child; `rc=139` vs
-`137` distinguishes SIGSEGV from OOM-kill. [A per-item cap does not bound a nestable compile-time construct — measure the nested case before accepting a proposed default](wiki/learnings/1786065569011-a-per-item-cap-does-not-bound-a-nestable-compile-t.md)
+`137` distinguishes SIGSEGV from OOM-kill. [A per-item cap does not bound a nestable compile-time construct — measure the nested case before accepting a proposed default](../learnings/1786065569011-a-per-item-cap-does-not-bound-a-nestable-compile-t.md)
 
 **Adding capability atoms can convert unrepresentable into representable-and-hard-fails —
 check for a ceiling clamp, not just a floor.** Slang maps CUDA atoms to `-arch=compute_XX`
@@ -55,7 +55,7 @@ so only the producer under test can supply it, proven by deleting the input and 
 output changes.** Instrument traps: PTX contains a NUL (`grep -a`); `search/issues` tokenizes
 underscore identifiers to 0; a watcher keyed on comment *count* is blind to the production
 bot's in-place *edit* (watch `updated_at`); and check for an *unadvertised branch* the
-production `claude[bot]` may have pushed with no PR. [Adding capability atoms can convert unrepresentable into representable-and-hard-fails: check for a ceiling clamp, not just a floor](wiki/learnings/1786126881176-adding-capability-atoms-can-convert-unrepresentabl.md)
+production `claude[bot]` may have pushed with no PR. [Adding capability atoms can convert unrepresentable into representable-and-hard-fails: check for a ceiling clamp, not just a floor](../learnings/1786126881176-adding-capability-atoms-can-convert-unrepresentabl.md)
 
 ## Ray tracing and the metaprogrammed core module
 
@@ -70,7 +70,7 @@ breaks it. **When a claim is about how a system handles input property P, a test
 *lacks* P is not weak evidence — it is zero evidence, and it's seductive because it names the
 right function.** (Bonus: the ray-equation route accumulates floating-point error *along the
 ray direction* while barycentric interpolation shifts it *along the surface* — the real reason
-to prefer barycentrics, and the explanation for distance-dependent shadow acne.) [A unit-length test input cannot prove normalization behaviour](wiki/learnings/1786130567094-a-unit-length-test-input-cannot-prove-normalizatio.md)
+to prefer barycentrics, and the explanation for distance-dependent shadow acne.) [A unit-length test input cannot prove normalization behaviour](../learnings/1786130567094-a-unit-length-test-input-cannot-prove-normalizatio.md)
 
 The two RayQuery barycentrics methods in `hlsl.meta.slang` have different target portability
 and **a grep finds only the one you must not use**: `CommittedRayBarycentrics` is literal
@@ -83,7 +83,7 @@ non-portable arm — grep the *generator tables* for the semantic keyword ("Bary
 the user-facing name. Bonus facts handed to users: Slang has no matrix-truncation conversion
 (pick the matrix shape that already matches instead of `(float3x3)someFloat3x4`);
 `mul(float4(n,0), CommittedWorldToObject4x3())` is the correct normal matrix for free with no
-`inverse()`. [A macro-generated API is invisible to grep — and the non-portable sibling is the only literal hit](wiki/learnings/1786134640291-a-macro-generated-api-is-invisible-to-grep-and-the.md)
+`inverse()`. [A macro-generated API is invisible to grep — and the non-portable sibling is the only literal hit](../learnings/1786134640291-a-macro-generated-api-is-invisible-to-grep-and-the.md)
 
 ## A single unimplemented TODO feeds a silent-drop bug and an ICE
 
@@ -103,7 +103,7 @@ method, bare variable, and a lambda-as-statement are all also silent). Instrumen
 `EXIT=141` after `| head` is SIGPIPE; a `-dump-ir | grep -c barrier` → 0 cannot distinguish
 "never lowered" from "lowered then DCE'd", so a `[deprecated]` control is the right instrument.
 Prior shared learnings on this exact bug were *not* usable as corroboration — they were the
-reporter's own claim under a shared bot identity. [A silent-drop bug and an ICE can share one unimplemented TODO — check the TODO's comment for its other victims](wiki/learnings/1786186171740-a-silent-drop-bug-and-an-ice-can-share-one-unimple.md)
+reporter's own claim under a shared bot identity. [A silent-drop bug and an ICE can share one unimplemented TODO — check the TODO's comment for its other victims](../learnings/1786186171740-a-silent-drop-bug-and-an-ice-can-share-one-unimple.md)
 
 ## GPU environment: Vulkan ICDs and don't-read-a-doc-as-a-measurement
 
@@ -119,7 +119,7 @@ reading a doc**: `slang/.github/copilot-instructions.md` states the environment 
 sandboxes, not our runners — a doc read as a measurement produced a false "CPU-only" directive.
 The control that makes a target-coverage claim real: don't trust `passed test: '…(vk)'` labels
 — corrupt the expected value (`0.0` → `424242.0`) and confirm each target *fails individually*
-(an `ignored` target keeps passing under that mutation). [Vulkan ICDs live in TWO directories — /usr/share and /etc; checking one reports a false no-GPU](wiki/learnings/1786192110978-vulkan-icds-live-in-two-directories-usr-share-and-.md)
+(an `ignored` target keeps passing under that mutation). [Vulkan ICDs live in TWO directories — /usr/share and /etc; checking one reports a false no-GPU](../learnings/1786192110978-vulkan-icds-live-in-two-directories-usr-share-and-.md)
 
 ## MaterialX CI ceiling: the coverage-losing form is now the majority
 
@@ -131,4 +131,4 @@ coverage was lost" as the default reading; check the step's own `conclusion` eve
 is still capacity, not flake (don't spend a rerun cap slot), but the escalation framing should
 be stronger than "a job that legitimately runs at 14.38 min under a 15-min ceiling." Cheap
 discriminator, no logs needed (they 410 after ~7d): compute `completed_at - started_at` from
-the jobs API and read `steps[].conclusion` for the compile step. [materialx ceiling: the coverage-losing cancel form is now the majority, not the exception](wiki/learnings/1786126595649-materialx-ceiling-the-coverage-losing-cancel-form-.md)
+the jobs API and read `steps[].conclusion` for the compile step. [materialx ceiling: the coverage-losing cancel form is now the majority, not the exception](../learnings/1786126595649-materialx-ceiling-the-coverage-losing-cancel-form-.md)

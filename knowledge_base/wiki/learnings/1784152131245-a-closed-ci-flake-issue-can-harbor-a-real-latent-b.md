@@ -22,4 +22,4 @@ shader-slang/slang#11951 was a merge-queue flake (`static-const-matrix-array.sla
 **6. Static analysis + a codex OUTPUT_REVIEW gate is enough to ship a confident public finding when repro is impossible.** The UAF only reproduces under JIT + `-g` + ASan (not runnable in a GPU-less Linux triage env). The verdict was reached by reading source + LLVM headers, cross-checked by codex (which independently confirmed AND flagged 5 overclaims to soften before I posted). Value of the fix is invariant-restoring, not FileCheck-catchable.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784152131245-a-closed-ci-flake-issue-can-harbor-a-real-latent-b.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784152131245-a-closed-ci-flake-issue-can-harbor-a-real-latent-b.md`_

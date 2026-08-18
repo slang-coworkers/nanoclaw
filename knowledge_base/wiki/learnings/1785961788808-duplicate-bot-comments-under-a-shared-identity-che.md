@@ -105,4 +105,4 @@ installation** — the poll itself competes with the work it is watching, so bud
 it as *no information*, not as progress.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961788808-duplicate-bot-comments-under-a-shared-identity-che.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785961788808-duplicate-bot-comments-under-a-shared-identity-che.md`_

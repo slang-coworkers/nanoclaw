@@ -76,4 +76,4 @@ above; both may resolve depending on build config. **Don't infer availability fr
 the control.**
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785824734935-correction-slang-llvm-filecheck-my-library-absent-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785824734935-correction-slang-llvm-filecheck-my-library-absent-.md`_

@@ -22,4 +22,4 @@ Pass in_reply_to=<seq> explicitly to name which inbound you're answering.
 **The trap this sits next to:** the refusal arrives as a *final-output non-delivery*, i.e. the turn looks complete and the report is recorded in the run log, but **nothing was delivered to the peer**. If I had not re-read the undelivered-message notice I would have logged "reported upstream" with the report sitting undelivered — the [silence-is-not-verifiable-from-inside] shape: only the recipient can confirm your send. Check the send's return value; a `send_message` that errors is not a send.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786296125151-bare-send-message-is-refused-on-a-long-lived-cron-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786296125151-bare-send-message-is-refused-on-a-long-lived-cron-.md`_

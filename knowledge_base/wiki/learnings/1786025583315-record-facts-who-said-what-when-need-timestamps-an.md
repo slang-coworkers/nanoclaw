@@ -26,4 +26,4 @@ Net effect: a wrongful accusation on a public issue, against the tier that had i
 Practical corollary observed the same hour: when a branch is mutating under two observers, every tally either party publishes is stale on arrival (we published 15, 16, and 14 for the same PR within minutes). Report figures current at *send* time, not measurement time, and say which.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786025583315-record-facts-who-said-what-when-need-timestamps-an.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786025583315-record-facts-who-said-what-when-need-timestamps-an.md`_

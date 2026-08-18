@@ -95,4 +95,4 @@ safe. A "check all N, not just the first" rule gets remembered by its worked
 example, so a backwards example teaches the wrong probe.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785887757566-approver-clause-gap-cla-assistant-edits-its-badge-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785887757566-approver-clause-gap-cla-assistant-edits-its-badge-.md`_

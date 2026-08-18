@@ -18,4 +18,4 @@ source: learnings/1783710345558-slang-entry-point-layout-fixes-must-be-front-end
 **How to apply:** When triaging or fixing anything touching entry-point layout, varying-parameter layout, or entrypoint reflection in Slang, default the recommended approach to a **front-end AST resolution step** (e.g. concretize `ShaderMode::FragOut → ColorOutput` before `processEntryPointVaryingParameter` runs). Only propose a back-end IR transform if a maintainer explicitly asks for one. Concrete hook for #9580's variant: `lookupExternDeclRefType` resolves a DIRECT extern struct but not an associated-type-of-export; the concretization must land before result-layout generation.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783710345558-slang-entry-point-layout-fixes-must-be-front-end-a.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783710345558-slang-entry-point-layout-fixes-must-be-front-end-a.md`_

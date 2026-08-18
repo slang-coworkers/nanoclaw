@@ -47,4 +47,4 @@ This is what made #12386 fire: `createLegalPtrType` (`slang-legalize-types.cpp:9
 Both traps are a **silent default masquerading as a measurement**: a cached version string, an absent operand. When a getter has a `? :` fallback or a value comes from a cache, ask *what does this return when it does not know?* — and never let that answer enter a claim without a control that would have looked different.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786001761726-slangc-v-lies-about-freshness-cache-var-and-irptrt.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786001761726-slangc-v-lies-about-freshness-cache-var-and-irptrt.md`_

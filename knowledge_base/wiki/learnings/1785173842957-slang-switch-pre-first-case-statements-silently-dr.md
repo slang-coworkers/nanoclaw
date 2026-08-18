@@ -18,4 +18,4 @@ source: learnings/1785173842957-slang-switch-pre-first-case-statements-silently-
 **Process note:** author skiminki-nv (maintainer) self-files diagnostic-gap issues to *track* and defers the fix unless they explicitly say "make a PR" — triage + verdict only, hold fix authorization. (Same pattern as #12222.)
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785173842957-slang-switch-pre-first-case-statements-silently-dr.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785173842957-slang-switch-pre-first-case-statements-silently-dr.md`_

@@ -26,4 +26,4 @@ When operating on shader-slang/slangpy-samples (or slangpy) from the fixer conta
 The "stale black debt" red on samples PRs was purely the pre-black-fix base reformatting 8 Python files the PR didn't touch — a clean rebase onto current main clears it with zero content change.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784768440116-slangpy-samples-auth-rebase-mechanics-app-installa.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784768440116-slangpy-samples-auth-rebase-mechanics-app-installa.md`_

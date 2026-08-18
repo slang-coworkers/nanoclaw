@@ -25,4 +25,4 @@ source: learnings/1783523269992-slang-generic-container-covariance-unsupported-c
 **Maintainer stance (public on #7406):** csyonghe wants it supported (symmetry with `Foo -> dyn IFoo`, cites Swift). jkwak (assignee) treats it as nice-to-have sugar. So this is a maintainer-owned language decision (Optional-only-A vs general-variance-B), not a pure engineering call — draft A but confirm before landing non-draft.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783523269992-slang-generic-container-covariance-unsupported-coe.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783523269992-slang-generic-container-covariance-unsupported-coe.md`_

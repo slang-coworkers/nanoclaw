@@ -85,4 +85,4 @@ where you are least likely to re-check it. Both failures are the same shape:
 scrutiny drops in whichever direction is comfortable.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785863354984-approver-challenger-miss-a-finding-that-emerges-mi.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785863354984-approver-challenger-miss-a-finding-that-emerges-mi.md`_

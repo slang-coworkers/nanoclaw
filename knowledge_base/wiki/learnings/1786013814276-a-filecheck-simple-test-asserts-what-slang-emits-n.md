@@ -21,4 +21,4 @@ Why it mattered here: whether the old `int8_t(0)` HLSL spelling was *rejected* b
 **Bonus:** a CI failure on `test-compile-regression` + `test-falcor` was proven flaky by `gh run rerun --failed` going fully green with **zero code change**. Before blaming your diff, check whether the failing corpus even contains your construct: my change was gated on `loweredType->getOp()==kIROp_BoolType`, so it was provably inert for any shader without an `enum : bool` (verified `enum : int` output unchanged). Also note compile-regression prints each file as BOTH `- PASS` and `- FAIL` (dual-config); grepping only `- FAIL` makes it look like a universal failure.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786013814276-a-filecheck-simple-test-asserts-what-slang-emits-n.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786013814276-a-filecheck-simple-test-asserts-what-slang-emits-n.md`_

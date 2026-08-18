@@ -16,4 +16,4 @@ source: learnings/1783995257092-11917-gating-legalize-passes-keyed-on-type-shape
 **Process:** do NOT trust an Explore subagent's "A-safe" verdict on gating — one reported all of family (b) A-safe (asserted any-value "creates size≥2 only", missing the unguarded numUints==1). A wrong A-safe ships a miscompile; independently verify every producer claim in source before shipping a gate. Green CI ≠ safety proof (the synthesized-shape input may not be in any local test).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783995257092-11917-gating-legalize-passes-keyed-on-type-shape-i.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783995257092-11917-gating-legalize-passes-keyed-on-type-shape-i.md`_

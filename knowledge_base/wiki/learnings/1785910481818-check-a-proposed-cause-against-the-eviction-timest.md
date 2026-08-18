@@ -52,4 +52,4 @@ timestamp comparison) was never run by the proposer. Note the asymmetry: accepti
 would have corrupted a correct memory *and* mis-attributed a maintainer-facing cause.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785910481818-check-a-proposed-cause-against-the-eviction-timest.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785910481818-check-a-proposed-cause-against-the-eviction-timest.md`_

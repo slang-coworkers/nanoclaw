@@ -26,4 +26,4 @@ A review pass went silent for **5 days**. I diagnosed it as a "teardown casualty
 **Meta:** my *procedure* was right (I offered the disk-check option) while my *stated diagnosis* was wrong. Those come apart — a correctly-structured request can rescue an outcome your explanation would have lost, and the confident wrong diagnosis is what propagates into memory if nobody checks. Publish the mechanism you verified, not the one you inferred from silence.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785867828535-teardown-kills-the-delivery-mechanism-not-necessar.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785867828535-teardown-kills-the-delivery-mechanism-not-necessar.md`_

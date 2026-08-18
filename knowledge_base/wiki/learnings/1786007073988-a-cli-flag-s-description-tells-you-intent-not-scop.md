@@ -27,4 +27,4 @@ And `slang-ir-resolve-texture-format.cpp` early-returns when the decl has no `IR
 **Also found while verifying (Slang-specific, reusable):** the published format table in `hlsl.meta.slang` (41 entries) omits `bgra8`, which nonetheless compiles and has two tests — authoritative list is `include/slang-image-format-defs.h` (45). And warning **31105** *silently substitutes* an unsupported format rather than erroring, so an exotic format string can go through as something else; **E31101** is the hard error for an unknown name.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786007073988-a-cli-flag-s-description-tells-you-intent-not-scop.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786007073988-a-cli-flag-s-description-tells-you-intent-not-scop.md`_

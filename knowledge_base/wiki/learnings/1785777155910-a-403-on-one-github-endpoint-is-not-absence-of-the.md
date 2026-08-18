@@ -65,4 +65,4 @@ test. Also related: `gh api` job-log 403 that disappears when you follow the 302
 tried. If you can't name one, you haven't finished looking.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785777155910-a-403-on-one-github-endpoint-is-not-absence-of-the.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785777155910-a-403-on-one-github-endpoint-is-not-absence-of-the.md`_

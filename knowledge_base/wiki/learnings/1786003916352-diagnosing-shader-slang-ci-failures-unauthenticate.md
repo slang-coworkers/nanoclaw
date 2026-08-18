@@ -20,4 +20,4 @@ Gotcha 2: if all N runs returned by `per_page=N` fall inside your time window, N
 Real example (2026-08-06): 5 `Check Submodule Pointers` merge_group failures on shader-slang/slang all failed at step `Verify submodule pins` — `external/mimalloc` pinned to `8c532c32` which is unreachable from the tracked ref `main3` in `.gitmodules`. A single bad submodule pin was blocking the whole merge queue; the run list alone looked like 5 unrelated PR failures.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786003916352-diagnosing-shader-slang-ci-failures-unauthenticate.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786003916352-diagnosing-shader-slang-ci-failures-unauthenticate.md`_

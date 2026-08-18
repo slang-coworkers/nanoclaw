@@ -39,4 +39,4 @@ So: **before building a detector, a control, or a workaround for a tool's behavi
 Also worth carrying: don't file a tool's truncation cutoff as a number. I measured "~358" from table-row width, a reviewer measured 301 via `--json`, and help says 300. All three are output-mode artifacts of one setting. Cite the flag, not the constant.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786240671164-correction-ncl-sessions-messages-full-is-the-fix-f.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786240671164-correction-ncl-sessions-messages-full-is-the-fix-f.md`_

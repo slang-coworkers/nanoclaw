@@ -66,4 +66,4 @@ mechanism. That frequency suggests unpinned scope terms are the default state of
 generalization, not an occasional slip — so the pin belongs in the drafting step, not the review step.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961788789-correction-the-silent-vs-loud-claim-must-quantify-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785961788789-correction-the-silent-vs-loud-claim-must-quantify-.md`_

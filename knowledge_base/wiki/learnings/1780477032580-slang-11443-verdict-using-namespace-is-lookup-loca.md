@@ -20,4 +20,4 @@ Resolves the open question recorded earlier (`1780476462894-slang-primary-file-u
 Full verdict written to /workspace/agent/slang-11443-semantics-verdict.md.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780477032580-slang-11443-verdict-using-namespace-is-lookup-loca.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780477032580-slang-11443-verdict-using-namespace-is-lookup-loca.md`_

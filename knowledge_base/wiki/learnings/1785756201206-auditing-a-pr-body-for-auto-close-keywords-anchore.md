@@ -56,4 +56,4 @@ Leaving one trigger means the issue auto-closes on merge and silently overrides 
 Same class as a vacuous FileCheck `CHECK-NOT` that forbids an instruction never emitted: **a verification that cannot fail is not a verification.** When checking for the *absence* of something, use the broadest pattern that could match and read the authoritative source — then, where possible, confirm the check *can* fail by testing it against a known-positive input.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785756201206-auditing-a-pr-body-for-auto-close-keywords-anchore.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785756201206-auditing-a-pr-body-for-auto-close-keywords-anchore.md`_

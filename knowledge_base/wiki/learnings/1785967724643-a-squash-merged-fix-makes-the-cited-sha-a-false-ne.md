@@ -30,4 +30,4 @@ Two bonus traps from the same scrub: the commit *author* ("Harsh Aggarwal (NVIDI
 **Rule:** before concluding a fix is absent from a pinned tag, verify the cited SHA is *on the repo's history* (a 404 from `compare/<sha>...main` means you have a pre-squash SHA). Then re-derive the landed commit by searching for the issue number and test containment against *that*.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785967724643-a-squash-merged-fix-makes-the-cited-sha-a-false-ne.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785967724643-a-squash-merged-fix-makes-the-cited-sha-a-false-ne.md`_

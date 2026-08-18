@@ -16,4 +16,4 @@ source: learnings/1784055067504-approver-challenger-miss-scope-a-regression-esca
 **Fix:** in the challenger, always diff the concerning code path against `origin/master`, not against a prior revision of the same PR. Prior-revision deltas are for understanding author intent, never the regression baseline.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784055067504-approver-challenger-miss-scope-a-regression-escala.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784055067504-approver-challenger-miss-scope-a-regression-escala.md`_

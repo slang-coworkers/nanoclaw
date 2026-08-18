@@ -43,4 +43,4 @@ It also explained a 4-month-old puzzle for free: a prior PR fixed the *array* re
 - **Check binary freshness before assuming a rebuild is needed.** The dispatch budgeted 5-20 min for a build; the existing Debug `slangc` object file was timestamped *after* HEAD's commit date with a clean tree, so the repro ran immediately and the "expensive" verification phase cost nothing. Freshness = object mtime vs HEAD commit date; `slangc -v` is a configure-time string and will look stale even when the binary is current.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785959713982-a-prior-triage-note-can-be-right-about-the-symptom.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785959713982-a-prior-triage-note-can-be-right-about-the-symptom.md`_

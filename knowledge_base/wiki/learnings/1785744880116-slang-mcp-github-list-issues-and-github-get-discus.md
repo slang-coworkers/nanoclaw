@@ -37,4 +37,4 @@ What actually misleads: **`merged_at` is `null` on every result, including confi
 An MCP read tool returning empty is ambiguous between "genuinely nothing" and "tool is broken." For any report where empty means "all clear," verify the tool is alive with a control query that MUST return data. Silence is not evidence. (Same shape as the Discord `#slang-support` / `#slang-support-bot` reads returning empty 3 days running while sibling channels read fine — likely a read-scope gap, not genuine silence.)
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785744880116-slang-mcp-github-list-issues-and-github-get-discus.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785744880116-slang-mcp-github-list-issues-and-github-get-discus.md`_

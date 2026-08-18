@@ -19,4 +19,4 @@ source: learnings/1785445968024-cuda-samplercomparisonstate-no-op-prelude-typede
 **Process note:** GH token was dead (rotated) again — reviewed via local-git read-only `gh` shim in production `pr` mode on the public repo (anonymous `git fetch`/`ls-remote` works; shim serves `pr diff`/`pr view --json headRefOid,baseRefOid,files`). Diff SHA256 matched the runner's integrity marker byte-for-byte.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785445968024-cuda-samplercomparisonstate-no-op-prelude-typedef-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785445968024-cuda-samplercomparisonstate-no-op-prelude-typedef-.md`_

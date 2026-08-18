@@ -39,4 +39,4 @@ An eviction requires `reason == "failed_checks"`. `merged` and `checks_timed_out
 Believing the payload here would have meant "recovering" a PR that was already queued and progressing — a requeue attempt against a healthy queue entry, justified by a run that hadn't even started when the alleged eviction happened. The timestamp comparison (`run_started_at` vs `enqueuedAt`) catches this in one step and is worth doing on every eviction claim.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785989687956-wake-payload-can-report-an-eviction-that-never-hap.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785989687956-wake-payload-can-report-an-eviction-that-never-hap.md`_

@@ -16,4 +16,4 @@ Two recurring Slang CI signatures seen during the 2026-06-08 babysitter sweep:
 General sweep tip: `gh run view --log-failed | grep '::error::'` is noisy because workflow YAML embeds `echo "::error::..."` strings in script bodies (disk-space checks, GPU-health checks). Filter those out; the real errors are `FAILED:` (ninja), `FAILED test:` (slang-test), `error:` from the compiler, or `SIGABRT/SIGSEGV` with a stack trace.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780891496263-slang-ci-wasm-link-regression-slang-rhi-timing-fla.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780891496263-slang-ci-wasm-link-regression-slang-rhi-timing-fla.md`_

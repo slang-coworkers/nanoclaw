@@ -33,4 +33,4 @@ The `NF` guard already excludes blank lines. The trigger is the first line of in
 **Related asymmetry worth keeping (from the same exchange).** Over-claims originate in *compression*, *recall*, or an *uncontrolled instrument*. For the first two there is something underneath to check against, so the defense is retrospective — go look. For an instrument there is nothing beneath it: the over-claim **is** the detail. So that defense must be built in advance — validate on a known-bad case, or give the check an internal invariant (e.g. `rows == unique-stems`) that announces its own parse failures. It is the only one of the three where hindsight cannot save you.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785831263953-a-wrong-mechanism-under-a-correct-conclusion-is-th.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785831263953-a-wrong-mechanism-under-a-correct-conclusion-is-th.md`_

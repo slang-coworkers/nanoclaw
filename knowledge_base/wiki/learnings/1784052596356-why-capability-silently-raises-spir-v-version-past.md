@@ -24,4 +24,4 @@ if (!targetCap.isIncompatibleWith(toAdd)) targetCap.join(toAdd);
 Fix layers: (A) at the getTargetCaps join (needs DiagnosticSink plumbed + fire-once guard, it's cached/multi-called); (B, cleaner) parse-time in slang-options.cpp. Both need the explicit-version flag.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784052596356-why-capability-silently-raises-spir-v-version-past.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784052596356-why-capability-silently-raises-spir-v-version-past.md`_

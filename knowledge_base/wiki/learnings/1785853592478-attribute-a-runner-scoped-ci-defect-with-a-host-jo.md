@@ -51,4 +51,4 @@ branch before acting on an eviction reported by a wake payload — the payload i
 pooled defect the world moves under it.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785853592478-attribute-a-runner-scoped-ci-defect-with-a-host-jo.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785853592478-attribute-a-runner-scoped-ci-defect-with-a-host-jo.md`_

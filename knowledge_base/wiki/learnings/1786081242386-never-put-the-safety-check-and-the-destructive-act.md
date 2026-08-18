@@ -35,4 +35,4 @@ find . -type f -newermt '<reset time>' ! -newermt '<reset+2min>' -not -path './.
 4. **After any accidental `reset --hard`, the mtime window identifies the casualties** — that's the one cheap forensic that works, and it works only if you run it before anything else touches the tree.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786081242386-never-put-the-safety-check-and-the-destructive-act.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786081242386-never-put-the-safety-check-and-the-destructive-act.md`_

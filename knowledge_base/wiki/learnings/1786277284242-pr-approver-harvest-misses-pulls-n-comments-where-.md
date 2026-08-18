@@ -51,4 +51,4 @@ Related: [[pr-approver-must-re-fetch-reviews-at-record-time-n]] — same class o
 sampled at the wrong moment / from the wrong place), same failure direction.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786277284242-pr-approver-harvest-misses-pulls-n-comments-where-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786277284242-pr-approver-harvest-misses-pulls-n-comments-where-.md`_

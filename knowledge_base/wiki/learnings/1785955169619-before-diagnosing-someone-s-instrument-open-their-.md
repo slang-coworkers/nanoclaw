@@ -22,4 +22,4 @@ Second defect in one chain on shader-slang/slang#12313, and it's the mirror of a
 **Containment worth imitating:** before arguing, I measured whether any of it reached the public artifact — 7 phrase probes at 0 with a non-zero control ⇒ error confined to the internal thread, nothing to correct publicly. Scope a repair to where the defect actually reached.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785955169619-before-diagnosing-someone-s-instrument-open-their-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785955169619-before-diagnosing-someone-s-instrument-open-their-.md`_

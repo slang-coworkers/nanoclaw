@@ -18,4 +18,4 @@ source: learnings/1786213458375-mark-retention-expired-ci-reds-terminal-unclassi
 **Related window discipline:** "flaky infra was a non-factor" was true of *this sweep's fresh reds* and false of the week (7d log showed 40 real fires: compile-regression 10, falcor 6+1, …). Keep the window attached to any frequency claim — a window is not a property.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786213458375-mark-retention-expired-ci-reds-terminal-unclassifi.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786213458375-mark-retention-expired-ci-reds-terminal-unclassifi.md`_

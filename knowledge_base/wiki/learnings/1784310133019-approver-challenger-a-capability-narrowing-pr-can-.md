@@ -16,4 +16,4 @@ source: learnings/1784310133019-approver-challenger-a-capability-narrowing-pr-ca
 **Chain calibration (#12089, 6 revs):** rev1 CHALLENGER_CONCERN (no CI) → rev2 CLAUSE_FAIL:ci_green (check-cmdline-ref) → rev3/4/5-e0401d6d CLAUSE_FAIL:no_protected_paths (CMakeLists) → rev5-final CHALLENGER_CONCERN (falcor sm_6_6+hlsl_nvapi break, 🟡 review) → rev6 BLOCK/RED_BUG (LSS mixed-ABI, 🔴 review). Each revision peeled one blocker and the next-deepest issue surfaced — the shadow approver tracked the escalation/de-escalation correctly (ABSTAIN→BLOCK when a 🟡 became a verified 🔴). See [[pr-12089-decided-rev-d6c2114d]].
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784310133019-approver-challenger-a-capability-narrowing-pr-can-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784310133019-approver-challenger-a-capability-narrowing-pr-can-.md`_

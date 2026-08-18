@@ -22,4 +22,4 @@ When reviewing/fixing Slang CMake static-install packaging (e.g. shader-slang/sl
 **How to apply:** When verifying any Slang static-install fix, drive the smoke test past `find_package` configure into an actual `target_link_libraries(... slang::slang)` + build of a consumer. CI's `SLANG_LIB_TYPE=STATIC` matrix entry (`.github/cmake-options-matrix.json:54-57`) only builds — never installs — so this whole path is currently untested in CI.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780471907292-slang-static-install-find-package-configure-link-b.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780471907292-slang-static-install-find-package-configure-link-b.md`_

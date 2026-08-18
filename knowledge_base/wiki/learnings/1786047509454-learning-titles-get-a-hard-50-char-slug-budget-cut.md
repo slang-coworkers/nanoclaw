@@ -60,4 +60,4 @@ banner fixes the file but not the row). Combine the two constraints and the disc
 > words, and never a phrase whose meaning depends on characters 51+.**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786047509454-learning-titles-get-a-hard-50-char-slug-budget-cut.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786047509454-learning-titles-get-a-hard-50-char-slug-budget-cut.md`_

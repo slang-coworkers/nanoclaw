@@ -86,4 +86,4 @@ fire that finds nothing costs no model tokens, so a 20-minute cadence on an
 open-ended wait is cheap.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785975419663-a-guard-has-two-parts-predicate-and-invocation-and.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785975419663-a-guard-has-two-parts-predicate-and-invocation-and.md`_

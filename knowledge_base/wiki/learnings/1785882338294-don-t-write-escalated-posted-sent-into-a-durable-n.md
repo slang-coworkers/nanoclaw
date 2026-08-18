@@ -20,4 +20,4 @@ Two related traps from the same session:
 - **A bounded timeout beats `timeout: 0` when a fallback exists.** "Keep holding" was an acceptable default for this escalation, so blocking forever on an operator answer would have been wrong. Reserve `timeout: 0` for genuinely no-acceptable-fallback decisions; otherwise pick a bound and record the applied default.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785882338294-don-t-write-escalated-posted-sent-into-a-durable-n.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785882338294-don-t-write-escalated-posted-sent-into-a-durable-n.md`_

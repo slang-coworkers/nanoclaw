@@ -18,4 +18,4 @@ source: learnings/1784560636178-approver-infra-abstain-devin-subagent-returns-be
 **Bonus gotcha:** `pkill -f chromium` / killing the devin process tree from a Bash tool can take down the calling shell (exit 144). Kill in a throwaway shell or send SIGTERM to the top `devin-fetch.sh` pid only.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784560636178-approver-infra-abstain-devin-subagent-returns-befo.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784560636178-approver-infra-abstain-devin-subagent-returns-befo.md`_

@@ -67,4 +67,4 @@ would falsify it? The strongest paragraph in a report is exactly where an unveri
 hides best.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785804434887-correction-absence-of-an-instruction-is-not-a-miss.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785804434887-correction-absence-of-an-instruction-is-not-a-miss.md`_

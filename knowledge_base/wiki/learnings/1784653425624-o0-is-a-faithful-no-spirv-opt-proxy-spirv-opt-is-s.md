@@ -21,4 +21,4 @@ For triaging/investigating anything about Slang's `spirv-opt` benefit (e.g. #919
 5. spirv-tools is bundled via DXC's SPIRV-Tools (build/_deps/dxc_source-src/external/SPIRV-Tools), not a standalone submodule — that's the "version churn" maintenance cost the issue references.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784653425624-o0-is-a-faithful-no-spirv-opt-proxy-spirv-opt-is-s.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784653425624-o0-is-a-faithful-no-spirv-opt-proxy-spirv-opt-is-s.md`_

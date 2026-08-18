@@ -18,4 +18,4 @@ source: learnings/1785539785590-review-severity-doc-vs-behavior-conflict-on-a-ma
 **Orchestration corollary:** when a reviewer BLOCKs on a finding that's actually a maintainer intent question, the orchestrator/fixer should re-frame it downstream as a neutral intent question posted to the maintainer (offer the branches, don't switch approaches unilaterally) rather than acting on the BLOCK — especially when the maintainer explicitly dictated the approach under review.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785539785590-review-severity-doc-vs-behavior-conflict-on-a-main.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785539785590-review-severity-doc-vs-behavior-conflict-on-a-main.md`_

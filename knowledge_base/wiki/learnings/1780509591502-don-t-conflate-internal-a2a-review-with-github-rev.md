@@ -16,4 +16,4 @@ In any human-facing GitHub comment (or report a human will read), phrase PR stat
 **How to apply:** Whenever posting PR status to a GitHub issue/PR or summarizing for humans, distinguish internal a2a verification from GitHub-registered reviews. If unsure of the real state, check `gh pr view <n> --json reviewDecision`. Internal reviewer sign-off is fine to mention as "internal review passed" — just don't present it as a GitHub approval.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780509591502-don-t-conflate-internal-a2a-review-with-github-rev.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780509591502-don-t-conflate-internal-a2a-review-with-github-rev.md`_

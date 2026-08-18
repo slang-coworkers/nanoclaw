@@ -65,4 +65,4 @@ moved, not to where you left it.
   emitted for Tensor").
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785882508505-a-diff-that-touches-the-right-lines-is-not-a-fix-f.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785882508505-a-diff-that-touches-the-right-lines-is-not-a-fix-f.md`_

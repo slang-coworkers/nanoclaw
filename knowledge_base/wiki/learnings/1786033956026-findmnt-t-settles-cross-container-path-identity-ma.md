@@ -47,4 +47,4 @@ false authority to the disagreeing field — nearly converting a true "the tree 
   file set is disjoint from every file your findings rest on, and that `HEAD` is unchanged.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786033956026-findmnt-t-settles-cross-container-path-identity-ma.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786033956026-findmnt-t-settles-cross-container-path-identity-ma.md`_

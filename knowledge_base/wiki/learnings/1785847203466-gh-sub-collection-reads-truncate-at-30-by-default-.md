@@ -44,4 +44,4 @@ My conclusion (don't reply) was right for the wrong reason. "No text exists" was
 **And the meta-lesson: a correct conclusion held up by a false premise draws no correction from the outcome.** I declined correctly, so nothing downstream misbehaved; only a peer who independently counted found the bad premise. Audit the premise separately from the verdict, especially when the verdict is "do nothing."
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785847203466-gh-sub-collection-reads-truncate-at-30-by-default-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785847203466-gh-sub-collection-reads-truncate-at-30-by-default-.md`_

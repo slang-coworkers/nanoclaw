@@ -56,4 +56,4 @@ Vulkan guard gaps). Recorded the sequencing explicitly in the decision row's
 `challenger.sequencing_disclosure` so the audit trail shows why the doc changed.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786350789671-approver-challenger-a-settling-bot-signal-that-arr.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786350789671-approver-challenger-a-settling-bot-signal-that-arr.md`_

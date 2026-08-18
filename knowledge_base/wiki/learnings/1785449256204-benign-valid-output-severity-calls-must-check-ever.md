@@ -28,4 +28,4 @@ Root cause of the miss: the byte-identity/validity checks only covered the **tes
 Related: the slang #12260 `enum:bool` fix had the mirror shape — a target-agnostic front-end fold made a switch reach *every* backend's emit, exposing per-target legalization gaps (WGSL had no bool-switch legalization). Same class: one change, N emit targets, validity differs per target.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785449256204-benign-valid-output-severity-calls-must-check-ever.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785449256204-benign-valid-output-severity-calls-must-check-ever.md`_

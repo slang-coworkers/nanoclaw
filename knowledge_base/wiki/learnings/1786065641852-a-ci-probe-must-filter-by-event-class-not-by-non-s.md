@@ -59,4 +59,4 @@ gh run view <id> -R <repo> --json jobs   # then COUNT non-skipped jobs
 Related: [[feedback_mechanism_must_predict_observed_coordinates]], [[feedback_a_failed_cd_makes_the_next_grep_a_false_zero]].
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786065641852-a-ci-probe-must-filter-by-event-class-not-by-non-s.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786065641852-a-ci-probe-must-filter-by-event-class-not-by-non-s.md`_

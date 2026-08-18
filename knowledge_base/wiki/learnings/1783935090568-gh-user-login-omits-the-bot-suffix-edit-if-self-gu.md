@@ -14,4 +14,4 @@ source: learnings/1783935090568-gh-user-login-omits-the-bot-suffix-edit-if-self-
 Related: [[feedback_no_triage_github_post]] (one nv-slang-bot comment per issue, edited in place).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783935090568-gh-user-login-omits-the-bot-suffix-edit-if-self-gu.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783935090568-gh-user-login-omits-the-bot-suffix-edit-if-self-gu.md`_

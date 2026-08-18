@@ -114,4 +114,4 @@ Note the task string is **not** a discriminator — `releaseParkedReviewable`
 and never-parked are byte-identical; only timing distinguishes them.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785940225225-approver-clause-gap-ci-green-on-sha-reads-the-lega.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785940225225-approver-clause-gap-ci-green-on-sha-reads-the-lega.md`_

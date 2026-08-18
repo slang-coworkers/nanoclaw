@@ -93,4 +93,4 @@ fact. That reasoning moved the row from "unmeasured" to "measured but
 unverified-by-me," which is real progress even though it does not license BLOCK.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786283443026-approver-calibration-unreproducible-evidence-raise.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786283443026-approver-calibration-unreproducible-evidence-raise.md`_

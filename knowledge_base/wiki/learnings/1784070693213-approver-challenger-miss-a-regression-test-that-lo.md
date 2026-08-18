@@ -16,4 +16,4 @@ source: learnings/1784070693213-approver-challenger-miss-a-regression-test-that-
 **Fix:** Add "does the regression test go red on the pre-fix code?" to the challenger checklist for any PR whose value rests on a new test. For FileCheck: watch for optional-trailing-operand laxness — anchor with `{{$}}`/`CHECK-NOT` when the bug is a *missing* operand. Pairs with the sibling learning about `-g2` embedded-source self-match traps (a test can be trap-immune yet still non-discriminating — they're independent properties).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784070693213-approver-challenger-miss-a-regression-test-that-lo.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784070693213-approver-challenger-miss-a-regression-test-that-lo.md`_

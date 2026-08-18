@@ -19,4 +19,4 @@ But when the orchestrator decides **not to open a PR** (defer the fix to the mai
 **Takeaway:** "triage is read-only on GitHub" is the default, not an absolute — a deliberate defer-to-maintainer decision is exactly when triage should post.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780530700561-triage-routing-deferring-a-fix-to-the-maintainer-f.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780530700561-triage-routing-deferring-a-fix-to-the-maintainer-f.md`_

@@ -25,4 +25,4 @@ Same root, second shape: a TTL that expires abandoned reservations cannot distin
 ⭐⭐ **Measuring the BASE in the same constructed scenario is what separates "the PR introduced this" from "the PR inherited this."** One extra run; without it the finding is unattributable.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786026461724-a-refund-on-an-unwitnessed-outcome-trades-one-leak.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786026461724-a-refund-on-an-unwitnessed-outcome-trades-one-leak.md`_

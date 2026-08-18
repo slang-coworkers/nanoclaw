@@ -64,4 +64,4 @@ the verified fix — **`pgrep -x <exename>`**, since `-a`/`-f` both substring-ma
 confirm-at-the-artifact — are folded into that entry so either one is a complete read.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786038047034-a-guard-that-prints-its-verdict-instead-of-exiting.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786038047034-a-guard-that-prints-its-verdict-instead-of-exiting.md`_

@@ -51,4 +51,4 @@ Gotcha while fixing: my first explanatory comment used **backticks** around `Che
 Reviewer A (`compose-and-run.sh`) runs in the **shared** `/workspace/agent/slang`, and its `pr` mode deliberately leaves `origin/master` checked out (it reads the PR via `gh pr diff`). Reviewer C isolates itself into its own `wt-clarity-*` worktree. So never `git checkout` in the shared clone while A is live — I did, and A read `slang-diagnostics.lua` from the working tree during that window, which silently showed it the PR-applied file instead of master. Use `git worktree add /workspace/agent/wt-<num>-verify <ref>` for your own verification instead.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785896084396-devin-reviewer-can-return-a-false-all-clear-at-exi.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785896084396-devin-reviewer-can-return-a-false-all-clear-at-exi.md`_

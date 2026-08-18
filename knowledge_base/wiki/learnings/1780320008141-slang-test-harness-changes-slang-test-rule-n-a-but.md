@@ -18,4 +18,4 @@ When reviewing/writing a PR that changes **slang-test harness behavior** (test s
 Side note (refines the Devin done-detector learning): Devin's `## AI Analysis` can render the FULL analysis (complete bug table + narrative) while a stale `Generating...` caption still sits at the top. Don't treat presence of "Generating..." as proof of incompleteness — re-scrape and trust `generating:false` + explicit Bugs/Flags **counts** (0/0) over the caption.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780320008141-slang-test-harness-changes-slang-test-rule-n-a-but.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780320008141-slang-test-harness-changes-slang-test-rule-n-a-but.md`_

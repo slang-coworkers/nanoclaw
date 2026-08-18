@@ -14,4 +14,4 @@ source: learnings/1785485841108-daily-report-p0-candidates-label-view-work-state
 **How to apply:** Keep the severity read (silent miscompiles + device-removal ARE the worst class — that judgment stands). But reframe the ask from "untriaged → route/label P0" to "**severity: P0-class; work-state: triaged & in-flight, fixer/triager-owned; `Dev Reviewed`+priority are the human maintainer's to apply.**" The GitHub label is a human write, not a coworker routing gap. When in doubt about whether an issue is already owned, say so explicitly ("label view only; work-state not verified from a read-only scan") rather than asserting it needs fresh dispatch. `Dev Reviewed` is always human-applied — see [[feedback_dev_reviewed_label]].
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785485841108-daily-report-p0-candidates-label-view-work-state-r.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785485841108-daily-report-p0-candidates-label-view-work-state-r.md`_

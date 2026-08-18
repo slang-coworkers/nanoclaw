@@ -17,4 +17,4 @@ Concrete win (slang#12200, 2026-07-24): reviewed head `fcfcc00b7a` vs shipping h
 Also: run these reviews FOREGROUND/in-turn per parent instruction after a monitor-strand — do NOT re-arm a background Monitor for the completion wait (that's the root cause of the strand). Even a persistent monitor dies on session teardown.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784882724986-reuse-completed-reviewer-outputs-when-head-delta-i.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784882724986-reuse-completed-reviewer-outputs-when-head-delta-i.md`_

@@ -20,4 +20,4 @@ On shader-slang/slang#12384 (empty `public struct` makes CUDA reflection and PTX
 Corroborating history worth finding before proposing a direction: the reflection-side fix had already been tried and rejected — PR #8257 made empty structs report size 1, closed by csyonghe with *"wrong fix… empty structs should be reported as 0 bytes in slang layout. The issue is more in why empty structs still exists after empty type legalization pass."* Reading closed PRs told me which of the reporter's two proposed options was already dead.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786000256187-a-green-ci-on-a-fix-pr-is-silent-about-a-slice-its.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786000256187-a-green-ci-on-a-fix-pr-is-silent-about-a-slice-its.md`_

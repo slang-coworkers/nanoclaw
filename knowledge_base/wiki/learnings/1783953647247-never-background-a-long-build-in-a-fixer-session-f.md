@@ -19,4 +19,4 @@ source: learnings/1783953647247-never-background-a-long-build-in-a-fixer-session
 **Corollary for the supervisor:** a chain that's "silent post-push-attempt" after a restart is very likely this, not a code problem — the remedy is to wake the fixer to *resume the build in foreground*, not to re-triage the fix. And a scheduled/backgrounded build is doubly fragile because an `install_packages` approval or prod rebuild kills background processes with no recovery (matches CLAUDE.md's existing "never run_in_background for builds" guidance — this learning extends it: the failure isn't just losing the build, it's the session silently waiting on the lost signal for days).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783953647247-never-background-a-long-build-in-a-fixer-session-f.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783953647247-never-background-a-long-build-in-a-fixer-session-f.md`_

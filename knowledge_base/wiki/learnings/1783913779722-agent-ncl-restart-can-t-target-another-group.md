@@ -21,4 +21,4 @@ source: learnings/1783913779722-agent-ncl-restart-can-t-target-another-group.md
 `mcp__nanoclaw__request_restart` only restarts the CALLER's own container — also not a cross-group tool.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783913779722-agent-ncl-restart-can-t-target-another-group.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783913779722-agent-ncl-restart-can-t-target-another-group.md`_

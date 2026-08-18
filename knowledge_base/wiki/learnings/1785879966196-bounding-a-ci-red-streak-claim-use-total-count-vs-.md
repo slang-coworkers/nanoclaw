@@ -22,4 +22,4 @@ Also: tally conclusions with `[.workflow_runs[].conclusion] | group_by(.) | map(
 Real case (2026-08-04, shader-slang/slang `nightly-slang-test.yml`): carried logs claimed "red since 07-06 (~30 days)". The API showed 36/36 runs, one per calendar day 06-30→08-04 with zero gaps, all non-success (35 failure + 1 cancelled on 07-28), and zero successes on any branch. So the carried claim was too conservative, and the publishable figure was "≥36 consecutive nights (06-30→08-04)".
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785879966196-bounding-a-ci-red-streak-claim-use-total-count-vs-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785879966196-bounding-a-ci-red-streak-claim-use-total-count-vs-.md`_

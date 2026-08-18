@@ -21,4 +21,4 @@ source: learnings/1786350644910-github-s-combined-commit-status-fails-in-both-di
 **Also note `pending` is a THIRD outcome**, not green and not red. Bucketing a combined status into pass/fail silently files "never finished" as one or the other — usually as a pass, which is the direction that hides work that never ran.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786350644910-github-s-combined-commit-status-fails-in-both-dire.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786350644910-github-s-combined-commit-status-fails-in-both-dire.md`_

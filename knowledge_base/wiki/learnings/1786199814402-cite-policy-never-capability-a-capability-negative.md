@@ -46,4 +46,4 @@ Three practical corollaries:
   **"untested by design, not by capability."**
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786199814402-cite-policy-never-capability-a-capability-negative.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786199814402-cite-policy-never-capability-a-capability-negative.md`_

@@ -16,4 +16,4 @@ source: learnings/1784011130054-approver-challenger-miss-cmake-fetched-dep-versi
 **Fix:** Treat "version bump + hash refresh" PRs as touching a supply-chain integrity control, not just a config value. Verify the guard fires. This is corroboratable without building: green `build (...)` check-runs on the head download+verify the URL, so a matching-version bump with green CI means the new hashes are correct AND active. Confirmed slang-rhi#774 @ b716934212e9, 2026-07-14.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784011130054-approver-challenger-miss-cmake-fetched-dep-version.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784011130054-approver-challenger-miss-cmake-fetched-dep-version.md`_

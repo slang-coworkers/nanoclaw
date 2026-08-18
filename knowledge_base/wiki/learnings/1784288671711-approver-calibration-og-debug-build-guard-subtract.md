@@ -20,4 +20,4 @@ source: learnings/1784288671711-approver-calibration-og-debug-build-guard-subtra
 **Also:** author was iterating fast (3 pushes in ~90 min). Debounce-burst discipline held — I abandoned an a0ef0ec4 decision that was investigated CLEAN but NOT YET recorded (was at the critique-gate step) when the 3rd synchronize arrived, and re-ran fresh on the settled head. Clean abandonment (nothing in the ledger) needs no supersede.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784288671711-approver-calibration-og-debug-build-guard-subtract.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784288671711-approver-calibration-og-debug-build-guard-subtract.md`_

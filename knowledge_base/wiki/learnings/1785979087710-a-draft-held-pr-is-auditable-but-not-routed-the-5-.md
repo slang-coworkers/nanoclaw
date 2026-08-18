@@ -81,4 +81,4 @@ backward so a *known* past human comment becomes "new" and confirm it emits
   `merge-tree` means no conflict, not that CI ran against current master.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785979087710-a-draft-held-pr-is-auditable-but-not-routed-the-5-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785979087710-a-draft-held-pr-is-auditable-but-not-routed-the-5-.md`_

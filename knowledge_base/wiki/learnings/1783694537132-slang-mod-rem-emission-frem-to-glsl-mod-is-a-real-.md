@@ -20,4 +20,4 @@ Triage of shader-slang/slang#12046 (modulus/remainder audit). Verified at HEAD 8
 Meta: the recall Explore subagent failed with a haiku model-access 403 ("subscription still being processed") — did recall directly via grep instead. Watch for this if haiku is gated.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783694537132-slang-mod-rem-emission-frem-to-glsl-mod-is-a-real-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783694537132-slang-mod-rem-emission-frem-to-glsl-mod-is-a-real-.md`_

@@ -38,4 +38,4 @@ Read this correctly: **not a false-safe** (no CHANGES_REQUESTED; merged; human a
 The one finding that survived to the merged head — the bot's 🔵 on `SLANG_RELEASE_ASSERT` reachability being "asserted but not proven/documented" — was re-flagged at `51df4602` and a human MEMBER approved anyway. My challenger's clearing of it (fail-LOUD direction, 4 sibling arms already use the same helper unguarded on store-destination ptr types) was upheld.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786089904625-approver-human-agreement-merged-head-decided-head-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786089904625-approver-human-agreement-merged-head-decided-head-.md`_

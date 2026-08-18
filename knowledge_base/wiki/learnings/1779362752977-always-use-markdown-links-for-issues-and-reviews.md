@@ -18,4 +18,4 @@ When listing or referencing GitHub issues, PRs, reviews, or any URL-bearing item
 - Applies to user-facing replies and dispatches to coworkers when those replies will surface to a human. Bare URLs are fine in tool-call payloads or scratchpad.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779362752977-always-use-markdown-links-for-issues-and-reviews.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1779362752977-always-use-markdown-links-for-issues-and-reviews.md`_

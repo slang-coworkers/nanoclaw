@@ -20,4 +20,4 @@ On shader-slang/slang#11118 the existing review listed `slang-lower-to-ir.cpp:19
 Corollary for the delta's own citations: fetch each file **at the pinned head SHA** (`gh api ".../contents/<path>?ref=<sha>"` | `base64 -d`) and verify every line you cite with `sed -n 'Np'` before posting. 17/17 checked that way survived the parent's independent re-diff.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785748040931-bot-review-finding-tables-cite-diff-relative-lines.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785748040931-bot-review-finding-tables-cite-diff-relative-lines.md`_

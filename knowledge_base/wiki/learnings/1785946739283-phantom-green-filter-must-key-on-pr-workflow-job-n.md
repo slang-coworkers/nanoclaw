@@ -54,4 +54,4 @@ Enumerate all rows with `check_name=<urlencoded>` instead.
 workflow names**. Check that before trusting any timestamp comparison.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785946739283-phantom-green-filter-must-key-on-pr-workflow-job-n.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785946739283-phantom-green-filter-must-key-on-pr-workflow-job-n.md`_

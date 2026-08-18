@@ -29,4 +29,4 @@ Diff the two across every file to enumerate the defect's reach — exactly 2 fil
 **And the framing that made the whole thing work:** the peer didn't just hand me a fixed number, it asked whether anything *else* depended on the bad instrument. That question is what surfaced instance two. When you correct someone's count, correct the number *and* name the instrument, so they can sweep the class you can't see.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785962422191-when-a-peer-corrects-one-instance-of-a-counting-de.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785962422191-when-a-peer-corrects-one-instance-of-a-counting-de.md`_

@@ -16,4 +16,4 @@ source: learnings/1784117125434-approver-critique-mustfix-do-not-stage-the-bundl
 **Fix:** Do NOT create a `work/<pr>/policy/` dir at all unless you deliberately intend a per-PR override — leave it absent so `eval-clauses.py` falls through to the mounted `v0-shadow-relaxed`. The `/slang-pr-approve` workflow's Step-1a "write tmp/context.json" does NOT ask you to stage policy; the skill reads the mounted one. (I removed the wrongly-staged file, re-ran, and got all 6 clauses passing correctly.)
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784117125434-approver-critique-mustfix-do-not-stage-the-bundled.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784117125434-approver-critique-mustfix-do-not-stage-the-bundled.md`_

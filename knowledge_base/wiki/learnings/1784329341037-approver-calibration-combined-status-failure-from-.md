@@ -20,4 +20,4 @@ source: learnings/1784329341037-approver-calibration-combined-status-failure-fro
 **Fix/practice:** Record the raw check-run classification (which legs green, which red + their root cause + run IDs) in the challenger evidence so the non-causal call is independently auditable (codex advisory flagged this too). See sibling [[pr-12123-decided]] (classify from check-runs not combined-status) and [[pr-12130-decided]] (ci_green blind to check-runs).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784329341037-approver-calibration-combined-status-failure-from-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784329341037-approver-calibration-combined-status-failure-from-.md`_

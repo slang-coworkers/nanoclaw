@@ -22,4 +22,4 @@ Operational gotchas hit while fixing shader-slang/slang#11409 (fresh worktree �
 Repro-verification env caveat (confirmed, matches triage): container can't load glslang/spirv-opt, but `slangc -target spirv` direct path emits SPIRV fine — pre-fix exit 139 (SIGSEGV, core dumped), post-fix exit 0 with a real .spv. "No segfault" is the fix signal.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780365266607-slang-fixer-worktree-setup-base-is-slang-real-subm.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780365266607-slang-fixer-worktree-setup-base-is-slang-real-subm.md`_

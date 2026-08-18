@@ -49,7 +49,7 @@ test proves the author *meant* it and says nothing about whether a maintainer
 *accepts* it. Never launder a test into a severity clear, and treat any "unresolved /
 could not determine" note elsewhere in the same reasoning as disqualifying for a
 clear
-[[approver/critique-mustfix] "Deliberate and tested" is not "inconsequential" — intent and consequence are orthogonal in gap-severity calls](wiki/learnings/1786113456723-approver-critique-mustfix-deliberate-and-tested-is.md).
+[[approver/critique-mustfix] "Deliberate and tested" is not "inconsequential" — intent and consequence are orthogonal in gap-severity calls](../learnings/1786113456723-approver-critique-mustfix-deliberate-and-tested-is.md).
 
 A related mis-import: **check which side of a rule your reason is listed on.** On
 slang-rhi#815 a "fails closed, so the consequence is small" argument cleared an
@@ -76,7 +76,7 @@ pre-existing-left-unaddressed ⇒ scope preference, clear it; deliberate tested 
 *confidence in* the improvement, rank below anything asserting incorrectness. And a
 CodeRabbit `🟠 Major` + `⚡ Quick win` is bot vocabulary for *optional polish*, and a
 resolved-without-reply thread is a maintainer signal
-[[approver/human-disagreement] On an incremental hardening PR, "didn't also fix the adjacent pre-existing case" is a scope preference, not an OPEN_GAP](wiki/learnings/1786115791032-approver-human-disagreement-on-an-incremental-hard.md).
+[[approver/human-disagreement] On an incremental hardening PR, "didn't also fix the adjacent pre-existing case" is a scope preference, not an OPEN_GAP](../learnings/1786115791032-approver-human-disagreement-on-an-incremental-hard.md).
 This cuts against the "deliberate ≠ inconsequential" rule above — sound in isolation,
 but it must not convert every intentional tradeoff in an improving change into a
 blocker.
@@ -88,7 +88,7 @@ symmetry with no new state/ordering/lifetime, generator run, checked cache-key s
 — make it low-risk. "Untestable in this CI" (no CUDA runner) ≠ "dead code"; the setter
 is the caller, which is a milder finding than "this flag is never set". None of that
 licenses inventing a verdict when the harness produced none
-[[approver/human-disagreement] ABSTAIN_INFRA on a green-CI doc+mirror-arm PR: the abstain was procedurally right and outcome-wrong; log the shape, not the regret](wiki/learnings/1786117966658-approver-human-disagreement-abstain-infra-on-a-gre.md).
+[[approver/human-disagreement] ABSTAIN_INFRA on a green-CI doc+mirror-arm PR: the abstain was procedurally right and outcome-wrong; log the shape, not the regret](../learnings/1786117966658-approver-human-disagreement-abstain-infra-on-a-gre.md).
 
 ## Cost-to-fix and undeclared policy
 
@@ -104,7 +104,7 @@ immune string-keyed access path, no range arithmetic, and the repo ships no rele
 so the ABI story is hypothetical. **An undeclared policy is weak evidence *for* the
 change, not a neutral void** — abstaining on it imposes a compatibility bar the repo
 never adopted and charges maintainers to rebut it
-[[approver/human-disagreement] Mid-list public-enum insertion: code owner APPROVED it intact — my ABI abstain was over-conservative, and the free-fix argument is the part that failed](wiki/learnings/1786116630701-approver-human-disagreement-mid-list-public-enum-i.md).
+[[approver/human-disagreement] Mid-list public-enum insertion: code owner APPROVED it intact — my ABI abstain was over-conservative, and the free-fix argument is the part that failed](../learnings/1786116630701-approver-human-disagreement-mid-list-public-enum-i.md).
 
 A subtler version of the same "consult the artifact you already hold": before writing
 "no written policy exists" about a compatibility construct, grep the *sibling* repo's
@@ -114,7 +114,7 @@ context the whole time, yet the remedy was re-derived from the diff. A written r
 a non-governing repo is **evidence for the humans, never a clause to enforce** — hand
 it over, don't apply it (grepping slang for `slang-rhi` ⇒ 0 hits ⇒ it doesn't govern
 slang-rhi)
-[[approver/clause-gap] Before writing "no written policy exists", grep the SIBLING repo's instruction files — a loaded document is not a consulted document](wiki/learnings/1786112081588-approver-clause-gap-before-writing-no-written-poli.md).
+[[approver/clause-gap] Before writing "no written policy exists", grep the SIBLING repo's instruction files — a loaded document is not a consulted document](../learnings/1786112081588-approver-clause-gap-before-writing-no-written-poli.md).
 
 ## Pricing severity: the #817 false-abstain
 
@@ -132,7 +132,7 @@ unmeasured risk on a change that fixes a measured bug." **Weigh what the change 
 against what it might break** — a verdict that only totals risks will systematically
 under-approve. And a five-abstain streak on byte-identical heads is a signal about the
 *bar* (loss #7 on this repo), not the PR
-[[approver/false-safe] #817 merged with my abstained bytes byte-identical — 5 abstain rows overruled, and the gap I held on was REAL but I never established it FIRES](wiki/learnings/1786347918704-approver-false-safe-817-merged-with-my-abstained-b.md).
+[[approver/false-safe] #817 merged with my abstained bytes byte-identical — 5 abstain rows overruled, and the gap I held on was REAL but I never established it FIRES](../learnings/1786347918704-approver-false-safe-817-merged-with-my-abstained-b.md).
 
 ## The join, and calibration pressure
 
@@ -147,7 +147,7 @@ overshoot on severity; validity and severity are separate judgments, and severit
 cost only shows at join time. If your cited precedent has a named author, check
 whether they're a pending reviewer — when the question is "is this the library's
 intended contract?", the precedent-author's review *is* the answer, not corroboration
-[[approver/human-disagreement] An ABSTAIN the human OVERRULES is the false-abstain signal — "abstain rows are excluded from scoring" hides the entire over-conservative direction; plus: if your cited precedent has a named author, check whether they're a pending reviewer](wiki/learnings/1786113486048-approver-human-disagreement-an-abstain-the-human-o.md).
+[[approver/human-disagreement] An ABSTAIN the human OVERRULES is the false-abstain signal — "abstain rows are excluded from scoring" hides the entire over-conservative direction; plus: if your cited precedent has a named author, check whether they're a pending reviewer](../learnings/1786113486048-approver-human-disagreement-an-abstain-the-human-o.md).
 
 Calibration pressure is the sharpest self-deception: two recent over-conservative
 losses on the same repo+author silently substituted a *join-scoring* frame ("material
@@ -160,7 +160,7 @@ worked: **name your suspected bias in the critique prompt** — self-review cann
 this class, an independent reviewer handed the hypothesis will test it. (Second-order:
 having just been corrected for leaning permissive, the next round overstated in the
 *conservative* direction — the bias follows the position, not a fixed direction.)
-[[approver/challenger-miss] I used a join-scoring rule as a decision rule — how a bad scoreboard loosens the next decision's bar](wiki/learnings/1786119044642-approver-challenger-miss-i-used-a-join-scoring-rul.md).
+[[approver/challenger-miss] I used a join-scoring rule as a decision rule — how a bad scoreboard loosens the next decision's bar](../learnings/1786119044642-approver-challenger-miss-i-used-a-join-scoring-rul.md).
 
 ## Clause-gap: the artifact isn't ready, or the pipeline re-fired
 
@@ -171,7 +171,7 @@ of 21 slangpy PRs). This is a *wait-for-settled-artifact* case, structurally ide
 to the harvest exit-22 `pending_bot` rule; re-reading before finalizing could not have
 caught it. Absence of a statement in a not-yet-written field carries zero bits — the
 negative-evidence probe applies to artifact *readiness*
-[[approver/clause-gap] An empty PR body on a fresh PR is a timing race, not maintainer silence — and not a staleness bug either](wiki/learnings/1786116951498-approver-clause-gap-an-empty-pr-body-on-a-fresh-pr.md).
+[[approver/clause-gap] An empty PR body on a fresh PR is a timing race, not maintainer silence — and not a staleness bug either](../learnings/1786116951498-approver-clause-gap-an-empty-pr-body-on-a-fresh-pr.md).
 
 **A merge-from-main head move is a new SHA with an unchanged reviewed diff.** It
 mechanically re-fires the whole pipeline (newest review's `commit_id` ≠ pinned head ⇒
@@ -181,7 +181,7 @@ into `commit_id` (the field a deterministic clause reads must keep reporting wha
 bot actually reviewed; a substantive exception belongs in a separately-named clause).
 State the re-trigger condition in terms of *content*, not SHA, and record which heads
 have no row so a later join can't attach a human verdict to a merge-only SHA
-[[approver/clause-gap] A merge-from-main head move is a new SHA with an unchanged reviewed diff — prove it by blob identity, then decline the row without laundering the SHA](wiki/learnings/1786115207025-approver-clause-gap-a-merge-from-main-head-move-is.md).
+[[approver/clause-gap] A merge-from-main head move is a new SHA with an unchanged reviewed diff — prove it by blob identity, then decline the row without laundering the SHA](../learnings/1786115207025-approver-clause-gap-a-merge-from-main-head-move-is.md).
 
 **OUT_OF_SCOPE has no scripted predicate, and the conflict-of-interest case needs it
 most.** A PR patching the approver's own Devin scraper is `OUT_OF_SCOPE:approver-
@@ -192,7 +192,7 @@ prior 401 heuristic didn't apply here; `gh api` resolved MEMBER cleanly). An abs
 scripted predicate is not permission to ignore a verified COI — flag the policy gap
 upward, don't stretch an unrelated clause. Re-run an `unevaluable` clause before
 believing it: an ordering artifact and a real infra gap emit the identical token
-[[approver/clause-gap] OUT_OF_SCOPE has no scripted predicate — and the COI case is the one that needs it most](wiki/learnings/1786123874277-approver-clause-gap-out-of-scope-has-no-scripted-p.md).
+[[approver/clause-gap] OUT_OF_SCOPE has no scripted predicate — and the COI case is the one that needs it most](../learnings/1786123874277-approver-clause-gap-out-of-scope-has-no-scripted-p.md).
 
 ## Verifying that a prescribed fix landed, and challenger misses
 
@@ -205,7 +205,7 @@ green badge cannot; and **control your nulls** — a zero from a grep is a claim
 the pattern, so pair every null with a non-zero positive control from the same fetch.
 Also: read the fix at the pinned commit not the fixing PR, and a gitlink `+1/−1` is
 not a one-line change (enumerate `git log old..new`)
-[[approver/challenger] Verifying a fix landed: pre-register the pass bar, count passes not badges, and control your nulls](wiki/learnings/1786117846837-approver-challenger-verifying-a-fix-landed-pre-reg.md).
+[[approver/challenger] Verifying a fix landed: pre-register the pass bar, count passes not badges, and control your nulls](../learnings/1786117846837-approver-challenger-verifying-a-fix-landed-pre-reg.md).
 
 **A robustness PR whose only new test forces the fallback path proves nothing about
 the retry it added.** slangpy#1094's one new test wrote permanently-corrupt cache
@@ -217,7 +217,7 @@ mechanism is unverified regardless of test count. Watch for inputs that make rec
 multi-participant test or they're decorative. **A test that exercises the failure
 branch of a retry is a test of the fallback, not of the retry** — count controls per
 direction, not per test
-[[approver/challenger-miss] A robustness PR whose only new test forces the fallback path proves nothing about the retry it added](wiki/learnings/1786111916699-approver-challenger-miss-a-robustness-pr-whose-onl.md).
+[[approver/challenger-miss] A robustness PR whose only new test forces the fallback path proves nothing about the retry it added](../learnings/1786111916699-approver-challenger-miss-a-robustness-pr-whose-onl.md).
 
 ## Cross-references
 

@@ -16,4 +16,4 @@ When driving `/slang-pr-review` across multiple PR revisions (long-lived chain w
 **Cross-check A and C reviewed the same diff:** A's `sha256sum pr-diff.reference` (short 12 chars) must equal C's `run-key.json` `bundle_hash`. Put that verified full sha256 in the combined doc's RESULT_JSON `diff_hash` so the approver can pin it to the head commit. Set `reviewers_complete: false` whenever Devin/B is skipped (no in-container Chrome — `DevToolsActivePort`/dbus launch failure, an infra gap not a PR fault) and state A✓/B✗skip/C✓ explicitly.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783971373048-slang-pr-review-verify-reviewer-runs-survived-clea.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783971373048-slang-pr-review-verify-reviewer-runs-survived-clea.md`_

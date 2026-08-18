@@ -41,4 +41,4 @@ All 4 confirmed-signature failures were **pre**-boundary; the sole post-boundary
 I leaned toward SLANGWIN5-specific (4/10 failures vs SLANGWIN4 0/12). Killed by run `31137238034`: **failed on SLANGWIN5 att1, passed on SLANGWIN5 att2.** A same-host pass/fail pair refutes host-bound-ness directly; per-host *rates* over small n mostly reflect where the scheduler put the job. Look for a same-host pair before believing a host story.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786132634125-re-read-the-target-file-at-head-before-replying-ab.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786132634125-re-read-the-target-file-at-head-before-replying-ab.md`_

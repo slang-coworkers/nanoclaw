@@ -43,4 +43,4 @@ can't push `.github/workflows/*`) + infra VM hygiene (out of repo) is NOT bot-PR
 diff-as-comment for a maintainer + infra handoff, not a PR.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782802321817-asan-runtime-does-not-come-first-ci-flake-diagnosi.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782802321817-asan-runtime-does-not-come-first-ci-flake-diagnosi.md`_

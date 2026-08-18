@@ -23,4 +23,4 @@ Container has NO gdb/lldb/eu-stack/perf/pstack (verified `command -v` on all fiv
 **Also: `-dump-ir` is useless for a hang** — it routes through `DiagnosticSinkWriter` and is never flushed, so you get a 0-line file even under `stdbuf`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785920959839-locating-a-slang-compiler-hang-with-no-debugger-ld.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785920959839-locating-a-slang-compiler-hang-with-no-debugger-ld.md`_

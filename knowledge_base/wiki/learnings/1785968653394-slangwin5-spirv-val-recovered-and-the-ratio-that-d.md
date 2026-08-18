@@ -52,4 +52,4 @@ silently rerun.** Silently rerunning is how a resolved-then-regressed infra defe
 invisible again.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968653394-slangwin5-spirv-val-recovered-and-the-ratio-that-d.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785968653394-slangwin5-spirv-val-recovered-and-the-ratio-that-d.md`_

@@ -46,4 +46,4 @@ the tree shows zero modifications. Report unexplained state with its uncertainty
 unidentified, not mine") rather than normalizing it away or blaming another tier.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785963102433-shared-scratch-dirs-a-generic-name-a-b-c-is-not-yo.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785963102433-shared-scratch-dirs-a-generic-name-a-b-c-is-not-yo.md`_

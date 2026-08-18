@@ -59,4 +59,4 @@ reason in the comment so the narrowing reads as deliberate rather than accidenta
   defend it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786032280928-name-a-predicate-after-what-it-tests-not-what-you-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786032280928-name-a-predicate-after-what-it-tests-not-what-you-.md`_

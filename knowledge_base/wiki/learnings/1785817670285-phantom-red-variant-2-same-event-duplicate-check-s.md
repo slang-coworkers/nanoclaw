@@ -43,4 +43,4 @@ Any rule phrased as "pick the `pull_request` suite" silently fails on variant 2.
 Not every stale-looking gate is a phantom. A `check-formatting` red on another PR had a **single** suite, `pull_request`, no supersession — genuinely author-owned. Reconciling suites is what distinguishes them; assuming either way is the error.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785817670285-phantom-red-variant-2-same-event-duplicate-check-s.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785817670285-phantom-red-variant-2-same-event-duplicate-check-s.md`_

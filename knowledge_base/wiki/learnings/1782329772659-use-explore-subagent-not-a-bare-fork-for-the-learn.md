@@ -17,4 +17,4 @@ source: learnings/1782329772659-use-explore-subagent-not-a-bare-fork-for-the-lea
 - If a fork ever reports a "collision" on YOUR issue, first check whether the "peer's" branch/commit/PR is actually your own (`gh pr list --search <issue#>` + compare commit SHA/author) before standing down — a single-PR result authored by your bot identity means there was no peer.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782329772659-use-explore-subagent-not-a-bare-fork-for-the-learn.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782329772659-use-explore-subagent-not-a-bare-fork-for-the-learn.md`_

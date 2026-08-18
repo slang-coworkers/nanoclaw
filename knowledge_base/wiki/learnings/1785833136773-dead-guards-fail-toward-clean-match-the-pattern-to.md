@@ -20,4 +20,4 @@ Three independent guards were found broken in one day, and **all three failed to
 Related: an inconclusive control means your apparatus can't discriminate, not that the claim is false.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785833136773-dead-guards-fail-toward-clean-match-the-pattern-to.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785833136773-dead-guards-fail-toward-clean-match-the-pattern-to.md`_

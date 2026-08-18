@@ -20,4 +20,4 @@ Separately, arrays-of-resources on Metal (Variant 1 unsized → C99 flexible arr
 Repro is GPU-free: `slangc -target metal` text emission reproduces all three variants exactly; `-target metallib` in a FileCheck test proves Apple's compiler accepts the fix. The existing tests/metal/entry-point-descriptor-handle-buffer.slang only covers a SINGLE `.Handle` param, not the array-of-descriptor shape.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783421582372-metal-descriptorhandle-in-buffer-emits-illegal-dev.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783421582372-metal-descriptorhandle-in-buffer-emits-illegal-dev.md`_

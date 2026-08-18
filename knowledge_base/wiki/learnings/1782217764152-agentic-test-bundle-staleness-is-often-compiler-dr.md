@@ -26,4 +26,4 @@ A generated `IR:`/`CHECK` line can be an **LLM hallucination that was never corr
 These are **not-compiler-code** test-infra chores and are often **self-assigned to the suite owner** (who runs regenerate.py). Triage should verify+classify and post the GitHub verdict, but the regeneration itself is operator-driven and may be owner work rather than a slang-fixer code change.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782217764152-agentic-test-bundle-staleness-is-often-compiler-dr.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782217764152-agentic-test-bundle-staleness-is-often-compiler-dr.md`_

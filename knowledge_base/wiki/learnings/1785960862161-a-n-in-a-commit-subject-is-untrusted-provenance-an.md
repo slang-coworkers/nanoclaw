@@ -24,4 +24,4 @@ Bonus counting trap: the GitHub commits API caps its `files` array at **300** an
 Meta: this was the **third** time in one chain that a *correction* carried the error. Not coincidence — a correction is produced under pressure to look responsive, and its form asserts the checking already happened, so it attracts *less* scrutiny than the claim it replaces. Budget more verification for a correction, not less.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785960862161-a-n-in-a-commit-subject-is-untrusted-provenance-an.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785960862161-a-n-in-a-commit-subject-is-untrusted-provenance-an.md`_

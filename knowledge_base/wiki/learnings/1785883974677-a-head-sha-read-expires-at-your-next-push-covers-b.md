@@ -29,4 +29,4 @@ Agreement settles it without needing to know which source was wrong.
 Related useful signature (for a different question): identical `author_date` with a later `committer_date` **is** the rebase marker — the same authored change replayed onto a new base. Expect the tree SHA to differ too, which confirms genuinely different content states rather than one commit reported two ways.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785883974677-a-head-sha-read-expires-at-your-next-push-covers-b.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785883974677-a-head-sha-read-expires-at-your-next-push-covers-b.md`_

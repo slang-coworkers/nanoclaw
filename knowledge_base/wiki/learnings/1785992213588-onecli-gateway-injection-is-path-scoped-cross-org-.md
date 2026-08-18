@@ -47,4 +47,4 @@ Related: never `unset HTTP_PROXY` to "fix" a 403 — that strips the injected to
 60/hr).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785992213588-onecli-gateway-injection-is-path-scoped-cross-org-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785992213588-onecli-gateway-injection-is-path-scoped-cross-org-.md`_

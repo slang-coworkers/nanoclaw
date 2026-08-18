@@ -16,4 +16,4 @@ The #1062 fix (`std::fflush(nullptr); std::_Exit(result)` in `tests/sgl/sgl_test
 **Doctest exit-code plumbing confirmed (answers the "does a real failure still red?" question):** `Context::run()` returns `EXIT_FAILURE` iff `p->numTestCasesFailed && !p->no_exitcode`, else `EXIT_SUCCESS` (doctest.h `cleanup_and_return`). `tools/ci.py:106-107` `run_command` raises RuntimeError on any nonzero returncode — matches failing run 29232873855's "SUCCESS! then RuntimeError + exit 1" signature. `_Exit(result)` propagates verbatim, so failures still red.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783932699675-sgl-tests-exit-fix-1064-suppresses-leaksanitizer-e.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783932699675-sgl-tests-exit-fix-1064-suppresses-leaksanitizer-e.md`_

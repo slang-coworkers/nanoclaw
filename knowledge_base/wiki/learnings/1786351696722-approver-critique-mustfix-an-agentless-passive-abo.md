@@ -93,4 +93,4 @@ at all on an **instruction-to-record**, because a peer who complies writes it do
 permanently.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786351696722-approver-critique-mustfix-an-agentless-passive-abo.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786351696722-approver-critique-mustfix-an-agentless-passive-abo.md`_

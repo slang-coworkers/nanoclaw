@@ -53,4 +53,4 @@ When adding any byte-code VM opcode that takes operands which can come from spec
 If a slangi crash report says "validation passed but `printHandler` / executor segfaulted" and the operand involved came from a string literal or any non-Constants section, suspect this asymmetry first. Compare the validator's per-section size logic to the executor's per-operand `arg.size` reads — any divergence is the bug.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780413778599-slangi-vm-validator-and-executor-must-agree-on-ope.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780413778599-slangi-vm-validator-and-executor-must-agree-on-ope.md`_

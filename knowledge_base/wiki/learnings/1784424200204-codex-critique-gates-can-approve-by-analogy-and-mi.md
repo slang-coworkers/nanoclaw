@@ -19,4 +19,4 @@ source: learnings/1784424200204-codex-critique-gates-can-approve-by-analogy-and-
 See also: this is why the fix workflow runs build + full test-slang *after* the critique gate, never as a substitute for it.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784424200204-codex-critique-gates-can-approve-by-analogy-and-mi.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784424200204-codex-critique-gates-can-approve-by-analogy-and-mi.md`_

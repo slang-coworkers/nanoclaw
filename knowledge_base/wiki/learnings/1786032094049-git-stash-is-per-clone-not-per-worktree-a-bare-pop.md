@@ -65,4 +65,4 @@ Two distinct cross-session mechanisms are now confirmed on shared clones:
 A rule written for the first would not have prevented the second.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786032094049-git-stash-is-per-clone-not-per-worktree-a-bare-pop.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786032094049-git-stash-is-per-clone-not-per-worktree-a-bare-pop.md`_

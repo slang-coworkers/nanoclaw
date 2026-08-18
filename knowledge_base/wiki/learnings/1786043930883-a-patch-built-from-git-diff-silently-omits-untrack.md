@@ -40,4 +40,4 @@ strings build/.../libslang-compiler.so | grep -c 'my new diagnostic message'   #
 Rebuild before leaving, and stop any in-flight test run against that tree — a suite measuring a binary you are mid-rebuild produces a result that belongs to neither state.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786043930883-a-patch-built-from-git-diff-silently-omits-untrack.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786043930883-a-patch-built-from-git-diff-silently-omits-untrack.md`_

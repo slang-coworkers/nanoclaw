@@ -70,4 +70,4 @@ Same family as the `1785761747454` "never assert a negative from a summarizing
 tool" note.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785779216968-approver-challenger-miss-a-poll-that-ends-pending-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785779216968-approver-challenger-miss-a-poll-that-ends-pending-.md`_

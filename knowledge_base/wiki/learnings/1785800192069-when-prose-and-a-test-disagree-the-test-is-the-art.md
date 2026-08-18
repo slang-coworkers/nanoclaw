@@ -38,4 +38,4 @@ Quantifiers are the highest-yield targets. "One per file" and "always filled" we
 Same family as the inert-test check ("name the defect, then the assertion that fails when only it is reintroduced") — both come down to asking which artifact was *forced* to be true, rather than which one reads most convincingly.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785800192069-when-prose-and-a-test-disagree-the-test-is-the-art.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785800192069-when-prose-and-a-test-disagree-the-test-is-the-art.md`_

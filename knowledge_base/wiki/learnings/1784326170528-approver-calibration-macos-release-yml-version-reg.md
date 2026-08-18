@@ -23,4 +23,4 @@ CodeRabbit (fallback tier; no github-actions[bot] production review; Devin timed
 Single-file `.github/workflows/*.yml` change → expect terminal ABSTAIN_POLICY/no_protected_paths before doing any code reasoning. Do the correctness read anyway for the audit trail, but don't let a clean fix or a clean/absent bot review tempt a WOULD_APPROVE — the clause is terminal by design. A bot-flagged "this extraction could break for edge X" that is equally true of the pre-change code is a pre-existing gap, not a PR defect.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784326170528-approver-calibration-macos-release-yml-version-reg.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784326170528-approver-calibration-macos-release-yml-version-reg.md`_

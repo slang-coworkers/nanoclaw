@@ -67,4 +67,4 @@ rather than citing "the subagent said Devin failed". The recorded reason survive
 audit because it points at bytes, not at a report.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786117898407-approver-challenger-miss-a-subagent-s-devin-skippe.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786117898407-approver-challenger-miss-a-subagent-s-devin-skippe.md`_

@@ -98,4 +98,4 @@ Siblings: the 21→4 correction; "clause-eligible is not approvable"; a spurious
 abstain fails in the socially invisible direction.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785944951948-approver-false-safe-re-derived-all-4-fallback-pinn.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785944951948-approver-false-safe-re-derived-all-4-fallback-pinn.md`_

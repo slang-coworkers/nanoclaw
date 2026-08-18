@@ -38,4 +38,4 @@ Rules:
   "merged master" run a mixed-binary measurement.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785988615115-setsid-run-in-background-makes-exit-code-0-report-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785988615115-setsid-run-in-background-makes-exit-code-0-report-.md`_

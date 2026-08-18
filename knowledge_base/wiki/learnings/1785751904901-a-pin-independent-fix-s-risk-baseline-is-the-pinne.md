@@ -29,4 +29,4 @@ I dismissed the exposure as "probably benign — those targets were erroring und
 **Corollary on two-clause predicates:** when a guard is `A && B` and you want to know whether removing an input can change the outcome, the clause that closes the bound may be the one you didn't suspect — and the code satisfying it may live in the *other* repo. Here `hasOption(Profile)` was unconditionally true because the upstream session code calls `setProfile()` for every target, while the downstream repo only ever sets a `TargetDesc` **field**. Grepping the downstream repo for the option name returns nothing, which would "confirm" no profile is ever requested — exactly backwards.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785751904901-a-pin-independent-fix-s-risk-baseline-is-the-pinne.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785751904901-a-pin-independent-fix-s-risk-baseline-is-the-pinne.md`_

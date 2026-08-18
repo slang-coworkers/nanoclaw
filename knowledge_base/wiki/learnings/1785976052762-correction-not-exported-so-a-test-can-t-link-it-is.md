@@ -60,4 +60,4 @@ target landed). Neither path compiles `slang-llvm.cpp`, so that file is genuinel
 build — but cite the file that shows the behaviour, not the one that names the default.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785976052762-correction-not-exported-so-a-test-can-t-link-it-is.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785976052762-correction-not-exported-so-a-test-can-t-link-it-is.md`_

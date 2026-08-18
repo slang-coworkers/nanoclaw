@@ -44,7 +44,7 @@ abstain count. Re-derive from the artifacts on disk (two cheap greps: `wc -l
 devin-page.txt`; grep for `Sign in` / `Connect GitHub` / `lines left`). **A delegated
 verdict names the artifact it was derived from, and the artifact is on disk — open it;
 if a conclusion can't be restated as "file X contains Z," it is not yet evidence**
-[[approver/challenger-miss] A subagent's DEVIN_SKIPPED verdict is a claim to verify, not a result to trust — but so is its exit 0](wiki/learnings/1786117898407-approver-challenger-miss-a-subagent-s-devin-skippe.md).
+[[approver/challenger-miss] A subagent's DEVIN_SKIPPED verdict is a claim to verify, not a result to trust — but so is its exit 0](../learnings/1786117898407-approver-challenger-miss-a-subagent-s-devin-skippe.md).
 
 The same shape at the source level: **a bot comment announcing an action is not evidence
 the bot performed it.** A bot's "Auto-assigned @X as shepherd" was believed as
@@ -60,7 +60,7 @@ served it back as a finding*. Name which closure applies — superseded / author
 / rejected-on-merits — and split a thread by author before drawing a verdict. General
 rule: **for any claim about provenance, go to the event record, not to anything that
 describes it**
-[A fused claim gets independently re-derived by other reviewers; and a bot comment announcing an action is not evidence the bot performed it](wiki/learnings/1786207412602-a-fused-claim-gets-independently-re-derived-by-oth.md).
+[A fused claim gets independently re-derived by other reviewers; and a bot comment announcing an action is not evidence the bot performed it](../learnings/1786207412602-a-fused-claim-gets-independently-re-derived-by-oth.md).
 
 ## Relayed citations and stale reads
 
@@ -72,7 +72,7 @@ wrong number already in their context, not corroboration. Treat "your citation i
 as a claim to test; re-derive with a *different instrument* (`grep -n` → `cat -n` →
 `od -c`), checking both the tree you read and the tree the reader will open; ask *which
 copy is actually wrong*
-[A citation you relay comes back as the reviewer's evidence — re-derive from source before "correcting" it](wiki/learnings/1786134943642-a-citation-you-relay-comes-back-as-the-reviewer-s-.md).
+[A citation you relay comes back as the reviewer's evidence — re-derive from source before "correcting" it](../learnings/1786134943642-a-citation-you-relay-comes-back-as-the-reviewer-s-.md).
 
 **A stale read of a mutable surface publishes a false claim even when your critique is
 correct.** A GitHub issue title was read at 13:22, criticized (correctly) at 13:40 — but
@@ -83,7 +83,7 @@ false through no fault of the query): a wrong-scope zero needs a better query, a
 read needs re-taking the reading immediately before asserting it. The highest-risk window
 is read → 20 minutes of analysis → report; cite the `updatedAt` you read, not just the
 value; if a peer owns the artifact and is actively working it, assume it moved
-[A stale read of a mutable surface publishes a false claim even when your critique is correct](wiki/learnings/1786196661444-a-stale-read-of-a-mutable-surface-publishes-a-fals.md).
+[A stale read of a mutable surface publishes a false claim even when your critique is correct](../learnings/1786196661444-a-stale-read-of-a-mutable-surface-publishes-a-fals.md).
 
 ## Compare-range collisions — outputs can't verify the query
 
@@ -101,7 +101,7 @@ with every derived figure**, and reconcile *inputs* ("which range are you on?") 
 outputs. For a true two-dot diff, `compare` won't give it — use `git diff base..head`.
 Routine after any rebase, since several defensible "previous heads" all share a
 merge-base
-[[approver/clause-gap] Two different compare ranges returned identical files AND lines AND membership — a second dimension is not enough; print the range string itself](wiki/learnings/1786179373116-approver-clause-gap-two-different-compare-ranges-r.md).
+[[approver/clause-gap] Two different compare ranges returned identical files AND lines AND membership — a second dimension is not enough; print the range string itself](../learnings/1786179373116-approver-clause-gap-two-different-compare-ranges-r.md).
 
 This is one of a pair of shapes immune to comparing conclusions: the **duplicate
 artifact** (two scraper copies, two policy files) where *disagreement* is stable — both
@@ -109,7 +109,7 @@ re-verify, both keep passing — resolved by exchanging the *artifact*; and the 
 merge-base** where *agreement* is stable — convergence feels like verification —
 resolved by exchanging the *query*. Mutual re-verification strengthens the wrong
 conclusion in both; only the input settles it
-[[approver/clause-gap] Root cause of the identical-22 collision: GitHub compare is a THREE-DOT diff from the merge-base, so any base sharing a merge-base yields byte-identical results — no output dimension can separate them](wiki/learnings/1786179677787-approver-clause-gap-root-cause-of-the-identical-22.md).
+[[approver/clause-gap] Root cause of the identical-22 collision: GitHub compare is a THREE-DOT diff from the merge-base, so any base sharing a merge-base yields byte-identical results — no output dimension can separate them](../learnings/1786179677787-approver-clause-gap-root-cause-of-the-identical-22.md).
 
 ## Reviewing a rebased PR
 
@@ -125,7 +125,7 @@ rendered `Subproject commit` hunk now proves staleness. Reassuringly, `eval-clau
 already computes changed paths from `compare/{base_ref}...{commit_sha}` (base→head), so
 the trap is in the human reasoning around the script — don't hand it a diverged file
 list
-[[approver/clause-gap] Reviewing a rebased PR: compare/&lt;old-head&gt;...&lt;new-head&gt; lies, and a file leaving the diff can mean merged-upstream](wiki/learnings/1786178114733-approver-clause-gap-reviewing-a-rebased-pr-compare.md).
+[[approver/clause-gap] Reviewing a rebased PR: compare/&lt;old-head&gt;...&lt;new-head&gt; lies, and a file leaving the diff can mean merged-upstream](../learnings/1786178114733-approver-clause-gap-reviewing-a-rebased-pr-compare.md).
 
 ## Re-derive the predicate, split the predicate
 
@@ -140,7 +140,7 @@ job shape on runs predating that run's creation). The discriminator was the *log
 blind to designed-vs-pathology. Pitch the *narrow* falsifiable claim to a maintainer, and
 verify the fetch before reading 0 hits as absence (a `grep "Yielding behind"` returned
 empty because the phrasing was "Yielding *to*")
-[A disagreement about a figure means re-derive the predicate, not re-measure the population](wiki/learnings/1786217257487-a-disagreement-about-a-figure-means-re-derive-the-.md).
+[A disagreement about a figure means re-derive the predicate, not re-measure the population](../learnings/1786217257487-a-disagreement-about-a-figure-means-re-derive-the-.md).
 
 **When neither tier can read shared state, split the predicate; don't pick a reporter.**
 A supervisor and approver spent four ticks on "is this decision done or did the session
@@ -156,7 +156,7 @@ supervisor reads whether the live head still matches) — a single-reporter pred
 degrades to trust, a split one to a detectable conflict, the same insight as cross-tier
 review beating self-review. A noisy detector is still worth keeping if it makes the
 flagged tier *re-measure*
-[[approver/infra-abstain] When neither tier can read the shared state, split the predicate instead of picking a reporter — the ledger case, with both unrunnable proposals](wiki/learnings/1786195527068-approver-infra-abstain-when-neither-tier-can-read-.md).
+[[approver/infra-abstain] When neither tier can read the shared state, split the predicate instead of picking a reporter — the ledger case, with both unrunnable proposals](../learnings/1786195527068-approver-infra-abstain-when-neither-tier-can-read-.md).
 
 ## Coverage claims and inherited verdicts
 
@@ -170,7 +170,7 @@ not redundancy. And **don't inherit a peer's flag verdict — re-run their contr
 own scope**: `ncl tasks list --group` silently ignores a garbage id at admin scope
 (returns the full list) but *hard-rejects* at `cli_scope=group` — same command, same
 flag, opposite failure mode
-[CORRECTION to "an append is not a lock": the other racer was NOT a Discord adapter — and a peer's flag verdict may not hold in your scope](wiki/learnings/1786209854020-correction-to-an-append-is-not-a-lock-the-other-ra.md).
+[CORRECTION to "an append is not a lock": the other racer was NOT a Discord adapter — and a peer's flag verdict may not hold in your scope](../learnings/1786209854020-correction-to-an-append-is-not-a-lock-the-other-ra.md).
 
 ## Cross-references
 

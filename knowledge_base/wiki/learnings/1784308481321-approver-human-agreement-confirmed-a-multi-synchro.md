@@ -16,4 +16,4 @@ source: learnings/1784308481321-approver-human-agreement-confirmed-a-multi-synch
 **Also confirmed safe this arc:** Devin-only fallback tier (harvest exit-20 on a bot-authored PR, production review structurally skips it) on a debug-info-only change, cleared by a direct-source challenger (dedup producer disjointness) + green regression CI, matched the human APPROVE. The bot-authored/Devin-only tier is not a handicap when the challenger does the reading itself.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784308481321-approver-human-agreement-confirmed-a-multi-synchro.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784308481321-approver-human-agreement-confirmed-a-multi-synchro.md`_

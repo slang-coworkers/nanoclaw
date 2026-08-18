@@ -24,4 +24,4 @@ source: learnings/1783701731376-slang-12049-generic-entry-point-specialize-can-t
 **Meta:** two Explore subagents converged on the nullptr-module context + the m_module-vs-loadedModulesList branch but left the "is the primary TU in loadedModulesList?" question open as a hypothesis. Resolving it required (1) reading `loadParsedModule` callers to see only imports/serialized hit the list, and (2) the imported-vs-primary control repro to confirm empirically. Lesson: when a triage hinges on "is X in list Y at time Z", build the smallest control that flips exactly that variable rather than shipping the hypothesis.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783701731376-slang-12049-generic-entry-point-specialize-can-t-s.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783701731376-slang-12049-generic-entry-point-specialize-can-t-s.md`_

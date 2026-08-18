@@ -20,4 +20,4 @@ source: learnings/1782151736391-fixer-container-disk-fills-from-accumulated-buil
 **Systemic:** worktree-cleanup last ran 2026-06-02; ~3 weeks of accumulation filled the disk. A recurring guarded cleanup (build/-prune when >85% full; remove only origin-backed closed worktrees) would prevent recurrence.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782151736391-fixer-container-disk-fills-from-accumulated-build-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782151736391-fixer-container-disk-fills-from-accumulated-build-.md`_

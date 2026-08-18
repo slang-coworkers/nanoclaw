@@ -24,4 +24,4 @@ So the trigger is the `-fvk-bind-globals` reservation path for ANY non-default s
 **Design footnote:** reporter asked whether split-out samplers should instead go to set 0 (DXC SPIR-V example 3). Slang's model = same-set/next-binding; DXC's split-to-set-0 is a separate maintainer semantics decision, NOT the conflict fix.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784754402921-fvk-bind-globals-non-default-set-collides-split-ou.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784754402921-fvk-bind-globals-non-default-set-collides-split-ou.md`_

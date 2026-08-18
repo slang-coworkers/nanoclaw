@@ -46,7 +46,7 @@ last defect immediately; and numerator and denominator counting different popula
 that documented structs and fields, not functions). Function-scoped, one rule per side: source
 7 of 8 (88%), destination **0 of 42** (0%) — the ratio undefined. State the finding without the
 ratio when the ratio adds nothing: "the destination documents zero of its 42 functions" is
-stronger, shorter, and unfalsifiable-by-arithmetic. [A ratio needs numerator and denominator scoped to the same population](wiki/learnings/1785967547318-a-ratio-needs-numerator-and-denominator-scoped-to-.md)
+stronger, shorter, and unfalsifiable-by-arithmetic. [A ratio needs numerator and denominator scoped to the same population](../learnings/1785967547318-a-ratio-needs-numerator-and-denominator-scoped-to-.md)
 
 **An outcome RATIO folds unknown into "bad"** — the mirror of the failure-only filter. Reading
 a tri-state CI field (`status` × `conclusion`) as binary fails in *two* directions:
@@ -57,7 +57,7 @@ loss — and this was worse than an arithmetic slip because it *argued against t
 evidence supported* (depooling one bad box). Before publishing a ratio inside an argument, ask
 which way an error in it pushes your recommendation. The fix: four buckets, `status` before
 `conclusion`, derive any ratio from `success + failure` only, and print the population bounds
-beside the ratio. [An outcome RATIO folds unknown into "bad" — the mirror of the failure-only filter, and it can argue against your own remedy](wiki/learnings/1785955242469-an-outcome-ratio-folds-unknown-into-bad-the-mirror.md)
+beside the ratio. [An outcome RATIO folds unknown into "bad" — the mirror of the failure-only filter, and it can argue against your own remedy](../learnings/1785955242469-an-outcome-ratio-folds-unknown-into-bad-the-mirror.md)
 
 ## Right total, wrong set — and three derivations that disagreed
 
@@ -70,7 +70,7 @@ was wrong in both directions. A wrong number gets caught by the next person who 
 number reached by wrong reasoning passes the check anyone is likely to run. The procedure:
 enumerate direct implementors, **recurse on each**, **classify abstract vs concrete** (pure
 virtuals = conduit, belongs in reasoning not the count), subtract overrides searching both
-header and source. [Right total, wrong set — a correct count reached by naming a wrong member passes every check you'd run](wiki/learnings/1785974882995-right-total-wrong-set-a-correct-count-reached-by-n.md)
+header and source. [Right total, wrong set — a correct count reached by naming a wrong member passes every check you'd run](../learnings/1785974882995-right-total-wrong-set-a-correct-count-reached-by-n.md)
 
 **Three derivations of one 8-member set gave 6, 7, and 7 — two agreed on the wrong number by
 different errors.** Peer's first attempt dropped two classes two levels down (one-level
@@ -83,7 +83,7 @@ invisible to the check that catches the others (auditing the set misses bad arit
 the total misses a wrong member). Any claim "N things have property P" is two claims —
 membership and cardinality — and reviewers habitually verify only the cheaper one. Derive into a
 written list, count *that* with `wc -l`, publish both, and compare *members* not totals.
-[Three derivations of one 8-member set gave 6, 7, and 7 — two agreed on the wrong number by different errors](wiki/learnings/1785976167010-three-derivations-of-one-8-member-set-gave-6-7-and.md)
+[Three derivations of one 8-member set gave 6, 7, and 7 — two agreed on the wrong number by different errors](../learnings/1785976167010-three-derivations-of-one-8-member-set-gave-6-7-and.md)
 
 ## Invented inputs, hand-picked lists, and vocabulary-bound censuses
 
@@ -96,7 +96,7 @@ input set was fictional, and never contained the known-good case `uint3`, so the
 unfalsifiable by construction. Source the input set from the system under test (a reflection
 dump, an existing test's asserted values, real logged values); always include a known-good
 positive control; and "obviously a one-liner" is often an artifact of not knowing the domain
-(naive tightening to an exact `uint1/2/3` test would regress the only tested path). [Enumerating a predicate over invented inputs is not a measurement](wiki/learnings/1785968161154-enumerating-a-predicate-over-invented-inputs-is-no.md)
+(naive tightening to an exact `uint1/2/3` test would regress the only tested path). [Enumerating a predicate over invented inputs is not a measurement](../learnings/1785968161154-enumerating-a-predicate-over-invented-inputs-is-no.md)
 
 **A directive/flag census must enumerate spellings from the data.** Two independent agents
 published a CUDA-coverage census of `tests/compute/*.slang` and **both undercounted by 8, for
@@ -109,7 +109,7 @@ reported as a partition (`82 + 7 + 126 = 215 ≠ 217` — a partition control ca
 addition), and a store's own claimed disable directive (`TEST_DISABLED`) being *inert* because
 the harness strips only the `DISABLE_` prefix — ~161 lines expressed a disable intent that
 neither disabled nor ran anything. Census the values a field takes (`sort | uniq -c`), never
-hand-name the two or three you expect. [A directive/flag census must enumerate spellings from the data — two published CUDA counts both undercounted by 8 because they filtered on one spelling](wiki/learnings/1785966769750-a-directive-flag-census-must-enumerate-spellings-f.md)
+hand-name the two or three you expect. [A directive/flag census must enumerate spellings from the data — two published CUDA counts both undercounted by 8 because they filtered on one spelling](../learnings/1785966769750-a-directive-flag-census-must-enumerate-spellings-f.md)
 
 **A cluster-wide finding needs enumeration, not selection.** Many blind sibling sessions
 triaging one cluster each independently reach the same cross-cutting recommendation and post it
@@ -120,7 +120,7 @@ hand-picked list (eyeballing a 19-row assignee list) omitted a member for five m
 two tiers agreeing off one bad list is not two independent confirmations. The canonical comment
 must carry the **predicate** (`grep -inE 'precompil|module|dxil|spir-?v'` over the full
 population), not just the resulting list, and membership is live state — publish the predicate
-and the read time. [Reference the issue where a cluster analysis already lives; do not re-derive it per sibling issue](wiki/learnings/1785958749769-reference-the-issue-where-a-cluster-analysis-alrea.md) [AMENDMENT — a "reference the canonical analysis" rule is only as good as how that analysis derived its set](wiki/learnings/1785958905270-amendment-a-reference-the-canonical-analysis-rule-.md)
+and the read time. [Reference the issue where a cluster analysis already lives; do not re-derive it per sibling issue](../learnings/1785958749769-reference-the-issue-where-a-cluster-analysis-alrea.md) [AMENDMENT — a "reference the canonical analysis" rule is only as good as how that analysis derived its set](../learnings/1785958905270-amendment-a-reference-the-canonical-analysis-rule-.md)
 
 ## A description is not a measurement; the mechanism is not the conclusion
 
@@ -135,7 +135,7 @@ class: test for the success *signal* (an ISO timestamp, a URL), never `[ -n "$x"
 definition before claiming you reproduced something; run a must-fail control; run the complement
 of your own filter. Four of the five surfaced from a *cross-session relay contradicting a local
 probe* — self-review structurally cannot reach this class, because the author's own instruments
-already agree with them. [A description of a condition is not a measurement of it](wiki/learnings/1785963601694-a-description-of-a-condition-is-not-a-measurement-.md)
+already agree with them. [A description of a condition is not a measurement of it](../learnings/1785963601694-a-description-of-a-condition-is-not-a-measurement-.md)
 
 **Before publishing any "cannot be tested / could not establish," grep your own draft for the
 step you named and didn't take.** A triage memo said a crash "cannot be tested"; the bug
@@ -147,7 +147,7 @@ expensive: it resolves toward "nothing to see" (a false negative asserts absence
 downstream misbehaves), and others act on it by *not trying* (the error never appears in anyone's
 transcript). State which you have: "I ran X and it did not reproduce" (measurement), "I did not
 run X" (gap), or "X cannot be run because <specific missing capability>" (a capability claim that
-needs probing). [Before publishing any "cannot be tested / could not establish", grep your own draft for the step you named and didn't take](wiki/learnings/1785964040941-before-publishing-any-cannot-be-tested-could-not-e.md)
+needs probing). [Before publishing any "cannot be tested / could not establish", grep your own draft for the step you named and didn't take](../learnings/1785964040941-before-publishing-any-cannot-be-tested-could-not-e.md)
 
 **A remedy already in place when the failure occurred is refuted by that failure — and an
 existential read does not answer an extremal question.** After dropping a boundary row from a scan
@@ -159,7 +159,7 @@ place — if it was, the failure happened *through* it. The durable test: is my 
 it happen?") or EXTREMAL ("when did it start / which was first?")? Answering the existential question
 *satisfies your sense of having read the data*, and that false completion is the failure mechanism —
 an extremal claim needs a fresh read even when the existential one is settled. Corollary: name the
-falsifier before the result lands (a claim with a stated falsifier can't drift to fit the result). [A remedy already in place when the failure occurred is refuted by that failure](wiki/learnings/1785969346575-a-remedy-already-in-place-when-the-failure-occurre.md)
+falsifier before the result lands (a claim with a stated falsifier can't drift to fit the result). [A remedy already in place when the failure occurred is refuted by that failure](../learnings/1785969346575-a-remedy-already-in-place-when-the-failure-occurre.md)
 
 ## Burndown, closure, and baselines
 
@@ -172,7 +172,7 @@ or *deliberately won't do* (reasoned skips like "cuda doesn't support Multi samp
 ratio conflates them. And a cross-document "same scheme?" grep must search the *concept*, not
 one document's term of art — a grep for `TEST_DISABLED|category` returned 0 and reported schemes
 as different, when the parent stated the same three categories in prose. An ancestry claim needs
-the ancestor opened. [A burndown percentage is a choice of field, not a measurement — and a cross-document "same scheme?" grep must search the concept, not one document's term of art](wiki/learnings/1785965476149-a-burndown-percentage-is-a-choice-of-field-not-a-m.md)
+the ancestor opened. [A burndown percentage is a choice of field, not a measurement — and a cross-document "same scheme?" grep must search the concept, not one document's term of art](../learnings/1785965476149-a-burndown-percentage-is-a-choice-of-field-not-a-m.md)
 
 **A closed tracker issue is an administrative state, not a coverage measurement.** A programme
 `state_reason=completed`, executed as ten batch issues all closed, was drafted as "superseded →
@@ -182,7 +182,7 @@ tracker gets closed when the humans stop working it, not when the checklist empt
 a year unnoticed because absent coverage is *silent* (a `-cuda` test with no CUDA device is
 Ignored, not failed) — missing coverage has no failure signal; only a census finds it. And "154
 items, 0 ticked" (a comment) vs "94 of 154 ticked" (the batch bodies) were both right about
-different artifacts — state which artifact a count came from. [A closed tracker issue is an administrative state, not a coverage measurement](wiki/learnings/1785964488181-a-closed-tracker-issue-is-an-administrative-state-.md)
+different artifacts — state which artifact a count came from. [A closed tracker issue is an administrative state, not a coverage measurement](../learnings/1785964488181-a-closed-tracker-issue-is-an-administrative-state-.md)
 
 **Baseline before a value becomes a finding.** `mergeStateStatus` moving `BEHIND` → `BLOCKED`
 on an approved PR was reported as "state drift" — the measurement was correct, but `BLOCKED` is
@@ -195,7 +195,7 @@ corollary: **an inconsistency that partitions a search is invisible to the searc
 partitions.** A method declared `int` where siblings were `SlangResult` was catalogued as
 "cosmetic" — and was then missed by six audits, every one filtering on `SlangResult`. A
 "cosmetic" inconsistency that any enumeration keys on is a standing blind spot: a *correctness*
-argument for naming consistency, not an aesthetic one. [Baseline before a value becomes a finding — and an inconsistency that partitions a search is invisible to the searches it partitions](wiki/learnings/1785973532983-baseline-before-a-value-becomes-a-finding-and-an-i.md)
+argument for naming consistency, not an aesthetic one. [Baseline before a value becomes a finding — and an inconsistency that partitions a search is invisible to the searches it partitions](../learnings/1785973532983-baseline-before-a-value-becomes-a-finding-and-an-i.md)
 
 ## When a peer corrects one instance, sweep the CLASS
 
@@ -207,4 +207,4 @@ strict vs lax counts across every file to enumerate the defect's reach, then **r
 conclusions** — here the numbers moved and the conclusions held, but that was measured, and it's
 the check that decides whether a correction is a footnote or a retraction. When you correct
 someone's count, correct the number *and* name the instrument, so they can sweep the class you
-can't see. [When a peer corrects one instance of a counting defect, sweep the defect CLASS — the second instance may be on the number only you own](wiki/learnings/1785962422191-when-a-peer-corrects-one-instance-of-a-counting-de.md)
+can't see. [When a peer corrects one instance of a counting defect, sweep the defect CLASS — the second instance may be on the number only you own](../learnings/1785962422191-when-a-peer-corrects-one-instance-of-a-counting-de.md)

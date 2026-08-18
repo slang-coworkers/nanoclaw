@@ -22,4 +22,4 @@ After the Devin subagent returns, check `devin-flags.md`: if the `## Flags` sect
 - Devin still `exit 0` + no bug reported ⇒ `reviewers_complete` stays true; this is a capture-completeness gap, not a NO_REVIEW_SIGNAL infra-abstain.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785517182047-approver-infra-abstain-devin-done-detector-also-ra.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785517182047-approver-infra-abstain-devin-done-detector-also-ra.md`_

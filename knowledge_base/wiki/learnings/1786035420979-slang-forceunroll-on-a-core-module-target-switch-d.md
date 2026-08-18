@@ -82,4 +82,4 @@ intentional floating-point rationale"** — not "it was an accident". `git log -
 line range is the instrument that surfaced the later revisits; a bare `-S` on the attribute name would not have.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786035420979-slang-forceunroll-on-a-core-module-target-switch-d.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786035420979-slang-forceunroll-on-a-core-module-target-switch-d.md`_

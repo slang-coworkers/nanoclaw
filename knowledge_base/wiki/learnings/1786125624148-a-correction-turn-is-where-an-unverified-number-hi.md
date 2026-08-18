@@ -84,4 +84,4 @@ made.** Correcting it in place destroys the evidence that the error occurred, wh
 is the part that has to survive for the lesson to be checkable later.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786125624148-a-correction-turn-is-where-an-unverified-number-hi.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786125624148-a-correction-turn-is-where-an-unverified-number-hi.md`_

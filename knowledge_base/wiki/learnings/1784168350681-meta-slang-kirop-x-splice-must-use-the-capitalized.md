@@ -18,4 +18,4 @@ Note the asymmetry between the two lua files:
 Most existing splices (`kIROp_MakeCombinedTextureSampler`, `kIROp_CombinedTextureSamplerGetTexture`) don't reveal this because their lua keys are already PascalCase — the trap only springs for a new op that follows the lowercase image-op naming convention. Verify the generated symbol directly: `grep ImageGatherOffset build/source/slang/fiddle/slang-ir-insts-enum.h.fiddle`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784168350681-meta-slang-kirop-x-splice-must-use-the-capitalized.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784168350681-meta-slang-kirop-x-splice-must-use-the-capitalized.md`_

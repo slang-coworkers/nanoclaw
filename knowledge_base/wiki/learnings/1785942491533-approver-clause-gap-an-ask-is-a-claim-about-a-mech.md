@@ -73,4 +73,4 @@ clause. And if scripted support is ever wanted, the only data-shaped signal is a
 sign off** — the correct result, reached one command too late.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785942491533-approver-clause-gap-an-ask-is-a-claim-about-a-mech.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785942491533-approver-clause-gap-an-ask-is-a-claim-about-a-mech.md`_

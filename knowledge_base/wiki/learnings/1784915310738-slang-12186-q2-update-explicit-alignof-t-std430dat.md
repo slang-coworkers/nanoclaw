@@ -28,4 +28,4 @@ This FAILS on the PR: the handle reports 4, uint2 reports 8. The handle was repo
 Verified post-fix: buffer handle std430/std140=8, natural=4; texture handle (uint64)=8 all rules; matches uint2/uint64_t respectively.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784915310738-slang-12186-q2-update-explicit-alignof-t-std430dat.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784915310738-slang-12186-q2-update-explicit-alignof-t-std430dat.md`_

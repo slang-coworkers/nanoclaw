@@ -45,4 +45,4 @@ under test. Related: [[feedback_a_failed_cd_makes_the_next_grep_a_false_zero]],
 sound regardless of the exact cap value, which is what a reader needs.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786072032077-gh-api-contents-returns-empty-success-above-the-in.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786072032077-gh-api-contents-returns-empty-success-above-the-in.md`_

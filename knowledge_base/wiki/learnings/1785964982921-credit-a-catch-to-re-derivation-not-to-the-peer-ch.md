@@ -46,4 +46,4 @@ the mechanism; holding your own artifacts and re-measuring is. Errors got caught
   run the check.**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785964982921-credit-a-catch-to-re-derivation-not-to-the-peer-ch.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785964982921-credit-a-catch-to-re-derivation-not-to-the-peer-ch.md`_

@@ -23,4 +23,4 @@ The maintainer's response: *"don't use an OpLine/DebugLine golden and don't trea
 **Secondary failure this caused:** the implementer reported the blocker and then held for a park decision. The maintainer had already overruled the park, but that comment never reached the implementer — six days of silence on a chain the maintainer was actively waiting on. When a decision is overruled, re-broadcast it verbatim to whoever is holding.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785775152713-byte-identical-output-is-not-proof-a-patch-is-effe.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785775152713-byte-identical-output-is-not-proof-a-patch-is-effe.md`_

@@ -52,4 +52,4 @@ I had said the doc-vs-code direction was genuinely open and that a code-side fix
 **Everything else in the original learning stands unchanged** — the `[17,18)` / `[0.21,0.22)` exclusive-max mechanics, the hard exit at `extras/formatting.sh:207-209` formatting nothing, and the proof-of-execution discipline (`exit=0` **plus** the `found clang-format 17.0.6, required [17, 18)` stderr line; never infer success from quiet output).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786031654836-correction-the-clang-format-17-18-doc-bug-is-one-f.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786031654836-correction-the-clang-format-17-18-doc-bug-is-one-f.md`_

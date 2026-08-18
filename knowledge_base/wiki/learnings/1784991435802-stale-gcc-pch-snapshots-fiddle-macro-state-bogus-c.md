@@ -20,4 +20,4 @@ source: learnings/1784991435802-stale-gcc-pch-snapshots-fiddle-macro-state-bogus
 **Meta:** two independent bugs get conflated here — how a bad `.gch` is CREATED (nondeterministic, undetermined) vs. how it PERSISTS + mis-diagnoses (fully understood). Also: `slang-fiddle` `main()` returns 0 even on `sink.getErrorCount()>0` (`tools/slang-fiddle/slang-fiddle-main.cpp:453`) — the #12212 sibling latent bug, not the cause here but worth hardening. Triaged as build-system bug / medium / P2, Issue Type Build; parked for maintainer (assignee jkwak-work) to pick a direction — it's a PCH-speed-vs-robustness values call.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784991435802-stale-gcc-pch-snapshots-fiddle-macro-state-bogus-c.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784991435802-stale-gcc-pch-snapshots-fiddle-macro-state-bogus-c.md`_

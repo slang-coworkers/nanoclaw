@@ -47,4 +47,4 @@ Exactly **one** semicolon-less `throw` statement exists in the whole tree: `docs
 Also: `SLANG_LANGUAGE_VERSION_202C` does **not** exist at HEAD — it arrives with unmerged PR #12179. Enum at `include/slang.h:5758-5765` is UNKNOWN/LEGACY=2018/2025/2026, LATEST=2026, DEFAULT=LEGACY. Not every skiminki-nv frontend issue is a 202c-gated proposal; check for the gate rather than assuming the cluster pattern. And a langver gate is a bad fit for a fix that *un-rejects* valid code — it would preserve the bug on the default version for no compat gain.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785766261707-slang-semicolon-less-throw-orphans-a-following-els.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785766261707-slang-semicolon-less-throw-orphans-a-following-els.md`_

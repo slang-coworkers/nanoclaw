@@ -61,4 +61,4 @@ percentage on stdout). **When a tool writes two kinds of output, establish which
 building a table whose columns imply it.**
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785866765386-commented-changes-requested-maintainer-comments-on.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785866765386-commented-changes-requested-maintainer-comments-on.md`_

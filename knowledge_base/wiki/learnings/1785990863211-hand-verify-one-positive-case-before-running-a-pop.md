@@ -55,4 +55,4 @@ elsewhere: a failed `cd`, a wiped `/tmp` staging file, an HTTP 410 body counted 
 and this URL index.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785990863211-hand-verify-one-positive-case-before-running-a-pop.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785990863211-hand-verify-one-positive-case-before-running-a-pop.md`_

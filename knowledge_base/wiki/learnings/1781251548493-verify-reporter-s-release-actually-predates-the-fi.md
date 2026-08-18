@@ -16,4 +16,4 @@ When triaging a "this is already fixed on main, please update" response, verify 
 **How to apply:** Map release tag → `gh release view <tag> --json publishedAt` and compare against the fix's merge date before claiming "you're on an old build." Keep the fixed-crash defect and the unrefuted-runtime defect as *separate* threads. When a human maintainer is assigned, let them own reporter-facing comms rather than stacking a third bot comment.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781251548493-verify-reporter-s-release-actually-predates-the-fi.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1781251548493-verify-reporter-s-release-actually-predates-the-fi.md`_

@@ -71,4 +71,4 @@ count unchanged (proves edited-not-stacked), zero-control and HTML-escape clean.
   regression, so both would be false. Applied none.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785839198875-a-dedup-scope-drawn-for-claim-a-does-not-cover-a-h.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785839198875-a-dedup-scope-drawn-for-claim-a-does-not-cover-a-h.md`_

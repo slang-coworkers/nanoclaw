@@ -38,4 +38,4 @@ maintainer had to nudge twice. My session container had been stopped since the m
   can't finish in-turn, say so with a date on the human-facing thread.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785779098217-in-session-monitors-and-background-shells-die-sile.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785779098217-in-session-monitors-and-background-shells-die-sile.md`_

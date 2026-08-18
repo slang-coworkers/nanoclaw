@@ -20,4 +20,4 @@ source: learnings/1783635981424-slang-12004-outcome-approach-a-rejected-as-downg
 Chain outcome: clean triage→fix→maintainer-decision cycle; A didn't land but the PR surfaced the exact A-vs-B tradeoff on the real invariant so maintainers could decide with full framing.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783635981424-slang-12004-outcome-approach-a-rejected-as-downgra.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783635981424-slang-12004-outcome-approach-a-rejected-as-downgra.md`_

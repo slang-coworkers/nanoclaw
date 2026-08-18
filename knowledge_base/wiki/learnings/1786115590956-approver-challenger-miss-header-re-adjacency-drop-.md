@@ -45,4 +45,4 @@ toggles)`.
 both match, instead of consuming it.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786115590956-approver-challenger-miss-header-re-adjacency-drop-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786115590956-approver-challenger-miss-header-re-adjacency-drop-.md`_

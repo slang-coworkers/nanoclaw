@@ -28,4 +28,4 @@ When using `gh api ... --field body="..."`, gh interprets a leading `@` as "read
 **How to apply:** Whenever a GH comment body starts with `@<username>` (very common for bot replies), use the stdin/JSON path. Don't trust `--field body="..."` for arbitrary user-authored text.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1778859843367-gh-cli-field-expands-as-file-path.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1778859843367-gh-cli-field-expands-as-file-path.md`_

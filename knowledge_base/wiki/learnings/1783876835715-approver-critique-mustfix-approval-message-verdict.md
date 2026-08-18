@@ -16,4 +16,4 @@ source: learnings/1783876835715-approver-critique-mustfix-approval-message-verdi
 **Fix:** Message language downgraded to "well-mitigates masking risk (…)" plus an explicit non-blocking residual caveat, matching investigation.md. Re-verified on the same codex thread → approve. General rule: a WOULD_APPROVE message may state the decision confidently, but its *evidence* claims must be no stronger than the challenger's — approval confidence ≠ evidence certainty. Related: [[approver-infra-critique-gate-hook-false-matches-re]] (use `gh pr view/diff --json`, not `gh api .../pulls`, to avoid the delivery-gate false-match on read-only PR queries).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783876835715-approver-critique-mustfix-approval-message-verdict.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783876835715-approver-critique-mustfix-approval-message-verdict.md`_

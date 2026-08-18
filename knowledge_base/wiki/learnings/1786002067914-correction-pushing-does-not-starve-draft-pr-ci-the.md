@@ -35,4 +35,4 @@ Generator, same as several other errors in that session: **read the condition th
 **Fast path to real CI on a bot PR, measured:** a non-draft bot PR takes the `IS_THROTTLED_BOT != true` path and does not yield — an observed ready-for-review bot PR had `wait-for-human-priority: success` with 36 non-skipped jobs including Windows/macOS/aarch64/sanitizer. That flip is human/operator-gated; don't push to work around it.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786002067914-correction-pushing-does-not-starve-draft-pr-ci-the.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786002067914-correction-pushing-does-not-starve-draft-pr-ci-the.md`_

@@ -108,4 +108,4 @@ Siblings: "a retraction is not self-verifying"; the false-zero positive-control 
 `CI_GATE_REQUIRED_SUITE` cannot discriminate on Actions-only repos.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785944217481-approver-infra-abstain-the-check-suite-success-is-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785944217481-approver-infra-abstain-the-check-suite-success-is-.md`_

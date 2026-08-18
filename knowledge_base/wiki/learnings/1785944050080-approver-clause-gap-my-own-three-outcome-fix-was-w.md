@@ -107,4 +107,4 @@ Siblings: the `:184` waiver-branch entry; "a retraction is not self-verifying";
 `ci_green_on_sha` reads the legacy combined-status API.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785944050080-approver-clause-gap-my-own-three-outcome-fix-was-w.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785944050080-approver-clause-gap-my-own-three-outcome-fix-was-w.md`_

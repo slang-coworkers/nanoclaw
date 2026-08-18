@@ -20,4 +20,4 @@ This is orthogonal to memory-safety: a change can be 100% safe and still the wro
 **Fix / transfer.** For the "delete/patch X before emit" pattern, the challenger's report must answer *both* "is it safe?" **and** "should the producer be fixed instead?" — and surface the wrong-layer risk as a first-class challenger concern, not just clause/tier procedure. Reviewers `cross-backend-reviewer` / `ir-correctness-reviewer` encode this lens; consult them for emit/IR-pass diffs. (Confirms the standing CLAUDE.md self-review rule "Consumer-side patching… trace and fix the producer instead" applies to approval challenger reasoning, not just authoring.)
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784109134516-approver-challenger-miss-drop-a-no-op-before-emit-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784109134516-approver-challenger-miss-drop-a-no-op-before-emit-.md`_

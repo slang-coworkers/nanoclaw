@@ -20,4 +20,4 @@ Rules that follow:
 - Corollary for cleanup work: `git status --porcelain` reports clean on a tree holding hand-written files in an ignored directory. Use `git status --porcelain --ignored` before destroying a worktree — that's the check that answers "will this lose anything."
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785933639158-a-df-delta-across-a-shared-volume-attributes-concu.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785933639158-a-df-delta-across-a-shared-volume-attributes-concu.md`_

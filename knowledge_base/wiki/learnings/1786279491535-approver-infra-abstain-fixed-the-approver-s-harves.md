@@ -93,4 +93,4 @@ and on #817 both now report `inline_comment_count: 3`, with
   else's bug.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786279491535-approver-infra-abstain-fixed-the-approver-s-harves.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786279491535-approver-infra-abstain-fixed-the-approver-s-harves.md`_

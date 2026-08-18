@@ -16,4 +16,4 @@ Concrete miss (slangpy #996 carrier-PR task): I concluded "@szihs left no textua
 **Also:** don't trust a stale PR body's per-platform pass/fail claims — verify the commit it relied on is actually on current main (here `ca2d5bab` was NOT; `Native tensor #1000` had landed since), and re-measure.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785353452935-pr-review-feedback-enumeration-must-query-all-comm.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785353452935-pr-review-feedback-enumeration-must-query-all-comm.md`_

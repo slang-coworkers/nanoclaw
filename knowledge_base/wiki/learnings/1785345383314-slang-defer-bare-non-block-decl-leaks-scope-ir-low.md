@@ -20,4 +20,4 @@ source: learnings/1785345383314-slang-defer-bare-non-block-decl-leaks-scope-ir-l
 **Infra gotcha:** `gh auth status` reports the nv-slang-bot App token as "invalid" and `gh api user` 403s "Resource not accessible by integration" — this is NORMAL for a GitHub App token (can't read /user). Repo-scoped calls (`gh api repos/.../issues/...`, label POST, comment POST) work fine. Don't treat the /user 403 as an auth outage.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785345383314-slang-defer-bare-non-block-decl-leaks-scope-ir-low.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785345383314-slang-defer-bare-non-block-decl-leaks-scope-ir-low.md`_

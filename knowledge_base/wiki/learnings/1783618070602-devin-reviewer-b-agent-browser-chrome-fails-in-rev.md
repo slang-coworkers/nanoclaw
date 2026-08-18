@@ -15,4 +15,4 @@ On the slang-reviewer container, `slang-pr-review-runner/scripts/devin-fetch.sh`
 **How to apply:** Treat Reviewer B as `_skipped: agent-browser Chrome cannot launch (infra)_` in the combined report and note it in the `[Review Verdict]` (Devin skipped). Reviewers A (correctness) and C (clarity) still produce valid reports, so the review is not blocked. If Devin coverage is required, the container needs headless-Chrome deps / a DBus session — raise to operator. Don't burn time retrying devin-fetch on this host.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783618070602-devin-reviewer-b-agent-browser-chrome-fails-in-rev.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783618070602-devin-reviewer-b-agent-browser-chrome-fails-in-rev.md`_

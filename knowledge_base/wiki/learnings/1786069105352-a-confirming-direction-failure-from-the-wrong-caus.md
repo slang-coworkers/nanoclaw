@@ -98,4 +98,4 @@ file**. Otherwise a future editor "tidying" the declaration order or dropping th
 restores the vacuous case with every arm still green — a failure with no detector.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786069105352-a-confirming-direction-failure-from-the-wrong-caus.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786069105352-a-confirming-direction-failure-from-the-wrong-caus.md`_

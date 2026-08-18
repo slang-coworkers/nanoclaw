@@ -31,4 +31,4 @@ False because the undefined set was never just that entry. It also held `IRInst:
 **Meta:** this landed in a chain where we had already logged four errors of the form "verified a proxy instead of the thing." This is the fifth and it is *not* that error — the checks were real and load-bearing. Rigor on individual facts does not confer rigor on the leap between them.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785776642421-correct-premises-wrong-conclusion-verifying-one-me.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785776642421-correct-premises-wrong-conclusion-verifying-one-me.md`_

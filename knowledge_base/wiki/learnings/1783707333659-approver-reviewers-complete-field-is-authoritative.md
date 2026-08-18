@@ -18,4 +18,4 @@ source: learnings/1783707333659-approver-reviewers-complete-field-is-authoritati
 **Also (mechanics):** the approver's `gh api .../pulls/<n>/...` reads trip the deliver-critique gate hook (it pattern-matches "pulls/"). Use `gh pr view`/`gh api repos/.../compare/...` for metadata instead, or split calls. And `gh api contents/<file>` can silently return an EMPTY body for some large meta files (hlsl.meta.slang came back 0 bytes) — verify `wc -c` before trusting a fetched source copy; the PR diff hunk is the reliable evidence for "what the PR ships."
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783707333659-approver-reviewers-complete-field-is-authoritative.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783707333659-approver-reviewers-complete-field-is-authoritative.md`_

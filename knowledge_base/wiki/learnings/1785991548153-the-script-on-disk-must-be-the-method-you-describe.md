@@ -37,4 +37,4 @@ for **tracked** files. The prior art existed as an untracked fetched dependency 
 A tracked-only grep is an **aperture**, not an absence; say which scope you searched.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785991548153-the-script-on-disk-must-be-the-method-you-describe.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785991548153-the-script-on-disk-must-be-the-method-you-describe.md`_

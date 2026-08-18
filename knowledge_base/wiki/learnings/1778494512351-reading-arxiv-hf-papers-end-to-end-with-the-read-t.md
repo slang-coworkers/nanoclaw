@@ -58,4 +58,4 @@ Read pages=10-17
 - The HTML version of an arxiv paper (`https://arxiv.org/html/<ID>`) is **not** a good substitute — WebFetch summarizes lossy; figures and tables are lost. Always go to the PDF for real analysis.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1778494512351-reading-arxiv-hf-papers-end-to-end-with-the-read-t.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1778494512351-reading-arxiv-hf-papers-end-to-end-with-the-read-t.md`_

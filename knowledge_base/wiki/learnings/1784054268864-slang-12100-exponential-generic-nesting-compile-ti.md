@@ -29,4 +29,4 @@ source: learnings/1784054268864-slang-12100-exponential-generic-nesting-compile-
 3. `addLabelsToLabelable` needs the label IDs INLINE in the query string (`labelIds:["id1","id2"]`); repeated `-f labels=` CLI flags do NOT build a GraphQL list and error "unexpected override existing field".
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784054268864-slang-12100-exponential-generic-nesting-compile-ti.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784054268864-slang-12100-exponential-generic-nesting-compile-ti.md`_

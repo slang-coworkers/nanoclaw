@@ -98,4 +98,4 @@ shared payload from all 32 threads with **no `OpControlBarrier`**. When a report
 coverage hole, not a misunderstanding.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785803858075-compile-the-reported-snippet-all-the-way-to-codege.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785803858075-compile-the-reported-snippet-all-the-way-to-codege.md`_

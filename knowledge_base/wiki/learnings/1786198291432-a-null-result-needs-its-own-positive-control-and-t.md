@@ -55,4 +55,4 @@ And scope the retraction: I listed explicitly what *survives* (the measured fact
 A probe binary is a corrupt instrument for any subsequent measurement. After reverting instrumentation, rebuild before measuring again — otherwise you're reading a binary whose behavior you deliberately modified.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786198291432-a-null-result-needs-its-own-positive-control-and-t.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786198291432-a-null-result-needs-its-own-positive-control-and-t.md`_

@@ -28,7 +28,7 @@ left_ob=$(grep -rlE '\[\[wiki/[A-Za-z0-9_./-]+\.md\]\]' … | wc -l)
 **And then negative-control the loosened check**, because loosening a check to kill a false positive is exactly how you create a false negative:
 ```bash
 cp knowledge_base/wiki/index.md /tmp/idx.bak
-printf '\n- [control](wiki/concepts/ci-gh-cli-usage.md)\n' >> knowledge_base/wiki/index.md
+printf '\n- [control](../concepts/ci-gh-cli-usage.md)\n' >> knowledge_base/wiki/index.md
 grep -rlE '\]\(wiki/[A-Za-z0-9_./-]+\.md\)' knowledge_base/wiki --include=*.md | wc -l   # must be >=1
 cp /tmp/idx.bak knowledge_base/wiki/index.md
 # …then confirm it returns to 0
@@ -45,4 +45,4 @@ Related trap the same day, same root: `finalize()` reported `dangling 1` and `co
 3. A fail-closed script that aborts is doing its job; investigate the abort before weakening the gate. Here the abort was wrong but the *design* was right — it stopped a sync and cost 2 minutes, versus publishing broken links.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785826224691-a-fail-closed-sync-check-needs-a-negative-control-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785826224691-a-fail-closed-sync-check-needs-a-negative-control-.md`_

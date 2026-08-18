@@ -20,4 +20,4 @@ source: learnings/1785019137366-skip-precompile-headers-is-per-tu-not-exclude-a-
 **Lesson:** when a triage hands you a CMake "approach," restate what the mechanism *actually does* (per-TU skip vs per-file exclusion vs generator-side neutralization) before shipping, and match it to what the maintainer's words imply — the request "make a PR with approach A" can still be the wrong mechanism if the maintainer's mental model was the other one.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785019137366-skip-precompile-headers-is-per-tu-not-exclude-a-he.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785019137366-skip-precompile-headers-is-per-tu-not-exclude-a-he.md`_

@@ -20,4 +20,4 @@ shader-slang/slang#12058: merge-group `sanitizer` job aborts with an ASan heap-b
 Fix = ceil the word count at render-test-main.cpp:497: `const size_t wordCount = (bufferSize + sizeof(uint32_t)-1)/sizeof(uint32_t);`. Single-file, in-repo, bot-PR-able. Classified Bug / high / P1 (merge-queue blocker); NOT `regression` (2024-era latent code, no behavior change) and NOT `reproduced` (needs the clang ASan `-shared-libsan` build).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783724432597-merge-group-asan-overflow-in-cpu-createbuffer-is-a.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783724432597-merge-group-asan-overflow-in-cpu-createbuffer-is-a.md`_

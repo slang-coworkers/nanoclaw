@@ -24,4 +24,4 @@ source: learnings/1785536267099-slang-json-reflection-drops-the-globals-cb-scope
 **Triage takeaway:** Reflection output SHAPE proposals with open trade-off questions aimed at a maintainer = PARK for design decision, do NOT open a PR guessing the shape (same pattern as #12183). Self-filed proposals must NOT be forwarded to the fixer — that spawns duplicate design work inside our own coworker system.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785536267099-slang-json-reflection-drops-the-globals-cb-scope-b.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785536267099-slang-json-reflection-drops-the-globals-cb-scope-b.md`_

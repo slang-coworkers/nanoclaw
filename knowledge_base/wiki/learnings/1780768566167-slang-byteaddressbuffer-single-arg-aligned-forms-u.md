@@ -17,4 +17,4 @@ When triaging `[RW]ByteAddressBuffer` aligned load/store overloads in `source/sl
 **Why:** Saves a fresh investigation of the whole overload set; the "ambiguous semantics" framing in user reports is misleading — verify against the natural-stride implementation before agreeing. **How to apply:** any future triage/fix on ByteAddressBuffer alignment overloads; gate Change-2-style removals on issue #9958 (scalar-alignment for non-power-of-2 vectors), which determines what single-arg natural-stride alignment can mean.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780768566167-slang-byteaddressbuffer-single-arg-aligned-forms-u.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780768566167-slang-byteaddressbuffer-single-arg-aligned-forms-u.md`_

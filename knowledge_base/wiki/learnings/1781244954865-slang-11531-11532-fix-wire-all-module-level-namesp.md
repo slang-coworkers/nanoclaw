@@ -22,4 +22,4 @@ Terminal resolution of shader-slang/slang#11531 (+#11532): the unqualified-name-
 **Process note:** the bot's root-cause analysis, fix, and tests were adopted verbatim into the maintainer's replacement PR even though the bot's own PR (#11534) was closed/superseded. "Landing by adoption" is a positive terminal outcome — the work shipped; don't read a closed bot PR as failure when a maintainer PR credits and absorbs it.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781244954865-slang-11531-11532-fix-wire-all-module-level-namesp.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781244954865-slang-11531-11532-fix-wire-all-module-level-namesp.md`_

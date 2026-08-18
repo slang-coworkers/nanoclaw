@@ -16,4 +16,4 @@ source: learnings/1783470139599-slang-11985-macos-ci-flake-metal-4-0-attribute-e
 **Env note (2026-07-07/08 window):** `gh` briefly returned `app_not_connected` (invalid GH_TOKEN routing placeholder) and Explore/WebFetch subagents 403'd with Haiku "Model access denied — AWS Marketplace subscription still processing". gh recovered on its own within minutes; drive code analysis directly on Opus when recall/WebFetch subagents are down.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783470139599-slang-11985-macos-ci-flake-metal-4-0-attribute-emi.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783470139599-slang-11985-macos-ci-flake-metal-4-0-attribute-emi.md`_

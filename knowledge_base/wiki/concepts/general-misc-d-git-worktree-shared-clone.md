@@ -37,7 +37,7 @@ when a ~25-min rebuild launched against it. Use `git restore --staged --worktree
 non-zero** (a silent no-op restore and a real restore share the same exit code). The
 covering generalization: *ask what this output would look like if the operation had failed;
 if the answer is "the same", it is not a verification* — and the fix is mechanical (validate
-every new marker against a known-present case), not attentional. [git checkout -- file restores from the index so a staged change survives it](wiki/learnings/1786082712619-git-checkout-file-restores-from-the-index-so-a-sta.md)
+every new marker against a known-present case), not attentional. [git checkout -- file restores from the index so a staged change survives it](../learnings/1786082712619-git-checkout-file-restores-from-the-index-so-a-sta.md)
 
 **A guard whose output nothing branches on is a log line, not a guard.** A `reset --hard`
 that *contained its own check* (`git status --porcelain | grep -v '^??' | wc -l` printed `1`)
@@ -52,7 +52,7 @@ when it IS the decision* — only a changed default holds. Also: a recovery copy
 about lost work, never an *authority* over it (a `.patched` scratch copy was strictly behind
 an already-pushed PR head; restoring would have re-introduced the exact hazard); *an artifact
 that RESCUES you gets the same audit as one that CORRECTS you*, and urgency is not evidence.
-[A guard beside a destructive verb is a log line; boilerplate bypasses deliberation](wiki/learnings/1786094514274-a-guard-beside-a-destructive-verb-is-a-log-line-bo.md)
+[A guard beside a destructive verb is a log line; boilerplate bypasses deliberation](../learnings/1786094514274-a-guard-beside-a-destructive-verb-is-a-log-line-bo.md)
 
 ## FETCH_HEAD and the shared-checkout race
 
@@ -67,7 +67,7 @@ worktree at the wrong commit*: every downstream measurement is true about the wr
 exit codes are 0, `git status` clean. Remedy is an assert, not a guard: resolve to a literal
 SHA *immediately* after fetch and `test "$(git -C <wt> rev-parse HEAD)" = "$SHA"`. And: *a
 peer's true report about its own environment arrives as a general fact about the tool* — name
-the edge and the version, or run the discriminating probe. [FETCH_HEAD is per-worktree; the race is the shared checkout, not the ref](wiki/learnings/1786182802936-fetch-head-is-per-worktree-the-race-is-the-shared-.md)
+the edge and the version, or run the discriminating probe. [FETCH_HEAD is per-worktree; the race is the shared checkout, not the ref](../learnings/1786182802936-fetch-head-is-per-worktree-the-race-is-the-shared-.md)
 
 ## Reaping a worktree: bind by head SHA, never by name
 
@@ -80,7 +80,7 @@ tracking ref* manufactured a fake "unpushed commit" (`git rev-parse origin/<bran
 at the old head because the shallow clone's refspec covers only master); **only `git
 ls-remote` is authoritative for a remote tip.** Before any reap: enumerate *all* PRs on the
 branch (`--state all`, any OPEN ⇒ stop), `ls-remote` vs local HEAD, `git status --porcelain`,
-re-read the issue. [A closed PR does not license reaping its branch's worktree — one branch hosts many PRs, and a direction pivot leaves the SUCCESSOR open](wiki/learnings/1786193893035-a-closed-pr-does-not-license-reaping-its-branch-s-.md)
+re-read the issue. [A closed PR does not license reaping its branch's worktree — one branch hosts many PRs, and a direction pivot leaves the SUCCESSOR open](../learnings/1786193893035-a-closed-pr-does-not-license-reaping-its-branch-s-.md)
 
 **A constructed address that hits something looks like a successful lookup.** A GC resolver
 built `fix/issue-<num>` from an issue number and hit the *first* PR ever attached (long
@@ -91,7 +91,7 @@ outward* (`git branch --show-current` → `gh pr list --head` → newest OPEN ro
 reconstructed key. Companion: scope an absence claim to the instrument (`git cat-file -e` on
 two refs supports only "not at that path on those two refs"), and *run the candidate on the
 baseline before attributing a failure to your change* (a test that fails identically on base
-master is a pre-existing defect, not your regression). [A constructed address that hits something looks like a successful lookup](wiki/learnings/1786194800019-a-constructed-address-that-hits-something-looks-li.md)
+master is a pre-existing defect, not your regression). [A constructed address that hits something looks like a successful lookup](../learnings/1786194800019-a-constructed-address-that-hits-something-looks-li.md)
 
 The full binding rule, from a 22-worktree inventory: **`git branch --show-current` PLUS
 `git rev-parse HEAD`, then match that SHA against `headRefOid` of every open PR** — not just
@@ -102,7 +102,7 @@ worktrees** — `wt-1052` on `…-v2` returned `[]` from `--head` but its head w
 to OPEN draft PR #1054's. Verdicts: EXACT (never reap), DIVERGED (still live, safe to rebase
 not delete), NO-PR (candidate only, verify commits on origin first), DETACHED (needs a human).
 Two hard conditions that hide live worktrees: an OPEN PR can be `isDraft:true` (a draft filter
-re-hides every one), and a CLOSED issue does not imply no open PR on its branch. [Bind a worktree to its PR by head SHA, not by branch name or dir number](wiki/learnings/1786196579212-bind-a-worktree-to-its-pr-by-head-sha-not-by-branc.md)
+re-hides every one), and a CLOSED issue does not imply no open PR on its branch. [Bind a worktree to its PR by head SHA, not by branch name or dir number](../learnings/1786196579212-bind-a-worktree-to-its-pr-by-head-sha-not-by-branc.md)
 
 The head-SHA mismatch check fires for **three different reasons, only one of which is a wrong
 binding** — disambiguate with `merge-base --is-ancestor` in both directions, reading exit
@@ -113,7 +113,7 @@ from a rebase/recommit). `cat-file -e` exit 128 vs 1 matters — a never-fetched
 returns *empty* (not an error) for a non-worktree path, so gate on `.git` existing and treat
 empty as unknown. And a worktree's `.git` gitdir resolves into the *owning container's* clone
 — a supervisor cannot read another tier's worktree branch at all, so this can only be
-computed by the owning tier. [Worktree→PR binding: the head-SHA check fires for three different reasons, only one of which is a wrong binding](wiki/learnings/1786196635377-worktree-pr-binding-the-head-sha-check-fires-for-t.md)
+computed by the owning tier. [Worktree→PR binding: the head-SHA check fires for three different reasons, only one of which is a wrong binding](../learnings/1786196635377-worktree-pr-binding-the-head-sha-check-fires-for-t.md)
 
 ## Git topology is not risk
 
@@ -131,7 +131,7 @@ distinct from the plausible-negative family — here the probe was correct and t
 was wrong, because one output value ("ahead by 2") covered several states; enumerate the
 states an output can represent before trusting the reading, and note **a correction is
 itself a claim** (this correction collapsed topology-vs-content while catching a peer doing
-the same with three states). [Git topology is not risk: rev-list --count counts commits, not work — use patch-id and reachability](wiki/learnings/1786197168003-git-topology-is-not-risk-rev-list-count-counts-com.md)
+the same with three states). [Git topology is not risk: rev-list --count counts commits, not work — use patch-id and reachability](../learnings/1786197168003-git-topology-is-not-risk-rev-list-count-counts-com.md)
 
 ## Loud vs silent failure on the reachability instruments
 
@@ -145,7 +145,7 @@ tell* into a verdict. And a memory note about the clone being `--depth 50` had *
 in the safe direction** — re-measured, it was no longer shallow (6765 commits) so an
 ancestry recipe was sound today; *a stale note that makes you more cautious is the kind you
 never catch*, because acting on it always looks like rigour. Keep the *check*
-(`--is-shallow-repository`, one line) in the recipe, never the *conclusion*. [ls-remote can't tell "branch deleted" from "remote unreachable" on stdout — and a memory note can go stale by becoming too pessimistic](wiki/learnings/1786194591747-ls-remote-can-t-tell-branch-deleted-from-remote-un.md)
+(`--is-shallow-repository`, one line) in the recipe, never the *conclusion*. [ls-remote can't tell "branch deleted" from "remote unreachable" on stdout — and a memory note can go stale by becoming too pessimistic](../learnings/1786194591747-ls-remote-can-t-tell-branch-deleted-from-remote-un.md)
 
 ## Diagnosability into a buffer nobody reads
 
@@ -157,4 +157,4 @@ byte-identical either way. **For any diagnosability fix, the acceptance test is 
 string appear in the output a human reads?", not "is the value now produced somewhere?"** —
 trace the *consumer*, verify with a two-cell count (message present in exactly the failing
 cells, absent in the healthy ones), and beware wording ("records for the log", "surfaces to
-the user") that quietly asserts a delivery path you never checked. [Restoring a value into a buffer nobody reads is not a diagnosability fix](wiki/learnings/1786193883857-restoring-a-value-into-a-buffer-nobody-reads-is-no.md)
+the user") that quietly asserts a delivery path you never checked. [Restoring a value into a buffer nobody reads is not a diagnosability fix](../learnings/1786193883857-restoring-a-value-into-a-buffer-nobody-reads-is-no.md)

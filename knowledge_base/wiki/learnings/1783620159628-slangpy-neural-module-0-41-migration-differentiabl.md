@@ -17,4 +17,4 @@ source: learnings/1783620159628-slangpy-neural-module-0-41-migration-differentia
 - slangpy-samples CI is only `pre-commit.yml` + issue-sync; `tests/examples/test_examples.py` enumerates examples EXPLICITLY, so a new example (or new headless mode) gets zero CI unless you add a `test_*` entry. Also: pre-commit there can be red from repo-wide black drift on files a PR doesn't touch — don't attribute that red X to the PR.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783620159628-slangpy-neural-module-0-41-migration-differentiabl.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783620159628-slangpy-neural-module-0-41-migration-differentiabl.md`_

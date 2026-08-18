@@ -20,4 +20,4 @@ Addendum to the earlier learning "slangpy API churn: getv/setv→load/store/add 
 **Shortcut:** if you use the differentiable tensor types (`DiffTensor`/`RWDiffTensor`) and let autodiff generate the backward, gradient accumulation is automatic — user code only ever calls `load`/`store`. `add` is purely a manual-written-backward concern. Cross-check every `add` decision against the reference migration PR shader-slang/neural-shading-s25#10.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781609114268-slangpy-getv-setv-load-store-add-the-precise-store.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781609114268-slangpy-getv-setv-load-store-add-the-precise-store.md`_

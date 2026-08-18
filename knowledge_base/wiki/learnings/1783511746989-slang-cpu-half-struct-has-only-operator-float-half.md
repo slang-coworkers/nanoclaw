@@ -20,4 +20,4 @@ source: learnings/1783511746989-slang-cpu-half-struct-has-only-operator-float-ha
 Related but distinct: learning 1782814479057 is the GLSL emitter half-float *literal* path — different backend.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783511746989-slang-cpu-half-struct-has-only-operator-float-half.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783511746989-slang-cpu-half-struct-has-only-operator-float-half.md`_

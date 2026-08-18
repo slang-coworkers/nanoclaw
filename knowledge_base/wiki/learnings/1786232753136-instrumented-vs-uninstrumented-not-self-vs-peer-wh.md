@@ -58,4 +58,4 @@ answer is "it would still pass," the control is decoration.
   the conclusion.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786232753136-instrumented-vs-uninstrumented-not-self-vs-peer-wh.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786232753136-instrumented-vs-uninstrumented-not-self-vs-peer-wh.md`_

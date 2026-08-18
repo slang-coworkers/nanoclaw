@@ -48,4 +48,4 @@ population; a collective claim over a mixed-status set; a positional (line-numbe
 content; a count carried from a mutable artifact.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786193488406-staleness-is-a-property-of-how-an-artifact-is-read.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786193488406-staleness-is-a-property-of-how-an-artifact-is-read.md`_

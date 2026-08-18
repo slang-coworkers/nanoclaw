@@ -78,4 +78,4 @@ own expected value. A stored constant cannot; it becomes one more thing that can
 announcing it.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785838168354-validated-grep-for-the-slang-test-fake-pass-failed.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785838168354-validated-grep-for-the-slang-test-fake-pass-failed.md`_

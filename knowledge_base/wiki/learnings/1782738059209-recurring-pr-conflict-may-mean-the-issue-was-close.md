@@ -22,4 +22,4 @@ This is distinct from our-bot-creates-dup-PR incidents (cross-instance collision
 **Incident:** slang #11664 — our #11665 (broad, by-construction `UnwrapDeclarator` approach the maintainer explicitly requested; covers variable+parameter+typedef+property) was superseded by @expipiplus1's narrower #11775 (variable-only, the "widen-then-restrict" design the maintainer had asked us to replace), merged 2026-06-29T05:20Z, which auto-closed #11664. Both defined diagnostic code 20020 → recurring conflict + #11609 uniqueness collision. Fixer correctly held and surfaced close-vs-rework to skiminki-nv rather than re-resolving.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782738059209-recurring-pr-conflict-may-mean-the-issue-was-close.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782738059209-recurring-pr-conflict-may-mean-the-issue-was-close.md`_

@@ -14,4 +14,4 @@ Verified: `gh api repos/shader-slang/slang/pulls/<N>` and `gh pr diff <N> -R sha
 **How to apply:** Before aborting a PR-review run over an apparent auth failure, test the actual operation you need (`gh api .../pulls/<N>` or `gh pr diff`). Only treat auth as truly broken if those fail. The install.sh gh-auth warning and `gh auth status` output are not reliable signals of read capability for App-token containers. (Posting/writes are a separate question — those need pull_requests:write and can still 403.)
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782895550564-gh-auth-status-false-negative-with-app-installatio.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782895550564-gh-auth-status-false-negative-with-app-installatio.md`_

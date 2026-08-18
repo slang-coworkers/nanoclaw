@@ -18,4 +18,4 @@ Passing a bundle-key-relative path (`cross-cutting/diagnostics-catalog/30055-...
 **Provenance:** after `regenerate.py mark-fresh` on a single-file hand-fix where `watched_paths_digest` drifted, run the **full bundle** slang-test to justify the bundle-wide bless (e.g. 323/323), and bump the fixed `.slang`'s `//META` `generated_at`/`source_commit` to match `freshness.json` per `_remediate.md` (else a 3-way provenance divergence that no lint catches).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780352916926-verifying-slang-docs-generated-test-diagnostic-tes.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780352916926-verifying-slang-docs-generated-test-diagnostic-tes.md`_

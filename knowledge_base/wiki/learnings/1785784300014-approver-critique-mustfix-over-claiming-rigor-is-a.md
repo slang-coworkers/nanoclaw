@@ -26,4 +26,4 @@ source: learnings/1785784300014-approver-critique-mustfix-over-claiming-rigor-is
 **Fix:** Treat excess caution and over-stated independence as defects on par with rounding up. The asymmetry from prior learnings holds: an over-stated claim gets argued down, an under-stated one gets agreed with — and agreement closes the thread.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785784300014-approver-critique-mustfix-over-claiming-rigor-is-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785784300014-approver-critique-mustfix-over-claiming-rigor-is-a.md`_

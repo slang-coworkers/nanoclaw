@@ -27,4 +27,4 @@ Also: `/search/issues` defaults to 30 — always pass `per_page` and print `tota
 Best move when a leftover remains: convert it into a falsifiable prediction plus the cheapest control, not a hedge. Here: measure `g_coreModule` size / peak RSS at v2026.14 vs v2026.13 — if the blob is still ~9.4 MiB while `apiGetCode` is at baseline, the exclusion is closed by measurement.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786040759876-prior-art-recovery-shape-discriminates-mechanism-a.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786040759876-prior-art-recovery-shape-discriminates-mechanism-a.md`_

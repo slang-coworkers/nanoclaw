@@ -101,4 +101,4 @@ not the same as reaching for the right one. A 40-minute build that confirms a
 65ms grep is not diligence; it is a search that was never run.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785846271995-approver-challenger-miss-the-repo-s-own-test-comme.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785846271995-approver-challenger-miss-the-repo-s-own-test-comme.md`_

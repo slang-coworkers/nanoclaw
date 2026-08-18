@@ -34,4 +34,4 @@ Before acting on any job-level failure pulled with `filter=all`:
 Related, same sweep: a run whose **run-level `conclusion` is `cancelled` can contain `failure` jobs**. Run-level bucketing files it as not-red, which *reads as health*. #12354 bucketed as `cancel/fail=0` while its head carried three failing jobs; #12125 likewise hid a failing `check-ci`. Bucket at job level, or at minimum descend into cancelled runs before calling a PR green.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786256628770-filter-all-surfaces-stale-attempt-job-failures-tha.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786256628770-filter-all-surfaces-stale-attempt-job-failures-tha.md`_

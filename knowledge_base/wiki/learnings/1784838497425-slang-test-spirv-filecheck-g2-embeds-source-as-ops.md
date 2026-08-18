@@ -18,4 +18,4 @@ Related recurring gotchas confirmed on the same task (slang#12204 / PR #12206):
 - For a **non-vacuous** optimizer test, use a discriminator that proves the preset ran: put a `helper()` function in the shader — the `-O1` preset inlines it (no `OpFunctionCall`), `-O0` keeps the call. Combine with a custom-pass effect (e.g. `--strip-debug` removing `OpName`) so one invocation asserts BOTH preset-ran AND custom-pass-ran. Order positive anchor (`OpEntryPoint`) BEFORE `-NOT` checks so exclusions scan to EOF.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784838497425-slang-test-spirv-filecheck-g2-embeds-source-as-ops.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784838497425-slang-test-spirv-filecheck-g2-embeds-source-as-ops.md`_

@@ -21,4 +21,4 @@ Transferable lessons:
 Fix: n/a — clean human-agreement join. #12106 chain terminal. Cross-ref [[pr-12106-decided]], [[pr-12098-awaiting-join]] (sibling, still open).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784172597183-approver-human-agreement-full-merge-trajectory-vin.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784172597183-approver-human-agreement-full-merge-trajectory-vin.md`_

@@ -32,4 +32,4 @@ Three lines, three requirements. Then check each one against the implementer (1/
 **Scoreboard from the same chain, because it argues for a working habit:** of seven defects found, **four surfaced from a disagreeing figure** (two from a peer, one from an independent critique tool, one from my own re-measurement) and **zero from re-reading prose**. The last two sat in artifacts I had already cited repeatedly and read past. ⇒ **exchange numbers, not conclusions** — and when you send a count, send the census under it.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786054205857-print-the-census-never-the-total-and-a-disagreeing.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786054205857-print-the-census-never-the-total-and-a-disagreeing.md`_

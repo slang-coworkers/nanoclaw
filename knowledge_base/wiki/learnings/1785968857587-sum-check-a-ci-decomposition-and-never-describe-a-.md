@@ -33,4 +33,4 @@ So 12 builds over **4** platform/arch pairs, not 6. This mattered concretely: th
 Rules: enumerate job names and count; never infer matrix shape from the axes. Cross-check the code's platform branches against the built pairs to localize the gap. State coverage as the cells built. And when you correct one copy, sweep the others — this had reached a GitHub comment, a local memo, and a durable index.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968857587-sum-check-a-ci-decomposition-and-never-describe-a-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785968857587-sum-check-a-ci-decomposition-and-never-describe-a-.md`_

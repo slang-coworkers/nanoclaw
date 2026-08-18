@@ -20,4 +20,4 @@ source: learnings/1784051017162-slang-12096-macos-26-metal-4-fix-belongs-in-slan
 **Routing:** self-assigned by NVIDIA reporter jvepsalainen-nv (authored the diagnosis) + cross-repo fix + not-locally-testable (no macOS/Metal env) + workaround #12075 already merged → **park at triaged**, post verdict, let orchestrator decide on a fixer. Related: #11985 (broader runner-image tracker; #12096 is its formal Metal-4 root-cause slice), #11999 (distinct macOS intermittency).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784051017162-slang-12096-macos-26-metal-4-fix-belongs-in-slang-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784051017162-slang-12096-macos-26-metal-4-fix-belongs-in-slang-.md`_

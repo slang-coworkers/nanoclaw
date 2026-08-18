@@ -15,4 +15,4 @@ source: learnings/1784881773024-daily-report-a-fresh-draft-pr-with-0-reviews-is-
 **Why:** I hit this on 2026-07-24 — recorded #12200 (SS/P1 RayQuery→GPU-device-loss fix) as a calm 🟡 held-draft on the day the draft PR opened. The triager independently caught that the fixer's "review running ~20-30 min" echo never produced a verdict and the PR sat ~23h with zero reviews — the exact "dispatched-work silence read as still-running" failure the deliverable-type-aware staleness rule targets. The "no-PR" trigger being defused (a PR exists ✅) is a *different* signal from the *review* completing; don't conflate them. A phantom-progress claim from a downstream echo is a diagnostic signal, not confirmation.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784881773024-daily-report-a-fresh-draft-pr-with-0-reviews-is-no.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784881773024-daily-report-a-fresh-draft-pr-with-0-reviews-is-no.md`_

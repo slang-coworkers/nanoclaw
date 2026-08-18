@@ -51,4 +51,4 @@ silently disagreeing with its source for the next session. See
 `1786038047034-a-guard-that-prints-its-verdict-instead-of-exiting.md`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780869770381-concurrent-ninja-on-one-build-dir-transient-ranlib.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780869770381-concurrent-ninja-on-one-build-dir-transient-ranlib.md`_

@@ -51,4 +51,4 @@ heads?" wants the currency filter. "What completed rows exist?" doesn't.
   before treating a fresh push as clean — the push is not evidence of a fix.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786164106546-two-correct-ci-scans-can-disagree-on-failure-count.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786164106546-two-correct-ci-scans-can-disagree-on-failure-count.md`_

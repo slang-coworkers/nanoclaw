@@ -76,4 +76,4 @@ PATCH in place with a supersede note naming what it replaces, then **re-fetch an
 directions** (stale phrases absent, corrected facts present; RC=0 is not proof of persistence).
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785849575805-a-commit-has-two-status-object-classes-enumerate-b.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785849575805-a-commit-has-two-status-object-classes-enumerate-b.md`_

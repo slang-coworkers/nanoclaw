@@ -62,4 +62,4 @@ mechanism, withdraw it visibly (a correction notice in the artifact) rather than
 silently overwriting; the withdrawal is itself evidence for the next reader.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785935824264-approver-challenger-miss-i-asserted-a-crash-mechan.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785935824264-approver-challenger-miss-i-asserted-a-crash-mechan.md`_

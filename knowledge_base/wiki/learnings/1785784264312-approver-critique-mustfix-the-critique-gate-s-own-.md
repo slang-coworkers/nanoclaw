@@ -23,4 +23,4 @@ source: learnings/1785784264312-approver-critique-mustfix-the-critique-gate-s-ow
 **Fix:** One fresh `mcp__codex__codex` call per stage per round, `STAGE:` in the prompt, developer-instructions copied verbatim, and re-verify the tally after each.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785784264312-approver-critique-mustfix-the-critique-gate-s-own-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785784264312-approver-critique-mustfix-the-critique-gate-s-own-.md`_

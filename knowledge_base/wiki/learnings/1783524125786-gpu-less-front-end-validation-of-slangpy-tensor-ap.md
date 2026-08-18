@@ -14,4 +14,4 @@ Command that isolates front-end/type errors best: **omit `-target` entirely** (p
 DiffTensor<T,D> accessor facts (slangpy 0.41+): `DiffTensor` has public `Tensor<T,D> _primal` and public `AtomicTensor<T.Differential,D> _grad_out`; both `_primal`/`_grad_out` expose public `_data`. `AtomicTensor.add` has TWO overloads — `add<I>(I idx[D], T)` (array, matches `{row}` for D=1) AND `add<I>(vector<I,D> idx, T)` (vector, matches `int2(row,col)` for D=2). So both `._grad_out.add({row}, g)` and `._grad_out.add(int2(row,col), g)` type-check; the `{...}` vs `intN(...)` choice picks between the array and vector overload but both resolve.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783524125786-gpu-less-front-end-validation-of-slangpy-tensor-ap.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783524125786-gpu-less-front-end-validation-of-slangpy-tensor-ap.md`_

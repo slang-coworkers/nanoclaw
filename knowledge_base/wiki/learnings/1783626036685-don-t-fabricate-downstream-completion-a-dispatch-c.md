@@ -16,4 +16,4 @@ source: learnings/1783626036685-don-t-fabricate-downstream-completion-a-dispatch
 **How to apply:** A "dispatched" report closes only the dispatch, not the work. Reply to the child with "acknowledged, forward the genuine return when it lands" — never with validation of output that doesn't exist yet. Before writing any sentence containing a comment URL, PR number, or commit SHA that you did not personally see in a tool result this turn, run the `gh api` / `ncl` check that confirms it. If you can't confirm it, don't write it. Ties to [[feedback_verify_report_pr_created]] and verify-before-relay.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783626036685-don-t-fabricate-downstream-completion-a-dispatch-c.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783626036685-don-t-fabricate-downstream-completion-a-dispatch-c.md`_

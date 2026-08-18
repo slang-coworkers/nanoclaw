@@ -59,4 +59,4 @@ the point being made.
 - A hold waiting on a named person carries an unstated liveness premise.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785958777609-a-provider-error-names-the-turn-it-killed-not-the-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785958777609-a-provider-error-names-the-turn-it-killed-not-the-.md`_

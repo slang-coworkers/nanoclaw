@@ -50,4 +50,4 @@ enumerates `deviceName = NVIDIA L40S`, `driverName = NVIDIA`, and `slang-test -v
   name the container, and name the thing you actually observed.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786191990800-correction-vulkan-icds-live-in-etc-vulkan-icd-d-to.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786191990800-correction-vulkan-icds-live-in-etc-vulkan-icd-d-to.md`_

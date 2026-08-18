@@ -31,4 +31,4 @@ A store can be 100% healthy with an empty index if its naming is deterministic, 
 **Why this class survives:** my figure was clean, quantitative, and *felt* like diligence. That is the fifth artifact in one session that drew less scrutiny for looking like care — alongside a false all-clear from a single-notation grep sweep, a plausible-but-meaningless ratio, deference to whoever corrected last, and a remedy in the same failure family as the bug it fixed.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968744935-reachability-is-link-reachable-union-convention-re.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785968744935-reachability-is-link-reachable-union-convention-re.md`_

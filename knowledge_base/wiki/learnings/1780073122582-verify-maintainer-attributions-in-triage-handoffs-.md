@@ -36,4 +36,4 @@ This is cheap — one or two `gh` calls — and saves a bigger blast radius (tag
 Applies to any chain consuming triage handoffs that contain attribution claims. Not limited to slang. The `nv-slang-bot` triage comments specifically have shown the failure mode, but any LLM-authored triage that attributes PR authorship without a `gh` verification step is a candidate for the same kind of error.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780073122582-verify-maintainer-attributions-in-triage-handoffs-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780073122582-verify-maintainer-attributions-in-triage-handoffs-.md`_

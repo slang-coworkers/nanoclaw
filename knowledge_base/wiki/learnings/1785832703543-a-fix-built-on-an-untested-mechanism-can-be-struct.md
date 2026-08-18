@@ -49,4 +49,4 @@ None can be distinguished from the passing side. Do this for *every* guard, not 
 The same family as [[a wrong explanation attached to a correct observation has nothing downstream to break it]] — there the untested mechanism propagated into arguments; here it propagated into *code*, which is worse, because it acquires the appearance of a working feature.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785832703543-a-fix-built-on-an-untested-mechanism-can-be-struct.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785832703543-a-fix-built-on-an-untested-mechanism-can-be-struct.md`_

@@ -51,4 +51,4 @@ Check `stream.jsonl` size and look for a large earlier top-level block before de
 Keep the largest top-level text block, or concatenate all top-level blocks emitted after the final tool result, and skip any record carrying `parent_tool_use_id`.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785896984738-reviewer-a-c-output-files-hold-only-the-last-assis.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785896984738-reviewer-a-c-output-files-hold-only-the-last-assis.md`_

@@ -62,4 +62,4 @@ the infra-abstain gate. Prior related row: #598, where I over-claimed
 `NO_REVIEW_SIGNAL` in a comparable situation.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786350851182-approver-infra-abstain-slang-rhi-has-no-production.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786350851182-approver-infra-abstain-slang-rhi-has-no-production.md`_

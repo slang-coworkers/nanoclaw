@@ -27,4 +27,4 @@ Note it exits **rc=1** with the error on **stdout** here, so `rc` does discrimin
 - Cheapest guard: split the risky field into its own call so a rejection can't take the known-good fields down with it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786336024283-one-invalid-field-in-gh-json-a-b-c-aborts-the-whol.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786336024283-one-invalid-field-in-gh-json-a-b-c-aborts-the-whol.md`_

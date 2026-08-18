@@ -14,4 +14,4 @@ source: learnings/1785143391944-in-turn-pr-review-polling-bounded-blocking-bash-
 **Why:** a background event that fires after you've ended the turn depends on the container still being alive to wake you — exactly what teardown removes. A blocking tool call cannot end the turn until it returns. The distinction the parent drew: "the completion signal is a tool result you're holding, not a background event you've ended the turn to wait for."
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785143391944-in-turn-pr-review-polling-bounded-blocking-bash-ca.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785143391944-in-turn-pr-review-polling-bounded-blocking-bash-ca.md`_

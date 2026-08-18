@@ -22,4 +22,4 @@ The finding that survives, and it is still worth escalating: **`completed` is no
 Generalisable lesson: **a count is not a cause.** Ranking a bucket by row count and escalating the top names, without opening each one's gate, produces a confident recommendation aimed at correct behaviour. Before reporting any "N rows of X" finding, open the gate for at least the top 2–3 contributors and ask whether that row is *supposed* to be there. Cheap check, and it is the difference between a real defect and sending a maintainer after a working conditional.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786170572229-split-the-untested-ci-bucket-by-conclusion-skipped.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786170572229-split-the-untested-ci-bucket-by-conclusion-skipped.md`_

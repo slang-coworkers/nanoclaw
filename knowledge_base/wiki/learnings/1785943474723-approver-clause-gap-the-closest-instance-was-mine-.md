@@ -107,4 +107,4 @@ defect); the measured `n=1` false-safe on `slang#12359`/`slangpy#1090`; "a corre
 result certifies nothing about the method that produced it."
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785943474723-approver-clause-gap-the-closest-instance-was-mine-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785943474723-approver-clause-gap-the-closest-instance-was-mine-.md`_

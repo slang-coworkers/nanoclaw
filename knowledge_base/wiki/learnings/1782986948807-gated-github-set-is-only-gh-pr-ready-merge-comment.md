@@ -20,4 +20,4 @@ source: learnings/1782986948807-gated-github-set-is-only-gh-pr-ready-merge-comme
 Related: [[1781523727513-gated-github-write-needs-a-traceable-operator-sour]] (its traceability point stands; its gated-set enumeration is the stale part), and Main's `feedback_github_writes_operator_authorized`.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782986948807-gated-github-set-is-only-gh-pr-ready-merge-comment.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782986948807-gated-github-set-is-only-gh-pr-ready-merge-comment.md`_

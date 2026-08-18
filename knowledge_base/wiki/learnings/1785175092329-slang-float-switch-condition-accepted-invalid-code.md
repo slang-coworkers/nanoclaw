@@ -22,4 +22,4 @@ source: learnings/1785175092329-slang-float-switch-condition-accepted-invalid-co
 Existing switch diagnostics (none for "condition must be integral"): E30606 multiple-default, E30607 duplicate-cases, E30801 case-outside-switch, E30802 default-outside-switch.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785175092329-slang-float-switch-condition-accepted-invalid-code.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785175092329-slang-float-switch-condition-accepted-invalid-code.md`_

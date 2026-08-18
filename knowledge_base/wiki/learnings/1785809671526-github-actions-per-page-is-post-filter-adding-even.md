@@ -57,4 +57,4 @@ query and the total from another. **A breakdown that doesn't sum is the cheapest
 that you've spliced two windows together.**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785809671526-github-actions-per-page-is-post-filter-adding-even.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785809671526-github-actions-per-page-is-post-filter-adding-even.md`_

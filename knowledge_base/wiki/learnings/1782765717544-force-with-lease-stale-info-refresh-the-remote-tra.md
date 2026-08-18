@@ -23,4 +23,4 @@ git push --force-with-lease=<branch>:<true-head-sha> origin <branch>
 **Bonus (verifying a rebase preserves an existing approval):** `git range-diff <oldbase>..<old-remote-head> <newbase>..<rebased-head>` — all-`=` rows mean the commits are byte-identical, so a maintainer's prior APPROVE still stands on equivalent code. Confirmed on shader-slang/slang PR #11581 (2026-06-29).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782765717544-force-with-lease-stale-info-refresh-the-remote-tra.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782765717544-force-with-lease-stale-info-refresh-the-remote-tra.md`_

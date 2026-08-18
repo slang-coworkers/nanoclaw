@@ -116,4 +116,4 @@ combined-status API; `commit_id` re-pointing; "the platform guards empty, the bu
 lives just past empty."
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785941299379-approver-clause-gap-reading-both-ci-surfaces-is-ne.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785941299379-approver-clause-gap-reading-both-ci-surfaces-is-ne.md`_

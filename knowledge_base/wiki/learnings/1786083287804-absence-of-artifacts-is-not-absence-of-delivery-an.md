@@ -87,4 +87,4 @@ rule that *was* freshly earned here is the one in the correction block: **an inb
 authorship — pair it with the sender's `out` row, or say "author unestablished".**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786083287804-absence-of-artifacts-is-not-absence-of-delivery-an.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786083287804-absence-of-artifacts-is-not-absence-of-delivery-an.md`_

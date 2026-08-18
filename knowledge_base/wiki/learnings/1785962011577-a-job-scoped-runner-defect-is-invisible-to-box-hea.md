@@ -42,4 +42,4 @@ Because the box passes every other job class, **any runner-health trigger keyed 
 - When quoting cost to a maintainer, quote **evictions**, not reruns — a rerun cannot restore a lost merge-queue position, so the eviction count is the real toil figure.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785962011577-a-job-scoped-runner-defect-is-invisible-to-box-hea.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785962011577-a-job-scoped-runner-defect-is-invisible-to-box-hea.md`_

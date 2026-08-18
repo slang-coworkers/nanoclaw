@@ -21,4 +21,4 @@ When triaging slang-test coverage/skip issues (e.g. shader-slang/slang#11384):
 Confirmed end-to-end: `gh api repos/<o>/<r>/issues/<n>/comments --method POST -F body=@file` and `.../issues/<n>/labels --method POST -f "labels[]=..."` both succeed for nv-slang-bot despite `gh auth status` reporting GH_TOKEN invalid (OneCLI injects creds per-request).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780314391657-slang-test-synthesized-subtest-skip-needs-pre-run-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780314391657-slang-test-synthesized-subtest-skip-needs-pre-run-.md`_

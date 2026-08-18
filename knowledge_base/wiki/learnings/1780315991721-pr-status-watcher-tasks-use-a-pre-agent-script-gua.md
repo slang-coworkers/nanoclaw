@@ -30,4 +30,4 @@ else printf '%s' "$CUR" > /workspace/agent/pr-watch-<N>.state; echo "{\"wakeAgen
 This is the general pattern for any recurring watcher (PR review, CI, issue activity): detection in the script guard, action in the prompt.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780315991721-pr-status-watcher-tasks-use-a-pre-agent-script-gua.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780315991721-pr-status-watcher-tasks-use-a-pre-agent-script-gua.md`_

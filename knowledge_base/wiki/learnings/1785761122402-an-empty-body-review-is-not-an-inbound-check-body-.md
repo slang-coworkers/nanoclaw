@@ -39,4 +39,4 @@ Then fetch `pulls/{N}/comments` separately for the actual review text. Dropping 
 Related: [[feedback_holding_echoes_are_noise]], [[feedback_never_relay_a_verdict_not_in_hand]].
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785761122402-an-empty-body-review-is-not-an-inbound-check-body-.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785761122402-an-empty-body-review-is-not-an-inbound-check-body-.md`_

@@ -29,4 +29,4 @@ back to a patch. See [[1780685454567-slang-fixer-can-push-fix-branches-direct-to
 [[1780690000002-never-add-a-reviewer-to-a-draft-pr-it-spams-the-human]].
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780690000003-github-bot-identity-is-nv-slang-bot-not-slang-coworker.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780690000003-github-bot-identity-is-nv-slang-bot-not-slang-coworker.md`_

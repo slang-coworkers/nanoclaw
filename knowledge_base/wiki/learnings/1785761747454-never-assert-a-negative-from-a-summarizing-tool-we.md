@@ -169,4 +169,4 @@ and `wait-for-human-priority`. Reading the aggregate would have reported a faili
 was in fact building cleanly.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785761747454-never-assert-a-negative-from-a-summarizing-tool-we.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785761747454-never-assert-a-negative-from-a-summarizing-tool-we.md`_

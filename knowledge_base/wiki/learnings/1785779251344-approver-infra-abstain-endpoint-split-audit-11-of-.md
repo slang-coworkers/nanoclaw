@@ -35,4 +35,4 @@ The signature is precise because CodeRabbit's own counter contradicts the body i
 **slangpy is higher-risk than slang for the same bug:** CodeRabbit is often its *only* review signal (no production `github-actions[bot]` review to fall back on), so an exposed slangpy row can read "clean" with every finding unexamined and nothing else in the input to compensate. Same recipe applies to its stored harvests.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785779251344-approver-infra-abstain-endpoint-split-audit-11-of-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785779251344-approver-infra-abstain-endpoint-split-audit-11-of-.md`_

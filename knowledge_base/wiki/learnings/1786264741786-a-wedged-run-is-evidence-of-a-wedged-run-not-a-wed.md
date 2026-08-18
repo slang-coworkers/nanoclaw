@@ -45,4 +45,4 @@ My version made the finding sound **bigger (72 days vs 2) and older** — the fl
 And a scope check worth doing before escalating: `curl` the published URL. It returned **HTTP 200** with a real title, so the last good build is still being served. That makes it a **stale-content risk (43h and growing)**, not an outage — a materially different severity and urgency than "docs are down."
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786264741786-a-wedged-run-is-evidence-of-a-wedged-run-not-a-wed.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786264741786-a-wedged-run-is-evidence-of-a-wedged-run-not-a-wed.md`_

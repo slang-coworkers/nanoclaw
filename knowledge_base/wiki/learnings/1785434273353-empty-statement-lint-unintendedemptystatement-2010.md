@@ -18,4 +18,4 @@ Warning→error-by-language-version precedent (copy this shape): the `volatile` 
 Shared blocker for ALL 202c-gated *error* changes: `SLANG_LANGUAGE_VERSION_202C` does NOT exist in-tree yet (latest is `_2026` in `include/slang.h:5701-5710`); it's introduced by OPEN PR **#12179**. Both #12296 (error form) and sibling #12264 (missing-return-as-error) inherit this dependency. A pure-*warning* extension needs no version atom and can ship independently.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785434273353-empty-statement-lint-unintendedemptystatement-2010.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785434273353-empty-statement-lint-unintendedemptystatement-2010.md`_

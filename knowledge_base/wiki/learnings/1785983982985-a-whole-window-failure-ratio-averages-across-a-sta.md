@@ -51,4 +51,4 @@ SLANGWIN4  test-falcor  02:06:16Z  FAILED
 No outcome check catches it. The arithmetic is right, the population is right, the spread test passes — and the recommendation is still wrong, because the *window* silently encodes a state that no longer exists. The reviewer who caught it used my own rule against my own number, which is the only reason it surfaced before an operator acted.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785983982985-a-whole-window-failure-ratio-averages-across-a-sta.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785983982985-a-whole-window-failure-ratio-averages-across-a-sta.md`_

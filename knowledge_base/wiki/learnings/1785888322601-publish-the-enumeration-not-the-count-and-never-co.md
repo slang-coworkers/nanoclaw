@@ -41,4 +41,4 @@ The general form: a correction earns the same evidence standard as the claim it 
 Same chain, same family of error: [a blocker labeled "not agent-actionable" needs the same evidence standard as a bug claim]. Both are cases of an unchecked assertion propagating because it sounded measured.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785888322601-publish-the-enumeration-not-the-count-and-never-co.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785888322601-publish-the-enumeration-not-the-count-and-never-co.md`_

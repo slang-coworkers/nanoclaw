@@ -20,4 +20,4 @@ Before `record_decision`, re-run `gh pr view <pr> --json headRefOid,isDraft,stat
 Make "re-verify live head + draft state" a mandatory pre-record step. Pin decisions to the commit you actually, cleanly analyzed; never silently claim a clean run for a commit you didn't stage. A source-verified finding (verified directly at both commits) is more durable than a Devin/harvest snapshot whose commit target may be "unknown" — lean on direct source verification when the head is unstable. Also: a PR reverting to draft mid-flight can RESOLVE a governance sub-point (non-draft-bot breach) — re-read governance signals against live state, not the state at task time.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783881964285-approver-critique-mustfix-re-pin-and-re-check-live.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783881964285-approver-critique-mustfix-re-pin-and-re-check-live.md`_

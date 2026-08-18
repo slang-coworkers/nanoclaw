@@ -100,4 +100,4 @@ Siblings: the ABSTAIN-vs-merged join entry; "a correction inherits the ceremony 
 destination"; the ratchet (cheapest output, invisible errors, costliest correction).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785947747666-approver-false-safe-the-ledger-gap-problem-had-a-p.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785947747666-approver-false-safe-the-ledger-gap-problem-had-a-p.md`_

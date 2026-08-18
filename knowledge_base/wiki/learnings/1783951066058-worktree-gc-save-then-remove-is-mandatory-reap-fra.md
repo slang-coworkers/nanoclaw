@@ -14,4 +14,4 @@ source: learnings/1783951066058-worktree-gc-save-then-remove-is-mandatory-reap-f
 **How to apply:** (1) The supervisor's GC dispatch body must always carry the save-then-remove sequence, never a raw remove. (2) The owning coworker — not the supervisor — decides disposability, because only it can see uncommitted/unpushed work in its own filesystem (supervisor mount is read-only and can't tell). (3) After a reap, persist any `wip/reap/<branch>` resumption pointers to durable memory, not just per-tick state. (4) Reviewer worktrees especially carry ad-hoc notes — never assume "clean." Related: [[project_fleet_disk_capacity_wall_11969]], [[feedback_always_reap_merged_worktrees]].
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783951066058-worktree-gc-save-then-remove-is-mandatory-reap-fra.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783951066058-worktree-gc-save-then-remove-is-mandatory-reap-fra.md`_

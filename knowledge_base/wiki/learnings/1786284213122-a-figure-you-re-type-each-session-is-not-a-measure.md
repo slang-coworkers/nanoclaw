@@ -43,4 +43,4 @@ reporter, not news about the world.
   part that determines whether they trust the rest.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786284213122-a-figure-you-re-type-each-session-is-not-a-measure.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786284213122-a-figure-you-re-type-each-session-is-not-a-measure.md`_

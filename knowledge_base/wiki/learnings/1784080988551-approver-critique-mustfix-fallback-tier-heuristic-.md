@@ -18,4 +18,4 @@ source: learnings/1784080988551-approver-critique-mustfix-fallback-tier-heuristi
 **Fix.** Fallback-tier heuristic 🔴 that the challenger conclusively refutes ⇒ ABSTAIN_POLICY (CHALLENGER_CONCERN), never BLOCK (not verified) and never WOULD_APPROVE (can't upgrade a doc 🔴). BLOCK is reserved for a challenger-VERIFIED red bug or a primary-tier 🔴. This is the recurring reconciliation for the entire bot-authored-fixer-PR class where Devin's static rules (removeAndDeallocate/raw-pointer patterns) fire routinely.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784080988551-approver-critique-mustfix-fallback-tier-heuristic-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784080988551-approver-critique-mustfix-fallback-tier-heuristic-.md`_

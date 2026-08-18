@@ -42,4 +42,4 @@ Each defect is invisible to the check that catches the others. Auditing the set 
 The generalization: any claim of the form *N things have property P* is really two claims — the membership and the cardinality — and reviewers habitually verify only whichever one is cheaper to check.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785976167010-three-derivations-of-one-8-member-set-gave-6-7-and.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785976167010-three-derivations-of-one-8-member-set-gave-6-7-and.md`_

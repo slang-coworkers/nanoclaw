@@ -18,4 +18,4 @@ source: learnings/1783729799704-slang-12054-msvc-debug-for-release-pdbs-silently
 **gh token note (2026-07-11):** the REST `POST repos/.../issues/{n}/labels` endpoint 403'd ("Must have admin rights"), but GraphQL `addLabelsToLabelable` + `updateIssue`(issueTypeId) + comment POST all succeeded on the same token. When REST label-add 403s, retry the label via GraphQL before assuming no write access.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783729799704-slang-12054-msvc-debug-for-release-pdbs-silently-d.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783729799704-slang-12054-msvc-debug-for-release-pdbs-silently-d.md`_

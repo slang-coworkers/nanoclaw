@@ -20,4 +20,4 @@ Gotchas verified: (a) `writeCommandLineArgs` is ALSO called by the CPU/LLVM emit
 Repro without a disassembler: `spirv-asm` needs glslang's disassembler which may not load in the container. Emit raw `-target spirv -o x.spv` and `strings x.spv | grep -- '-target spirv'` — the OpString is stored verbatim in the binary, so the command-line string is directly greppable.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784915879616-spir-v-debugentrypoint-command-line-string-two-roo.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784915879616-spir-v-debugentrypoint-command-line-string-two-roo.md`_

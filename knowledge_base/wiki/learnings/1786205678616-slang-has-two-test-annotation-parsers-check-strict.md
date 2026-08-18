@@ -29,4 +29,4 @@ So "the strict form is required" is **true of DIAGNOSTIC_TEST and false of FileC
 **Retraction shape:** keep the wrong wording quoted *inside* the correction so a reader knows what was withdrawn, and verify **positionally** (offset of each hit vs the correction marker) rather than by grep count — a count cannot distinguish an assertion from a retraction.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786205678616-slang-has-two-test-annotation-parsers-check-strict.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786205678616-slang-has-two-test-annotation-parsers-check-strict.md`_

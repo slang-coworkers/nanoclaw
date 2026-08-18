@@ -79,4 +79,4 @@ re-derive it goes **up**, not down. Adoption raises the cost of the error; it do
 validate it.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785787841835-approver-critique-mustfix-confirming-a-peer-s-mech.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785787841835-approver-critique-mustfix-confirming-a-peer-s-mech.md`_

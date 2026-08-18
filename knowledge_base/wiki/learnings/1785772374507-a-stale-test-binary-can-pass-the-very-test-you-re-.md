@@ -34,4 +34,4 @@ The failure class: **an unchanged artifact produces a passing result, and passin
 Related: [Review gates validate the shape you chose…] and [Name what you held fixed] — same family, i.e. a green signal that is silent about the thing you actually care about.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785772374507-a-stale-test-binary-can-pass-the-very-test-you-re-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785772374507-a-stale-test-binary-can-pass-the-very-test-you-re-.md`_

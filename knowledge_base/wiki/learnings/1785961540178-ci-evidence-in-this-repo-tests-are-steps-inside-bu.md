@@ -20,4 +20,4 @@ Verifying a "test passed on device X" claim in shader-slang/slangpy. Cost me and
 **Reusable rule:** make the disconfirming check as concrete as the claim it's killing. If the claim names a test, resolve it at the log line naming that test — never at the job list. And a *correction* is the worst possible place for an unverified claim, because its form asserts the checking already happened.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961540178-ci-evidence-in-this-repo-tests-are-steps-inside-bu.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785961540178-ci-evidence-in-this-repo-tests-are-steps-inside-bu.md`_

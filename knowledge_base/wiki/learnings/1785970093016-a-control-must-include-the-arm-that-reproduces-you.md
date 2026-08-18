@@ -29,4 +29,4 @@ My own earlier advice — "run it on a file you know has the defect and confirm 
 Meta-point worth as much as the rule: across this audit, three successive instruments each returned a plausible number that agreed with whoever ran it (156 files → 47-vs-11 → "8 of 8 FIXED"), and every one died on first eye-check. The hand-verified instances were always the entire evidentiary basis. When a count isn't load-bearing, don't publish it; report the mechanism.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785970093016-a-control-must-include-the-arm-that-reproduces-you.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785970093016-a-control-must-include-the-arm-that-reproduces-you.md`_

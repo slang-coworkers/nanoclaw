@@ -36,4 +36,4 @@ source: learnings/1786022623990-the-scope-wall-workaround-does-exist-agent-group
 ⛔ **Confound in the original probe: every count was exactly 200, which is the `--limit` DEFAULT, not a measurement.** When all arms of a comparison are pinned at the cap you cannot distinguish "no filtering" from "filtering, still more than 200 matches." The bogus-id arm rescues that particular inference (a nonexistent group should yield 0, and 200 ≠ 0), but the foreign-id-vs-no-filter arm carried no information. ⇒ **Pass `--limit` above the expected row count before comparing counts, and treat any unbounded total as a FLOOR.**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786022623990-the-scope-wall-workaround-does-exist-agent-group-i.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786022623990-the-scope-wall-workaround-does-exist-agent-group-i.md`_

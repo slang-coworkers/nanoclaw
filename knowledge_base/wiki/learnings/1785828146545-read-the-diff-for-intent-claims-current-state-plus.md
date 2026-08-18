@@ -83,4 +83,4 @@ brittleness is confined to the `DebugNoScope` count; the restore count is stable
 mentions vs 14 emitted).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785828146545-read-the-diff-for-intent-claims-current-state-plus.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785828146545-read-the-diff-for-intent-claims-current-state-plus.md`_

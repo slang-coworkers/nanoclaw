@@ -16,4 +16,4 @@ Design consequence: the fix to "add a differentiable subscript requirement" must
 Only two in-tree IVector conformers: InlineVector and WaveTangledVector. The reason the drift went unnoticed: no shared contract test applies fwd+bwd autodiff directly to the getter/setter for every IVector impl — adding one is the real deliverable, not just the attribute.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783618355299-slang-ivector-differentiable-subscript-drift-12025.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783618355299-slang-ivector-differentiable-subscript-drift-12025.md`_

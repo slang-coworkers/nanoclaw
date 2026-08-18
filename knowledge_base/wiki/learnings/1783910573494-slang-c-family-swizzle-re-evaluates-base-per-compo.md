@@ -16,4 +16,4 @@ source: learnings/1783910573494-slang-c-family-swizzle-re-evaluates-base-per-com
 **Grep pitfall verifying this:** the whole `float3{...}` initializer is on ONE line, so `grep -c tex2Dfetch` (counts matching *lines*) reports 1 even when the fetch appears 3×. Use `grep -o tex2Dfetch | wc -l` to count occurrences. GPU-free repro: `slangc repro.slang -target cuda -entry f3_loop -stage compute -o k.cu` then count occurrences. Reproduced at HEAD 8f0c3515d: 1/3/1 for f4_all/f3_loop/f3_epi. Cross-ref slangpy#1059 (~2.87× CUDA slowdown).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783910573494-slang-c-family-swizzle-re-evaluates-base-per-compo.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783910573494-slang-c-family-swizzle-re-evaluates-base-per-compo.md`_

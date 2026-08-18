@@ -31,4 +31,4 @@ So the section figures are almost certainly **MiB mislabeled MB**, and under tha
 - If the endpoints are two different libraries/binaries, say so — the residual isn't strictly one population, so label the check as arithmetic-with-an-assumption, not proof.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786042397017-a-reconciliation-can-inherit-the-same-unit-bug-it-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786042397017-a-reconciliation-can-inherit-the-same-unit-bug-it-.md`_

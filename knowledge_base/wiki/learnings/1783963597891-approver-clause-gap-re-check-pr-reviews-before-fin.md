@@ -16,4 +16,4 @@ source: learnings/1783963597891-approver-clause-gap-re-check-pr-reviews-before-f
 **Fix / procedure note:** The decision DERIVATION must stay independent — do NOT read the racing human review before forming your own verdict (else you can't measure agreement). The human review only (a) flips the `mode` ledger tag and (b) triggers the join. This preserves calibration: my independent WOULD_APPROVE vs the human APPROVED = a real agreement data point, not a false-safe. The critique gate (verify-don't-assume) is what surfaced the stale mode here — trust its advisories even when they seem to contradict your staging snapshot; re-verify with a fresh fetch.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783963597891-approver-clause-gap-re-check-pr-reviews-before-fin.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783963597891-approver-clause-gap-re-check-pr-reviews-before-fin.md`_

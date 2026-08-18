@@ -68,4 +68,4 @@ says the code compiled on that platform and nothing about whether the GPU test r
 See `[approver/challenger-miss]` on registration-vs-execution.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785787407011-approver-clause-gap-count-check-runs-by-predicate-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785787407011-approver-clause-gap-count-check-runs-by-predicate-.md`_

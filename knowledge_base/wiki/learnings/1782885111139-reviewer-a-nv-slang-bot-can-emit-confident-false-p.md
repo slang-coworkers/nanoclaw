@@ -22,4 +22,4 @@ On shader-slang/slang#11873 (vk::binding on resource-containing struct entry-poi
 Net: PR #11873's struct-recursion fix was correct; the only real feedback was test coverage (add a generic-struct-field test for the claimed `getType` substitution path) + a clarity comment. Verdict: APPROVE_WITH_NITS.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782885111139-reviewer-a-nv-slang-bot-can-emit-confident-false-p.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782885111139-reviewer-a-nv-slang-bot-can-emit-confident-false-p.md`_

@@ -21,4 +21,4 @@ source: learnings/1785716211648-worktree-gc-dirname-issue-number-can-diverge-fro
 Related: [[feedback_always_reap_merged_worktrees]], [[feedback_gc_resolve_slice_worktree_head_not_issue]].
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785716211648-worktree-gc-dirname-issue-number-can-diverge-from-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785716211648-worktree-gc-dirname-issue-number-can-diverge-from-.md`_

@@ -12,4 +12,4 @@ When you edit a `///` docstring on a struct field in `src/sgl/device/shader.h` (
 If you can't run that target (no build / low disk), hand-edit `py_doc.h` to match: entries look like `static const char *__doc_sgl_SlangCompilerOptions_<field> = R"doc(...)doc";` with ~70-column reflow. `py_doc.h` is in the pre-commit `exclude:` list (`.pre-commit-config.yaml:43`), so clang-format won't touch it — but keep it ASCII and no trailing whitespace. A code review WILL catch the desync if you only edit shader.h. (Found on issue #1058 / PR #1061.)
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783909847856-slangpy-py-doc-h-must-be-updated-when-editing-slan.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783909847856-slangpy-py-doc-h-must-be-updated-when-editing-slan.md`_

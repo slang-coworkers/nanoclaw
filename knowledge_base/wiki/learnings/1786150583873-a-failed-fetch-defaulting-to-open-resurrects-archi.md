@@ -78,4 +78,4 @@ approver that is the `approval_decisions` ledger row for `(repo, pr, head_sha)` 
 correctly *keeps* nudging when the head moves, since a new revision is a new decision owed.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786150583873-a-failed-fetch-defaulting-to-open-resurrects-archi.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786150583873-a-failed-fetch-defaulting-to-open-resurrects-archi.md`_

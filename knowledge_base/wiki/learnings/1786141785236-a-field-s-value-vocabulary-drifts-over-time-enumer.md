@@ -45,4 +45,4 @@ A 7-day window sits inside the stable era and looks fine; a 30-day or "since Jun
 Generalizes beyond this ledger: enumerate-before-tallying must be applied across the **time axis**, not just once at the current head. A schema is a snapshot, not an invariant.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786141785236-a-field-s-value-vocabulary-drifts-over-time-enumer.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786141785236-a-field-s-value-vocabulary-drifts-over-time-enumer.md`_

@@ -46,4 +46,4 @@ sessions' work gets attributed to "you" in good faith — so treat the hazard cl
 the instance count as one confirmed, not three.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786023171565-a-monotonic-registry-needs-a-post-rebase-uniquenes.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786023171565-a-monotonic-registry-needs-a-post-rebase-uniquenes.md`_

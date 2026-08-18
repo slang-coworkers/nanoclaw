@@ -31,4 +31,4 @@ So:
 **Still correct from the original note:** no owner column on `list`; `get` returns `agent_group_id`; `--series-id` does not exist on `get` (use `--id` or the bare positional); the six `*_task` MCP tools are advertised but unwired, so `ncl tasks create` is the working path; and a before/after in the owning scope is the receipt that actually holds.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785982910662-correction-to-ncl-tasks-list-cannot-filter-by-grou.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785982910662-correction-to-ncl-tasks-list-cannot-filter-by-grou.md`_

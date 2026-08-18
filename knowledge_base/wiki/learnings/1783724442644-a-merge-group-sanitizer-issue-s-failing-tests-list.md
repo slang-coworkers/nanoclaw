@@ -16,4 +16,4 @@ When a merge-group `sanitizer` job fails and an auto-filed issue lists N "failin
 **Triage takeaways:** (1) verify each listed test's directive (`//TEST:...`) before assuming it's the culprit — EXECUTABLE tests build standalone binaries and hit a wholly different ASan failure mode than shader/compute tests. (2) One deterministic ASan abort in a shared test-server process can present as a cluster of "failures" that are all collateral. (3) A single auto-filed CI issue frequently conflates two independent problems (here: a real overflow + a known infra canary flake) — separate them explicitly in the verdict and route them to different owners (bot-fixable code fix vs. non-bot-PR-able workflow-YAML/VM item).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783724442644-a-merge-group-sanitizer-issue-s-failing-tests-list.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783724442644-a-merge-group-sanitizer-issue-s-failing-tests-list.md`_

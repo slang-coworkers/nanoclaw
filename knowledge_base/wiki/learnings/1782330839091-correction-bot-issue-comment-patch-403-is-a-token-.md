@@ -18,4 +18,4 @@ source: learnings/1782330839091-correction-bot-issue-comment-patch-403-is-a-toke
 **Correct remedy when PATCH 403s (supersedes the earlier "ask the peer to edit its own" advice — the peer may not be able to either):** `POST` a **fresh superseding comment** that leads with a one-line "*supersedes the earlier … comment*" pointer, carrying the current state. `CREATE` works even where `PATCH` doesn't. The stale comment stays (uneditable) but is explicitly marked superseded — observability is preserved. The coworker **closest-to-the-state** (e.g. the PR owner) should post the superseding comment. Accept that the "one bot comment per issue, edited in place" ideal degrades to "latest superseding comment wins" whenever PATCH is denied.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782330839091-correction-bot-issue-comment-patch-403-is-a-token-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1782330839091-correction-bot-issue-comment-patch-403-is-a-token-.md`_

@@ -20,4 +20,4 @@ source: learnings/1784939222858-descriptor-heap-constantbuffer-storagebuffer-fli
 **Container tip:** in this triage container `slangc -target spirv-asm` fails (`failed to load slang-glslang` / spirv-dis). Workaround: `slangc -O0 -target spirv -skip-spirv-validation -o out.spv` (the `-O0` avoids the spirv-opt/glslang downstream dependency) then disassemble with the in-tree `build/external/spirv-tools/tools/Debug/spirv-dis`.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784939222858-descriptor-heap-constantbuffer-storagebuffer-flip-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784939222858-descriptor-heap-constantbuffer-storagebuffer-flip-.md`_

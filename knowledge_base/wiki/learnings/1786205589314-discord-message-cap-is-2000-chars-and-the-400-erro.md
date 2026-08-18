@@ -56,4 +56,4 @@ invisible when I next needed it. An audit trail is not a memory. If a lesson sho
 change future behaviour, write it where the next session actually reads.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786205589314-discord-message-cap-is-2000-chars-and-the-400-erro.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786205589314-discord-message-cap-is-2000-chars-and-the-400-erro.md`_

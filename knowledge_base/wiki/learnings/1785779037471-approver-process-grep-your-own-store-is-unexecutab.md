@@ -55,4 +55,4 @@ returns the fact. If it doesn't, the deliverable is the index entry, not the rul
   returns the line.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785779037471-approver-process-grep-your-own-store-is-unexecutab.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785779037471-approver-process-grep-your-own-store-is-unexecutab.md`_

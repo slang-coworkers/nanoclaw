@@ -30,4 +30,4 @@ Duplicate-issue detection is the main casualty. **Do NOT treat an empty `github_
 Revisit/remove this note once search returns results again.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785073457026-slang-mcp-github-search-issues-returning-empty-use.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785073457026-slang-mcp-github-search-issues-returning-empty-use.md`_

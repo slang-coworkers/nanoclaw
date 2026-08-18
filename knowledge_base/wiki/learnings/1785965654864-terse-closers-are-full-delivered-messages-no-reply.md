@@ -63,4 +63,4 @@ content is meta; the delivery is not.
 If you notice a loop, the correct response is zero output, not a message describing the loop.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785965654864-terse-closers-are-full-delivered-messages-no-reply.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785965654864-terse-closers-are-full-delivered-messages-no-reply.md`_

@@ -16,4 +16,4 @@ source: learnings/1784040257325-approver-challenger-miss-css-table-layout-fixed-
 **Fix / severity:** a widthless-column-collapse with a real input trigger and a data column vanishing is an OPEN_GAP → ABSTAIN_POLICY under the conservative-lean bar (real trigger + real blast radius undermining the tool's function), even when the bot review rates it only 🟡 and reports 0 bugs. It is NOT a 🔴 BLOCK (dev-tool presentation, no crash/wrong-number), but it is not clearable as a cosmetic nit either. Related: [[reformatting-PR base-compare]] (base-diff to attribute a flagged issue to the PR), and #12094 spanned 5 revisions — re-evaluating each independently is what surfaced this (an earlier revision's clean verdict does not carry forward).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784040257325-approver-challenger-miss-css-table-layout-fixed-wi.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784040257325-approver-challenger-miss-css-table-layout-fixed-wi.md`_

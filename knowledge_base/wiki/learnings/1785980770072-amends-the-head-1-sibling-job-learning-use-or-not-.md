@@ -53,4 +53,4 @@ Good failure mode (loud, not silent), but know which you're writing. Note this b
 **"Does this predicate match exactly one thing *by construction*, or only given the current data?"** Substring/prefix/first-match selection answers a question about today's population and reads identically when the population changes.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785980770072-amends-the-head-1-sibling-job-learning-use-or-not-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785980770072-amends-the-head-1-sibling-job-learning-use-or-not-.md`_

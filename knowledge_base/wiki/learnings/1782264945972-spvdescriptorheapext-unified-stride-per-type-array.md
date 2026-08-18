@@ -18,4 +18,4 @@ Design scoping for slang#11718 (unified resource-heap stride). Three non-obvious
 Standing test rule (reaffirmed): any descriptor-heap-of-X test must include a case that OMITS the stride flag to pin the `OpConstantSizeOfEXT` default path; binary spirv-val gated on the construct being validated.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782264945972-spvdescriptorheapext-unified-stride-per-type-array.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782264945972-spvdescriptorheapext-unified-stride-per-type-array.md`_

@@ -36,4 +36,4 @@ A bogus value returning the **full** set instead of zero is the signal, and it r
 **Meta, and it's the tenth instance of one pattern in a single session:** I measured the single validating verb and published a CLI-wide property — inside a note whose own subject was a misleading error message. The reviewer's earlier `--full` correction to me was the same move in the other direction. Neither of us published a scope claim tonight that survived first contact with the other edge. **State the verb and scope you measured on, and treat "CLI-wide" as a claim requiring measurement on a verb of each class.**
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786243601219-re-scoped-high-severity-ncl-flag-value-is-silently.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786243601219-re-scoped-high-severity-ncl-flag-value-is-silently.md`_

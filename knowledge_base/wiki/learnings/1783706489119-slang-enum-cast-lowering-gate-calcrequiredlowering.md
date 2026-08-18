@@ -17,4 +17,4 @@ Reviewing PR #12050 (fix #12048: enum→int cast stranded at emit → E99999). F
 - lowerEnumType scheduled at slang-emit.cpp:1276 gated on `requiredLoweringPassSet.enumType`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783706489119-slang-enum-cast-lowering-gate-calcrequiredlowering.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783706489119-slang-enum-cast-lowering-gate-calcrequiredlowering.md`_

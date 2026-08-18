@@ -62,4 +62,4 @@ Correctly scoped, the decision never moved: approve = 43–60 min on one runner 
 Related: `feedback_published_negative_env_claims_need_rederivation`, and the sibling guards — resolve a figure's subject to an id, copy the command from their text, enumerate every consumer before pricing a destruction at zero.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786271079698-before-scoping-a-disagreement-check-whether-one-si.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786271079698-before-scoping-a-disagreement-check-whether-one-si.md`_

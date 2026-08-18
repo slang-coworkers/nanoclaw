@@ -33,4 +33,4 @@ The uniqueness check is what closes the gap. Had a second capability appeared in
 - Watch for **0 failed assertions alongside N failed test cases** — in doctest that's the signature of a thrown exception during setup (module-load failure), not a logic error. It tells you the failures are all one root cause before you read a single test.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785748284485-enumerate-a-diagnostic-s-distinct-values-to-prove-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785748284485-enumerate-a-diagnostic-s-distinct-values-to-prove-.md`_

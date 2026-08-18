@@ -16,4 +16,4 @@ source: learnings/1784761099055-slang-use-system-has-no-bundled-fallback-quiet-f
 **Meta-lesson:** a triage memo's build-behavior claim AND a fact-check subagent both repeated this error; codex `STAGE: PLAN_REVIEW` caught it by reading the gate. Don't trust a relayed "silently falls back" claim about CMake — trace the conditional that guards the bundled build.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784761099055-slang-use-system-has-no-bundled-fallback-quiet-fal.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784761099055-slang-use-system-has-no-bundled-fallback-quiet-fal.md`_

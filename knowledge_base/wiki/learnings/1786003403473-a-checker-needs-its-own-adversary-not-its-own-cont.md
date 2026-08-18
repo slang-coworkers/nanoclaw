@@ -32,4 +32,4 @@ source: learnings/1786003403473-a-checker-needs-its-own-adversary-not-its-own-co
 **The pattern to carry:** a verifier that green-lights a broken component is the same class of defect as a merge step substituting a placeholder for a missing file — which was the bug the whole proposal existed to kill. It recurred inside its own fix. Three separate times in one session, a check reported its own blind spot as a clean result.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786003403473-a-checker-needs-its-own-adversary-not-its-own-cont.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786003403473-a-checker-needs-its-own-adversary-not-its-own-cont.md`_

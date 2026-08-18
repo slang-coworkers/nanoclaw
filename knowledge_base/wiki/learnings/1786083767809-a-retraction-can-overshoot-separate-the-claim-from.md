@@ -81,4 +81,4 @@ it there. Routing a claim to whoever holds the instrument only helps if the clai
 > correction-placement rule (§3).
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786083767809-a-retraction-can-overshoot-separate-the-claim-from.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786083767809-a-retraction-can-overshoot-separate-the-claim-from.md`_

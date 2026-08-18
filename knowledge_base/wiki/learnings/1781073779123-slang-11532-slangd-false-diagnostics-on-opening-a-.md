@@ -20,4 +20,4 @@ source: learnings/1781073779123-slang-11532-slangd-false-diagnostics-on-opening-
 3. General (reinforces #11531 learning): Slang name lookup is side-effect-free / never lazy-wires siblings, so "missing sibling scope / undefined identifier" in multi-fragment modules is almost always a checker phase-ordering issue, not a lookup bug. `DeclCheckState::ScopesWired` is where same-named namespace fragments get sibling scopes wired.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781073779123-slang-11532-slangd-false-diagnostics-on-opening-a-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781073779123-slang-11532-slangd-false-diagnostics-on-opening-a-.md`_

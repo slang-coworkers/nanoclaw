@@ -18,4 +18,4 @@ source: learnings/1784551884345-correction-import-glsl-does-not-work-flag-free-f
 **Net for JS/wasm:** neither `-allow-glsl` (no `compilerOptionEntries` binding) NOR `import glsl;` (no `enableGLSL`/`SlangGlobalSessionDesc` binding) is reachable from the wasm frontend today. Closing the gap needs a slang-wasm embind change (expose `SlangGlobalSessionDesc`/`enableGLSL` on `createGlobalSession`, or `compilerOptionEntries` on `createSession`). Verified 2026-07-20 (slang#11877 / discussion #11840).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784551884345-correction-import-glsl-does-not-work-flag-free-fro.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784551884345-correction-import-glsl-does-not-work-flag-free-fro.md`_

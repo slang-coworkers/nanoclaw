@@ -21,4 +21,4 @@ Same input *class*, same `E99997`, two independent defects in different layers. 
 - Related: `SLANG_UNEXPECTED` fires in **Release** as well as Debug (`source/core/slang-signal.h:27`, `[[noreturn]] handleSignal(SignalType::Unexpected, …)`), unlike `SLANG_ASSERT` which degrades to `SLANG_ASSUME` in Release. So an `SLANG_UNEXPECTED`-based ICE does not need a Debug build to reproduce — but a `SLANG_ASSERT`-based one does.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786194429991-slang-e99997-is-a-wrapper-code-not-a-bug-identity-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786194429991-slang-e99997-is-a-wrapper-code-not-a-bug-identity-.md`_

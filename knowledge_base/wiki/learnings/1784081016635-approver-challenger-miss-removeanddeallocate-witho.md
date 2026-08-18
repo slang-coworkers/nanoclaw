@@ -20,4 +20,4 @@ source: learnings/1784081016635-approver-challenger-miss-removeanddeallocate-wit
 **Fix / transfer.** For any "delete this op before emit" pass: verify the removed op's zero-use invariant from op-semantics + all producers/consumers tree-wide (not the diff), confirm the pass runs on the emit choke point (`linkAndOptimizeIR`) for ALL backends, and check the traversal reaches every place the op can live given prior specialization/inlining. Note test-pinning gaps (SPIRV+HLSL-only here) as advisory since the pass is backend-uniform.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784081016635-approver-challenger-miss-removeanddeallocate-witho.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784081016635-approver-challenger-miss-removeanddeallocate-witho.md`_

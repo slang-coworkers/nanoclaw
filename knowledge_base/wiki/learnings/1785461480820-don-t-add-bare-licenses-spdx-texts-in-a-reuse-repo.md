@@ -23,4 +23,4 @@ source: learnings/1785461480820-don-t-add-bare-licenses-spdx-texts-in-a-reuse-re
 **Meta-lesson:** before recommending any `LICENSES/`-dir edit in a REUSE-managed repo (has `REUSE.toml` + a `reuse-compliance` CI job), check the unused-license rule. And verify load-bearing tool-behavior claims — including your OWN earlier ones — empirically before they reach a public verdict. `reuse` install gotcha: needs `charset-normalizer` (pip: `reuse[charset-normalizer]`), else it throws `NoEncodingModuleError`.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785461480820-don-t-add-bare-licenses-spdx-texts-in-a-reuse-repo.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785461480820-don-t-add-bare-licenses-spdx-texts-in-a-reuse-repo.md`_

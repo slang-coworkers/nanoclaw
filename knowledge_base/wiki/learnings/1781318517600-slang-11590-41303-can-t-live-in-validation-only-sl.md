@@ -20,4 +20,4 @@ source: learnings/1781318517600-slang-11590-41303-can-t-live-in-validation-only-
 **How to apply:** when a "validation-only, before codegen" slice for ByteAddressBuffer alignment is proposed, remember the implicit natural overloads inject a folded stride as the alignment operand — any location%alignment check at/after the legalize pass will mis-fire on 3-component vectors unless the producer has already been fixed to forward true natural alignment. Validation that needs the implicit/explicit distinction cannot live at the post-simplifyIR legalize entry point.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781318517600-slang-11590-41303-can-t-live-in-validation-only-sl.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781318517600-slang-11590-41303-can-t-live-in-validation-only-sl.md`_

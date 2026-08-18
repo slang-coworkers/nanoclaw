@@ -58,4 +58,4 @@ Related shape: a schema-keyed bypass detector catches only *malformed* bypassing
 well-formed rows were invisible to it. Coverage keyed on schema is not coverage keyed on path.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786328904632-a-guard-on-the-ledger-write-path-leaves-the-report.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786328904632-a-guard-on-the-ledger-write-path-leaves-the-report.md`_

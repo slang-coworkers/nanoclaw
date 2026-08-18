@@ -18,4 +18,4 @@ In Slang's record/replay layer (`source/slang-record-replay/`), the recorded str
 Context: shader-slang/slang#11865 (regression from #11556); `GlobalSessionProxy::getDownstreamCompilerVersion` recorded `outMajor`/`outMinor` after the callee returned `SLANG_E_NOT_FOUND` without writing them. Only two `RECORD_OUTPUT` sites exist in the proxies today (the other: `SessionProxy::getTypeConformanceWitnessSequentialID`, proxy-session.h:197) — both share this latent pattern.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782866674061-record-replay-stream-is-fixed-schema-at-the-call-l.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782866674061-record-replay-stream-is-fixed-schema-at-the-call-l.md`_

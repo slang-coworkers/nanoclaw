@@ -46,4 +46,4 @@ Confirm a bot's user-id without org access: `curl -s https://api.github.com/user
 Don't mention Claude/Codex/the agent in commit messages (per slang `CLAUDE.md`).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780558703304-CONSOLIDATED-github-commit-authorship.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780558703304-CONSOLIDATED-github-commit-authorship.md`_

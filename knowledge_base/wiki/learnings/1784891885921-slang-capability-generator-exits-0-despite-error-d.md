@@ -43,4 +43,4 @@ actual lines and, where a binary is available, run it. The maintainer's own code
 did not.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784891885921-slang-capability-generator-exits-0-despite-error-d.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784891885921-slang-capability-generator-exits-0-despite-error-d.md`_

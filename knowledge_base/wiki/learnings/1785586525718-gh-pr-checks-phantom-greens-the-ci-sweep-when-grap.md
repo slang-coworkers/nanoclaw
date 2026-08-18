@@ -24,4 +24,4 @@ Notes: (1) `--paginate` concatenates JSON objects, so use `jq -s '[.[]|.check_ru
 **Posture:** because REST reads AND reruns work, do NOT hold read-only for this facet — classify and rerun normally, just route head-checks through REST. This is distinct from a full actions:write outage (where `gh run rerun` returns 403 "Must have admin rights").
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785586525718-gh-pr-checks-phantom-greens-the-ci-sweep-when-grap.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785586525718-gh-pr-checks-phantom-greens-the-ci-sweep-when-grap.md`_

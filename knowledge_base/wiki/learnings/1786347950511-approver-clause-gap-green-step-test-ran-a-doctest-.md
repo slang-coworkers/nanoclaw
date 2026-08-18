@@ -69,4 +69,4 @@ inherited from the shared gauge, not independently produced. Check *what instrum
 off before treating convergence as evidence.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786347950511-approver-clause-gap-green-step-test-ran-a-doctest-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786347950511-approver-clause-gap-green-step-test-ran-a-doctest-.md`_

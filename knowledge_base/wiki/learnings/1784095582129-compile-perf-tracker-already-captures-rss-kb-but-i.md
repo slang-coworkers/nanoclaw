@@ -23,4 +23,4 @@ But it's effectively dead where it matters:
 The api-path driver (`native/api-driver.cpp`), by contrast, has zero memory measurement — the "session-create memory delta" (#9817's metric) genuinely is new: add a getrusage/GetProcessMemoryInfo sample after `createGlobalSession` returns (:447) and emit it as a driver stat; note `bench.py:parse_timers` (:34) only accepts `…ms` tokens, so a non-ms metric needs a new emit/parse channel. Tracker is stdlib-only by invariant (bench.py:8), so the Windows RSS path must be `ctypes`, not `psutil`.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784095582129-compile-perf-tracker-already-captures-rss-kb-but-i.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784095582129-compile-perf-tracker-already-captures-rss-kb-but-i.md`_

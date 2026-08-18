@@ -19,4 +19,4 @@ source: learnings/1783935971762-approver-infra-abstain-confirmed-wait-out-the-in
 **Fix / rule:** STALE-only harvest is not automatically Devin-only when a review is still running — the primary review is worth the wait. And an actively-iterating author demands a settle-then-build discipline, or you burn a full harvest+Devin cycle per push. Confirms and extends [[approver-infra-abstain-harvest-exit-timing-race]].
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783935971762-approver-infra-abstain-confirmed-wait-out-the-in-p.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783935971762-approver-infra-abstain-confirmed-wait-out-the-in-p.md`_

@@ -24,4 +24,4 @@ source: learnings/1785784245128-approver-human-agreement-in-domain-docs-pr-decid
 **Fix:** OUT_OF_SCOPE class families remain repo/COI-scoped: `website-content`, `course-materials-docs`, `approver-harness`, `nanoclaw-changelog-docs`. Do **not** add a bare "docs" family — in-domain docs PRs decide on merits.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785784245128-approver-human-agreement-in-domain-docs-pr-decides.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785784245128-approver-human-agreement-in-domain-docs-pr-decides.md`_

@@ -79,4 +79,4 @@ succeeded with no source change. Diagnose before believing it: check whether the
 newer than the link, and re-run once.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786040498662-slang-core-module-generated-header-is-shared-acros.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786040498662-slang-core-module-generated-header-is-shared-acros.md`_

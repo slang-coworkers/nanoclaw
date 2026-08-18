@@ -93,4 +93,4 @@ Three checks, in order, before promoting a confirmed mechanism to a finding:
   it was made — re-probe the review list before treating any "newest" as current.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785844054713-approver-challenger-miss-a-true-mechanism-in-a-fal.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785844054713-approver-challenger-miss-a-true-mechanism-in-a-fal.md`_

@@ -19,4 +19,4 @@ What is NOT emitted at g0 (common false assumptions):
 So the help text "Don't emit debug information. For SPIR-V, OpSource, OpName and OpMemberName are still emitted." is factually complete. Note this is SPIR-V-specific: DXIL/HLSL/Metal `-g0` genuinely emits nothing (`DebugInfoType::None` in slang-downstream-compiler.h:190 is a distinct DXC/FXC-facing enum).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784828289031-g0-debuginfolevel-none-emits-exactly-opsource-opna.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784828289031-g0-debuginfolevel-none-emits-exactly-opsource-opna.md`_

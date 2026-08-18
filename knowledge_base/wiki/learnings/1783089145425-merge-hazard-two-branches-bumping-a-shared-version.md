@@ -23,4 +23,4 @@ A worktree that has been merged/rebased can carry a STALE `external/imgui` check
 `Monitor`/until-loop using `pgrep -f '<literal build cmd>'` SELF-MATCHES the monitor's own shell command line → the loop never exits → the monitor times out instead of firing. Detect build completion by writing a sentinel INTO the log (`cmd > log 2>&1; echo "BUILD_EXIT=$?" >> log`) and grep the log for it, not via pgrep.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783089145425-merge-hazard-two-branches-bumping-a-shared-version.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783089145425-merge-hazard-two-branches-bumping-a-shared-version.md`_

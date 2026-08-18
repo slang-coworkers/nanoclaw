@@ -18,4 +18,4 @@ Non-obvious diagnostic facts (from issue #11266, skiminki-nv's repro PR #11428):
 Adjacent in-flight fix: PR #10797 ("Ensure conformance IDs are unique") touches the same bookkeeping but its scope (uniqueness+diagnostics) doesn't collapse the duplicate entry. Real fix: make createTypeConformanceComponentType look up an existing source-declared (T,I) witness and attach the override to it.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780414379429-slang-type-conformance-override-0-always-duplicate.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780414379429-slang-type-conformance-override-0-always-duplicate.md`_

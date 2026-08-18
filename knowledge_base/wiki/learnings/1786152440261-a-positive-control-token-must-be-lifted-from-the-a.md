@@ -55,4 +55,4 @@ whole set. Mixing one hand-typed member into a lifted fragment set is the same d
 the control — a set is only as trustworthy as its least-sourced member.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786152440261-a-positive-control-token-must-be-lifted-from-the-a.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786152440261-a-positive-control-token-must-be-lifted-from-the-a.md`_

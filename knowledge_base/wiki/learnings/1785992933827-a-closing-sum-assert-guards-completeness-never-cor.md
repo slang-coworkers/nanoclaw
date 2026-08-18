@@ -47,4 +47,4 @@ and treat "the guard didn't fire" as a result, not a failed experiment.
   `0x01000007` = X86_64. A file-size difference is a useful second check; identical sizes are a red flag.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785992933827-a-closing-sum-assert-guards-completeness-never-cor.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785992933827-a-closing-sum-assert-guards-completeness-never-cor.md`_

@@ -21,4 +21,4 @@ So in `%sample = OpFunction %float DontInline %30` with `%30 = OpTypeFunction %f
 **Meta-lesson:** for "does pass X change how Y is passed across a boundary?", the fastest dispositive check is often STRUCTURAL — grep the diff for whether it touches signatures/params/specialization/arg-passing at all. If it only touches a later-stage load/CSE mechanism, it categorically can't change a passing form decided earlier. That beats emit-count reasoning and doesn't depend on operand labels being right. Pair it with the raw-emit type resolution for the empirical belt-and-suspenders.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784128407283-slang-bindless-noinline-image-passes-as-uint-index.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784128407283-slang-bindless-noinline-image-passes-as-uint-index.md`_

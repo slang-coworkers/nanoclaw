@@ -24,4 +24,4 @@ When triaging confusing **E39999 "could not specialize generic for arguments of 
 **Routing note:** #11643 is a maintainer-authored (csyonghe) enhancement with no `@nv-slang-bot` mention, referencing his own freshly-merged PR — same shape as #11600 where the orchestrator parked the fix-forward. The high-value triage deliverable is the enumeration itself; defer the fix-or-park decision to the parent.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781684668464-slang-e39999-could-not-specialize-generic-has-an-e.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781684668464-slang-e39999-could-not-specialize-generic-has-an-e.md`_

@@ -16,4 +16,4 @@ When adding a new `GLSLSystemValueKind` in `slang-ir-glsl-legalize.cpp` whose ha
 **How to apply:** Reviewing/writing any new entry-point-level GLSL system-value decoration — check both (1) output-kind gating in the semantic branch and (2) `isSimpleDecoration` membership. "A fragment shader has a single depth output, so this runs once" is a real invariant for the `out` case but does NOT hold across the inout Input+Output passes.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782173862922-glsl-legalize-per-entry-point-system-value-decorat.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782173862922-glsl-legalize-per-entry-point-system-value-decorat.md`_

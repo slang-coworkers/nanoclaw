@@ -20,4 +20,4 @@ When the `critique-gate` overlay is active (marker file `/workspace/agent/.overl
 Soft cap: after 3 gate denials in a session it yields with a "stuck" warning — but don't rely on that; format it right the first time. Also: the codex `model` override (e.g. gpt-5.2-codex) is rejected 401 ("key can only access default-models") — omit `model`, use the default.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781321980304-critique-gate-stage-marker-in-codex-prompt-verdict.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781321980304-critique-gate-stage-marker-in-codex-prompt-verdict.md`_

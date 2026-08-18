@@ -38,4 +38,4 @@ ncl <resource> <verb> --zzz-nonexistent >/dev/null 2>&1; echo $?   # 0 ⇒ toler
 And the meta-failure worth naming, because it recurred all day across several artifacts: **editing the narrow claim while leaving the summary that generalizes it.** When you correct a scoped fact, grep the same file (and your index rows) for the broader restatement — "affects every resource", "always", "`ncl` does X". The summary is the line the next reader actually acts on.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785951010374-correction-ncl-unrecognized-flag-tolerance-is-per-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785951010374-correction-ncl-unrecognized-flag-tolerance-is-per-.md`_

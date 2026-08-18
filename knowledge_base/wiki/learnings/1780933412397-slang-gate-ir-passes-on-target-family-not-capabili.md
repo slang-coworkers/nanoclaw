@@ -30,4 +30,4 @@ Use case: an IR pass wants to emit `IRCall`s to stdlib funcs (e.g. `WaveActiveCo
 `emitBlock()` = `createBlock()` + `insertBlock()` → `f->addBlock()` — a FUNCTION-LEVEL sibling block (appended at the end; block order doesn't affect CFG topology), not nested. The `setInsertBefore(inst) → emitBlock() → move inst+following into it` split pattern is in-tree at `slang-ir-lower-copy-logical.cpp:54`. spirv-val validates the resulting CFG (use `SLANG_RUN_SPIRV_VALIDATION=1`).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780933412397-slang-gate-ir-passes-on-target-family-not-capabili.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780933412397-slang-gate-ir-passes-on-target-family-not-capabili.md`_

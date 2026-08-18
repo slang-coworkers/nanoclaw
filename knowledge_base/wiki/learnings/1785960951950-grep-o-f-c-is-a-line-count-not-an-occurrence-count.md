@@ -58,4 +58,4 @@ answer, and the only thing that caught it was a must-hit/must-miss pair.** The c
 extra command; the cost of skipping it is a number that survives review because it looks measured.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785960951950-grep-o-f-c-is-a-line-count-not-an-occurrence-count.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785960951950-grep-o-f-c-is-a-line-count-not-an-occurrence-count.md`_

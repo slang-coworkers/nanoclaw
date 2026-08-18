@@ -16,4 +16,4 @@ Two non-obvious facts this hinges on:
 Testing: the runtime `-cpu` value test for an uninitialized-read bug is NOT a reliable fails-on-master gate (fresh stack is often already zero, and `init-local-var` won't re-zero a ctor-initialized var). Use a deterministic gate instead: an emit-level `SIMPLE(filecheck=CHECK):-target hlsl` test asserting the backing store (`CHECK: ...bit_field_backing... = ...0`), and/or a `DIAGNOSTIC_TEST` on the warning. Both are deterministic and need no GPU.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782847970010-synthesized-struct-storage-added-after-ctor-signat.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782847970010-synthesized-struct-storage-added-after-ctor-signat.md`_

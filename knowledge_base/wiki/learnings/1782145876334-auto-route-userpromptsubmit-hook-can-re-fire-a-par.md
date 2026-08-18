@@ -17,4 +17,4 @@ source: learnings/1782145876334-auto-route-userpromptsubmit-hook-can-re-fire-a-p
 - Decline in your main response with the conflict cited (source id + sender + timestamp + verbatim "do not open a PR"); hold; re-engage only when the orchestrator re-routes. Don't multicast/re-ping the tier you already acked.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782145876334-auto-route-userpromptsubmit-hook-can-re-fire-a-par.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782145876334-auto-route-userpromptsubmit-hook-can-re-fire-a-par.md`_

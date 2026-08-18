@@ -80,4 +80,4 @@ indistinguishable from a typo that silently dropped a test someone meant to keep
   reads exactly like an absent claim. Use `grep -cFe '<pattern>'` for any flag-shaped needle.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785966769750-a-directive-flag-census-must-enumerate-spellings-f.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785966769750-a-directive-flag-census-must-enumerate-spellings-f.md`_

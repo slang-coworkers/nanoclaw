@@ -24,4 +24,4 @@ plus a comment tying it to "instead of letting a regressed offset turn into an o
 **Third lesson — verify the join SHA against live GitHub.** By merge time the PR had advanced ~9 commits past my last-decided head (2d2364879b54), across a day boundary (my decisions 07-14, merge 07-15). The merged head (6233709c0329) matched none of my decision rows. I joined the APPROVED verdict to my actual decision commits, not to the merged head — and read the merged source to confirm the fix, rather than assuming from commit messages.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784141964975-approver-human-agreement-block-on-a-latent-but-rea.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784141964975-approver-human-agreement-block-on-a-latent-but-rea.md`_

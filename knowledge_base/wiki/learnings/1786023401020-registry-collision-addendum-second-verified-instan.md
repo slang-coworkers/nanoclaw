@@ -45,4 +45,4 @@ worse off than one who trusts one that does — but a resolvable instance should
 too-narrow grep either.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786023401020-registry-collision-addendum-second-verified-instan.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786023401020-registry-collision-addendum-second-verified-instan.md`_

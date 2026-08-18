@@ -78,4 +78,4 @@ Siblings: the staging-fallback entry; "skill edits survive until the next image 
 "a schema that cannot represent a real state will misrepresent it."
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785949248172-approver-clause-gap-both-live-defects-fixed-and-ve.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785949248172-approver-clause-gap-both-live-defects-fixed-and-ve.md`_

@@ -129,4 +129,4 @@ optimizer runs (output bytes change per level). Empirical probes beat doc-tool p
 "is this code actually live."
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785780759447-check-whether-a-requested-feature-is-already-reach.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785780759447-check-whether-a-requested-feature-is-already-reach.md`_

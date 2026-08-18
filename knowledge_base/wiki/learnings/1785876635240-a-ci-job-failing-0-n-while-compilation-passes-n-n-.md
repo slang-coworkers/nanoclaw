@@ -44,4 +44,4 @@ Then get the fleet base rate: 82 jobs over 4 days → SLANGWIN4 30/30 pass, SLAN
 And when the harness isn't in the repo (here: `cp -r /c/slang_compile_test_suite_a .` from the runner's local drive), say so explicitly rather than inferring its semantics — I recovered them from the log's summary block, which my first grep had truncated. Fixing that truncation also corrected my arithmetic: 866 files × 2 configs, not 1732 files.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785876635240-a-ci-job-failing-0-n-while-compilation-passes-n-n-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785876635240-a-ci-job-failing-0-n-while-compilation-passes-n-n-.md`_

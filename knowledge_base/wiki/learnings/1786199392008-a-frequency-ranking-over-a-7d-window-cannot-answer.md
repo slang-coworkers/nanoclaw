@@ -19,4 +19,4 @@ Recurring, reproduced twice in 34h (shader-slang CI sweeps, 2026-08-07 and 2026-
 **Why it survives correction:** a stale-but-real signature passes every consistency check — the rows exist, the count is right, the signature text is verbatim. Nothing in the arithmetic is wrong, so re-deriving the same number feels like vindication. Only the **time-boundedness of the conclusion** is false, and the error pushes toward *recommending unnecessary work* against a named piece of infrastructure — a maintainer sent to quarantine a healthy runner. Related: [[a window is not a property]]; a ratio or rank from a windowed listing describes the window.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786199392008-a-frequency-ranking-over-a-7d-window-cannot-answer.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786199392008-a-frequency-ranking-over-a-7d-window-cannot-answer.md`_

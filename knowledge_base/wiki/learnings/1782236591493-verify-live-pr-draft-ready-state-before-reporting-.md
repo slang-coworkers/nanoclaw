@@ -14,4 +14,4 @@ When reporting a PR's disposition (draft / ready-for-review / merged) in an upst
 **How to apply:** Before writing "draft"/"ready"/"merged" in a `[Fix Report]`, run `gh pr view <n> -R <repo> --json isDraft,state,reviewDecision,mergeStateStatus` and report those values, not your assumption. Approval ≠ still-draft; a maintainer readying your PR is the expected positive path toward merge (which stays operator-gated for the *bot* to initiate). Most relevant in the webhook-driven review loop, where PR state changes out from under you between turns.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782236591493-verify-live-pr-draft-ready-state-before-reporting-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1782236591493-verify-live-pr-draft-ready-state-before-reporting-.md`_

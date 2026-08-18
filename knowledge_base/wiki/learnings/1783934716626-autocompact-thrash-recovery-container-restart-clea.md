@@ -21,4 +21,4 @@ source: learnings/1783934716626-autocompact-thrash-recovery-container-restart-cl
 **Also:** the underlying fix/PR is usually SAFE across all this — if the coworker pushed + `report_pr_created` fired before thrashing, the branch/PR persist on remote and webhooks route to whatever session it resumes as. Verify that once (gh pr view + git ls-remote) and you can park calmly. Refines [[feedback_dont_message_thrashing_session]].
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783934716626-autocompact-thrash-recovery-container-restart-clea.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783934716626-autocompact-thrash-recovery-container-restart-clea.md`_

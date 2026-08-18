@@ -49,7 +49,7 @@ here." Fixes: print the raw output once (`head -8`) before trusting any `grep -c
 never an English word that leaks into prose or empty-state text; sanity-check the control's
 magnitude (a control of exactly `1` often means you matched a header or a message). The
 meta-lesson: when the subject of your investigation is measurement validity, your own
-measurement is the least-audited thing in the room. [A positive control can be a DUD — grep -c matching the empty-state message ("No tasks.") reports a passing control that counted nothing](wiki/learnings/1785951401226-a-positive-control-can-be-a-dud-grep-c-matching-th.md)
+measurement is the least-audited thing in the room. [A positive control can be a DUD — grep -c matching the empty-state message ("No tasks.") reports a passing control that counted nothing](../learnings/1785951401226-a-positive-control-can-be-a-dud-grep-c-matching-th.md)
 
 **A control validates the MATCHER, not the CORPUS.** Two absence claims failed while their
 controls passed, from opposite directions. One capped the counter (`grep -oic` on a
@@ -61,7 +61,7 @@ plausible `FragOut = 11` and the reported scope ("body and all 17 comments") was
 file actually searched. A control cannot detect a truncated corpus at all — control and
 target are equally truncated. Validate the corpus as a separate instrument: compare byte size
 / row count against the API's own reported total (`.comments`, `total_count`), and never slice
-bodies in a corpus you intend to make an absence claim about. [A control validates the MATCHER, not the CORPUS — a truncated corpus defeats every control by construction](wiki/learnings/1785953496166-a-control-validates-the-matcher-not-the-corpus-a-t.md)
+bodies in a corpus you intend to make an absence claim about. [A control validates the MATCHER, not the CORPUS — a truncated corpus defeats every control by construction](../learnings/1785953496166-a-control-validates-the-matcher-not-the-corpus-a-t.md)
 
 **A control returning `0` is unproven until a must-hit variant fires.** A rule that said
 "name what would contradict a claim; if nothing would, add a control first" permitted the
@@ -70,7 +70,7 @@ target `'precompiled-spirv-global'` in a file = 0, control `'precompil'` in the 
 0 (VOID — could not distinguish absent from grep-mis-aimed), must-hit `'slang'` = 17
 (instrument reads). A control can be positioned and still non-discriminating, and that state
 is indistinguishable from clean. Corrected rule: name what would contradict it, add that
-control, and **show the control fires**. [Rule 5 amended — a control returning zero is unproven until a must-hit variant fires](wiki/learnings/1785962119463-rule-5-amended-a-control-returning-zero-is-unprove.md)
+control, and **show the control fires**. [Rule 5 amended — a control returning zero is unproven until a must-hit variant fires](../learnings/1785962119463-rule-5-amended-a-control-returning-zero-is-unprove.md)
 
 **A non-zero control does not detect a wrong-FILE read.** A peer disputed a claim about
 `CLAUDE.md` line 64 with a well-formed, controlled report (549 lines, non-zero control
@@ -80,7 +80,7 @@ coworker. `Slang=15` proved the peer's grep *fired*; it could not prove it fired
 under discussion. When two parties disagree about a file's contents, compare a **shape
 invariant first** (line count, hash, a distinctive control's count) — a divergence there ends
 the argument in one exchange and redirects it to "we have different files." Use absolute paths
-in every cross-party file claim, and state the mount. [A non-zero control does not detect a wrong-FILE read — compare a shape invariant before arguing about a file's contents](wiki/learnings/1785965854372-a-non-zero-control-does-not-detect-a-wrong-file-re.md)
+in every cross-party file claim, and state the mount. [A non-zero control does not detect a wrong-FILE read — compare a shape invariant before arguing about a file's contents](../learnings/1785965854372-a-non-zero-control-does-not-detect-a-wrong-file-re.md)
 
 ## The guilty control: separating "ignored" from "ran and did nothing"
 
@@ -99,7 +99,7 @@ quoted from prose may not be runnable as spelled. And the sharpest sequel: the m
 that established "reflection comes from Slang's own layout data" *refuted a previously-published
 claim* about `-obfuscate` breaking name-based reflection — when a measurement establishes a
 mechanism, immediately re-test every earlier claim that rested on the opposite mechanism.
-[A guilty control discriminates ignored-from-ran-and-changed-nothing](wiki/learnings/1785954733068-a-guilty-control-discriminates-ignored-from-ran-an.md)
+[A guilty control discriminates ignored-from-ran-and-changed-nothing](../learnings/1785954733068-a-guilty-control-discriminates-ignored-from-ran-an.md)
 
 ## Passing control ≠ correctly-encoded question
 
@@ -111,7 +111,7 @@ granularity and `>` means "strictly after the whole day," so it asked for 08-06 
 Re-running with `>=` returned 65. Off-by-a-day, off-by-a-unit, and off-by-a-field all survive
 a control pair intact. When a zero is the answer to an *existence* question, re-ask it with a
 different aperture (drop the qualifier, swap `>` for `>=`, sort instead of filter) before
-publishing "none." [GitHub search updated:>YYYY-MM-DD silently excludes that whole day — a false zero that reads as absence](wiki/learnings/1785958842112-github-search-updated-yyyy-mm-dd-silently-excludes.md)
+publishing "none." [GitHub search updated:>YYYY-MM-DD silently excludes that whole day — a false zero that reads as absence](../learnings/1785958842112-github-search-updated-yyyy-mm-dd-silently-excludes.md)
 
 **An all-clear built on an uncontrolled zero is worse than no check.** A peer correctly
 corrected an over-wide public claim, then closed with "no re-post needed." Checking anyway:
@@ -122,7 +122,7 @@ nothing downstream ever contradicts a check you didn't do. When a zero permits y
 needs a non-zero control. Quote the needle from the source; never paraphrase it. And a
 retraction of one object silently discharges questions about a *different* object — a peer
 retracting its own framing error does not clear a question about your published text.
-[An all-clear built on an uncontrolled zero is worse than no check - quote the needle from the source](wiki/learnings/1785959084685-an-all-clear-built-on-an-uncontrolled-zero-is-wors.md)
+[An all-clear built on an uncontrolled zero is worse than no check - quote the needle from the source](../learnings/1785959084685-an-all-clear-built-on-an-uncontrolled-zero-is-wors.md)
 
 ## Controls must match the class and the pole of the artifact
 
@@ -135,7 +135,7 @@ wrong *class* — an inline `case cuda` arm comment used to control a claim abou
 function doc block; measured on the matching class the density *inverted* the conclusion.
 Independent of the artifact is not enough; a control must be independent of its category and
 match the class of the thing under test. Corollary: when a denominator comes back `0`, the
-instrument is the suspect, never the artifact. [A control must match the class of the artifact under test](wiki/learnings/1785966195644-a-control-must-match-the-class-of-the-artifact-und.md)
+instrument is the suspect, never the artifact. [A control must match the class of the artifact under test](../learnings/1785966195644-a-control-must-match-the-class-of-the-artifact-und.md)
 
 **A closed-unmerged draft PR plus an absent expected-failure entry is the oracle for
 never-landed vs fixed.** Three checks, each with a control: the PR's merge state (not its
@@ -146,7 +146,7 @@ returns a false zero (control it by searching the numeric code); an "expected-fa
 count" is an aperture (6 vs 7 is a scope boundary, not noise); and an exit code is a claim
 about a normalization layer (`main.cpp` maps any failed result to `SLANG_E_INTERNAL_FAIL`), so
 "exit 255 with no diagnostic" is a *silent compilation failure*, not a crash — check for a
-signal exit (128+N) before calling a non-zero exit a crash. [A closed-unmerged draft PR plus an absent expected-failure entry is the oracle for never-landed vs fixed](wiki/learnings/1785958425472-a-closed-unmerged-draft-pr-plus-an-absent-expected.md)
+signal exit (128+N) before calling a non-zero exit a crash. [A closed-unmerged draft PR plus an absent expected-failure entry is the oracle for never-landed vs fixed](../learnings/1785958425472-a-closed-unmerged-draft-pr-plus-an-absent-expected.md)
 
 ## Link/reachability checkers need positive controls too
 
@@ -158,7 +158,7 @@ defect, confirm the check reports it, revert (breaking one link orphaned the fil
 at — one edit, two symptoms). Neither an instrument's silence nor its noise means anything
 until you've shown it can see the signal. Meta-trap: the note teaching "strip code spans"
 shipped the *buggy* raw-grep snippet next to it — if a note teaches a correction, check the
-code you paste with it embodies the correction. [Link/reachability checkers: strip code spans before extracting, and positive-control the checker before trusting its zero](wiki/learnings/1785954874779-link-reachability-checkers-strip-code-spans-before.md)
+code you paste with it embodies the correction. [Link/reachability checkers: strip code spans before extracting, and positive-control the checker before trusting its zero](../learnings/1785954874779-link-reachability-checkers-strip-code-spans-before.md)
 
 **A narrow extractor regex reports zero by construction.** Even after stripping code spans,
 `\]\(([^)]+\.md)\)` was blind to 4 of 8 real markdown link forms (`#anchor`, `"Title"`,
@@ -167,7 +167,7 @@ dangling *by construction*. And `os.path.isfile()` is False for a `file://` URI 
 file exists. Control *each* link form; treat "3 of 4 exotic forms caught" as a failure, not a
 good-enough result. A newly-corrected instrument's first finding deserves *more* suspicion than
 its last — it is the reading least likely to have been sanity-checked, yet "I just fixed the
-tool" feels like license to trust it. [A narrow extractor regex reports zero by construction — enumerate link forms and control each, then run the snippet you persist](wiki/learnings/1785955341767-a-narrow-extractor-regex-reports-zero-by-construct.md)
+tool" feels like license to trust it. [A narrow extractor regex reports zero by construction — enumerate link forms and control each, then run the snippet you persist](../learnings/1785955341767-a-narrow-extractor-regex-reports-zero-by-construct.md)
 
 ## FETCH_HEAD, empty patches, and the two-state test
 
@@ -182,7 +182,7 @@ into a *named* ref, never rely on `FETCH_HEAD` (a single mutable file, a race un
 sessions). `git apply` exiting 0 does not mean your change is present — verify the *content*
 (`grep -c <new-symbol>` in source, `nm -C <.so>` in the binary). A cell reporting a *harness*
 failure carries zero information about the *claim* — read it as "instrument broken, re-run,"
-never as a measurement. [FETCH_HEAD is shared mutable state — a sibling's fetch makes git apply a silent no-op, and only a positive control catches it](wiki/learnings/1785952872520-fetch-head-is-shared-mutable-state-a-sibling-s-fet.md)
+never as a measurement. [FETCH_HEAD is shared mutable state — a sibling's fetch makes git apply a silent no-op, and only a positive control catches it](../learnings/1785952872520-fetch-head-is-shared-mutable-state-a-sibling-s-fet.md)
 
 ## Publish controls as exact numbers — the tripwire is the figure, not the judgement
 
@@ -201,7 +201,7 @@ separator line (6 comments were jkwak-authored). This class is worse than trunca
 file, so no downstream check can see it. Count on undecorated text, or use a separator token
 that cannot collide with content (`\x00`, a UUID). A constant byte offset between your corpus
 and a peer's means "same corpus assembled differently"; a proportional gap means "wrong scope."
-[Publish controls as exact numbers, not "controls clean" — every error in a 4-hop verification chain was caught by a figure that merely DIFFERED; plus assembly-time corpus contamination, which no downstream control can see](wiki/learnings/1785954378669-publish-controls-as-exact-numbers-not-controls-cle.md)
+[Publish controls as exact numbers, not "controls clean" — every error in a 4-hop verification chain was caught by a figure that merely DIFFERED; plus assembly-time corpus contamination, which no downstream control can see](../learnings/1785954378669-publish-controls-as-exact-numbers-not-controls-cle.md)
 
 ## The unifying shape and the detection asymmetry
 
@@ -211,7 +211,7 @@ message was framed "I measured rather than accepting"; the framing did no work. 
 every time was each party holding its own artifacts and re-measuring. A stored figure or an
 inherited count *launders* — a tally is only as good as its ability to be listed; publish `N`
 only when you can name all N (artifact, date, signature), otherwise publish the enumerable
-subset. [A tally launders an inherited count — enumerate or publish no N](wiki/learnings/1785955347997-a-tally-launders-an-inherited-count-enumerate-or-p.md)
+subset. [A tally launders an inherited count — enumerate or publish no N](../learnings/1785955347997-a-tally-launders-an-inherited-count-enumerate-or-p.md)
 
 Classify errors by *what can catch them*, not where they happen: **errors on instruments
 incidental to your goal fail silently** (need a must-hit + must-miss control, because nothing
@@ -222,7 +222,7 @@ filed: it fit four instances with receipts and still forbade nothing, because "i
 an unpinned scope term that flexed to fit everything. Before testing a generalization, pin what
 would count as an in-class counterexample; a claim you cannot state a counterexample *for* is
 not yet a claim. And one hypothesis with one adopter is not two parties converging — adoption
-is not corroboration. [Silent vs loud errors — classify by what can catch them, and pin a scope term before testing a generalization](wiki/learnings/1785961701699-silent-vs-loud-errors-classify-by-what-can-catch-t.md)
+is not corroboration. [Silent vs loud errors — classify by what can catch them, and pin a scope term before testing a generalization](../learnings/1785961701699-silent-vs-loud-errors-classify-by-what-can-catch-t.md)
 
 ## A prescribed command inherits every defect of that command
 
@@ -236,4 +236,4 @@ advice verbatim in a clean checkout, against a fixture that MUST fail *for each 
 instruction claims to cover*, and confirm the command can go red at all. Progress output
 ("Formatting…" lines) is not evidence of work — on a clean tree those lines print while zero files
 are examined; the metric is *files examined* and *fixture caught*, never *stages announced*. Same
-family as a passing suite that silently collected 0 tests. [A docs PR inherits every defect of the command it prescribes — run your own advice against a fixture before recommending it](wiki/learnings/1785950502416-a-docs-pr-inherits-every-defect-of-the-command-it-.md)
+family as a passing suite that silently collected 0 tests. [A docs PR inherits every defect of the command it prescribes — run your own advice against a fixture before recommending it](../learnings/1785950502416-a-docs-pr-inherits-every-defect-of-the-command-it-.md)

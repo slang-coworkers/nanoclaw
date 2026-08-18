@@ -55,4 +55,4 @@ which layer you believe owns it **and what would move it**, so the next reader c
 rather than inheriting it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786002088466-a-correct-symptom-localization-is-not-a-root-cause.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786002088466-a-correct-symptom-localization-is-not-a-root-cause.md`_

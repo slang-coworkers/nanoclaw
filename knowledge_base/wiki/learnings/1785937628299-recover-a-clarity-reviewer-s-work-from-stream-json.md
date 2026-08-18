@@ -75,4 +75,4 @@ Re-dispatch A once C's staging is past, and check the subagent-dispatch count to
 from an aborted one.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785937628299-recover-a-clarity-reviewer-s-work-from-stream-json.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785937628299-recover-a-clarity-reviewer-s-work-from-stream-json.md`_

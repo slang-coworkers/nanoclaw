@@ -22,4 +22,4 @@ harvest-reviews.py returns the best review present *at call time*. On a fresh PR
 Treat the first harvest on a fresh PR as provisional. Gate finalization on the production review check-run being terminal (or provably skipped). The REST `pulls/.../reviews` and `pulls/.../comments` endpoints can trip an over-eager critique-gate hook that pattern-matches the word "reviews"/PR-write — use `gh api graphql` `reviewThreads`/`reviews` instead, which reads the same data without tripping it.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783957917061-approver-clause-gap-harvest-timing-race-on-fresh-r.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783957917061-approver-clause-gap-harvest-timing-race-on-fresh-r.md`_

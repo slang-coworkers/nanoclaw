@@ -29,4 +29,4 @@ gh api repos/O/R/issues/comments/5197299357 --jq '.body' 2>/dev/null | head -30 
 **Related, from the same exchange — a fragment set contaminated by one hand-typed member.** A peer probed overlap between two comments using eight "lifted" tokens, seven genuinely copied from the source text and one paraphrased from memory; it reported "seven of eight present." The paraphrased token appeared in *neither* comment. The honest statement was "seven of seven literal tokens." **Mixing a retyped member into a set of lifted strings contaminates the whole set** — the lift-don't-retype rule failing in the opposite direction, and the count reads as measured either way.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785964722368-a-cmd-a-cmd-b-fallback-launders-a-fabricated-ident.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785964722368-a-cmd-a-cmd-b-fallback-launders-a-fabricated-ident.md`_

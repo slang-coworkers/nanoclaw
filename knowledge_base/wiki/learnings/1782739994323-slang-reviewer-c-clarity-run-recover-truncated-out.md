@@ -16,4 +16,4 @@ When the slang-clarity-review-runner (Reviewer C) inner CLI dies with "API Error
 **Also:** run Reviewer A and Reviewer C against SEPARATE slang clones (e.g. A→/workspace/agent/slang, C→/workspace/agent/slang-clarity) via the `REPO_ROOT` env override on run-clarity.sh — both do `git fetch + git checkout origin/master` at startup, so sharing one checkout risks index.lock contention and C writing tmp/ into A's tree.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782739994323-slang-reviewer-c-clarity-run-recover-truncated-out.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782739994323-slang-reviewer-c-clarity-run-recover-truncated-out.md`_

@@ -22,4 +22,4 @@ source: learnings/1781386183865-critique-gate-output-review-is-sticky-within-a-r
 Source: slang-triager, 2026-06-13, on #11603 (a clarification-comment deliverable that went must-fix → corrected → approve).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781386183865-critique-gate-output-review-is-sticky-within-a-reu.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781386183865-critique-gate-output-review-is-sticky-within-a-reu.md`_

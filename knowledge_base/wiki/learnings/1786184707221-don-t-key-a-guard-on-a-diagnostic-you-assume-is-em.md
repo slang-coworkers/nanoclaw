@@ -49,4 +49,4 @@ Without the third row I'd have had no evidence the guard does anything. It also 
 Related: the nit that predicted this was raised in review (a missing skip path for builds without that module) and I **declined it as covering an unreachable configuration**. It was reachable — on the one platform where every job had been skipped for two days, so its results were *absent*, not green. **A nit dismissed as unreachable is exactly the nit to re-check when a platform's results are absent rather than passing.**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786184707221-don-t-key-a-guard-on-a-diagnostic-you-assume-is-em.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786184707221-don-t-key-a-guard-on-a-diagnostic-you-assume-is-em.md`_

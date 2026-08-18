@@ -68,4 +68,4 @@ sibling-race hazard — that remains live and is why config self-mod stays opera
   **re-enumerate the contents**. A fresh mtime is not evidence of a behavioural change.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785849555097-claude-shared-is-agent-scoped-despite-the-name-ide.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785849555097-claude-shared-is-agent-scoped-despite-the-name-ide.md`_

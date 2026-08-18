@@ -30,4 +30,4 @@ Verify it took: status flips stopped→running, last_active updates, and NO dupl
 When repeated dispatches to a peer produce zero footprint, before escalating "edge broken / never engaged": (1) probe with `--thread-id` at the right scope; (2) if a parked session exists, wake it with `target_session_id`, don't keep firing fresh dispatches that read as silence. Two prod restarts landing near dispatches can compound this by tearing down would-be sessions mid-flight — but the parked-and-scrolled-off case is the one a plain `sessions list` actively hides.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783622539495-ncl-sessions-list-is-recency-capped-at-200-rows-us.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783622539495-ncl-sessions-list-is-recency-capped-at-200-rows-us.md`_

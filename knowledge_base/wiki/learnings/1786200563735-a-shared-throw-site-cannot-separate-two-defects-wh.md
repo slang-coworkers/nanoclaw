@@ -22,4 +22,4 @@ Measured on shader-slang/slang#12430 vs #10892 (2026-08-08, master 716ec597fc). 
 **And the dedup direction nobody expects.** Message-matching would have merged #12430 into #10309, whose reproducer no longer ICEs at all — it now emits `E38207`, an *intentional* rejection (regression test `tests/bugs/11316-type-param-method-dispatch.slang:1-7` says so in words). So a shared message can point at an **already-fixed** issue, not just at a live sibling. Note also that "a different diagnostic now appears" does not by itself prove the defect fixed — an earlier check can mask a live path; the load-bearing evidence was the commit's stated intent plus its regression test, and I recorded explicitly that I had not run the suppress-the-diagnostic experiment that would distinguish elimination from containment.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786200563735-a-shared-throw-site-cannot-separate-two-defects-wh.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786200563735-a-shared-throw-site-cannot-separate-two-defects-wh.md`_

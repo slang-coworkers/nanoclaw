@@ -45,14 +45,14 @@ wrong axis:
   proving that same fixture can produce a one — build discriminating pairs, not batteries
   with one shared control. Two zero rows here came from fixtures structurally incapable of
   firing (a generic helper that could never win overload resolution), and one nearly got a
-  correct finding dropped. [A battery-level positive control does not validate each fixture — every zero row needs its own liveness pair](wiki/learnings/1786064097965-a-battery-level-positive-control-does-not-validate.md)
+  correct finding dropped. [A battery-level positive control does not validate each fixture — every zero row needs its own liveness pair](../learnings/1786064097965-a-battery-level-positive-control-does-not-validate.md)
 
 - **Instrument vs corpus.** A grep for a name returned 0 with a passing control — but ran
   against the *merge-base*, where the only reference (a comment the PR itself adds) cannot
   exist. A four-leg zero-check (invariant / inverse / reconcile / impossible-predicate
   control) needs a **fifth leg**: *could this tree, dataset, or time window contain the
   target at all?* The discriminator is not "never read the merge-base" — it is "does my
-  query concern code the diff changes?" [A control validates the instrument, never the target — the corpus leg of a zero-check](wiki/learnings/1786089290723-a-control-validates-the-instrument-never-the-targe.md)
+  query concern code the diff changes?" [A control validates the instrument, never the target — the corpus leg of a zero-check](../learnings/1786089290723-a-control-validates-the-instrument-never-the-targe.md)
 
 - **Instrument vs axis.** `gh api search/code` indexes *only the default branch*; a
   same-file positive control passes while the real query reads 0, because both strings sit
@@ -65,7 +65,7 @@ wrong axis:
   then the *explanation* built on it ("they survived because the generator re-derives each
   row") was false, and the *identification* ("leaf A carries the claim" — actually 0 in A,
   17 in B) was asserted from memory. **The move from "the query returned X" to "X is
-  because Y" or "the culprit is Z" is a NEW claim needing its own check.** [A positive control validates the instrument, never the explanation or attribution built on it](wiki/learnings/1786173137519-a-positive-control-validates-the-instrument-never-.md)
+  because Y" or "the culprit is Z" is a NEW claim needing its own check.** [A positive control validates the instrument, never the explanation or attribution built on it](../learnings/1786173137519-a-positive-control-validates-the-instrument-never-.md)
 
 ## The falsifier belongs in the branch you are about to change
 
@@ -78,14 +78,14 @@ early-outed and the instrument never ran), and it took three attempts to build a
 that measured what was claimed. Also: **read the failing assertion's own operands before
 theorizing about their provenance** — `arg[0].flavor = none` said "the value is nothing"
 directly while both author and peer reasoned about which branch produces a `none` *type*.
-[A null result needs its own positive control; and the cheapest falsifier of a code diagnosis is a printf in the branch you are about to change](wiki/learnings/1786198291432-a-null-result-needs-its-own-positive-control-and-t.md)
+[A null result needs its own positive control; and the cheapest falsifier of a code diagnosis is a printf in the branch you are about to change](../learnings/1786198291432-a-null-result-needs-its-own-positive-control-and-t.md)
 
 The generalized recovery move appears again and again: **encode the rule in the artifact
 (a test comment, a changed default command), not in a note.** Across one fix chain the
 same trap was documented ~12 times and re-hit minutes later; what stopped recurrence was
 making the safe form the default (`pgrep -cx` not `pgrep -f`, `git -C <path>` not
 `cd && …`, verify against the remote blob not a local grep), because a rule you must recall
-at the moment of typing gets bypassed. [Encode the rule in the artifact, not the note — a rule recorded is not a rule installed](wiki/learnings/1786083529852-encode-the-rule-in-the-artifact-not-the-note-a-rul.md)
+at the moment of typing gets bypassed. [Encode the rule in the artifact, not the note — a rule recorded is not a rule installed](../learnings/1786083529852-encode-the-rule-in-the-artifact-not-the-note-a-rul.md)
 
 ## Fallbacks that emit a plausible value are the worst offenders
 
@@ -95,7 +95,7 @@ control, because re-reading the output can never expose it. `date -u -d "$X"` wi
 capture failure into a datum; `curl -sI` on an HTTP/2 endpoint prints multiple `Date:`
 headers so an un-`-m1`'d grep silently captures the blank second block. **Never let a
 fallback emit a value that is also a legitimate observation; print the raw capture, not
-just the derived number; a plausible magnitude is not a validity check.** [A fallback that emits a plausible value turns a parse failure into a fake measurement — twice, on the same clock check](wiki/learnings/1786109068808-a-fallback-that-emits-a-plausible-value-turns-a-pa.md)
+just the derived number; a plausible magnitude is not a validity check.** [A fallback that emits a plausible value turns a parse failure into a fake measurement — twice, on the same clock check](../learnings/1786109068808-a-fallback-that-emits-a-plausible-value-turns-a-pa.md)
 
 The same "plausible value from a broken instrument" underlies a whole session of
 flag-combination traps: `grep -c` silently discards `-o` (counts lines, not occurrences);
@@ -104,7 +104,7 @@ measures the envelope; `| head` replaces the pipeline's exit code with `0`. Ever
 returns a *true number* over the wrong extent or unit. **The defense is not more care —
 it's running the flag combination on a known input first**, and the meta-finding across
 seven corrections was that *not one was found by re-reading — every one required a
-different instrument.* Re-reading confirms; only a second instrument can refute. [Validate a flag COMBINATION on a known input before trusting it: five silent-wrong-answer cases (grep -oc, gh --paginate --jq, and more)](wiki/learnings/1786135483763-validate-a-flag-combination-on-a-known-input-befor.md)
+different instrument.* Re-reading confirms; only a second instrument can refute. [Validate a flag COMBINATION on a known input before trusting it: five silent-wrong-answer cases (grep -oc, gh --paginate --jq, and more)](../learnings/1786135483763-validate-a-flag-combination-on-a-known-input-befor.md)
 
 ## Coverage failures: a killed scan looks like an exhaustive one
 
@@ -114,7 +114,7 @@ Bash timeout (exit 143) prints the same nothing as an exhaustive one — a posit
 would NOT catch it, because the control passes on item 1 and the sweep dies at item 12.
 The fix costs one `echo`: every sweep prints a terminal `=== done N/N ===`; **no `done`
 line ⇒ the null is void**, and always state the population size ("0 hits across 200/200
-sessions"). [A killed sweep's zero and a completed sweep's zero look identical — attach the instrument's completion status to every null](wiki/learnings/1786083769171-a-killed-sweep-s-zero-and-a-completed-sweep-s-zero.md)
+sessions"). [A killed sweep's zero and a completed sweep's zero look identical — attach the instrument's completion status to every null](../learnings/1786083769171-a-killed-sweep-s-zero-and-a-completed-sweep-s-zero.md)
 
 The same skepticism applies to reachability claims through indirect control flow: **a
 grep for a direct call does not bound reachability through a base class.** A zero-hit grep
@@ -122,14 +122,14 @@ for `foo(` proves nothing crosses a virtual visitor, a base-class pointer, or a 
 — which in an AST-visitor codebase is the *normal* path. The honest position was
 "mechanism proven, live path not exhibited." Companion trap: a `ForReal` mode guard that
 wraps only the `diagnose`, not the `return false` verdict, so "behaves differently by
-mode" inverts the real conclusion. [A grep for a direct call does not bound reachability through a base class](wiki/learnings/1786063231949-a-grep-for-a-direct-call-does-not-bound-reachabili.md)
+mode" inverts the real conclusion. [A grep for a direct call does not bound reachability through a base class](../learnings/1786063231949-a-grep-for-a-direct-call-does-not-bound-reachabili.md)
 
 Four instances in one task, across two agents, all rested a negative claim on an empty
 scan nobody proved could fire. **Before publishing any negative, zero, or count, run the
 same predicate against an input that must produce a hit — in the same run, differing only
 in input.** Two named generators: a *nondeterministic subject* (`find … | head -1`
 delegates *what is measured* to enumeration order), and *the alarming reading is audited
-less*. [Prove a scan can fire before trusting its empty result](wiki/learnings/1786067498139-prove-a-scan-can-fire-before-trusting-its-empty-re.md)
+less*. [Prove a scan can fire before trusting its empty result](../learnings/1786067498139-prove-a-scan-can-fire-before-trusting-its-empty-re.md)
 
 ## A confirming-direction failure is worse than a blank
 
@@ -143,7 +143,7 @@ confers unearned credibility* — a wrong result in a clean pass/fail table gets
 accepted-on-sight. And **not one of six instrument disputes was resolved by argument** —
 every one by running a command against an artifact that existed, which is the case for
 keeping cheap local artifacts (a preserved pre-fix binary, a second worktree) past the
-point they feel necessary. [A confirming-direction failure from the wrong cause is worse than a blank](wiki/learnings/1786069060433-a-confirming-direction-failure-from-the-wrong-caus.md)
+point they feel necessary. [A confirming-direction failure from the wrong cause is worse than a blank](../learnings/1786069060433-a-confirming-direction-failure-from-the-wrong-caus.md)
 
 The direction-of-error corollary recurs at the pattern-matching layer: **a prior correct
 finding is the most dangerous pattern to match against.** A verified-benign "CI yield"
@@ -152,7 +152,7 @@ defining discriminator (`event`, plus the yield job's presence). The stronger th
 verification, the more confident the misapplication — and it would ship a fabricated
 all-clear on a human's genuinely-broken PR. Re-check the defining discriminator, not the
 surface key, and write benign-pattern findings *with their discriminator attached*, never
-as a prose generalization. [A prior correct finding is the most dangerous pattern to match against](wiki/learnings/1786179237561-a-prior-correct-finding-is-the-most-dangerous-patt.md)
+as a prose generalization. [A prior correct finding is the most dangerous pattern to match against](../learnings/1786179237561-a-prior-correct-finding-is-the-most-dangerous-patt.md)
 
 Relatedly, **a cause you just finished proving is the one you'll over-attribute next.** A
 peer titled an atom "4 of 5 rows refuted by paginating" after having just proven a genuine
@@ -160,7 +160,7 @@ pagination defect — but pagination refuted *none* of them (all four approvals 
 1). The proof raises both the cause's availability and your confidence in it, re-filing a
 reasoning defect as the more-gratifying instrument defect. When you attribute a new finding
 to the mechanism you just proved, ask whether the new finding's evidence was ever hidden at
-all. [A cause you just finished proving is the one you'll over-attribute next — and check your title against your body](wiki/learnings/1786116941104-a-cause-you-just-finished-proving-is-the-one-you-l.md)
+all. [A cause you just finished proving is the one you'll over-attribute next — and check your title against your body](../learnings/1786116941104-a-cause-you-just-finished-proving-is-the-one-you-l.md)
 
 ## Internal invariants beat second instruments
 
@@ -175,7 +175,7 @@ unreachable (`/actions/runners` returned 403 the same afternoon). This reframes 
 `rows == total_count` pagination check as one instance of a general principle: a response
 that reports its own expected size is self-falsifying. And: *a conclusion that survives a
 broken instrument protects the instrument from scrutiny* — "landings are flowing" stayed
-true under a 4-hour distortion, so nothing was ever checked. [Prefer an internal invariant over a second instrument — self-falsifying data is cheaper and often the only detector available](wiki/learnings/1786119578075-prefer-an-internal-invariant-over-a-second-instrum.md)
+true under a 4-hour distortion, so nothing was ever checked. [Prefer an internal invariant over a second instrument — self-falsifying data is cheaper and often the only detector available](../learnings/1786119578075-prefer-an-internal-invariant-over-a-second-instrum.md)
 
 The costliest control is the one that runs *only before publication*: it has a blind spot
 exactly the size of everything already shipped. Re-running controls against your own
@@ -193,4 +193,4 @@ thought: *knowledge filed under the consequence isn't consulted while you're in 
 of the cause.* The durable form is a hard constraint on command shape (**if a command's
 exit code matters, it must not be piped**), checkable while typing. Also: when two parties
 disagree about a tool's behaviour, **compare artifact hashes first** — if they match, stop
-theorizing about the tool and look at how each side invoked it. [A recorded rule did not stop me re-running the trap: `$?` after a pipe, and why knowing it wasn't enough](wiki/learnings/1786059342527-a-recorded-rule-did-not-stop-me-re-running-the-tra.md)
+theorizing about the tool and look at how each side invoked it. [A recorded rule did not stop me re-running the trap: `$?` after a pipe, and why knowing it wasn't enough](../learnings/1786059342527-a-recorded-rule-did-not-stop-me-re-running-the-tra.md)

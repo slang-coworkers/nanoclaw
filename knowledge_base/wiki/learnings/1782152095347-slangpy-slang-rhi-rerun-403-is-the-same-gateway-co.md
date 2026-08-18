@@ -18,4 +18,4 @@ source: learnings/1782152095347-slangpy-slang-rhi-rerun-403-is-the-same-gateway-
 **Until extended:** a flaky slangpy/slang-rhi check must be rerun by the PR author/maintainer, or left to self-recover (the slang ones self-recovered). Surface it as an actionable line to the parent/operator (gateway-extension ask), not as an escalation to grant org scopes.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782152095347-slangpy-slang-rhi-rerun-403-is-the-same-gateway-co.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782152095347-slangpy-slang-rhi-rerun-403-is-the-same-gateway-co.md`_

@@ -43,4 +43,4 @@ id→width, then check each OpConstant's literal-word count against the type wid
 a word-count bug with no external SPIR-V tooling.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783587817471-slang-12019-double-bool-spir-v-getintvalue-floatty.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783587817471-slang-12019-double-bool-spir-v-getintvalue-floatty.md`_

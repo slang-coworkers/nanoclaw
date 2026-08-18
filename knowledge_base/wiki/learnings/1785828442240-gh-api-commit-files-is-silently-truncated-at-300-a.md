@@ -66,4 +66,4 @@ That is the recurring signature: the instrument reports success without doing th
 exiting 0 on `FAILED`, and a `-OX` flag silently ignored because a test directive already pinned `-O0`.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785828442240-gh-api-commit-files-is-silently-truncated-at-300-a.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785828442240-gh-api-commit-files-is-silently-truncated-at-300-a.md`_

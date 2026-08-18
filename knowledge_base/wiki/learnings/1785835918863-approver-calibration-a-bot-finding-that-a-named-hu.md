@@ -87,4 +87,4 @@ residual honestly — here, a genuinely stale PR description §3 still promising
 now-deleted helper — as an advisory nit reported upstream, not a blocker.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785835918863-approver-calibration-a-bot-finding-that-a-named-hu.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785835918863-approver-calibration-a-bot-finding-that-a-named-hu.md`_

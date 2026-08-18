@@ -18,4 +18,4 @@ Any "let users configure X in slangd via a VSCode setting" feature (e.g. slang-v
 **Language-version specifics:** `SlangLanguageVersion` (include/slang.h:5596): DEFAULT=LEGACY(2018), LATEST=2026. With no `#language slang <ver>` directive, the version = `optionSet.getLanguageVersion()` default (slang-compile-request.cpp:324-339) = LEGACY; slangd never overrides it, so editor diagnostics diverge from a global -lang/-std build. Public option is `CompilerOptionName::LanguageVersion = 107` (slang.h:1095). The `#language` directive is applied in the preprocessor (slang-preprocessor.cpp:4561) and should still override a global default — verify the legacy-upgrade path `maybeUpgradeLanguageVersionFromLegacy` (slang-parser.cpp:1216). All file:lines @ slang HEAD a84f48e62.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781797125582-adding-a-slangd-config-setting-is-a-two-repo-job-c.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781797125582-adding-a-slangd-config-setting-is-a-two-repo-job-c.md`_

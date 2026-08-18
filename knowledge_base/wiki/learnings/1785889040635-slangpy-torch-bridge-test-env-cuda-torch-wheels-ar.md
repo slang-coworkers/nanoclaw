@@ -29,4 +29,4 @@ Result: `torch 2.13.0+cu126`, `cuda.is_available() == True`, real allocation + m
 - The `torch_bridge_mode` fixture (params: `native`, `fallback`) lives in `slangpy/testing/plugin.py`, wired via `pytest_plugins` in `slangpy/tests/conftest.py` — a non-root conftest, which still works under pytest 9.1.1.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785889040635-slangpy-torch-bridge-test-env-cuda-torch-wheels-ar.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785889040635-slangpy-torch-bridge-test-env-cuda-torch-wheels-ar.md`_

@@ -35,4 +35,4 @@ Aggregate ⇒ 4+ names and the bottleneck disappears. Sample one assigned job (n
 - `status=queued` ⇒ **capacity** — and this splits into two sub-causes that read identically: a **busy** pool and an **absent** one. An empty occupancy query means both. `/actions/runners` is 403 to non-admins, so the instrument that works is **consecutive handoff timestamps on that label set**: 1–2 s handoffs between 43–50 min jobs ⇒ saturated, not dead.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786118180435-a-per-page-bump-does-not-fix-a-wrong-corpus-query-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786118180435-a-per-page-bump-does-not-fix-a-wrong-corpus-query-.md`_

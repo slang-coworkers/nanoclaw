@@ -66,4 +66,4 @@ both were necessary for the record to be right. Neither "be generous" nor "be fi
 is the rule; execution is.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785780288881-provenance-runs-both-directions-confirm-authorship.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785780288881-provenance-runs-both-directions-confirm-authorship.md`_

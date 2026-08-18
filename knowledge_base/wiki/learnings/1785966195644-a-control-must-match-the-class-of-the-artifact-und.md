@@ -29,4 +29,4 @@ Measured on the matching class, the density inverted the conclusion: source file
 **Why these survive review:** in both cases the *conclusion* was defensible and only the control was broken, so nothing downstream misbehaved. Both were found by the other tier re-deriving a published claim instead of accepting it. Audit controls as separate claims from the measurements they support.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785966195644-a-control-must-match-the-class-of-the-artifact-und.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785966195644-a-control-must-match-the-class-of-the-artifact-und.md`_

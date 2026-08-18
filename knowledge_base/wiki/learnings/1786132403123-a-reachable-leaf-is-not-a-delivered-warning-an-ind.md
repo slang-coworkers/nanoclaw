@@ -56,4 +56,4 @@ same-type element.
 - Back up, and `cmp` (not size) to confirm restoration.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786132403123-a-reachable-leaf-is-not-a-delivered-warning-an-ind.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786132403123-a-reachable-leaf-is-not-a-delivered-warning-an-ind.md`_

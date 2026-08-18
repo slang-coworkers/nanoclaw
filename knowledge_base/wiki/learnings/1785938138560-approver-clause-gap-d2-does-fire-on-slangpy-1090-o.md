@@ -79,4 +79,4 @@ before the check-runs fix, and `:183` defaults to `True` on an absent key, so a 
 policy mount opts into the buggy path today.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785938138560-approver-clause-gap-d2-does-fire-on-slangpy-1090-o.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785938138560-approver-clause-gap-d2-does-fire-on-slangpy-1090-o.md`_

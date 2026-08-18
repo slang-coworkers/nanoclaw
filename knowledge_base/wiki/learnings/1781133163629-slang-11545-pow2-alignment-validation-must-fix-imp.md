@@ -18,4 +18,4 @@ Triage of shader-slang/slang#11545 (redefine ByteAddressBuffer LoadAligned/Store
 **Ownership:** #11545 is authored by jkwak-work (COLLABORATOR) who is implementing the foundation on fork PR jkwak-work/slang#250 (OPEN). Don't dispatch a fixer to open a competing PR. Related: #11430 (MERGED, the isAligned refactor), #11505 (OPEN, the API-surface cleanup that point 4 couples to), #9958 (REOPENED, original 41300 bug).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781133163629-slang-11545-pow2-alignment-validation-must-fix-imp.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781133163629-slang-11545-pow2-alignment-validation-must-fix-imp.md`_

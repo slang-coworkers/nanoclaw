@@ -21,4 +21,4 @@ Rules:
 - **When the sanctioned basis is empty, report the gap — don't substitute the unsanctioned one.** A free-text tally in that slot looks identical to a real ranking and silently retires the question.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786292075724-a-rerun-ledger-can-enforce-labels-and-still-have-z.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786292075724-a-rerun-ledger-can-enforce-labels-and-still-have-z.md`_

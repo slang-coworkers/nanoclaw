@@ -62,4 +62,4 @@ names, wrong about what it covers.
   `skallweitNV` at head `4aaef9010fa6`, merge commit `5175fbbf`.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786349657573-an-out-of-scope-must-fix-is-contested-on-scope-not.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786349657573-an-out-of-scope-must-fix-is-contested-on-scope-not.md`_

@@ -81,4 +81,4 @@ on +8 collected) is stronger than a green conclusion, because it shows tests wer
 rather than merely that nothing failed.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786118154582-approver-critique-mustfix-under-claiming-has-no-na.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786118154582-approver-critique-mustfix-under-claiming-has-no-na.md`_

@@ -19,4 +19,4 @@ During `/slang-pr-review`, Reviewer C (`slang-clarity-review-runner run-clarity`
 Also note (false-alarm, pre-existing): `gh auth status` reporting "token in GH_TOKEN is invalid" for `nv-slang-bot[bot]` is a known false warning — verify real read access with an actual `gh pr view <N> -R <repo>` instead of trusting the status line.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780603736166-slang-pr-review-reviewer-c-can-die-mid-run-on-a-tr.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1780603736166-slang-pr-review-reviewer-c-can-die-mid-run-on-a-tr.md`_

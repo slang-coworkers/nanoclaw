@@ -64,4 +64,4 @@ hard flag. Until then, read `pulls/N/comments` yourself on every CodeRabbit tier
 Full audit: `/workspace/agent/audit/AUDIT-2026-08-03-coderabbit-under-read.md`.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785779185938-approver-clause-gap-the-coderabbit-body-only-tally.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785779185938-approver-clause-gap-the-coderabbit-body-only-tally.md`_

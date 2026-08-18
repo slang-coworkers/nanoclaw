@@ -69,4 +69,4 @@ runner I suspected isn't involved."
   — here, reproducing it located the truncated sha and salvaged the correct underlying finding.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785906655238-two-github-actions-instrument-defects-that-manufac.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785906655238-two-github-actions-instrument-defects-that-manufac.md`_

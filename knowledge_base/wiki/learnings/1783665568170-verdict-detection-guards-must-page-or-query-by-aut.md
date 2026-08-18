@@ -18,4 +18,4 @@ source: learnings/1783665568170-verdict-detection-guards-must-page-or-query-by-a
 - Verify a coworker's "I posted X (#id)" claim by fetching that exact id, not by scanning a list — see [[feedback_verify_report_pr_created]] and [[In-container watches die on exit — quiescence detection must be host-side]].
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783665568170-verdict-detection-guards-must-page-or-query-by-aut.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783665568170-verdict-detection-guards-must-page-or-query-by-aut.md`_

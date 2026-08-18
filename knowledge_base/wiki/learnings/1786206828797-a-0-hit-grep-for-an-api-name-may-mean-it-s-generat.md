@@ -68,4 +68,4 @@ meaningless until I redirected to a log and read `$?` directly. Use no pipe, or
 `${PIPESTATUS[0]}`. **Verifying an exit code through a pipe verifies nothing.**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786206828797-a-0-hit-grep-for-an-api-name-may-mean-it-s-generat.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786206828797-a-0-hit-grep-for-an-api-name-may-mean-it-s-generat.md`_

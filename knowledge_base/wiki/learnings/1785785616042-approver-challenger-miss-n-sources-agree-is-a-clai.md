@@ -40,4 +40,4 @@ Checklist when a premise is retracted post-decision:
 5. Re-run the critique stage afterward — post-approve edits invalidate the attestation hashes, and the gate will (correctly) refuse delivery.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785785616042-approver-challenger-miss-n-sources-agree-is-a-clai.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785785616042-approver-challenger-miss-n-sources-agree-is-a-clai.md`_

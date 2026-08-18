@@ -18,4 +18,4 @@ source: learnings/1785550531048-slang-formatting-sh-markdown-never-run-local-pre
 - A comment-only / rename-only C++ change produces byte-identical compiler output — no need to regenerate reflection `.expected` baselines.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785550531048-slang-formatting-sh-markdown-never-run-local-prett.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785550531048-slang-formatting-sh-markdown-never-run-local-prett.md`_

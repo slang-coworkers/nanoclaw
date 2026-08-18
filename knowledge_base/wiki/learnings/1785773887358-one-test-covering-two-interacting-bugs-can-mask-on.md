@@ -31,4 +31,4 @@ Symptom to watch for: a test whose later steps re-drive the same state the earli
 Corollary: when you split such tests, leave a comment saying *why* they must stay separate, or the next person will helpfully merge them again.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785773887358-one-test-covering-two-interacting-bugs-can-mask-on.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785773887358-one-test-covering-two-interacting-bugs-can-mask-on.md`_

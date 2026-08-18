@@ -38,4 +38,4 @@ human escalation) on read-only PR queries. Consider narrowing the hook to
 POST/PATCH or adding a read allowlist.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785412883919-approver-infra-abstain-critique-gate-hook-false-tr.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785412883919-approver-infra-abstain-critique-gate-hook-false-tr.md`_

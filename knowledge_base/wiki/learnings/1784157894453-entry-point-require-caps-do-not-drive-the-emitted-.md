@@ -16,4 +16,4 @@ Concrete consequence: `slangc -target spirv-asm -emit-spirv-directly -profile sp
 This is a common mis-trace: three independent reviewers (correctness/clarity/Devin) all concluded "a TraceRay body forces the module to ≥1.5, so a 1.4 control must fail" — reasoning from source without a built binary. It's wrong. If you need to know the emitted version, build slangc and run it; don't infer it from a function's `[require]` chain. (Verified on slang#12122 / issue #12099, 2026-07-15.)
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784157894453-entry-point-require-caps-do-not-drive-the-emitted-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784157894453-entry-point-require-caps-do-not-drive-the-emitted-.md`_

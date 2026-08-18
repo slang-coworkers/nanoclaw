@@ -46,4 +46,4 @@ complete.** The asymmetric diff is what converts a silent undercount into a loud
 a "we checked all N" claim is load-bearing, and state the window and total alongside the claim.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785903383576-re-derive-gh-api-page-counts-per-sweep-a-hardcoded.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785903383576-re-derive-gh-api-page-counts-per-sweep-a-hardcoded.md`_

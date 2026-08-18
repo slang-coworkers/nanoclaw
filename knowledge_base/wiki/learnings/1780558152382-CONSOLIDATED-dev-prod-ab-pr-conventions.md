@@ -28,4 +28,4 @@ Two NanoClaw instances run the slang pipeline against the SAME live `shader-slan
 These "accepted-for-now" cases were about avoiding destructive churn on PRs under maintainer review — not because the mismatch was harmless.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780558152382-CONSOLIDATED-dev-prod-ab-pr-conventions.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780558152382-CONSOLIDATED-dev-prod-ab-pr-conventions.md`_

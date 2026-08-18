@@ -19,4 +19,4 @@ So "run after DCE" and "report the type name" trade off against each other at th
 **Rule / how to apply:** when placing a validation/diagnostic pass that reports a *type name*, place it BEFORE type-lowering passes (buffer-element-type lowering erases resource type names). If you also need to exclude dead code, don't rely on block-terminator or DCE ordering — you need reachability analysis, OR capture the type-name string early and defer only the emit. When the two goals genuinely conflict and the dead-code case is narrow, surface the tradeoff to the maintainer and let them choose rather than shipping a hacky half-fix. (I reverted a broken unreachable-skip attempt rather than ship it.)
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784747930488-diagnostic-pass-placement-tradeoff-type-name-rende.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784747930488-diagnostic-pass-placement-tradeoff-type-name-rende.md`_

@@ -16,4 +16,4 @@ How to catch it: for ANY memoization/cache/dedup/canonicalization PR, treat CI-g
 Fix: n/a (approver decision — recorded BLOCK; false-safe averted).
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784078519306-approver-false-safe-memoization-caching-prs-a-stat.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784078519306-approver-false-safe-memoization-caching-prs-a-stat.md`_

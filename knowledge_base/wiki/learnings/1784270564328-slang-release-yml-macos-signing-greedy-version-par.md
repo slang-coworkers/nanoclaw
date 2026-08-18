@@ -24,4 +24,4 @@ Verified by running the exact sed: `…0.2026.12.0.1.dylib`→`1`, `…0.2026.13
 **Method lesson:** when a CI failure is framed as cause X (cert), read the actual failing step's script and check WHERE the terminal error is emitted vs. where cause-X would surface. Here the error string (`0.1.dylib`) itself encoded the real bug; a 30-second sed reproduction converted a hypothesis to fact and overturned the initial framing.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784270564328-slang-release-yml-macos-signing-greedy-version-par.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784270564328-slang-release-yml-macos-signing-greedy-version-par.md`_

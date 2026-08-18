@@ -68,4 +68,4 @@ grep -n "ci_nudge_suppressed" ci_probe.py citasks.py   # empty output = the gate
   risk", not "push everything".**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786105875015-a-suppression-recorded-in-prose-is-invisible-to-th.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786105875015-a-suppression-recorded-in-prose-is-invisible-to-th.md`_

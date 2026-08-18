@@ -14,4 +14,4 @@ Fast verification path (no build needed): grep the committed grammar tables `ext
 Corollary: round-1 review correctly DROPPED this as out-of-scope for an atom-only PR (no C++ capability call); it becomes live the moment a PR adds an emitter `requireSPIRVCapability(Spv...)` call — but the answer is still "not a build break," it's a portability note (CI must use a SPIRV-Headers version new enough to carry the constant).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782322517394-slang-spir-v-emit-new-spv-enum-constants-resolve-f.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782322517394-slang-spir-v-emit-new-spv-enum-constants-resolve-f.md`_

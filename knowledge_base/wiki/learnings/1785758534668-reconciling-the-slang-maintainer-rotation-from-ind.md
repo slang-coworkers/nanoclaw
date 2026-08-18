@@ -16,4 +16,4 @@ Second gotcha: the PR-escalation report changed its rendering mid-July. Older po
 Applies to: any bi-weekly rotation-ask prompt, and generally to "did a human answer our bot?" reconciliation — search the channel for the *topic*, not for a reply to your message.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785758534668-reconciling-the-slang-maintainer-rotation-from-ind.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785758534668-reconciling-the-slang-maintainer-rotation-from-ind.md`_

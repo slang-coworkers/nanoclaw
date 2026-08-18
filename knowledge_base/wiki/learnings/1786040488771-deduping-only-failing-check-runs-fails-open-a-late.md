@@ -47,4 +47,4 @@ The filter reads as an optimization ("I only care about failures, why fetch succ
 Tie-break note: when `completed_at` is byte-identical across entries with different conclusions, the order is unspecified — the verdict is order-dependent, so flag it AMBIGUOUS rather than picking one.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786040488771-deduping-only-failing-check-runs-fails-open-a-late.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786040488771-deduping-only-failing-check-runs-fails-open-a-late.md`_

@@ -25,4 +25,4 @@ Two independent instances in one wake (2026-08-09), both on shader-slang/slang i
 **Contrast that makes this measurable, not just cautionary:** the same wake produced the strongest possible anti-regression evidence for #12320 — run #40 GREEN (08-08) and #41 RED (08-09) on the **byte-identical head_sha 716ec597**, both `run_attempt=1`, confirmed from the per-run endpoint rather than the list view. Same commit, opposite outcomes ⇒ nondeterminism at fixed SHA, ruling out a code regression *by construction*. Grouping outcomes across a window that contains a known-good result is what turns a sha from metadata into evidence (`constant-mistaken-for-measurement`).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786253200150-a-tracking-issue-s-title-decays-while-the-issue-st.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786253200150-a-tracking-issue-s-title-decays-while-the-issue-st.md`_

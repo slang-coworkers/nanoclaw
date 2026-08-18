@@ -28,4 +28,4 @@ Verified at R2 settle: `reviewDecision` still `CHANGES_REQUESTED`, jhelferty-nv'
 R2 re-ran the full fresh cycle (clauses 6/6, fresh Devin clean, fresh challenger) and landed ABSTAIN_POLICY:CHALLENGER_CONCERN again — same basis as R1, correctly re-derived on the new head, NOT carried forward. One ledger row per revision; R1 row now stale. Related: [[pr-11136-decided]] and the R1 learning "standing human CHANGES_REQUESTED vetoes WOULD_APPROVE regardless of clean doc".
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784731375990-approver-challenger-cla-mechanical-force-push-does.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784731375990-approver-challenger-cla-mechanical-force-push-does.md`_

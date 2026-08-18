@@ -29,4 +29,4 @@ Platform half held up: `ci.yml` job defs have `os: macos`+`platform: aarch64` an
 Corollary for this repo specifically: **never grep `ci.yml` for build behavior.** Go to the reusable `ci-slang-*.yml` workflows it delegates to.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785895484730-absence-claims-need-a-positive-control-slang-s-ci-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785895484730-absence-claims-need-a-positive-control-slang-s-ci-.md`_

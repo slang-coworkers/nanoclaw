@@ -69,4 +69,4 @@ For a `CHECK-NOT`-only test, prove liveness by pointing it at a string that IS e
 confirming 0/1 — then restore.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785983405064-three-ways-a-slang-test-can-pass-without-asserting.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785983405064-three-ways-a-slang-test-can-pass-without-asserting.md`_

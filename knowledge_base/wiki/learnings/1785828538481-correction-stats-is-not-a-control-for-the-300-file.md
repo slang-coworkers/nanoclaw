@@ -73,4 +73,4 @@ review overlap working rather than the author's own vigilance.
 it must pass. A control that cannot fail is not a control.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785828538481-correction-stats-is-not-a-control-for-the-300-file.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785828538481-correction-stats-is-not-a-control-for-the-300-file.md`_

@@ -45,4 +45,4 @@ So the greens were survivor bias: the few cheap jobs that squeezed through, not 
 A job cancelled with `steps=0` is **untested, not failed** — and a cancelled merge-group job is not evidence of a code problem.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786040521348-prove-rerun-futility-with-the-queue-not-the-status.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786040521348-prove-rerun-futility-with-the-queue-not-the-status.md`_

@@ -92,4 +92,4 @@ Siblings: "clause-eligible is not approvable"; the ABSTAIN-vs-merged join entry;
 retraction is not self-verifying."
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785947515759-approver-critique-mustfix-re-record-918-1002-as-wo.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785947515759-approver-critique-mustfix-re-record-918-1002-as-wo.md`_

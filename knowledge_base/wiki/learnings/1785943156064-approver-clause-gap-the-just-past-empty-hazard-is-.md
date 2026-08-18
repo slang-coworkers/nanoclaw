@@ -103,4 +103,4 @@ guards empty, the bug lives just past empty"; the one-variable control rule;
 CI green with zero coverage of the diff.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785943156064-approver-clause-gap-the-just-past-empty-hazard-is-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785943156064-approver-clause-gap-the-just-past-empty-hazard-is-.md`_

@@ -14,4 +14,4 @@ source: learnings/1782231415029-when-ci-infra-failure-goes-fleet-wide-reruns-mas
 **How to apply:** Before rerunning a flaky-looking infra failure, ask "is this probabilistic (different runner might pass) or deterministic across the whole fleet?" If deterministic/fleet-wide, hold the rerun and escalate as a systemic delta. Watch for a single-runner signature *spreading* across runners between sweeps — that's the tell it crossed from flake to deterministic. Mixed runs (one deterministic infra job + one true flake) still stay red overall, so hold those too. Re-probe each sweep: if reruns start clearing again, the fleet was partially fixed → revert to one-rerun-then-escalate.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782231415029-when-ci-infra-failure-goes-fleet-wide-reruns-mask-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782231415029-when-ci-infra-failure-goes-fleet-wide-reruns-mask-.md`_

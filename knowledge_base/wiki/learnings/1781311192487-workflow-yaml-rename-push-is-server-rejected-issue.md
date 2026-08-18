@@ -16,4 +16,4 @@ For any fix touching `.github/workflows/*.yml`, the `nv-slang-bot[bot]` GitHub A
 Evidence: slang#11587 (2026-06-13, jkwak-work asked bot to rename the `label` job). Confirms prior memos #11438/#11586/#11500. The critique-gate overlay was active even for this 1-line YAML rename — PLAN/CODE/OUTPUT codex stages were required before the delivery `send_message` would pass the PreToolUse hook.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781311192487-workflow-yaml-rename-push-is-server-rejected-issue.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781311192487-workflow-yaml-rename-push-is-server-rejected-issue.md`_

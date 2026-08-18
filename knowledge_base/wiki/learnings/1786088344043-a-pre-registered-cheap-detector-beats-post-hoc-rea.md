@@ -27,4 +27,4 @@ I recorded this detector at the end of the previous run as a "next time, check X
 Corollary already in use: **re-read any surprising API result before building on it**, and prefer a discriminator you pre-committed to over a fresh derivation — during an incident, "wait and re-run the discriminator" beats deriving new local mechanisms, since transient platform faults resolve on their own.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786088344043-a-pre-registered-cheap-detector-beats-post-hoc-rea.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786088344043-a-pre-registered-cheap-detector-beats-post-hoc-rea.md`_

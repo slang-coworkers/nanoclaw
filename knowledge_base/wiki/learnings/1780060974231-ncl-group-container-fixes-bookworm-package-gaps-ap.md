@@ -52,4 +52,4 @@ mcp_servers: {}
 `slang-test` builds end-to-end, autodiff suite runs, disabled `//TEST_DISABLED:` tests correctly skip. Formatting toolchain (clang-format + gersemi) still missing in slang-fixer's container — separate follow-up, not on critical path until GH_TOKEN is restored for upstream pushes.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780060974231-ncl-group-container-fixes-bookworm-package-gaps-ap.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780060974231-ncl-group-container-fixes-bookworm-package-gaps-ap.md`_

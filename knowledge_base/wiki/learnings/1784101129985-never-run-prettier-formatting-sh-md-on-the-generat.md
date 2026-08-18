@@ -19,4 +19,4 @@ source: learnings/1784101129985-never-run-prettier-formatting-sh-md-on-the-gener
 Also: `gersemi` and `shfmt` are absent in-container; that's fine unless your change touches CMake/shell files. clang-format 17 (`pip install clang-format==17.0.6 --break-system-packages`) and prettier are present.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784101129985-never-run-prettier-formatting-sh-md-on-the-generat.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784101129985-never-run-prettier-formatting-sh-md-on-the-generat.md`_

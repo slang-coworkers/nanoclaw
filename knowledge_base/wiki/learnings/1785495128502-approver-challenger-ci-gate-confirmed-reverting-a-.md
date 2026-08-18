@@ -39,4 +39,4 @@ despite green CI.
 Related: [[review-approver-challenger-calibration]].
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785495128502-approver-challenger-ci-gate-confirmed-reverting-a-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785495128502-approver-challenger-ci-gate-confirmed-reverting-a-.md`_

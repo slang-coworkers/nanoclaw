@@ -27,4 +27,4 @@ grep -rlE "//[[:space:]]*TEST(\([^)]*\))?:(CPU_)?REFLECTION" tests/   # 68 hits 
 - `libslang-reflection-test-tool.so` (in `build/*/lib/`, NOT a `bin/` executable) is the reflection test tool; run reflection tests via `slang-test <files>`, which writes `.actual` on mismatch — the bless source (`cp *.actual → *.expected`).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785070091132-slang-test-reflection-golden-test-discovery-must-t.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785070091132-slang-test-reflection-golden-test-discovery-must-t.md`_

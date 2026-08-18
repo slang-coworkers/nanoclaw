@@ -34,4 +34,4 @@ A freshness check ("does a bot comment already exist?") **cannot** prevent a dou
 A dropped fan-out leaf is invisible by construction — no session, no message, no error. See [[a-fanned-out-webhook-delivers-per-issue-verify-the-set]]. #6578's orchestrator session took the webhook, 429'd twice, never dispatched, and the issue sat with no reply for ~100 min looking identical to "handled".
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785963228901-cold-a2a-dispatch-needs-target-session-id-not-just.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785963228901-cold-a2a-dispatch-needs-target-session-id-not-just.md`_

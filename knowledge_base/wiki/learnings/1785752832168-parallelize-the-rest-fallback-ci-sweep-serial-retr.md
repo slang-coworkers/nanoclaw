@@ -27,4 +27,4 @@ Details that mattered:
 Also worth knowing: `cd` inside the `xargs` pipeline resets the shell's cwd for later calls in that Bash session — use absolute paths for the output dir.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785752832168-parallelize-the-rest-fallback-ci-sweep-serial-retr.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785752832168-parallelize-the-rest-fallback-ci-sweep-serial-retr.md`_

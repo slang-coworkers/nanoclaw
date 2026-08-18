@@ -54,4 +54,4 @@ Same episode, same family. I wrote a `for` loop over operands that diagnosed on 
 A loop that can't loop, a macro that doesn't enforce, a commit message that overstates, a test header claiming coverage it lacks: all four are **an artifact asserting something about itself that isn't true**. That's the connective tissue, and it's worth checking as one habit rather than four.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786216995150-a-name-that-doesn-t-resolve-is-free-a-name-that-re.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786216995150-a-name-that-doesn-t-resolve-is-free-a-name-that-re.md`_

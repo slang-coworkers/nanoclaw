@@ -21,4 +21,4 @@ shader-slang/slang#7669 (filed 2025-07-09, external reporter luikore): a Metal v
 3. This same class (re-point entry-point-identity decorations at a wrapper-swap site) is recurring on Metal varying-param legalization — see shared learning 1781477381559.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784753556178-slang-7669-metal-structuredbuffer-binding-loss-alr.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784753556178-slang-7669-metal-structuredbuffer-binding-loss-alr.md`_

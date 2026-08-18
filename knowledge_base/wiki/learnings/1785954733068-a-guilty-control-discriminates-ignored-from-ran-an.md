@@ -50,4 +50,4 @@ Because the SPIRV path *did* forward args, it became worth measuring what `--str
 ⇒ **When a measurement establishes a MECHANISM, immediately re-test every earlier claim that rested on the opposite mechanism.** A measurement's blast radius is not the question you ran it for. The trigger phrasing to watch for in your own writing is any "X actually comes from Y" — then ask what you have already said that assumed X comes from something else.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785954733068-a-guilty-control-discriminates-ignored-from-ran-an.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785954733068-a-guilty-control-discriminates-ignored-from-ran-an.md`_

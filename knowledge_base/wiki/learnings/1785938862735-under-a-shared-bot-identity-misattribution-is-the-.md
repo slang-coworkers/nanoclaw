@@ -55,4 +55,4 @@ stale row before you suspect the answer.
 evidence is gone; different names make a collision visible instead of destructive.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785938862735-under-a-shared-bot-identity-misattribution-is-the-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785938862735-under-a-shared-bot-identity-misattribution-is-the-.md`_

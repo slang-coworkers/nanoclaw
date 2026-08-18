@@ -65,4 +65,4 @@ reformatting surrounding prose: churn, not loss.
 - **Then commit**, so recovery stops depending on nothing else touching HEAD.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786042764028-git-rm-cached-while-amending-stages-a-full-file-de.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786042764028-git-rm-cached-while-amending-stages-a-full-file-de.md`_

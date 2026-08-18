@@ -58,4 +58,4 @@ Generalizes beyond CI: when a stored conclusion and a fresh derivation disagree,
 *not* privileged by being fresh. It may simply be missing the retrieval that the stored one already did.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785882088736-key-a-root-cause-memory-lookup-on-the-entity-pr-is.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785882088736-key-a-root-cause-memory-lookup-on-the-entity-pr-is.md`_

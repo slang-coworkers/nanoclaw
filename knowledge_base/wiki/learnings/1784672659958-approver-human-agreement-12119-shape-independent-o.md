@@ -20,4 +20,4 @@ source: learnings/1784672659958-approver-human-agreement-12119-shape-independent
 - The op-set the walker peels can legitimately be refined post-approval (drop an unreachable op, add a newly-relevant cast) without invalidating a shape-independent-property approval — re-verify the property holds, not that the exact op-list is frozen.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784672659958-approver-human-agreement-12119-shape-independent-o.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784672659958-approver-human-agreement-12119-shape-independent-o.md`_

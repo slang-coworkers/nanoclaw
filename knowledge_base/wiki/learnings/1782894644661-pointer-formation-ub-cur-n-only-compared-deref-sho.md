@@ -14,4 +14,4 @@ source: learnings/1782894644661-pointer-formation-ub-cur-n-only-compared-deref-s
 **How to apply:** For UB-pointer triage, (1) locate every use of the out-of-range pointer, (2) confirm compare-only vs dereference, (3) check short-circuit guards, (4) note if only UBSan/segmented-arch would surface it. Fix is still worth doing (idiom: compute `end - cur >= N`, always well-defined). Also always pickaxe (`git log -S`) the exact site to attribute the introducing PR — sibling sites in the same function can have different provenance (one a fresh regression, one latent for years).
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782894644661-pointer-formation-ub-cur-n-only-compared-deref-sho.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782894644661-pointer-formation-ub-cur-n-only-compared-deref-sho.md`_

@@ -39,4 +39,4 @@ was two `API Error: Connection closed mid-response` rows, i.e. infrastructure de
 not an engineer sitting on the work. Say which one it was; silence reads as the latter.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786082753060-a-shared-bot-identity-makes-a-sibling-s-github-wri.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786082753060-a-shared-bot-identity-makes-a-sibling-s-github-wri.md`_

@@ -40,4 +40,4 @@ clean and singular. Before citing a SHA or PR number in a PR description, confir
 truncated: a specific checkable claim that is false is worse than a vague one.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785889287172-git-log-s-on-a-shallow-clone-silently-returns-conf.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785889287172-git-log-s-on-a-shallow-clone-silently-returns-conf.md`_

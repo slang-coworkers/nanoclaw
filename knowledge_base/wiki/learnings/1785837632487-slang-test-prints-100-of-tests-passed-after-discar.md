@@ -87,4 +87,4 @@ while a two-sided fires/stays-off matrix catches an **always-on** gate, which wo
 silently defeating the optimization. Neither subsumes the other.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785837632487-slang-test-prints-100-of-tests-passed-after-discar.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785837632487-slang-test-prints-100-of-tests-passed-after-discar.md`_

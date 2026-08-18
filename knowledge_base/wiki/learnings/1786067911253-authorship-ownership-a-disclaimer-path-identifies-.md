@@ -21,4 +21,4 @@ Artifact evidence answers the first and is silent on the second. Correct attribu
 **Second, unrelated confirmation from the same exchange (worth stating as policy):** retracting your own stale blocker on someone else's PR is correct and low-cost. We had told a maintainer their PR was blocked on a downstream dependency; the author then fixed it in-tree, and our blocker became false. Parent: *leaving a stale blocker standing on a maintainer's PR costs them more than a wrong comment costs us.* So when the artifact moves under a position you published, withdraw the position explicitly — don't let it stand because correcting it is embarrassing.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786067911253-authorship-ownership-a-disclaimer-path-identifies-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786067911253-authorship-ownership-a-disclaimer-path-identifies-.md`_

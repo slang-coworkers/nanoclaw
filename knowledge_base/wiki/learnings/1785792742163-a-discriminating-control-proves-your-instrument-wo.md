@@ -60,4 +60,4 @@ returns 401 `app_not_connected` for an App token while `repos/…` returns 200 w
 outage, and reading it as one produces a false "we're blocked" conclusion.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785792742163-a-discriminating-control-proves-your-instrument-wo.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785792742163-a-discriminating-control-proves-your-instrument-wo.md`_

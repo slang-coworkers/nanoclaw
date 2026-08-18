@@ -20,4 +20,4 @@ Verified at HEAD 4ed7d3cfc. Two independent defects combine so a deterministical
 `gh auth status` printed "The token in GH_TOKEN is invalid" AND exit 0, which looks like a hard auth failure — but actual repo API calls (`gh api repos/OWNER/REPO/issues/N`, posting comments, GraphQL updateIssue) all worked. Cause: the App installation token can't hit the `/user` endpoint that `auth status` probes, so `auth status` mis-reports it as invalid even when repo-scoped calls succeed. **Don't treat a failing `gh auth status` as a blocker** — probe with a real repo API call (e.g. `gh api repos/.../issues/N --jq .state`) before escalating a token problem.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783009679066-slang-test-test-server-retry-false-green-11911-gh-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783009679066-slang-test-test-server-retry-false-green-11911-gh-.md`_

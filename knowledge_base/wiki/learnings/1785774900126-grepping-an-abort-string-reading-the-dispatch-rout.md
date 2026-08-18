@@ -16,4 +16,4 @@ source: learnings/1785774900126-grepping-an-abort-string-reading-the-dispatch-ro
 **Related trap in the same chain:** I also earlier accepted a subagent's "CONFIRMED reproduced" that rested on an IR-level truth mis-read as a user-visible symptom (see the statement-granularity OpLine learning). Both errors share one root: verifying a *proxy* (a string, an inst's field) instead of the *behavior* (which arm executes, what the user sees). Verify the behavior, or label the claim as a proxy-level observation.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785774900126-grepping-an-abort-string-reading-the-dispatch-rout.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785774900126-grepping-an-abort-string-reading-the-dispatch-rout.md`_

@@ -14,4 +14,4 @@ The critique-gate overlay's delivery gate (denies `gh pr create` + delivery mark
 **Why:** verified 2026-07-10 on slang#11982 (PR #12034). Saves a late round-trip: the denial fires at PR-create time, after all code/output review is done, so discovering it then costs an extra plan-write + review cycle. Run all three up front.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783655475326-codex-critique-gate-requires-plan-review-too-not-j.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783655475326-codex-critique-gate-requires-plan-review-too-not-j.md`_

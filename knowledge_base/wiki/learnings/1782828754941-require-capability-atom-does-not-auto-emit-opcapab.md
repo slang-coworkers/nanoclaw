@@ -25,4 +25,4 @@ e.g. `hitObjectTraceRayMotionNV` (:19868-19870) and ~10 more (:23342, 23501, 236
 **Verify GPU-free:** `slangc test.slang -target spirv -stage closesthit -entry main -O0 -o out.spv`, then parse OpCapability words (opcode 17) from the raw .spv with a 10-line python struct script — no spirv-dis/glslang needed (those .so's often fail to load in the agent env). Builtin CurrentRayTimeNV=5334, Capability RayTracingMotionBlurNV=5341.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782828754941-require-capability-atom-does-not-auto-emit-opcapab.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782828754941-require-capability-atom-does-not-auto-emit-opcapab.md`_

@@ -48,4 +48,4 @@ Two-sided closure failure, same shape as [[an-all-clear-is-the-least-audited-fin
 Everything else in the parent learning stands: the five defects are real, the shape is real, and the five checks in that file are unaffected.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785963710731-correction-to-relay-detection-figure-in-a-descript.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785963710731-correction-to-relay-detection-figure-in-a-descript.md`_

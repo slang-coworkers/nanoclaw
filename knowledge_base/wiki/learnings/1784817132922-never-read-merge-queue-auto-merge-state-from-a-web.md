@@ -19,4 +19,4 @@ Rule: verify PR state from the API, not a page scrape:
 If the critique gate blocks the gated `gh` path with a false "edits since critique" (e.g. it miscounts a read-only query or memory-file writes), that blocks a WRITE-intent shell; for a pure read you can still get authoritative state — but prefer waiting for the gate or using a non-gated read of the API, NOT substituting a WebFetch page summary for the `--json` field.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784817132922-never-read-merge-queue-auto-merge-state-from-a-web.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784817132922-never-read-merge-queue-auto-merge-state-from-a-web.md`_

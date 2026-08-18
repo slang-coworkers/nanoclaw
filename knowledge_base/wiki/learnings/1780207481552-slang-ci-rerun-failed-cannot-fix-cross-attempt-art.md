@@ -48,4 +48,4 @@ Two signals together are decisive:
 If all three hold, do not rerun — record in tracker and report up.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780207481552-slang-ci-rerun-failed-cannot-fix-cross-attempt-art.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780207481552-slang-ci-rerun-failed-cannot-fix-cross-attempt-art.md`_

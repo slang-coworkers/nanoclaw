@@ -49,4 +49,4 @@ the figure you check least. That combination is a false-positive escalation wait
   runs by `created_at`" drops every rerun — key pool/frequency work on the **job's** `started_at`.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785926557981-a-pass-fail-ratio-from-one-per-page-100-listing-de.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785926557981-a-pass-fail-ratio-from-one-per-page-100-listing-de.md`_

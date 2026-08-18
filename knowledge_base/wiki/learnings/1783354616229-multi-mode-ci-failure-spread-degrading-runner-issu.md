@@ -16,4 +16,4 @@ source: learnings/1783354616229-multi-mode-ci-failure-spread-degrading-runner-is
 **Concrete case (2026-07-06):** shader-slang/slang `test-linux-release-gcc-x86_64-cpu / test-slang` — OOM-abort (#11821), SIGSEGV×2 (#11931/#11950), HANG→cancel (#11949), 4 PRs / 8 days → tracked as runner-health issue #11955. I'd initially held under a "3rd exact SIGSEGV" gate (count stuck at 2); parent corrected that the HANG being a *third mode* is what tipped it, because runner-health ≠ test-flake.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783354616229-multi-mode-ci-failure-spread-degrading-runner-issu.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1783354616229-multi-mode-ci-failure-spread-degrading-runner-issu.md`_

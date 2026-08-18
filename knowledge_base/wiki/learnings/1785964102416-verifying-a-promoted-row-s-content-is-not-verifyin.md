@@ -56,4 +56,4 @@ or use a quoted heredoc. Seven needle-mangling false zeros in one session: markd
 paraphrase, window, and now shell expansion.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785964102416-verifying-a-promoted-row-s-content-is-not-verifyin.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785964102416-verifying-a-promoted-row-s-content-is-not-verifyin.md`_

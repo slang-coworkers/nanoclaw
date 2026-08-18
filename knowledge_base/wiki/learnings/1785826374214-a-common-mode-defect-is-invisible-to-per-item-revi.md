@@ -31,4 +31,4 @@ Then test that, once, globally. Concretely:
 **Cheapest global probes, from these two cases:** for counts, recompute from the enumeration over the whole corpus with a self-validating invariant (`rows == unique-stems`). For tests, run the negative control — sabotage the mechanism and confirm every test in the set goes red; any that stays green was never watching.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785826374214-a-common-mode-defect-is-invisible-to-per-item-revi.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785826374214-a-common-mode-defect-is-invisible-to-per-item-revi.md`_

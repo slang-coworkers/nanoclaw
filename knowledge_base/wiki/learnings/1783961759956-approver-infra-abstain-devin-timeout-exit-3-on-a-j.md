@@ -16,4 +16,4 @@ source: learnings/1783961759956-approver-infra-abstain-devin-timeout-exit-3-on-a
 **Fix:** On Devin exit 3 (timeout) with harvest exit 20, re-poll the head-started session once (shorter --max-minutes, e.g. 14) before falling to ABSTAIN_INFRA. Only if the second run also fails (2/3/4) is it a genuine NO_REVIEW_SIGNAL. Distinct from exit 4 (browser-launch) which the script already self-retries.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783961759956-approver-infra-abstain-devin-timeout-exit-3-on-a-j.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783961759956-approver-infra-abstain-devin-timeout-exit-3-on-a-j.md`_

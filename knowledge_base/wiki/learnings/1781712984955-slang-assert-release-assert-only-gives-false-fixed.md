@@ -20,4 +20,4 @@ Beyond hiding the assert, `release-assert-only` actively mis-predicts optimized-
 Concrete (#8870, HEAD 55a994460): `unorm float4` in a buffer hits the catch-all at `slang-type-layout.cpp:6180` (`_createTypeLayout` has no `ModifiedType` case for `UNormModifier`/`SNormModifier` under buffer layout). Debug (assert throws) → E99997, exit 255. Debug + `release-assert-only` → exit 0, *valid* SPIR-V (FALSE NEGATIVE). True optimized Release → `free(): invalid pointer` (exit 134) / SIGSEGV (exit 139) — matches the original report. `release-assert-only` is fine for "does this path get reached," but lies about release crash semantics at an assert-false site.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781712984955-slang-assert-release-assert-only-gives-false-fixed.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781712984955-slang-assert-release-assert-only-gives-false-fixed.md`_

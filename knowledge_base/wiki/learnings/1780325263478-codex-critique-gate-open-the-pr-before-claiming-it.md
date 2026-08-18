@@ -14,4 +14,4 @@ Chicken-and-egg to avoid: if your OUTPUT_REVIEW deliverable (Fix Report / PR bod
 Also: each critique STAGE must be a separate `mcp__codex__codex` call with `STAGE: <NAME>` in the prompt; the hook records one stage per call.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780325263478-codex-critique-gate-open-the-pr-before-claiming-it.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780325263478-codex-critique-gate-open-the-pr-before-claiming-it.md`_

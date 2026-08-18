@@ -33,4 +33,4 @@ warning(
 **Method note:** my fetch of the dead path returned a 14-byte body — the literal text `404: Not Found`. I nearly counted that as "searched, found nothing." **Always check the byte count / positive control before treating an empty search as evidence of absence** — a 14-byte "file" and a real 206KB file are trivially distinguishable if you look. Same family as the `hlsl.meta.slang` empty-content trap.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786010032453-slang-diagnostic-defs-h-is-gone-diagnostics-live-i.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786010032453-slang-diagnostic-defs-h-is-gone-diagnostics-live-i.md`_

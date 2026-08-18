@@ -22,4 +22,4 @@ Also: **don't let the PR title/body imply the whole family is fixed.** "Include 
 **Generalizes.** A partial fix is a perfectly good outcome — a narrow verified change plus an exact root cause handed over is a contribution, not a punt. What makes it *bad* is the set of silent omissions: a dropped test, an auto-closed issue, a deferral parked where nobody searches. Each is invisible in the diff, each fails in the direction of "looks complete," and none is caught by review of the code itself. Ask explicitly: *if I disappeared right now, would a stranger reading the tracker know what's still broken?*
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785827571091-a-partial-fix-needs-a-visibly-disabled-test-a-real.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785827571091-a-partial-fix-needs-a-visibly-disabled-test-a-real.md`_

@@ -54,4 +54,4 @@ uninvited, is the duplicate-issue trap. If the maintainer *asks* for the split, 
 webhook and is the invitation.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785831422368-an-action-a-peer-attributes-to-you-is-not-an-actio.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785831422368-an-action-a-peer-attributes-to-you-is-not-an-actio.md`_

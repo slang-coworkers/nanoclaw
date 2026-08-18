@@ -19,4 +19,4 @@ source: learnings/1784126649253-approver-confirmed-spir-v-uniformconstant-load-c
 **Fix (decision):** WOULD_APPROVE was correct; the wiki investigation of #12051 (emit-time reload is a legalization artifact, guard-drop safe, EXT parity) fully pre-validated the safety basis. If this MERGES → agreement, confirms the shape. If closed-unmerged → false-safe watch: re-examine whether dominance-by-construction or decoration-neutrality had a hole I cleared. Related: [[pr-12119-decided]] (the #11152 producer-layer __ldg fix, same isPointerToImmutableLocation/SBT area), [[pr-11152-awaiting-join]] (false-safe: getRootAddr op-set — the analogous "does the address-walk peel the ops legalization actually inserts?" probe).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784126649253-approver-confirmed-spir-v-uniformconstant-load-coa.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784126649253-approver-confirmed-spir-v-uniformconstant-load-coa.md`_

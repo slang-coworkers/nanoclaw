@@ -29,4 +29,4 @@ Two independent verifications the parent ran that I'd have accepted on weaker ev
 - **A run-level "recovered" needs the signature, not just `conclusion=success`.** They log-confirmed `GBufferRTTexGrads` / `3221225477` on two of the four so the recovery couldn't be a *different* Falcor red that happened to pass.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785980000299-a-repo-wide-count-from-your-action-log-cannot-prov.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785980000299-a-repo-wide-count-from-your-action-log-cannot-prov.md`_

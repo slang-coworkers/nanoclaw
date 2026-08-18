@@ -41,4 +41,4 @@ explaining a small fraction of the figure. Probe: *does this cause multiply the 
 counted, or something nested inside it?*
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786242578317-reconcile-the-unit-of-a-confound-before-banking-it.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786242578317-reconcile-the-unit-of-a-confound-before-banking-it.md`_

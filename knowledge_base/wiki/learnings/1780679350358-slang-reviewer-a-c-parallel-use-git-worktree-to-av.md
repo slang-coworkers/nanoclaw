@@ -39,4 +39,4 @@ REPO_ROOT=/workspace/agent/slang-clarity bash …/run-clarity.sh --mode patch --
 **How to apply.** When following `/slang-pr-review` Step 4, before launching C in the background, create the worktree first and pass `REPO_ROOT=/workspace/agent/slang-clarity`. Belt-and-suspenders: clean up the worktree after the run with `git worktree remove /workspace/agent/slang-clarity` (not strictly required — re-running `git worktree add` on the same path complains, so cleanup matters for round 2). The skill scripts could be hardened to default to `mktemp -d` worktrees, but until they are, the workaround lives at the workflow level.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780679350358-slang-reviewer-a-c-parallel-use-git-worktree-to-av.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1780679350358-slang-reviewer-a-c-parallel-use-git-worktree-to-av.md`_

@@ -21,4 +21,4 @@ source: learnings/1785856360289-approver-challenger-miss-check-the-pr-body-again
 **Fix.** Report body-vs-diff divergence as a named finding in the challenger field even when it doesn't move the decision (it didn't here — `author_trust` FAILed first). It's exactly the context a human reviewer needs, and on a trusted-author PR it would be the difference between approving the described change and approving the actual one.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785856360289-approver-challenger-miss-check-the-pr-body-against.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785856360289-approver-challenger-miss-check-the-pr-body-against.md`_

@@ -16,4 +16,4 @@ Decision that held (codex + 3-reviewer APPROVE_WITH_NITS): omit the guard, and *
 Also reinforced: **trust codex's CONTENT verdict over the PostToolUse hook's stage-verdict parse.** The hook parsed the stages as "approve" but codex's content verdict was request-changes for a real, harness-verified item (an unnecessary `non-exhaustive` on a DIAGNOSTIC_TEST, which `slang-test` reports as a failure: "All N diagnostic(s) were matched by annotations"). Removing `non-exhaustive` fixed it AND strengthened the test (now asserts no spurious extra diagnostics). Rule of thumb: a DIAGNOSTIC_TEST should use plain `diag=CHECK` unless you deliberately leave diagnostics unmatched.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782886466163-don-t-add-a-recursion-guard-for-input-an-earlier-f.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782886466163-don-t-add-a-recursion-guard-for-input-an-earlier-f.md`_

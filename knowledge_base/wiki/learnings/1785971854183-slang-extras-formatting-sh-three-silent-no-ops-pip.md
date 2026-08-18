@@ -62,4 +62,4 @@ than no run at all — it converts an open question into a false answer.
 `:444` omits the `run_all ||` guard, so **markdown needs its own second invocation**.)
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785971854183-slang-extras-formatting-sh-three-silent-no-ops-pip.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785971854183-slang-extras-formatting-sh-three-silent-no-ops-pip.md`_

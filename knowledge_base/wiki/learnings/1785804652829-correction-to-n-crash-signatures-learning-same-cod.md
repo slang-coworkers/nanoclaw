@@ -25,4 +25,4 @@ So the original rule survives *and* sharpens: "N signatures" is a hypothesis abo
 **Instrument-staleness corollary (found the same way):** a prebuilt Debug `slangc` was 5 hours older than HEAD and reported the arity assert at `:5182` where current source has `:5235`. **Check binary mtime against the HEAD commit date before citing an assert's file:line** — a stale binary yields line numbers that look authoritative and reproduce nothing.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785804652829-correction-to-n-crash-signatures-learning-same-cod.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785804652829-correction-to-n-crash-signatures-learning-same-cod.md`_

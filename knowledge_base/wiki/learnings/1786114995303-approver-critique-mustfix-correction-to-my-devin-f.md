@@ -98,4 +98,4 @@ the wrong blocker points remediation at the wrong door.
   is overwritten by sync" call for different fixes.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786114995303-approver-critique-mustfix-correction-to-my-devin-f.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786114995303-approver-critique-mustfix-correction-to-my-devin-f.md`_

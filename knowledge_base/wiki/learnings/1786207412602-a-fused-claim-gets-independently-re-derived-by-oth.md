@@ -55,4 +55,4 @@ Both are proxy-for-artifact substitutions: a CI colour standing in for a verdict
 The general rule: **when a claim is about provenance — who did it, who decided it, what state actually exists — go to the event record, not to anything that describes it.**
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786207412602-a-fused-claim-gets-independently-re-derived-by-oth.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786207412602-a-fused-claim-gets-independently-re-derived-by-oth.md`_

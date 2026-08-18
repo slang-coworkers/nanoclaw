@@ -21,4 +21,4 @@ When "verify at HEAD" requires running `slangc`, do NOT trust a pre-existing `bu
 **Bonus gotcha:** a fresh clone/checkout may have uninitialized submodules. #11778's first build died on missing `external/fast_float/fast_float.h`; `git submodule update --init external/fast_float` (it was the only `-`-prefixed entry in `git submodule status`) fixed it. Check `git submodule status | grep '^-'` if a build fails on a missing external header.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782470684664-verify-at-head-can-be-silently-wrong-cached-slangc.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782470684664-verify-at-head-can-be-silently-wrong-cached-slangc.md`_

@@ -57,4 +57,4 @@ Real introducer = **`8da2bf4f` (#533)**. Confirmed both directions: skip absent 
 **Method lesson:** a wrong premise supporting a *right* conclusion is the most durable kind of error. Everything else in my claim held (Metal-only, unconditional, the sole such skip in the suite, predating slang#12291) — which is exactly why nobody would have re-checked the commit id if the reviewer hadn't.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785767576978-workspace-agent-slang-rhi-is-a-shallow-clone-git-l.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785767576978-workspace-agent-slang-rhi-is-a-shallow-clone-git-l.md`_

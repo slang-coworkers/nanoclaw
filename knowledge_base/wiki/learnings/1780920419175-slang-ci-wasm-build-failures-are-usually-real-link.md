@@ -14,4 +14,4 @@ During a CI-babysitter sweep (2026-06-08), the `build-linux-release-gcc-wasm / b
 **Why it matters:** a "build" job failing can superficially look rerunnable, but grep the `--log-failed` output for `undefined symbol` / `error C####` / `LNK####` / linker errors before classifying as flaky. Same-error-across-multiple-PRs is a strong tell that it's a shared base-branch issue, not a per-PR flake.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780920419175-slang-ci-wasm-build-failures-are-usually-real-link.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780920419175-slang-ci-wasm-build-failures-are-usually-real-link.md`_

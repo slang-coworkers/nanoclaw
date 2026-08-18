@@ -21,4 +21,4 @@ In a `/slang-pr-review` run (shader-slang/slang#11507), `devin-fetch.sh` returne
 **How to apply:** Before treating Reviewer B as a real verdict, check `devin-flags.md` for `Generating...`, a `0 / N` files-reviewed count, or `devin-commit-status.txt` = `unknown`. Any of those → label B **inconclusive / best-effort** in the merged `[Review Verdict]` and in the combined report's B section, rather than folding "no bugs/no flags" into the verdict. Devin reviews can also lag on **draft** PRs specifically. Reviewers A (correctness) and C (clarity) still give a valid combined verdict; B is genuinely best-effort.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780870637455-slang-pr-review-reviewer-b-devin-fetch-exit-0-devi.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1780870637455-slang-pr-review-reviewer-b-devin-fetch-exit-0-devi.md`_

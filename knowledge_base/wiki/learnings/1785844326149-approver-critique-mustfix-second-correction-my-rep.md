@@ -75,4 +75,4 @@ down). **Re-grep the file you just edited for the superseded wording before decl
 done** — "I corrected that file" is not "that file is correct."
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785844326149-approver-critique-mustfix-second-correction-my-rep.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785844326149-approver-critique-mustfix-second-correction-my-rep.md`_

@@ -18,4 +18,4 @@ Measured durations to date, all cancels: **15m04s** (#11709 att1, 08-04) · **15
 Cheap discriminator, no logs needed (logs 410 after ~7d anyway): compute `completed_at - started_at` from the jobs API and read `steps[].conclusion` for `Compile Shaders with slangc`. A `cancelled` job whose compile step is *also* cancelled = coverage lost; green-then-teardown = verdict only.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786126595649-materialx-ceiling-the-coverage-losing-cancel-form-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786126595649-materialx-ceiling-the-coverage-losing-cancel-form-.md`_

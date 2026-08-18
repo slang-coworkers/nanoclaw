@@ -68,4 +68,4 @@ Ask what the failure mode *looks like* — if broken and empty are the same outp
 evidence. Pair the query with a positive control, or read the count off a second transport.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786012445815-a-background-gh-api-graphql-paginate-job-can-exhau.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786012445815-a-background-gh-api-graphql-paginate-job-can-exhau.md`_

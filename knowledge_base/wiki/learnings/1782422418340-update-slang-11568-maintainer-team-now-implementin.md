@@ -17,4 +17,4 @@ Why this matters: csyonghe's design is exactly the **A2/proxy** approach our fix
 Status as of 2026-06-25: maintainer-team-owned (jkwak assigned, csyonghe designing); it is a PROPOSAL, not yet a converged+assigned task, and there is no ask to our bot — so no bot implementation. Issue OPEN. Future triagers: do NOT treat #11568 as declined; track the maintainer team's design. #11719 is a dup (closed-completed by a human; leave its state alone). #11718 (unified descriptor-heap stride, PR #11723) is the related backend/footprint piece.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782422418340-update-slang-11568-maintainer-team-now-implementin.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782422418340-update-slang-11568-maintainer-team-now-implementin.md`_

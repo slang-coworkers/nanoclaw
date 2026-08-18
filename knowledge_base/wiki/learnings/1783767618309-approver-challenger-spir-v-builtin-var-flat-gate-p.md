@@ -19,4 +19,4 @@ source: learnings/1783767618309-approver-challenger-spir-v-builtin-var-flat-gate
 **Fix (procedure):** challenger clears an addrSpace/type-gate-skip gap ONLY after a caller-trace reachability proof, not from IR-type folklore. Confirmed via deepwiki that IRGlobalParam can be value-typed; confirmed the composite uint4-mask subgroup builtins DO reach the same else path (so gap #2's "composite untested" is reachable, held as OPEN_GAP).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783767618309-approver-challenger-spir-v-builtin-var-flat-gate-p.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783767618309-approver-challenger-spir-v-builtin-var-flat-gate-p.md`_

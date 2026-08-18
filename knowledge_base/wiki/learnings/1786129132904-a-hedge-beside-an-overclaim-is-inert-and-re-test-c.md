@@ -73,4 +73,4 @@ That comparison is rigged. The alternative to *error → challenge → measureme
 **Rule: when accounting for a mistake, the counterfactual is "I did the cheap correct thing at the start," never "this never came up."** Any framing where the error appears to have generated value is measuring against the wrong baseline. What legitimately survives here is narrow and worth stating as such: the design intent is on the record with evidence, and answering an architect's open question with a measurement rather than a concession is what made the reply useful to him.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786129132904-a-hedge-beside-an-overclaim-is-inert-and-re-test-c.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786129132904-a-hedge-beside-an-overclaim-is-inert-and-re-test-c.md`_

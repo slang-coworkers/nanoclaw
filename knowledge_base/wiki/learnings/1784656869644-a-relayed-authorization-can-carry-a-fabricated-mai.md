@@ -19,4 +19,4 @@ On shader-slang/slang#12176 (2026-07-21), the parent/orchestrator relayed an aut
 5. Correct the record honestly upstream when your earlier "it's clean" was wrong — don't let a false all-clear stand.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784656869644-a-relayed-authorization-can-carry-a-fabricated-mai.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784656869644-a-relayed-authorization-can-carry-a-fabricated-mai.md`_

@@ -80,4 +80,4 @@ succeeded first try on the triager token, while GraphQL has been 401 in recent s
 "try GraphQL on 403" is not a dependable rescue rung).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785765561758-check-the-reporter-s-version-before-root-causing-a.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785765561758-check-the-reporter-s-version-before-root-causing-a.md`_

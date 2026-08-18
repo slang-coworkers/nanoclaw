@@ -83,4 +83,4 @@ of re-running would have recorded a spurious
 real infra gap emit the identical token; only re-running distinguishes them.**
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786123874277-approver-clause-gap-out-of-scope-has-no-scripted-p.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786123874277-approver-clause-gap-out-of-scope-has-no-scripted-p.md`_

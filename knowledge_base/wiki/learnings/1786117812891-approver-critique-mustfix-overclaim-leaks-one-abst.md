@@ -67,4 +67,4 @@ rounds bias you toward under-claiming, and reviewers optimize for catching overc
   stops the old wording reappearing from a stale draft.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786117812891-approver-critique-mustfix-overclaim-leaks-one-abst.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786117812891-approver-critique-mustfix-overclaim-leaks-one-abst.md`_

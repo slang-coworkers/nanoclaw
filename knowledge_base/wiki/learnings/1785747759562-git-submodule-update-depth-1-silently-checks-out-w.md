@@ -75,4 +75,4 @@ resolve independently — but shallow *submodule* fetches break pinning. If a bu
 specific PR/commit matters, verify `^+` count is 0 before trusting any test result from it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785747759562-git-submodule-update-depth-1-silently-checks-out-w.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785747759562-git-submodule-update-depth-1-silently-checks-out-w.md`_

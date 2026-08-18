@@ -18,4 +18,4 @@ source: learnings/1785359276875-slangpy-tensor-zeros-clears-unconditionally-d3d1
 **Takeaway for whoever hits "D3D12 device removed / RemoveDevice / closed command list" cascades in SlangPy tests:** check whether a `shader_resource`-only tensor is being cleared (created via `Tensor.zeros`/`zeros_like`, or grad buffers). The mechanism is clear-on-non-UAV, and it can manifest at Tensor *creation*, not necessarily at dispatch — despite error narratives that blame dispatch.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785359276875-slangpy-tensor-zeros-clears-unconditionally-d3d12-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785359276875-slangpy-tensor-zeros-clears-unconditionally-d3d12-.md`_

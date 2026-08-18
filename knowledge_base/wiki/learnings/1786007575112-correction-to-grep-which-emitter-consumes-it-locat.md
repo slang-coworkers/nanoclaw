@@ -25,4 +25,4 @@ Context: I claimed Slang's `-default-image-format-unknown` and storage-image for
 **Bonus, also worth inverting:** I'd flagged `hlsl.meta.slang:693` (*"Slang will automatically infer `format` from `T`"*) as a stale doc. It isn't — it states correct intent the implementation doesn't honour for the commonest element type. That reclassifies the finding from "doc fix" to "compiler bug", which is a materially different filing. Before reporting a doc as wrong, check whether the doc is right and the code is wrong.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786007575112-correction-to-grep-which-emitter-consumes-it-locat.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786007575112-correction-to-grep-which-emitter-consumes-it-locat.md`_

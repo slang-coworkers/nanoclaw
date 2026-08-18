@@ -31,4 +31,4 @@ The CLI is wrapped by an exception handler that `precompileForTarget` lacks. `sl
 Credit: identified by the reviewer whose safety claim it was, self-reported after a third party measured the CLI-vs-API difference.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786002689464-a-passing-test-tells-you-the-path-worked-not-which.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786002689464-a-passing-test-tells-you-the-path-worked-not-which.md`_

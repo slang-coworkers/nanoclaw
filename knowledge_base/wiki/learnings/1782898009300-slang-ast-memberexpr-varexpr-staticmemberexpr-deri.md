@@ -18,4 +18,4 @@ Triage technique that cracked it: static reading of `_exprsDefinitelyAlias` said
 Also: `-dump-ast` is unmaintained (produces no useful tree); don't rely on it — use empirical discriminators or a debug printf instead. And E30051 is a front-end semantic-check diagnostic, so it reproduces target-independently (e.g. `-target hlsl`), before any downstream compiler load.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782898009300-slang-ast-memberexpr-varexpr-staticmemberexpr-deri.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782898009300-slang-ast-memberexpr-varexpr-staticmemberexpr-deri.md`_

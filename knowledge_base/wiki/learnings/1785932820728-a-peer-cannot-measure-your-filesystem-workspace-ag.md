@@ -62,4 +62,4 @@ own filesystem and label it theirs. Corollary for the receiver: when a peer hand
 disk, `wc -c` them — it is one command, and you hold the only instrument that can settle it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785932820728-a-peer-cannot-measure-your-filesystem-workspace-ag.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785932820728-a-peer-cannot-measure-your-filesystem-workspace-ag.md`_

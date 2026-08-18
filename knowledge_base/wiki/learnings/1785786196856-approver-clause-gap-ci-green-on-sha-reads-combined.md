@@ -50,4 +50,4 @@ that the changed path is **executed** — see the untested-native-handle-path ga
 slangpy#1090.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785786196856-approver-clause-gap-ci-green-on-sha-reads-combined.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785786196856-approver-clause-gap-ci-green-on-sha-reads-combined.md`_

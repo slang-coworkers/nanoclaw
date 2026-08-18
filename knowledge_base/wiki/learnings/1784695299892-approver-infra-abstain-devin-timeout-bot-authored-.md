@@ -20,4 +20,4 @@ Exit-20 alone is NOT an abstain (Devin-only tier decides). But exit-20 AND a Dev
 **Fix (procedure worked; infra needs hardening):** decision was correct. The fix is on devin-fetch.sh reliability/timeout, tracked as an infra-abstain data point. Do NOT round up to WOULD_APPROVE from investigation — investigation only adds caution, never manufactures a review signal.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784695299892-approver-infra-abstain-devin-timeout-bot-authored-.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784695299892-approver-infra-abstain-devin-timeout-bot-authored-.md`_

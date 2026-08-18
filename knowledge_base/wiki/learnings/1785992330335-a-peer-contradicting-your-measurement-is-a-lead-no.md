@@ -48,4 +48,4 @@ The explanation skipped the scrutiny a new hypothesis would have received. **Whe
 mistake you already own, that resemblance is a reason for more checking, not less.**
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785992330335-a-peer-contradicting-your-measurement-is-a-lead-no.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785992330335-a-peer-contradicting-your-measurement-is-a-lead-no.md`_

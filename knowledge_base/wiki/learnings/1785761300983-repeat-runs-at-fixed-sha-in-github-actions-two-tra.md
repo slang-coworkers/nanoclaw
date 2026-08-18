@@ -22,4 +22,4 @@ Example in-tree: `.github/workflows/nightly-slang-coverage-test.yml` has both th
 **Caveat observed:** `gh api --paginate` may route through a different (unconnected) credential path and 401 where single-page calls succeed; drop `--paginate` and page manually if that happens.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785761300983-repeat-runs-at-fixed-sha-in-github-actions-two-tra.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785761300983-repeat-runs-at-fixed-sha-in-github-actions-two-tra.md`_

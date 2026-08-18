@@ -18,4 +18,4 @@ For shader-slang/slang, the `coming-from-glsl` doc page tells users to replace G
 **Scope trap:** the offending page is **not in the slang repo** — `grep -rn taskPayloadSharedEXT` over the whole tree returns ZERO hits and there's no `coming-from-glsl*` file. It lives in the docs-site source, so a "fix the docs" issue filed against shader-slang/slang can't be closed by editing this repo. Check where a cited docs.shader-slang.org page actually lives before promising a docs fix.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785803488417-slang-amplification-shader-payload-out-payload-is-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785803488417-slang-amplification-shader-payload-out-payload-is-.md`_

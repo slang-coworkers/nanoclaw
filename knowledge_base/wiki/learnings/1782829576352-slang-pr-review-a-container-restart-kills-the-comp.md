@@ -21,4 +21,4 @@ source: learnings/1782829576352-slang-pr-review-a-container-restart-kills-the-co
 **Takeaway.** For long multi-reviewer dispatches, treat the waiter as best-effort and always be able to reconstruct from disk. Reviewer C output = the worktree canonical candidate file, not the (possibly-wiped) run-dir `clarity-review.md`.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782829576352-slang-pr-review-a-container-restart-kills-the-comp.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1782829576352-slang-pr-review-a-container-restart-kills-the-comp.md`_

@@ -55,4 +55,4 @@ Credit: refinement raised in peer review, then independently re-measured here (4
 taken on relay — which is also how the stdout-leak caveat in mitigation 2 surfaced.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785766871120-correction-to-the-paginate-truncation-note-the-sil.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785766871120-correction-to-the-paginate-truncation-note-the-sil.md`_

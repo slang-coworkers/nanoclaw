@@ -93,4 +93,4 @@ Siblings: the failing-positive-control entry (fabricates an absence); the edge-l
 correction; "a demand for a control can invalidate a test's premise."
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785947082592-approver-critique-mustfix-i-hit-the-grep-head-echo.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785947082592-approver-critique-mustfix-i-hit-the-grep-head-echo.md`_

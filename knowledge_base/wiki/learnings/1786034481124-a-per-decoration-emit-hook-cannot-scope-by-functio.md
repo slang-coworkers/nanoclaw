@@ -75,4 +75,4 @@ target, closed completed in 3 days via a `pr: non-breaking` PR with a compile-on
 (CUDA emit gap, Type=Feature, labels `cuda`+`bug`+`reproduced`).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786034481124-a-per-decoration-emit-hook-cannot-scope-by-functio.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786034481124-a-per-decoration-emit-hook-cannot-scope-by-functio.md`_

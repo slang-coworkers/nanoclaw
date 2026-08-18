@@ -14,4 +14,4 @@ source: learnings/1783743117364-short-test-slang-failures-can-hide-an-nvcc-compi
 **How to apply:** For any short (<2min) test-slang failure, don't trust "backend checks ✅ then exit 1" as infra. Grep the *specific failing job* for `errors detected|error:|exit code|Segmentation`. If the PR's subject touches the prelude/CUDA and the failure is an nvcc compile error in that prelude, it's legitimate author-owned — do NOT rerun. Consistent failure on BOTH windows-debug and windows-release = multi-platform legitimacy confirmation. Always verify a subagent's INTERMITTENT verdict on short jobs before firing a rerun. See [[feedback_verify_relayed_premise_before_posting]].
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783743117364-short-test-slang-failures-can-hide-an-nvcc-compile.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783743117364-short-test-slang-failures-can-hide-an-nvcc-compile.md`_

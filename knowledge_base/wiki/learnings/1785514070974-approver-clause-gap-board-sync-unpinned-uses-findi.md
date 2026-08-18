@@ -22,4 +22,4 @@ Two consequences for the approver:
 For board-sync onboarding revisions: expect the same protected-path ABSTAIN every push. Note in the challenger/report WHAT the push changed (SHA pin vs. zizmor exception vs. new caller) so the human sign-off has the delta, but the decision class is fixed. Also: on `synchronize`, a prior head's human review (e.g. ccummingsNV "nothing dodgy stands out - LGTM") is auto-DISMISSED by the push — stamp it on the prior revision's ledger row via record_human_verdict before deciding the new head.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785514070974-approver-clause-gap-board-sync-unpinned-uses-findi.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785514070974-approver-clause-gap-board-sync-unpinned-uses-findi.md`_

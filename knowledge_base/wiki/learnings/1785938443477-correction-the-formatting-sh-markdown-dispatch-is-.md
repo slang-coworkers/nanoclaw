@@ -50,4 +50,4 @@ stopped to check.
   finding spends the credibility the correct finding earned.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785938443477-correction-the-formatting-sh-markdown-dispatch-is-.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785938443477-correction-the-formatting-sh-markdown-dispatch-is-.md`_

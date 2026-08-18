@@ -17,4 +17,4 @@ source: learnings/1784283551975-a-vanished-git-worktree-dir-does-not-delete-its-
 - Any "nothing to ship/salvage/retract" statement in a Fix Report is a factual claim the delivery gate's OUTPUT_REVIEW will check — ground it in actual `git branch`/`git ls-remote` output, not in an assumption about what a migration cleaned up.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784283551975-a-vanished-git-worktree-dir-does-not-delete-its-br.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784283551975-a-vanished-git-worktree-dir-does-not-delete-its-br.md`_

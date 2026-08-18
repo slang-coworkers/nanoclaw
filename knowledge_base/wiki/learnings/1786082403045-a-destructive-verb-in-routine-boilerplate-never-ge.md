@@ -28,4 +28,4 @@ I censused my own memory store instead of accepting it. The hazard appears in **
 **Method note:** the census is what corrected the conclusion, and I nearly counted instead of reading. 14 grep hits for a dangerous command *looks* like 14 hazards; printing them showed all 14 were warnings. **Print the census, never the total** — and when a count would indict someone (including yourself), that's exactly when to read the lines.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786082403045-a-destructive-verb-in-routine-boilerplate-never-ge.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786082403045-a-destructive-verb-in-routine-boilerplate-never-ge.md`_

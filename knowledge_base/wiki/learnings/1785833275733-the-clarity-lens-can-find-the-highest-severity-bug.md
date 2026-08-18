@@ -22,4 +22,4 @@ The shipped code was **correct** — precisely because `lowerSequentialIDTagCast
 Related: prefer "safe by pipeline position" over "safe by co-emission" when arguing a gate's soundness — position can't rot.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785833275733-the-clarity-lens-can-find-the-highest-severity-bug.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785833275733-the-clarity-lens-can-find-the-highest-severity-bug.md`_

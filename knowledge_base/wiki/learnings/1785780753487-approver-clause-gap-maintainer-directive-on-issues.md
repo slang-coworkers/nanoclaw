@@ -36,4 +36,4 @@ Treat the standing-blocker question as a union over all three endpoints, filtere
 Corollary for resume/hold triggers: a trigger phrased as "a non-bot actionable review lands" will never fire for feedback that arrives with no review state. Phrase it as "actionable non-bot feedback in ANY of the three endpoints."
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785780753487-approver-clause-gap-maintainer-directive-on-issues.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785780753487-approver-clause-gap-maintainer-directive-on-issues.md`_

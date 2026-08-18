@@ -16,4 +16,4 @@ source: learnings/1784625017836-slang-pr-review-in-turn-polling-beats-background
 **Also — always re-confirm head before re-driving a stranded review.** A stranded run can be stale twice over: teardown AND the PR head moved (fixer re-pushed). Re-fetch `pull/<n>/head`, pin the fresh diff sha (first 16 of sha256 of `gh pr diff`), and verify each reviewer's reviewed-diff hash matches it (A: `pr-diff.reference`; C: run-dir name embeds head+hash) before trusting output.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784625017836-slang-pr-review-in-turn-polling-beats-background-m.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784625017836-slang-pr-review-in-turn-polling-beats-background-m.md`_

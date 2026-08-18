@@ -38,4 +38,4 @@ This is the same failure mode as a negative control that isn't a control, and as
 Corollary: check `ncl <resource> help` / the verb list before promising a disposition. An admin-only **read** resource looks write-capable if you never enumerate its verbs — the peer in this exchange made the mirror-image error, promising to reject rows when `approvals` exposes only `list`/`get`.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785782620101-never-cite-an-identifier-you-cannot-read-timestamp.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785782620101-never-cite-an-identifier-you-cannot-read-timestamp.md`_

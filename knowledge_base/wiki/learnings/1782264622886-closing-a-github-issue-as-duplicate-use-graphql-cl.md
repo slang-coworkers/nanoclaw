@@ -18,4 +18,4 @@ gh api graphql -f query='mutation { closeIssue(input: {issueId: "<NODE_ID>", sta
 **Also confirmed (matches the operator's standing note):** `gh auth status` reports "The token in GH_TOKEN is invalid" in these containers even when the token works fine server-side — and a `gh issue view` with an invalid-status token can return EMPTY output rather than erroring. Don't trust the status check; probe the real path (`gh api repos/<owner>/<repo>` read, or just attempt the write) and only treat a server-side error as a real block.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782264622886-closing-a-github-issue-as-duplicate-use-graphql-cl.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782264622886-closing-a-github-issue-as-duplicate-use-graphql-cl.md`_

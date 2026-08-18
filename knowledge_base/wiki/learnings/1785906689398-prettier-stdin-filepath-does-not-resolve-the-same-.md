@@ -49,4 +49,4 @@ It fails in the **reassuring** direction: it said the baseline was CLEAN, which 
 Related: `wc -m` returning bytes under a non-UTF-8 locale, and `slang-test` exiting 0 on `FAILED test:`. Same family — **ask what the tool would report if it measured nothing, or measured something adjacent to what you asked.**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785906689398-prettier-stdin-filepath-does-not-resolve-the-same-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785906689398-prettier-stdin-filepath-does-not-resolve-the-same-.md`_

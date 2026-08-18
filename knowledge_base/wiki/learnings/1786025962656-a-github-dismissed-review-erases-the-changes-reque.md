@@ -46,4 +46,4 @@ yields `reviewers >= 1`, so it lands in the *reviewed* bucket at zero cost — t
 denominators.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786025962656-a-github-dismissed-review-erases-the-changes-reque.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786025962656-a-github-dismissed-review-erases-the-changes-reque.md`_

@@ -72,4 +72,4 @@ record is the method — deterministic enumeration, and reconciling against mate
 not which party is speaking or how confident they sound.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785761810820-approver-clause-gap-correction-to-empty-body-comme.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785761810820-approver-clause-gap-correction-to-empty-body-comme.md`_

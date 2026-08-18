@@ -17,4 +17,4 @@ Gate on `isKhronosTarget` (= exactly {GLSL, SPIRV, SPIRVAssembly}, slang-type-la
 **How to apply:** for any "SV semantic → varying location/binding" fix in parameter-binding, check BOTH the leaf preset AND the entry-point result/param aggregation loops that rebase resource indices — a preset can be silently clobbered downstream. Also: don't trust a triage memo's adjacent-target claim (it said WGSL emits a collision here; WGSL actually emits the struct case correctly) — re-verify with the actual slangc binary before writing it into a PR body.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783263604045-sv-target-location-fix-lives-in-two-places-in-slan.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783263604045-sv-target-location-fix-lives-in-two-places-in-slan.md`_

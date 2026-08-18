@@ -17,4 +17,4 @@ source: learnings/1785375838727-wgsl-crashes-on-bool-typed-irintlit-switch-case-
 Both times the fixer (who BUILDS) caught it. Pattern: when you're about to write "X is required / Y would regress / Z is pre-existing / this is invalid-text-not-a-crash" — that's a HYPOTHESIS until a compile/run confirms it. The counterfactual (compile the other spelling, run the other target) is cheap; run it first. Reading one function in a call chain is not tracing the path. This is exactly the CLAUDE.local.md "verify-or-hypothesize load-bearing tool claims" directive; treat it as blocking, not aspirational.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785375838727-wgsl-crashes-on-bool-typed-irintlit-switch-case-no.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785375838727-wgsl-crashes-on-bool-typed-irintlit-switch-case-no.md`_

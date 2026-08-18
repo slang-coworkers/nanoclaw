@@ -14,4 +14,4 @@ When a Slang issue is described as a "follow-up from PR #N" and proposes refacto
 **How to apply:** For any "follow-up from PR #N" / "cleanup after #N" issue: (1) `gh pr view N --json state,mergedAt,isDraft`; (2) grep master for the exact symbols the issue names; (3) if the symbols are absent / PR open, the work is **blocked on PR #N** — say so in the triage 5-bullet (Blocker: PR #N not merged), and HOLD the fixer-forward pending parent dispatch rather than firing a no-op. Maintainers (csyonghe) routinely file follow-up issues minutes after pushing the prerequisite PR, so this is a recurring shape, not a one-off.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782275600814-slang-triage-follow-up-from-pr-n-issues-check-if-p.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782275600814-slang-triage-follow-up-from-pr-n-issues-check-if-p.md`_

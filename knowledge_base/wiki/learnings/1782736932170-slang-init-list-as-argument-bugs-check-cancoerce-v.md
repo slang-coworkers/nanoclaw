@@ -18,4 +18,4 @@ When a brace initializer `{...}` works as a var-decl init / return / assignment 
 4. Process: a fresh git worktree may have uninitialized submodules (`cmake --preset default` fails on `SPIRV-Headers::SPIRV-Headers`) → `git submodule update --init --recursive`. And a two-dot `git diff master..HEAD` can show spurious files if local `master` advanced past your branch point; use the three-dot merge-base `master...HEAD` (what GitHub's PR shows) to judge real scope.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782736932170-slang-init-list-as-argument-bugs-check-cancoerce-v.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782736932170-slang-init-list-as-argument-bugs-check-cancoerce-v.md`_

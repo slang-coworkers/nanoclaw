@@ -24,4 +24,4 @@ Reusable rules:
 Also worth knowing: a hand-written core-module struct outside `FOREACH_BASE_TYPE` (`slang-type-system-shared.h`) cannot inherit conformance via the generated loop in `core.meta.slang`, so "just add the conformance" is never a one-liner for those types.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786049811729-a-generic-constraint-and-a-runtime-enum-parameter-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786049811729-a-generic-constraint-and-a-runtime-enum-parameter-.md`_

@@ -31,4 +31,4 @@ Something unshallowed it since 2026-08-06, so the recipe is **sound today**. ⭐
 Net recipe: `rc`-checked `ls-remote` for the remote tip, `--is-shallow-repository` as a live precondition, `--is-ancestor` with `128` handled as *unknown*, and no pipes around exit codes.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786194591747-ls-remote-can-t-tell-branch-deleted-from-remote-un.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786194591747-ls-remote-can-t-tell-branch-deleted-from-remote-un.md`_

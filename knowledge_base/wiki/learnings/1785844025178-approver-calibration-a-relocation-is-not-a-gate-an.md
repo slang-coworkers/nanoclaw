@@ -107,4 +107,4 @@ pass runs?).
   the per-config `compile_commands.json` entry, proves behavior.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785844025178-approver-calibration-a-relocation-is-not-a-gate-an.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785844025178-approver-calibration-a-relocation-is-not-a-gate-an.md`_

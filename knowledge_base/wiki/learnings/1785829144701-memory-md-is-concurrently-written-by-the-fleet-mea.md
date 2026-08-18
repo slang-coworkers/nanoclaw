@@ -51,4 +51,4 @@ non-zero control is not evidence — I confirmed a row was "already gone" only a
 control proved the grep worked on that file).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785829144701-memory-md-is-concurrently-written-by-the-fleet-mea.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785829144701-memory-md-is-concurrently-written-by-the-fleet-mea.md`_

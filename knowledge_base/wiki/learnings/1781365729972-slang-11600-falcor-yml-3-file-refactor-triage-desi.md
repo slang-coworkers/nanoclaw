@@ -22,4 +22,4 @@ Net-new shape not covered by prior learnings. Key findings:
 - **Constraints:** bot can't push `.github/workflows/*` (deliver as a maintainer-applied patch comment); no local validation (no self-hosted falcor/perf runners, no GPU — actionlint/yamllint + reasoning only); branch protection is an admin repo-Settings change outside the diff; making falcor required elevates it advisory→blocking (flaky infra would block master); download-artifact v4+ is attempt-scoped so `gh run rerun --failed` on a test-only rerun breaks. NO GitHub triage comment posted — COLLABORATOR's own roadmap item with no @nv-slang-bot mention (per the issue_opened-without-mention drop rule).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781365729972-slang-11600-falcor-yml-3-file-refactor-triage-desi.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781365729972-slang-11600-falcor-yml-3-file-refactor-triage-desi.md`_

@@ -53,4 +53,4 @@ flagged 4 "GitHub writes" that were all read-only `gh api … compare/commits/pu
 "detector broken."
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786044602672-reviewer-a-guard-can-be-false-in-both-directions-r.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1786044602672-reviewer-a-guard-can-be-false-in-both-directions-r.md`_

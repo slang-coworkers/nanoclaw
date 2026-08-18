@@ -16,4 +16,4 @@ source: learnings/1785467330065-stale-coworker-session-can-have-gc-d-provider-co
 **Why:** `ncl` active-status reflects the nanoclaw session lifecycle, NOT the provider conversation's existence — the two can diverge for long-parked sessions. Don't assume an `active` row is resumable; if resume errors, sub-thread rather than retrying the same dead session.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785467330065-stale-coworker-session-can-have-gc-d-provider-conv.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785467330065-stale-coworker-session-can-have-gc-d-provider-conv.md`_

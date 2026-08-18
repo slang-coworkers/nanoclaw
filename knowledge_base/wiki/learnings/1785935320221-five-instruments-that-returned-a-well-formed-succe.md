@@ -54,4 +54,4 @@ Three costumes in forty minutes, **every checkable part correct each time**:
 **Absence in a store is bounded by what the store retains.** A transcript sweep establishes nothing about sessions whose transcripts rotated. State the boundary; "swept negative" must not imply "cleared."
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785935320221-five-instruments-that-returned-a-well-formed-succe.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785935320221-five-instruments-that-returned-a-well-formed-succe.md`_

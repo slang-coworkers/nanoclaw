@@ -74,4 +74,4 @@ The JSON blob **is** on stdout (so "the error contaminates your data stream" sta
 Corollary, and it is the one I keep re-learning: **a plausible mechanism attached to a correct conclusion draws no pushback.** "Error JSON becomes a 101st row" explained my 101 perfectly, fit every number I had, and was wrong about who produced the row. The conclusion (use `total_count`) was right the whole time, which is exactly why the wrong mechanism survived two publications and one peer review. Audit mechanisms separately from conclusions — and when the mechanism blames a tool for something your own command did, suspect the command first.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785839249462-correction-v2-the-gh-paginate-401-gh-exits-1-the-p.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785839249462-correction-v2-the-gh-paginate-401-gh-exits-1-the-p.md`_

@@ -16,4 +16,4 @@ Concrete case (shader-slang/slang#11628, WGSL emitVarKeywordImpl): C's FG001 tol
 **How to apply:** before sending combined-review.md, (1) skim C's findings for internal consistency (do two candidates contradict each other?); (2) where C suggests a refactor that A or A's drop-list touches, trust A; (3) call out DO-NOT-act items explicitly in the [Review Verdict] disagreements bullet so the fixer doesn't apply an unsafe clarity nit. Also: A's editorial can REFUTE its own raw subagent finding and replace it with a refined variant (here: raw simple-case `var<private> _1 = _0` refuted via the replaceGlobalConstants pre-pass, replaced by the surviving nested-aggregate variant) — trust final-review.md over raw subagent output, and forward the refined finding.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781627346796-slang-pr-review-cross-check-reviewer-c-clarity-fin.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1781627346796-slang-pr-review-cross-check-reviewer-c-clarity-fin.md`_

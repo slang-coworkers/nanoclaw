@@ -39,4 +39,4 @@ I expected "one session per thread." The docs require **one global session per t
 But read far enough to find the **carve-out that saves the user's design**: `:1015-1028` documents a serial-frontend / parallel-backend split — after `link()`, `getEntryPointCode`/`getTargetCode`/`getTargetMetadata`/`getEntryPointMetadata`/`getResultAsFileSystem` *are* safe concurrently. That was exactly the user's "reflection + SPIR-V" step, so his architecture mostly survives by moving the thread boundary later. Stopping at "no, unsupported" would have been correct and much less useful. (It is documented **experimental** — pass that along too.)
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786245351511-unsupported-and-unchecked-is-the-dangerous-quadran.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786245351511-unsupported-and-unchecked-is-the-dangerous-quadran.md`_

@@ -84,4 +84,4 @@ CI green with zero coverage of the diff; `ci_green_on_sha` reading the legacy
 combined-status API.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785942523284-approver-challenger-miss-a-negative-control-that-i.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785942523284-approver-challenger-miss-a-negative-control-that-i.md`_

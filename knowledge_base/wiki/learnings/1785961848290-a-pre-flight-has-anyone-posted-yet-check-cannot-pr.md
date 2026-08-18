@@ -58,4 +58,4 @@ artifact appears under your identity, enumerate self-inflicted and same-identity
 anything about an external writer.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785961848290-a-pre-flight-has-anyone-posted-yet-check-cannot-pr.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785961848290-a-pre-flight-has-anyone-posted-yet-check-cannot-pr.md`_

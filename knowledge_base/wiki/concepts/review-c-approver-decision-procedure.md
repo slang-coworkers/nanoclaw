@@ -56,7 +56,7 @@ the claim that gets a shadow-mode measurement program shut down. Say **"would ha
 Step 2"**, never "was approvable." Read the next stage's input (`review-doc.md`'s
 `_approver_result`/`verdict`/`gaps`) before quoting any outcome. A fix to one stage does not
 predict the outcome of the next, and inferring N outcomes from one clause state multiplies
-the error [[approver/clause-gap] "Clause-eligible" is not "approvable" — I let a Step-1 fix imply a Step-2 outcome and it propagated to an operator; #925's review verdict is REQUEST_CHANGES with 2 gaps, so the spurious clause changed the REASON, not the decision](wiki/learnings/1785944803906-approver-clause-gap-clause-eligible-is-not-approva.md).
+the error [[approver/clause-gap] "Clause-eligible" is not "approvable" — I let a Step-1 fix imply a Step-2 outcome and it propagated to an operator; #925's review verdict is REQUEST_CHANGES with 2 gaps, so the spurious clause changed the REASON, not the decision](../learnings/1785944803906-approver-clause-gap-clause-eligible-is-not-approva.md).
 
 The same discipline applies to proposing new status values. Splitting `ci_green_on_sha` into
 `pass`/`unevaluable`/`not_applicable` felt strictly-safer, but the consumer has only three
@@ -66,7 +66,7 @@ shadow decisions to `ABSTAIN_INFRA`, destroying the measurement program. **"Cons
 not a synonym for "correct."** A CI-waiver belongs at the *reporting* layer (a
 self-indicting, machine-greppable evidence string plus a decision-record caveat), keeping
 `status: "pass"` so the pipeline continues, never at the status layer
-[[approver/clause-gap] My own three-outcome fix was wrong in the third outcome — the evaluator maps unevaluable→ABSTAIN_INFRA, so a `not_applicable`/`unevaluable` waiver would abstain 100% of shadow decisions; the waiver must stay non-blocking and be fixed at the reporting layer](wiki/learnings/1785944050080-approver-clause-gap-my-own-three-outcome-fix-was-w.md).
+[[approver/clause-gap] My own three-outcome fix was wrong in the third outcome — the evaluator maps unevaluable→ABSTAIN_INFRA, so a `not_applicable`/`unevaluable` waiver would abstain 100% of shadow decisions; the waiver must stay non-blocking and be fixed at the reporting layer](../learnings/1785944050080-approver-clause-gap-my-own-three-outcome-fix-was-w.md).
 
 ## Policy resolution: four tiers, and the pin that outranks the mount
 
@@ -89,8 +89,8 @@ caps 400/30 vs 8000/150), a fallback pin reverts *every* relaxation simultaneous
 **which clause fires is incidental** to whatever the PR happened to touch (fork head, author
 association, path, size, CI). Naming the mechanism after the one clause you observed scopes
 the fix too narrowly ("the `.github/**` widening isn't taking effect") and leaves the other
-reversions alive [[approver/clause-gap] CRITICAL: a per-PR staged policy/ snapshot takes precedence over the group-mounted policy (eval-clauses.py:277-281), silently overriding a human-signed widening — 21 of 57 run workspaces decided under a stale policy, all failing MORE conservatively](wiki/learnings/1785944417080-approver-clause-gap-critical-a-per-pr-staged-polic.md)
-[[approver/false-safe] Re-derived all 4 fallback-pinned decisions: 1 genuine FALSE-NEGATIVE (#918 = WOULD_APPROVE recorded as abstain), and 3 of 4 failed on clauses unrelated to protected_paths — a fallback pin reverts the ENTIRE policy, not one widening](wiki/learnings/1785944951948-approver-false-safe-re-derived-all-4-fallback-pinn.md).
+reversions alive [[approver/clause-gap] CRITICAL: a per-PR staged policy/ snapshot takes precedence over the group-mounted policy (eval-clauses.py:277-281), silently overriding a human-signed widening — 21 of 57 run workspaces decided under a stale policy, all failing MORE conservatively](../learnings/1785944417080-approver-clause-gap-critical-a-per-pr-staged-polic.md)
+[[approver/false-safe] Re-derived all 4 fallback-pinned decisions: 1 genuine FALSE-NEGATIVE (#918 = WOULD_APPROVE recorded as abstain), and 3 of 4 failed on clauses unrelated to protected_paths — a fallback pin reverts the ENTIRE policy, not one widening](../learnings/1785944951948-approver-false-safe-re-derived-all-4-fallback-pinn.md).
 
 The two live machinery defects behind this:
 
@@ -107,8 +107,8 @@ The two live machinery defects behind this:
 Both were fixed and verified by *running* the code (not assuming the edit took): the recorded
 run's stale `v0-shadow` pin gave `no_protected_paths` FAIL, while the same inputs under the
 signed `v0-shadow-wide` gave all six clauses PASS — re-confirming the finding from the
-opposite direction [[approver/clause-gap] The staging-fallback root cause is the SKILL DOC: it calls <ws>/policy/ "mounted" when precedence 2 is a per-PR copy — and my two code fixes land in an externally-synced skill, so they need an upstream PR, not a local edit](wiki/learnings/1785946364203-approver-clause-gap-the-staging-fallback-root-caus.md)
-[[approver/clause-gap] Both live defects FIXED and verified by execution — SKILL.md now documents all 4 policy tiers with the pin-outranks-mount warning, and clauses.json now records policy_path; the test run independently re-confirmed #925 from the other direction](wiki/learnings/1785949248172-approver-clause-gap-both-live-defects-fixed-and-ve.md).
+opposite direction [[approver/clause-gap] The staging-fallback root cause is the SKILL DOC: it calls <ws>/policy/ "mounted" when precedence 2 is a per-PR copy — and my two code fixes land in an externally-synced skill, so they need an upstream PR, not a local edit](../learnings/1785946364203-approver-clause-gap-the-staging-fallback-root-caus.md)
+[[approver/clause-gap] Both live defects FIXED and verified by execution — SKILL.md now documents all 4 policy tiers with the pin-outranks-mount warning, and clauses.json now records policy_path; the test run independently re-confirmed #925 from the other direction](../learnings/1785949248172-approver-clause-gap-both-live-defects-fixed-and-ve.md).
 
 **Interim mitigation, available with no code change:** pass `--policy <mount>` explicitly
 (tier 1) on every invocation. This is also the correct pre-flight for re-deriving affected
@@ -124,7 +124,7 @@ the then-current policy at decision time is correct auditability behavior). The 
 were byte-identical (`cmp -s`) to the bundle — the staging-fallback signature; the era-correct
 17 differed from the bundle (negative control). **Over-calling a real finding is its own
 defect** — an inflated blast radius drives worse remediation than the true one; quantify with
-the same discipline used to detect [[approver/clause-gap] CORRECTION to my own 21/57 policy-staleness claim — 17 were era-correct; the real defect is 4 runs where STAGING FELL BACK to the skill-bundled default (byte-identical) and precedence 2 then loaded it over the mount](wiki/learnings/1785944681943-approver-clause-gap-correction-to-my-own-21-57-pol.md).
+the same discipline used to detect [[approver/clause-gap] CORRECTION to my own 21/57 policy-staleness claim — 17 were era-correct; the real defect is 4 runs where STAGING FELL BACK to the skill-bundled default (byte-identical) and precedence 2 then loaded it over the mount](../learnings/1785944681943-approver-clause-gap-correction-to-my-own-21-57-pol.md).
 
 Two guards, two distinct questions — using either for the other's job fails:
 
@@ -138,7 +138,7 @@ Both "wrong" answers are right for the other question. **A guard reused from a d
 inherits the diagnosis's assumptions** — `cmp`-vs-bundle depends on a reference nobody
 promised to hold still, so it needs the bundle's version asserted. Ask of any check: *what
 would have to change elsewhere for this to silently stop working?*
-[[approver/clause-gap] The cmp-vs-bundle pre-flight and the version-vs-mount pre-flight answer DIFFERENT questions — cmp catches exactly the 4 staging-bug workspaces but goes silent if the bundle ever updates; version-vs-mount flags 21 (correct for re-derive, wrong for bug detection)](wiki/learnings/1785945526002-approver-clause-gap-the-cmp-vs-bundle-pre-flight-a.md).
+[[approver/clause-gap] The cmp-vs-bundle pre-flight and the version-vs-mount pre-flight answer DIFFERENT questions — cmp catches exactly the 4 staging-bug workspaces but goes silent if the bundle ever updates; version-vs-mount flags 21 (correct for re-derive, wrong for bug detection)](../learnings/1785945526002-approver-clause-gap-the-cmp-vs-bundle-pre-flight-a.md).
 
 ## False-negatives: the spurious abstain that fails in the invisible direction
 
@@ -147,7 +147,7 @@ one genuine **false-negative**: `slangpy#918` failed `head_provenance` on `allow
 false` (bundled default), but ran when `v0-shadow-relaxed` was in force — which already had
 `allow_fork_head: true`. Its review was clean (`APPROVE`, 0 bugs, 0 gaps), and the head it
 decided (`57259b457b4c`) is the exact head that merged, with human `ccummingsNV` `APPROVED`.
-So the fallback destroyed a correct-agreement datum [[approver/false-safe] #918 human-confirmed: re-derived WOULD_APPROVE agrees with ccummingsNV APPROVED + MERGED at the SAME head I decided — the staging fallback destroyed a correct-agreement datum, and conservative-direction bugs cost calibration signal rather than triggering alarms](wiki/learnings/1785945140067-approver-false-safe-918-human-confirmed-re-derived.md).
+So the fallback destroyed a correct-agreement datum [[approver/false-safe] #918 human-confirmed: re-derived WOULD_APPROVE agrees with ccummingsNV APPROVED + MERGED at the SAME head I decided — the staging fallback destroyed a correct-agreement datum, and conservative-direction bugs cost calibration signal rather than triggering alarms](../learnings/1785945140067-approver-false-safe-918-human-confirmed-re-derived.md).
 
 This inverts the usual severity intuition. Every *other* defect in the chain was a check
 *passing* for the wrong reason (caught eventually, because something breaks). A spurious
@@ -172,7 +172,7 @@ documents the pattern (`permissions: {}` is required by the reusable workflow's 
 or a sibling file in the same PR is the mitigation (a nightly sweep bounds assignment drift
 to ≤24h). **Severity can require reading the callee or a sibling file, not just the diff.**
 Caveat: 29% is a rate over decisions, not independent PRs (28 abstains span ~10 PRs) — don't
-quote it as a per-PR rate [[approver/false-safe] All 8 soft rows resolved — false-negative set is 8 of 28 abstains (29%), every one from the same board-sync onboarding change class, and every flag was advisory-by-design with a compensating control in the callee or a nightly sweep](wiki/learnings/1785948953523-approver-false-safe-all-8-soft-rows-resolved-false.md).
+quote it as a per-PR rate [[approver/false-safe] All 8 soft rows resolved — false-negative set is 8 of 28 abstains (29%), every one from the same board-sync onboarding change class, and every flag was advisory-by-design with a compensating control in the callee or a nightly sweep](../learnings/1785948953523-approver-false-safe-all-8-soft-rows-resolved-false.md).
 
 ## Recording: the critique-gate asymmetry and the ledger instrument
 
@@ -188,7 +188,7 @@ The design is sound (an abstain says "a human must look," safe by construction) 
 hardest to walk back (the invisible false-negatives). "Re-record #918/#1002 as WOULD_APPROVE
 for calibration" sounds like bookkeeping; it is actually two fresh gated decisions on merged
 PRs. **A correction inherits the ceremony of its destination, not of its origin** — read the
-gate rules for the *target* state [[approver/critique-mustfix] "Re-record #918/#1002 as WOULD_APPROVE" is not bookkeeping — WOULD_APPROVE is critique-gated (DECISION_REVIEW + OUTPUT_REVIEW) while the original ABSTAIN_* rows were gate-exempt, so correcting a false-negative costs strictly more than making it did](wiki/learnings/1785947515759-approver-critique-mustfix-re-record-918-1002-as-wo.md).
+gate rules for the *target* state [[approver/critique-mustfix] "Re-record #918/#1002 as WOULD_APPROVE" is not bookkeeping — WOULD_APPROVE is critique-gated (DECISION_REVIEW + OUTPUT_REVIEW) while the original ABSTAIN_* rows were gate-exempt, so correcting a false-negative costs strictly more than making it did](../learnings/1785947515759-approver-critique-mustfix-re-record-918-1002-as-wo.md).
 
 The right instrument sidesteps the whole binary. `record_human_verdict` (ungated — it joins a
 verdict, not a decision) stamps the human outcome onto the **existing** ABSTAIN row, so the
@@ -198,7 +198,7 @@ between two bad options when a third instrument exists** — a well-aimed constr
 must be discoverable from the ledger, not just your notes") beats choosing among the options
 on the table. Standing: after building an outcome-join detector, *stamp* what it finds rather
 than reporting it in prose; prose findings never reach whoever computes the statistics. The
-merge-events not auto-stamping is itself the more general defect [[approver/false-safe] The ledger-gap problem had a purpose-built ungated answer already: record_human_verdict stamps the human outcome onto the EXISTING ABSTAIN row, making the disagreement computable from the ledger without writing a reconstructed WOULD_APPROVE](wiki/learnings/1785947747666-approver-false-safe-the-ledger-gap-problem-had-a-p.md).
+merge-events not auto-stamping is itself the more general defect [[approver/false-safe] The ledger-gap problem had a purpose-built ungated answer already: record_human_verdict stamps the human outcome onto the EXISTING ABSTAIN row, making the disagreement computable from the ledger without writing a reconstructed WOULD_APPROVE](../learnings/1785947747666-approver-false-safe-the-ledger-gap-problem-had-a-p.md).
 
 But **a write whose effect you cannot verify is not an accomplished fact.**
 `record_human_verdict` is a documented host-side **no-op when no decision row exists** — and a
@@ -208,7 +208,7 @@ pre-fix decisions may never have reached the ledger at all, leaving nothing to a
 For any write tool: read its no-op conditions, **verify through a different channel than the
 one you wrote through**, and if no read channel exists, **report the action, not the effect**
 ("I issued stamps whose effect I cannot verify"). Never let "I found the right mechanism"
-substitute for "the mechanism did something" [[approver/critique-mustfix] I reported "the disagreement is now computable from the ledger" but record_human_verdict is a documented host-side NO-OP when no row exists — success and no-op return the same string, so a WRITE whose effect I cannot verify was reported as an accomplished fact](wiki/learnings/1785948042543-approver-critique-mustfix-i-reported-the-disagreem.md).
+substitute for "the mechanism did something" [[approver/critique-mustfix] I reported "the disagreement is now computable from the ledger" but record_human_verdict is a documented host-side NO-OP when no row exists — success and no-op return the same string, so a WRITE whose effect I cannot verify was reported as an accomplished fact](../learnings/1785948042543-approver-critique-mustfix-i-reported-the-disagreem.md).
 
 The backfill hazard: `record_human_verdict`'s SQL takes an **exact** update
 (`WHERE ... commit_sha=? AND human_verdict IS NULL`) whenever the sha has an unstamped row,
@@ -216,7 +216,7 @@ and only falls back to "latest unstamped for the PR" when the sha has *no* row. 
 shas that have rows are order-independent; the real hazard is a call whose sha has **no**
 ledger row silently stamping an unrelated decision as `head_advanced`. ⇒ **Drive any backfill
 from shas the ledger actually holds, never from workspace-derived shas** — the workspace list
-is precisely the input that trips it [[approver/clause-gap] Consolidated: four instrument-failure variants and the four distinct moves that catch them — plus the narrowed head_advanced guard (drive backfills from ledger-sourced shas, never workspace-derived ones)](wiki/learnings/1785948342490-approver-clause-gap-consolidated-four-instrument-f.md).
+is precisely the input that trips it [[approver/clause-gap] Consolidated: four instrument-failure variants and the four distinct moves that catch them — plus the narrowed head_advanced guard (drive backfills from ledger-sourced shas, never workspace-derived ones)](../learnings/1785948342490-approver-clause-gap-consolidated-four-instrument-f.md).
 
 ## A "deterministic" clause reading an agent-authored field is not deterministic
 
@@ -238,8 +238,8 @@ you aim outward is the scrutiny you owe your own instruments*. Distinguish **"st
 head advances) from **"was reviewed"** — neither is evidence a reviewer re-read the new code.
 This is the same-defect-two-files case: `slang-` and `slangpy-pr-approver`'s `eval-clauses.py`
 differ only in two docstring lines, so it is *the same edit applied twice*, not two fixes
-[[approver/critique-mustfix] A deterministic clause that reads a field YOU authored is not a deterministic clause](wiki/learnings/1786084158180-approver-critique-mustfix-a-deterministic-clause-t.md)
-[A deterministic clause reading an agent-authored field is not deterministic](wiki/learnings/1786084345838-a-deterministic-clause-reading-an-agent-authored-f.md).
+[[approver/critique-mustfix] A deterministic clause that reads a field YOU authored is not a deterministic clause](../learnings/1786084158180-approver-critique-mustfix-a-deterministic-clause-t.md)
+[A deterministic clause reading an agent-authored field is not deterministic](../learnings/1786084345838-a-deterministic-clause-reading-an-agent-authored-f.md).
 
 ## Choosing the reason code, and reading review signals for a repo without a bot pipeline
 
@@ -252,7 +252,7 @@ from an unarmed code path**, both fail. The finding that survived — a park wit
 (0 mentions of `parked` in `host-sweep.ts`; `pending-reviewable/store.ts` has no list) —
 stands on its own, needing no claim about event delivery. *A hold recommendation deserves the
 same audit as an arm recommendation*; a correct conclusion reached through a wrong mechanism
-is defended with the wrong evidence when challenged [[approver/infra-abstain] The "check_suite success is unproven" asymmetry is an artifact — GitHub sends ONE completed action with conclusion as a payload field, so 19 observed failure deliveries prove the trigger fires; the real blocker is the no-TTL park, which stands on its own](wiki/learnings/1785944217481-approver-infra-abstain-the-check-suite-success-is-.md).
+is defended with the wrong evidence when challenged [[approver/infra-abstain] The "check_suite success is unproven" asymmetry is an artifact — GitHub sends ONE completed action with conclusion as a payload field, so 19 observed failure deliveries prove the trigger fires; the real blocker is the no-TTL park, which stands on its own](../learnings/1785944217481-approver-infra-abstain-the-check-suite-success-is-.md).
 
 On slang-rhi (no `github-actions[bot]` review pipeline — that's slang-only), a decision nearly
 went out with **no valid review tier at all** because each signal looked almost sufficient: no
@@ -269,7 +269,7 @@ gap as `ABSTAIN_POLICY` disguises a defect as intended behavior and deletes the 
 rows alert and are excluded from agreement scoring). Cross-repo: check every policy predicate
 is *declared in this repo* — slang-rhi declares no ABI-stability policy, so importing slang's
 `include/` ABI rule converts a non-issue into a blocker
-[[approver/infra-abstain] slang-rhi has NO github-actions bot review pipeline — harvest exit 10 plus an auth-walled Devin is NO_REVIEW_SIGNAL, not a fallback tier](wiki/learnings/1786084196058-approver-infra-abstain-slang-rhi-has-no-github-act.md).
+[[approver/infra-abstain] slang-rhi has NO github-actions bot review pipeline — harvest exit 10 plus an auth-walled Devin is NO_REVIEW_SIGNAL, not a fallback tier](../learnings/1786084196058-approver-infra-abstain-slang-rhi-has-no-github-act.md).
 
 ## Human agreement: merged head vs decided head
 
@@ -286,7 +286,7 @@ criterion you pre-registered on the row** — it was written before you knew the
 is why it outranks your post-hoc read of the diff. Corollary on clearing findings: naming the
 *exact* missing artifact in a clearing rationale ("only the `-disasm store.8` pin is missing")
 lets the author close it in one pass — actionable feedback without inflating an advisory to a
-blocker [[approver/human-agreement] merged head != decided head: stamp SUPERSEDED even when the delta is provably non-behavioral](wiki/learnings/1786089904625-approver-human-agreement-merged-head-decided-head-.md).
+blocker [[approver/human-agreement] merged head != decided head: stamp SUPERSEDED even when the delta is provably non-behavioral](../learnings/1786089904625-approver-human-agreement-merged-head-decided-head-.md).
 
 ## Collection-scoped predicates: a `null` in one GitHub collection says nothing about others
 
@@ -305,4 +305,4 @@ for "right for a reason that won't generalize," not just "wrong answer." And fix
 predicate does not fix its siblings — three sibling supervisor predicates (`awaiting_us`
 unfalsifiable for a read-only tier; "human spoke last" carrying no info about what's owed;
 "newest non-bot comment is null" collection-scoped) each re-fired and needed correcting on its
-own merits [[approver/clause-gap] "Newest non-bot comment is null" is collection-scoped: a PR holds human utterances in comments, reviews, AND reviewThreads — a maintainer who speaks only through reviews is invisible to a comments-only probe](wiki/learnings/1786106123963-approver-clause-gap-newest-non-bot-comment-is-null.md).
+own merits [[approver/clause-gap] "Newest non-bot comment is null" is collection-scoped: a PR holds human utterances in comments, reviews, AND reviewThreads — a maintainer who speaks only through reviews is invisible to a comments-only probe](../learnings/1786106123963-approver-clause-gap-newest-non-bot-comment-is-null.md).

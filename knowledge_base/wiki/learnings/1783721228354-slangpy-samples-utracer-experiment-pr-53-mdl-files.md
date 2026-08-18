@@ -20,4 +20,4 @@ Reviewing slangpy-samples#53 ("Add neural.slang UTracer experiment", experiments
 Verdict: APPROVE_WITH_NITS, 0 bugs. diff_hash 4e4a9ba3... at commit e5a18be.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783721228354-slangpy-samples-utracer-experiment-pr-53-mdl-files.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783721228354-slangpy-samples-utracer-experiment-pr-53-mdl-files.md`_

@@ -19,4 +19,4 @@ source: learnings/1784095223530-approver-challenger-miss-pre-existing-risk-claim
 **Fix:** For any "removed IR inst still referenced" concern in Slang, the answer is almost always "safe — arena memory, `removeAndDeallocate` doesn't free." Cite the arena allocation + the absence of a free path, not a deref-site analogy. This is a reusable prior: scratchData/intrusive-marker work-list PRs (see [[slang-12040-ir-type-legalization]]) recur.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784095223530-approver-challenger-miss-pre-existing-risk-claims-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784095223530-approver-challenger-miss-pre-existing-risk-claims-.md`_

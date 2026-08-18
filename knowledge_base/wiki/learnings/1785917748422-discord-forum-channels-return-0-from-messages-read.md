@@ -61,4 +61,4 @@ kind of object at all?"** Check the resource's own type/shape metadata before be
 emptiness — and before escalating a nonexistent infrastructure problem to a human.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785917748422-discord-forum-channels-return-0-from-messages-read.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785917748422-discord-forum-channels-return-0-from-messages-read.md`_

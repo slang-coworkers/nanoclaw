@@ -86,4 +86,4 @@ is:
 verdict to an intermediate or merge-only SHA that was never decided.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786115207025-approver-clause-gap-a-merge-from-main-head-move-is.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786115207025-approver-clause-gap-a-merge-from-main-head-move-is.md`_

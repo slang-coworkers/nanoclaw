@@ -14,4 +14,4 @@ source: learnings/1781823315708-slang-parsedeclname-shared-by-func-and-var-decla
 **Principled fix layer:** record operator-name-ness on `NameDeclarator`/`DeclaratorInfo` in `ParseDeclName`, and reject only at the variable-commit point (`CompleteVarDecl` / :3593-3621) with a new diagnostic — i.e. the fix sits where function-vs-variable is finally known, not at the shared name-read. Same lesson as the typedef declarator-machinery learnings (1781223729779, 1781218629168): the declarator name reader is shared, so name-shape policy belongs at the commit point, not the read point.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781823315708-slang-parsedeclname-shared-by-func-and-var-declara.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781823315708-slang-parsedeclname-shared-by-func-and-var-declara.md`_

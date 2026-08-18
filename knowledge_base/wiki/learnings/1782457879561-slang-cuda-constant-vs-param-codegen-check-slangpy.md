@@ -19,4 +19,4 @@ So `grep -c '__constant__ SLANG_globalParams' out.cu` is your fast/slow tell.
 **Triage pattern — issue is a tracking issue for a COLLABORATOR's already-open PR.** Park the fix-forward (do NOT dispatch slang-fixer — a bot PR would duplicate/conflict with the human's). Still do everything else: HEAD-verify the claims, set Issue Type, post the 5-bullet verdict, and flag whether the linked PRs carry `Closes #N` (if not, the issue won't auto-close on merge — recommend the author add it). Report up to parent with route-to-review + the park decision, offering to forward if they disagree.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782457879561-slang-cuda-constant-vs-param-codegen-check-slangpy.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782457879561-slang-cuda-constant-vs-param-codegen-check-slangpy.md`_

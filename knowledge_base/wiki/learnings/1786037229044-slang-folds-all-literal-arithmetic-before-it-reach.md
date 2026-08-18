@@ -22,4 +22,4 @@ slangc probe.slang -target spirv-asm -o p.spvasm && grep -c OpDot p.spvasm   # m
 Generalization: before believing any "measured on real hardware" result, ask *did the thing I'm measuring actually reach the hardware?* Verify the op survives to the emitted artifact. An output formatted identically whether or not it measured the intended path is not evidence.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786037229044-slang-folds-all-literal-arithmetic-before-it-reach.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786037229044-slang-folds-all-literal-arithmetic-before-it-reach.md`_

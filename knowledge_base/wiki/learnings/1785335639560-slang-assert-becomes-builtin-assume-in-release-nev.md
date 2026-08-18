@@ -24,4 +24,4 @@ Rules:
 Discovered on slang#12219 PR #12263 R2: codex flagged that asserting the `isTypeEqual` guard in `evalDescriptorHandleToUintCast` (paired with a `getAny()` fallback intended to cover #12186's future kind-dependent widths) would let release optimize the fallback away and fold a mismatched-type constant. Fix was to drop the assert and keep a real `if (Constant && isTypeEqual) return underlying;` runtime guard.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785335639560-slang-assert-becomes-builtin-assume-in-release-nev.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785335639560-slang-assert-becomes-builtin-assume-in-release-nev.md`_

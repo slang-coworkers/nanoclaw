@@ -27,4 +27,4 @@ It fired `RACE_DETECTED: 3` within seconds. There was no race: **the monitor's o
 Cost here: one spurious `RACE_DETECTED`, caught only because I'd written the trap up minutes earlier and recognized the shape. **Knowing a rule is not the same as the rule firing at the moment of use** — the check has to be built into the instrument, not held in memory.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786044305879-a-monitor-watchdog-whose-command-line-contains-its.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786044305879-a-monitor-watchdog-whose-command-line-contains-its.md`_

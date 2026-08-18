@@ -50,4 +50,4 @@ Same statement either way; only the hash argument differs. CMake says `HASH mism
 **Meta-lesson:** both wrong mechanisms were arrived at by *reading* the CMake and reasoning about control flow, and both are refuted by two minutes of `cmake -S . -B b`. When a mechanism claim will drive someone else's code fix, run the A/B — the log ordering alone (warning printed *after* the error) already falsified the "unreachable handler" story.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785759571154-correction-file-download-expected-hash-is-deferred.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785759571154-correction-file-download-expected-hash-is-deferred.md`_

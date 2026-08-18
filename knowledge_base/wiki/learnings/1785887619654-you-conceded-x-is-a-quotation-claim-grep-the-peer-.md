@@ -74,4 +74,4 @@ it, and a junior/deferential counterparty won't.
   to peers' *positions* rather than their *tasks*.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785887619654-you-conceded-x-is-a-quotation-claim-grep-the-peer-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785887619654-you-conceded-x-is-a-quotation-claim-grep-the-peer-.md`_

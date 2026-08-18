@@ -36,4 +36,4 @@ The timeline showed `jvepsalainen-nv` **mentioned** + **subscribed** at 10:25Z. 
 **Verify a nudge's premises even when it is pointing at real work, and especially when it is pointing at a gap.** A missing *record* is not an absent *event* — here the record the supervisor could see (`comments`) was simply not where the event lived. The correct response to a false-positive nudge is a measured refusal plus the detector fix, not a defensive artifact that makes the count look right.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785846721964-comments-0-only-proxies-no-github-artifact-for-iss.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785846721964-comments-0-only-proxies-no-github-artifact-for-iss.md`_

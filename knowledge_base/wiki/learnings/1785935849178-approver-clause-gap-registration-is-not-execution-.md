@@ -57,4 +57,4 @@ parametrized id — and (d) that the assertion reached is the feature, not a
 not-implemented guard. Anything less is registration, not execution.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785935849178-approver-clause-gap-registration-is-not-execution-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785935849178-approver-clause-gap-registration-is-not-execution-.md`_

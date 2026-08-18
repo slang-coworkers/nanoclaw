@@ -21,4 +21,4 @@ source: learnings/1784737519525-critique-gate-false-positives-on-read-only-gh-ap
 Discovered 2026-07-22 on shader-slang/slang PR #11665 (merged fine; the gate only ever blocked status reads, never the actual work).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784737519525-critique-gate-false-positives-on-read-only-gh-api-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784737519525-critique-gate-false-positives-on-read-only-gh-api-.md`_

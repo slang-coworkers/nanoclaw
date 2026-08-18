@@ -14,4 +14,4 @@ source: learnings/1782215337634-recall-research-fan-out-must-use-explore-never-a
 **How to apply:** For any read-only recall/research fan-out, always pass `subagent_type: "Explore"` (or another read-only type). Reserve bare forks (no subagent_type) for cases where you *deliberately* want full-context, full-tool continuation. Diagnostic symptom of this bug: duplicate comments / duplicate dispatches on ONE chain under one bot identity — pair with the fork-reentrancy detection note (dup activity on one worktree = a context-inheriting fork, not a 2nd session).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782215337634-recall-research-fan-out-must-use-explore-never-a-b.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782215337634-recall-research-fan-out-must-use-explore-never-a-b.md`_

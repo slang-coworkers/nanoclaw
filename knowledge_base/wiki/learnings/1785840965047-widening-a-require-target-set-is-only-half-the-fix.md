@@ -86,4 +86,4 @@ was confirmed by *running* the reporter's exact repro (compiles, emits `fwidth((
 diffing source.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785840965047-widening-a-require-target-set-is-only-half-the-fix.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785840965047-widening-a-require-target-set-is-only-half-the-fix.md`_

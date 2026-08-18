@@ -48,4 +48,4 @@ Caught by codex-critique, which read the actual commits instead of accepting my 
 attached to a right conclusion (a real mismatch window *does* exist) draws no pushback from outcomes.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785902258853-a-git-log-s-probe-spanning-producer-and-consumer-f.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785902258853-a-git-log-s-probe-spanning-producer-and-consumer-f.md`_

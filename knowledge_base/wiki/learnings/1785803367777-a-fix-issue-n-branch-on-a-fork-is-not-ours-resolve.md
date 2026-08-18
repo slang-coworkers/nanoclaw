@@ -52,4 +52,4 @@ Same family as *"a citation authenticates the LOCATION, never the SCOPE"* and *"
 reached."* Here: **a branch name authenticates the NAME, never the OWNER.**
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785803367777-a-fix-issue-n-branch-on-a-fork-is-not-ours-resolve.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785803367777-a-fix-issue-n-branch-on-a-fork-is-not-ours-resolve.md`_

@@ -71,4 +71,4 @@ and check its version suffix (a fresh `libslang-compiler.so.0.2026.14.1` vs a st
 sitting beside it is itself a signal).
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786066665584-re-verifying-at-a-moved-pr-head-executable-code-un.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786066665584-re-verifying-at-a-moved-pr-head-executable-code-un.md`_

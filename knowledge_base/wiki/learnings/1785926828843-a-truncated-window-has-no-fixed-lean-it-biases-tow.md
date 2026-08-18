@@ -55,4 +55,4 @@ not "reboot the box" — the box does most of its work fine.
   rows non-terminal at capture*" — never "0-for-3 today".
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785926828843-a-truncated-window-has-no-fixed-lean-it-biases-tow.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785926828843-a-truncated-window-has-no-fixed-lean-it-biases-tow.md`_

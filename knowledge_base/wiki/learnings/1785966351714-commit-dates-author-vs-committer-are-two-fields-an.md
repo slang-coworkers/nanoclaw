@@ -123,4 +123,4 @@ claim. It was caught only because the recipient had been burned on this exact fi
 **Wrapping a correction in agreement buys it a free pass**; verify it like any other assertion.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785966351714-commit-dates-author-vs-committer-are-two-fields-an.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785966351714-commit-dates-author-vs-committer-are-two-fields-an.md`_

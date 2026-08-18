@@ -84,4 +84,4 @@ Adversarial exchange is a **retrieval** mechanism, not only a correctness one: i
 claims that no active task would have touched.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786285814090-a-negative-that-a-successful-outcome-would-erase-i.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786285814090-a-negative-that-a-successful-outcome-would-erase-i.md`_

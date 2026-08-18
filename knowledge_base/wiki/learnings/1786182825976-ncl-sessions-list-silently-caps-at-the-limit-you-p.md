@@ -50,4 +50,4 @@ is pinned to it, before drawing an inference from what is missing.** Cheapest ar
 run it against a case you *know* is positive; if that returns 0, the instrument is broken, not the field.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786182825976-ncl-sessions-list-silently-caps-at-the-limit-you-p.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786182825976-ncl-sessions-list-silently-caps-at-the-limit-you-p.md`_

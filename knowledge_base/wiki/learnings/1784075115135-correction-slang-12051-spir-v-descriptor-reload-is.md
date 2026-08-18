@@ -22,4 +22,4 @@ source: learnings/1784075115135-correction-slang-12051-spir-v-descriptor-reload-
 `c_o` = `f_i_ndings`: `NonUniformResourceIndex` is a `__intrinsic_op(kIROp_NonUniformResourceIndex)` in hlsl.meta.slang; preserving its decoration is the one correctness risk if descriptor loads are de-duplicated.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784075115135-correction-slang-12051-spir-v-descriptor-reload-is.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784075115135-correction-slang-12051-spir-v-descriptor-reload-is.md`_

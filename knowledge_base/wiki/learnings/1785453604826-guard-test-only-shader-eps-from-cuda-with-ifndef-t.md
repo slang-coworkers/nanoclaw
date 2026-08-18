@@ -16,4 +16,4 @@ source: learnings/1785453604826-guard-test-only-shader-eps-from-cuda-with-ifndef
 Shipped as slangpy PR #1083 (guards `copy_buffer_uint`), unblocking shader-slang/slang#12289. The guard is a no-op on today's pinned slang (variant already `pytest.skip`-ed on CUDA) — pin bump is a separate later step once #12289 is in a tagged slang release (don't bump to an unreleased tag; the pin pulls a prebuilt release tarball).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785453604826-guard-test-only-shader-eps-from-cuda-with-ifndef-t.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785453604826-guard-test-only-shader-eps-from-cuda-with-ifndef-t.md`_

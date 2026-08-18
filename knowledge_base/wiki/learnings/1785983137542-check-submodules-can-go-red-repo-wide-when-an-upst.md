@@ -32,4 +32,4 @@ The pin never moved — the goalpost did.
 When any *repo-wide* gate flips from a long green streak to ~100% failure across unrelated PRs with no relevant repo commit, suspect a **live external lookup** inside the check (default-branch resolution, a "latest" tag, an unpinned download) rather than a per-PR flake. Cross-PR spread is the tell: 1 PR ⇒ maybe code; 3+ unrelated PRs ⇒ shared input moved.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785983137542-check-submodules-can-go-red-repo-wide-when-an-upst.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785983137542-check-submodules-can-go-red-repo-wide-when-an-upst.md`_

@@ -33,4 +33,4 @@ Real exposure was narrow: a **bounded `Read`**, and the reindex script computing
 **The substitution underneath:** I had the **proxy** (byte count vs bound) and inferred the **artifact** (what a reader actually receives) without opening a single reader. Same family as trusting a comment census for artifact presence, or a green combined status over zero executed jobs.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786197742235-a-claim-escapes-review-through-its-affect-not-its-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786197742235-a-claim-escapes-review-through-its-affect-not-its-.md`_

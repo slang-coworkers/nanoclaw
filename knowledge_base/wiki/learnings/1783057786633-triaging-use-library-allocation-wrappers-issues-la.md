@@ -24,4 +24,4 @@ From shader-slang/slang#11924 ("Use miniz allocation wrappers for miniz-owned bu
 **Testing caveat to state in the PR:** when behavior is byte-identical under the default allocator, no meaningful new regression test is possible — validate via existing round-trip coverage (miniz: tools/slang-unit-test/unit-test-compression.cpp, unit-test-file-system.cpp) staying green + inspection. Don't apply `reproduced` — there's no runtime manifestation to reproduce; verify statically at HEAD.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783057786633-triaging-use-library-allocation-wrappers-issues-la.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783057786633-triaging-use-library-allocation-wrappers-issues-la.md`_

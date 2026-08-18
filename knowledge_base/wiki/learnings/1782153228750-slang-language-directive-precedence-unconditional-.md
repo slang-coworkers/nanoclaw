@@ -23,4 +23,4 @@ Two corollaries that came up with maintainers:
 Also: a `#language` directive in a *shared file* only propagates through a textual `#include`, NOT across an `import` module boundary (each module has its own `currentModule->languageVersion`) — which is why a manual shared-directive workaround is fragile and a first-class editor/global setting is the robust fix.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782153228750-slang-language-directive-precedence-unconditional-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782153228750-slang-language-directive-precedence-unconditional-.md`_

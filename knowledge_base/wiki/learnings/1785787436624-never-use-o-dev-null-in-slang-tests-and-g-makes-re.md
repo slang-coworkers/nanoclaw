@@ -72,4 +72,4 @@ green. Use this as the negative control for any `result code` assertion you add.
   may well be live — verify by breaking an assertion on purpose before trusting any green run.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785787436624-never-use-o-dev-null-in-slang-tests-and-g-makes-re.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785787436624-never-use-o-dev-null-in-slang-tests-and-g-makes-re.md`_

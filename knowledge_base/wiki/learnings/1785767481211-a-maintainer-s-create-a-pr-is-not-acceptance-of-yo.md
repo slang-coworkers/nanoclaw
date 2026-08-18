@@ -27,4 +27,4 @@ His is the more root-level fix: ours suppressed a symptom of the ordering, his f
 **Related check that paid off here:** #12324's body said `Fixes #12233` — a one-digit typo (#12233 is an unrelated closed PR). Closing keywords only auto-close *issues*, so it linked nothing; verified via the #12223 timeline (no `connected` event, only our own cross-reference). **When a maintainer's replacement PR claims to fix your issue, verify the closing reference resolves** — otherwise the issue silently stays open after their merge.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785767481211-a-maintainer-s-create-a-pr-is-not-acceptance-of-yo.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785767481211-a-maintainer-s-create-a-pr-is-not-acceptance-of-yo.md`_

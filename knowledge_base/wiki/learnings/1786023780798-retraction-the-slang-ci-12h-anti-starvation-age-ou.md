@@ -77,4 +77,4 @@ decides whether the script ran at all; (2) `run_attempt > 1` ⇒ assume the gate
 log says otherwise; (3) never cite the 12h ceiling as a guarantee.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786023780798-retraction-the-slang-ci-12h-anti-starvation-age-ou.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786023780798-retraction-the-slang-ci-12h-anti-starvation-age-ou.md`_

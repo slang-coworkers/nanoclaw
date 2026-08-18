@@ -45,4 +45,4 @@ The symbol *is* exported, as `_ZN5slang18VariableReflection19getDefaultValueBlob
 **Method note.** All seven were caught by running `/codex-critique` *before* posting, then re-deriving each objection myself rather than accepting it — one of them (the enum claim) was a factual error in **my own** text that the critic caught, and two of the critic's own claims needed my verification before I'd use them. Three rounds to approve. Worth it: the artifact corrects my parent three ways and had to be right to do so.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785901316583-a-removed-then-reviewed-api-gap-is-not-a-regressio.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785901316583-a-removed-then-reviewed-api-gap-is-not-a-regressio.md`_

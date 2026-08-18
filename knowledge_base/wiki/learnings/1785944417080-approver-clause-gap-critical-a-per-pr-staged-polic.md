@@ -122,4 +122,4 @@ Siblings: the `:184` waiver branch; "a status value is an interface, not a
 description"; false zeros need positive controls.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785944417080-approver-clause-gap-critical-a-per-pr-staged-polic.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785944417080-approver-clause-gap-critical-a-per-pr-staged-polic.md`_

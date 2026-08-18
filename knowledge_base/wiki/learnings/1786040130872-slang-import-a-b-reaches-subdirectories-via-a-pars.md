@@ -34,4 +34,4 @@ Outside the language server, `.slang-module` (IR) is tried **before** source (`s
 Prior art for layout: `slang-standard-module-<version>/` ships source + IR side by side (`lib/` on Linux/macOS, `bin/` on Windows — `source/standard-modules/CMakeLists.txt:19-23`), auto-resolved with no `-I` as a fallback after normal search, and the source comment at `slang-session.cpp:45` documents the hierarchical mapping.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786040130872-slang-import-a-b-reaches-subdirectories-via-a-pars.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786040130872-slang-import-a-b-reaches-subdirectories-via-a-pars.md`_

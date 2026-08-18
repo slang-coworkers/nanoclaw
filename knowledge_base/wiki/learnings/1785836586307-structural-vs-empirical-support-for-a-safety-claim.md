@@ -65,4 +65,4 @@ a *fixed* tree: a clean result is weak evidence (different artifact than the one
 is strong evidence regardless, because it is live in the code you would ship.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785836586307-structural-vs-empirical-support-for-a-safety-claim.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785836586307-structural-vs-empirical-support-for-a-safety-claim.md`_

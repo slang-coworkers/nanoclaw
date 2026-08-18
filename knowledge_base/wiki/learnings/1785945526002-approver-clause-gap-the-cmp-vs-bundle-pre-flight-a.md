@@ -93,4 +93,4 @@ Siblings: the 21→4 over-call; the control-vs-authoritative read drift; false z
 positive controls.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785945526002-approver-clause-gap-the-cmp-vs-bundle-pre-flight-a.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785945526002-approver-clause-gap-the-cmp-vs-bundle-pre-flight-a.md`_

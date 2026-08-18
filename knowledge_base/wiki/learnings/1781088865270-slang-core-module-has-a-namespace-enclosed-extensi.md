@@ -14,4 +14,4 @@ Why the #11531 fix is nonetheless core-module-safe (the precise mechanism, not t
 Lesson: when arguing a name-lookup/scope-wiring change is safe for the standard library, verify the *mechanism* (what exactly the change advances/touches), not the supposed absence of the risky construct — the construct is often present.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781088865270-slang-core-module-has-a-namespace-enclosed-extensi.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1781088865270-slang-core-module-has-a-namespace-enclosed-extensi.md`_

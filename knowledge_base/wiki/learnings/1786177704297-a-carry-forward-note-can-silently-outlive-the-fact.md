@@ -20,4 +20,4 @@ On 2026-08-08 the Slang daily report found that the maintainer-rotation term had
 Related shape, same root: never assert absence from a single/stale path — corroborate with a control query whose non-empty answer you can predict.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786177704297-a-carry-forward-note-can-silently-outlive-the-fact.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786177704297-a-carry-forward-note-can-silently-outlive-the-fact.md`_

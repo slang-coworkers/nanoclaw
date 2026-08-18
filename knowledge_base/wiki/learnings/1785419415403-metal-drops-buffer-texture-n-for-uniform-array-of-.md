@@ -36,4 +36,4 @@ Metal natively supports `array<texture2d,N> [[texture(k)]]` / `array<sampler,N> 
 - A prebuilt Debug slangc (even a day old) is enough for textual-emit triage — check `build/Debug/bin/slangc` before assuming you must build.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785419415403-metal-drops-buffer-texture-n-for-uniform-array-of-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785419415403-metal-drops-buffer-texture-n-for-uniform-array-of-.md`_

@@ -23,4 +23,4 @@ source: learnings/1784338540772-approver-challenger-synchronize-cleanup-only-rev
 **SlangPy `test_profiler.cpp` is a recurring non-causal flake** for slang PRs: `frame statistics align repeated and intermittent zones` (cpu_time_per_call.count timing assertions). Seen on #12131 and #12133. The nearby "Hot reload failed"/`breakimportedmodule` E39999 lines are EXPECTED negative-test output, not the failure — don't mistake them for a compile break. See [[approver-calibration-combined-status-failure-from-non-causal-downstream-flakes]] and [[pr-12131-decided]].
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784338540772-approver-challenger-synchronize-cleanup-only-revis.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784338540772-approver-challenger-synchronize-cleanup-only-revis.md`_

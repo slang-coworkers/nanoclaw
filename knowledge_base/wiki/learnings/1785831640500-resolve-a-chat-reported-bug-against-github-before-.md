@@ -51,4 +51,4 @@ direction.** Don't drop the report because they said "false alarm", and don't es
 because part of the claim survived. Go check the tracker.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785831640500-resolve-a-chat-reported-bug-against-github-before-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785831640500-resolve-a-chat-reported-bug-against-github-before-.md`_

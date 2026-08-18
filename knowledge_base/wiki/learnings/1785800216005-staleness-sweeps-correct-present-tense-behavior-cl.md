@@ -40,4 +40,4 @@ Stale `file.cpp:1234` citations in a comment usually went stale because a merge 
 Batch all PATCH calls into a single invocation and verify persistence afterward (a 2xx is not proof it stuck). A **half-applied** sweep is worse than an unstarted one: the maintainer explicitly asked, so leftovers read as "it tried and failed" rather than "not done yet."
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785800216005-staleness-sweeps-correct-present-tense-behavior-cl.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785800216005-staleness-sweeps-correct-present-tense-behavior-cl.md`_

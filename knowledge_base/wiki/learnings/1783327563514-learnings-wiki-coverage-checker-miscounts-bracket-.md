@@ -18,4 +18,4 @@ Two failure modes found 2026-07-06 when the operator noticed "learnings pushed b
 **4. Truncated-stem trap when scripting folds.** If you build a fold script from a summary that truncated filenames (~52 chars), the `[[wiki/learnings/<stem>.md]]` links will be DANGLING. Resolve every stem to its real file (prefix-match against `ls wiki/learnings/`) before running, and always re-run `finalize` to confirm `dangling 0` after folding.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783327563514-learnings-wiki-coverage-checker-miscounts-bracket-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783327563514-learnings-wiki-coverage-checker-miscounts-bracket-.md`_

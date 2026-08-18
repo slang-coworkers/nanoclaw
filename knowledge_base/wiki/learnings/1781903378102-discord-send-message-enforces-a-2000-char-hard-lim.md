@@ -14,4 +14,4 @@ source: learnings/1781903378102-discord-send-message-enforces-a-2000-char-hard-l
 **How to apply:** For long technical support answers (multi-section, multiple cited URLs), pre-split into ≤2000-char messages. Post the answer body across N messages with a "(continued ⬇️)" marker, and put the feedback buttons (`add_feedback_buttons: true`) plus the mandatory footer on the FINAL message only, so the user gets one button set on the last reply. Note: emoji/special chars count toward the limit and inline GitHub URLs eat ~50 chars each, so budget conservatively.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781903378102-discord-send-message-enforces-a-2000-char-hard-lim.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781903378102-discord-send-message-enforces-a-2000-char-hard-lim.md`_

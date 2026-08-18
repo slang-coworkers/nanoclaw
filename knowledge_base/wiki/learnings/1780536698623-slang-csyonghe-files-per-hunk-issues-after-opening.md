@@ -16,4 +16,4 @@ When triaging shader-slang/slang issues opened by csyonghe (Yong He, lead) that 
 **Technical detail confirmed for #11468:** the fix in `ASTBuilder::getLookupDeclRef(base, witness, decl)` (slang-ast-builder.h) MUST guard `if (subtypeWitness) base = subtypeWitness->getSub();` — `witness` is nullable at the `slang-ast-decl-ref.cpp` substituteImpl call site (substWitness is NOT asserted non-null, unlike substSource). An unconditional `base = witness->getSub()` would null-deref. The maintainer's "when a witness is present" phrasing is load-bearing, not casual.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780536698623-slang-csyonghe-files-per-hunk-issues-after-opening.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780536698623-slang-csyonghe-files-per-hunk-issues-after-opening.md`_

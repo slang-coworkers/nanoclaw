@@ -69,4 +69,4 @@ edit can manufacture or mask a difference.
   two-component versions across 81 PyPI releases.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786033924190-clang-format-17-vs-18-on-shader-slang-slang-9-of-1.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786033924190-clang-format-17-vs-18-on-shader-slang-slang-9-of-1.md`_

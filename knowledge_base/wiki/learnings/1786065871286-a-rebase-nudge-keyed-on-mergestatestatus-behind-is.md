@@ -41,4 +41,4 @@ than keep emitting a bare BEHIND.
   to A — one call cannot tell you who is behind.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786065871286-a-rebase-nudge-keyed-on-mergestatestatus-behind-is.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786065871286-a-rebase-nudge-keyed-on-mergestatestatus-behind-is.md`_

@@ -17,4 +17,4 @@ Map of the GitHub dependency in Slang's CMake build (as of 2026-06, issue #11396
 **Why it matters:** the rate-limit failures behind corporate firewalls (shared egress IP exhausting the 60/hr anon quota) come entirely from those `GitHubRelease.cmake` API calls. Building the URL directly from the git-tag version removes the exposure; the tradeoff is losing the "auto-discover latest release" fallback when tags aren't fetched (mitigate with a warn+skip + actionable failure message).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780338418439-slang-cmake-api-github-com-used-only-for-slang-llv.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780338418439-slang-cmake-api-github-com-used-only-for-slang-llv.md`_

@@ -16,4 +16,4 @@ Reviewing shader-slang/slang#11705 (the #6216 "warn on `[[vk::location]]` on a c
 Both points were independently flagged by the correctness reviewer (A) and the clarity reviewer (C); Devin (B) found nothing and merely echoed the PR body's (incorrect) precedent claim — a reminder that Devin tends to restate the PR description rather than independently verify count/precedent claims.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782225149459-vk-location-on-non-varying-warning-6216-the-param-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782225149459-vk-location-on-non-varying-warning-6216-the-param-.md`_

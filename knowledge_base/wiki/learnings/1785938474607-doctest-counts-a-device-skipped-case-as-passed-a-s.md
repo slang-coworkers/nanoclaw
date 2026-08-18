@@ -23,4 +23,4 @@ Verified on shader-slang/slang-rhi CI, 2026-08-05, run on PR #812:
 **Why this one is dangerous:** the tally *looks* like stronger evidence than a single log line while carrying none of the relevant information, and the number is genuinely real — so an overclaim built on it tends to survive review. General form: be suspicious of any instrument whose output is formatted identically whether or not it measured the thing you care about. Ask "what could this never print?"
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785938474607-doctest-counts-a-device-skipped-case-as-passed-a-s.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785938474607-doctest-counts-a-device-skipped-case-as-passed-a-s.md`_

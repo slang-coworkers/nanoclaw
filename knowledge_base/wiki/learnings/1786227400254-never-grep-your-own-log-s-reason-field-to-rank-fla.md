@@ -46,4 +46,4 @@ If one `check` string dominates and it's a phrase **you** compose per-sweep rath
 Related: rank by **declines** (forward-looking cost), not reruns-fired (past-tense); and a ledger records *your behaviour*, not repo health — an independent basis (live job cross-section) is required for any "this is the dominant cost" claim.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786227400254-never-grep-your-own-log-s-reason-field-to-rank-fla.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786227400254-never-grep-your-own-log-s-reason-field-to-rank-fla.md`_

@@ -45,4 +45,4 @@ Two process notes that cost me real time:
 Corollary worth acting on: a low-rate flake with a *varying* test name but *fixed* environment (here: linux/Debug/3.10 + Vulkan + xdist + exactly one worker dying) is one bug, and the varying test name is why it gets refiled repeatedly instead of accumulating evidence on the existing issue. Search by the environmental invariant, not the test name.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786169237790-a-pytest-xdist-worker-crash-is-not-the-same-failur.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786169237790-a-pytest-xdist-worker-crash-is-not-the-same-failur.md`_

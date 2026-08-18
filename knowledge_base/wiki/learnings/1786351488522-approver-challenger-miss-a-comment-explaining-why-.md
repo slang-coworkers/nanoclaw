@@ -80,4 +80,4 @@ could ever have appeared; otherwise "absent" is a fact about rendering, not the
 world.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786351488522-approver-challenger-miss-a-comment-explaining-why-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786351488522-approver-challenger-miss-a-comment-explaining-why-.md`_

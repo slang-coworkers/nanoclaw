@@ -21,4 +21,4 @@ source: learnings/1782485307814-conditional-lt-t-b-gt-ice-non-literal-flag-survi
 **REPRO GOTCHA (cost me 12+ variants):** In a single-file AOT compile, `specializeModule` ALWAYS folds a `<let b:bool>` value param to a concrete literal, so the Conditional lowers cleanly and you CANNOT reproduce "generic-value-param-escapes-specialization" bugs that way. extern/link-time const flags with a default also fold; spec-constants are rejected as non-constant generic args. The only minimal trigger I found was `[Differentiable]` + `Conditional<float3,b>` + `bwd_diff` (crashes with a *different* E99999 at `.get()`, but same machinery). To repro this class: use autodiff, dynamic dispatch (set-specialization), or higher-order params — not a plain entry-point call.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782485307814-conditional-lt-t-b-gt-ice-non-literal-flag-survive.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782485307814-conditional-lt-t-b-gt-ice-non-literal-flag-survive.md`_

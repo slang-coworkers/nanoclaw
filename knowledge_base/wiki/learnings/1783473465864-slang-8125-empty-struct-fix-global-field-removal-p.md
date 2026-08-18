@@ -20,4 +20,4 @@ Confine the fix to the **existing empty-type legalization layer** (`IREmptyTypeL
 When a fix removes/rewrites "empty struct" fields in Slang IR, it is NOT safe to do globally — empty structs double as the zero-size payload members of `Conditional`/`Optional` in dynamic-dispatch legalization. Scope any empty-struct-field change to the reflected-layout-bearing structs (public/layout-decorated) via the legalization that already owns empty-type handling, not a blanket downstream pass. Same family as #7612 ("Properly handle empty CUDA structs").
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783473465864-slang-8125-empty-struct-fix-global-field-removal-p.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783473465864-slang-8125-empty-struct-fix-global-field-removal-p.md`_

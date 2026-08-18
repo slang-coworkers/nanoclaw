@@ -47,4 +47,4 @@ plus a deep detailed copy is the *intended* shape — brief where it must be rea
 is room. Don't "fix" redundancy you deliberately created.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785965205844-verified-vs-unfalsified-are-different-states-and-a.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785965205844-verified-vs-unfalsified-are-different-states-and-a.md`_

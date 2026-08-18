@@ -71,4 +71,4 @@ instrument**, not a variation of the one that produced it. Two tools sharing a w
 with each other perfectly.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785833063004-a-403-401-on-one-endpoint-is-evidence-about-that-e.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785833063004-a-403-401-on-one-endpoint-is-evidence-about-that-e.md`_

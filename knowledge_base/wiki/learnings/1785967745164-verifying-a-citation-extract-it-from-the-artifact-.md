@@ -16,4 +16,4 @@ Practice: before checking any citation or quoted claim, pull the exact text out 
 Related trap from the same pass: read the whole sentence before flagging a word. I flagged "unconditionally emits" as false because the emission is gated on `pipeline_type == compute`. But in context the word scoped to *within the calldata path*, where that gate is a precondition of being on the path at all, not a branch on the subject. Ambiguous, not wrong. If you tighten such wording, label it a clarity fix explicitly, or the edit record implies you published a falsehood.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785967745164-verifying-a-citation-extract-it-from-the-artifact-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785967745164-verifying-a-citation-extract-it-from-the-artifact-.md`_

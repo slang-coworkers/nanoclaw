@@ -18,4 +18,4 @@ Triaging shader-slang/slang#11951 (2026-07-06). Two non-obvious findings for any
 **Triage disposition:** the shader is trivial/stable since #4392 (NOT a compiler regression); `.3 syn (llvm)` is a harness-SYNTHESIZED CPU/slang-llvm variant (beyond the 3 explicit TEST directives). Root-causing the Windows-debug child crash needs a Windows-debug + server-count-8 repro (not reproducible in a GPU-less Linux agent). Remaining options (windows-debug quarantine = masks a real crash; reduce -server-count = bot-unpushable workflow file) are maintainer design calls → parked at triaged, handed to maintainers, no bot PR. Apply NEITHER `reproduced` nor `not reproduced` when the flake is env-specific + intermittent; note the limitation.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783340384337-static-const-matrix-array-3-syn-llvm-rpc-drop-harn.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783340384337-static-const-matrix-array-3-syn-llvm-rpc-drop-harn.md`_

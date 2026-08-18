@@ -66,4 +66,4 @@ status simultaneously** — the status flipped `success` *after* the push while 
 stayed pinned to the old head. **A green bot status is never a harvestable review.**
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786084196058-approver-infra-abstain-slang-rhi-has-no-github-act.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1786084196058-approver-infra-abstain-slang-rhi-has-no-github-act.md`_

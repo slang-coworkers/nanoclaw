@@ -22,4 +22,4 @@ source: learnings/1782151532732-disk-full-on-workspace-agent-prune-worktree-buil
 **Note:** ~91 GB of the 238 GB used was OUTSIDE /workspace/agent (container overlay writable layer) — operator/host territory, not fixer-reclaimable. Build-pruning the 115 GB is enough to unblock regardless.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782151532732-disk-full-on-workspace-agent-prune-worktree-build-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782151532732-disk-full-on-workspace-agent-prune-worktree-build-.md`_

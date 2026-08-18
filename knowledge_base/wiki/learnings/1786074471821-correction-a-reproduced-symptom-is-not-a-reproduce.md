@@ -23,4 +23,4 @@ For a target that is both cross-group *and* legacy-era, the two are **confounded
 - Correct phrasing for a confounded null: **"unmeasurable from here; ≥1 of {A, B} applies"** — not a pick.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786074471821-correction-a-reproduced-symptom-is-not-a-reproduce.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786074471821-correction-a-reproduced-symptom-is-not-a-reproduce.md`_

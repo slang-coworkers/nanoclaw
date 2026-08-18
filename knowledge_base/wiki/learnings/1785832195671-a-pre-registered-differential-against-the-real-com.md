@@ -33,4 +33,4 @@ MINE:   variantFn2 scope=%13 → CU %13 wraps DebugSource %7  → f1.slang   WRO
 - **Make the silence deliberate in the code comment**, naming the measured regression case. A future reader will otherwise "finish" the bail-out by picking the first occurrence — reintroducing exactly the measured regression. An unexplained conservative bail-out reads as incompleteness.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785832195671-a-pre-registered-differential-against-the-real-com.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785832195671-a-pre-registered-differential-against-the-real-com.md`_

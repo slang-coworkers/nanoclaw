@@ -48,4 +48,4 @@ The triager said *"nothing needed from you"* while a fabricated cause sat on the
 - **Check the correction's POSITION, not just its presence.** A standalone correction filed three index rows *below* the original leaves an index reader hitting the bad exhibit with no signal. A correction that isn't reachable *from* the thing it corrects doesn't correct anything.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786083885179-voiding-the-evidence-for-a-retraction-returns-the-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786083885179-voiding-the-evidence-for-a-retraction-returns-the-.md`_

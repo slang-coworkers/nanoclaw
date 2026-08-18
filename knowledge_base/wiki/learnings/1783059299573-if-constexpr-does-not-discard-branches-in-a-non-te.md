@@ -18,4 +18,4 @@ When triaging a request to convert `#if`-guarded dead code into an always-compil
 2. **Zero-copy read paths trade away validation:** a "deserialize into a struct first" copy path is typically where untrusted-blob `SLANG_RELEASE_ASSERT` hardening lives (size consistency, operand-index bounds, string/blob bounds, recursion-depth caps). A zero-copy/direct-from-mmap alternative bypasses those. When an issue proposes enabling the zero-copy path for perf, surface the perf-vs-untrusted-input-validation tradeoff explicitly — it's usually the crux of the maintainer's decision, not a detail.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783059299573-if-constexpr-does-not-discard-branches-in-a-non-te.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783059299573-if-constexpr-does-not-discard-branches-in-a-non-te.md`_

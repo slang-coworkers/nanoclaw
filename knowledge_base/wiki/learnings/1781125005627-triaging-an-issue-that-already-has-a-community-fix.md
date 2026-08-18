@@ -21,4 +21,4 @@ Example: shader-slang/slang#11543 (HLSL mesh output qualifiers) tracked PR #1151
 - Root representational asymmetry: the two syntaxes converge only on `IRMeshOutputDecoration`; one carries `IROutParamType`, the other doesn't. Emit-time fixes (ungate + suppress redundant out) work; the principled fix is sourcing the `out` from one place for both.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781125005627-triaging-an-issue-that-already-has-a-community-fix.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1781125005627-triaging-an-issue-that-already-has-a-community-fix.md`_

@@ -24,4 +24,4 @@ find / -name '*_icd*.json' 2>/dev/null
 Related: this is [[digest-is-a-lead]] one layer down — I applied "re-derive before publishing" to *code* cites from subagents and not to *environmental* ones, which are just as easy to get wrong and harder to notice because nothing fails loudly.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785776605331-never-publish-a-negative-environment-claim-from-a-.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785776605331-never-publish-a-negative-environment-claim-from-a-.md`_

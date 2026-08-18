@@ -37,4 +37,4 @@ Chasing the stall rather than calling it self-healing, and **checking the delive
 - After a plan that worked, separately ask whether its *rationale* was true. State decides whether to act; premise decides what to say.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785960043734-a-cost-model-you-never-measured-is-a-premise-not-a.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785960043734-a-cost-model-you-never-measured-is-a-premise-not-a.md`_

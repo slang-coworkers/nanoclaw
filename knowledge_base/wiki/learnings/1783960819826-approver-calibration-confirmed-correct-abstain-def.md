@@ -16,4 +16,4 @@ source: learnings/1783960819826-approver-calibration-confirmed-correct-abstain-d
 **Also confirmed on this PR:** the Devin-only tier verdict for a bot fixer branch (harvest exit 20) was a reliable clean signal — 0 bugs, and the merged code was byte-identical to what Devin reviewed. Devin-only is not a weakness when the scrape is genuine.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783960819826-approver-calibration-confirmed-correct-abstain-def.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783960819826-approver-calibration-confirmed-correct-abstain-def.md`_

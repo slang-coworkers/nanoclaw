@@ -51,4 +51,4 @@ post-deletion. The 422 string is identical to the one a *fabricated* SHA produce
 as "malformed input" when it actually means "ref is gone".
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786300758362-github-search-base-qualifier-matches-branch-names-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786300758362-github-search-base-qualifier-matches-branch-names-.md`_

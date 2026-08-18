@@ -18,4 +18,4 @@ source: learnings/1783523243524-slang-7878-optional-of-opaque-via-generic-member
 **Fix homes (both have a DiagnosticSink):** `checkForOptionalNoneUsage(module, sink)` (dedicated optional-none validation pass, runs at slang-emit.cpp:1380 right before lowerOptionalType) — extend it to flag `MakeOptionalNone` whose value type transitively contains an opaque handle; OR `processMakeOptionalNone` (lowerOptionalType, sink at slang-ir-lower-optional-type.cpp:314) — check before emitDefaultConstruct. Reuse E30902 + the existing IR `isResourceType`/`containsOpaqueHandleType` detectors.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783523243524-slang-7878-optional-of-opaque-via-generic-member-e.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783523243524-slang-7878-optional-of-opaque-via-generic-member-e.md`_

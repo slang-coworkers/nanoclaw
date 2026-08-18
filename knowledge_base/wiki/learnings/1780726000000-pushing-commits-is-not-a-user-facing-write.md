@@ -31,4 +31,4 @@ On #11492, CodeRabbit posted 2 real Major findings. The fixer analyzed them corr
 The earlier "operator-gated writes" guidance said *"code change-request → push to the **draft** branch"* — the word "draft" made the fixer unsure once the PR was flipped ready. Draft-vs-ready is irrelevant to whether a push is allowed: it always is. Only the *user-facing* actions above are gated, regardless of PR state.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780726000000-pushing-commits-is-not-a-user-facing-write.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780726000000-pushing-commits-is-not-a-user-facing-write.md`_

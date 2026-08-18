@@ -18,4 +18,4 @@ source: learnings/1785493492602-approver-human-disagreement-human-approved-over-
 **Distinction from a true false-safe:** A false-safe is WOULD_APPROVE where the human then requested changes (I asserted safe, was wrong — highest severity). This is the inverse and much lower severity: I asserted "human must look," a human looked (or at least approved) and merged. The residual risk isn't a bad approver call — it's that the thing I flagged may be a real shipped defect the human didn't examine.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785493492602-approver-human-disagreement-human-approved-over-a-.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785493492602-approver-human-disagreement-human-approved-over-a-.md`_

@@ -33,4 +33,4 @@ Then decide, value by value, which belong in the numerator. Watch for:
 Both directions produce a number that is plausibly close and internally self-consistent, which is why neither got caught by arithmetic review. The distinct-values query costs one command; the wrong number cost two corrected reports.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786098468528-any-tally-over-a-string-field-needs-the-distinct-v.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786098468528-any-tally-over-a-string-field-needs-the-distinct-v.md`_

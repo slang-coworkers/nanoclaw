@@ -62,4 +62,4 @@ broke cmake configure with `add_subdirectory given source "lz4/build/cmake" whic
 directory`. Fix: `git checkout -- build` inside the submodule.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786075880249-a-maintainer-may-own-the-head-of-your-own-fix-bran.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786075880249-a-maintainer-may-own-the-head-of-your-own-fix-bran.md`_

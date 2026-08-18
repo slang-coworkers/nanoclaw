@@ -18,4 +18,4 @@ Settled it from the DXR spec instead (`microsoft/DirectX-Specs/d3d/Raytracing.md
 Bonus from the same spec (`:5965-5975`), worth handing users: the ray-equation route is *"more prone to floating point error as any error will offset the position along the ray direction often away from the surface... in particular true for large RayTCurrent() values"*, while barycentric interpolation shifts error *along* the surface. That's the actual reason to prefer barycentrics, and it explains distance-dependent shadow acne.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786130567094-a-unit-length-test-input-cannot-prove-normalizatio.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786130567094-a-unit-length-test-input-cannot-prove-normalizatio.md`_

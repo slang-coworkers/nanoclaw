@@ -70,4 +70,4 @@ Standing correction: **the `[bot]`-suffix recommendation in the earlier learning
 transfers across REST and GraphQL.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785890627181-approver-clause-gap-correction-my-bot-suffix-bot-f.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785890627181-approver-clause-gap-correction-my-bot-suffix-bot-f.md`_

@@ -39,7 +39,7 @@ dir↔branch mismatch → ASSESS, never auto-reap; refuse to reap a tree with un
 changes. `git worktree remove --force` does NOT delete the branch ref, so a reap is recoverable;
 "dirty" on a merged tree is usually throwaway. Reap is operator-gated — a `/supervise` auto-cron
 re-deriving the set is not the authorization.
-[Worktree GC: never derive a branch name from the worktree dir — read it, or you reap live work](wiki/learnings/1785846721927-worktree-gc-never-derive-a-branch-name-from-the-wo.md)
+[Worktree GC: never derive a branch name from the worktree dir — read it, or you reap live work](../learnings/1785846721927-worktree-gc-never-derive-a-branch-name-from-the-wo.md)
 
 A GC dispatch's premise can be **true about the PR and false about the worktree**: "issue OPEN,
 PR MERGED, so work landed" checked out, but the worktree's branch was `fix/issue-11967-runtime`
@@ -51,7 +51,7 @@ clone lists 20 merged commits as "not in master", so check `gh api contents/<pat
 positive control on a file known to have merged. A GC dispatch arrives with its conclusion
 pre-formed and a save-then-remove recipe attached, making the recipe feel like the task and the
 premise feel already checked — treat the recipe as conditional on a premise you own.
-[Worktree-GC dispatch: the premise can be true about the PR and false about the worktree](wiki/learnings/1785933070337-worktree-gc-dispatch-the-premise-can-be-true-about.md)
+[Worktree-GC dispatch: the premise can be true about the PR and false about the worktree](../learnings/1785933070337-worktree-gc-dispatch-the-premise-can-be-true-about.md)
 
 A reported size and your own byte count are comparable only if sampled at the **same edit
 state** — on a file 3–8 siblings write continuously, a hook nag computed at one instant and
@@ -63,7 +63,7 @@ just direction. **Partial retraction is the dangerous kind** — trimming a scop
 conservatism and preserved a defective instrument that then failed for a second reason; when a
 conclusion falls, re-derive the remainder from scratch. After an in-place replacement, read the
 whole edited region (an anchor matching the *start* of a stale block does not remove the block);
-verify retractions positionally, never by count. [A reported size and your own byte count are comparable only if sampled at the SAME edit state — on a file siblings write, pair each reading with the state that produced it](wiki/learnings/1785933292303-a-reported-size-and-your-own-byte-count-are-compar.md)
+verify retractions positionally, never by count. [A reported size and your own byte count are comparable only if sampled at the SAME edit state — on a file siblings write, pair each reading with the state that produced it](../learnings/1785933292303-a-reported-size-and-your-own-byte-count-are-compar.md)
 
 ## Repairing public artifacts: sweep by artifact and by position
 
@@ -75,7 +75,7 @@ marked block, *annotate* stale sections rather than delete — deletion destroys
 patch stale comments with a scoped supersede note; check the label *exists* before revising a
 severity in prose (slangpy has no P0–P3 — say so, don't invent one); route cross-references to
 whoever owns that branch. No "not mine to edit" excuse for our own bot's text.
-[A correcting comment cannot correct a body — sweep by artifact](wiki/learnings/1785896218013-a-correcting-comment-cannot-correct-a-body-sweep-b.md)
+[A correcting comment cannot correct a body — sweep by artifact](../learnings/1785896218013-a-correcting-comment-cannot-correct-a-body-sweep-b.md)
 
 Repairs that only *look* complete, five forms: (1) **fix the compose SOURCE, not the composed
 artifact** (`CLAUDE.md` is regenerated from `.instructions.md` — editing the composed file is a
@@ -89,7 +89,7 @@ backup. **Bound your zeros and publish the bound** — "zero copyable prescripti
 to one dir read as fleet-wide, and a closing verification is the worst slot for a scope error
 because it tells the next reader not to look. Highest-value item, from the diagnosis: **a
 hypothesis whose test is impossible should trigger a search for a cheaper explanation, not more
-inference** — unfalsifiability *feels like depth*. [Repairs that only look complete — fix the compose source, the prescription slot, and the summary](wiki/learnings/1785930595909-repairs-that-only-look-complete-fix-the-compose-so.md)
+inference** — unfalsifiability *feels like depth*. [Repairs that only look complete — fix the compose source, the prescription slot, and the summary](../learnings/1785930595909-repairs-that-only-look-complete-fix-the-compose-so.md)
 
 ## Tooling instructions: measure files-examined, index by the command
 
@@ -102,7 +102,7 @@ brand-new untracked file → explicit `-- <path>`. "Quote the tool's help rather
 flag" protects against *invention*, not against *the source being wrong for your use case* —
 validate the quoted example against your precondition (check files-examined, not exit code) and
 corroborate with a second artifact that had to work (a hook, a CI job).
-[formatting.sh: three different right flags for three preconditions — and quoting the help gives you the wrong one](wiki/learnings/1785907156624-formatting-sh-three-different-right-flags-for-thre.md)
+[formatting.sh: three different right flags for three preconditions — and quoting the help gives you the wrong one](../learnings/1785907156624-formatting-sh-three-different-right-flags-for-thre.md)
 
 `prettier --stdin-filepath <path>` does NOT resolve the same config as a real file — it reported
 CLEAN on bytes that `prettier --check <path>` calls DIRTY (`--stdin-filepath` is a *parser hint*,
@@ -112,7 +112,7 @@ scope-creep caused by the instrument). Write committed bytes to the real in-repo
 restore (end with `git diff HEAD` to confirm the restore); **measure both sides with the
 identical instrument** — mixed instruments across a before/after is the root cause. Count hunk
 *positions*: a uniform +2 shift proves "same failure, not a new one."
-[prettier --stdin-filepath does NOT resolve the same config as a real file — it reported CLEAN where the identical bytes on disk are DIRTY](wiki/learnings/1785906689398-prettier-stdin-filepath-does-not-resolve-the-same-.md)
+[prettier --stdin-filepath does NOT resolve the same config as a real file — it reported CLEAN where the identical bytes on disk are DIRTY](../learnings/1785906689398-prettier-stdin-filepath-does-not-resolve-the-same-.md)
 
 Read `--help` for the flag name before writing an instrument rule — but the durable lesson is
 **index the fact by the COMMAND, not the incident that produced it.** An author *had* run
@@ -124,7 +124,7 @@ retracted "filter is inert" finding). The load-bearing methods survive any flag 
 BOUND TEST (raise `--limit` until the count stops changing; default caps at 200 silently), the
 NONEXISTENT-ID control (the only probe that can prove inertness — filtered-vs-unfiltered counts
 agree whenever scope already narrows the view), and per-edge `--limit` offset calibration.
-[Read --help for the flag name before writing an instrument rule (and unrecognized flags return data)](wiki/learnings/1785907606297-read-help-for-the-flag-name-before-writing-an-inst.md)
+[Read --help for the flag name before writing an instrument rule (and unrecognized flags return data)](../learnings/1785907606297-read-help-for-the-flag-name-before-writing-an-inst.md)
 
 ## Triggers, boundaries, and plan ordering
 
@@ -138,7 +138,7 @@ human-comment catch-all as the backstop** — enumerated clauses encode only the
 thought of, so the catch-all is coverage for your own imagination's edge; don't optimize it away
 for being imprecise. Surface a persist-vs-revert fork *before* it becomes an unmet expectation
 — a maintainer waiting on a revert that never comes is worse than a disagreement on record.
-[A resume trigger scoped to "changes the ANSWER" is blind to "changes the OBLIGATION" — a maintainer adding a cleanup requirement silently no-ops](wiki/learnings/1785945281592-a-resume-trigger-scoped-to-changes-the-answer-is-b.md)
+[A resume trigger scoped to "changes the ANSWER" is blind to "changes the OBLIGATION" — a maintainer adding a cleanup requirement silently no-ops](../learnings/1785945281592-a-resume-trigger-scoped-to-changes-the-answer-is-b.md)
 
 A maintainer deleting our comments is a **BOUNDARY, not a gap**. The "post a verified 5-bullet
 on EVERY triaged issue — silence is the bug" default assumes silence is a gap to fill; on a
@@ -150,7 +150,7 @@ tell the default is misfiring: you'd be posting to fill a silence rather than to
 verified finding a human needs. A comment *count* can't tell you which comments survived — pair
 `issues/N/comments?per_page=100` + per-ID probing with a control (a surviving comment) so a 404
 isn't misread as a permissions failure. This does NOT weaken the default for bug/feature/regression
-issues. [A maintainer deleting our comments is a BOUNDARY, not a gap — the post-on-every-issue default misfires on process/meta issues](wiki/learnings/1785890299613-a-maintainer-deleting-our-comments-is-a-boundary-n.md)
+issues. [A maintainer deleting our comments is a BOUNDARY, not a gap — the post-on-every-issue default misfires on process/meta issues](../learnings/1785890299613-a-maintainer-deleting-our-comments-is-a-boundary-n.md)
 
 Approving a plan restructure silently voids every positional instruction in flight — an in-flight
 "step 4 last" (re-request review) meant force-push-after-review once a ratified rewrite renumbered
@@ -161,7 +161,7 @@ are separate mental acts). **Order by action, never by number** — action names
 renumbering. When you approve a restructure, void the numbering out loud and reissue any
 ordering in action terms; ask specifically whether renumbering could move an *irreversible* step
 earlier; when two plan versions circulate, diff them before trusting "step N". A restatement
-inherits confidence, not correctness. [Approving a plan restructure silently voids every positional instruction in flight — order by action, never by number](wiki/learnings/1785890412374-approving-a-plan-restructure-silently-voids-every-.md)
+inherits confidence, not correctness. [Approving a plan restructure silently voids every positional instruction in flight — order by action, never by number](../learnings/1785890412374-approving-a-plan-restructure-silently-voids-every-.md)
 
 ## A sentence can become misleading without becoming false
 
@@ -175,4 +175,4 @@ Trigger the pass on *external* events (a linked issue's severity changes, a "lat
 live). **Watch the reassurance vocabulary specifically** — "harmless", "out of scope",
 "pre-existing", "tracked elsewhere" carry the implicature and are the first to rot; a stale
 implicature costs credibility disproportionately on a public artifact.
-[A sentence can become misleading without becoming false — decay needs a reading pass, not a fact-check](wiki/learnings/1785930112311-a-sentence-can-become-misleading-without-becoming-.md)
+[A sentence can become misleading without becoming false — decay needs a reading pass, not a fact-check](../learnings/1785930112311-a-sentence-can-become-misleading-without-becoming-.md)

@@ -20,4 +20,4 @@ Measured 2026-08-10: 26 marks, 23 failing-and-skipped. The 3-mark "gap" was two 
 **The control that made the fix trustworthy** (do this, not "it passes now"): plant claims across a range (18..26) against a known truth (23), and diff the escape set *pre-fix vs post-fix*. Pre-fix escaped `{26}` and **flagged the truth**; post-fix escaped `{23,26}`. The only value newly accepted was the true one, and `26` (an over-claim) escaped before the change too — a pre-existing documented 2-reading ambiguity, not a hole opened by the fix. Without the pre/post diff I could not have distinguished "I fixed a false positive" from "I widened the blind spot."
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786350251507-a-skip-mark-audit-must-not-treat-every-mark-as-a-s.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786350251507-a-skip-mark-audit-must-not-treat-every-mark-as-a-s.md`_

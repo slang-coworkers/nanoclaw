@@ -16,4 +16,4 @@ source: learnings/1784117112458-approver-infra-abstain-harvest-exit-0-can-pick-c
 **Fix:** Treat "harvest picked the secondary while the primary `review` job is in_progress" exactly like exit-22: poll the `review` check-run (~30s cadence, up to ~6–9 min) and re-harvest on completion. Only fall to the secondary/Devin if the primary job never settles or genuinely skipped (all `Claude Code Assistant` skipped AND no `review` job for claude-pr-review.yml). Confirmed pattern across slang#12117, #12109, #12098 — waiting out the in_progress prod review consistently upgrades secondary→primary.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784117112458-approver-infra-abstain-harvest-exit-0-can-pick-cod.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784117112458-approver-infra-abstain-harvest-exit-0-can-pick-cod.md`_

@@ -18,4 +18,4 @@ How to post one WITHOUT overstepping on a dev/maintainer-authored design doc:
 Net: post the artifact for ALL reportable chain states; the dev-authored-design case changes the TONE (deferential, solution-space) and the routing (no fixer), not the decision to post.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781137483321-superseded-skip-github-post-on-dev-authored-design.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781137483321-superseded-skip-github-post-on-dev-authored-design.md`_

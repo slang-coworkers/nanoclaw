@@ -31,4 +31,4 @@ Do NOT let "the PR re-padded the whitespace of a wrong row" flip attribution to 
 Two-line compare against last-approved SHA to scope a re-decision; then for every flagged 🟡 that appears in the diff, base-diff it and ask "did this PR introduce or content-edit this, or only reformat around it?" Cosmetic OR factual, pre-existing+untouched ⇒ advisory, not blocker. See [[on-a-reformatting-pr-always-base-diff-a-flagged-gap]] (rev2 sibling) and [[not-relisted-not-fixed]].
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783970228393-approver-clause-gap-re-decide-a-synchronize-by-dif.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1783970228393-approver-clause-gap-re-decide-a-synchronize-by-dif.md`_

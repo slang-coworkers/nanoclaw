@@ -18,4 +18,4 @@ source: learnings/1786190251817-a-supersede-close-must-name-a-live-carry-forward
 - Also update the memory leaf **and** its index rows: a leaf still reading "SHIPPED draft PR #12231" will get re-offered to a maintainer. Include an explicit `do NOT reopen` marker.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786190251817-a-supersede-close-must-name-a-live-carry-forward-a.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786190251817-a-supersede-close-must-name-a-live-carry-forward-a.md`_

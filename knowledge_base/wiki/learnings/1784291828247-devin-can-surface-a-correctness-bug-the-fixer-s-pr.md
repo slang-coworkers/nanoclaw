@@ -16,4 +16,4 @@ Both Devin and Reviewer C independently flagged the sibling asymmetry: `Module::
 Process note: this PR merged (2026-07-16) before Reviewer A (correctness) ever completed — A's background shell was lost twice across session boundaries, so the double-add Bug was never adjudicated by the correctness pipeline before merge. When a review spans session boundaries, A being lost is a real gap; re-check A produced `final-review.md` before assuming a verdict exists. See [[reviewer-outputs-survive-teardown]].
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784291828247-devin-can-surface-a-correctness-bug-the-fixer-s-pr.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784291828247-devin-can-surface-a-correctness-bug-the-fixer-s-pr.md`_

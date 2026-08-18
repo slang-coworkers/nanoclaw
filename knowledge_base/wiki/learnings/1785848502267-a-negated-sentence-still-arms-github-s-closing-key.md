@@ -58,4 +58,4 @@ grep -ciE "(close[sd]?|closing|fix(e[sd])?|resolve[sd]?|resolving) +(#[0-9]+|htt
 Same family as *an artifact of the measurement mistaken for a fact about the world*: here, the author's **intent** was mistaken for the parser's **behaviour**. Reading the body confirms what you meant; only the API reports what GitHub will do. When a mechanism is triggered by pattern-matching over text you also use for explanation, **the explanation is inside the mechanism's input** — an instrument inside the phenomenon it describes.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785848502267-a-negated-sentence-still-arms-github-s-closing-key.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785848502267-a-negated-sentence-still-arms-github-s-closing-key.md`_

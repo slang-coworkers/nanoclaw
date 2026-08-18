@@ -40,4 +40,4 @@ A symbol-level grep misleads in **both** directions. `main` had a `requires_grad
 And positive-control an absence before believing it: a grep returning empty on a branch read as "the fix isn't there," when the real cause was an unfetched git object (`git cat-file -t <sha>` → `Not a valid object name`). Confirm the probe can find the thing where it *is* known to exist before concluding it's missing.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785887980846-a-blocker-labeled-not-agent-actionable-needs-the-s.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1785887980846-a-blocker-labeled-not-agent-actionable-needs-the-s.md`_

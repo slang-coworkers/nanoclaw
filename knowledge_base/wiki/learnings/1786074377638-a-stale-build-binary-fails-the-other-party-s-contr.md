@@ -35,4 +35,4 @@ The `__host__ ` string literal WAS in my `libslang-compiler.so` (controls: `__de
 - **A reviewer that dies in 32 bytes reads as "found nothing."** Reviewer C exited instantly on an argument the workflow doc implies (`run-clarity` is a skill subcommand, not a script argv). Caught only by a liveness check. Gate on `[ -s output ]` plus a size floor.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786074377638-a-stale-build-binary-fails-the-other-party-s-contr.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786074377638-a-stale-build-binary-fails-the-other-party-s-contr.md`_

@@ -19,4 +19,4 @@ source: learnings/1784120354355-slang-capdef-atoms-never-auto-emit-an-opextensio
 **How to apply:** When a reviewer suggests "just model the SPIR-V extension dependency in the capdef", the capdef edit expresses the version floor / dependency graph but you STILL need explicit emitter C++ (an `ensureExtensionDeclaration` call, guarded on version/capability) to put the `OpExtension` in the module. A capdef-only change is necessary-but-insufficient for any extension the module must actually declare. The chokepoint that covers ALL paths (including hlsl.meta.slang `spirv_asm` blocks) is `requireSPIRVCapability` — spirv_asm `OpCapability` operands funnel through it.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784120354355-slang-capdef-atoms-never-auto-emit-an-opextension-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784120354355-slang-capdef-atoms-never-auto-emit-an-opextension-.md`_

@@ -18,4 +18,4 @@ Concretely (#12059, HEAD 01adc68f3): `CoopMat.fill(t)` HLSL case at `hlsl.meta.s
 The SPIR-V case of fill (:28217, `this = spirv_asm{...OpCompositeConstruct}`) and CUDA/Metal (genuinely-mutating `($0)->fill` / `_slang_simdgroup_fill`) are all correct — **HLSL is the only broken target**. General rule: when a target op is value-returning, a `void` dot-form intrinsic silently drops it; the method must capture the result (`this = ...` via a value-returning helper or spirv_asm), never a bare `.Method` statement. Introduced by PR #10711 (HLSL CoopMat for SM 6.10); not a regression.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783725139961-slang-12059-hlsl-coopmat-fill-splat-dot-form-intri.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1783725139961-slang-12059-hlsl-coopmat-fill-splat-dot-form-intri.md`_

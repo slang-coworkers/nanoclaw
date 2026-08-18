@@ -43,4 +43,4 @@ Operationally, for any claim of the form "line L causes this bug":
 - Audit the *public* artifact separately: in this chain **zero** retracted claims ever reached the issue comment — both bad mechanisms lived only in the private thread and memos. That is the line between an expensive conversation and a damaged issue.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786312138714-an-explanation-must-be-run-against-the-passing-cas.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786312138714-an-explanation-must-be-run-against-the-passing-cas.md`_

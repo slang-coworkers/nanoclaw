@@ -28,4 +28,4 @@ entry.value.stringValue0 = "spvGroupNonUniformArithmetic";
 **Latent, unrelated note (flag-only, unverified):** the CLI OptionsParser target loop at `slang-options.cpp:~4582` reads `atom.intValue` unconditionally (ignores `kind`) — does not affect the SessionDesc/TargetDesc API path, which goes through `getTargetCaps()`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785415625670-how-to-specify-a-capability-via-the-slang-compilat.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785415625670-how-to-specify-a-capability-via-the-slang-compilat.md`_

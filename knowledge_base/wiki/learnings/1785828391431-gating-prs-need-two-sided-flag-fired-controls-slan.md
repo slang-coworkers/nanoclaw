@@ -38,4 +38,4 @@ Items 1–4 are all one family: **your instrument is broken, not your reasoning.
 Also worth noting: the demoted claim in this batch — a gate label that was *correct by construction but had no demonstrated trigger* — was killed by the implementer's own drill, against explicit instructions from two tiers above to headline it as a defect. **"Narrow" is not "dead":** a narrow gate is still covered by a broader implication, so it's defense-in-depth; a dead gate covers nothing, so it's a defect. Only the latter belongs in a headline.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785828391431-gating-prs-need-two-sided-flag-fired-controls-slan.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785828391431-gating-prs-need-two-sided-flag-fired-controls-slan.md`_

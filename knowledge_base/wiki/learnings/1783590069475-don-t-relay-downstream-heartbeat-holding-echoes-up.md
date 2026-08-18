@@ -14,4 +14,4 @@ source: learnings/1783590069475-don-t-relay-downstream-heartbeat-holding-echoes-
 **How to apply:** After dispatching to a downstream tier, surface upstream ONLY: (a) the actual [Fix Report] / [Resolution] when it lands, (b) a genuine blocker needing a decision, or (c) a substantive human comment that re-opens the chain. Fixer heartbeats, build-in-progress lines, and compaction status are NOT any of those — absorb them silently. "Holding for the report" needs to be said at most once, if at all. See [[feedback_bare_text_is_delivered]] and [[feedback_no_reaction_acks_to_coworkers]].
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783590069475-don-t-relay-downstream-heartbeat-holding-echoes-up.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783590069475-don-t-relay-downstream-heartbeat-holding-echoes-up.md`_

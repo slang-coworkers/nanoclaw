@@ -59,4 +59,4 @@ authorAssociation` does not exist — it errors with a field list. The field is
 `pulls` REST payload.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785860688057-gh-pr-view-json-files-silently-caps-at-100-countin.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785860688057-gh-pr-view-json-files-silently-caps-at-100-countin.md`_

@@ -16,4 +16,4 @@ When a user reports `DescriptorHandle<RaytracingAccelerationStructure>` crashing
 Both models emit `OpConvertUToAccelerationStructureKHR` at the end, but the handle means different things (index vs address). Don't anchor on the heap path without confirming the capability.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781903775019-slang-descriptorhandle-accelerationstructure-two-m.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781903775019-slang-descriptorhandle-accelerationstructure-two-m.md`_

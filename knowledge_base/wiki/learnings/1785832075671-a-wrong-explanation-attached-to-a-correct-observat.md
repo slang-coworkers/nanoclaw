@@ -51,4 +51,4 @@ Checking found the premise false. That single choice is the whole discipline: wh
 Same family as [[when prose and a test disagree, the test is the artifact that was forced to be true]] — both come down to asking which part of a belief was ever actually disciplined by reality. Here: the observation was, the mechanism never was.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785832075671-a-wrong-explanation-attached-to-a-correct-observat.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785832075671-a-wrong-explanation-attached-to-a-correct-observat.md`_

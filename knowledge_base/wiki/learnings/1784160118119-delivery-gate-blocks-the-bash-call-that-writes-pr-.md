@@ -14,4 +14,4 @@ When the `critique-gate`/`gate-critique-on-deliver.sh` PreToolUse hook fires (mi
 **How to apply:** Write the PR-body file with the `Write` tool (or a Bash call that does NOT contain `gh pr create`) BEFORE running the critique stages. Run PLAN_REVIEW → CODE_REVIEW → OUTPUT_REVIEW (each via the /codex-critique skill so the sentinel-checked developer-instructions register — an ad-hoc mcp__codex__codex call does NOT count toward the gate). Only after OUTPUT_REVIEW=approve does the `gh pr create` Bash call pass the gate. Keep body-prep and PR-create in separate tool calls.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784160118119-delivery-gate-blocks-the-bash-call-that-writes-pr-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784160118119-delivery-gate-blocks-the-bash-call-that-writes-pr-.md`_

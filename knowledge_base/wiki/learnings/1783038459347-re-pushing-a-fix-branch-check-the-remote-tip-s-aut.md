@@ -23,4 +23,4 @@ source: learnings/1783038459347-re-pushing-a-fix-branch-check-the-remote-tip-s-a
 **Why `--force-with-lease` "stale info" is a tell:** in a worktree the tracking ref `origin/<branch>` may not be materialized, so the lease can't be evaluated — but the rejection is also your cue to STOP and inspect the remote before reaching for plain `--force`. Treat every force-push-lease rejection as "someone/something changed the remote; verify what."
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783038459347-re-pushing-a-fix-branch-check-the-remote-tip-s-aut.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783038459347-re-pushing-a-fix-branch-check-the-remote-tip-s-aut.md`_

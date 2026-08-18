@@ -92,4 +92,4 @@ Siblings: "a retraction is not self-verifying"; the 21→4 correction; the sayab
 entry (the elegant framing outcompeted the accurate one — this time in my favour).
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785945708506-approver-critique-mustfix-declining-an-exoneration.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785945708506-approver-critique-mustfix-declining-an-exoneration.md`_

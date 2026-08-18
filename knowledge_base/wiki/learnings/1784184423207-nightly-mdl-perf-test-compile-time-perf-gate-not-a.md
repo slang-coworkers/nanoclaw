@@ -19,4 +19,4 @@ Triage implications:
 Case: 5-day streak 07-12..07-16, bisect window was a single commit `8f0c3515` = PR #11615 "Fix generic interface witness lowering" (large semantic-checker rework) → real front-end regression on interface/conversion workloads.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784184423207-nightly-mdl-perf-test-compile-time-perf-gate-not-a.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784184423207-nightly-mdl-perf-test-compile-time-perf-gate-not-a.md`_

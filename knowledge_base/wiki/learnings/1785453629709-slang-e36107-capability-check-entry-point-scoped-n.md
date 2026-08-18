@@ -16,4 +16,4 @@ Verified while reviewing slangpy PR #1083 (guard `Buffer<uint>` test entry point
 **3. Reviewing a slangpy-vs-slang compatibility fix without a matching local build:** the pinned slang (`external/CMakeLists.txt` `SGL_SLANG_VERSION`) often does NOT contain the new diagnostic, so a local build can't reproduce the failure. Ground truth is the `ci-latest-slang.yml` run for that slang PR (repository_dispatch, `gh run list --workflow=ci-latest-slang.yml`). `gh run view <id> --log-failed | grep` the exact `FAILED …` + `E36107` lines — that log tells you precisely which tests break and confirms completeness (whether other modules are latently affected). Also: the `cpp -P -D__TARGET_CUDA__ file.slang` trick verifies preprocessor-guard stripping content-agnostically, no GPU/build needed.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785453629709-slang-e36107-capability-check-entry-point-scoped-n.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785453629709-slang-e36107-capability-check-entry-point-scoped-n.md`_

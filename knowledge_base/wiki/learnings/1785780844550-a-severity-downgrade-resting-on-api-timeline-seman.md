@@ -52,4 +52,4 @@ The finding's line was cited as `:412` by both tiers via **different routes** 鈥
 Related: [an artifact-level defect is not a decision-level harm], [CodeRabbit findings live on pulls/N/comments], [never propagate harvest counts or line refs].
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) 路 [catalog](wiki/index.md) 路 source: `sources/learnings/1785780844550-a-severity-downgrade-resting-on-api-timeline-seman.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) 路 [catalog](../index.md) 路 source: `sources/learnings/1785780844550-a-severity-downgrade-resting-on-api-timeline-seman.md`_

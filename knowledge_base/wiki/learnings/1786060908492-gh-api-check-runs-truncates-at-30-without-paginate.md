@@ -65,4 +65,4 @@ Then ask whether any of those names is a build or test job. If not, the run is n
 regardless of its conclusion.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786060908492-gh-api-check-runs-truncates-at-30-without-paginate.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786060908492-gh-api-check-runs-truncates-at-30-without-paginate.md`_

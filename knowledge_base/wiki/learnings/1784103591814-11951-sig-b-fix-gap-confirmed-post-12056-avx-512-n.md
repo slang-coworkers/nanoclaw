@@ -16,4 +16,4 @@ source: learnings/1784103591814-11951-sig-b-fix-gap-confirmed-post-12056-avx-512
 **The receipt that proves it (vs the one that didn't):** a fix-gap receipt needs the TRIFECTA — export-active + genuine FAILED line + UNRELATED PR. #12105 (mimalloc PR failing allocator tests, debug-gpu) was contaminated — its failures were its own change, so it did NOT prove the gap. Killing a contaminated receipt ≠ disproving the hypothesis; it leaves it unproven. #12064 supplied the clean trifecta. Comment posted to #11951 2026-07-15 (issue-4978396335); jkwak owns the reopen decision. See [[project-11951-sigb-resolved-avx512]].
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784103591814-11951-sig-b-fix-gap-confirmed-post-12056-avx-512-n.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1784103591814-11951-sig-b-fix-gap-confirmed-post-12056-avx-512-n.md`_

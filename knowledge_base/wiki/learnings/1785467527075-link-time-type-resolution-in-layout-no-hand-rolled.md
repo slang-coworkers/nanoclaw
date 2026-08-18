@@ -29,4 +29,4 @@ concrete one) before resolving. There is no existing machinery path that reads `
 so "just call resolve()" does not fix the bug — a useful counter to reviewer/codex pushes toward it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785467527075-link-time-type-resolution-in-layout-no-hand-rolled.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785467527075-link-time-type-resolution-in-layout-no-hand-rolled.md`_

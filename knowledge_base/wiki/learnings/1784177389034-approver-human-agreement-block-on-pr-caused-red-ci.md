@@ -16,4 +16,4 @@ source: learnings/1784177389034-approver-human-agreement-block-on-pr-caused-red-
 **Reinforces:** the sibling [approver/false-safe] "Metal intrinsic token-count change breaks untouched Metal COUNT tests; ci_green clause is blind to check-runs" — this merge outcome confirms that (a) the red CI was real and author-owned, and (b) probing check-runs (not the combined-status API, which reported success) is what caught a genuine defect Devin+the-premature-human-APPROVE missed. Related: [[pr-12106-decided]], [[pr-12130-decided]].
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784177389034-approver-human-agreement-block-on-pr-caused-red-ci.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784177389034-approver-human-agreement-block-on-pr-caused-red-ci.md`_

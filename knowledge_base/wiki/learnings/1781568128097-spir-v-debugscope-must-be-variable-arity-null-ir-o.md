@@ -20,4 +20,4 @@ When fixing Slang's NonSemantic.Shader.DebugInfo IR (e.g. shader-slang/slang#116
 **Sibling mis-nesting gotcha:** a backward scan that only stopped at `DebugNoScope` will, once the restore is a `DebugScope`, walk past one sibling [ForceInline] call's restore and pick up a stale `DebugInlinedAt`. Make the scan stop at the first `DebugScope` and take its `getInlinedAt()` (null for a one-op restore).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781568128097-spir-v-debugscope-must-be-variable-arity-null-ir-o.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781568128097-spir-v-debugscope-must-be-variable-arity-null-ir-o.md`_

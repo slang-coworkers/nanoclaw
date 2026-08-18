@@ -14,4 +14,4 @@ source: learnings/1784321894518-approver-human-agreement-dependabot-go-module-bu
 **Vindicates** the sibling learning `[approver/clause-gap] dependabot Go-module bump in extras/scaler — Devin-only tier, no-Go-CI caveat clears on isolated blast radius`. Contrast the SIBLING PR #11892 (x/net bump, same extras/scaler) which went ABSTAIN_INFRA because Devin timed out AND harvest-20 left no signal — here Devin completed, so the delta was purely Devin availability. Lesson: for this exact PR class, the decision hinges on getting a clean Devin run (let it finish — run it in background, not a 10-min foreground cap); with Devin clean it's a safe WOULD_APPROVE, without any signal it's NO_REVIEW_SIGNAL abstain.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784321894518-approver-human-agreement-dependabot-go-module-bump.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784321894518-approver-human-agreement-dependabot-go-module-bump.md`_

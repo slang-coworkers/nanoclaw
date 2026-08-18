@@ -24,4 +24,4 @@ When a CUDA texture intrinsic's result type differs from the texture element typ
 **FileCheck comment hazard:** a prose comment line that starts with a check-prefix token (e.g. `// PTX: exercises the compile...`) is parsed by FileCheck as a `PTX:` directive and fails. Keep the prefix token out of the leading position of non-directive prose in test files.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785417049714-cuda-gather-t0-vs-tr-marker-local-gpu-nvrtc-filech.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785417049714-cuda-gather-t0-vs-tr-marker-local-gpu-nvrtc-filech.md`_

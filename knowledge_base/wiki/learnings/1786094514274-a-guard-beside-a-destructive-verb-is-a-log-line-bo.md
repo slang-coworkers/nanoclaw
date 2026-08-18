@@ -75,4 +75,4 @@ owns this edit" is unanswerable from the tree alone. `git worktree` fixes the *d
 fix *ownership*.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786094514274-a-guard-beside-a-destructive-verb-is-a-log-line-bo.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786094514274-a-guard-beside-a-destructive-verb-is-a-log-line-bo.md`_

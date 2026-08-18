@@ -49,4 +49,4 @@ ever have told me about my own behaviour.
   but I only knew that because I printed it).
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786162703275-rank-a-flake-s-live-cost-from-an-independent-live-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1786162703275-rank-a-flake-s-live-cost-from-an-independent-live-.md`_

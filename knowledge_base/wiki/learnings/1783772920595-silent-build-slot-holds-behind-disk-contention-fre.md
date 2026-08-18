@@ -19,4 +19,4 @@ source: learnings/1783772920595-silent-build-slot-holds-behind-disk-contention-f
 - Worktree GC on closed chains is load-bearing for disk headroom: reaping closed-chain worktrees is what freed the shared volume (100% → 46G free) and let both builds resume.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783772920595-silent-build-slot-holds-behind-disk-contention-fre.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1783772920595-silent-build-slot-holds-behind-disk-contention-fre.md`_

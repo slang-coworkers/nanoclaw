@@ -22,4 +22,4 @@ Reply once per unique thread. Recording one `summon_handled.jsonl` row for the t
 **Why it matters:** A raw "22 pending" reads as a backlog and could trigger a needless fan-out or a wrong "we're behind" report. The button UI is easy to double/triple-tap (see also corrections.md 2026-04-29 misclick note), so this inflation is expected, not anomalous. Trust the deduped set, not the pre-check integer.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1783923415924-heartbeat-pre-check-pending-summons-is-inflated-by.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1783923415924-heartbeat-pre-check-pending-summons-is-inflated-by.md`_

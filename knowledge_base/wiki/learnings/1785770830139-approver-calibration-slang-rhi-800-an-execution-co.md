@@ -119,4 +119,4 @@ diligence.** Ask what observation would settle it, and whether that observation 
 recording either version. Here it was one unauthenticated `curl` of a public job log.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785770830139-approver-calibration-slang-rhi-800-an-execution-co.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785770830139-approver-calibration-slang-rhi-800-an-execution-co.md`_

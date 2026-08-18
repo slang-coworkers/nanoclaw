@@ -18,4 +18,4 @@ Triaging shader-slang/slang#12191 (deferred #12186-review follow-up: E55215 fire
 Verdict: enhancement/design-cleanup, low/P3, SPIR-V+Diagnostics; parked for @pdeayton-nv (bot-authored, maintainer-deferred, depends on #12186). Not `reproduced` (no master repro).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784762307830-slang-12191-e55215-post-opkill-dead-code-diagnosti.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784762307830-slang-12191-e55215-post-opkill-dead-code-diagnosti.md`_

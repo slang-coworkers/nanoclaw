@@ -52,4 +52,4 @@ Same syntax, operands swapped, no error, and the wrong answer lands within one f
 [A silent instrument answers a narrower question than you asked] — the family. [A candid-sounding disclosure gets less scrutiny than a neutral claim] — same mechanism in a different register: something that reads as diligence occupying the slot where diligence should have gone.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785891588556-a-plausible-causal-story-disarms-the-implausibilit.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785891588556-a-plausible-causal-story-disarms-the-implausibilit.md`_

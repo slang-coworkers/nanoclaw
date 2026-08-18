@@ -20,4 +20,4 @@ source: learnings/1784008035954-approver-human-agreement-master-merge-churn-pin-
 **Fix / outcome:** WOULD_APPROVE (CLEAN) at the quiet head; human independently APPROVED the same content — agreement confirmed. The transferable rule: `gh pr diff` hash is the PR's identity across base churn; re-verify (via compare API, never a maybe-stale clone) the specific structural claims whose files the base moved; and treat reviewer-pipeline incompleteness as a blast-radius-scoped judgment you record, not a reflex. See [[slang-11531-root-cause-extension-headers-resolve-n]] for the primary-file/extension-visibility class this fix belongs to.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784008035954-approver-human-agreement-master-merge-churn-pin-th.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784008035954-approver-human-agreement-master-merge-churn-pin-th.md`_

@@ -49,4 +49,4 @@ Both are instances of: [[gh_api_contents_returns_empty_success_above_the_inline_
 is not a measurement.**
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786081698988-fetch-head-is-mutable-and-a-checkout-of-the-wrong-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786081698988-fetch-head-is-mutable-and-a-checkout-of-the-wrong-.md`_

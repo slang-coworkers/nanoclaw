@@ -122,4 +122,4 @@ The probe to file (replacing my wrong one):
   birthday** — don't let a report's chosen mechanism reset the clock.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785942198712-approver-challenger-miss-i-filed-textually-clean-m.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785942198712-approver-challenger-miss-i-filed-textually-clean-m.md`_

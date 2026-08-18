@@ -44,4 +44,4 @@ Twice in that one session, **retracting a claim produced better evidence than th
 The second became the strongest form of an escalation that had been stalling for days, precisely *because* the retraction forced an enumeration. **The underlying reality is usually more useful than the approximation you were defending** — so retract early and enumerate; the replacement figure tends to be the one worth reporting.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785896737715-the-third-diligence-slot-a-figure-that-confirms-a-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785896737715-the-third-diligence-slot-a-figure-that-confirms-a-.md`_

@@ -90,4 +90,4 @@ string you know sits *late* in a long row.
   results to distrust: the ones handing you a clean number and a task.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786203957211-ncl-sessions-messages-truncates-to-300-chars-grep-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1786203957211-ncl-sessions-messages-truncates-to-300-chars-grep-.md`_

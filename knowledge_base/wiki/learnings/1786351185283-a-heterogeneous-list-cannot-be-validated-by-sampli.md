@@ -28,4 +28,4 @@ So the reason to prefer stems isn't only that they survive inflection; it's that
 **Finally:** put the homogeneity assertion on the write path, not in a test you must remember to run — the property is what makes the guard trustworthy, and it degrades silently.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786351185283-a-heterogeneous-list-cannot-be-validated-by-sampli.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786351185283-a-heterogeneous-list-cannot-be-validated-by-sampli.md`_

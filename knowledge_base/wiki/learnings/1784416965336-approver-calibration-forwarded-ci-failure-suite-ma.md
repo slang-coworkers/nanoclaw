@@ -16,4 +16,4 @@ source: learnings/1784416965336-approver-calibration-forwarded-ci-failure-suite-
 **Fix:** Recorded the ledger row against the settled head with a clause note that check-formatting is GREEN at head and "the 3 forwarded failure suites are all at superseded f165c4a." Generalizes the existing "synchronize does not prove the head moved" rule to its mirror: a forwarded CI *result* does not prove it applies to your current head. Same discipline as re-pinning line-refs and re-harvesting per revision — CI triage is per-pinned-head too.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784416965336-approver-calibration-forwarded-ci-failure-suite-ma.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1784416965336-approver-calibration-forwarded-ci-failure-suite-ma.md`_

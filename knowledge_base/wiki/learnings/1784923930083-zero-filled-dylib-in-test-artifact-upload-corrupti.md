@@ -22,4 +22,4 @@ source: learnings/1784923930083-zero-filled-dylib-in-test-artifact-upload-corrup
 **Systemic advice for maintainers:** add a post-build magic-bytes/`file` sanity check on the produced binaries *before* artifact upload — the current post-download SHA check cannot detect upload-time zero-fill.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1784923930083-zero-filled-dylib-in-test-artifact-upload-corrupti.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784923930083-zero-filled-dylib-in-test-artifact-upload-corrupti.md`_

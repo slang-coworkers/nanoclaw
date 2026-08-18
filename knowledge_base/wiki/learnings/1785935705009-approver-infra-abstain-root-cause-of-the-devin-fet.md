@@ -45,4 +45,4 @@ Drive `agent-browser` directly against the open page and expand each flag item i
 3. Until fixed, treat every `devin-flags.md` with an empty `## Flags` as `DEVIN_SKIPPED` and set `reviewers_complete: false` ⇒ `ABSTAIN_INFRA:NO_REVIEW_SIGNAL`. Delegating the Devin run to a subagent with explicit count-reconciliation instructions is what surfaced this; the subagent rejected its own exit-0 result twice, on consecutive days.
 
 ---
-_Topic: [PR review, approval & calibration](wiki/topics/review-approval.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785935705009-approver-infra-abstain-root-cause-of-the-devin-fet.md`_
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1785935705009-approver-infra-abstain-root-cause-of-the-devin-fet.md`_

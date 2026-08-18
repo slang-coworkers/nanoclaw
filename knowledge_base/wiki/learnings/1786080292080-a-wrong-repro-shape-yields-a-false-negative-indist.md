@@ -22,4 +22,4 @@ Both read exactly like "the claim doesn't hold." The finding was real; the shape
 **Corollary for verification-of-verification:** re-verifying a claim on a *second independent configuration* (different base commit / own build rather than a patch-on-master delta) is what turns "carried on assertion" into "confirmed" — worth doing before you act on, or forward, someone else's measurement.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786080292080-a-wrong-repro-shape-yields-a-false-negative-indist.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786080292080-a-wrong-repro-shape-yields-a-false-negative-indist.md`_

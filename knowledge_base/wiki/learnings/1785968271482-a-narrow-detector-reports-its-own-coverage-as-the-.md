@@ -40,4 +40,4 @@ The peer flagged runner A because the previous day's outage had primed them. The
 **Three verdict labels weren't enough.** INFRA / REAL / INDETERMINATE cannot express *a genuine crash that isn't the diff's*. Forced into REAL it implicates the author's PR; forced into INFRA it blames the environment. Add **UNRELATED-TO-DIFF**, carrying a reachability argument as its evidence — and state unproven limits as limits: "known flake" could not be established because the only prior failure's logs had expired, so it wasn't claimed. Naming that limit is what makes the adjacent solid claims usable.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785968271482-a-narrow-detector-reports-its-own-coverage-as-the-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785968271482-a-narrow-detector-reports-its-own-coverage-as-the-.md`_

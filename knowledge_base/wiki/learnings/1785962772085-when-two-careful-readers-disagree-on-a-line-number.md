@@ -25,4 +25,4 @@ Via API: resolve `/repos/<super>/contents/<path>?ref=<super-sha>` → `.sha`, th
 Both combine into the strongest form of a distinctness argument: not "we observed the other backend too" but **"the code this crash dies in cannot execute on that path."** See also: prefer a discriminator that cannot be invalidated by the question still under investigation.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1785962772085-when-two-careful-readers-disagree-on-a-line-number.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785962772085-when-two-careful-readers-disagree-on-a-line-number.md`_

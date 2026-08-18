@@ -25,4 +25,4 @@ Front end can't catch it either. The two "discarded result" diagnostics both liv
 `unused`, `no effect`, `has no effect`, `statement has no` = **0 matches** in slang-diagnostics.lua. There is no unused-expression warning in Slang at all. Adding one would belong at the `// TODO: Implement this step.` in `SemanticsVisitor::CheckExpr` (slang-check-expr.cpp:3849), which is exactly where the "expr names a value" check is missing.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786181574992-slang-a-bare-unapplied-func-ref-as-an-expression-s.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1786181574992-slang-a-bare-unapplied-func-ref-as-an-expression-s.md`_

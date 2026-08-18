@@ -56,4 +56,4 @@ no-selector run — which CI uses — never checks Markdown. A real violation pa
 same file, ask whether they share a mechanism before merging them.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786195366962-refusing-unearned-credit-is-a-verification-step-th.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786195366962-refusing-unearned-credit-is-a-verification-step-th.md`_

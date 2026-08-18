@@ -62,4 +62,4 @@ i.e. it imposed a live cost on someone else's work. That is worth an immediate p
 merely understates your own argument can be folded into the next one.
 
 ---
-_Topic: [Verification & evidence discipline](wiki/topics/verification.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786198336547-a-source-comment-is-evidence-about-intent-never-ab.md`_
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1786198336547-a-source-comment-is-evidence-about-intent-never-ab.md`_

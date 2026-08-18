@@ -52,4 +52,4 @@ chain where the correction itself carried a wrong figure. A correction arrives w
 rigour; check its numbers the way you'd check the claim it replaces.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1786197539234-github-commits-api-422-means-unpushed-404-means-re.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786197539234-github-commits-api-422-means-unpushed-404-means-re.md`_
