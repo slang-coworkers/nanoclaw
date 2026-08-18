@@ -2165,25 +2165,46 @@ function refreshSessionCostCache(): void {
 function writeCostThresholdFile(byPeriod: SessionCostByPeriod): void {
   try {
     let period: ContextPeriod = '30d';
-    let costs: number[] = [];
+    let entries: SessionCostEntry[] = [];
     for (const p of ['7d', '30d'] as ContextPeriod[]) {
-      const priced = [...byPeriod[p].values()]
-        .map((e) => e.cost)
-        .filter((c) => c > 0)
-        .sort((a, b) => a - b);
+      const priced = [...byPeriod[p].values()].filter((e) => e.cost > 0);
       if (priced.length) {
         period = p;
-        costs = priced;
+        entries = priced;
         break;
       }
     }
-    if (costs.length === 0) return;
-    const idx = Math.min(costs.length - 1, Math.floor(0.9 * (costs.length - 1)));
+    if (entries.length === 0) return;
+
+    // p90 of a cost array — sort asc, index = floor(0.9*(n-1)). Matches the
+    // Sessions-tab pctl and the host's resolveCostCapT2Usd read contract.
+    const p90Of = (arr: number[]): number => {
+      const s = [...arr].sort((a, b) => a - b);
+      return s[Math.min(s.length - 1, Math.floor(0.9 * (s.length - 1)))];
+    };
+
+    // Per-group p90 over each group's OWN priced sessions — the Tier-1 cap the
+    // host prefers over the fleet number. A fleet p90 is dragged down by the many
+    // cheap orchestrator/reviewer sessions (so it under-serves fixer) and can't
+    // over-cap a reviewer at once. Only groups with a real sample get an entry;
+    // the host falls back to the fleet p90 for smaller/newer groups.
+    const MIN_GROUP_SAMPLE = 10;
+    const byGroup = new Map<string, number[]>();
+    for (const e of entries) {
+      if (!e.groupFolder) continue;
+      (byGroup.get(e.groupFolder) ?? byGroup.set(e.groupFolder, []).get(e.groupFolder)!).push(e.cost);
+    }
+    const perGroupP90Usd: Record<string, number> = {};
+    for (const [folder, arr] of byGroup) {
+      if (arr.length >= MIN_GROUP_SAMPLE) perGroupP90Usd[folder] = p90Of(arr);
+    }
+
     const payload =
       JSON.stringify({
-        p90Usd: costs[idx],
+        p90Usd: p90Of(entries.map((e) => e.cost)),
+        perGroupP90Usd,
         period,
-        sampleSize: costs.length,
+        sampleSize: entries.length,
         computedAt: new Date().toISOString(),
       }) + '\n';
     const outPath = join(getDataDir(), 'cost-thresholds.json');
