@@ -30,6 +30,44 @@ Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or 
 - **#1232** `perf(nv-dashboard): persist per-file cost cache for warm restarts (+robustness)`
 - **#1234** `feat(nv-dashboard): bot-contributions panel shows merged/total PRs`
 
+## 📅 2026-08-17
+
+### nv-main (10 PRs)
+- **#1208** `fix(spine): point coworker memory at the OKF memory/ tree (not CLAUDE.local.md)`
+- **#1209** `ops(claude-trace): upstream refresh-claude-trace-www.sh + symlink fix`
+- **#1210** `fix(group-init): lean harness default — disableWorkflows (mirror merged upstream #3031)`
+- **#1211** `fix(#14): retire ABSTAIN_INFRA — fold into ABSTAIN_POLICY + reason_code (enum)`
+- **#1216** `feat(nv-main): per-session cost cap + escalation (LEAN v1) — runner + host`
+- **#1218** `feat(nv-main): per-group OKF memory synthesis skill + no-backlog cron pattern (#15, code only)`
+- **#1219** `feat(nv-main): per-coworker wire-mix Grafana panel (#4)`
+- **#1220** `feat(nv-main): daily costliest-session digest skill (Tier 5, code only)`
+- **#1221** `feat(nv-main): preamble trim — Tier 0 mislabels + Tier 1 native-tool strip + Tier 2 per-type skills scoping + Tier 3 chain-reporting (4 invariants)`
+- **#1222** `fix(nv-main): force codex critique sandbox=danger-full-access (rewrite, not deny)`
+
+### nv-dashboard (6 PRs)
+- **#1203** `revert(dashboard): remove Overview cost-at-a-glance cards (#1200)`
+- **#1204** `feat(dashboard): cost-per-session percentiles (p50/p75/p90/p99/max) on Sessions tab`
+- **#1205** `fix(dashboard): accurate 30d session cost (uncap scan + drop false unpriced flag)`
+- **#1206** `feat(dashboard): transcript link per Sessions row (env-gated)`
+- **#1214** `fix(#14): retire ABSTAIN_INFRA from dashboard display (tolerant fallback)`
+- **#1217** `feat(nv-dashboard): Sessions cost-cap column + continue/stop override`
+
+### nv-slang (1 PRs)
+- **#1212** `fix(#14): retire ABSTAIN_INFRA in slang approver prose/scripts`
+
+### nv-slangpy (1 PRs)
+- **#1213** `fix(#14): retire ABSTAIN_INFRA in slangpy approver prose/scripts`
+
+## 📅 2026-08-14
+
+### nv-main (2 PRs)
+- **#1198** `feat(nv-main): agent_groups.paused operator kill switch`
+- **#1199** `docs(supervise-issues): R10 — never schedule a per-issue cron`
+
+### nv-dashboard (2 PRs)
+- **#1200** `feat(dashboard): cost at a glance on the Admin Overview`
+- **#1201** `feat(dashboard): per-session cost column + sort on the Sessions tab`
+
 ## 📅 2026-08-11
 
 ### nv-main (2 PRs)
