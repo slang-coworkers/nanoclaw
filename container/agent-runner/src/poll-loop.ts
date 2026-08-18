@@ -180,6 +180,15 @@ function initCostTracking(providerName: string): void {
   costDecision = persisted?.decision;
   costDecidedAt = persisted?.decidedAt;
   costStopRequested = persisted?.status === 'stopped' && !costImmortal;
+  // A ceiling that was newly enabled or lowered after this session already
+  // accrued past it won't be reflected in the persisted STATUS (that row was
+  // written before the ceiling existed / at the old threshold). Deriving the
+  // quiesce marker from status alone would hand such a session one free turn on
+  // respawn. Also key it off spend-vs-ceiling so an over-ceiling non-immortal
+  // session loads already-stopped. Immortal is never hard-stopped.
+  if (!costImmortal && costCeilingUsd > 0 && costSpentUsd >= costCeilingUsd) {
+    costStopRequested = true;
+  }
 
   // Publish immediately so the dashboard shows a cap even before the first turn
   // (and so a flipped immortal flag / window is reflected).
@@ -409,6 +418,71 @@ function applyCostOverride(msg: MessageInRow): void {
   }
   persistCostCap();
 }
+
+/**
+ * Test-only seam for the per-session cost state machine (ADDITIVE — no runtime
+ * path references this). The cost functions and their accumulator are
+ * module-private singletons because the accounting happens inside processQuery's
+ * event loop; that makes them unreachable from a unit test without a hook. This
+ * bundle exposes the pure transitions plus a get/set for the module globals so
+ * `poll-loop.cost.test.ts` can drive crossings (cap, ceiling, day rollover,
+ * overrides, reset) directly. It changes no behavior.
+ */
+export const __costCapTestHooks = {
+  recordTurnCost,
+  computeCostStatus,
+  applyCostOverride,
+  resetCostForNewSession,
+  initCostTracking,
+  emitCostEscalation,
+  getState: () => ({
+    costEnabled,
+    costImmortal,
+    costWindow,
+    costDayKey,
+    costAllotmentUsd,
+    costCapUsd,
+    costSpentUsd,
+    costEscalatedAt,
+    costDecision,
+    costDecidedAt,
+    costStopRequested,
+    costCeilingUsd,
+    costCeilingEscalated,
+    costCeilingHardStop,
+  }),
+  setState: (p: {
+    costEnabled?: boolean;
+    costImmortal?: boolean;
+    costWindow?: CostCapWindow;
+    costDayKey?: string | undefined;
+    costAllotmentUsd?: number;
+    costCapUsd?: number;
+    costSpentUsd?: number;
+    costEscalatedAt?: string | undefined;
+    costDecision?: 'continue' | 'stop' | undefined;
+    costDecidedAt?: string | undefined;
+    costStopRequested?: boolean;
+    costCeilingUsd?: number;
+    costCeilingEscalated?: boolean;
+    costCeilingHardStop?: boolean;
+  }): void => {
+    if ('costEnabled' in p) costEnabled = p.costEnabled!;
+    if ('costImmortal' in p) costImmortal = p.costImmortal!;
+    if ('costWindow' in p) costWindow = p.costWindow!;
+    if ('costDayKey' in p) costDayKey = p.costDayKey;
+    if ('costAllotmentUsd' in p) costAllotmentUsd = p.costAllotmentUsd!;
+    if ('costCapUsd' in p) costCapUsd = p.costCapUsd!;
+    if ('costSpentUsd' in p) costSpentUsd = p.costSpentUsd!;
+    if ('costEscalatedAt' in p) costEscalatedAt = p.costEscalatedAt;
+    if ('costDecision' in p) costDecision = p.costDecision;
+    if ('costDecidedAt' in p) costDecidedAt = p.costDecidedAt;
+    if ('costStopRequested' in p) costStopRequested = p.costStopRequested!;
+    if ('costCeilingUsd' in p) costCeilingUsd = p.costCeilingUsd!;
+    if ('costCeilingEscalated' in p) costCeilingEscalated = p.costCeilingEscalated!;
+    if ('costCeilingHardStop' in p) costCeilingHardStop = p.costCeilingHardStop!;
+  },
+};
 
 /**
  * User-facing notice for a turn that produced nothing at all, even after the

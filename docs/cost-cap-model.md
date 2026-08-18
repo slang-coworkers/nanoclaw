@@ -21,7 +21,7 @@ Cost is role-dependent, so a single number can't fit all. Each group's cap = **i
 | Session spend reaches… | Non-immortal (fixer / triager / reviewer / approver) | Immortal (main / admin) |
 |---|---|---|
 | **Tier 1 — its group p90** | **Escalate** → human picks **Continue** (+1 allotment) or **Stop** | **Escalate for visibility** (Continue-only) |
-| **Tier 2 — $150 ceiling** | **HARD STOP** — quiesce, no more tokens | **Escalate again — never auto-blocked**; operator adds USD via dashboard → Sessions |
+| **Tier 2 — $150 ceiling** | **HARD STOP** — quiesce before the next turn | **Escalate again — never auto-blocked**; operator adds USD via dashboard → Sessions |
 
 - **Ceiling** = `NANOCLAW_COST_T2_CEILING_USD` in `.env` (**$150**, fixed until reviewed monthly). It sits above even fixer's p95 ($142) → never bites legit work, and hard-stops runaway far below $1000.
 - **Immortal is never silently blocked.** The orchestrator must stay alive; its bound is the human, who funds it via Continue. This is what flags (not kills) a $625-type main run.
@@ -38,7 +38,7 @@ Cost is role-dependent, so a single number can't fit all. Each group's cap = **i
 
 ## Floors & caveats
 - **$10 minimum.** The auto-sourced cap is floored at **$10** — a brand-new group (no per-group and maybe no fleet p90 yet) still escalates somewhere sane, never at ~$0. An explicit `NANOCLAW_COST_T2_USD` override bypasses the floor.
-- **The ceiling stops the in-flight turn**, not just the next message: on crossing it the runner ends the active stream immediately (no more tokens). **Continue cannot buy past the ceiling** for non-immortal groups — only a new session / `/clear` resets spend below it.
+- **The ceiling ends the session before its next turn** (turn-granularity, not mid-turn). Usage is accounted only when a turn completes, so the crossing is detected at turn end and the runner ends the session before the following turn — a single turn is bounded by the SDK's own limits, not the ceiling, so one pathological turn can overshoot $150. **Continue cannot buy past the ceiling** for non-immortal groups — only a new session / `/clear` resets spend below it.
 - **Immortal Tier-1 is a loose visibility threshold, not a bound.** Its cap is the per-*session* p90 applied over a per-*day* window, so it's approximate — deliberately, since immortal is never hard-stopped. The human (funding via Continue) is the real bound.
 - **Turning the ceiling off doesn't auto-resume** already-stopped sessions — they clear via Continue / `/clear`, consistent with the reversible model.
 
