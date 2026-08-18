@@ -2144,6 +2144,9 @@ function refreshSessionCostCache(): void {
       for (const k of perFileCostCache.keys()) if (!livePaths.has(k)) perFileCostCache.delete(k);
     }
     writeCostThresholdFile(next);
+    // Snapshot the freshly-updated + pruned per-file cache so the next process
+    // start is warm (see loadPerFileCostCache). Fail-soft; advisory only.
+    persistPerFileCostCache();
   } catch {
     /* DB not ready */
   } finally {
@@ -2195,6 +2198,87 @@ function writeCostThresholdFile(byPeriod: SessionCostByPeriod): void {
   }
 }
 
+// ---------- Warm-start persistence for the per-file cost cache ----------
+//
+// A cold start otherwise re-parses EVERY per-session transcript (thousands of
+// files on a large install) before the Sessions cost column populates. The
+// in-memory `perFileCostCache` is lost on restart, so this snapshots it to disk
+// after each refresh and reloads it on startup. Because entries are mtime-keyed,
+// the next scan re-parses ONLY files whose mtime changed — a warm start.
+//
+// Fail-soft in every direction: a missing / corrupt / older-schema file falls
+// back to a full cold scan and NEVER throws. Bump COST_CACHE_VERSION whenever
+// PerFileCost's shape changes so a stale file is ignored cleanly rather than
+// mis-read. This never changes computed output — a warm cache hit returns the
+// same PerFileCost a fresh parse would (numbers round-trip through JSON exactly,
+// and day-key insertion order is preserved), so percentile/threshold output is
+// bit-identical to today; only the cold-start latency drops.
+const COST_CACHE_VERSION = 1;
+function costCachePath(): string {
+  return join(getDataDir(), 'dashboard-cost-cache.json');
+}
+
+// PerFileCost.days is a Map, which JSON can't serialize directly. Carry it as an
+// array of [dayKey, {cost, tokens}] pairs (preserving insertion order so summed
+// floats stay bit-identical) and rebuild the Map on load.
+interface PersistedPerFileCost {
+  mtimeMs: number;
+  days: Array<[string, { cost: number; tokens: number }]>;
+  unpriced: boolean;
+  hadSignal: boolean;
+}
+
+function loadPerFileCostCache(): void {
+  try {
+    const p = costCachePath();
+    if (!existsSync(p)) return;
+    const parsed = JSON.parse(readFileSync(p, 'utf-8')) as {
+      version?: number;
+      entries?: Array<[string, PersistedPerFileCost]>;
+    };
+    if (!parsed || parsed.version !== COST_CACHE_VERSION || !Array.isArray(parsed.entries)) return;
+    for (const entry of parsed.entries) {
+      if (!Array.isArray(entry) || entry.length !== 2) continue;
+      const [path, v] = entry;
+      if (typeof path !== 'string' || !v || typeof v.mtimeMs !== 'number' || !Array.isArray(v.days)) continue;
+      const days = new Map<string, { cost: number; tokens: number }>();
+      for (const dv of v.days) {
+        if (!Array.isArray(dv) || dv.length !== 2) continue;
+        const [k, ct] = dv;
+        if (typeof k !== 'string' || !ct || typeof ct.cost !== 'number' || typeof ct.tokens !== 'number') continue;
+        days.set(k, { cost: ct.cost, tokens: ct.tokens });
+      }
+      perFileCostCache.set(path, {
+        mtimeMs: v.mtimeMs,
+        days,
+        unpriced: v.unpriced === true,
+        hadSignal: v.hadSignal === true,
+      });
+    }
+  } catch {
+    /* fail-soft: a missing/corrupt/older cache just means a full cold scan */
+  }
+}
+
+function persistPerFileCostCache(): void {
+  try {
+    const entries: Array<[string, PersistedPerFileCost]> = [];
+    for (const [path, v] of perFileCostCache) {
+      entries.push([
+        path,
+        { mtimeMs: v.mtimeMs, days: [...v.days.entries()], unpriced: v.unpriced, hadSignal: v.hadSignal },
+      ]);
+    }
+    const payload = JSON.stringify({ version: COST_CACHE_VERSION, entries });
+    const outPath = costCachePath();
+    const tmpPath = `${outPath}.tmp-${process.pid}-${Date.now()}`;
+    writeFileSync(tmpPath, payload);
+    renameSync(tmpPath, outPath);
+  } catch {
+    /* fail-soft: the warm-start cache is advisory */
+  }
+}
+
 if (!process.env.VITEST) {
   // Defer the first (cold) scan a few seconds so it never blocks server startup —
   // it reads every transcript once (~seconds on a large install); after that the
@@ -2205,6 +2289,9 @@ if (!process.env.VITEST) {
   ctxStatsTimer.unref?.();
   // Per-session cost shares the same cadence. Offset the cold scan slightly so
   // the two full-transcript passes don't land in the same tick on startup.
+  // Warm the per-file cache from disk first (before the first scan) so the cold
+  // scan re-parses only files whose mtime changed since the last snapshot.
+  loadPerFileCostCache();
   setTimeout(refreshSessionCostCache, 6000).unref?.();
   const sessCostTimer = setInterval(refreshSessionCostCache, 60000);
   sessCostTimer.unref?.();
