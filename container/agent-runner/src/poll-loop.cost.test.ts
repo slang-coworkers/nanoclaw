@@ -19,64 +19,60 @@
  *   (f) initCostTracking marks stop when persisted spend already exceeds a
  *       newly-lowered ceiling (the "one free turn" fix); immortal never does.
  *
- * Dependency doubles (mock.module MUST precede the poll-loop import, per Bun):
- *   - ./config.js          → getConfig returns a per-test mutable config.
- *   - ./db/session-state.js → in-memory persisted cost_cap row.
- *   - ./db/messages-out.js  → writeMessageOut spy = the escalation counter.
- * Pricing stays real: all-zero token events price to $0, so recordTurnCost
- * falls back to the event's totalCostUsd — a precise spend knob.
+ * NO module mocks. `mock.module()` is process-global in bun:test and leaks into
+ * sibling files (poll-loop.test.ts), so instead we drive the REAL in-memory
+ * session DB (initTestSessionDb) — setCostCap and the escalation's writeMessageOut
+ * run for real, and escalations are counted by reading the real outbound DB.
+ * The one non-DB dependency, getConfig(), is set via the additive
+ * __setConfigForTest seam and restored to its pristine null in teardown, so
+ * nothing leaks. Pricing stays real: all-zero-token events price to $0, so
+ * recordTurnCost falls back to the event's totalCostUsd — a precise spend knob.
  */
-import { describe, it, expect, beforeEach, mock } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 
-import type { CostCapState } from './db/session-state.js';
+import { closeSessionDb, initTestSessionDb } from './db/connection.js';
+import { getUndeliveredMessages } from './db/messages-out.js';
+import { setCostCap } from './db/session-state.js';
+import { __setConfigForTest } from './config.js';
+import { __costCapTestHooks as H } from './poll-loop.js';
+import type { RunnerConfig } from './config.js';
 import type { MessageInRow } from './db/messages-in.js';
 import type { ProviderEvent } from './providers/types.js';
 
-interface MockConfig {
-  model?: string;
-  immortal?: boolean;
-  costCapT2Usd?: number;
-  costCeilingT2Usd?: number;
+/** A minimal loaded RunnerConfig; override the cost fields per test. */
+function cfg(over: Partial<RunnerConfig> = {}): RunnerConfig {
+  return {
+    provider: 'claude',
+    assistantName: 'test',
+    groupName: 'test',
+    agentGroupId: 'ag-test',
+    maxMessagesPerPrompt: 10,
+    mcpServers: {},
+    model: 'claude-opus-4-8',
+    ...over,
+  };
 }
 
-// getConfig() drives immortality + cap + ceiling + model; mutated per test.
-let mockConfig: MockConfig = { model: 'claude-opus-4-8' };
-// The persisted session_state.cost_cap row initCostTracking loads at start.
-let persistedCostRow: CostCapState | undefined;
-// Every outbound row emitCostEscalation writes — the escalation spy.
-const outbound: Array<{ kind: string; content: string }> = [];
-
-mock.module('./config.js', () => ({
-  getConfig: () => mockConfig,
-  loadConfig: () => mockConfig,
-}));
-
-mock.module('./db/session-state.js', () => ({
-  getCostCap: () => persistedCostRow,
-  setCostCap: (s: CostCapState) => {
-    persistedCostRow = s;
-  },
-  // Remaining session-state imports poll-loop pulls in but the cost path never
-  // calls — stubbed so the named bindings resolve.
-  clearContinuation: () => {},
-  getContinuationAgeMs: () => null,
-  clearCurrentInReplyTo: () => {},
-  migrateLegacyContinuation: () => undefined,
-  setContinuation: () => {},
-  setCurrentInReplyTo: () => {},
-}));
-
-mock.module('./db/messages-out.js', () => ({
-  writeMessageOut: (msg: { kind: string; content: string }) => {
-    outbound.push(msg);
-    return 1;
-  },
-  hasIdenticalSend: () => false,
-  outboundWatermark: () => 0,
-}));
-
-// Import AFTER the mocks so poll-loop binds the doubles (Bun mock.module rule).
-const { __costCapTestHooks: H } = await import('./poll-loop.js');
+/** Seed the module cost accumulator directly (bypasses initCostTracking). */
+function seed(over: Parameters<typeof H.setState>[0] = {}): void {
+  H.setState({
+    costEnabled: true,
+    costImmortal: false,
+    costWindow: 'lifetime',
+    costDayKey: undefined,
+    costAllotmentUsd: 10,
+    costCapUsd: 10,
+    costSpentUsd: 0,
+    costEscalatedAt: undefined,
+    costDecision: undefined,
+    costDecidedAt: undefined,
+    costStopRequested: false,
+    costCeilingUsd: 0,
+    costCeilingEscalated: false,
+    costCeilingHardStop: false,
+    ...over,
+  });
+}
 
 /** A usage event whose only priced signal is totalCostUsd (all tokens zero). */
 function usage(costUsd: number): Extract<ProviderEvent, { type: 'usage' }> {
@@ -95,9 +91,9 @@ function usage(costUsd: number): Extract<ProviderEvent, { type: 'usage' }> {
   };
 }
 
-/** Escalation rows captured on the outbound spy, optionally by reason. */
+/** cost_escalation rows on the real outbound DB, optionally filtered by reason. */
 function escalations(reason?: 'cap' | 'ceiling') {
-  return outbound.filter((m) => {
+  return getUndeliveredMessages().filter((m) => {
     if (m.kind !== 'system') return false;
     let c: { action?: string; reason?: string };
     try {
@@ -117,33 +113,21 @@ function override(decision: 'continue' | 'stop'): MessageInRow {
 const todayUtc = () => new Date().toISOString().slice(0, 10);
 
 beforeEach(() => {
-  outbound.length = 0;
-  persistedCostRow = undefined;
-  mockConfig = { model: 'claude-opus-4-8', immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 0 };
-  // Full reset — initCostTracking re-seeds most globals but NOT the two ceiling
-  // one-shots, so clear everything to keep cases independent.
-  H.setState({
-    costEnabled: false,
-    costImmortal: false,
-    costWindow: 'lifetime',
-    costDayKey: undefined,
-    costAllotmentUsd: 0,
-    costCapUsd: 0,
-    costSpentUsd: 0,
-    costEscalatedAt: undefined,
-    costDecision: undefined,
-    costDecidedAt: undefined,
-    costStopRequested: false,
-    costCeilingUsd: 0,
-    costCeilingEscalated: false,
-    costCeilingHardStop: false,
-  });
+  initTestSessionDb();
+  // Benign default so recordTurnCost's getConfig().model resolves (value is
+  // irrelevant — all-zero-token events price to $0 and fall back to totalCostUsd).
+  __setConfigForTest(cfg());
+  seed();
+});
+
+afterEach(() => {
+  __setConfigForTest(null); // restore pristine — nothing leaks to sibling files
+  closeSessionDb();
 });
 
 describe('two-tier cost cap — Tier-1 soft escalation (a)', () => {
   it('non-immortal spend ≥ cap but < ceiling → escalated, exactly one "cap" escalation', () => {
-    mockConfig = { model: 'claude-opus-4-8', immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 100 };
-    H.initCostTracking('claude');
+    seed({ costCeilingUsd: 100 });
 
     H.recordTurnCost(usage(12)); // over the $10 cap, well under the $100 ceiling
 
@@ -157,8 +141,7 @@ describe('two-tier cost cap — Tier-1 soft escalation (a)', () => {
   });
 
   it('a second over-cap turn does NOT re-escalate (once per allotment via escalatedAt)', () => {
-    mockConfig = { model: 'claude-opus-4-8', immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 100 };
-    H.initCostTracking('claude');
+    seed({ costCeilingUsd: 100 });
     H.recordTurnCost(usage(12));
     H.recordTurnCost(usage(5));
     expect(escalations('cap')).toHaveLength(1);
@@ -168,8 +151,7 @@ describe('two-tier cost cap — Tier-1 soft escalation (a)', () => {
 
 describe('two-tier cost cap — Tier-2 hard ceiling, non-immortal (b)', () => {
   it('spend ≥ ceiling → stopped + hard-stop flag; one "ceiling" alert, no duplicate "cap"', () => {
-    mockConfig = { model: 'claude-opus-4-8', immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 50 };
-    H.initCostTracking('claude');
+    seed({ costCeilingUsd: 50 });
 
     H.recordTurnCost(usage(60)); // one pathological turn crosses BOTH cap and ceiling
 
@@ -188,9 +170,7 @@ describe('two-tier cost cap — Tier-2 hard ceiling, non-immortal (b)', () => {
 
 describe('two-tier cost cap — immortal ceiling never blocks, re-arms daily (c)', () => {
   it('immortal at/over ceiling → escalated (not stopped), re-escalates once, re-arms after UTC-day rollover', () => {
-    mockConfig = { model: 'claude-opus-4-8', immortal: true, costCapT2Usd: 10, costCeilingT2Usd: 50 };
-    H.initCostTracking('claude');
-    expect(H.getState().costWindow).toBe('daily');
+    seed({ costImmortal: true, costWindow: 'daily', costDayKey: todayUtc(), costCeilingUsd: 50 });
 
     // Day 1 crossing.
     H.recordTurnCost(usage(60));
@@ -216,8 +196,7 @@ describe('two-tier cost cap — immortal ceiling never blocks, re-arms daily (c)
 
 describe('two-tier cost cap — applyCostOverride (d)', () => {
   it('continue below the ceiling raises the cap by one allotment and clears the stop', () => {
-    mockConfig = { model: 'claude-opus-4-8', immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 100 };
-    H.initCostTracking('claude');
+    seed({ costCeilingUsd: 100 });
     H.recordTurnCost(usage(12)); // escalated (over cap, under ceiling)
 
     H.applyCostOverride(override('stop'));
@@ -232,8 +211,7 @@ describe('two-tier cost cap — applyCostOverride (d)', () => {
   });
 
   it('continue at/over the ceiling is IGNORED for a non-immortal group (stop stays, cap unchanged)', () => {
-    mockConfig = { model: 'claude-opus-4-8', immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 50 };
-    H.initCostTracking('claude');
+    seed({ costCeilingUsd: 50 });
     H.recordTurnCost(usage(60)); // over ceiling → hard stop
     const capBefore = H.getState().costCapUsd;
 
@@ -249,8 +227,7 @@ describe('two-tier cost cap — applyCostOverride (d)', () => {
 
 describe('two-tier cost cap — resetCostForNewSession clears ceiling flags (e)', () => {
   it('a new session zeroes spend and clears the hard-stop + one-shot ceiling flags', () => {
-    mockConfig = { model: 'claude-opus-4-8', immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 50 };
-    H.initCostTracking('claude');
+    seed({ costCeilingUsd: 50 });
     H.recordTurnCost(usage(60)); // over ceiling → hard-stop flag set
     expect(H.getState().costCeilingHardStop).toBe(true);
     // Also arm the immortal one-shot so we prove reset clears it too.
@@ -273,9 +250,9 @@ describe('two-tier cost cap — resetCostForNewSession clears ceiling flags (e)'
 describe('two-tier cost cap — initCostTracking derives stop from spend-vs-ceiling on load (f)', () => {
   it('non-immortal: persisted spend past a newly-lowered ceiling loads already-stopped (no free turn)', () => {
     // Persisted BEFORE the ceiling existed → status was 'escalated', not 'stopped'.
-    persistedCostRow = { capUsd: 10, spentUsd: 60, status: 'escalated', immortal: false, window: 'lifetime' };
+    setCostCap({ capUsd: 10, spentUsd: 60, status: 'escalated', immortal: false, window: 'lifetime' });
     // Ceiling newly enabled / lowered to $50 — the session already exceeds it.
-    mockConfig = { model: 'claude-opus-4-8', immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 50 };
+    __setConfigForTest(cfg({ immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 50 }));
 
     H.initCostTracking('claude');
 
@@ -286,15 +263,15 @@ describe('two-tier cost cap — initCostTracking derives stop from spend-vs-ceil
   });
 
   it('immortal: persisted spend past the ceiling is never marked stopped on load', () => {
-    persistedCostRow = {
+    setCostCap({
       capUsd: 10,
       spentUsd: 60,
       status: 'escalated',
       immortal: true,
       window: 'daily',
       dayKey: todayUtc(), // same UTC day so the persisted spend is adopted
-    };
-    mockConfig = { model: 'claude-opus-4-8', immortal: true, costCapT2Usd: 10, costCeilingT2Usd: 50 };
+    });
+    __setConfigForTest(cfg({ immortal: true, costCapT2Usd: 10, costCeilingT2Usd: 50 }));
 
     H.initCostTracking('claude');
 
@@ -306,7 +283,8 @@ describe('two-tier cost cap — initCostTracking derives stop from spend-vs-ceil
 
 describe('two-tier cost cap — FIX #4: only the Claude provider accrues', () => {
   it('a non-claude provider leaves the cap disabled — no accrual, no escalation', () => {
-    mockConfig = { model: 'claude-opus-4-8', immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 50 };
+    __setConfigForTest(cfg({ immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 50 }));
+
     H.initCostTracking('opencode');
     expect(H.getState().costEnabled).toBe(false);
 

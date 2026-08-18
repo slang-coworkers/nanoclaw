@@ -120,3 +120,14 @@ export function getConfig(): RunnerConfig {
   if (!_config) throw new Error('Config not loaded — call loadConfig() first');
   return _config;
 }
+
+/**
+ * Test-only: set (or clear) the module config singleton directly, bypassing the
+ * fixed-path `loadConfig()` read. Additive — no runtime path calls this. Tests
+ * that need a specific config (e.g. the cost-cap state machine) set it in a
+ * setup hook and MUST restore the pristine state by passing `null` in teardown,
+ * so nothing leaks into other test files sharing the process.
+ */
+export function __setConfigForTest(cfg: RunnerConfig | null): void {
+  _config = cfg;
+}
