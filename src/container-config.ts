@@ -52,13 +52,20 @@ export interface ContainerConfig {
    */
   immortal?: boolean;
   /**
-   * Per-session soft cost cap (USD). v2 auto-sources the fleet-wide p90 of
-   * recent per-session spend: precedence is env `NANOCLAW_COST_T2_USD` →
-   * `data/cost-thresholds.json` `p90Usd` (the dashboard's computed p90) →
-   * a conservative $100 default. Materialized for ALL groups so every session
-   * carries a cap. See `resolveCostCapT2Usd`.
+   * Per-session soft cost cap (USD) — Tier 1. Auto-sources the group's OWN 7-day
+   * p90 of recent per-session spend: precedence is env `NANOCLAW_COST_T2_USD` →
+   * `data/cost-thresholds.json` `perGroupP90Usd[folder]` → fleet `p90Usd` →
+   * a conservative $100 default. Materialized for ALL groups. See
+   * `resolveCostCapT2Usd`.
    */
   costCapT2Usd?: number;
+  /**
+   * Tier-2 hard ceiling (USD). A non-immortal session that reaches it hard-stops;
+   * immortal groups re-escalate for visibility only (never blocked). Operator-set
+   * via `NANOCLAW_COST_T2_CEILING_USD`; 0/absent = no ceiling. See
+   * `resolveCostCeilingT2Usd`.
+   */
+  costCeilingT2Usd?: number;
 }
 
 /**
@@ -68,30 +75,66 @@ export interface ContainerConfig {
 const DEFAULT_COST_CAP_T2_USD = 100;
 
 /**
+ * Absolute floor for the auto-sourced cap (USD). A brand-new agent group (or one
+ * with no priced sessions in the window) has no per-group and possibly no fleet
+ * p90 — without a floor its cap could resolve to ~$0 and escalate on the first
+ * turn. The floor guarantees every group escalates somewhere sane. Not applied to
+ * an explicit NANOCLAW_COST_T2_USD operator override (that wins outright).
+ */
+const MIN_COST_CAP_T2_USD = 10;
+
+/**
  * Resolve the per-session cost cap (USD) materialized into every group's
  * container.json (NanoClaw #1 cost cap v2).
  *
  * Precedence:
  *   1. NANOCLAW_COST_T2_USD env — explicit operator override, wins outright.
- *   2. data/cost-thresholds.json `p90Usd` — the dashboard's auto-computed p90 of
- *      recent per-session spend (the empirical cap). Read fresh each spawn.
- *   3. DEFAULT_COST_CAP_T2_USD ($100) — conservative fallback.
+ *   2. data/cost-thresholds.json `perGroupP90Usd[folder]` — the group's OWN p90.
+ *      A fleet number under-serves expensive groups (fixer p90 ~$91) and
+ *      over-caps cheap ones (reviewer ~$12), so per-group wins when present.
+ *   3. data/cost-thresholds.json `p90Usd` — fleet p90 fallback (group too new to
+ *      have its own priced sample yet).
+ *   4. DEFAULT_COST_CAP_T2_USD ($100) — conservative fallback.
  *
  * Fail-soft: a missing, unreadable, malformed, or non-positive thresholds file
  * falls through to the next source rather than throwing or disabling the cap.
  */
-export function resolveCostCapT2Usd(): number {
+export function resolveCostCapT2Usd(groupFolder?: string): number {
   const env = Number(process.env.NANOCLAW_COST_T2_USD);
   if (Number.isFinite(env) && env > 0) return env;
 
+  let cap = DEFAULT_COST_CAP_T2_USD;
   try {
-    const raw = fs.readFileSync(path.join(DATA_DIR, 'cost-thresholds.json'), 'utf8');
-    const p90 = Number((JSON.parse(raw) as { p90Usd?: unknown }).p90Usd);
-    if (Number.isFinite(p90) && p90 > 0) return p90;
+    const parsed = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'cost-thresholds.json'), 'utf8')) as {
+      p90Usd?: unknown;
+      perGroupP90Usd?: Record<string, unknown>;
+    };
+    const g =
+      groupFolder && parsed.perGroupP90Usd && typeof parsed.perGroupP90Usd === 'object'
+        ? Number(parsed.perGroupP90Usd[groupFolder])
+        : NaN;
+    if (Number.isFinite(g) && g > 0) {
+      cap = g;
+    } else {
+      const p90 = Number(parsed.p90Usd);
+      if (Number.isFinite(p90) && p90 > 0) cap = p90;
+    }
   } catch {
     // Fail-soft — missing/corrupt thresholds file falls through to the default.
   }
-  return DEFAULT_COST_CAP_T2_USD;
+  // Floor the auto-sourced value so a new/zero-p90 group never caps near $0.
+  return Math.max(MIN_COST_CAP_T2_USD, cap);
+}
+
+/**
+ * Resolve the Tier-2 hard ceiling (USD) materialized into every container.json.
+ * Operator-set via NANOCLAW_COST_T2_CEILING_USD; 0/absent = no ceiling. Opt-in,
+ * so an install without one keeps today's escalate-only behavior.
+ */
+export function resolveCostCeilingT2Usd(): number {
+  const env = Number(process.env.NANOCLAW_COST_T2_CEILING_USD);
+  if (Number.isFinite(env) && env > 0) return env;
+  return 0;
 }
 
 /**
@@ -112,7 +155,8 @@ export function configFromDb(row: ContainerConfigRow, group: AgentGroup): Contai
   // cap value (v2) auto-sources the fleet-wide p90 threshold and is emitted for
   // ALL groups so every session carries a cap.
   const immortal = group.is_admin === 1 || group.coworker_type === 'main';
-  const costCapT2Usd = resolveCostCapT2Usd();
+  const costCapT2Usd = resolveCostCapT2Usd(group.folder);
+  const costCeilingT2Usd = resolveCostCeilingT2Usd();
   return {
     mcpServers: JSON.parse(row.mcp_servers) as Record<string, McpServerConfig>,
     packages: {
@@ -132,6 +176,7 @@ export function configFromDb(row: ContainerConfigRow, group: AgentGroup): Contai
     timezone: row.timezone && isValidTimezone(row.timezone) ? row.timezone : undefined,
     immortal,
     costCapT2Usd,
+    costCeilingT2Usd,
   };
 }
 
