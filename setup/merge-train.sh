@@ -12,12 +12,38 @@
 # Usage:
 #   bash setup/merge-train.sh                # merges origin/nv-main (default)
 #   bash setup/merge-train.sh nv-main nv-slang   # merges each, in order
+#   bash setup/merge-train.sh --reconcile-stale nv-main nv-dashboard nv-slang …
+#                                            # PROD UPDATE off a deeply-stale base
 #
 # Idempotent: a branch already merged (an ancestor of HEAD) is skipped, so
 # re-running /setup — or running this twice — is a no-op.
+#
+# --reconcile-stale (OPT-IN; off by default): after the per-branch merges, force
+# the nv-main-owned trees + shared config back to nv-main and drop stale-deleted
+# files an overlay still drags along. This is for the PROD-UPDATE path, where the
+# base can be thousands of commits behind nv-main; it is deliberately NOT the
+# /setup default, because on a fresh install a blanket checkout would DISCARD an
+# overlay's intentional shared-source edits (nv-dashboard edits host src, which
+# the project-integrations LLM tier keeps) and there is no stale drift to remove.
+# Prod deploys pass the flag; /setup and its project-integrations step do not, so
+# their behavior is unchanged. The flag reconciles WHENEVER it is passed, even if
+# nothing new merged this run — so a box already composed by an earlier unflagged
+# merge can be reconciled by re-running with the flag. It refuses (does not run
+# the blanket checkout) if the owned paths carry uncommitted local edits; stash or
+# commit them first. See reconcile_stale_drift() below.
 set -euo pipefail
 
-BRANCHES=("$@")
+# --reconcile-stale is parsed out of the positional list; every other argument is
+# a branch name, unchanged from the historical `BRANCHES=("$@")` contract.
+RECONCILE_STALE=0
+BRANCHES=()
+for arg in "$@"; do
+  if [ "$arg" = "--reconcile-stale" ]; then
+    RECONCILE_STALE=1
+  else
+    BRANCHES+=("$arg")
+  fi
+done
 [ ${#BRANCHES[@]} -eq 0 ] && BRANCHES=(nv-main)
 
 # nv-main is canonical for every shared-infra file, so a conflict in that set is
@@ -95,6 +121,142 @@ rollback_and_fail() {
   exit 1
 }
 
+# Opt-in reconciliation for the PROD-UPDATE path (--reconcile-stale). Runs ONCE,
+# AFTER every branch in the train has merged. The per-branch resolver above
+# already (a) takes nv-main on any OWNED conflict and (b) re-canonicalizes owned
+# files that DIFFER from nv-main — enough for /setup, whose base IS nv-main. It is
+# NOT enough for a deploy off a deeply-stale composed base (nv-coworkers ran
+# ~1175 commits behind nv-main), which surfaced two classes the diff-scoped
+# resolver structurally cannot reach:
+#
+#   DOWNGRADES    — an overlay's older copy of a shared-infra file that AUTO-merged
+#                   (no conflict) and won: src/response-registry.ts losing
+#                   getShutdownCallbacks, the src/modules/permissions/user-dm.ts
+#                   signature. A blanket checkout of the owned TREES restores every
+#                   such file in one pass, so no stale infra copy is left behind
+#                   whatever git's three-way diff happened to flag.
+#   STALE DELETES — a file nv-main REMOVED that an overlay still carries: the dead
+#                   src/host-lifecycle.ts + its test, and orphan *.test.ts on no
+#                   composing branch (src/db/migrations/registry.test.ts,
+#                   src/modules/permissions/user-dm.test.ts). `git checkout` never
+#                   deletes, so canonicalization leaves these dangling and they
+#                   break build/tests. They must be removed explicitly.
+#
+# checkout writes only paths that EXIST on nv-main, so overlay-ADDED files under
+# the owned trees (skill-installed adapters like src/channels/dashboard.ts, absent
+# on nv-main) are preserved. Idempotent: a second run finds the trees already
+# canonical and no stale files, so nothing is staged and no commit is made.
+reconcile_stale_drift() {
+  echo "merge-train: --reconcile-stale — canonicalizing owned trees + dropping stale-deleted files"
+
+  # (1) DOWNGRADES: blanket-checkout the nv-main-owned trees + shared config to
+  # nv-main. container/skills/** is intentionally NOT here, so composed spine
+  # bodies (container/skills/spine-base/context/operations.md) stay as ours. Only
+  # paths that exist on nv-main are checked out — a synthetic/minimal nv-main that
+  # lacks e.g. setup/ or scripts/ simply skips them rather than erroring.
+  local restore=(
+    src scripts setup container/agent-runner .github
+    package.json pnpm-lock.yaml pnpm-workspace.yaml
+    tsconfig.json tsconfig.typecheck.json
+    vitest.config.ts vitest.setup.ts ruff.toml setup.sh .npmrc
+  )
+  local present=() p
+  for p in "${restore[@]}"; do
+    if git cat-file -e "origin/nv-main:$p" 2>/dev/null; then present+=("$p"); fi
+  done
+  if [ ${#present[@]} -gt 0 ]; then
+    # GUARD (prod data-loss): the blanket checkout below overwrites every owned
+    # file from nv-main, discarding uncommitted TRACKED edits — and prod boxes
+    # routinely carry local hotfixes. The per-branch merges leave a clean tree,
+    # so a dirty owned path here is a pre-existing local edit the merges never
+    # touched: refuse rather than silently wipe it. (Untracked files are safe —
+    # `git checkout` never removes them, so they are intentionally not flagged.)
+    if ! git diff --quiet -- "${present[@]}" \
+       || ! git diff --cached --quiet -- "${present[@]}"; then
+      echo "merge-train: --reconcile-stale would overwrite UNCOMMITTED local changes to" >&2
+      echo "  nv-main-owned paths; refusing to discard them. Modified:" >&2
+      git diff --name-only -- "${present[@]}" >&2
+      git diff --cached --name-only -- "${present[@]}" >&2
+      echo "  Commit or stash them first (git stash), then re-run with --reconcile-stale." >&2
+      exit 1
+    fi
+    git checkout origin/nv-main -- "${present[@]}"
+  fi
+
+  # A file is legitimate if it lives on nv-main OR any overlay this run merged; a
+  # file on none of them is drift the stale base carried. Derived from the branches
+  # actually composed — no branch names or filenames hardcoded.
+  local keep_refs=(origin/nv-main) b
+  for b in "${BRANCHES[@]}"; do
+    keep_refs+=("origin/$b")
+  done
+
+  # (2) STALE TESTS: drop every *.test.ts under the owned trees present on no
+  # composing branch. Single-star git pathspec matches recursively (git's `*`
+  # spans `/`), so this sees tests at any depth — the `**` form MISSES the ones
+  # directly under the tree root.
+  local f ref keep
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    keep=0
+    for ref in "${keep_refs[@]}"; do
+      if git cat-file -e "$ref:$f" 2>/dev/null; then keep=1; break; fi
+    done
+    if [ "$keep" -eq 0 ]; then
+      echo "merge-train:   stale test on no composing branch — removing $f"
+      git rm -q -f -- "$f"
+    fi
+  done < <(git ls-files -- 'src/*.test.ts' 'setup/*.test.ts' 'container/agent-runner/*.test.ts')
+
+  # (3) STALE DEAD MODULE: src/host-lifecycle.ts + its test were removed on
+  # nv-main; a stale overlay still carries them and they fail the build. GUARDED —
+  # removed only when nothing under src/ or container/ still imports it, so a
+  # legitimate future re-add (with a real importer) is never silently dropped.
+  if git ls-files --error-unmatch -- src/host-lifecycle.ts >/dev/null 2>&1; then
+    local importers
+    importers="$(grep -rIl 'host-lifecycle' src container 2>/dev/null \
+                 | grep -Ev '(^|/)host-lifecycle(\.test)?\.ts$' || true)"
+    if [ -z "$importers" ]; then
+      echo "merge-train:   dead module nothing imports — removing src/host-lifecycle.ts + test"
+      # Per-path with --ignore-unmatch: bundling both in ONE `git rm` fails
+      # atomically if EITHER is absent (an overlay may carry only the module, not
+      # its test), which would leave the module in place while reconcile still
+      # reported success. Removing each independently drops whichever exist.
+      local hl
+      for hl in src/host-lifecycle.ts src/host-lifecycle.test.ts; do
+        git rm -q -f --ignore-unmatch -- "$hl" >/dev/null
+      done
+    fi
+  fi
+
+  # (4) OVERLAY-AUTHORITATIVE FILES: a NON-owned file the owned-set logic leaves
+  # untouched but a stale auto-merge can still mangle. dashboard/public/app.js is
+  # the cost-dashboard frontend, authoritative on nv-dashboard — force it to the
+  # overlay's copy. Taken from the first merged overlay (non-nv-main) that carries
+  # it, so the branch is derived from the train rather than hardcoded.
+  local overlay_only=(dashboard/public/app.js) file
+  for file in "${overlay_only[@]}"; do
+    for b in "${BRANCHES[@]}"; do
+      [ "$b" = "nv-main" ] && continue
+      if git cat-file -e "origin/$b:$file" 2>/dev/null; then
+        if git checkout "origin/$b" -- "$file" 2>/dev/null; then
+          echo "merge-train:   $file — taking origin/$b (overlay is authoritative)"
+        fi
+        break
+      fi
+    done
+  done
+
+  # Commit the reconciliation in one step. checkout/rm already staged their
+  # changes and stage ONLY the paths they touched, so a prod checkout's untracked
+  # data/ logs/ groups/ are never swept in; an untouched tree stages nothing and
+  # the re-run makes no commit.
+  if ! git diff --cached --quiet 2>/dev/null; then
+    git commit -q -m "merge-train: reconcile stale drift against nv-main + overlays"
+    RECONCILE_COMMITTED=1
+  fi
+}
+
 merged_any=0
 for branch in "${BRANCHES[@]}"; do
   if git merge-base --is-ancestor "origin/$branch" HEAD 2>/dev/null; then
@@ -161,7 +323,24 @@ for branch in "${BRANCHES[@]}"; do
   merged_any=1
 done
 
-if [ "$merged_any" = "1" ]; then
+# Opt-in prod-update reconciliation. Runs whenever --reconcile-stale is passed,
+# INDEPENDENT of whether this run merged anything: a box already composed by a
+# prior UNFLAGGED merge must still be reconcilable by re-running with the flag —
+# gating it on merged_any would make the flag a no-op on exactly the already-stale
+# boxes it exists for. It runs BEFORE the install/build tail so the composed tree
+# is validated AFTER reconciling, and before the MERGE_TRAIN_NO_INSTALL early-exit
+# so the tests can assert its effect. reconcile_stale_drift sets
+# RECONCILE_COMMITTED=1 iff it committed a change. On the /setup path
+# RECONCILE_STALE is 0, so nothing here changes.
+RECONCILE_COMMITTED=0
+if [ "$RECONCILE_STALE" = "1" ]; then
+  reconcile_stale_drift
+fi
+
+# The install/build/validate tail runs when THIS TREE changed — a merge landed
+# OR reconcile committed something. A flag-only run on an already-clean tree
+# falls through to "nothing to merge".
+if [ "$merged_any" = "1" ] || [ "$RECONCILE_COMMITTED" = "1" ]; then
   # MERGE_TRAIN_NO_INSTALL lets tests exercise the merge/resolve logic above in a
   # synthetic repo without the Node toolchain. Never set in real setup.
   if [ -n "${MERGE_TRAIN_NO_INSTALL:-}" ]; then
