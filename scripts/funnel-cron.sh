@@ -48,6 +48,29 @@ run_step() {
 # stop the others from refreshing.
 FAILURES=0
 
+# ORDER MATTERS. Every REST producer below draws on ONE shared budget: the
+# shader-slang App-installation token's 5000 core-REST calls/hr, which live
+# coworkers spend from too. funnel.ts (~180 calls) and regression-quality
+# (hundreds, across per-PR pulls/{n} lookups) are the two big drains, so whichever
+# runs LAST can find the budget already exhausted and fail closed on a 403 "rate
+# limit exceeded". regression-quality is the one that kept losing that race, so it
+# runs FIRST here — before funnel spends the budget — and carries its own
+# rate-limit backoff as a second line of defence. review-rounds is GraphQL (a
+# SEPARATE point budget) and bot-contributions is now GraphQL too, so neither
+# competes for the core-REST budget; their position is not load-bearing.
+
+# Regression-quality snapshot for the panel beside the funnel (dashboard
+# /api/regression-quality serves reports/regression-quality.json cached and never
+# recomputes). Companion to reviewCycles, which funnel.ts already embeds in
+# funnel.json below. Read-only gh API calls; same proxy-stripped env.
+# NOTE: python3, not tsx. This cron runs on the HOST, where python3 is present
+# (the kb-health cron uses it too) — no container image is involved.
+# Fail-closed exit codes (nonzero when its collection was incomplete, so an outage
+# cannot publish as a clean zero) plus rate-limit backoff/retry live in the script;
+# the rc capture above is what makes either one visible in the log.
+run_step regression-quality /usr/bin/python3 scripts/regression-quality.py --json reports/regression-quality.json ||
+  FAILURES=$((FAILURES + 1))
+
 run_step funnel pnpm exec tsx scripts/funnel.ts --since 2026-04-10 --out reports/funnel.json || FAILURES=$((FAILURES + 1))
 
 # nv-slang-bot contributions snapshot for the panel under the funnel
@@ -55,21 +78,9 @@ run_step funnel pnpm exec tsx scripts/funnel.ts --since 2026-04-10 --out reports
 # cached and never recomputes). Without this the panel is stuck on
 # "no snapshot yet" until someone hits the manual refresh button — the
 # funnel-cron never generated it. Same proxy-stripped env + gh-App-token
-# path as the funnel above; a handful of read-only gh API calls.
+# path as the funnel above; now a per-repo-page GraphQL census (its own point
+# budget), so it no longer competes for the core-REST budget above.
 run_step bot-contributions pnpm exec tsx scripts/bot-contributions.ts || FAILURES=$((FAILURES + 1))
-
-# Regression-quality snapshot for the panel beside the funnel (dashboard
-# /api/regression-quality serves reports/regression-quality.json cached and never
-# recomputes). Companion to reviewCycles, which funnel.ts already embeds in
-# funnel.json above. Read-only gh API calls; same proxy-stripped env.
-# NOTE: python3, not tsx. This cron runs on the HOST, where python3 is present
-# (the kb-health cron uses it too) — no container image is involved.
-# NOTE: regression-quality.py's fail-closed exit codes (nonzero when its
-# collection was incomplete, so an outage cannot publish as a clean zero) land in
-# the companion F07 PR. Until then it exits nonzero only on a missing label; the
-# rc capture above is what makes either one visible in the log at all.
-run_step regression-quality /usr/bin/python3 scripts/regression-quality.py --json reports/regression-quality.json ||
-  FAILURES=$((FAILURES + 1))
 
 # Review-rounds snapshot for the panel beside the funnel (dashboard
 # /api/review-rounds serves reports/review-rounds.json cached and never
