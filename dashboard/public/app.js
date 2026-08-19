@@ -1164,9 +1164,19 @@ function regressionQualityHtml(rq) {
   // Render the breakage — a number here would read as "quality improved" when in
   // fact nothing was measured, which is the defect this schema exists to stop.
   if (rq.complete === false) {
+    // Each errors[] entry is a {what, detail} object (regression-quality.py's
+    // Collection.fail), not a string — String(e) on it renders "[object Object]".
+    // Format the object as "what: detail"; keep a String() fallback for any
+    // producer that still emits bare strings.
     const errs = (rq.errors || [])
       .slice(0, 4)
-      .map((e) => esc(String(e)))
+      .map((e) => {
+        if (e && typeof e === 'object') {
+          const detail = e.detail == null ? '' : String(e.detail);
+          return e.what ? esc(e.what + ': ' + detail) : esc(detail || JSON.stringify(e));
+        }
+        return esc(String(e));
+      })
       .join('<br>');
     return (
       '<div style="margin-top:20px">' +
