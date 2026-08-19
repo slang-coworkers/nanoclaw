@@ -398,6 +398,23 @@ CREATE TABLE agent_message_policies (
 - Access layer: `src/modules/agent-to-agent/db/agent-message-policies.ts`
 - **Readers/writers:** `src/cli/resources/policies.ts`; approved messages create a row in `pending_approvals` (see §1.11) via the a2a send path.
 
+### 1.19 `cost_cap_policy`
+
+Runtime-configurable Tier-2 cost cap (see [cost-cap-model.md](cost-cap-model.md)). One row per scope, keyed by `group_folder`: the empty string `''` is the fleet-wide row (its `ceiling_usd` is the fleet ceiling); a non-empty folder is a per-group override. NULL amounts mean "no DB override — fall through to the env / `cost-thresholds.json` chain". A stored value wins over the env var, including `ceiling_usd = 0` ("explicitly no ceiling").
+
+```sql
+CREATE TABLE cost_cap_policy (
+  group_folder TEXT PRIMARY KEY,   -- '' = fleet-wide; else the group's workspace folder
+  ceiling_usd  REAL,               -- Tier-2 hard ceiling override (NULL = none; 0 = disabled)
+  cap_usd      REAL,               -- per-session cap override (per-group only)
+  updated_at   TEXT NOT NULL,
+  updated_by   TEXT                -- 'host' or the agent group id that set it
+);
+```
+
+- Access layer: `src/db/cost-cap-policy.ts` (reads are fail-soft — an uninitialized DB / missing table returns empty, so the resolvers keep the env fallback).
+- **Readers/writers:** `resolveCostCapT2Usd` / `resolveCostCeilingT2Usd` in `src/container-config.ts` read it at spawn; `src/cli/resources/cost-cap.ts` (`ncl cost-cap get/set/clear`, elevated-only) writes it.
+
 ---
 
 ## 2. Migration system

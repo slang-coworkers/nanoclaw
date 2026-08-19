@@ -105,6 +105,7 @@ ncl help
 | dropped-messages | list | Messages from unregistered senders (read-only) |
 | approvals | list, get | Pending approval requests (read-only) |
 | pr-mappings | list, remap | PR→session routing rows. Agents claim these via `report_pr_created` (first-claim-wins); `remap` is the approval-gated way to reassign one. |
+| cost-cap | get, set, clear | Runtime Tier-2 cost-cap policy (`cost_cap_policy` table): fleet-wide ceiling + optional per-group cap/ceiling overrides, read at each container spawn (env / `cost-thresholds.json` are fallbacks). **Elevated only** — reachable from the host operator or a `cli_scope=global` group, denied for `group`/`disabled`. See [docs/cost-cap-model.md](docs/cost-cap-model.md#runtime-configuration--ncl-cost-cap-elevated-only). |
 
 Key files: `src/cli/dispatch.ts` (dispatcher + approval handler), `src/cli/crud.ts` (generic CRUD registration), `src/cli/resources/` (per-resource definitions).
 
@@ -136,6 +137,8 @@ A second tier (direct source-level self-edits via a draft/activate flow) is plan
 ## Container Config
 
 Per-agent-group container runtime config (provider, model, packages, MCP servers, mounts, etc.) lives in the `container_configs` table in the central DB. Materialized to `groups/<folder>/container.json` at spawn time so the container runner can read it. Managed via `ncl groups config get/update` and the self-mod MCP tools.
+
+The **Tier-2 cost cap** (`costCapT2Usd` / `costCeilingT2Usd`) is also materialized into `container.json` at spawn, resolved from the `cost_cap_policy` table (operator override, set at runtime via `ncl cost-cap set`) → the `NANOCLAW_COST_T2_*` env vars → `data/cost-thresholds.json` p90 → defaults. A `set`/`clear` change lands on a group's **next spawn** (`ncl groups restart --id <group-id>` to apply now). See [docs/cost-cap-model.md](docs/cost-cap-model.md) and `resolveCostCapT2Usd` / `resolveCostCeilingT2Usd` in `src/container-config.ts`.
 
 **`cli_scope`** — controls what the agent can do with `ncl` from inside the container:
 
