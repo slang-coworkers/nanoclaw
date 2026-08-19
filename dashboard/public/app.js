@@ -11,6 +11,11 @@ if (!PixelSprites) {
 }
 
 let state = { coworkers: [], tasks: [], taskRunLogs: [], registeredGroups: [], hookEvents: [], timestamp: 0 };
+// Live-state reconciliation (revision/epoch continuity, key-order proof, resync
+// barrier + replay buffer, snapshot generations) lives in the shared
+// `state-sync.js` module that `mobile.js` and `state-delta.test.ts` also drive,
+// so all three can never describe different protocols. Created below, once the
+// transport callbacks it needs are in scope.
 const nativeFetch = window.fetch.bind(window);
 const dashboardAuth = {
   checked: false,
@@ -192,7 +197,32 @@ let liveReconnectTimer = null;
 let liveReconnectAttempt = 0;
 let hiddenDisconnectTimer = null;
 let lastHookEventId = 0;
-let liveResyncPromise = null;
+// Resync transport state. The barrier/replay/epoch logic itself lives in
+// `liveSync` (state-sync.js); what stays here is the HTTP fetch that feeds it:
+// one in-flight request at a time (concurrent responses can land out of order)
+// plus bounded-backoff retry, because a failed resync that silently gave up
+// would strand the client at a revision the server has already moved past.
+let resyncInFlight = null;
+let resyncRetryTimer = null;
+let resyncAttempt = 0;
+if (!window.NanoclawStateSync) {
+  throw new Error('state-sync.js failed to load');
+}
+const liveSync = window.NanoclawStateSync.createStateSync({
+  getState: () => state,
+  applyState: (patch) => applyState(patch),
+  startResync: () => {
+    void resyncLiveData();
+  },
+  // Clear the HTTP transport's bookkeeping the moment a snapshot settles the
+  // resync, BEFORE buffered deltas replay (a replay may start a new resync).
+  onSettled: () => {
+    resyncAttempt = 0;
+    resyncInFlight = null;
+    clearResyncRetry();
+  },
+  reconnectLive: () => reconnectLiveChannel(),
+});
 let hoveredDesk = -1;
 let timelineFilter = null; // group folder filter for timeline
 let cachedMessages = []; // messages fetched from /api/messages
@@ -2514,6 +2544,13 @@ function updateDetailHooks(cw) {
 }
 
 function applyState(nextState) {
+  // A full snapshot (/api/state, resync, initial live frame) carries the current
+  // server identity + revision; adopt both so subsequent deltas can be
+  // continuity-checked. Deltas route through applyDeltaPatch(), which puts the
+  // new revision INTO the patch — so `state.stateRev` is never stale and a
+  // caller that spreads `...state` back through applyState() (applyHookEvent)
+  // cannot roll the live revision backwards.
+  liveSync.observeSnapshotFields(nextState);
   const nextHookEvents = Object.prototype.hasOwnProperty.call(nextState, 'hookEvents')
     ? nextState.hookEvents
     : state.hookEvents;
@@ -2573,6 +2610,59 @@ function applyState(nextState) {
   }
 }
 
+// ---- Live-state reconciliation -------------------------------------------
+// The protocol itself (epoch/revision continuity, key-order proof, resync
+// barrier + bounded replay buffer, snapshot generations) is implemented once in
+// `public/state-sync.js`; `mobile.js` and `state-delta.test.ts` drive the same
+// code. What remains here is the transport: fetching a snapshot over HTTP and
+// reopening the live channel.
+
+// Adopt a full snapshot from the live stream. No generation token: an in-stream
+// snapshot is ordered against the deltas by construction, so it is always
+// authoritative and supersedes any HTTP resync still in flight.
+function adoptSnapshot(data) {
+  liveSync.adoptSnapshot(data);
+}
+
+function applyStateDelta(delta) {
+  liveSync.applyStateDelta(delta);
+}
+
+function clearResyncRetry() {
+  if (resyncRetryTimer) {
+    clearTimeout(resyncRetryTimer);
+    resyncRetryTimer = null;
+  }
+}
+
+function scheduleResyncRetry() {
+  if (resyncRetryTimer) return;
+  const delay = Math.min(30000, 1000 * 2 ** Math.min(resyncAttempt, 5));
+  resyncAttempt += 1;
+  resyncRetryTimer = setTimeout(() => {
+    resyncRetryTimer = null;
+    void resyncLiveData();
+  }, delay);
+}
+
+// Drop and reopen the live channel so the server pushes a fresh, ordered
+// in-stream snapshot. This is the recovery path when the replay buffer
+// overflowed: repeating HTTP snapshots there can never converge (every response
+// lands behind the frames we had to drop), whereas a reconnect re-bases us on
+// the stream itself. With no EventSource — or while hidden, where we must not
+// hold a stream open — fall back to the HTTP resync.
+function reconnectLiveChannel() {
+  if (liveSource) {
+    liveSource.close();
+    liveSource = null;
+  }
+  if (!('EventSource' in window) || document.hidden) {
+    void resyncLiveData();
+    return;
+  }
+  connectLiveUpdates();
+}
+
 function hookEventKey(event) {
   return event.id ? `id:${event.id}` : `${event.timestamp}|${event.group}|${event.event}|${event.tool_use_id || ''}`;
 }
@@ -2612,12 +2702,16 @@ async function loadRecentHookEvents() {
   }
 }
 
-async function pollState() {
+// Fetch a snapshot over HTTP for the resync identified by `generation`. The
+// token is what lets a delayed response be recognised as superseded: an
+// in-stream snapshot installed while this request was in flight bumps the
+// generation, and adopting an old-process response over it would rewind the UI
+// with no epoch/revision signal able to catch it.
+async function pollState(generation) {
   try {
     const res = await fetch('/api/state', { cache: 'no-store' });
     if (!res.ok) return false;
-    applyState(await res.json());
-    return true;
+    return liveSync.adoptSnapshot(await res.json(), generation);
   } catch {
     return false;
   }
@@ -2626,9 +2720,12 @@ async function pollState() {
 function startPolling() {
   if (pollTimer) return;
   setLiveStatus('Polling Fallback', 'var(--yellow)');
-  void Promise.all([pollState(), loadRecentHookEvents()]);
+  // Route through resyncLiveData() so a poll coalesces with any resync already
+  // in flight: two concurrent /api/state responses can land out of order, and
+  // the older one would overwrite the newer.
+  void resyncLiveData();
   pollTimer = setInterval(async () => {
-    const [stateOk] = await Promise.all([pollState(), loadRecentHookEvents()]);
+    const stateOk = await resyncLiveData();
     if (!stateOk) {
       setLiveStatus('Reconnecting...', 'var(--yellow)');
     }
@@ -2652,12 +2749,34 @@ function scheduleLiveReconnect() {
   }, delay);
 }
 
-async function resyncLiveData() {
-  if (liveResyncPromise) return liveResyncPromise;
-  liveResyncPromise = Promise.all([pollState(), loadRecentHookEvents()]).finally(() => {
-    liveResyncPromise = null;
-  });
-  return liveResyncPromise;
+// Raise the barrier, fetch a full snapshot, and (on success, via
+// adoptSnapshot → finishResync) replay whatever arrived meanwhile. Single
+// in-flight request: concurrent triggers share one fetch, so an older response
+// can never overwrite a newer one. A FAILED resync leaves the barrier up and
+// retries with bounded backoff — silently giving up would strand the client at a
+// revision the server has already moved past, and no further delta could ever
+// chain onto it.
+function resyncLiveData() {
+  if (resyncInFlight) return resyncInFlight;
+  const generation = liveSync.beginResync();
+  clearResyncRetry();
+  const attempt = Promise.all([pollState(generation), loadRecentHookEvents()])
+    .then(([stateOk]) => {
+      if (!stateOk) {
+        // finishResync() didn't run (no snapshot adopted) — clear the in-flight
+        // slot ourselves and retry; the barrier stays up until one succeeds.
+        if (resyncInFlight === attempt) resyncInFlight = null;
+        scheduleResyncRetry();
+      }
+      return stateOk;
+    })
+    .catch(() => {
+      if (resyncInFlight === attempt) resyncInFlight = null;
+      scheduleResyncRetry();
+      return false;
+    });
+  resyncInFlight = attempt;
+  return attempt;
 }
 
 function connectLiveUpdates() {
@@ -2671,7 +2790,12 @@ function connectLiveUpdates() {
     liveReconnectTimer = null;
   }
   if (liveSource) liveSource.close();
-  const source = new EventSource(`/api/events?snapshot=0&after=${encodeURIComponent(lastHookEventId)}`);
+  // No `snapshot=0`: every connection (and every reconnection) starts from a
+  // full snapshot delivered ON THIS STREAM. Resuming from whatever state the
+  // page happened to hold is only sound if the revision space is continuous
+  // across the gap — it isn't when the server restarted, and an in-stream
+  // snapshot is ordered against the deltas by construction (an HTTP one is not).
+  const source = new EventSource(`/api/events?after=${encodeURIComponent(lastHookEventId)}`);
   liveSource = source;
   source.onopen = () => {
     if (liveSource !== source) return;
@@ -2684,7 +2808,9 @@ function connectLiveUpdates() {
     try {
       const msg = JSON.parse(e.data);
       if (msg.type === 'state') {
-        applyState(msg.data);
+        adoptSnapshot(msg.data);
+      } else if (msg.type === 'state-delta') {
+        applyStateDelta(msg);
       } else if (msg.type === 'hook-event') {
         applyHookEvent(msg.data, msg.coworker);
       } else if (msg.type === 'resync') {
@@ -9897,7 +10023,7 @@ async function bootstrapDashboardApp() {
     setLiveStatus('Locked', 'var(--yellow)');
     return;
   }
-  await Promise.all([pollState(), loadRecentHookEvents()]);
+  await resyncLiveData();
   connectLiveUpdates();
   animate();
 }
