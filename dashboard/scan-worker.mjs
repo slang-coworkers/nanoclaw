@@ -17,8 +17,12 @@
  *   • a shared inventory (one enumeration feeds both scans),
  *   • per-file mtime gating (open a DB only when its file changed),
  *   • hot/cold cadence (recently-active files are checked every second; a file
- *     idle for a while is checked every ~30s, so years of idle sessions aren't
- *     statted every second),
+ *     idle for a while is checked every ~5s on a per-path phase offset, so years
+ *     of idle sessions aren't all statted on the same tick). The cold cadence
+ *     bounds only the STAT — it is a UI-freshness budget, not an activity budget:
+ *     a new message in a long-idle session must surface in the unread badge and
+ *     the coworker-chat auto-refresh promptly, so the stat stays frequent while
+ *     the (far more expensive) DB open still happens only on a real mtime change,
  *   • per-file hourly activity buckets (an unchanged DB is never reopened just
  *     because the 24h window advanced), and
  *   • publishing only the groups/values that actually changed.
@@ -38,7 +42,12 @@ const { dataDir, centralDbPath } = workerData;
 
 const TICK_MS = 1000;
 const HOT_INTERVAL_MS = 1000; // recheck an active file every second
-const COLD_INTERVAL_MS = 30_000; // …a long-idle file only every 30s
+// Cold cadence for the STAT only (see the header): a long-idle file is statted
+// every ~5s, phase-shifted per path so the fleet's checks spread across the
+// interval instead of bunching on one tick. It is deliberately far below the
+// activity-republish cadence — a message landing in a cold session must not be
+// invisible for tens of seconds in the unread badge / chat auto-refresh.
+const COLD_INTERVAL_MS = 5_000;
 const COLD_AFTER_MS = 60_000; // unchanged this long → treat as cold
 const INVENTORY_MS = 5_000; // re-enumerate groups/sessions this often
 const ACTIVITY_PUBLISH_MS = 10_000; // republish the activity histogram at most this often
@@ -46,6 +55,11 @@ const STATS_PUBLISH_MS = 15_000; // instrumentation heartbeat
 const MAX_OPENS_PER_TICK = 400; // spread a cold scan across ticks; don't open 6k DBs at once
 const WINDOW_HOURS = 24;
 const ACTIVITY_LOOKBACK_MS = 26 * 3600 * 1000; // query a little past the window so buckets are complete
+// A single ENOENT does not tombstone a file that previously had data (a DB being
+// replaced/renamed looks momentarily absent); this many consecutive ones does.
+const MISSING_CONFIRMATIONS = 2;
+// Backstop so a permanently-unreadable path can't block the handoff forever.
+const WARMUP_MAX_MS = 120_000;
 
 // Open the central DB read-only. A failure here is fatal → Worker 'error' →
 // host falls back to its own main-thread scans.
@@ -59,10 +73,22 @@ const files = new Map(); // dbPath -> { folder, direction, table, mtimeMs, ts, h
 
 let inventory = []; // [{ folder, inbound, outbound }]
 let inventoryAt = 0;
+let inventoryOk = false; // a central-DB enumeration has actually succeeded
 let publishedMsgTs = new Map(); // folder -> ts last sent to the host
 let publishedActivityJson = '';
 let lastActivityPublish = 0;
 let lastStatsPublish = 0;
+
+// ---- Warm-up gate ------------------------------------------------------
+// The host STOPS its own (complete, correct) main-thread scans when it sees
+// `ready`, so we must not declare readiness — or publish anything it would
+// apply — until the very first pass has settled every inventory path. With a
+// 400-open-per-tick budget and thousands of session DBs, an ungated first
+// publish would ship the first 400 files' activity as the whole fleet's and
+// clobber the main-thread cache with it.
+const attemptedPaths = new Set(); // paths whose cache state has settled at least once
+const workerStartedAt = Date.now();
+let warmedUp = false;
 
 // Instrumentation.
 let statCalls = 0;
@@ -90,11 +116,34 @@ function refreshInventory(now) {
       next.push({ folder, inbound, outbound });
     }
     inventory = next;
+    inventoryOk = true;
     // Drop per-file state for sessions that no longer exist.
     for (const path of files.keys()) if (!livePaths.has(path)) files.delete(path);
+    for (const path of attemptedPaths) if (!livePaths.has(path)) attemptedPaths.delete(path);
   } catch {
-    /* central DB transiently unreadable — keep the previous inventory */
+    // Central DB transiently unreadable — keep the previous inventory. If we
+    // have never had one, `inventoryOk` stays false and the warm-up gate keeps
+    // us silent: publishing "zero sessions, zero activity" and then claiming
+    // `ready` would hand the host an empty fleet as the truth.
   }
+}
+
+/** Deterministic per-path phase within the cold interval, so ~1/COLD_INTERVAL of
+ *  the fleet is statted per tick instead of the whole fleet on one tick. */
+function pathPhase(path) {
+  let h = 2166136261;
+  for (let i = 0; i < path.length; i++) {
+    h ^= path.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0) % COLD_INTERVAL_MS;
+}
+
+/** Next absolute cold-check time for `path`, aligned to its phase slot (so the
+ *  effective period stays exactly COLD_INTERVAL_MS rather than drifting). */
+function nextColdCheck(now, path) {
+  const phase = pathPhase(path);
+  return (Math.floor((now - phase) / COLD_INTERVAL_MS) + 1) * COLD_INTERVAL_MS + phase;
 }
 
 function hourKey(ts) {
@@ -111,30 +160,69 @@ function refreshFile(path, direction, table, now, budget) {
   let st = files.get(path);
   if (st && now < st.nextCheckAt) return false; // gated — reuse cached values
 
+  // A stat has THREE outcomes, not two. Collapsing "errored" into "missing" was
+  // a silent data-loss path: an EMFILE/EACCES blip would replace a good
+  // { ts, hours } with { ts: null, hours: {} }, which drops the group's unread
+  // timestamp AND subtracts that file's messages from the activity histogram —
+  // and because the tombstone is written at the cold cadence, the false-empty
+  // persists. Only a CONFIRMED absence may tombstone; an error preserves the
+  // last good state and retries hot.
   let mtimeMs;
   try {
     statCalls++;
     mtimeMs = statSync(path).mtimeMs; // throws if the file doesn't exist
-  } catch {
-    // Missing/unreadable → no contribution. Keep a light record so we don't
-    // re-stat every tick (cold cadence).
+  } catch (e) {
+    const code = e && e.code;
+    const absent = code === 'ENOENT' || code === 'ENOTDIR';
+    if (!absent) {
+      if (st) {
+        st.nextCheckAt = now + HOT_INTERVAL_MS; // keep prior ts/hours; retry hot
+        return false;
+      }
+      // Nothing to preserve — record an empty entry but keep it hot so the first
+      // successful stat lands immediately, and don't mark it `missing`.
+      files.set(path, {
+        direction,
+        table,
+        mtimeMs: -1,
+        ts: null,
+        hours: new Map(),
+        nextCheckAt: now + HOT_INTERVAL_MS,
+        lastChangedAt: now,
+        missing: false,
+        missCount: 0,
+      });
+      attemptedPaths.add(path);
+      return false;
+    }
+    // Confirmed absent. Tolerate a single ENOENT against known-good state.
+    const misses = (st ? st.missCount || 0 : 0) + 1;
+    if (st && !st.missing && misses < MISSING_CONFIRMATIONS) {
+      st.missCount = misses;
+      st.nextCheckAt = now + HOT_INTERVAL_MS;
+      return false;
+    }
     files.set(path, {
       direction,
       table,
       mtimeMs: -1,
       ts: null,
       hours: new Map(),
-      nextCheckAt: now + COLD_INTERVAL_MS,
+      nextCheckAt: nextColdCheck(now, path),
       lastChangedAt: st ? st.lastChangedAt : now,
       missing: true,
+      missCount: misses,
     });
+    attemptedPaths.add(path);
     return false;
   }
 
   if (st && !st.missing && st.mtimeMs === mtimeMs) {
     // Unchanged: reuse cached ts/hours; slide to cold cadence once idle a while.
     const idleFor = now - st.lastChangedAt;
-    st.nextCheckAt = now + (idleFor > COLD_AFTER_MS ? COLD_INTERVAL_MS : HOT_INTERVAL_MS);
+    st.missCount = 0;
+    st.nextCheckAt = idleFor > COLD_AFTER_MS ? nextColdCheck(now, path) : now + HOT_INTERVAL_MS;
+    attemptedPaths.add(path);
     return false;
   }
 
@@ -185,7 +273,9 @@ function refreshFile(path, direction, table, now, budget) {
       nextCheckAt: now + HOT_INTERVAL_MS,
       lastChangedAt: now,
       missing: false,
+      missCount: 0,
     });
+    attemptedPaths.add(path);
     return false;
   }
   try {
@@ -203,7 +293,9 @@ function refreshFile(path, direction, table, now, budget) {
     nextCheckAt: now + HOT_INTERVAL_MS,
     lastChangedAt: now,
     missing: false,
+    missCount: 0,
   });
+  attemptedPaths.add(path);
   return true;
 }
 
@@ -275,6 +367,23 @@ function publishStats(now) {
   dbOpens = 0;
 }
 
+/** True once the initial pass has settled every inventory path (or the backstop
+ *  expired). Until then we publish nothing and never claim `ready`. */
+function warmupComplete(now) {
+  if (warmedUp) return true;
+  if (!inventoryOk) return false;
+  let pending = false;
+  for (const sess of inventory) {
+    if (!attemptedPaths.has(sess.inbound) || !attemptedPaths.has(sess.outbound)) {
+      pending = true;
+      break;
+    }
+  }
+  if (pending && now - workerStartedAt <= WARMUP_MAX_MS) return false;
+  warmedUp = true;
+  return true;
+}
+
 function tick() {
   const start = Date.now();
   refreshInventory(start);
@@ -283,22 +392,28 @@ function tick() {
     refreshFile(sess.inbound, 'inbound', 'messages_in', start, budget);
     refreshFile(sess.outbound, 'outbound', 'messages_out', start, budget);
   }
-  publishMsgTs();
-  publishActivity(start);
+  const warm = warmupComplete(start);
+  if (warm) {
+    publishMsgTs();
+    publishActivity(start);
+  }
   lastTickMs = Date.now() - start;
   publishStats(start);
+  return warm;
 }
 
-// Announce readiness only after the first tick that actually completes — the
-// host hands off (stops its own scans) on `ready`, so we must not claim
-// readiness on a tick that threw (e.g. the central DB was momentarily
-// unreadable). A fatal failure to even open the central DB happens above, at
-// module load, and surfaces as the Worker 'error' event → host falls back.
+// Announce readiness only once WARM-UP has completed — the host hands off (stops
+// its own scans) on `ready`, so we must not claim readiness on a tick that threw
+// (e.g. the central DB was momentarily unreadable), on a tick whose inventory
+// enumeration failed, or on a tick that has only classified the first slice of a
+// large fleet (the per-tick open budget). A fatal failure to even open the
+// central DB happens above, at module load, and surfaces as the Worker 'error'
+// event → host falls back.
 let readySent = false;
 function runTick() {
   try {
-    tick();
-    if (!readySent) {
+    const warm = tick();
+    if (warm && !readySent) {
       readySent = true;
       parentPort.postMessage({ kind: 'ready' });
     }

@@ -13,7 +13,7 @@
  */
 
 import { createServer } from 'http';
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { createGzip, createGunzip } from 'zlib';
 import { pipeline } from 'stream/promises';
 import { exec, execFile, execSync } from 'child_process';
@@ -1606,9 +1606,20 @@ function refreshContextWindowCache(): void {
       // since we last parsed it for this group.
       const gate = ctxWindowFileCache.get(group.folder);
       if (gate && gate.path === newestPath && gate.mtimeMs === newestMtime) continue;
+
+      // Read FIRST, commit the gate only on success. Committing up front made a
+      // transient read failure permanent: the (path, mtime) would already be
+      // recorded as processed, so every later tick short-circuits on the
+      // unchanged file and the stale context reading sticks until the transcript
+      // happens to grow again.
+      let content: string;
+      try {
+        content = readFileSync(newestPath, 'utf-8');
+      } catch {
+        continue; // leave the previous gate in place → retried next tick
+      }
       ctxWindowFileCache.set(group.folder, { path: newestPath, mtimeMs: newestMtime });
 
-      const content = readFileSync(newestPath, 'utf-8');
       const lines = content.split('\n');
       for (let i = lines.length - 1; i >= 0; i--) {
         if (!lines[i].trim()) continue;
@@ -2087,29 +2098,45 @@ interface TraceDirListing {
   files: { name: string; mtimeMs: number }[];
 }
 const TRACE_DIR_TTL_MS = 45_000;
+// After a READ ERROR (as opposed to a confirmed-absent dir) we retry this soon
+// instead of holding the fallback listing for the full TTL.
+const TRACE_DIR_ERROR_RETRY_MS = 5_000;
 const traceDirCache = new Map<string, TraceDirListing>();
 
 /** Cached listing of `session-*.html` files (with mtimes) under a group's
  *  `.claude-trace` dir. Rebuilt at most once per TTL per dir; warm calls touch
- *  no filesystem. A missing/unreadable dir caches as empty. */
+ *  no filesystem. A confirmed-absent dir caches as empty; a transient read
+ *  ERROR keeps the previous listing (an empty cache entry would silently strip
+ *  the trace link from every priced session in the group for a full TTL). */
 function getTraceDirListing(traceDir: string): { name: string; mtimeMs: number }[] {
   const now = Date.now();
   const cached = traceDirCache.get(traceDir);
   if (cached && now - cached.scannedAt < TRACE_DIR_TTL_MS) return cached.files;
   const files: { name: string; mtimeMs: number }[] = [];
+  let names: string[];
   try {
-    for (const f of readdirSync(traceDir)) {
-      if (!f.startsWith('session-') || !f.endsWith('.html')) continue;
-      let m = 0;
-      try {
-        m = statSync(join(traceDir, f)).mtimeMs;
-      } catch {
-        /* unreadable — treat as oldest */
-      }
-      files.push({ name: f, mtimeMs: m });
+    names = readdirSync(traceDir);
+  } catch (e: any) {
+    const absent = e && (e.code === 'ENOENT' || e.code === 'ENOTDIR');
+    if (absent) {
+      // Genuinely no trace dir → an empty listing is the correct answer.
+      traceDirCache.set(traceDir, { scannedAt: now, files });
+      return files;
     }
-  } catch {
-    /* dir missing/unreadable — cache empty so we don't retry every request */
+    // Transient (EMFILE/EACCES/EIO/…): serve the last good listing and retry soon.
+    const fallback = cached ? cached.files : files;
+    traceDirCache.set(traceDir, { scannedAt: now - TRACE_DIR_TTL_MS + TRACE_DIR_ERROR_RETRY_MS, files: fallback });
+    return fallback;
+  }
+  for (const f of names) {
+    if (!f.startsWith('session-') || !f.endsWith('.html')) continue;
+    let m = 0;
+    try {
+      m = statSync(join(traceDir, f)).mtimeMs;
+    } catch {
+      /* unreadable — treat as oldest */
+    }
+    files.push({ name: f, mtimeMs: m });
   }
   traceDirCache.set(traceDir, { scannedAt: now, files });
   return files;
@@ -4615,12 +4642,30 @@ interface StablePublishedState {
 interface KeyedChange<T> {
   upsert: T[];
   remove: string[];
+  /** Full key list of the NEW array, in server order. The client rebuilds its
+   *  array in exactly this order — a keyed upsert/remove merge alone preserves
+   *  the CLIENT's insertion order, which silently diverges from the server's
+   *  whenever the server reorders without changing any item (index-positional UI
+   *  like the pixel-office desk assignment then renders the wrong layout). */
+  order: string[];
+  /** True when `order` differs from the baseline's order. Ordering-only changes
+   *  produce no upserts/removes, so this is what keeps them from being dropped
+   *  as an "empty" delta. */
+  orderChanged: boolean;
 }
 interface StateDelta {
   coworkers: KeyedChange<CoworkerState>;
   registeredGroups: KeyedChange<any>;
   fields: Record<string, unknown>;
 }
+// Identity of THIS server process. Revisions are per-process counters, so a
+// restart resets them: without an epoch a client left at rev N by the old
+// process would happily accept `{baseRev:N, rev:N+1}` from the new process and
+// patch it onto a baseline the new process never had (e.g. a coworker deleted
+// during downtime would stay on screen forever, because the new server's
+// baseline has no row to remove). Clients compare (epoch, rev) and full-resync
+// on any epoch change.
+const STATE_EPOCH = randomUUID();
 let publishedRev = 0; // rev of `publishedStable`; 0 == nothing published yet
 let publishedStable: StablePublishedState | null = null; // diff baseline == what in-sync live clients hold
 let publishedData: DashboardState | null = null; // full data for /api/state, matching publishedRev
@@ -4656,16 +4701,20 @@ function keyedDiff<T extends Record<string, unknown>>(
   const prevByKey = new Map<string, string>();
   for (const p of prev) prevByKey.set(keyOf(p), JSON.stringify(p));
   const upsert: T[] = [];
+  const order: string[] = [];
   const seen = new Set<string>();
   for (const n of next) {
     const k = keyOf(n);
     seen.add(k);
+    order.push(k);
     const pj = prevByKey.get(k);
     if (pj === undefined || pj !== JSON.stringify(n)) upsert.push(n);
   }
   const remove: string[] = [];
   for (const k of prevByKey.keys()) if (!seen.has(k)) remove.push(k);
-  return { upsert, remove };
+  const prevOrder = prev.map(keyOf);
+  const orderChanged = prevOrder.length !== order.length || prevOrder.some((k, i) => k !== order[i]);
+  return { upsert, remove, order, orderChanged };
 }
 
 function diffStable(prev: StablePublishedState, next: StablePublishedState): StateDelta {
@@ -4684,8 +4733,10 @@ function isEmptyDelta(d: StateDelta): boolean {
   return (
     d.coworkers.upsert.length === 0 &&
     d.coworkers.remove.length === 0 &&
+    !d.coworkers.orderChanged &&
     d.registeredGroups.upsert.length === 0 &&
     d.registeredGroups.remove.length === 0 &&
+    !d.registeredGroups.orderChanged &&
     Object.keys(d.fields).length === 0
   );
 }
@@ -4694,6 +4745,7 @@ function isEmptyDelta(d: StateDelta): boolean {
 export const __dashPerfTestHooks = {
   diffStable: (prev: StablePublishedState, next: StablePublishedState): StateDelta => diffStable(prev, next),
   isEmptyDelta: (d: StateDelta): boolean => isEmptyDelta(d),
+  stateEpoch: (): string => STATE_EPOCH,
 };
 
 /**
@@ -4733,7 +4785,15 @@ function publishState(force = false): { data: DashboardState; rev: number } {
     publishedStable = stable;
     publishedData = data;
     if (wsClients.size || sseClients.size) {
-      broadcastMessageJson(JSON.stringify({ type: 'state-delta', baseRev: prevRev, rev: publishedRev, ...delta }));
+      broadcastMessageJson(
+        JSON.stringify({
+          type: 'state-delta',
+          stateEpoch: STATE_EPOCH,
+          baseRev: prevRev,
+          rev: publishedRev,
+          ...delta,
+        }),
+      );
     }
     return { data, rev: publishedRev };
   }
@@ -4751,13 +4811,13 @@ function publishState(force = false): { data: DashboardState; rev: number } {
 function fullStateEnvelope(): string {
   const { data, rev } = publishState();
   perfCounters.fullStateFramesSent++;
-  return JSON.stringify({ type: 'state', data: { ...data, stateRev: rev } });
+  return JSON.stringify({ type: 'state', data: { ...data, stateEpoch: STATE_EPOCH, stateRev: rev } });
 }
 
 /** Full-state JSON for /api/state (raw body, no envelope) with the rev inlined. */
 function fullStateJson(): string {
   const { data, rev } = publishState();
-  return JSON.stringify({ ...data, stateRev: rev });
+  return JSON.stringify({ ...data, stateEpoch: STATE_EPOCH, stateRev: rev });
 }
 
 // ---- Session-DB scan worker (dash-perf round 2) --------------------------
@@ -4814,10 +4874,16 @@ function startScanWorker(): void {
     return;
   }
   scanWorker = worker;
+  // The worker only publishes once its warm-up scan has classified every
+  // inventory path, but the host refuses pre-`ready` data anyway: a partial
+  // snapshot applied over the main thread's (complete) caches would show wrong
+  // counts and drop unread timestamps until the next full worker pass.
+  let workerReady = false;
   worker.on('message', (msg: any) => {
     if (!msg || typeof msg !== 'object') return;
     switch (msg.kind) {
       case 'ready':
+        workerReady = true;
         perfCounters.workerActive = true;
         // Hand off: the worker now owns these scans, so stop the main-thread
         // timers to avoid duplicate work.
@@ -4831,9 +4897,11 @@ function startScanWorker(): void {
         }
         break;
       case 'msgTs':
+        if (!workerReady) break; // pre-handoff: main-thread scan still owns the cache
         applyMsgTsDelta(msg.changed || [], msg.removed || []);
         break;
       case 'activity':
+        if (!workerReady) break;
         if (Array.isArray(msg.buckets)) {
           activityDataCache = msg.buckets;
           perfCounters.scanActivityPublishes++;
@@ -4852,6 +4920,7 @@ function startScanWorker(): void {
   const fallback = (reason: string): void => {
     if (scanWorker !== worker) return; // already replaced
     scanWorker = null;
+    workerReady = false;
     perfCounters.workerActive = false;
     console.error(`[dashboard] scan worker ${reason}; reverting to main-thread scans`);
     restartMainThreadScans();
@@ -4952,7 +5021,45 @@ function broadcastState(): void {
 // blocked stretch, used to disconnect a reader that never drains.
 const staleClients = new WeakSet<any>();
 const clientBlockedSince = new WeakMap<any, number>();
-const RESYNC_JSON = '{"type":"resync"}';
+// One-shot disconnect timer armed the FIRST time a client blocks. Without it the
+// BLOCKED_MAX_MS bound was only evaluated when markStaleClient() happened to run
+// again, so a WS client blocked by the very last frame before the fleet went
+// idle (no heartbeat on the WS path) was never revisited and pinned its buffer
+// indefinitely.
+const clientBlockedTimer = new WeakMap<any, ReturnType<typeof setTimeout>>();
+
+function clearBlockedTimer(client: any): void {
+  const t = clientBlockedTimer.get(client);
+  if (t) {
+    clearTimeout(t);
+    clientBlockedTimer.delete(client);
+  }
+}
+
+/** Terminal drop for a client that never drained. res.end() is not a hard
+ *  disconnect when the peer never reads (the FIN sits behind the unflushed
+ *  buffer), so destroy the underlying socket in both cases. */
+function hardCloseClient(client: any, clients: Set<any>, isWs: boolean): void {
+  clients.delete(client);
+  clearBlockedTimer(client);
+  clientBlockedSince.delete(client);
+  staleClients.delete(client);
+  perfCounters.slowClientDrops++;
+  try {
+    if (isWs) {
+      client.destroy();
+    } else {
+      try {
+        client.end();
+      } catch {
+        /* ignore */
+      }
+      client.socket?.destroy?.();
+    }
+  } catch {
+    /* ignore */
+  }
+}
 
 /** True when the socket can't accept another frame right now. Both a raw WS
  *  net.Socket and an SSE ServerResponse expose writableLength/writableNeedDrain. */
@@ -4971,17 +5078,18 @@ function markStaleClient(client: any, clients: Set<any>, isWs: boolean): void {
   if (since === undefined) {
     clientBlockedSince.set(client, now);
     perfCounters.blockedClientEvents++;
+    // Arm the bound now rather than relying on a later markStaleClient() call —
+    // there may never be one (idle fleet, and the WS path has no heartbeat).
+    const timer = setTimeout(() => {
+      clientBlockedTimer.delete(client);
+      if (!clients.has(client)) return;
+      if (!clientBlockedSince.has(client)) return; // drained in the meantime
+      hardCloseClient(client, clients, isWs);
+    }, BLOCKED_MAX_MS);
+    timer.unref?.();
+    clientBlockedTimer.set(client, timer);
   } else if (now - since > BLOCKED_MAX_MS) {
-    try {
-      if (isWs) client.destroy();
-      else client.end();
-    } catch {
-      /* ignore */
-    }
-    clients.delete(client);
-    clientBlockedSince.delete(client);
-    staleClients.delete(client);
-    perfCounters.slowClientDrops++;
+    hardCloseClient(client, clients, isWs);
     return;
   }
   if (staleClients.has(client)) return;
@@ -4989,9 +5097,20 @@ function markStaleClient(client: any, clients: Set<any>, isWs: boolean): void {
   const onDrain = (): void => {
     staleClients.delete(client);
     clientBlockedSince.delete(client);
+    clearBlockedTimer(client);
     if (!clients.has(client)) return;
     try {
-      client.write(isWs ? createWsFrame(Buffer.from(RESYNC_JSON)) : `data: ${RESYNC_JSON}\n\n`);
+      // Recover IN-STREAM with a full snapshot rather than a `resync` marker
+      // that sends the client off to /api/state: an HTTP resync races the live
+      // delta stream (the response can land before or after deltas it does or
+      // doesn't already contain). A same-stream snapshot is ordered by
+      // construction, so the client resumes from exactly this revision.
+      // publishState() first so any pending delta is flushed to everyone BEFORE
+      // this snapshot; the second call inside fullStateEnvelope() is throttled
+      // and cannot broadcast again.
+      publishState();
+      const json = fullStateEnvelope();
+      client.write(isWs ? createWsFrame(Buffer.from(json)) : `data: ${json}\n\n`);
       perfCounters.resyncsSent++;
     } catch {
       clients.delete(client);
@@ -5019,10 +5138,12 @@ function sendToClient(client: any, clients: Set<any>, payload: string | Buffer, 
     clients.delete(client);
     clientBlockedSince.delete(client);
     staleClients.delete(client);
+    clearBlockedTimer(client);
     return;
   }
   if (ok) {
     clientBlockedSince.delete(client);
+    clearBlockedTimer(client);
   } else {
     // The frame was buffered but the socket is now full — wait for drain before
     // sending anything else, then resync.
@@ -6641,11 +6762,21 @@ export async function handleRequest(
       'X-Accel-Buffering': 'no',
     });
     res.write('retry: 5000\n\n: connected\n\n');
-    sseClients.add(res);
 
-    if (url.searchParams.get('snapshot') !== '0') {
-      res.write(`data: ${fullStateEnvelope()}\n\n`);
-    }
+    // Order matters: build the snapshot BEFORE joining the broadcast set.
+    // fullStateEnvelope() → publishState() can itself emit a `state-delta` to
+    // every registered client; if this connection were already registered it
+    // would receive that delta ahead of its own snapshot, i.e. a patch against a
+    // baseline it does not yet hold. Snapshot first, then join, so the client's
+    // frame order is snapshot → (only) deltas that post-date it.
+    //
+    // `?snapshot=0` remains for debug/external consumers, but the built-in
+    // clients no longer use it: a client that starts without a snapshot has no
+    // epoch/rev baseline, so its first delta can only be rejected.
+    const wantsSnapshot = url.searchParams.get('snapshot') !== '0';
+    const snapshotFrame = wantsSnapshot ? `data: ${fullStateEnvelope()}\n\n` : null;
+    sseClients.add(res);
+    if (snapshotFrame) res.write(snapshotFrame);
 
     const cursorValue =
       url.searchParams.get('after') ||
@@ -6666,6 +6797,9 @@ export async function handleRequest(
 
     const removeClient = () => {
       sseClients.delete(res);
+      clearBlockedTimer(res);
+      clientBlockedSince.delete(res);
+      staleClients.delete(res);
     };
     req.on('close', removeClient);
     res.socket?.on('close', removeClient);
@@ -13197,9 +13331,12 @@ function createDashboardHttpServer(options: DashboardRequestOptions = {}): impor
         '\r\n',
     );
 
+    // Snapshot BEFORE joining the broadcast set — see the SSE handler: building
+    // the envelope can broadcast a delta, which an already-registered client
+    // would receive before its own baseline.
+    const snapshotFrame = createWsFrame(Buffer.from(fullStateEnvelope()));
     wsClients.add(socket);
-
-    socket.write(createWsFrame(Buffer.from(fullStateEnvelope())));
+    socket.write(snapshotFrame);
 
     let buffer = head.length > 0 ? Buffer.from(head) : Buffer.alloc(0);
     socket.on('data', (data: Buffer) => {
@@ -13225,8 +13362,14 @@ function createDashboardHttpServer(options: DashboardRequestOptions = {}): impor
       }
     });
 
-    socket.on('close', () => wsClients.delete(socket));
-    socket.on('error', () => wsClients.delete(socket));
+    const dropWsClient = (): void => {
+      wsClients.delete(socket);
+      clearBlockedTimer(socket);
+      clientBlockedSince.delete(socket);
+      staleClients.delete(socket);
+    };
+    socket.on('close', dropWsClient);
+    socket.on('error', dropWsClient);
   });
 
   return server;
@@ -13281,6 +13424,9 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
         if (!client.write(': keepalive\n\n')) markStaleClient(client, sseClients, false);
       } catch {
         sseClients.delete(client);
+        clearBlockedTimer(client);
+        clientBlockedSince.delete(client);
+        staleClients.delete(client);
       }
     }
   }, 20_000);
