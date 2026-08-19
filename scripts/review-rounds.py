@@ -302,7 +302,7 @@ def percentile(values, pct):
     if not values:
         return None
     s = sorted(values)
-    k = max(0, min(len(s) - 1, int(round((pct / 100.0) * (len(s) - 1)))))
+    k = max(0, min(len(s) - 1, round((pct / 100.0) * (len(s) - 1))))
     return s[k]
 
 
