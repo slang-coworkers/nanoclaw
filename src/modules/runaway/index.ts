@@ -17,7 +17,7 @@ import { updateSession } from '../../db/sessions.js';
 import { log } from '../../log.js';
 import type { Session } from '../../types.js';
 import { registerApprovalHandler, requestApproval } from '../approvals/index.js';
-import type { RunawayCardDeps, RunawayMetrics } from './detect.js';
+import type { RunawayCardDeps, RunawayCost, RunawayMetrics } from './detect.js';
 
 const STOP_ACTION = 'stop_runaway_session';
 
@@ -40,17 +40,30 @@ registerApprovalHandler(STOP_ACTION, async (ctx) => {
 
 /** Deps for detect.ts → emits the admin card via the standard approval flow. */
 export const runawayCardDeps: RunawayCardDeps = {
-  async emitCard(session: Session, metrics: RunawayMetrics, windowS: number): Promise<void> {
+  async emitCard(session: Session, metrics: RunawayMetrics, windowS: number, cost: RunawayCost | null): Promise<void> {
     const mins = Math.round(windowS / 60);
+    // Cost is the single most decision-relevant number here (a runaway's whole
+    // harm is spend). Carry it on the payload so the dashboard card can show
+    // "$spent of $cap", and inline it in the question so the DM/chat surface
+    // reads the same. Both stay absent when cost tracking is off — the card is
+    // then byte-for-byte what it was before (back-compat).
+    const costLine = cost ? ` It has spent $${cost.spentUsd.toFixed(2)} of its $${cost.capUsd.toFixed(2)} cap.` : '';
     await requestApproval({
       session,
       agentName: session.agent_group_id,
       action: STOP_ACTION,
-      payload: { sessionId: session.id, turns: metrics.turns, outputBytes: metrics.outputBytes },
+      payload: {
+        sessionId: session.id,
+        turns: metrics.turns,
+        outputBytes: metrics.outputBytes,
+        // Round to cents-plus so the dashboard and DM print identical figures.
+        ...(cost ? { spentUsd: Number(cost.spentUsd.toFixed(4)), capUsd: Number(cost.capUsd.toFixed(4)) } : {}),
+      },
       title: 'Possible runaway session',
       question:
         `Session ${session.id} (${session.agent_group_id}) looks like a runaway: ` +
-        `${metrics.turns} turns in ~${mins} min producing ~${metrics.outputBytes} bytes of output. ` +
+        `${metrics.turns} turns in ~${mins} min producing ~${metrics.outputBytes} bytes of output.` +
+        `${costLine} ` +
         `Approve to STOP it, or Reject to let it keep running.`,
     });
   },

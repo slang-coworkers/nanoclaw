@@ -6,7 +6,9 @@ import {
   checkRunaway,
   isRunaway,
   measureRunaway,
+  readRunawayCost,
   type RunawayCardDeps,
+  type RunawayCost,
   type RunawayMetrics,
 } from './modules/runaway/detect.js';
 import type { Session } from './types.js';
@@ -20,8 +22,17 @@ function makeOutDb(): Database.Database {
     CREATE TABLE messages_out (id TEXT PRIMARY KEY, seq INTEGER, in_reply_to TEXT, timestamp TEXT NOT NULL,
       deliver_after TEXT, recurrence TEXT, kind TEXT NOT NULL, platform_id TEXT, channel_type TEXT,
       thread_id TEXT, content TEXT NOT NULL);
+    CREATE TABLE session_state (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL);
   `);
   return db;
+}
+
+/** Persist a cost_cap row the way the container's setCostCap does. */
+function seedCost(db: Database.Database, state: Record<string, unknown>): void {
+  db.prepare(`INSERT OR REPLACE INTO session_state (key, value, updated_at) VALUES ('cost_cap', ?, ?)`).run(
+    JSON.stringify(state),
+    new Date().toISOString(),
+  );
 }
 
 // Store timestamps the way the container actually writes them: via SQLite
@@ -52,6 +63,21 @@ function seedOutput(db: Database.Database, bytes: number, atIso: string): void {
 const NOW = Date.parse('2026-06-16T12:00:00.000Z');
 const session = { id: 'sess-x', agent_group_id: 'ag-x' } as Session;
 
+function spyDeps(): { deps: RunawayCardDeps; calls: RunawayMetrics[]; costs: (RunawayCost | null)[] } {
+  const calls: RunawayMetrics[] = [];
+  const costs: (RunawayCost | null)[] = [];
+  return {
+    calls,
+    costs,
+    deps: {
+      async emitCard(_s, metrics, _windowS, cost) {
+        calls.push(metrics);
+        costs.push(cost);
+      },
+    },
+  };
+}
+
 describe('measureRunaway / isRunaway', () => {
   it('counts completed turns and output bytes in the window', () => {
     const db = makeOutDb();
@@ -81,18 +107,6 @@ describe('measureRunaway / isRunaway', () => {
 });
 
 describe('checkRunaway — card emission + episode de-dup + non-blocking', () => {
-  function spyDeps(): { deps: RunawayCardDeps; calls: RunawayMetrics[] } {
-    const calls: RunawayMetrics[] = [];
-    return {
-      calls,
-      deps: {
-        async emitCard(_s, metrics) {
-          calls.push(metrics);
-        },
-      },
-    };
-  }
-
   it('emits exactly one card per ongoing episode', async () => {
     const db = makeOutDb();
     seedTurns(db, 60, new Date(NOW - 30_000).toISOString());
@@ -148,5 +162,51 @@ describe('checkRunaway — card emission + episode de-dup + non-blocking', () =>
     expect(Object.keys(deps)).toEqual(['emitCard']);
     const r = await checkRunaway(session, db, deps, NOW);
     expect(r.tripped).toBe(true); // tripped, but the session is untouched
+  });
+});
+
+describe('readRunawayCost — cost lifted from the container cost_cap row', () => {
+  it('returns spent/cap from a well-formed cost_cap row', () => {
+    const db = makeOutDb();
+    seedCost(db, { capUsd: 200, spentUsd: 245.5, status: 'escalated', immortal: false, window: 'lifetime' });
+    expect(readRunawayCost(db)).toEqual({ spentUsd: 245.5, capUsd: 200 });
+  });
+
+  it('returns null when no cost_cap row exists (cost tracking off)', () => {
+    expect(readRunawayCost(makeOutDb())).toBeNull();
+  });
+
+  it('returns null on unparseable JSON', () => {
+    const db = makeOutDb();
+    db.prepare(`INSERT INTO session_state (key, value, updated_at) VALUES ('cost_cap', '{not json', ?)`).run(
+      new Date().toISOString(),
+    );
+    expect(readRunawayCost(db)).toBeNull();
+  });
+
+  it('returns null when the cap is non-positive (nothing to size against)', () => {
+    const db = makeOutDb();
+    seedCost(db, { capUsd: 0, spentUsd: 5 });
+    expect(readRunawayCost(db)).toBeNull();
+  });
+});
+
+describe('checkRunaway — threads cost into the card', () => {
+  it('passes the session cost to emitCard when a cost_cap row is present', async () => {
+    const db = makeOutDb();
+    seedTurns(db, 60, new Date(NOW - 30_000).toISOString());
+    seedCost(db, { capUsd: 200, spentUsd: 512.25, status: 'escalated', immortal: false, window: 'lifetime' });
+    const { deps, costs } = spyDeps();
+    const r = await checkRunaway(session, db, deps, NOW);
+    expect(r.carded).toBe(true);
+    expect(costs).toEqual([{ spentUsd: 512.25, capUsd: 200 }]);
+  });
+
+  it('passes null cost when the group has no cost tracking (back-compat)', async () => {
+    const db = makeOutDb();
+    seedTurns(db, 60, new Date(NOW - 30_000).toISOString());
+    const { deps, costs } = spyDeps();
+    await checkRunaway(session, db, deps, NOW);
+    expect(costs).toEqual([null]);
   });
 });

@@ -31,6 +31,47 @@ export interface RunawayMetrics {
 }
 
 /**
+ * The two cost numbers an approver needs to size a runaway: how much this
+ * session has spent, and the effective cap for its window. Sourced from the
+ * container's own cost-cap state, so a card and the cost-cap DM read alike.
+ */
+export interface RunawayCost {
+  spentUsd: number;
+  capUsd: number;
+}
+
+/**
+ * Best-effort read of the session's cost-cap state from outbound.db.
+ *
+ * The container's poll loop persists its {@link CostCapState} under the
+ * `cost_cap` key of `session_state` (agent-runner db/session-state.ts) on every
+ * turn, so the host can surface live spend without touching the JSONL
+ * transcript. We lift only spent/cap here — the two numbers a human weighs when
+ * deciding whether to Stop a runaway.
+ *
+ * Returns null when cost tracking is off for the group (non-Claude provider or
+ * no cap configured → no row is ever written), or when the row is missing /
+ * unparseable / carries a non-positive cap. In every such case the card renders
+ * exactly as it did before this field existed (back-compat).
+ */
+export function readRunawayCost(outDb: Database.Database): RunawayCost | null {
+  try {
+    const row = outDb.prepare(`SELECT value FROM session_state WHERE key = 'cost_cap'`).get() as
+      | { value: string }
+      | undefined;
+    if (!row?.value) return null;
+    const parsed = JSON.parse(row.value) as { spentUsd?: unknown; capUsd?: unknown };
+    const spentUsd = Number(parsed.spentUsd);
+    const capUsd = Number(parsed.capUsd);
+    if (!Number.isFinite(spentUsd) || !Number.isFinite(capUsd) || capUsd <= 0) return null;
+    return { spentUsd, capUsd };
+  } catch {
+    // session_state absent (container never started) or JSON garbage → no cost.
+    return null;
+  }
+}
+
+/**
  * Count completed turns and sum output bytes within the trailing window.
  * Read-only against outbound.db. `nowIso`/`windowS` are injectable for tests.
  */
@@ -88,8 +129,12 @@ export function _resetRunawayState(): void {
 }
 
 export interface RunawayCardDeps {
-  /** Emit the admin card. Injected so the sweep wires the real approval flow. */
-  emitCard: (session: Session, metrics: RunawayMetrics, windowS: number) => Promise<void>;
+  /**
+   * Emit the admin card. Injected so the sweep wires the real approval flow.
+   * `cost` is the session's spend/cap when cost tracking is on (null otherwise
+   * — the card stays back-compat).
+   */
+  emitCard: (session: Session, metrics: RunawayMetrics, windowS: number, cost: RunawayCost | null) => Promise<void>;
 }
 
 /**
@@ -118,15 +163,18 @@ export async function checkRunaway(
   }
 
   cardedSessions.add(session.id);
+  const cost = readRunawayCost(outDb);
   log.warn('Runaway suspected — surfacing non-blocking admin card', {
     sessionId: session.id,
     agentGroupId: session.agent_group_id,
     turns: metrics.turns,
     outputBytes: metrics.outputBytes,
     windowS: RUNAWAY_WINDOW_S,
+    spentUsd: cost?.spentUsd,
+    capUsd: cost?.capUsd,
   });
   try {
-    await deps.emitCard(session, metrics, RUNAWAY_WINDOW_S);
+    await deps.emitCard(session, metrics, RUNAWAY_WINDOW_S, cost);
   } catch (err) {
     // If the card failed to send, re-arm so the next sweep retries.
     cardedSessions.delete(session.id);
