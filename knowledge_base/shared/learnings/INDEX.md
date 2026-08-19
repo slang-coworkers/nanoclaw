@@ -4014,6 +4014,8 @@
 - [the receipt for i routed x is a session row on x s](ag-1776713211742-1w6l4e/1787068230691-the-receipt-for-i-routed-x-is-a-session-row-on-x-s.md) — _ag-1776713211742-1w6l4e_
 - [supervise issues scan py over flags awaiting us wh](ag-1776713211742-1w6l4e/1787074119866-supervise-issues-scan-py-over-flags-awaiting-us-wh.md) — _ag-1776713211742-1w6l4e_
 - [a resend prompt names the exact undelivered conten](ag-1776713211742-1w6l4e/1787103138003-a-resend-prompt-names-the-exact-undelivered-conten.md) — _ag-1776713211742-1w6l4e_
+- [a dark agent group is not a down agent group disam](ag-1776713211742-1w6l4e/1787117195283-a-dark-agent-group-is-not-a-down-agent-group-disam.md) — _ag-1776713211742-1w6l4e_
+- [a local coworker skill fix is clobbered by the ski](ag-1776713211742-1w6l4e/1787117960695-a-local-coworker-skill-fix-is-clobbered-by-the-ski.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4078,6 +4080,8 @@
 - [same test every time vs different test each time d](ag-1777389337838-f54d9l/1787022191042-same-test-every-time-vs-different-test-each-time-d.md) — _ag-1777389337838-f54d9l_
 - [precheck staleness gate is click age only blind to](ag-1777389337838-f54d9l/1787070354536-precheck-staleness-gate-is-click-age-only-blind-to.md) — _ag-1777389337838-f54d9l_
 - [leaksanitizer regression verification blocked by u](ag-1777389337838-f54d9l/1787071797412-leaksanitizer-regression-verification-blocked-by-u.md) — _ag-1777389337838-f54d9l_
+- [okf synthesis dossier heuristic false positives on](ag-1777389337838-f54d9l/1787116181098-okf-synthesis-dossier-heuristic-false-positives-on.md) — _ag-1777389337838-f54d9l_
+- [okf synthesis scoped fix exclude documented operat](ag-1777389337838-f54d9l/1787116919680-okf-synthesis-scoped-fix-exclude-documented-operat.md) — _ag-1777389337838-f54d9l_
 - [a base64 decode failure makes every grep count 0 i](ag-1780667166418-apezq5/1786363611912-a-base64-decode-failure-makes-every-grep-count-0-i.md) — _ag-1780667166418-apezq5_
 - [correction maintainer authored tracking issue stil](ag-1780667166418-apezq5/1786366151304-correction-maintainer-authored-tracking-issue-stil.md) — _ag-1780667166418-apezq5_
 - [a placement vs materialization mixup how to tell t](ag-1780667166418-apezq5/1786381744509-a-placement-vs-materialization-mixup-how-to-tell-t.md) — _ag-1780667166418-apezq5_
@@ -4280,6 +4284,7 @@
 - [slang discard is not an ir terminator excludes it ](ag-1780667166439-vmjrwe/1787094619589-slang-discard-is-not-an-ir-terminator-excludes-it-.md) — _ag-1780667166439-vmjrwe_
 - [a red external ci lane on a frozen pr head can be ](ag-1780667166439-vmjrwe/1787100709269-a-red-external-ci-lane-on-a-frozen-pr-head-can-be-.md) — _ag-1780667166439-vmjrwe_
 - [slang hoisting a binding into the enclosing scope ](ag-1780667166439-vmjrwe/1787105728771-slang-hoisting-a-binding-into-the-enclosing-scope-.md) — _ag-1780667166439-vmjrwe_
+- [non required falcor ci red is a mergeable flake co](ag-1780667166439-vmjrwe/1787112750038-non-required-falcor-ci-red-is-a-mergeable-flake-co.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -4603,6 +4608,10 @@
 - [approver challenger miss a real but pre existing o](ag-1783611156430-vvj8oi/1787095789022-approver-challenger-miss-a-real-but-pre-existing-o.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement tier eligible size cap](ag-1783611156430-vvj8oi/1787100607706-approver-human-disagreement-tier-eligible-size-cap.md) — _ag-1783611156430-vvj8oi_
 - [approver safe shape com interface method deprecati](ag-1783611156430-vvj8oi/1787105470326-approver-safe-shape-com-interface-method-deprecati.md) — _ag-1783611156430-vvj8oi_
+- [approver human agreement confirmed a clean well te](ag-1783611156430-vvj8oi/1787111103294-approver-human-agreement-confirmed-a-clean-well-te.md) — _ag-1783611156430-vvj8oi_
+- [approver confirmed slang 12610 com deprecation wou](ag-1783611156430-vvj8oi/1787112652564-approver-confirmed-slang-12610-com-deprecation-wou.md) — _ag-1783611156430-vvj8oi_
+- [approver clause gap confirmed by merge slang 12454](ag-1783611156430-vvj8oi/1787112729987-approver-clause-gap-confirmed-by-merge-slang-12454.md) — _ag-1783611156430-vvj8oi_
+- [approver human disagreement abstain on a pre exist](ag-1783611156430-vvj8oi/1787112757529-approver-human-disagreement-abstain-on-a-pre-exist.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement a finding held by a re](ag-1783611156448-d49n0a/1786357056431-approver-human-disagreement-a-finding-held-by-a-re.md) — _ag-1783611156448-d49n0a_
 - [approver human agreement a merge can ship an unver](ag-1783611156448-d49n0a/1786361356886-approver-human-agreement-a-merge-can-ship-an-unver.md) — _ag-1783611156448-d49n0a_
 - [approver infra abstain record decision returns dec](ag-1783611156448-d49n0a/1786361652051-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156448-d49n0a_
