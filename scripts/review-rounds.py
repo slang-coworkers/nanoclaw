@@ -1,65 +1,85 @@
 #!/usr/bin/env python3
-"""review-rounds — how many human-review rounds does a PR need, bot vs human?
+"""review-rounds — how much human review does a PR draw, bot vs human, over time?
 
 Companion to bot-contributions (throughput) and regression-quality (does the
 work hold up). This one prices the REVIEW friction: when the bot opens a PR, how
-many times does a human have to send it back before it merges — and is that
-converging toward, or below, the friction a human-authored PR draws?
+much human back-and-forth does it draw before it merges — and is that converging
+toward, or below, the friction a human-authored PR draws?
 
-Uses the GitHub GraphQL API (one query per repo page pulls each PR's author and
-its full review list in a single round-trip; the REST equivalent is one call per
-PR). Auth is the shader-slang GitHub-App installation token, minted by the local
-helper and passed to a direct `curl --noproxy '*'` so a leaked http_proxy can't
-tunnel the request through the OneCLI gateway (same rule funnel-cron enforces).
+Uses the GitHub GraphQL API: one query per repo page pulls each PR's author, its
+review list, its inline review THREADS, and its conversation COMMENTS in a single
+round-trip (the REST equivalent is several calls per PR). Auth is the shader-slang
+GitHub-App installation token, minted by the local helper and passed to a direct
+`curl --noproxy '*'` so a leaked http_proxy can't tunnel the request through the
+OneCLI gateway (same rule funnel-cron enforces).
 
-WHAT COUNTS AS A ROUND (the definition, stated here so a reader cannot infer the
-wrong one):
+WHAT COUNTS (the definitions, stated here so a reader cannot infer the wrong one):
 
-  A human-review ROUND is one review submitted with state CHANGES_REQUESTED by a
-  reviewer who is neither a bot/CI actor nor the PR's own author — i.e. one time
-  a human read the diff and sent it back. `rounds` for a PR is the count of such
-  reviews. Zero rounds = the PR merged without a human ever requesting changes (a
-  clean first pass, though it may still have drawn APPROVED/COMMENTED reviews).
+  HEADLINE — a human-review CYCLE. `cycles` = (human-initiated inline review
+  THREADS) + (human conversation COMMENTS). Each distinct locus of human feedback
+  — an inline discussion thread a human opened, or a top-level PR conversation
+  remark — is one cycle of back-and-forth. Inline feedback is counted by THREAD
+  (`pullRequest.reviewThreads`, thread attributed to its opening comment's
+  author), NOT by formal review submission, so a single "changes requested"
+  review carrying three inline threads reads as three cycles of discussion rather
+  than one. Conversation comments are `pullRequest.comments` (the issue-level
+  back-and-forth). This is the number that lines up with the published
+  "Avg human review cycles / PR" slide — calibrated against 129 real bot PRs in
+  shader-slang/slang (merged 2026-06-22..08-02) it means ~2.9 cycles/PR overall
+  and tracks the slide's per-week 2.5–4.2 band (mean abs error ~0.75, the closest
+  of the candidate definitions tested: threads+comments beat submissions-only
+  (~2.3), threads-only (~1.6), and submissions+comments (~3.6)).
 
-  Excluded reviewers: our own bot (nv-slang-bot), CI/automation (github-actions,
-  dependabot, copilot-pull-request-reviewer, devin-ai-integration), anything the
-  API tags __typename==Bot or whose login ends in "[bot]", and the PR author's
-  own self-reviews (GitHub records those and they are not review a human PAID).
+  SECONDARY — a human-review ROUND. `rounds` = reviews submitted with state
+  CHANGES_REQUESTED by a human (non-bot, non-author) — the strict "a human sent
+  it back" count. Near-zero on these repos (most review lands as COMMENTED, not
+  CHANGES_REQUESTED), kept beside the headline, never as it.
 
-  SECONDARY, reported beside the headline and never as it: `submissions` = every
-  human review submission on the PR (APPROVED + CHANGES_REQUESTED + COMMENTED),
-  same reviewer-exclusion rules. A COMMENTED review is real human attention even
-  when it requests no changes; CHANGES_REQUESTED is the strict "sent back" count.
-  The two are kept apart on purpose — see the reviewCycles panel, which prices
-  feedback SESSIONS with a different (session-collapsed) rule; this producer is
-  deliberately a simpler, per-submission census and does not share its code.
+  SECONDARY — `submissions` = every human review submission (APPROVED +
+  CHANGES_REQUESTED + COMMENTED). Its components `threads` and `issueComments`
+  ship too, so the cycle number is fully decomposable.
+
+  Excluded from every human count: our own bot (nv-slang-bot), CI/automation
+  (github-actions, dependabot, copilot / copilot-pull-request-reviewer,
+  devin-ai-integration), anything the API tags __typename==Bot or whose login
+  ends in "[bot]", and the PR author's own comments/reviews (self-review is not
+  review a human PAID).
+
+  NOTE this shares no code with the reviewCycles panel (funnel.ts /
+  funnel-metrics.ts), which prices feedback SESSIONS with a session-collapsed
+  rule; this producer is a deliberately simpler per-thread / per-comment census.
 
 AUTHOR CLASS: a PR is bot-authored iff its author login normalises to
-`nv-slang-bot` (the App bot appears as both `nv-slang-bot` and `nv-slang-bot[bot]`
-across API surfaces; we normalise before comparing). Everything else is
-human-authored. Other automation authoring PRs (e.g. dependabot) is negligible
-in the shader-slang product repos and would fall in "human"; documented, not
-silently folded into "bot".
+`nv-slang-bot`. That is the GitHub-App bot `app/nv-slang-bot` (GraphQL returns it
+as the Bot actor `nv-slang-bot`; REST/search spell it `nv-slang-bot[bot]`; the
+plain USER `nv-slang-bot` authors ≈0 PRs — see bot-contributions.ts). We
+normalise (`[bot]` stripped, lower-cased) before comparing so every spelling of
+the App bot is caught. Everything else is human-authored; other automation
+authoring PRs (e.g. dependabot) is negligible here and would fall in "human" —
+documented, not silently folded into "bot".
 
-SCOPE: MERGED PRs only, over the last ~6 months (--since, default 2026-04-10).
-OPEN PRs are excluded on purpose: the metric buckets by MERGE WEEK, and an open
-PR has no merge week to bucket into — including it would either drop it or need a
-second, incomparable time axis. Merged-only also matches "friction a SHIPPED PR
-drew", which is the question.
+SCOPE: MERGED PRs only, over the last ~6 months (--since, default 2026-04-10),
+across --repos (default the three shader-slang product repos). OPEN PRs are
+excluded on purpose: the metric buckets by MERGE WEEK, and an open PR has no
+merge week to bucket into. The published slide is scoped to shader-slang/slang
+alone, so alongside the combined `weekly`/`totals` the snapshot also carries a
+`perRepo` breakdown — a slang-only reader matches the slide, the combined total
+prices the whole pipeline.
 
 AGGREGATION: each merged PR is bucketed by the Monday (UTC) of the week it
 merged. Per week and per author class we emit
-  { prs, avgRounds, medianRounds, p90Rounds, zeroRoundPct, avgSubmissions }
+  { prs, avgCycles, medianCycles, p90Cycles, avgRounds, medianRounds, p90Rounds,
+    zeroRoundPct, avgSubmissions, avgThreads, avgIssueComments }
 where zeroRoundPct is the share of that week's merged PRs that took 0
 change-requested rounds (the clean-first-pass rate).
 
 FAIL CLOSED. Every fetch runs through Collection; the first failure marks the run
 INCOMPLETE and the snapshot is written with complete:false, a populated errors[],
 and NO weekly metrics, then the process exits nonzero. A collector that broke
-must never be indistinguishable from a genuinely quiet, zero-round week — an
-outage that published a clean zero would read as "review got easier". The
-incomplete snapshot overwrites the previous one on purpose, so the dashboard can
-see that its data is broken rather than render last week's numbers as today's.
+must never be indistinguishable from a genuinely quiet week — an outage that
+published a clean zero would read as "review got easier". The incomplete snapshot
+overwrites the previous one on purpose, so the dashboard can see that its data is
+broken rather than render last week's numbers as today's.
 
   python3 scripts/review-rounds.py [--since YYYY-MM-DD] [--repos a/b,c/d]
       [--install-id N] [--json <out>]
@@ -77,7 +97,7 @@ import tempfile
 import time
 from datetime import datetime, timedelta, timezone
 
-SCHEMA = 1
+SCHEMA = 2
 
 TOKEN_SCRIPT = f"{os.environ.get('HOME', '')}/.config/nanoclaw/gh-app-token.py"
 # shader-slang org installation id — the same one bot-contributions.ts and
@@ -90,13 +110,14 @@ GRAPHQL = "https://api.github.com/graphql"
 # AUTHOR-class question ("was this PR ours?"), so only nv-slang-bot counts.
 OUR_BOT = {"nv-slang-bot"}
 # Broader: any actor that is not a human paying review attention. Used only to
-# EXCLUDE reviewers from the round/submission counts. Mirrors the reviewer
-# exclusion in scripts/funnel-metrics.ts (kept as a local literal — python can't
-# import the TS; the header notes they must stay in sync).
+# EXCLUDE reviewers/commenters from the cycle/round/submission counts. Mirrors the
+# reviewer exclusion in scripts/funnel-metrics.ts (kept as a local literal —
+# python can't import the TS; the header notes they must stay in sync).
 BOT_REVIEWERS = {
     "nv-slang-bot",
     "github-actions",
     "dependabot",
+    "copilot",
     "copilot-pull-request-reviewer",
     "devin-ai-integration",
 }
@@ -113,10 +134,10 @@ def is_bot_author(actor):
     return normalise_login(actor.get("login")) in OUR_BOT
 
 
-def is_bot_reviewer(actor):
-    """A reviewer that is not human review cost."""
+def is_bot_actor(actor):
+    """A reviewer/commenter that is not human review attention."""
     if not actor:
-        return True  # ghost/unknown reviewer — do not credit it as human attention
+        return True  # ghost/unknown — do not credit it as human attention
     login = (actor.get("login") or "").strip()
     if actor.get("__typename") == "Bot":
         return True
@@ -204,10 +225,13 @@ def graphql(col, token, query, variables, what):
     return data
 
 
+# One page pulls each PR's author, review list, inline review threads (with just
+# the opening comment's author, so a thread is attributed to whoever started it),
+# and conversation comments — everything the cycle/round/submission counts need.
 PR_QUERY = """
 query($owner:String!, $name:String!, $cursor:String) {
   repository(owner:$owner, name:$name) {
-    pullRequests(first:40, after:$cursor, states:[MERGED],
+    pullRequests(first:25, after:$cursor, states:[MERGED],
                  orderBy:{field:UPDATED_AT, direction:DESC}) {
       pageInfo { hasNextPage endCursor }
       nodes {
@@ -218,6 +242,14 @@ query($owner:String!, $name:String!, $cursor:String) {
           totalCount
           nodes { state author { login __typename } }
         }
+        reviewThreads(first:100) {
+          totalCount
+          nodes { comments(first:1) { nodes { author { login __typename } } } }
+        }
+        comments(first:100) {
+          totalCount
+          nodes { author { login __typename } }
+        }
       }
     }
   }
@@ -225,17 +257,78 @@ query($owner:String!, $name:String!, $cursor:String) {
 """
 
 
-def collect_repo(col, token, repo, since_iso):
-    """Yield per-PR review facts for one repo's merged PRs newer than since_iso.
+def pr_facts(pr):
+    """Per-PR review facts for one PullRequest node, or None if it never merged."""
+    merged_at = pr.get("mergedAt")
+    if not merged_at:
+        return None
+    author = pr.get("author")
+    author_login = normalise_login((author or {}).get("login"))
 
-    PRs come newest-updated first; a merged PR's mergedAt is stable, so we page
-    until every node on a page merged before `since` (updated-order means a late
-    page can still hold an in-window PR, so we filter per-node and stop only when
-    a whole page is out of window)."""
+    def is_self(actor):
+        return bool(author_login) and normalise_login((actor or {}).get("login")) == author_login
+
+    reviews = pr.get("reviews") or {}
+    rnodes = reviews.get("nodes") or []
+    rounds = 0
+    submissions = 0
+    for rv in rnodes:
+        ra = rv.get("author")
+        if is_bot_actor(ra) or is_self(ra):
+            continue
+        state = rv.get("state")
+        if state in ("APPROVED", "CHANGES_REQUESTED", "COMMENTED"):
+            submissions += 1
+        if state == "CHANGES_REQUESTED":
+            rounds += 1
+
+    rt = pr.get("reviewThreads") or {}
+    tnodes = rt.get("nodes") or []
+    threads = 0
+    for th in tnodes:
+        cs = (th.get("comments") or {}).get("nodes") or []
+        starter = cs[0].get("author") if cs else None
+        if is_bot_actor(starter) or is_self(starter):
+            continue
+        threads += 1
+
+    cc = pr.get("comments") or {}
+    cnodes = cc.get("nodes") or []
+    issue_comments = 0
+    for c in cnodes:
+        ca = c.get("author")
+        if is_bot_actor(ca) or is_self(ca):
+            continue
+        issue_comments += 1
+
+    # >100 of any sub-resource means the first-page window truncated it and the
+    # counts are a FLOOR for this PR — flag it rather than silently undercount.
+    truncated = (
+        (reviews.get("totalCount") or 0) > len(rnodes)
+        or (rt.get("totalCount") or 0) > len(tnodes)
+        or (cc.get("totalCount") or 0) > len(cnodes)
+    )
+    return {
+        "number": pr.get("number"),
+        "mergedAt": merged_at,
+        "bot": is_bot_author(author),
+        "rounds": rounds,
+        "submissions": submissions,
+        "threads": threads,
+        "issueComments": issue_comments,
+        "cycles": threads + issue_comments,
+        "truncated": truncated,
+    }
+
+
+def collect_repo(col, token, repo, since_iso):
+    """Per-PR review facts for one repo's merged PRs newer than since_iso, or None
+    on failure. Pages newest-updated first; stops when a whole page merged before
+    the window."""
     owner, name = repo.split("/", 1)
     cursor = None
     out = []
-    for _ in range(200):  # backstop; a repo with >8000 merged PRs is not real here
+    for _ in range(400):  # backstop; >10000 merged PRs is not real here
         data = graphql(col, token, PR_QUERY, {"owner": owner, "name": name, "cursor": cursor},
                        what=f"{repo} pullRequests")
         if data is None:
@@ -248,48 +341,15 @@ def collect_repo(col, token, repo, since_iso):
         nodes = conn.get("nodes") or []
         in_window_any = False
         for pr in nodes:
-            merged_at = pr.get("mergedAt")
-            if not merged_at:
-                continue
-            if merged_at < since_iso:
+            f = pr_facts(pr)
+            if f is None or f["mergedAt"] < since_iso:
                 continue
             in_window_any = True
-            reviews = pr.get("reviews") or {}
-            rnodes = reviews.get("nodes") or []
-            total = reviews.get("totalCount") or 0
-            author = pr.get("author")
-            author_login = normalise_login((author or {}).get("login"))
-            changes = 0
-            submissions = 0
-            for rv in rnodes:
-                ra = rv.get("author")
-                if is_bot_reviewer(ra):
-                    continue
-                if normalise_login((ra or {}).get("login")) == author_login and author_login:
-                    continue  # self-review is not review a human paid
-                state = rv.get("state")
-                if state in ("APPROVED", "CHANGES_REQUESTED", "COMMENTED"):
-                    submissions += 1
-                if state == "CHANGES_REQUESTED":
-                    changes += 1
-            out.append({
-                "repo": repo,
-                "number": pr.get("number"),
-                "mergedAt": merged_at,
-                "bot": is_bot_author(author),
-                "rounds": changes,
-                "submissions": submissions,
-                # A PR with >100 review submissions would truncate the first-page
-                # window and undercount both numbers — flag it so the aggregate
-                # can be read as a floor for that PR rather than silently wrong.
-                "truncated": total > len(rnodes),
-            })
+            f["repo"] = repo
+            out.append(f)
         page = conn.get("pageInfo") or {}
         if not page.get("hasNextPage"):
             break
-        # Newest-updated first: once a full page holds no in-window merge, older
-        # pages cannot either (mergedAt <= updatedAt is not guaranteed, but a page
-        # of 40 all-out-of-window merges is a safe stop for a 6-month window).
         if nodes and not in_window_any:
             break
         cursor = page.get("endCursor")
@@ -307,21 +367,51 @@ def percentile(values, pct):
 
 
 def summarise(prs):
-    """Aggregate one week/class bucket of PR records."""
-    rounds = [p["rounds"] for p in prs]
-    subs = [p["submissions"] for p in prs]
+    """Aggregate one bucket of PR records."""
     n = len(prs)
     if n == 0:
-        return {"prs": 0, "avgRounds": None, "medianRounds": None, "p90Rounds": None,
-                "zeroRoundPct": None, "avgSubmissions": None}
+        return {"prs": 0, "avgCycles": None, "medianCycles": None, "p90Cycles": None,
+                "avgRounds": None, "medianRounds": None, "p90Rounds": None,
+                "zeroRoundPct": None, "avgSubmissions": None,
+                "avgThreads": None, "avgIssueComments": None}
+    cycles = [p["cycles"] for p in prs]
+    rounds = [p["rounds"] for p in prs]
     zero = sum(1 for r in rounds if r == 0)
     return {
         "prs": n,
+        "avgCycles": round(statistics.fmean(cycles), 2),
+        "medianCycles": round(statistics.median(cycles), 2),
+        "p90Cycles": percentile(cycles, 90),
         "avgRounds": round(statistics.fmean(rounds), 2),
         "medianRounds": round(statistics.median(rounds), 2),
         "p90Rounds": percentile(rounds, 90),
         "zeroRoundPct": round(100 * zero / n, 1),
-        "avgSubmissions": round(statistics.fmean(subs), 2),
+        "avgSubmissions": round(statistics.fmean(p["submissions"] for p in prs), 2),
+        "avgThreads": round(statistics.fmean(p["threads"] for p in prs), 2),
+        "avgIssueComments": round(statistics.fmean(p["issueComments"] for p in prs), 2),
+    }
+
+
+def weekly_of(prs):
+    """[{week, botAuthored, humanAuthored}] over the merge weeks present in prs."""
+    weeks = {}
+    for p in prs:
+        wk = merge_week(p["mergedAt"])
+        weeks.setdefault(wk, {"bot": [], "human": []})
+        weeks[wk]["bot" if p["bot"] else "human"].append(p)
+    return [
+        {"week": wk, "botAuthored": summarise(weeks[wk]["bot"]),
+         "humanAuthored": summarise(weeks[wk]["human"])}
+        for wk in sorted(weeks)
+    ]
+
+
+def class_totals(prs):
+    return {
+        "prs": len(prs),
+        "botAuthored": summarise([p for p in prs if p["bot"]]),
+        "humanAuthored": summarise([p for p in prs if not p["bot"]]),
+        "reviewTruncatedPrs": sum(1 for p in prs if p["truncated"]),
     }
 
 
@@ -345,9 +435,12 @@ def write_json(path, doc):
 
 
 DEFINITION = (
-    "A human-review round = one CHANGES_REQUESTED review by a non-bot, non-author "
-    "reviewer (a human sending the PR back). Bot/CI reviewers and self-reviews are "
-    "excluded. avgSubmissions (secondary) counts all human review submissions "
+    "A human-review CYCLE = one human-initiated inline review THREAD "
+    "(reviewThreads, attributed to its opening comment's author) + one human "
+    "conversation COMMENT (issue-level), counting inline feedback by thread rather "
+    "than by formal review submission. Bot/CI reviewers and self-reviews are "
+    "excluded. SECONDARY: rounds = human CHANGES_REQUESTED reviews (strict "
+    "sent-back count); submissions = all human review submissions "
     "(APPROVED+CHANGES_REQUESTED+COMMENTED). MERGED PRs only, bucketed by merge "
     "week (Monday UTC)."
 )
@@ -373,6 +466,7 @@ def main():
         "generatedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "since": ARGS.since,
         "definition": DEFINITION,
+        "metric": "review-cycles",
         "window": {"since": ARGS.since, "states": ["MERGED"], "repos": repos,
                    "weekBucket": "merge-week-monday-utc"},
         "complete": False,
@@ -399,6 +493,7 @@ def main():
     if token is None:
         return publish(1)
 
+    by_repo = {}
     all_prs = []
     for repo in repos:
         rows = collect_repo(col, token, repo, since_iso)
@@ -406,6 +501,7 @@ def main():
             # A repo failed mid-collection. Everything below would print numbers a
             # reader could not tell apart from a real result.
             return publish(1)
+        by_repo[repo] = rows
         all_prs.extend(rows)
 
     if not col.ok:
@@ -414,42 +510,26 @@ def main():
         col.fail("prs", "no merged PRs in window — nothing to measure")
         return publish(2)
 
-    # Bucket weekly, then per class.
-    weeks = {}
-    for p in all_prs:
-        wk = merge_week(p["mergedAt"])
-        weeks.setdefault(wk, {"bot": [], "human": []})
-        weeks[wk]["bot" if p["bot"] else "human"].append(p)
-
-    weekly = []
-    for wk in sorted(weeks):
-        weekly.append({
-            "week": wk,
-            "botAuthored": summarise(weeks[wk]["bot"]),
-            "humanAuthored": summarise(weeks[wk]["human"]),
-        })
-
-    bot_all = [p for p in all_prs if p["bot"]]
-    human_all = [p for p in all_prs if not p["bot"]]
-    truncated = sum(1 for p in all_prs if p["truncated"])
-
     doc.update({
-        "totals": {
-            "prs": len(all_prs),
-            "botAuthored": summarise(bot_all),
-            "humanAuthored": summarise(human_all),
-            "reviewTruncatedPrs": truncated,
-        },
-        "weekly": weekly,
+        "totals": class_totals(all_prs),
+        "weekly": weekly_of(all_prs),
+        # Per-repo breakdown so a slang-only reader matches the published slide,
+        # while the combined weekly/totals above price the whole pipeline. Repos
+        # with no in-window merges are omitted.
+        "perRepo": {repo: {"totals": class_totals(rows), "weekly": weekly_of(rows)}
+                    for repo, rows in by_repo.items() if rows},
     })
 
-    print(f"review-rounds — {len(all_prs)} merged PRs across {len(repos)} repo(s) since {ARGS.since}: "
-          f"{len(bot_all)} bot / {len(human_all)} human, {len(weekly)} week bucket(s)")
-    bt, ht = doc["totals"]["botAuthored"], doc["totals"]["humanAuthored"]
-    print(f"  avg CHANGES_REQUESTED rounds/PR — bot {bt['avgRounds']}  human {ht['avgRounds']}  "
-          f"(clean-first-pass: bot {bt['zeroRoundPct']}%  human {ht['zeroRoundPct']}%)")
-    if truncated:
-        print(f"  NOTE: {truncated} PR(s) had >100 review submissions; their counts are a floor.")
+    bt = doc["totals"]["botAuthored"]
+    ht = doc["totals"]["humanAuthored"]
+    print(f"review-cycles — {len(all_prs)} merged PRs across {len(repos)} repo(s) since {ARGS.since}: "
+          f"{bt['prs']} bot / {ht['prs']} human, {len(doc['weekly'])} week bucket(s)")
+    print(f"  avg human review CYCLES/PR — bot {bt['avgCycles']}  human {ht['avgCycles']}  "
+          f"(bot: {bt['avgThreads']} threads + {bt['avgIssueComments']} comments; "
+          f"strict CHANGES_REQUESTED rounds bot {bt['avgRounds']}/human {ht['avgRounds']})")
+    trunc = doc["totals"]["reviewTruncatedPrs"]
+    if trunc:
+        print(f"  NOTE: {trunc} PR(s) had >100 reviews/threads/comments; their counts are a floor.")
     return publish(0)
 
 
