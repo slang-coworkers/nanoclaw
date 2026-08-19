@@ -4392,13 +4392,15 @@ function getState(): DashboardState {
         }
       }
 
-      // Count scheduled tasks from session DBs
+      // Count scheduled tasks from the background-refreshed per-group snapshot.
+      // getGroupTaskSummary is a memo hit in steady state, so the 5s state
+      // broadcast no longer walks every session dir + opens every inbound.db;
+      // it falls back to a live (mtime-cached) scan only when the memo is cold.
       if (db) {
         try {
           const agRow2 = db.prepare('SELECT id FROM agent_groups WHERE folder = ?').get(folder) as any;
           if (agRow2) {
-            const { sessionIds } = collectSessionDbFiles(agRow2.id);
-            taskCount = extractScheduledTasks(agRow2.id, sessionIds).length;
+            taskCount = getGroupTaskSummary(agRow2.id).tasks.length;
           }
         } catch {
           /* ignore */
@@ -4637,6 +4639,8 @@ export function resetTransientDashboardStateForTests(): void {
   hookEverSeen.clear();
   lastMessageTsCache.clear();
   msgTsFileCache.clear();
+  groupTaskCache.clear();
+  perFileTaskCache.clear();
   runningContainers.clear();
   _mcpAllTools = [];
   _typeColors = null;
@@ -5003,59 +5007,193 @@ function collectSessionDbFiles(agentGroupId: string): { files: Map<string, strin
   return { files, sessionIds };
 }
 
-/** Extract scheduled tasks from inbound.db for the manifest. */
-function extractScheduledTasks(
-  agentGroupId: string,
-  sessionIds: string[],
-): {
+/** One pending/paused scheduled task row, as surfaced to the dashboard. */
+interface ScheduledTaskRow {
   origId: string;
   sessionId: string;
   recurrence: string | null;
   processAfter: string | null;
   content: string;
   status: string;
-}[] {
-  const tasks: {
-    origId: string;
-    sessionId: string;
-    recurrence: string | null;
-    processAfter: string | null;
-    content: string;
-    status: string;
-  }[] = [];
-  for (const sessId of sessionIds) {
-    const dbPath = join(getDataDir(), 'v2-sessions', agentGroupId, sessId, 'inbound.db');
-    if (!existsSync(dbPath)) continue;
-    let sdb: Database | null = null;
+}
+
+// mtime-keyed cache of the pending/paused task rows in each session's inbound.db.
+// A scheduled task only changes when the host writes messages_in (create / pause
+// / resume / delete), which bumps the file's mtime; an idle session's inbound.db
+// is therefore a cheap stat rather than a sqlite open on every scan. Mirrors the
+// perFileCostCache / msgTsFileCache mtime-gating already used for the cost and
+// message-timestamp scans. Pruned in refreshGroupTaskCache once it outgrows the
+// live session set. Correctness is mtime-exact: a task mutation changes the file,
+// so the very next scan re-reads it (no stale window past the mutating write).
+const perFileTaskCache = new Map<string, { mtimeMs: number; tasks: ScheduledTaskRow[] }>();
+
+/** Read the pending/paused tasks from one session's inbound.db, mtime-gated:
+ *  reuse the cached rows when the file is unchanged since the last scan, so only
+ *  sessions whose task set actually moved pay a sqlite open. Tri-state: `ok:false`
+ *  means the DB open/query failed (transient lock / I/O). Callers building a
+ *  cached aggregate must NOT publish a `!ok` result, else a momentary lock gets
+ *  memoized as a group-wide undercount. A genuinely absent file is `ok:true` with
+ *  no tasks. Only clean reads are cached; a failed read is retried next scan. */
+function extractSessionTasks(dbPath: string, sessionId: string): { ok: boolean; tasks: ScheduledTaskRow[] } {
+  let mtimeMs: number;
+  try {
+    mtimeMs = statSync(dbPath).mtimeMs; // throws if the file doesn't exist
+  } catch {
+    perFileTaskCache.delete(dbPath);
+    return { ok: true, tasks: [] }; // no inbound.db → genuinely no tasks
+  }
+  const cached = perFileTaskCache.get(dbPath);
+  if (cached && cached.mtimeMs === mtimeMs) return { ok: true, tasks: cached.tasks };
+  let sdb: Database.Database | null = null;
+  try {
+    sdb = new Database(dbPath, { readonly: true });
+    sdb.pragma('busy_timeout = 3000');
+    const rows = sdb
+      .prepare(
+        "SELECT id, recurrence, process_after, content, status FROM messages_in WHERE kind = 'task' AND status IN ('pending', 'paused')",
+      )
+      .all() as any[];
+    const tasks: ScheduledTaskRow[] = rows.map((r) => ({
+      origId: r.id,
+      sessionId,
+      recurrence: r.recurrence || null,
+      processAfter: r.process_after || null,
+      content: r.content,
+      status: r.status,
+    }));
+    perFileTaskCache.set(dbPath, { mtimeMs, tasks }); // cache only on a clean read
+    return { ok: true, tasks };
+  } catch {
+    return { ok: false, tasks: [] }; // corrupt/locked — don't cache; next scan retries
+  } finally {
     try {
-      sdb = new Database(dbPath, { readonly: true });
-      sdb.pragma('busy_timeout = 3000');
-      const rows = sdb
-        .prepare(
-          "SELECT id, recurrence, process_after, content, status FROM messages_in WHERE kind = 'task' AND status IN ('pending', 'paused')",
-        )
-        .all() as any[];
-      for (const r of rows) {
-        tasks.push({
-          origId: r.id,
-          sessionId: sessId,
-          recurrence: r.recurrence || null,
-          processAfter: r.process_after || null,
-          content: r.content,
-          status: r.status,
-        });
-      }
+      sdb?.close();
     } catch {
-      /* DB may be corrupt or locked */
-    } finally {
-      try {
-        sdb?.close();
-      } catch {
-        /* */
-      }
+      /* */
     }
   }
-  return tasks;
+}
+
+/** Scan a group's sessions for scheduled tasks. Tri-state: `ok:false` if ANY
+ *  constituent session read failed, so the memo layer can decline to publish a
+ *  possibly-undercounted aggregate (a transient lock must not poison the memo). */
+function extractGroupTasks(agentGroupId: string, sessionIds: string[]): { ok: boolean; tasks: ScheduledTaskRow[] } {
+  const tasks: ScheduledTaskRow[] = [];
+  let ok = true;
+  for (const sessId of sessionIds) {
+    const dbPath = join(getDataDir(), 'v2-sessions', agentGroupId, sessId, 'inbound.db');
+    const r = extractSessionTasks(dbPath, sessId);
+    if (!r.ok) ok = false;
+    for (const t of r.tasks) tasks.push(t);
+  }
+  return { ok, tasks };
+}
+
+/** Fail-soft task list across a group's sessions (returns whatever read cleanly).
+ *  Used by /api/tasks and the import/export paths, which surface a live snapshot
+ *  and can tolerate a transient partial without poisoning the shared memo. */
+function extractScheduledTasks(agentGroupId: string, sessionIds: string[]): ScheduledTaskRow[] {
+  return extractGroupTasks(agentGroupId, sessionIds).tasks;
+}
+
+// Per-agent-group scheduled-task snapshot, refreshed on a background interval so
+// the hot paths (getState's 5s state broadcast, the /api/overview landing panel,
+// /api/tasks) serve counts/rows from memory instead of walking every session dir
+// and opening every inbound.db inline on the request/broadcast path. Mirrors
+// sessionCostCache / refreshSessionCostCache. The underlying scan is mtime-gated
+// (extractSessionTasks), so a steady-state refresh is a stat per session, not a
+// sqlite open. Readers fall back to a direct (still mtime-cached) scan when a
+// group is not yet in the snapshot, so a freshly-created group is never missed.
+interface GroupTaskSummary {
+  tasks: ScheduledTaskRow[];
+  active: number;
+  paused: number;
+  completed: number;
+  // When this group's summary was last (re)published — per-group, since the
+  // refresh publishes each group independently rather than swapping the whole
+  // map at the end, so readers observe a completed group's fresh count at once.
+  refreshedAt: number;
+}
+const groupTaskCache = new Map<string, GroupTaskSummary>();
+
+function summarizeGroupTasks(tasks: ScheduledTaskRow[]): GroupTaskSummary {
+  let active = 0;
+  let paused = 0;
+  let completed = 0;
+  for (const t of tasks) {
+    const st = t.status === 'pending' ? 'active' : t.status;
+    if (st === 'active') active++;
+    else if (st === 'paused') paused++;
+    else if (st === 'completed') completed++;
+  }
+  return { tasks, active, paused, completed, refreshedAt: Date.now() };
+}
+
+/** Snapshot of a group's scheduled tasks: memo hit when warm, else a live
+ *  (mtime-cached) scan. The memo is seeded only on a clean read: a partial (a
+ *  constituent DB read failed) is returned for this one response but not cached,
+ *  so the next reader/refresh retries instead of memoizing an undercount. */
+function getGroupTaskSummary(agentGroupId: string): GroupTaskSummary {
+  const cached = groupTaskCache.get(agentGroupId);
+  if (cached) return cached;
+  const { sessionIds } = collectSessionDbFiles(agentGroupId);
+  const scan = extractGroupTasks(agentGroupId, sessionIds);
+  const summary = summarizeGroupTasks(scan.tasks);
+  if (scan.ok) groupTaskCache.set(agentGroupId, summary);
+  return summary;
+}
+
+// Re-entrancy guard: the scan yields between groups (setImmediate), so a slow
+// fleet refresh can outlast the 15s interval; a second tick must not stack on
+// the first. Mirrors sessionCostScanning.
+let groupTaskRefreshing = false;
+
+/** Refresh the per-group task snapshot. Publishes each group independently the
+ *  moment its scan completes (with a per-group refreshedAt) rather than swapping
+ *  the whole map after the last group, so a slow scan can't push staleness toward
+ *  two intervals. Yields between groups so requests/SSE/WS keep flowing on a
+ *  several-thousand-session install. A group whose scan hit a transient read
+ *  error keeps its previous summary and is retried next cycle. Deleted groups are
+ *  pruned separately after the pass. */
+async function refreshGroupTaskCache(): Promise<void> {
+  if (groupTaskRefreshing) return;
+  groupTaskRefreshing = true;
+  try {
+    if (!db) db = openDb();
+    if (!db) return;
+    let groups: { id: string }[];
+    try {
+      groups = db.prepare('SELECT id FROM agent_groups').all() as { id: string }[];
+    } catch {
+      return; // DB not ready
+    }
+    const liveGroupIds = new Set<string>();
+    const livePaths = new Set<string>();
+    for (const g of groups) {
+      liveGroupIds.add(g.id);
+      const { sessionIds } = collectSessionDbFiles(g.id);
+      for (const sid of sessionIds) {
+        livePaths.add(join(getDataDir(), 'v2-sessions', g.id, sid, 'inbound.db'));
+      }
+      const scan = extractGroupTasks(g.id, sessionIds);
+      // Publish a clean read only; a partial retains the previous summary.
+      if (scan.ok) groupTaskCache.set(g.id, summarizeGroupTasks(scan.tasks));
+      // Yield so a large fleet scan doesn't monopolize the event loop; each
+      // published group is observable by readers immediately.
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+    // Prune summaries for groups that no longer exist (replaces the old
+    // whole-map swap, which is gone now that we publish per group).
+    for (const id of groupTaskCache.keys()) {
+      if (!liveGroupIds.has(id)) groupTaskCache.delete(id);
+    }
+    // Drop per-file cache entries for sessions that no longer exist.
+    if (perFileTaskCache.size > livePaths.size * 2 + 1000) {
+      for (const k of perFileTaskCache.keys()) if (!livePaths.has(k)) perFileTaskCache.delete(k);
+    }
+  } finally {
+    groupTaskRefreshing = false;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -8215,16 +8353,16 @@ export async function handleRequest(
         result.groups.total = (db.prepare('SELECT COUNT(*) as c FROM agent_groups').get() as any)?.c || 0;
         result.messages.total = (db.prepare('SELECT COUNT(*) as c FROM hook_events').get() as any)?.c || 0;
         result.sessions = (db.prepare('SELECT COUNT(*) as c FROM sessions').get() as any)?.c || 0;
+        // Task counts come from the background-refreshed per-group snapshot
+        // (getGroupTaskSummary), so this default landing panel no longer opens
+        // every session's inbound.db inline on each request — the O(N-sessions)
+        // synchronous DB-open storm that made the cold page load slow.
         const groups = db.prepare('SELECT id FROM agent_groups').all() as any[];
         for (const g of groups) {
-          const { sessionIds } = collectSessionDbFiles(g.id);
-          const tasks = extractScheduledTasks(g.id, sessionIds);
-          for (const t of tasks) {
-            const st = t.status === 'pending' ? 'active' : t.status;
-            if (st === 'active') result.tasks.active++;
-            else if (st === 'paused') result.tasks.paused++;
-            else if (st === 'completed') result.tasks.completed++;
-          }
+          const summary = getGroupTaskSummary(g.id);
+          result.tasks.active += summary.active;
+          result.tasks.paused += summary.paused;
+          result.tasks.completed += summary.completed;
         }
       } catch {
         /* ignore */
@@ -8516,6 +8654,11 @@ export async function handleRequest(
                 .run(newStatus, taskId);
               if (result.changes > 0) {
                 found = true;
+                // Reflect this task mutation immediately in the memoized snapshot
+                // that getState / /api/overview read, else the count lags up to
+                // one refresh interval. /api/tasks re-reads live (mtime-gated), so
+                // the write's mtime bump already makes its rows fresh.
+                groupTaskCache.delete(g.id);
                 break;
               }
             } catch {
@@ -8571,6 +8714,11 @@ export async function handleRequest(
               const result = sdb.prepare("DELETE FROM messages_in WHERE id = ? AND kind = 'task'").run(taskId);
               if (result.changes > 0) {
                 found = true;
+                // Reflect this task mutation immediately in the memoized snapshot
+                // that getState / /api/overview read, else the count lags up to
+                // one refresh interval. /api/tasks re-reads live (mtime-gated), so
+                // the write's mtime bump already makes its rows fresh.
+                groupTaskCache.delete(g.id);
                 break;
               }
             } catch {
@@ -9779,6 +9927,7 @@ export async function handleRequest(
 
         // Optionally pause source tasks
         let pausedTasks = false;
+        let pausedChanges = 0;
         if (url.searchParams.get('pauseTasks') === 'true') {
           for (const sessId of sessionIds) {
             const dbPath = join(getDataDir(), 'v2-sessions', group.id, sessId, 'inbound.db');
@@ -9788,7 +9937,10 @@ export async function handleRequest(
               sdb = new Database(dbPath);
               sdb.pragma('journal_mode = DELETE');
               sdb.pragma('busy_timeout = 5000');
-              sdb.prepare("UPDATE messages_in SET status = 'paused' WHERE kind = 'task' AND status = 'pending'").run();
+              const info = sdb
+                .prepare("UPDATE messages_in SET status = 'paused' WHERE kind = 'task' AND status = 'pending'")
+                .run();
+              pausedChanges += info.changes;
               pausedTasks = true;
             } catch {
               /* best-effort */
@@ -9799,6 +9951,14 @@ export async function handleRequest(
                 /* */
               }
             }
+          }
+          // Any newly-paused row invalidates this group's memoized task snapshot
+          // so getState / /api/overview stop reporting the paused tasks as active
+          // until the next background refresh; the state cache is bumped too so
+          // live consumers repaint promptly.
+          if (pausedChanges > 0) {
+            groupTaskCache.delete(group.id);
+            invalidateStateCache();
           }
         }
 
@@ -12747,6 +12907,7 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
   // routes below still serve, so endpoint tests are unaffected.
   let stopWatchingMcpToken: (() => void) | null = null;
   let mcpRefreshTimer: ReturnType<typeof setInterval> | undefined;
+  let groupTaskTimer: ReturnType<typeof setInterval> | undefined;
   if (!process.env.VITEST) {
     // Load MCP tool inventory eagerly and refresh when the auth proxy rotates the token.
     void refreshMcpTools();
@@ -12850,6 +13011,7 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
   server.on('close', () => {
     stopWatchingMcpToken?.();
     clearInterval(mcpRefreshTimer);
+    clearInterval(groupTaskTimer);
     clearInterval(broadcastTimer);
     clearInterval(heartbeatTimer);
     clearInterval(expireTimer);
@@ -12871,6 +13033,23 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
     console.log(`  Tab 2: Timeline (all-time metrics)`);
     if (getDashboardSecret()) console.log(`  Auth: dashboard secret required for browser/admin access`);
     console.log();
+
+    // Prime the scheduled-task snapshot only AFTER the port is bound, so the
+    // fleet scan never delays the listener coming up / readiness probes on a
+    // cold restart. The scan yields between groups (refreshGroupTaskCache), so
+    // neither the prime nor the 15s refresh monopolizes the event loop. Skipped
+    // under VITEST — the test server uses the live (mtime-cached) fallback path.
+    if (!process.env.VITEST) {
+      void refreshGroupTaskCache().catch(() => {
+        /* non-fatal; the interval retries */
+      });
+      groupTaskTimer = setInterval(() => {
+        void refreshGroupTaskCache().catch(() => {
+          /* non-fatal; next tick retries */
+        });
+      }, 15000);
+      groupTaskTimer.unref?.();
+    }
   });
 
   return server;
