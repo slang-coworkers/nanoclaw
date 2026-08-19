@@ -1540,12 +1540,19 @@ function funnelIssueTableHtml(issues, rows, statusColors) {
   return html;
 }
 
-// Review rounds — how many human CHANGES_REQUESTED rounds a PR drew before it
-// merged, bot-authored vs human-authored, plotted over the merge weeks. Reads
-// the /api/review-rounds snapshot (scripts/review-rounds.py). Two lines in the
-// funnelWeeklyTrendSvg visual idiom: avg human-review rounds for bot PRs (amber)
-// vs human PRs (blue). Degrades to '' when the snapshot is absent/empty; renders
-// the breakage note when the producer failed closed (complete:false).
+// Review cycles — how much human review a PR drew before it merged, bot-authored
+// vs human-authored, plotted over the merge weeks. Reads the /api/review-rounds
+// snapshot (scripts/review-rounds.py). Two lines in the funnelWeeklyTrendSvg
+// visual idiom: avg human review CYCLES for bot PRs (amber) vs human PRs (blue).
+//
+// A CYCLE = one human-initiated inline review thread + one human conversation
+// comment (producer field `avgCycles`); this is the number that lines up with the
+// published "Avg human review cycles / PR" slide. We plot the slang-only series
+// (perRepo['shader-slang/slang']) when the snapshot carries it, because the slide
+// is scoped to that repo; otherwise the combined all-repo weekly. `avgCycles`
+// falls back to `avgSubmissions` then `avgRounds` so a pre-cycles (schema-1)
+// snapshot still renders. Degrades to '' when the snapshot is absent/empty;
+// renders the breakage note when the producer failed closed (complete:false).
 function reviewRoundsHtml(rr) {
   if (!rr) return '';
 
@@ -1556,12 +1563,6 @@ function reviewRoundsHtml(rr) {
     const label = ageH < 1 ? 'just now' : ageH < 48 ? Math.round(ageH) + 'h ago' : Math.round(ageH / 24) + 'd ago';
     freshness = ' · snapshot ' + (stale ? '<b style="color:var(--warn,#c90)">' + label + ' (stale)</b>' : label);
   }
-  const title =
-    '<div style="font-weight:600;margin-bottom:4px">Human-review rounds per PR ' +
-    '<span style="font-weight:400;color:var(--text-muted)">— bot vs human authored' +
-    (rr.since ? ' · since ' + esc(rr.since) : '') +
-    freshness +
-    '</span></div>';
 
   // COLLECTION FAILURE IS NOT A ZERO. The producer fails closed: an incomplete
   // run emits no weekly metrics and sets complete:false with errors[]. Render the
@@ -1574,41 +1575,57 @@ function reviewRoundsHtml(rr) {
       .join('<br>');
     return (
       '<div style="margin-top:20px">' +
-      title +
+      '<div style="font-weight:600;margin-bottom:4px">Human-review cycles per PR</div>' +
       '<div style="padding:4px 8px;border-left:3px solid var(--warn,#c90);color:var(--text-muted);max-width:640px;line-height:1.45">' +
-      '<b>Collection incomplete — no metric published.</b> This is NOT zero review rounds; the run failed and ' +
+      '<b>Collection incomplete — no metric published.</b> This is NOT zero review cycles; the run failed and ' +
       'deliberately emitted no numbers.' +
       (errs ? '<br>' + errs : '') +
       '</div></div>'
     );
   }
 
-  const weekly = Array.isArray(rr.weekly) ? rr.weekly : [];
+  // Prefer the slang-only view (matches the published slide's scope); fall back
+  // to the combined all-repo weekly for older snapshots that lack perRepo.
+  const SLANG = 'shader-slang/slang';
+  const slangView = (rr.perRepo || {})[SLANG];
+  const useSlang = slangView && Array.isArray(slangView.weekly) && slangView.weekly.length > 0;
+  const weekly = useSlang ? slangView.weekly : Array.isArray(rr.weekly) ? rr.weekly : [];
   if (weekly.length === 0) return '';
+  const totals = useSlang ? slangView.totals || {} : rr.totals || {};
+  const scopeLabel = useSlang ? SLANG : 'all tracked repos';
+
+  const title =
+    '<div style="font-weight:600;margin-bottom:4px">Human-review cycles per PR ' +
+    '<span style="font-weight:400;color:var(--text-muted)">— bot vs human authored · ' +
+    esc(scopeLabel) +
+    (rr.since ? ' · since ' + esc(rr.since) : '') +
+    freshness +
+    '</span></div>';
 
   const svg = reviewRoundsTrendSvg(weekly);
 
-  // Totals strip: overall bot vs human averages + clean-first-pass rates.
-  const t = rr.totals || {};
-  const bt = t.botAuthored || {};
-  const ht = t.humanAuthored || {};
+  // Totals strip: overall bot vs human cycles, with the strict CHANGES_REQUESTED
+  // "rounds" number kept beside it as the secondary figure.
+  const bt = totals.botAuthored || {};
+  const ht = totals.humanAuthored || {};
   const numOrDash = (v) => (v === null || v === undefined ? '—' : v);
+  const cyc = (o) => (typeof o.avgCycles === 'number' ? o.avgCycles : o.avgSubmissions);
   const totalsLine =
     bt.prs || ht.prs
       ? '<div style="color:var(--text-muted);margin-top:4px;max-width:640px;line-height:1.45">' +
         'Overall: <b style="color:#d29922">bot</b> ' +
-        numOrDash(bt.avgRounds) +
-        ' rounds/PR (clean-first-pass ' +
-        numOrDash(bt.zeroRoundPct) +
-        '%, ' +
+        numOrDash(cyc(bt)) +
+        ' cycles/PR (' +
         (bt.prs || 0) +
         ' PRs) vs <b style="color:#58a6ff">human</b> ' +
-        numOrDash(ht.avgRounds) +
-        ' rounds/PR (clean ' +
-        numOrDash(ht.zeroRoundPct) +
-        '%, ' +
+        numOrDash(cyc(ht)) +
+        ' cycles/PR (' +
         (ht.prs || 0) +
-        ' PRs).</div>'
+        ' PRs). Strict CHANGES_REQUESTED rounds: bot ' +
+        numOrDash(bt.avgRounds) +
+        ' / human ' +
+        numOrDash(ht.avgRounds) +
+        '.</div>'
       : '';
 
   return (
@@ -1617,16 +1634,18 @@ function reviewRoundsHtml(rr) {
     svg +
     totalsLine +
     '<div style="color:var(--text-muted);margin-top:4px;max-width:640px;line-height:1.45">' +
-    'A round = one <b>CHANGES_REQUESTED</b> review from a human (bot/CI reviewers and self-reviews excluded); ' +
-    'fewer rounds = cleaner PRs; is the bot converging to — or below — human? MERGED PRs only, by merge week.' +
+    'A cycle = one human inline review thread or conversation comment (bot/CI reviewers and self-reviews excluded); ' +
+    'fewer cycles = cleaner PRs; is the bot converging to — or below — human? MERGED PRs only, by merge week.' +
     '</div></div>'
   );
 }
 
-// Two-line weekly trend for review rounds, in the funnelWeeklyTrendSvg idiom:
-// amber = avg rounds for bot-authored PRs, blue = human-authored. A week with no
-// PRs in a class has a null average and is simply skipped (the line bridges the
-// gap) rather than plotted as a spurious zero. Returns '' when nothing to plot.
+// Two-line weekly trend for review cycles, in the funnelWeeklyTrendSvg idiom:
+// amber = avg cycles for bot-authored PRs, blue = human-authored. The plotted
+// value is `avgCycles` (falling back to avgSubmissions, then avgRounds, so an
+// older snapshot still renders). A week with no PRs in a class has a null average
+// and is simply skipped (the line bridges the gap) rather than plotted as a
+// spurious zero. Returns '' when nothing to plot.
 function reviewRoundsTrendSvg(weekly) {
   if (!Array.isArray(weekly) || weekly.length === 0) return '';
   const W = 520,
@@ -1640,7 +1659,10 @@ function reviewRoundsTrendSvg(weekly) {
   const n = weekly.length;
   const avg = (w, k) => {
     const c = w[k];
-    return c && typeof c.avgRounds === 'number' ? c.avgRounds : null;
+    if (!c) return null;
+    if (typeof c.avgCycles === 'number') return c.avgCycles;
+    if (typeof c.avgSubmissions === 'number') return c.avgSubmissions;
+    return typeof c.avgRounds === 'number' ? c.avgRounds : null;
   };
   const observed = [];
   for (const w of weekly) {
@@ -1668,9 +1690,12 @@ function reviewRoundsTrendSvg(weekly) {
       if (v === null) return;
       const c = w[k] || {};
       pts.push(`${x(i).toFixed(1)},${y(v).toFixed(1)}`);
-      const zp = typeof c.zeroRoundPct === 'number' ? `, clean ${c.zeroRoundPct}%` : '';
+      const comp =
+        typeof c.avgThreads === 'number' && typeof c.avgIssueComments === 'number'
+          ? `, ${c.avgThreads} threads + ${c.avgIssueComments} comments`
+          : '';
       dots.push(
-        `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.6" fill="${color}"><title>${esc(w.week)} — ${k === 'botAuthored' ? 'bot' : 'human'}: ${v} rounds/PR (${c.prs || 0} PRs${zp})</title></circle>`,
+        `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.6" fill="${color}"><title>${esc(w.week)} — ${k === 'botAuthored' ? 'bot' : 'human'}: ${v} cycles/PR (${c.prs || 0} PRs${comp})</title></circle>`,
       );
     });
     const line = pts.length > 1 ? `<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2"/>` : '';
@@ -1684,7 +1709,7 @@ function reviewRoundsTrendSvg(weekly) {
     )
     .join('');
   return `<div style="margin:6px 0 2px;display:flex;align-items:baseline;gap:10px">
-      <span style="font-weight:600">Avg human-review rounds / merged PR</span>
+      <span style="font-weight:600">Avg human review cycles / merged PR</span>
       <span style="font-size:10px;color:var(--text-muted)"><span style="color:#d29922">●</span> bot &nbsp;<span style="color:#58a6ff">●</span> human</span>
     </div>
     <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;background:transparent">
