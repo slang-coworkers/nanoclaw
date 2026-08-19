@@ -40,12 +40,7 @@ registerApprovalHandler(STOP_ACTION, async (ctx) => {
 
 /** Deps for detect.ts → emits the admin card via the standard approval flow. */
 export const runawayCardDeps: RunawayCardDeps = {
-  async emitCard(
-    session: Session,
-    metrics: RunawayMetrics,
-    windowS: number,
-    cost: RunawayCost | null,
-  ): Promise<void> {
+  async emitCard(session: Session, metrics: RunawayMetrics, windowS: number, cost: RunawayCost | null): Promise<void> {
     const mins = Math.round(windowS / 60);
     // Cost is the single most decision-relevant number here (a runaway's whole
     // harm is spend). Carry it on the payload so the dashboard card can show
