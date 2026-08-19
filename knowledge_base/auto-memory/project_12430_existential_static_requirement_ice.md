@@ -9,9 +9,24 @@ metadata:
 
 # slang#12430 — existential → static interface requirement → two ICEs
 
-**State 2026-08-12 18:42Z:** OPEN, **assignees `tangent-vector` + `jvepsalainen-nv`**, 5 labels
-(`bug`, `reproduced`, `Diagnostics`, `Missing Diagnostic`, `dynamic_dispatch`), **5 comments** — 4
-ours (`nv-slang-bot`) + 1 human. Title unchanged since 08-08.
+**State 2026-08-15 06:53Z — Tim Foley authorized + is steering an AST-level `ExistentialType` fix;
+draft PR #12555 in active systematic-change triage.** The full live PR/review/triage saga is its own
+leaf: **[[project_12430_pr12555_existentialtype_saga]]** (spike CONFIRMED his hypothesis — `dyn IV ⊄ IV`
+rules out Repro 2 via existing `E38029`, no new diagnostic; he then EXPANDED scope to form `dyn IV` in
+ALL proper-type contexts, `Optional<IV>` *is intended* to mean `Optional<dyn IV>`, and wants a triage
+of the ~68-file failure set; review complete-but-held pending re-push; owned by `slang-fixer` +
+`slang-reviewer`, I don't re-dispatch). ⚠️As of 06:53Z the work is LOCAL — PR head still `9c0246f3`,
+nothing re-pushed, 2 scratch `.md` files still on the public PR. RESUME = fixer's triage report.
+
+⚠️**Repro 1's ICE SITE MOVED since base `716ec597fc`:** at HEAD it asserts `slang-ir.cpp:4013
+witnessTableVal && … != kIROp_StructKey`, NOT the `Unexpected context type` the §"two defects" table
+below records ⇒ that `:4947/:4991/:5035` message is HISTORICAL-at-`716ec597fc`. Repro 2's `:15156`
+site was unchanged. Tim's design (carried into PR #12555, do NOT re-paraphrase as settled spec):
+`ExistentialType(iface)` = `dyn IV`, distinct from `DeclRefType`→`InterfaceDecl`; `CoerceToProperType`
+on an interface implicitly forms it (diagnosed in 202c+); `X ⊂ IY` as today but `X ⊄ ExistentialType(IY)`
+and `ExistentialType(IY) ⊄ IY`; first pass lowers both to the same IR. Full text in cmt `5299401967`.
+
+<details><summary>Superseded history (08-08 → 08-12 maintainer pickup) — kept for trace</summary>
 
 ⭐**MAINTAINER PICKED IT UP — 08-12 18:41Z, cmt `5271212640` by `jhelferty-nv` (human):**
 *"@tangent-vector Can you take a look and comment? @jvepsalainen-nv It looks like this was mentioned
@@ -36,6 +51,8 @@ and the `-dump-ir` measurement. Both sessions independently reproduced at `716ec
 body is a **two-edge** result, not one agent's claim. Both chains declared closed; the one item
 they held open (the producer measurement) is **done and posted**.
 
+</details>
+
 ## The two defects — the message is the identity, NOT the error code
 
 Both wrap as `E99997`; deduping on `E99997` merges them.
@@ -49,6 +66,45 @@ Both **release-live** (`SLANG_UNEXPECTED` → `[[noreturn]] handleSignal`, not `
 Repro 1 is 5 lines with no generic and no autodiff: bare `IV.dzero()` on an existential.
 Trigger is narrower than "static requirement" — a static requirement with a **concrete**
 signature is diagnosed correctly; the signature must involve an **associated type**.
+
+### ⭐⭐⭐ 2026-08-12 — tangent-vector (Tim Foley) posted the ROOT-CAUSE framing; it CORROBORATES our filing and moves the fix UPSTREAM (cmt `5299217801`)
+
+His diagnosis: **"the existential type formed from an interface does not necessarily conform to that
+same interface."** Both reproducers treat `dyn IV` / `any IV` as a concrete type that conforms to `IV`,
+which it does not. Repro 2 (`callStatic<IV>()`) **should be rejected at type-check** — it passes `dyn IV`
+for a generic parameter `T : IV`, and `dyn IV` does not satisfy that constraint. `IV.dzero()` "appears
+to be a comparable sort of problem." ⇒ **This is a missing FRONT-END conformance check, upstream of both
+IR sites we found** — it subsumes and outranks our "which pass throws" analysis (that's the symptom;
+the accepted-but-invalid existential-as-type-argument is the cause). Consistent with our filed line
+"specialization *accepted* an existential type argument"; his framing names *why that acceptance is
+itself the bug*.
+
+**His one concrete ask:** *"a comparable reproducer that is more stand-alone and doesn't rely on a
+built-in interface like `IDifferentiable`."* **I built it — and the naive swap does NOT work, which is
+the non-obvious part:**
+
+| repro (user interface, NO `IDifferentiable`) | result |
+|---|---|
+| bare `IV.makeIt()`, assoc-type return, requirement declared **on `IV` itself** | ✅ **exit 0** — does NOT reproduce |
+| same with assoc type **constrained** (`Assoc : IBase`) or **self-referential** (`Assoc : IV`) | ✅ exit 0 |
+| **bare `IV.makeZero()`, requirement INHERITED from a base `IBase`, base's assoc-type return** | ❌ **255, Failure 1** (`Unexpected context type…`) |
+| **generic `getZero<IV>()`, same inherited shape** | ❌ **255, Failure 2** (`irWitnessTable`) |
+| controls `V.makeZero()` / `getZero<V>()` (concrete arg) | ✅ exit 0 both |
+| `IBase.makeZero()` directly (base existential, not derived) | ✅ exit 0 |
+
+⭐**The load-bearing ingredient is that the static requirement is INHERITED from a base interface and
+returns the BASE's associated type** — which is exactly `dzero`'s shape (`IDifferentiable.dzero() ->
+This.Differential`, inherited by `IV : IDifferentiable`). Swapping `IDifferentiable` for a flat user
+interface silently loses the inheritance and stops reproducing — so anyone "simplifying" the repro the
+obvious way concludes wrongly that it's core-module-specific. **And one structural family yields BOTH
+failures**: bare form → Failure 1, generic form → Failure 2. Standalone repros saved in
+`/tmp/tv{F,G,Fc,Gc}.slang` (this session; not committed).
+
+⛔**PROVENANCE — these are "measured on my local build," NOT SHA-attributed.** My
+`build/Release/bin/slangc` is **stale**: mtime **2026-08-04 07:50**, `-v` reports a bare build id,
+while the clone HEAD has advanced to `70e008cfa` (716ec597fc still an ancestor). The repros are shape
+facts I reproduced locally; a fixer must **rebuild fresh and re-derive** before quoting a commit. See
+[[feedback_a_repro_binary_is_not_the_sha_you_checked_out]].
 
 ## ⭐ The correction that matters most: `E33180` does not apply
 

@@ -1,6 +1,6 @@
 ---
 name: project_12307_reflection_json_scope_representation
-description: "#12307 JSON reflection scope repr — enh/P2; DRAFT PR #12310 HEAD=79297fa854 (master-merge; code=e2befa07ef) after @tangent-vector CHANGES_REQUESTED→round-2 asserts; ⛔CI NEVER BUILT this head (yielded runs; retry is contention-gated NOT a timer, can expire un-rerun) so CI-green UNESTABLISHED; local suite only signal; RESUME = maintainer re-review → operator-gated ready-flip THEN merge"
+description: "#12307 JSON reflection scope repr — enh/P2 — ✅MERGED & CLOSED 2026-08-15. PR #12310 merged by @tangent-vector at head 6be68909b1 (Fixes #12307 ⇒ auto-closed). Round-2 restructure (asserts, deleted provably-dead branches, net −21 lines); reviewer APPROVE_WITH_NITS; maintainer re-approved after her own master-merge+TOC-bot re-dismissed the first approval; only red was a TRANSIENT external Falcor flake (green on master, rerun cleared). Maintainer did the merge herself ⇒ operator merge-gate never needed escalation. TERMINAL."
 metadata:
   type: project
   originSessionId: b285e0b9-76cd-4205-9319-07b838de7550

@@ -1,0 +1,16 @@
+{
+ "version": 1,
+ "history": [
+  {
+   "at": "2026-08-18T07:52:58Z",
+   "backlog": 74980,
+   "defects": 70,
+   "offenders": 73,
+   "top": {
+    "path": "tracker-tick.md",
+    "class": "DOSSIER",
+    "size": 72521
+   }
+  }
+ ]
+}
