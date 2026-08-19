@@ -23,7 +23,7 @@ Cost is role-dependent, so a single number can't fit all. Each group's cap = **i
 | **Tier 1 — its group p90** | **Escalate** → human picks **Continue** (+1 allotment) or **Stop** | **Escalate for visibility** (Continue-only) |
 | **Tier 2 — $150 ceiling** | **HARD STOP** — quiesce before the next turn | **Escalate again — never auto-blocked**; operator adds USD via dashboard → Sessions |
 
-- **Ceiling** = a runtime DB value (`ncl cost-cap set --ceiling`, see [below](#runtime-configuration--ncl-cost-cap-elevated-only)), falling back to `NANOCLAW_COST_T2_CEILING_USD` in `.env` (**$150**, reviewed monthly). It sits above even fixer's p95 ($142) → never bites legit work, and hard-stops runaway far below $1000.
+- **Ceiling** = a runtime DB value set with `ncl cost-cap set --ceiling` (see [below](#runtime-configuration--ncl-cost-cap-elevated-only)) — **the env var `NANOCLAW_COST_T2_CEILING_USD` is a deprecated legacy fallback**, consulted only when no DB value is set. Typical value **$150** (reviewed monthly): it sits above even fixer's p95 ($142) → never bites legit work, and hard-stops runaway far below $1000.
 - **Immortal is never silently blocked.** The orchestrator must stay alive; its bound is the human, who funds it via Continue. This is what flags (not kills) a $625-type main run.
 - **Everything is reversible.** A stopped session resumes via dashboard **Continue** or `/clear`; a new session resets the counter.
 
@@ -33,11 +33,13 @@ Cost is role-dependent, so a single number can't fit all. Each group's cap = **i
 
 ## Where the numbers live
 - **Per-group p90:** dashboard computes it over each group's real 7-day sessions → `data/cost-thresholds.json` (`perGroupP90Usd` map); host reads the group's value at spawn (`resolveCostCapT2Usd`).
-- **Ceiling:** a runtime DB value (`ncl cost-cap set`, below), falling back to `.env` (`NANOCLAW_COST_T2_CEILING_USD`).
+- **Ceiling:** the `cost_cap_policy` DB table, set with `ncl cost-cap set` (below). `NANOCLAW_COST_T2_CEILING_USD` in `.env` is a deprecated legacy fallback only.
 - **Live state:** `outbound.db` → `session_state.cost_cap` = `{ capUsd, spentUsd, status, immortal, window, decision }`; the dashboard **Sessions** tab renders spend / cap / status with Continue / Stop.
 
 ## Runtime configuration — `ncl cost-cap` (elevated only)
-The ceiling and per-group caps no longer require a redeploy. An operator (or the `cli_scope=global` orchestrator) sets them at runtime; the host reads the DB (`cost_cap_policy` table) at the **next container spawn** and materializes the values into `container.json`. The env var stays a back-compat fallback — an install that sets nothing behaves exactly as before.
+**`ncl cost-cap set` is the way to configure the cost cap.** The ceiling and per-group caps no longer require a redeploy or an `.env` edit. An operator (or the `cli_scope=global` orchestrator) sets them at runtime; the host reads the DB (`cost_cap_policy` table) at the **next container spawn** and materializes the values into `container.json`.
+
+> **`NANOCLAW_COST_T2_CEILING_USD` / `NANOCLAW_COST_T2_USD` are deprecated.** They remain wired only as a last-resort fallback so a pre-existing install that set them doesn't suddenly lose its ceiling. New configuration should go through `ncl cost-cap`; an install that sets nothing behaves exactly as before. The env vars can be removed from `.env` once the DB carries the values.
 
 ```
 ncl cost-cap get                                   # effective fleet ceiling + every override

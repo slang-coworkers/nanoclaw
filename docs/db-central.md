@@ -400,7 +400,7 @@ CREATE TABLE agent_message_policies (
 
 ### 1.19 `cost_cap_policy`
 
-Runtime-configurable Tier-2 cost cap (see [cost-cap-model.md](cost-cap-model.md)). One row per scope, keyed by `group_folder`: the empty string `''` is the fleet-wide row (its `ceiling_usd` is the fleet ceiling); a non-empty folder is a per-group override. NULL amounts mean "no DB override — fall through to the env / `cost-thresholds.json` chain". A stored value wins over the env var, including `ceiling_usd = 0` ("explicitly no ceiling").
+Runtime-configurable Tier-2 cost cap (see [cost-cap-model.md](cost-cap-model.md)) — the source of truth, set with `ncl cost-cap set`. One row per scope, keyed by `group_folder`: the empty string `''` is the fleet-wide row (its `ceiling_usd` is the fleet ceiling); a non-empty folder is a per-group override. NULL amounts mean "no DB override — fall through to the `cost-thresholds.json` p90 / defaults, and lastly the deprecated `NANOCLAW_COST_T2_*` env vars". A stored value wins over the env var, including `ceiling_usd = 0` ("explicitly no ceiling").
 
 ```sql
 CREATE TABLE cost_cap_policy (
