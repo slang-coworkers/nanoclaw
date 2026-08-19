@@ -118,3 +118,39 @@ describe('critique-gate card: expansion survives the poll re-render', () => {
     expect(app).not.toContain("full.style.display = 'inline'");
   });
 });
+
+// The runaway ("Possible runaway session") approval card used to fall through
+// to the generic branch, rendering as a bare title with no cost and no way
+// into the session. These pin the enrichment: cost as "$spent of $cap" and a
+// session deep-link, on both surfaces.
+const server = fs.readFileSync(path.join(here, 'server.ts'), 'utf-8');
+
+describe('runaway card: cost + session link', () => {
+  it('has a dedicated stop_runaway_session branch on desktop', () => {
+    expect(app).toContain("item.action === 'stop_runaway_session'");
+  });
+
+  it('renders "$spent of $cap" from the payload cost fields', () => {
+    // The two numbers an approver needs, printed to cents, guarded on both
+    // being numeric so a cost-disabled group falls back cleanly.
+    expect(app).toContain('$${item.spentUsd.toFixed(2)} of $${item.capUsd.toFixed(2)}');
+    expect(app).toContain("typeof item.spentUsd === 'number' && typeof item.capUsd === 'number'");
+  });
+
+  it('links the session via the hash route the router parses (never ?session=)', () => {
+    expect(app).toContain('#/cw/${encodeURIComponent(item.coworkerFolder)}/s/${encodeURIComponent(item.sessionId)}');
+  });
+
+  it('mobile surfaces cost + a copyable session id (no hash router there)', () => {
+    expect(mobile).toContain("item.action === 'stop_runaway_session'");
+    expect(mobile).toContain('$${item.spentUsd.toFixed(2)} of $${item.capUsd.toFixed(2)}');
+    // Copyable id (mobile has no #/cw/ router to deep-link into).
+    expect(mobile).toContain('const sess = item.sessionId ?');
+    expect(mobile).toContain('${esc(item.sessionId)}');
+  });
+
+  it('server /api/approvals surfaces spentUsd/capUsd from the payload', () => {
+    expect(server).toContain("spentUsd: typeof payload.spentUsd === 'number' ? payload.spentUsd : null");
+    expect(server).toContain("capUsd: typeof payload.capUsd === 'number' ? payload.capUsd : null");
+  });
+});

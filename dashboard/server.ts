@@ -12378,6 +12378,12 @@ export async function handleRequest(
               escalationClass: payload.class || null,
               denials: typeof payload.denials === 'number' ? payload.denials : null,
               selfHealAttempts: typeof payload.selfHealAttempts === 'number' ? payload.selfHealAttempts : null,
+              // Cost the runaway card carries so the approver sees "$spent of
+              // $cap" without opening the session. Absent on cost-disabled
+              // groups and every pre-enrichment row → null, and the card falls
+              // back to its old shape.
+              spentUsd: typeof payload.spentUsd === 'number' ? payload.spentUsd : null,
+              capUsd: typeof payload.capUsd === 'number' ? payload.capUsd : null,
             };
           });
         }

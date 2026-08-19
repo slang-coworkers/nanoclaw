@@ -463,6 +463,15 @@ function renderApprovalCard(item) {
       ? `\n\n\`${esc(item.method)} ${esc(item.host)}${esc(item.path || '')}\``
       : '';
     desc = `**Credentials request**${endpoint}`;
+  } else if (item.action === 'stop_runaway_session') {
+    // Lead with cost (the whole harm of a runaway) then the session id as
+    // copyable text — mobile has no hash router to deep-link into, so the id
+    // itself is the door. Both fall back cleanly when absent.
+    const cost = typeof item.spentUsd === 'number' && typeof item.capUsd === 'number'
+      ? `\n\n**$${item.spentUsd.toFixed(2)} of $${item.capUsd.toFixed(2)}**`
+      : '';
+    const sess = item.sessionId ? `\n\nSession \`${esc(item.sessionId)}\`` : '';
+    desc = `**${esc(item.title || 'Possible runaway session')}**${cost}${sess}${safeReason}`;
   } else {
     desc = `**${esc(item.action)}**${safeReason}`;
   }
