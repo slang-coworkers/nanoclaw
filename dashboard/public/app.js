@@ -435,7 +435,7 @@ async function loadFunnel() {
     board.innerHTML =
       partHtml +
       reviewCyclesHtml(snap.reviewCycles) +
-      funnelApproverPanel(snap.approverDecisions || [], snap.approverLedger);
+      funnelApproverPanel(snap.approverDecisions || [], snap.approverLedger, snap.approverWeekly || []);
 
   // nv-slang-bot contribution table (separate snapshot: /api/bot-contributions).
   if (detail) {
@@ -733,7 +733,7 @@ function kbDoctorHtml(kbh) {
 // this shows EVERY decision Verity recorded, including the human-authored PRs it
 // reviewed in shadow mode. `decisions` is snap.approverDecisions (newest first,
 // one row per PR). Counts by decision are shown as a header summary.
-function funnelApproverPanel(decisions, ledger) {
+function funnelApproverPanel(decisions, ledger, weekly) {
   if (!Array.isArray(decisions)) decisions = [];
   // Approve = green, block = red, abstain = muted. Matches the funnel row cell
   // (funnelIssueTableHtml's approverColor); literal hex here since the palette
@@ -826,6 +826,7 @@ function funnelApproverPanel(decisions, ledger) {
         <tbody>${rows}</tbody>
       </table>`;
   return `<div style="margin-top:20px">
+      ${funnelApproverWeeklySvg(weekly)}
       <details>
         <summary style="cursor:pointer;list-style:revert">
           <span style="display:inline-flex;align-items:baseline;gap:10px;flex-wrap:wrap">
@@ -837,6 +838,169 @@ function funnelApproverPanel(decisions, ledger) {
         <div style="font-size:11px;color:var(--text-muted);margin:6px 0 4px">Every PR Verity decided — including human-authored PRs (not just the bot's own). Shadow decisions never post to GitHub.</div>
         ${empty}
       </details>
+    </div>`;
+}
+
+// Week-over-week agreement trend for the Verity panel: is agreement rising, are
+// abstains falling, and is the SAFETY-critical false-approve heading to zero —
+// the three signals for taking Verity out of shadow mode. Reads snap.approverWeekly
+// (produced by scripts/funnel.ts on nv-main; rides in the same funnel.json fetch).
+// Returns '' when the field is absent (older snapshot) or empty, so the panel
+// degrades gracefully. Style deliberately mirrors funnelWeeklyTrendSvg /
+// funnelWeeklyConversionSvg (same W/H, count-left / %-right dual axis, rolling-
+// point labels), so it reads as one family of charts.
+function funnelApproverWeeklySvg(weekly) {
+  if (!Array.isArray(weekly) || weekly.length === 0) return '';
+  const W = 560,
+    H = 156,
+    padL = 30,
+    padR = 34,
+    padT = 12,
+    padB = 30;
+  const innerW = W - padL - padR,
+    innerH = H - padT - padB;
+  const n = weekly.length;
+  const COL = {
+    agreedApprove: '#3fb950', // green  — Verity approved, human agreed
+    agreedBlock: '#39c5cf', // teal   — Verity blocked, human agreed
+    falseApprove: '#f85149', // RED    — Verity approved, human wanted changes (the danger)
+    falseBlock: '#d29922', // amber  — Verity blocked, human approved
+    abstain: '#484f58', // grey   — Verity abstained
+    agreeLine: '#56d364', // agreement % (want ↑)
+    falseLine: '#f85149', // false-approve count (want → 0)
+  };
+  const num = (v) => (typeof v === 'number' && isFinite(v) ? v : 0);
+  // Left axis = decision COUNTS; bars scale to the busiest week's total.
+  const maxTotal = Math.max(1, ...weekly.map((w) => num(w.total)));
+  const slot = innerW / n;
+  const barW = Math.max(5, Math.min(30, slot * 0.62));
+  const cx = (i) => padL + slot * (i + 0.5);
+  const baseY = padT + innerH;
+  const yCnt = (v) => padT + innerH - (num(v) / maxTotal) * innerH;
+  const yPct = (v) => padT + innerH - (num(v) / 100) * innerH; // v in 0..100
+  // Left count-axis grid (0 / mid / max) + right %-axis labels (0 / 50 / 100).
+  const cntVals = [0, Math.round(maxTotal / 2), maxTotal];
+  const grid = cntVals
+    .map(
+      (v) =>
+        `<line x1="${padL}" y1="${yCnt(v).toFixed(1)}" x2="${W - padR}" y2="${yCnt(v).toFixed(1)}" stroke="var(--border)" stroke-width="1"/>` +
+        `<text x="${padL - 5}" y="${(yCnt(v) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--text-muted)">${v}</text>`,
+    )
+    .join('');
+  const pctAxis = [0, 50, 100]
+    .map(
+      (v) =>
+        `<text x="${W - padR + 5}" y="${(yPct(v) + 3).toFixed(1)}" text-anchor="start" font-size="9" fill="${COL.agreeLine}">${v}%</text>`,
+    )
+    .join('');
+  // Per-week stacked bar: agreed (green/teal) + false (red/amber) + abstain (grey),
+  // stacked from the baseline up. The bar's full height is total decisions, so
+  // any unfilled cap above the stack is the week's not-yet-verdicted PRs — the
+  // fill fraction doubles as a coverage read.
+  const bars = weekly
+    .map((w, i) => {
+      const x = (cx(i) - barW / 2).toFixed(1);
+      const track = `<rect x="${x}" y="${yCnt(w.total).toFixed(1)}" width="${barW.toFixed(1)}" height="${(baseY - yCnt(w.total)).toFixed(1)}" fill="var(--bg-card)" stroke="var(--border)" stroke-width="0.5"/>`;
+      const segs = [
+        { n: num(w.agreedApprove), c: COL.agreedApprove, label: 'agreed-approve' },
+        { n: num(w.agreedBlock), c: COL.agreedBlock, label: 'agreed-block' },
+        { n: num(w.falseApprove), c: COL.falseApprove, label: 'FALSE-APPROVE' },
+        { n: num(w.falseBlock), c: COL.falseBlock, label: 'false-block' },
+        { n: num(w.abstain), c: COL.abstain, label: 'abstain' },
+      ];
+      let acc = 0;
+      const rects = segs
+        .filter((s) => s.n > 0)
+        .map((s) => {
+          const y0 = baseY - (acc / maxTotal) * innerH;
+          const y1 = baseY - ((acc + s.n) / maxTotal) * innerH;
+          acc += s.n;
+          // The safety segment gets a bright outline so it never hides in a tall bar.
+          const stroke = s.c === COL.falseApprove ? ' stroke="#ffdcd7" stroke-width="0.75"' : '';
+          return `<rect x="${x}" y="${y1.toFixed(1)}" width="${barW.toFixed(1)}" height="${(y0 - y1).toFixed(1)}" fill="${s.c}"${stroke}><title>${esc(w.weekStart)} · ${s.label}: ${s.n}</title></rect>`;
+        })
+        .join('');
+      return track + rects;
+    })
+    .join('');
+  // Agreement % line (right axis, want ↑). Weeks with no human verdict have
+  // agreementPct === null — break the line there rather than plotting a 0.
+  const agreePts = weekly.map((w, i) => (w.agreementPct == null ? null : `${cx(i).toFixed(1)},${yPct(w.agreementPct).toFixed(1)}`));
+  const agreeSegments = [];
+  let run = [];
+  for (const p of agreePts) {
+    if (p) run.push(p);
+    else {
+      if (run.length) agreeSegments.push(run);
+      run = [];
+    }
+  }
+  if (run.length) agreeSegments.push(run);
+  const agreeLines = agreeSegments
+    .map((pts) => `<polyline points="${pts.join(' ')}" fill="none" stroke="${COL.agreeLine}" stroke-width="2"/>`)
+    .join('');
+  const agreeDots = weekly
+    .map((w, i) =>
+      w.agreementPct == null
+        ? ''
+        : `<circle cx="${cx(i).toFixed(1)}" cy="${yPct(w.agreementPct).toFixed(1)}" r="3" fill="${COL.agreeLine}"><title>${esc(w.weekStart)}: ${w.agreementPct}% agreement (${num(w.agreedApprove) + num(w.agreedBlock)}/${num(w.withHumanVerdict)})</title></circle>`,
+    )
+    .join('');
+  const agreeLabels = weekly
+    .map((w, i) => {
+      if (w.agreementPct == null) return '';
+      const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle';
+      return `<text x="${cx(i).toFixed(1)}" y="${(yPct(w.agreementPct) - 7).toFixed(1)}" text-anchor="${anchor}" font-size="10" font-weight="700" fill="${COL.agreeLine}">${Math.round(w.agreementPct)}%</text>`;
+    })
+    .join('');
+  // False-approve COUNT line (left/count axis, want → 0), highlighted red.
+  const falsePts = weekly.map((w, i) => `${cx(i).toFixed(1)},${yCnt(w.falseApprove).toFixed(1)}`).join(' ');
+  const falseLine = `<polyline points="${falsePts}" fill="none" stroke="${COL.falseLine}" stroke-width="1.5" stroke-dasharray="4 2"/>`;
+  const falseDots = weekly
+    .map(
+      (w, i) =>
+        `<circle cx="${cx(i).toFixed(1)}" cy="${yCnt(w.falseApprove).toFixed(1)}" r="${num(w.falseApprove) > 0 ? 3 : 2}" fill="${COL.falseLine}"><title>${esc(w.weekStart)}: ${num(w.falseApprove)} false-approve</title></circle>`,
+    )
+    .join('');
+  const xlabels = weekly
+    .map((w, i) =>
+      i % Math.ceil(n / 6 || 1) === 0
+        ? `<text x="${cx(i).toFixed(1)}" y="${H - 10}" text-anchor="middle" font-size="8" fill="var(--text-muted)">${esc((w.weekStart || '').slice(5))}</text>`
+        : '',
+    )
+    .join('');
+  // Trend hint: first→last agreement % over the weeks that have a verdict.
+  const withPct = weekly.filter((w) => w.agreementPct != null);
+  let trend = '→ n/a',
+    trendColor = 'var(--text-muted)';
+  if (withPct.length >= 2) {
+    const delta = Math.round(withPct[withPct.length - 1].agreementPct - withPct[0].agreementPct);
+    trend = delta > 0 ? `▲ +${delta}pp agreement` : delta < 0 ? `▼ ${delta}pp agreement` : '→ flat';
+    trendColor = delta > 0 ? COL.agreeLine : delta < 0 ? '#f85149' : 'var(--text-muted)';
+  }
+  const totalFalse = weekly.reduce((a, w) => a + num(w.falseApprove), 0);
+  return `<div style="margin:2px 0 10px">
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <span style="font-weight:600;font-size:13px">Weekly approver agreement</span>
+        <span style="font-size:10px;color:var(--text-muted)">
+          <span style="color:${COL.agreedApprove}">■</span> agreed-approve
+          <span style="color:${COL.agreedBlock}">■</span> agreed-block
+          <span style="color:${COL.falseApprove}">■</span> <b style="color:${COL.falseApprove}">false-approve</b>
+          <span style="color:${COL.falseBlock}">■</span> false-block
+          <span style="color:${COL.abstain}">■</span> abstain
+          &nbsp;·&nbsp; <span style="color:${COL.agreeLine}">●</span> agreement % (right)
+          &nbsp; <span style="color:${COL.falseLine}">╌</span> false-approve count
+        </span>
+        <span style="margin-left:auto;font-size:12px;color:${trendColor}">${trend}</span>
+      </div>
+      <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;background:transparent">
+        ${grid}${pctAxis}
+        ${bars}
+        ${falseLine}${falseDots}
+        ${agreeLines}${agreeDots}${agreeLabels}
+        ${xlabels}
+      </svg>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Go-live signals: <b>agreement ↑</b> · <b>abstain ↓</b> · <b style="color:${COL.falseApprove}">false-approve → 0</b> (a false-approve is Verity waving through a PR a human wanted changed — the one error that must reach zero before Verity leaves shadow mode). ${totalFalse} false-approve${totalFalse === 1 ? '' : 's'} across the window.</div>
     </div>`;
 }
 
