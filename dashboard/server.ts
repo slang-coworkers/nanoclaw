@@ -6929,15 +6929,25 @@ export async function handleRequest(
       }
     }
 
+    // Capture the socket NOW: res.end() (SSE drain-recovery close) nulls
+    // res.socket, so reading res.socket inside removeClient after a clean close
+    // would skip the detach and leak a close/error handler per SSE request on the
+    // reused keep-alive socket. res.socket is stable for the life of the request.
+    const eventsSocket = res.socket;
     const removeClient = () => {
       sseClients.delete(res);
       clearBlockedTimer(res);
       clientBlockedSince.delete(res);
       staleClients.delete(res);
+      // Detach the socket-level listeners: eventsSocket is reused across HTTP
+      // keep-alive requests, so leaving them attached would accumulate one
+      // close/error handler per SSE request on the same socket.
+      eventsSocket?.off?.('close', removeClient);
+      eventsSocket?.off?.('error', removeClient);
     };
     req.on('close', removeClient);
-    res.socket?.on('close', removeClient);
-    res.socket?.on('error', removeClient);
+    eventsSocket?.on('close', removeClient);
+    eventsSocket?.on('error', removeClient);
     return;
   }
 
