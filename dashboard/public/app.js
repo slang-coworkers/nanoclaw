@@ -522,6 +522,30 @@ async function loadFunnel() {
       ucBox.innerHTML =
         '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Unit cost: failed to load.</div>';
     }
+
+    // Review rounds — human CHANGES_REQUESTED rounds per PR, bot vs human, by
+    // merge week (/api/review-rounds, its own host cron). Own container + own
+    // try/catch, same reasoning as the panels above: an unrelated network error
+    // must not blank this one. Renders nothing when the snapshot is absent.
+    if (stale()) return;
+    const rrBox = document.createElement('div');
+    detail.appendChild(rrBox);
+    try {
+      const rr = await fetch('/api/review-rounds');
+      if (stale()) return;
+      if (rr.ok) {
+        rrBox.innerHTML = reviewRoundsHtml(await rr.json());
+      } else {
+        const jr = await rr.json().catch(() => ({}));
+        rrBox.innerHTML =
+          '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Review rounds: no snapshot yet. ' +
+          esc(jr.hint || '') +
+          '</div>';
+      }
+    } catch (e) {
+      rrBox.innerHTML =
+        '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Review rounds: failed to load.</div>';
+    }
   }
 }
 
@@ -1504,6 +1528,161 @@ function funnelIssueTableHtml(issues, rows, statusColors) {
   }
   html += '</tbody></table></details>';
   return html;
+}
+
+// Review rounds — how many human CHANGES_REQUESTED rounds a PR drew before it
+// merged, bot-authored vs human-authored, plotted over the merge weeks. Reads
+// the /api/review-rounds snapshot (scripts/review-rounds.py). Two lines in the
+// funnelWeeklyTrendSvg visual idiom: avg human-review rounds for bot PRs (amber)
+// vs human PRs (blue). Degrades to '' when the snapshot is absent/empty; renders
+// the breakage note when the producer failed closed (complete:false).
+function reviewRoundsHtml(rr) {
+  if (!rr) return '';
+
+  let freshness = '';
+  if (rr.generatedAt) {
+    const ageH = (Date.now() - new Date(rr.generatedAt).getTime()) / 3600000;
+    const stale = ageH > 36;
+    const label = ageH < 1 ? 'just now' : ageH < 48 ? Math.round(ageH) + 'h ago' : Math.round(ageH / 24) + 'd ago';
+    freshness = ' · snapshot ' + (stale ? '<b style="color:var(--warn,#c90)">' + label + ' (stale)</b>' : label);
+  }
+  const title =
+    '<div style="font-weight:600;margin-bottom:4px">Human-review rounds per PR ' +
+    '<span style="font-weight:400;color:var(--text-muted)">— bot vs human authored' +
+    (rr.since ? ' · since ' + esc(rr.since) : '') +
+    freshness +
+    '</span></div>';
+
+  // COLLECTION FAILURE IS NOT A ZERO. The producer fails closed: an incomplete
+  // run emits no weekly metrics and sets complete:false with errors[]. Render the
+  // breakage — a flat line here would read as "review got easier" when nothing
+  // was measured.
+  if (rr.complete === false) {
+    const errs = (rr.errors || [])
+      .slice(0, 4)
+      .map((e) => esc(typeof e === 'string' ? e : (e && (e.what + ': ' + e.detail)) || String(e)))
+      .join('<br>');
+    return (
+      '<div style="margin-top:20px">' +
+      title +
+      '<div style="padding:4px 8px;border-left:3px solid var(--warn,#c90);color:var(--text-muted);max-width:640px;line-height:1.45">' +
+      '<b>Collection incomplete — no metric published.</b> This is NOT zero review rounds; the run failed and ' +
+      'deliberately emitted no numbers.' +
+      (errs ? '<br>' + errs : '') +
+      '</div></div>'
+    );
+  }
+
+  const weekly = Array.isArray(rr.weekly) ? rr.weekly : [];
+  if (weekly.length === 0) return '';
+
+  const svg = reviewRoundsTrendSvg(weekly);
+
+  // Totals strip: overall bot vs human averages + clean-first-pass rates.
+  const t = rr.totals || {};
+  const bt = t.botAuthored || {};
+  const ht = t.humanAuthored || {};
+  const numOrDash = (v) => (v === null || v === undefined ? '—' : v);
+  const totalsLine =
+    bt.prs || ht.prs
+      ? '<div style="color:var(--text-muted);margin-top:4px;max-width:640px;line-height:1.45">' +
+        'Overall: <b style="color:#d29922">bot</b> ' +
+        numOrDash(bt.avgRounds) +
+        ' rounds/PR (clean-first-pass ' +
+        numOrDash(bt.zeroRoundPct) +
+        '%, ' +
+        (bt.prs || 0) +
+        ' PRs) vs <b style="color:#58a6ff">human</b> ' +
+        numOrDash(ht.avgRounds) +
+        ' rounds/PR (clean ' +
+        numOrDash(ht.zeroRoundPct) +
+        '%, ' +
+        (ht.prs || 0) +
+        ' PRs).</div>'
+      : '';
+
+  return (
+    '<div style="margin-top:20px">' +
+    title +
+    svg +
+    totalsLine +
+    '<div style="color:var(--text-muted);margin-top:4px;max-width:640px;line-height:1.45">' +
+    'A round = one <b>CHANGES_REQUESTED</b> review from a human (bot/CI reviewers and self-reviews excluded); ' +
+    'fewer rounds = cleaner PRs; is the bot converging to — or below — human? MERGED PRs only, by merge week.' +
+    '</div></div>'
+  );
+}
+
+// Two-line weekly trend for review rounds, in the funnelWeeklyTrendSvg idiom:
+// amber = avg rounds for bot-authored PRs, blue = human-authored. A week with no
+// PRs in a class has a null average and is simply skipped (the line bridges the
+// gap) rather than plotted as a spurious zero. Returns '' when nothing to plot.
+function reviewRoundsTrendSvg(weekly) {
+  if (!Array.isArray(weekly) || weekly.length === 0) return '';
+  const W = 520,
+    H = 140,
+    padL = 30,
+    padR = 10,
+    padT = 16,
+    padB = 26;
+  const innerW = W - padL - padR,
+    innerH = H - padT - padB;
+  const n = weekly.length;
+  const avg = (w, k) => {
+    const c = w[k];
+    return c && typeof c.avgRounds === 'number' ? c.avgRounds : null;
+  };
+  const observed = [];
+  for (const w of weekly) {
+    const b = avg(w, 'botAuthored');
+    const h = avg(w, 'humanAuthored');
+    if (b !== null) observed.push(b);
+    if (h !== null) observed.push(h);
+  }
+  const maxY = Math.max(1, ...observed);
+  const x = (i) => padL + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+  const y = (v) => padT + innerH - (v / maxY) * innerH;
+  const gridVals = [0, maxY / 2, maxY];
+  const grid = gridVals
+    .map(
+      (v) =>
+        `<line x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W - padR}" y2="${y(v).toFixed(1)}" stroke="var(--border)" stroke-width="1"/>` +
+        `<text x="${padL - 5}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--text-muted)">${v % 1 === 0 ? v : v.toFixed(1)}</text>`,
+    )
+    .join('');
+  const series = (k, color) => {
+    const pts = [];
+    const dots = [];
+    weekly.forEach((w, i) => {
+      const v = avg(w, k);
+      if (v === null) return;
+      const c = w[k] || {};
+      pts.push(`${x(i).toFixed(1)},${y(v).toFixed(1)}`);
+      const zp = typeof c.zeroRoundPct === 'number' ? `, clean ${c.zeroRoundPct}%` : '';
+      dots.push(
+        `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.6" fill="${color}"><title>${esc(w.week)} — ${k === 'botAuthored' ? 'bot' : 'human'}: ${v} rounds/PR (${c.prs || 0} PRs${zp})</title></circle>`,
+      );
+    });
+    const line = pts.length > 1 ? `<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2"/>` : '';
+    return line + dots.join('');
+  };
+  const xlabels = weekly
+    .map((w, i) =>
+      i % Math.ceil(n / 6 || 1) === 0
+        ? `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="8" fill="var(--text-muted)">${esc(String(w.week).slice(5))}</text>`
+        : '',
+    )
+    .join('');
+  return `<div style="margin:6px 0 2px;display:flex;align-items:baseline;gap:10px">
+      <span style="font-weight:600">Avg human-review rounds / merged PR</span>
+      <span style="font-size:10px;color:var(--text-muted)"><span style="color:#d29922">●</span> bot &nbsp;<span style="color:#58a6ff">●</span> human</span>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;background:transparent">
+      ${grid}
+      ${series('botAuthored', '#d29922')}
+      ${series('humanAuthored', '#58a6ff')}
+      ${xlabels}
+    </svg>`;
 }
 
 // Inline-SVG line chart of the weekly WIN trend (issuePartition.weekly).

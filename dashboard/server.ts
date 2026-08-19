@@ -6016,6 +6016,34 @@ export async function handleRequest(
     return;
   }
 
+  // API: review-rounds snapshot — how many human CHANGES_REQUESTED rounds a PR
+  // drew before merging, bot-authored vs human-authored, by merge week. Written
+  // by scripts/review-rounds.py (host cron; see scripts/funnel-cron.sh). Served
+  // cached, never recomputed inline: it makes read-only GitHub GraphQL calls
+  // that have no business in the request path. Pass-through, exactly like
+  // /api/bot-contributions above — the producer already fails closed
+  // (complete:false + errors[] when its collection was incomplete), so this only
+  // reads and forwards.
+  if (url.pathname === '/api/review-rounds') {
+    if (!requireAuth(req, res)) return;
+    const p = join(getProjectRoot(), 'reports', 'review-rounds.json');
+    if (!existsSync(p)) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({ error: 'no snapshot', hint: 'run: python3 scripts/review-rounds.py --json reports/review-rounds.json' }),
+      );
+      return;
+    }
+    try {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(JSON.parse(readFileSync(p, 'utf-8'))));
+    } catch {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'snapshot unreadable' }));
+    }
+    return;
+  }
+
   // API: recompute the bot-contributions snapshot in the background (a handful of
   // GitHub calls, ~seconds). Returns 202 and lets the client re-fetch shortly.
   if (req.method === 'POST' && url.pathname === '/api/bot-contributions/refresh') {
