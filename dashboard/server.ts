@@ -4639,6 +4639,8 @@ export function resetTransientDashboardStateForTests(): void {
   hookEverSeen.clear();
   lastMessageTsCache.clear();
   msgTsFileCache.clear();
+  groupTaskCache.clear();
+  perFileTaskCache.clear();
   runningContainers.clear();
   _mcpAllTools = [];
   _typeColors = null;
@@ -5027,18 +5029,21 @@ const perFileTaskCache = new Map<string, { mtimeMs: number; tasks: ScheduledTask
 
 /** Read the pending/paused tasks from one session's inbound.db, mtime-gated:
  *  reuse the cached rows when the file is unchanged since the last scan, so only
- *  sessions whose task set actually moved pay a sqlite open. Read errors are not
- *  cached (return [] and retry next scan), preserving the prior retry semantics. */
-function extractSessionTasks(dbPath: string, sessionId: string): ScheduledTaskRow[] {
+ *  sessions whose task set actually moved pay a sqlite open. Tri-state: `ok:false`
+ *  means the DB open/query failed (transient lock / I/O). Callers building a
+ *  cached aggregate must NOT publish a `!ok` result, else a momentary lock gets
+ *  memoized as a group-wide undercount. A genuinely absent file is `ok:true` with
+ *  no tasks. Only clean reads are cached; a failed read is retried next scan. */
+function extractSessionTasks(dbPath: string, sessionId: string): { ok: boolean; tasks: ScheduledTaskRow[] } {
   let mtimeMs: number;
   try {
     mtimeMs = statSync(dbPath).mtimeMs; // throws if the file doesn't exist
   } catch {
     perFileTaskCache.delete(dbPath);
-    return [];
+    return { ok: true, tasks: [] }; // no inbound.db → genuinely no tasks
   }
   const cached = perFileTaskCache.get(dbPath);
-  if (cached && cached.mtimeMs === mtimeMs) return cached.tasks;
+  if (cached && cached.mtimeMs === mtimeMs) return { ok: true, tasks: cached.tasks };
   let sdb: Database.Database | null = null;
   try {
     sdb = new Database(dbPath, { readonly: true });
@@ -5057,9 +5062,9 @@ function extractSessionTasks(dbPath: string, sessionId: string): ScheduledTaskRo
       status: r.status,
     }));
     perFileTaskCache.set(dbPath, { mtimeMs, tasks }); // cache only on a clean read
-    return tasks;
+    return { ok: true, tasks };
   } catch {
-    return []; // DB corrupt/locked — don't cache; next scan retries
+    return { ok: false, tasks: [] }; // corrupt/locked — don't cache; next scan retries
   } finally {
     try {
       sdb?.close();
@@ -5069,14 +5074,26 @@ function extractSessionTasks(dbPath: string, sessionId: string): ScheduledTaskRo
   }
 }
 
-/** Extract scheduled tasks from inbound.db across a group's sessions. */
-function extractScheduledTasks(agentGroupId: string, sessionIds: string[]): ScheduledTaskRow[] {
+/** Scan a group's sessions for scheduled tasks. Tri-state: `ok:false` if ANY
+ *  constituent session read failed, so the memo layer can decline to publish a
+ *  possibly-undercounted aggregate (a transient lock must not poison the memo). */
+function extractGroupTasks(agentGroupId: string, sessionIds: string[]): { ok: boolean; tasks: ScheduledTaskRow[] } {
   const tasks: ScheduledTaskRow[] = [];
+  let ok = true;
   for (const sessId of sessionIds) {
     const dbPath = join(getDataDir(), 'v2-sessions', agentGroupId, sessId, 'inbound.db');
-    for (const t of extractSessionTasks(dbPath, sessId)) tasks.push(t);
+    const r = extractSessionTasks(dbPath, sessId);
+    if (!r.ok) ok = false;
+    for (const t of r.tasks) tasks.push(t);
   }
-  return tasks;
+  return { ok, tasks };
+}
+
+/** Fail-soft task list across a group's sessions (returns whatever read cleanly).
+ *  Used by /api/tasks and the import/export paths, which surface a live snapshot
+ *  and can tolerate a transient partial without poisoning the shared memo. */
+function extractScheduledTasks(agentGroupId: string, sessionIds: string[]): ScheduledTaskRow[] {
+  return extractGroupTasks(agentGroupId, sessionIds).tasks;
 }
 
 // Per-agent-group scheduled-task snapshot, refreshed on a background interval so
@@ -5092,8 +5109,12 @@ interface GroupTaskSummary {
   active: number;
   paused: number;
   completed: number;
+  // When this group's summary was last (re)published — per-group, since the
+  // refresh publishes each group independently rather than swapping the whole
+  // map at the end, so readers observe a completed group's fresh count at once.
+  refreshedAt: number;
 }
-let groupTaskCache = new Map<string, GroupTaskSummary>();
+const groupTaskCache = new Map<string, GroupTaskSummary>();
 
 function summarizeGroupTasks(tasks: ScheduledTaskRow[]): GroupTaskSummary {
   let active = 0;
@@ -5105,51 +5126,74 @@ function summarizeGroupTasks(tasks: ScheduledTaskRow[]): GroupTaskSummary {
     else if (st === 'paused') paused++;
     else if (st === 'completed') completed++;
   }
-  return { tasks, active, paused, completed };
+  return { tasks, active, paused, completed, refreshedAt: Date.now() };
 }
 
 /** Snapshot of a group's scheduled tasks: memo hit when warm, else a live
- *  (mtime-cached) scan that also seeds the memo for the next reader. */
+ *  (mtime-cached) scan. The memo is seeded only on a clean read: a partial (a
+ *  constituent DB read failed) is returned for this one response but not cached,
+ *  so the next reader/refresh retries instead of memoizing an undercount. */
 function getGroupTaskSummary(agentGroupId: string): GroupTaskSummary {
   const cached = groupTaskCache.get(agentGroupId);
   if (cached) return cached;
   const { sessionIds } = collectSessionDbFiles(agentGroupId);
-  const summary = summarizeGroupTasks(extractScheduledTasks(agentGroupId, sessionIds));
-  groupTaskCache.set(agentGroupId, summary);
+  const scan = extractGroupTasks(agentGroupId, sessionIds);
+  const summary = summarizeGroupTasks(scan.tasks);
+  if (scan.ok) groupTaskCache.set(agentGroupId, summary);
   return summary;
 }
 
-function refreshGroupTaskCache(): void {
-  if (!db) db = openDb();
-  if (!db) return;
+// Re-entrancy guard: the scan yields between groups (setImmediate), so a slow
+// fleet refresh can outlast the 15s interval; a second tick must not stack on
+// the first. Mirrors sessionCostScanning.
+let groupTaskRefreshing = false;
+
+/** Refresh the per-group task snapshot. Publishes each group independently the
+ *  moment its scan completes (with a per-group refreshedAt) rather than swapping
+ *  the whole map after the last group, so a slow scan can't push staleness toward
+ *  two intervals. Yields between groups so requests/SSE/WS keep flowing on a
+ *  several-thousand-session install. A group whose scan hit a transient read
+ *  error keeps its previous summary and is retried next cycle. Deleted groups are
+ *  pruned separately after the pass. */
+async function refreshGroupTaskCache(): Promise<void> {
+  if (groupTaskRefreshing) return;
+  groupTaskRefreshing = true;
   try {
-    const groups = db.prepare('SELECT id FROM agent_groups').all() as { id: string }[];
-    const next = new Map<string, GroupTaskSummary>();
+    if (!db) db = openDb();
+    if (!db) return;
+    let groups: { id: string }[];
+    try {
+      groups = db.prepare('SELECT id FROM agent_groups').all() as { id: string }[];
+    } catch {
+      return; // DB not ready
+    }
+    const liveGroupIds = new Set<string>();
     const livePaths = new Set<string>();
     for (const g of groups) {
+      liveGroupIds.add(g.id);
       const { sessionIds } = collectSessionDbFiles(g.id);
       for (const sid of sessionIds) {
         livePaths.add(join(getDataDir(), 'v2-sessions', g.id, sid, 'inbound.db'));
       }
-      next.set(g.id, summarizeGroupTasks(extractScheduledTasks(g.id, sessionIds)));
+      const scan = extractGroupTasks(g.id, sessionIds);
+      // Publish a clean read only; a partial retains the previous summary.
+      if (scan.ok) groupTaskCache.set(g.id, summarizeGroupTasks(scan.tasks));
+      // Yield so a large fleet scan doesn't monopolize the event loop; each
+      // published group is observable by readers immediately.
+      await new Promise<void>((resolve) => setImmediate(resolve));
     }
-    groupTaskCache = next;
-    // Drop cache entries for sessions that no longer exist (deleted groups/sessions).
+    // Prune summaries for groups that no longer exist (replaces the old
+    // whole-map swap, which is gone now that we publish per group).
+    for (const id of groupTaskCache.keys()) {
+      if (!liveGroupIds.has(id)) groupTaskCache.delete(id);
+    }
+    // Drop per-file cache entries for sessions that no longer exist.
     if (perFileTaskCache.size > livePaths.size * 2 + 1000) {
       for (const k of perFileTaskCache.keys()) if (!livePaths.has(k)) perFileTaskCache.delete(k);
     }
-  } catch {
-    /* DB not ready */
+  } finally {
+    groupTaskRefreshing = false;
   }
-}
-// Prime once at startup so the first landing-panel request after a restart reads
-// the memo instead of cold-opening every session DB inline (the "painfully slow
-// cold load"), then refresh on a background interval. Skipped under VITEST so the
-// test server never spawns a background scan — readers there use the live path.
-if (!process.env.VITEST) {
-  refreshGroupTaskCache();
-  const groupTaskTimer = setInterval(refreshGroupTaskCache, 15000);
-  groupTaskTimer.unref?.();
 }
 
 // ---------------------------------------------------------------------------
@@ -9855,6 +9899,7 @@ export async function handleRequest(
 
         // Optionally pause source tasks
         let pausedTasks = false;
+        let pausedChanges = 0;
         if (url.searchParams.get('pauseTasks') === 'true') {
           for (const sessId of sessionIds) {
             const dbPath = join(getDataDir(), 'v2-sessions', group.id, sessId, 'inbound.db');
@@ -9864,7 +9909,10 @@ export async function handleRequest(
               sdb = new Database(dbPath);
               sdb.pragma('journal_mode = DELETE');
               sdb.pragma('busy_timeout = 5000');
-              sdb.prepare("UPDATE messages_in SET status = 'paused' WHERE kind = 'task' AND status = 'pending'").run();
+              const info = sdb
+                .prepare("UPDATE messages_in SET status = 'paused' WHERE kind = 'task' AND status = 'pending'")
+                .run();
+              pausedChanges += info.changes;
               pausedTasks = true;
             } catch {
               /* best-effort */
@@ -9875,6 +9923,14 @@ export async function handleRequest(
                 /* */
               }
             }
+          }
+          // Any newly-paused row invalidates this group's memoized task snapshot
+          // so getState / /api/overview stop reporting the paused tasks as active
+          // until the next background refresh; the state cache is bumped too so
+          // live consumers repaint promptly.
+          if (pausedChanges > 0) {
+            groupTaskCache.delete(group.id);
+            invalidateStateCache();
           }
         }
 
@@ -12823,6 +12879,7 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
   // routes below still serve, so endpoint tests are unaffected.
   let stopWatchingMcpToken: (() => void) | null = null;
   let mcpRefreshTimer: ReturnType<typeof setInterval> | undefined;
+  let groupTaskTimer: ReturnType<typeof setInterval> | undefined;
   if (!process.env.VITEST) {
     // Load MCP tool inventory eagerly and refresh when the auth proxy rotates the token.
     void refreshMcpTools();
@@ -12926,6 +12983,7 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
   server.on('close', () => {
     stopWatchingMcpToken?.();
     clearInterval(mcpRefreshTimer);
+    clearInterval(groupTaskTimer);
     clearInterval(broadcastTimer);
     clearInterval(heartbeatTimer);
     clearInterval(expireTimer);
@@ -12947,6 +13005,23 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
     console.log(`  Tab 2: Timeline (all-time metrics)`);
     if (getDashboardSecret()) console.log(`  Auth: dashboard secret required for browser/admin access`);
     console.log();
+
+    // Prime the scheduled-task snapshot only AFTER the port is bound, so the
+    // fleet scan never delays the listener coming up / readiness probes on a
+    // cold restart. The scan yields between groups (refreshGroupTaskCache), so
+    // neither the prime nor the 15s refresh monopolizes the event loop. Skipped
+    // under VITEST — the test server uses the live (mtime-cached) fallback path.
+    if (!process.env.VITEST) {
+      void refreshGroupTaskCache().catch(() => {
+        /* non-fatal; the interval retries */
+      });
+      groupTaskTimer = setInterval(() => {
+        void refreshGroupTaskCache().catch(() => {
+          /* non-fatal; next tick retries */
+        });
+      }, 15000);
+      groupTaskTimer.unref?.();
+    }
   });
 
   return server;
