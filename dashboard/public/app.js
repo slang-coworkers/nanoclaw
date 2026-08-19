@@ -435,7 +435,12 @@ async function loadFunnel() {
     board.innerHTML =
       partHtml +
       reviewCyclesHtml(snap.reviewCycles) +
-      funnelApproverPanel(snap.approverDecisions || [], snap.approverLedger, snap.approverWeekly || []);
+      funnelApproverPanel(
+        snap.approverDecisions || [],
+        snap.approverLedger,
+        snap.approverWeekly || [],
+        snap.approverWeeklyLegacy || [],
+      );
 
   // nv-slang-bot contribution table (separate snapshot: /api/bot-contributions).
   if (detail) {
@@ -757,7 +762,7 @@ function kbDoctorHtml(kbh) {
 // this shows EVERY decision Verity recorded, including the human-authored PRs it
 // reviewed in shadow mode. `decisions` is snap.approverDecisions (newest first,
 // one row per PR). Counts by decision are shown as a header summary.
-function funnelApproverPanel(decisions, ledger, weekly) {
+function funnelApproverPanel(decisions, ledger, weekly, weeklyLegacy) {
   if (!Array.isArray(decisions)) decisions = [];
   // Approve = green, block = red, abstain = muted. Matches the funnel row cell
   // (funnelIssueTableHtml's approverColor); literal hex here since the palette
@@ -850,7 +855,7 @@ function funnelApproverPanel(decisions, ledger, weekly) {
         <tbody>${rows}</tbody>
       </table>`;
   return `<div style="margin-top:20px">
-      ${funnelApproverWeeklySvg(weekly)}
+      ${funnelApproverWeeklySvg(weekly, weeklyLegacy)}
       <details>
         <summary style="cursor:pointer;list-style:revert">
           <span style="display:inline-flex;align-items:baseline;gap:10px;flex-wrap:wrap">
@@ -869,12 +874,26 @@ function funnelApproverPanel(decisions, ledger, weekly) {
 // abstains falling, and is the SAFETY-critical false-approve heading to zero —
 // the three signals for taking Verity out of shadow mode. Reads snap.approverWeekly
 // (produced by scripts/funnel.ts on nv-main; rides in the same funnel.json fetch).
-// Returns '' when the field is absent (older snapshot) or empty, so the panel
-// degrades gracefully. Style deliberately mirrors funnelWeeklyTrendSvg /
+//
+// `weeklyLegacy` (snap.approverWeeklyLegacy) is the SAME weekly aggregation over
+// the pre-ledger rows migration 935 quarantined — unverified, pre-enforcement
+// decisions. It extends the trend back across the full history so the older weeks
+// are visible, but it is kept VISUALLY DISTINCT so it can never be mistaken for
+// trusted data: legacy weeks render with washed-out, hatched bars and a dashed
+// grey agreement line, behind a divider at the ledger cutover, and they are
+// excluded from the trend arrow and go-live footer (those stay verified-only).
+// Trusted weeks always win a week they share with legacy, so the extension can
+// only ADD older, legacy-only weeks — it never recolours a trusted one.
+//
+// Returns '' when BOTH series are absent/empty (older snapshot), so the panel
+// degrades gracefully; a snapshot with no legacy field renders exactly the old
+// verified-only chart. Style deliberately mirrors funnelWeeklyTrendSvg /
 // funnelWeeklyConversionSvg (same W/H, count-left / %-right dual axis, rolling-
 // point labels), so it reads as one family of charts.
-function funnelApproverWeeklySvg(weekly) {
-  if (!Array.isArray(weekly) || weekly.length === 0) return '';
+function funnelApproverWeeklySvg(weekly, weeklyLegacy) {
+  const verified = Array.isArray(weekly) ? weekly : [];
+  const legacy = Array.isArray(weeklyLegacy) ? weeklyLegacy : [];
+  if (verified.length === 0 && legacy.length === 0) return '';
   const W = 560,
     H = 156,
     padL = 30,
@@ -883,7 +902,6 @@ function funnelApproverWeeklySvg(weekly) {
     padB = 30;
   const innerW = W - padL - padR,
     innerH = H - padT - padB;
-  const n = weekly.length;
   const COL = {
     agreedApprove: '#3fb950', // green  — Verity approved, human agreed
     agreedBlock: '#39c5cf', // teal   — Verity blocked, human agreed
@@ -892,16 +910,37 @@ function funnelApproverWeeklySvg(weekly) {
     abstain: '#484f58', // grey   — Verity abstained
     agreeLine: '#56d364', // agreement % (want ↑)
     falseLine: '#f85149', // false-approve count (want → 0)
+    legacyLine: '#8b949e', // muted grey — legacy (unverified) agreement %
   };
   const num = (v) => (typeof v === 'number' && isFinite(v) ? v : 0);
-  // Left axis = decision COUNTS; bars scale to the busiest week's total.
-  const maxTotal = Math.max(1, ...weekly.map((w) => num(w.total)));
+  // Merge onto ONE week axis, sorted ascending. Verified rows overwrite legacy at
+  // a shared week (trusted wins), so `series` is the older legacy-only weeks
+  // followed by the trusted weeks — the extended history, never a relabelled
+  // trusted week. Each entry carries `isLegacy` so every mark can be styled by
+  // trust class.
+  const byWeek = new Map();
+  for (const w of legacy) if (w && w.weekStart) byWeek.set(w.weekStart, { w, isLegacy: true });
+  for (const w of verified) if (w && w.weekStart) byWeek.set(w.weekStart, { w, isLegacy: false });
+  const series = [...byWeek.values()].sort((a, b) =>
+    a.w.weekStart < b.w.weekStart ? -1 : a.w.weekStart > b.w.weekStart ? 1 : 0,
+  );
+  const n = series.length;
+  const hasLegacy = series.some((s) => s.isLegacy);
+  // Left axis = decision COUNTS; bars scale to the busiest week's total across
+  // BOTH series so verified and legacy weeks are directly comparable.
+  const maxTotal = Math.max(1, ...series.map((s) => num(s.w.total)));
   const slot = innerW / n;
   const barW = Math.max(5, Math.min(30, slot * 0.62));
   const cx = (i) => padL + slot * (i + 0.5);
   const baseY = padT + innerH;
   const yCnt = (v) => padT + innerH - (num(v) / maxTotal) * innerH;
   const yPct = (v) => padT + innerH - (num(v) / 100) * innerH; // v in 0..100
+  // Diagonal-hatch fill for legacy bars — the "unverified" marker. Defined once,
+  // only when there is legacy data to mark.
+  const defs = hasLegacy
+    ? `<defs><pattern id="verityLegacyHatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">` +
+      `<line x1="0" y1="0" x2="0" y2="5" stroke="var(--text-muted)" stroke-width="1" opacity="0.55"/></pattern></defs>`
+    : '';
   // Left count-axis grid (0 / mid / max) + right %-axis labels (0 / 50 / 100).
   const cntVals = [0, Math.round(maxTotal / 2), maxTotal];
   const grid = cntVals
@@ -917,14 +956,29 @@ function funnelApproverWeeklySvg(weekly) {
         `<text x="${W - padR + 5}" y="${(yPct(v) + 3).toFixed(1)}" text-anchor="start" font-size="9" fill="${COL.agreeLine}">${v}%</text>`,
     )
     .join('');
+  // Vertical divider at the ledger cutover — the first trusted week. Everything
+  // left of it is pre-enforcement (legacy) history. Only drawn when legacy weeks
+  // actually precede a verified one.
+  const boundaryIndex = series.findIndex((s) => !s.isLegacy);
+  const dividerX = boundaryIndex > 0 ? padL + slot * boundaryIndex : null;
+  const divider =
+    hasLegacy && dividerX != null
+      ? `<line x1="${dividerX.toFixed(1)}" y1="${padT}" x2="${dividerX.toFixed(1)}" y2="${baseY.toFixed(1)}" stroke="var(--text-muted)" stroke-width="1" stroke-dasharray="2 3" opacity="0.7"/>` +
+        `<text x="${dividerX.toFixed(1)}" y="${(padT + 7).toFixed(1)}" text-anchor="middle" font-size="8" fill="var(--text-muted)">ledger →</text>`
+      : '';
   // Per-week stacked bar: agreed (green/teal) + false (red/amber) + abstain (grey),
   // stacked from the baseline up. The bar's full height is total decisions, so
   // any unfilled cap above the stack is the week's not-yet-verdicted PRs — the
-  // fill fraction doubles as a coverage read.
-  const bars = weekly
-    .map((w, i) => {
+  // fill fraction doubles as a coverage read. Legacy weeks are washed out
+  // (low-opacity fills) and overlaid with the hatch pattern + a dashed track, so
+  // they read as unverified while still showing the decision-class colours.
+  const bars = series
+    .map(({ w, isLegacy }, i) => {
       const x = (cx(i) - barW / 2).toFixed(1);
-      const track = `<rect x="${x}" y="${yCnt(w.total).toFixed(1)}" width="${barW.toFixed(1)}" height="${(baseY - yCnt(w.total)).toFixed(1)}" fill="var(--bg-card)" stroke="var(--border)" stroke-width="0.5"/>`;
+      const topY = yCnt(w.total).toFixed(1);
+      const barH = baseY - yCnt(w.total);
+      const trackDash = isLegacy ? ' stroke-dasharray="2 2"' : '';
+      const track = `<rect x="${x}" y="${topY}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" fill="var(--bg-card)" stroke="var(--border)" stroke-width="0.5"${trackDash}/>`;
       const segs = [
         { n: num(w.agreedApprove), c: COL.agreedApprove, label: 'agreed-approve' },
         { n: num(w.agreedBlock), c: COL.agreedBlock, label: 'agreed-block' },
@@ -932,6 +986,7 @@ function funnelApproverWeeklySvg(weekly) {
         { n: num(w.falseBlock), c: COL.falseBlock, label: 'false-block' },
         { n: num(w.abstain), c: COL.abstain, label: 'abstain' },
       ];
+      const tag = isLegacy ? ' (legacy)' : '';
       let acc = 0;
       const rects = segs
         .filter((s) => s.n > 0)
@@ -941,60 +996,98 @@ function funnelApproverWeeklySvg(weekly) {
           acc += s.n;
           // The safety segment gets a bright outline so it never hides in a tall bar.
           const stroke = s.c === COL.falseApprove ? ' stroke="#ffdcd7" stroke-width="0.75"' : '';
-          return `<rect x="${x}" y="${y1.toFixed(1)}" width="${barW.toFixed(1)}" height="${(y0 - y1).toFixed(1)}" fill="${s.c}"${stroke}><title>${esc(w.weekStart)} · ${s.label}: ${s.n}</title></rect>`;
+          // Legacy fills are washed out so the hatch overlay reads as "unverified".
+          const op = isLegacy ? ' fill-opacity="0.4"' : '';
+          return `<rect x="${x}" y="${y1.toFixed(1)}" width="${barW.toFixed(1)}" height="${(y0 - y1).toFixed(1)}" fill="${s.c}"${op}${stroke}><title>${esc(w.weekStart)}${tag} · ${s.label}: ${s.n}</title></rect>`;
         })
         .join('');
-      return track + rects;
+      const hatch =
+        isLegacy && barH > 0.5
+          ? `<rect x="${x}" y="${topY}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" fill="url(#verityLegacyHatch)" stroke="none" pointer-events="none"/>`
+          : '';
+      return track + rects + hatch;
     })
     .join('');
-  // Agreement % line (right axis, want ↑). Weeks with no human verdict have
-  // agreementPct === null — break the line there rather than plotting a 0.
-  const agreePts = weekly.map((w, i) => (w.agreementPct == null ? null : `${cx(i).toFixed(1)},${yPct(w.agreementPct).toFixed(1)}`));
-  const agreeSegments = [];
-  let run = [];
-  for (const p of agreePts) {
-    if (p) run.push(p);
-    else {
-      if (run.length) agreeSegments.push(run);
-      run = [];
+  // Agreement % line (right axis, want ↑). Break the line where agreementPct is
+  // null (no human verdict) AND where the trust class changes, so a trusted (solid
+  // green) run and a legacy (dashed grey) run never join into one stroke.
+  const agreeRuns = [];
+  let cur = null;
+  series.forEach((s, i) => {
+    if (s.w.agreementPct == null) {
+      if (cur) {
+        agreeRuns.push(cur);
+        cur = null;
+      }
+      return;
     }
-  }
-  if (run.length) agreeSegments.push(run);
-  const agreeLines = agreeSegments
-    .map((pts) => `<polyline points="${pts.join(' ')}" fill="none" stroke="${COL.agreeLine}" stroke-width="2"/>`)
-    .join('');
-  const agreeDots = weekly
-    .map((w, i) =>
-      w.agreementPct == null
-        ? ''
-        : `<circle cx="${cx(i).toFixed(1)}" cy="${yPct(w.agreementPct).toFixed(1)}" r="3" fill="${COL.agreeLine}"><title>${esc(w.weekStart)}: ${w.agreementPct}% agreement (${num(w.agreedApprove) + num(w.agreedBlock)}/${num(w.withHumanVerdict)})</title></circle>`,
+    const pt = `${cx(i).toFixed(1)},${yPct(s.w.agreementPct).toFixed(1)}`;
+    if (cur && cur.isLegacy === s.isLegacy) cur.pts.push(pt);
+    else {
+      if (cur) agreeRuns.push(cur);
+      cur = { isLegacy: s.isLegacy, pts: [pt] };
+    }
+  });
+  if (cur) agreeRuns.push(cur);
+  const agreeLines = agreeRuns
+    .map((r) =>
+      r.isLegacy
+        ? `<polyline points="${r.pts.join(' ')}" fill="none" stroke="${COL.legacyLine}" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.85"/>`
+        : `<polyline points="${r.pts.join(' ')}" fill="none" stroke="${COL.agreeLine}" stroke-width="2"/>`,
     )
     .join('');
-  const agreeLabels = weekly
-    .map((w, i) => {
-      if (w.agreementPct == null) return '';
+  const agreeDots = series
+    .map(({ w, isLegacy }, i) =>
+      w.agreementPct == null
+        ? ''
+        : `<circle cx="${cx(i).toFixed(1)}" cy="${yPct(w.agreementPct).toFixed(1)}" r="${isLegacy ? 2.5 : 3}" fill="${isLegacy ? COL.legacyLine : COL.agreeLine}"${isLegacy ? ' opacity="0.85"' : ''}><title>${esc(w.weekStart)}${isLegacy ? ' (legacy, unverified)' : ''}: ${w.agreementPct}% agreement (${num(w.agreedApprove) + num(w.agreedBlock)}/${num(w.withHumanVerdict)})</title></circle>`,
+    )
+    .join('');
+  // Value labels for the TRUSTED weeks only — legacy weeks carry their % in the
+  // dot tooltip, keeping the chart from crowding with unverified numbers.
+  const agreeLabels = series
+    .map(({ w, isLegacy }, i) => {
+      if (isLegacy || w.agreementPct == null) return '';
       const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle';
       return `<text x="${cx(i).toFixed(1)}" y="${(yPct(w.agreementPct) - 7).toFixed(1)}" text-anchor="${anchor}" font-size="10" font-weight="700" fill="${COL.agreeLine}">${Math.round(w.agreementPct)}%</text>`;
     })
     .join('');
-  // False-approve COUNT line (left/count axis, want → 0), highlighted red.
-  const falsePts = weekly.map((w, i) => `${cx(i).toFixed(1)},${yCnt(w.falseApprove).toFixed(1)}`).join(' ');
-  const falseLine = `<polyline points="${falsePts}" fill="none" stroke="${COL.falseLine}" stroke-width="1.5" stroke-dasharray="4 2"/>`;
-  const falseDots = weekly
+  // False-approve COUNT line (left/count axis, want → 0). Split by trust class:
+  // trusted runs are bright red, legacy runs are faded so the go-live signal is
+  // never confused with unverified history.
+  const falseRuns = [];
+  let fcur = null;
+  series.forEach((s, i) => {
+    const pt = `${cx(i).toFixed(1)},${yCnt(s.w.falseApprove).toFixed(1)}`;
+    if (fcur && fcur.isLegacy === s.isLegacy) fcur.pts.push(pt);
+    else {
+      if (fcur) falseRuns.push(fcur);
+      fcur = { isLegacy: s.isLegacy, pts: [pt] };
+    }
+  });
+  if (fcur) falseRuns.push(fcur);
+  const falseLine = falseRuns
     .map(
-      (w, i) =>
-        `<circle cx="${cx(i).toFixed(1)}" cy="${yCnt(w.falseApprove).toFixed(1)}" r="${num(w.falseApprove) > 0 ? 3 : 2}" fill="${COL.falseLine}"><title>${esc(w.weekStart)}: ${num(w.falseApprove)} false-approve</title></circle>`,
+      (r) =>
+        `<polyline points="${r.pts.join(' ')}" fill="none" stroke="${COL.falseLine}" stroke-width="1.5" stroke-dasharray="4 2"${r.isLegacy ? ' opacity="0.4"' : ''}/>`,
     )
     .join('');
-  const xlabels = weekly
-    .map((w, i) =>
+  const falseDots = series
+    .map(
+      ({ w, isLegacy }, i) =>
+        `<circle cx="${cx(i).toFixed(1)}" cy="${yCnt(w.falseApprove).toFixed(1)}" r="${num(w.falseApprove) > 0 ? 3 : 2}" fill="${COL.falseLine}"${isLegacy ? ' opacity="0.4"' : ''}><title>${esc(w.weekStart)}${isLegacy ? ' (legacy, unverified)' : ''}: ${num(w.falseApprove)} false-approve</title></circle>`,
+    )
+    .join('');
+  const xlabels = series
+    .map(({ w }, i) =>
       i % Math.ceil(n / 6 || 1) === 0
         ? `<text x="${cx(i).toFixed(1)}" y="${H - 10}" text-anchor="middle" font-size="8" fill="var(--text-muted)">${esc((w.weekStart || '').slice(5))}</text>`
         : '',
     )
     .join('');
-  // Trend hint: first→last agreement % over the weeks that have a verdict.
-  const withPct = weekly.filter((w) => w.agreementPct != null);
+  // Trend hint: first→last agreement % over the TRUSTED weeks that have a verdict.
+  // Legacy weeks never move the go-live trend.
+  const withPct = verified.filter((w) => w.agreementPct != null);
   let trend = '→ n/a',
     trendColor = 'var(--text-muted)';
   if (withPct.length >= 2) {
@@ -1002,7 +1095,9 @@ function funnelApproverWeeklySvg(weekly) {
     trend = delta > 0 ? `▲ +${delta}pp agreement` : delta < 0 ? `▼ ${delta}pp agreement` : '→ flat';
     trendColor = delta > 0 ? COL.agreeLine : delta < 0 ? '#f85149' : 'var(--text-muted)';
   }
-  const totalFalse = weekly.reduce((a, w) => a + num(w.falseApprove), 0);
+  const totalFalse = verified.reduce((a, w) => a + num(w.falseApprove), 0);
+  const legacyWeeks = series.filter((s) => s.isLegacy).length;
+  const rangeStart = n ? esc(series[0].w.weekStart) : '';
   return `<div style="margin:2px 0 10px">
       <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
         <span style="font-weight:600;font-size:13px">Weekly approver agreement</span>
@@ -1013,18 +1108,28 @@ function funnelApproverWeeklySvg(weekly) {
           <span style="color:${COL.falseBlock}">■</span> false-block
           <span style="color:${COL.abstain}">■</span> abstain
           &nbsp;·&nbsp; <span style="color:${COL.agreeLine}">●</span> agreement % (right)
-          &nbsp; <span style="color:${COL.falseLine}">╌</span> false-approve count
+          &nbsp; <span style="color:${COL.falseLine}">╌</span> false-approve count${
+            hasLegacy
+              ? `\n          &nbsp;·&nbsp; <span style="color:var(--text-muted)">▨</span> <span style="color:${COL.legacyLine}">╌ legacy (unverified, pre-ledger)</span>`
+              : ''
+          }
         </span>
         <span style="margin-left:auto;font-size:12px;color:${trendColor}">${trend}</span>
       </div>
       <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;background:transparent">
+        ${defs}
         ${grid}${pctAxis}
         ${bars}
+        ${divider}
         ${falseLine}${falseDots}
         ${agreeLines}${agreeDots}${agreeLabels}
         ${xlabels}
       </svg>
-      <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Go-live signals: <b>agreement ↑</b> · <b>abstain ↓</b> · <b style="color:${COL.falseApprove}">false-approve → 0</b> (a false-approve is Verity waving through a PR a human wanted changed — the one error that must reach zero before Verity leaves shadow mode). ${totalFalse} false-approve${totalFalse === 1 ? '' : 's'} across the window.</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Go-live signals: <b>agreement ↑</b> · <b>abstain ↓</b> · <b style="color:${COL.falseApprove}">false-approve → 0</b> (a false-approve is Verity waving through a PR a human wanted changed — the one error that must reach zero before Verity leaves shadow mode). ${totalFalse} false-approve${totalFalse === 1 ? '' : 's'} across the trusted window.${
+        hasLegacy
+          ? ` <span style="color:var(--text-muted)">Extended back to ${rangeStart} with ${legacyWeeks} pre-ledger week${legacyWeeks === 1 ? '' : 's'} (hatched bars · dashed grey line) — unverified pre-enforcement decisions shown for historical context only, excluded from the trend and go-live signals above.</span>`
+          : ''
+      }</div>
     </div>`;
 }
 
