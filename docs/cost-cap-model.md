@@ -23,7 +23,7 @@ Cost is role-dependent, so a single number can't fit all. Each group's cap = **i
 | **Tier 1 — its group p90** | **Escalate** → human picks **Continue** (+1 allotment) or **Stop** | **Escalate for visibility** (Continue-only) |
 | **Tier 2 — $150 ceiling** | **HARD STOP** — quiesce before the next turn | **Escalate again — never auto-blocked**; operator adds USD via dashboard → Sessions |
 
-- **Ceiling** = `NANOCLAW_COST_T2_CEILING_USD` in `.env` (**$150**, fixed until reviewed monthly). It sits above even fixer's p95 ($142) → never bites legit work, and hard-stops runaway far below $1000.
+- **Ceiling** = a runtime DB value set with `ncl cost-cap set --ceiling` (see [below](#runtime-configuration--ncl-cost-cap-elevated-only)) — **the env var `NANOCLAW_COST_T2_CEILING_USD` is a deprecated legacy fallback**, consulted only when no DB value is set. Typical value **$150** (reviewed monthly): it sits above even fixer's p95 ($142) → never bites legit work, and hard-stops runaway far below $1000.
 - **Immortal is never silently blocked.** The orchestrator must stay alive; its bound is the human, who funds it via Continue. This is what flags (not kills) a $625-type main run.
 - **Everything is reversible.** A stopped session resumes via dashboard **Continue** or `/clear`; a new session resets the counter.
 
@@ -33,8 +33,29 @@ Cost is role-dependent, so a single number can't fit all. Each group's cap = **i
 
 ## Where the numbers live
 - **Per-group p90:** dashboard computes it over each group's real 7-day sessions → `data/cost-thresholds.json` (`perGroupP90Usd` map); host reads the group's value at spawn (`resolveCostCapT2Usd`).
-- **Ceiling:** operator-set in `.env` (`NANOCLAW_COST_T2_CEILING_USD`).
+- **Ceiling:** the `cost_cap_policy` DB table, set with `ncl cost-cap set` (below). `NANOCLAW_COST_T2_CEILING_USD` in `.env` is a deprecated legacy fallback only.
 - **Live state:** `outbound.db` → `session_state.cost_cap` = `{ capUsd, spentUsd, status, immortal, window, decision }`; the dashboard **Sessions** tab renders spend / cap / status with Continue / Stop.
+
+## Runtime configuration — `ncl cost-cap` (elevated only)
+**`ncl cost-cap set` is the way to configure the cost cap.** The ceiling and per-group caps no longer require a redeploy or an `.env` edit. An operator (or the `cli_scope=global` orchestrator) sets them at runtime; the host reads the DB (`cost_cap_policy` table) at the **next container spawn** and materializes the values into `container.json`.
+
+> **`NANOCLAW_COST_T2_CEILING_USD` / `NANOCLAW_COST_T2_USD` are deprecated.** They remain wired only as a last-resort fallback so a pre-existing install that set them doesn't suddenly lose its ceiling. New configuration should go through `ncl cost-cap`; an install that sets nothing behaves exactly as before. The env vars can be removed from `.env` once the DB carries the values.
+
+```
+ncl cost-cap get                                   # effective fleet ceiling + every override
+ncl cost-cap get --group slang-fixer               # a group's effective cap + ceiling
+ncl cost-cap set --ceiling 150                      # fleet-wide Tier-2 ceiling
+ncl cost-cap set --ceiling 300 --group slang-fixer  # per-group ceiling override
+ncl cost-cap set --cap 60 --group slang-fixer       # per-group Tier-1 cap override (requires --group)
+ncl cost-cap set --ceiling 0                         # explicitly disable the ceiling (beats the env var)
+ncl cost-cap clear [--group <folder>]               # remove an override → restore env/thresholds fallback
+```
+
+- **Resolution precedence.** Cap: **DB per-group `cap_usd`** → `NANOCLAW_COST_T2_USD` env → `cost-thresholds.json` per-group p90 → fleet p90 → `$100` default (the auto-sourced tail is floored at `$10`; the two explicit operator overrides — DB and env — bypass the floor). Ceiling: **DB per-group `ceiling_usd`** → **DB fleet `ceiling_usd`** → `NANOCLAW_COST_T2_CEILING_USD` env → `0` (no ceiling). A stored DB value wins over the env var, **including `0`** (an explicit "no ceiling").
+- **`--group <folder>`** is the group's workspace folder — the same key `cost-thresholds.json` uses (`perGroupP90Usd[folder]`), matching `resolveCostCapT2Usd` / `resolveCostCeilingT2Usd`.
+- **Elevated only.** `cost-cap` is not in `GROUP_SCOPE_RESOURCES`, so the CLI guard denies it for any container under `cli_scope: 'group'` or `'disabled'`; only the host operator socket and a `cli_scope: 'global'` group can run it. A fleet-wide cost knob is not an ordinary coworker's to turn.
+- **Effect timing.** `set` / `clear` write immediately but take effect at the next spawn (materialization is at spawn). To apply to a running session now, restart the group: `ncl groups restart --id <group-id>`.
+- **Storage:** `cost_cap_policy` (central DB) — one row per scope keyed by `group_folder` (`''` = fleet). Accessors: `src/db/cost-cap-policy.ts`. Resolvers: `resolveCostCapT2Usd` / `resolveCostCeilingT2Usd` in `src/container-config.ts`.
 
 ## Floors & caveats
 - **$10 minimum.** The auto-sourced cap is floored at **$10** — a brand-new group (no per-group and maybe no fleet p90 yet) still escalates somewhere sane, never at ~$0. An explicit `NANOCLAW_COST_T2_USD` override bypasses the floor.

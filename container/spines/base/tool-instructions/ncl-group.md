@@ -12,6 +12,7 @@ Your scope is **`group`** — you read/modify only resources in your own agent g
 | `sessions`     | `list`, `get`, `messages`                       | List your own sessions; read transcripts.                              |
 | `destinations` | `list`, `add`, `remove`                         | Manage where you can send messages.                                    |
 | `members`      | `list`, `add`, `remove`                         | Manage who can access your group.                                      |
+| `wirings`      | `get`, `update`                                 | Tune engagement for THIS conversation only: engage_mode / engage_pattern. |
 
 ### Common patterns
 
@@ -21,6 +22,7 @@ ncl groups config update --provider codex   # switch agent provider — needs ad
 ncl sessions list                           # your active sessions
 ncl sessions messages <session-id>          # full transcript
 ncl destinations list                       # who you can send_message to
+ncl wirings update --engage-mode mention    # change when you engage in this chat
 ```
 
 `ncl <resource> help` and `ncl help` print the full surface. Mutating (approval-gated) verbs trigger the same admin-approval flow as MCP self-mod tools.

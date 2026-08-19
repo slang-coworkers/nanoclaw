@@ -13,6 +13,7 @@ import path from 'path';
 
 import { DATA_DIR, GROUPS_DIR, TIMEZONE } from './config.js';
 import { getContainerConfig } from './db/container-configs.js';
+import { getCostCapPolicy } from './db/cost-cap-policy.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { isValidTimezone } from './timezone.js';
 import type { AgentGroup, ContainerConfigRow } from './types.js';
@@ -52,17 +53,18 @@ export interface ContainerConfig {
    */
   immortal?: boolean;
   /**
-   * Per-session soft cost cap (USD) — Tier 1. Auto-sources the group's OWN 7-day
-   * p90 of recent per-session spend: precedence is env `NANOCLAW_COST_T2_USD` →
-   * `data/cost-thresholds.json` `perGroupP90Usd[folder]` → fleet `p90Usd` →
-   * a conservative $100 default. Materialized for ALL groups. See
-   * `resolveCostCapT2Usd`.
+   * Per-session soft cost cap (USD) — Tier 1. Precedence: a per-group DB override
+   * (`ncl cost-cap set --cap … --group <folder>`) → env `NANOCLAW_COST_T2_USD` →
+   * the group's OWN 7-day p90 in `data/cost-thresholds.json` `perGroupP90Usd[folder]`
+   * → fleet `p90Usd` → a conservative $100 default. Materialized for ALL groups.
+   * See `resolveCostCapT2Usd`.
    */
   costCapT2Usd?: number;
   /**
    * Tier-2 hard ceiling (USD). A non-immortal session that reaches it hard-stops;
-   * immortal groups re-escalate for visibility only (never blocked). Operator-set
-   * via `NANOCLAW_COST_T2_CEILING_USD`; 0/absent = no ceiling. See
+   * immortal groups re-escalate for visibility only (never blocked). Precedence: a
+   * per-group DB override → the fleet DB ceiling (both set via `ncl cost-cap set`)
+   * → env `NANOCLAW_COST_T2_CEILING_USD`; 0/absent = no ceiling. See
    * `resolveCostCeilingT2Usd`.
    */
   costCeilingT2Usd?: number;
@@ -88,6 +90,9 @@ const MIN_COST_CAP_T2_USD = 10;
  * container.json (NanoClaw #1 cost cap v2).
  *
  * Precedence:
+ *   0. cost_cap_policy DB per-group `cap_usd` — the operator override set at
+ *      runtime via `ncl cost-cap set --cap … --group <folder>`. Highest priority,
+ *      wins outright and unfloored (same class as the env override).
  *   1. NANOCLAW_COST_T2_USD env — explicit operator override, wins outright.
  *   2. data/cost-thresholds.json `perGroupP90Usd[folder]` — the group's OWN p90.
  *      A fleet number under-serves expensive groups (fixer p90 ~$91) and
@@ -96,10 +101,21 @@ const MIN_COST_CAP_T2_USD = 10;
  *      have its own priced sample yet).
  *   4. DEFAULT_COST_CAP_T2_USD ($100) — conservative fallback.
  *
- * Fail-soft: a missing, unreadable, malformed, or non-positive thresholds file
- * falls through to the next source rather than throwing or disabling the cap.
+ * The auto-sourced tail (2–4) is floored at MIN_COST_CAP_T2_USD; the two explicit
+ * operator overrides (0, 1) bypass the floor.
+ *
+ * Fail-soft: an uninitialized DB, a missing table, or a missing/unreadable/
+ * malformed/non-positive thresholds file falls through to the next source rather
+ * than throwing or disabling the cap.
  */
 export function resolveCostCapT2Usd(groupFolder?: string): number {
+  // 0. Runtime DB per-group override — an explicit operator decision; wins
+  //    outright and unfloored, exactly like the env override below.
+  if (groupFolder) {
+    const dbCap = getCostCapPolicy(groupFolder)?.cap_usd;
+    if (typeof dbCap === 'number' && Number.isFinite(dbCap) && dbCap > 0) return dbCap;
+  }
+
   const env = Number(process.env.NANOCLAW_COST_T2_USD);
   if (Number.isFinite(env) && env > 0) return env;
 
@@ -128,10 +144,28 @@ export function resolveCostCapT2Usd(groupFolder?: string): number {
 
 /**
  * Resolve the Tier-2 hard ceiling (USD) materialized into every container.json.
- * Operator-set via NANOCLAW_COST_T2_CEILING_USD; 0/absent = no ceiling. Opt-in,
- * so an install without one keeps today's escalate-only behavior.
+ *
+ * Precedence:
+ *   0. cost_cap_policy DB per-group `ceiling_usd` (`ncl cost-cap set --ceiling …
+ *      --group <folder>`) — a per-group override, when present.
+ *   1. cost_cap_policy DB fleet `ceiling_usd` (`ncl cost-cap set --ceiling …`) —
+ *      the runtime operator ceiling.
+ *   2. NANOCLAW_COST_T2_CEILING_USD env — the back-compat fallback.
+ *   3. 0 — no ceiling (opt-in: an install with none keeps escalate-only behavior).
+ *
+ * A stored DB value wins over the env var, INCLUDING 0 (an explicit "no ceiling"
+ * that overrides an env-configured ceiling). NULL/absent in the DB falls through.
+ * `ncl cost-cap clear` removes a DB row to restore the env fallback. DB reads are
+ * fail-soft (uninitialized DB / missing table → skip).
  */
-export function resolveCostCeilingT2Usd(): number {
+export function resolveCostCeilingT2Usd(groupFolder?: string): number {
+  if (groupFolder) {
+    const g = getCostCapPolicy(groupFolder)?.ceiling_usd;
+    if (typeof g === 'number' && Number.isFinite(g) && g >= 0) return g;
+  }
+  const fleet = getCostCapPolicy()?.ceiling_usd;
+  if (typeof fleet === 'number' && Number.isFinite(fleet) && fleet >= 0) return fleet;
+
   const env = Number(process.env.NANOCLAW_COST_T2_CEILING_USD);
   if (Number.isFinite(env) && env > 0) return env;
   return 0;
@@ -156,7 +190,7 @@ export function configFromDb(row: ContainerConfigRow, group: AgentGroup): Contai
   // ALL groups so every session carries a cap.
   const immortal = group.is_admin === 1 || group.coworker_type === 'main';
   const costCapT2Usd = resolveCostCapT2Usd(group.folder);
-  const costCeilingT2Usd = resolveCostCeilingT2Usd();
+  const costCeilingT2Usd = resolveCostCeilingT2Usd(group.folder);
   return {
     mcpServers: JSON.parse(row.mcp_servers) as Record<string, McpServerConfig>,
     packages: {

@@ -16,6 +16,9 @@ Your scope is **`global`** — unrestricted. You can read and modify any agent g
 | `members`                                   | `list`, `add`, `remove`                                                                                                                                     | Unprivileged group access gate.                          |
 | `destinations`                              | `list`, `add`, `remove`                                                                                                                                     | Where an agent group can send messages.                  |
 | `sessions`                                  | `list`, `get`, `messages`                                                                                                                                   | Active sessions (read-only).                             |
+| `cost-cap`                                  | `get`, `set`, `clear`                                                                                                                                       | Runtime Tier-2 cost-cap policy — fleet ceiling + per-group cap/ceiling overrides. **Global/elevated only.** |
+| `policies`                                  | `list`, `set`, `remove`                                                                                                                                     | Agent-to-agent approval gates, per (from → to) pair. Operator-only — agents cannot gate their own connections. |
+| `pr-mappings`                               | `list`, `remap`                                                                                                                                             | PR→session routing rows. `remap` reassigns one deliberately (approval-gated). |
 | `user-dms`, `dropped-messages`, `approvals` | `list`, `get`                                                                                                                                               | Diagnostic views (read-only).                            |
 
 ### Common patterns
@@ -27,9 +30,26 @@ ncl groups restart --id <gid> --rebuild
 ncl wirings create --messaging-group <mg> --agent-group <ag>
 ncl roles grant --user <uid> --role admin --agent-group <gid>
 ncl sessions messages <sid>
+ncl policies set --from <ag> --to <ag> --approver <uid>  # gate a2a messages — admin-approval-gated
+ncl pr-mappings remap --repo <owner/name> --pr <n> --session <sid>  # reassign a PR — admin-approval-gated
 ```
 
 `ncl <resource> help` / `ncl help` print the full surface. Mutating verbs trigger admin approval, like the MCP self-mod tools.
+
+### Tuning the cost cap
+
+The Tier-2 cost cap is configured at runtime through `ncl cost-cap` — this is the mechanism, **not** the `NANOCLAW_COST_T2_CEILING_USD` env var (a deprecated legacy fallback). Values are stored in the DB and read at each container spawn; a `set`/`clear` change takes effect on a group's next spawn (`ncl groups restart --id <gid>` to apply immediately).
+
+```bash
+ncl cost-cap get                                # effective fleet ceiling + every override
+ncl cost-cap get --group <folder>               # a group's effective per-session cap + ceiling
+ncl cost-cap set --ceiling 150                  # fleet-wide Tier-2 hard ceiling (USD)
+ncl cost-cap set --ceiling 300 --group <folder> # per-group ceiling override
+ncl cost-cap set --cap 60 --group <folder>      # per-group per-session cap (requires --group)
+ncl cost-cap clear [--group <folder>]           # remove an override → env/thresholds fallback
+```
+
+`--group <folder>` is the group's workspace folder. This surface is elevated-only (global scope / host operator); group-scoped agents can't reach it.
 
 ### Cross-group operations
 
