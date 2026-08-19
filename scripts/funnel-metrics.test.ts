@@ -13,14 +13,18 @@ import {
   TTL_LONG,
   TTL_MED,
   TTL_SHORT,
+  type ApproverWeeklyInput,
   type ReviewCycleInput,
   type TerminalLookup,
+  aggregateApproverWeekly,
   aggregateReviewCycles,
   countHumanReview,
   diskCacheTtl,
   fetchAllReviewsWith,
+  humanVerdictOf,
   isBotLogin,
   isOurBotLogin,
+  mondayUtc,
   normaliseLogin,
   parentResource,
   reviewsApiPath,
@@ -446,5 +450,173 @@ describe('disk cache TTL', () => {
     expect(parentResource('issues/9/timeline?per_page=100')).toBe('issues/9');
     expect(parentResource('pulls/12')).toBeNull();
     expect(parentResource('commits/deadbeef/check-runs')).toBeNull();
+  });
+});
+
+describe('mondayUtc — ISO week start (UTC)', () => {
+  it('maps every day of a week to the same Monday', () => {
+    // 2026-08-17 is a Monday. Mon→Sun of that week all bucket to it.
+    for (const d of ['17', '18', '19', '20', '21', '22', '23']) {
+      expect(mondayUtc(`2026-08-${d}T12:00:00Z`)).toBe('2026-08-17');
+    }
+  });
+
+  it('puts a Monday on its own week, not the previous one', () => {
+    expect(mondayUtc('2026-08-24T00:00:00Z')).toBe('2026-08-24');
+  });
+
+  it('buckets by UTC, so a late-Sunday-UTC decision stays in the week that ends that Sunday', () => {
+    // 2026-08-23 is a Sunday; 23:30Z is still that week (Monday 2026-08-17).
+    expect(mondayUtc('2026-08-23T23:30:00Z')).toBe('2026-08-17');
+    // The next minute past midnight UTC rolls into the new week.
+    expect(mondayUtc('2026-08-24T00:00:01Z')).toBe('2026-08-24');
+  });
+});
+
+describe('humanVerdictOf — best-available human ground truth', () => {
+  const base = (o: Partial<ApproverWeeklyInput> = {}): ApproverWeeklyInput => ({
+    decidedAt: '2026-08-17T10:00:00Z',
+    decision: 'WOULD_APPROVE',
+    human: null,
+    prState: null,
+    humanChangesRequested: null,
+    humanFeedbackRounds: null,
+    humanReviewers: null,
+    ...o,
+  });
+
+  it('trusts an explicit recorded verdict first, in both directions', () => {
+    expect(humanVerdictOf(base({ human: 'APPROVED', prState: 'open' }))).toBe('approved');
+    expect(humanVerdictOf(base({ human: 'CHANGES_REQUESTED', prState: 'merged' }))).toBe('changes');
+  });
+
+  it('reads a formal changes-request even if the PR later merged (the miss we price)', () => {
+    expect(humanVerdictOf(base({ prState: 'merged', humanChangesRequested: 1, humanReviewers: 1 }))).toBe('changes');
+  });
+
+  it('treats a merge with no changes-requested as human acceptance', () => {
+    expect(humanVerdictOf(base({ prState: 'merged', humanChangesRequested: 0, humanFeedbackRounds: 3 }))).toBe(
+      'approved',
+    );
+  });
+
+  it('treats a reviewed-but-not-blocked PR as approved', () => {
+    expect(humanVerdictOf(base({ prState: 'open', humanReviewers: 2, humanChangesRequested: 0 }))).toBe('approved');
+  });
+
+  it('does NOT read COMMENTED-only feedback as changes when there is an acceptance signal', () => {
+    // Merged, reviewers left comments (feedbackRounds>0) but requested no changes.
+    expect(
+      humanVerdictOf(base({ prState: 'merged', humanReviewers: 1, humanChangesRequested: 0, humanFeedbackRounds: 4 })),
+    ).toBe('approved');
+  });
+
+  it('leans to changes when there is feedback but no acceptance and changes-requested is unknown', () => {
+    expect(humanVerdictOf(base({ prState: 'open', humanReviewers: null, humanFeedbackRounds: 2 }))).toBe('changes');
+  });
+
+  it('returns null when nothing is known yet, so it is excluded from agreement math', () => {
+    expect(humanVerdictOf(base({ prState: 'open' }))).toBeNull();
+  });
+});
+
+describe('aggregateApproverWeekly — bucketing + agreement math', () => {
+  const dec = (o: Partial<ApproverWeeklyInput>): ApproverWeeklyInput => ({
+    decidedAt: '2026-08-17T10:00:00Z',
+    decision: 'WOULD_APPROVE',
+    human: null,
+    prState: null,
+    humanChangesRequested: null,
+    humanFeedbackRounds: null,
+    humanReviewers: null,
+    ...o,
+  });
+
+  it('buckets by decidedAt-week and sorts weeks ascending', () => {
+    const weeks = aggregateApproverWeekly([
+      dec({ decidedAt: '2026-08-24T09:00:00Z' }),
+      dec({ decidedAt: '2026-08-18T09:00:00Z' }),
+      dec({ decidedAt: '2026-08-19T09:00:00Z' }),
+    ]);
+    expect(weeks.map((w) => w.weekStart)).toEqual(['2026-08-17', '2026-08-24']);
+    expect(weeks[0].total).toBe(2);
+    expect(weeks[1].total).toBe(1);
+  });
+
+  it('counts the decision mix (approve / block / abstain, incl. ABSTAIN_INFRA)', () => {
+    const [w] = aggregateApproverWeekly([
+      dec({ decision: 'WOULD_APPROVE' }),
+      dec({ decision: 'BLOCK' }),
+      dec({ decision: 'ABSTAIN_POLICY' }),
+      dec({ decision: 'ABSTAIN_INFRA' }),
+    ]);
+    expect(w.wouldApprove).toBe(1);
+    expect(w.block).toBe(1);
+    expect(w.abstain).toBe(2);
+    expect(w.total).toBe(4);
+  });
+
+  it('classifies agreed vs false for approve and block, and flags the safety-critical false-approve', () => {
+    const [w] = aggregateApproverWeekly([
+      // WOULD_APPROVE + human approved → agreed
+      dec({ decision: 'WOULD_APPROVE', prState: 'merged' }),
+      // WOULD_APPROVE + human wanted changes → FALSE APPROVE (safety-critical)
+      dec({ decision: 'WOULD_APPROVE', humanChangesRequested: 2, humanReviewers: 1 }),
+      // BLOCK + human wanted changes → agreed
+      dec({ decision: 'BLOCK', human: 'CHANGES_REQUESTED' }),
+      // BLOCK + human approved → false block
+      dec({ decision: 'BLOCK', prState: 'merged' }),
+    ]);
+    expect(w.agreedApprove).toBe(1);
+    expect(w.falseApprove).toBe(1);
+    expect(w.agreedBlock).toBe(1);
+    expect(w.falseBlock).toBe(1);
+    expect(w.withHumanVerdict).toBe(4);
+    // (agreedApprove + agreedBlock) / withHumanVerdict = 2/4 = 50%
+    expect(w.agreementPct).toBe(50);
+  });
+
+  it('excludes no-verdict decisions from agreement but keeps them in total', () => {
+    const [w] = aggregateApproverWeekly([
+      dec({ decision: 'WOULD_APPROVE', prState: 'merged' }), // verdict: approved, agreed
+      dec({ decision: 'WOULD_APPROVE', prState: 'open' }), // no verdict yet
+    ]);
+    expect(w.total).toBe(2);
+    expect(w.withHumanVerdict).toBe(1);
+    expect(w.agreedApprove).toBe(1);
+    expect(w.agreementPct).toBe(100); // 1/1, not 1/2 — the pending PR is not held against agreement
+  });
+
+  it('puts an abstain-with-verdict in the denominator but never the numerator (coverage gap)', () => {
+    const [w] = aggregateApproverWeekly([
+      dec({ decision: 'WOULD_APPROVE', prState: 'merged' }), // agreed
+      dec({ decision: 'ABSTAIN_POLICY', prState: 'merged' }), // human ruled, Verity abstained
+    ]);
+    expect(w.withHumanVerdict).toBe(2);
+    expect(w.agreedApprove).toBe(1);
+    // 1 agreed / 2 with-verdict = 50%: the abstain drags agreement down, as intended.
+    expect(w.agreementPct).toBe(50);
+  });
+
+  it('returns agreementPct null (not 0) for a week with no human verdicts', () => {
+    const [w] = aggregateApproverWeekly([dec({ decision: 'WOULD_APPROVE', prState: 'open' })]);
+    expect(w.withHumanVerdict).toBe(0);
+    expect(w.agreementPct).toBeNull();
+  });
+
+  it('rounds agreementPct to one decimal', () => {
+    // 2 agreed of 3 with-verdict = 66.666… → 66.7
+    const [w] = aggregateApproverWeekly([
+      dec({ decision: 'WOULD_APPROVE', prState: 'merged' }),
+      dec({ decision: 'BLOCK', human: 'CHANGES_REQUESTED' }),
+      dec({ decision: 'BLOCK', prState: 'merged' }), // false block
+    ]);
+    expect(w.agreementPct).toBe(66.7);
+  });
+
+  it('ignores decisions with no decidedAt', () => {
+    const weeks = aggregateApproverWeekly([dec({ decidedAt: '' }), dec({ decidedAt: '2026-08-17T10:00:00Z' })]);
+    expect(weeks).toHaveLength(1);
+    expect(weeks[0].total).toBe(1);
   });
 });

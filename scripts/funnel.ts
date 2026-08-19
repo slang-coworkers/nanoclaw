@@ -38,6 +38,7 @@ import {
   REVIEW_PAGE_CAP,
   TTL_LONG,
   type TerminalLookup,
+  aggregateApproverWeekly,
   aggregateReviewCycles,
   countHumanReview,
   diskCacheTtl,
@@ -489,6 +490,13 @@ async function main() {
   // Newest decision first for display.
   const approverDecisions = [...approverByPrFull.values()].sort((a, b) => (a.decidedAt < b.decidedAt ? 1 : -1));
 
+  // Week-over-week agreement trend for the Verity panel: is agreement rising,
+  // are abstains falling, is the safety-critical false-approve heading to zero —
+  // the three signals for taking Verity out of shadow mode. Built from the SAME
+  // (provenance-filtered, legacy-quarantined) approverDecisions above, so it
+  // inherits those exclusions with no extra filtering. See funnel-metrics.ts.
+  const approverWeekly = aggregateApproverWeekly(approverDecisions);
+
   const rows: Row[] = [];
   const seenIssues = new Set<string>();
 
@@ -829,6 +837,8 @@ async function main() {
     issuePartition, // per-issue funnel (denominator = ALL filed issues in window)
     rows,
     approverDecisions, // Verity shadow-mode decisions (incl. human-authored PRs); not gated by the PR spine
+    approverWeekly, // Verity decisions bucketed by decidedAt-week: decision mix + agreement vs human
+
     // Whether the ledger read was restricted to attributable decisions. False
     // means the DB predates migration 934 and this panel includes rows of
     // unknown origin — a caveat the panel should state, not one to bury.

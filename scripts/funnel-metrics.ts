@@ -282,3 +282,152 @@ export function aggregateReviewCycles(decisions: ReviewCycleInput[]): {
     human: shape('human'),
   };
 }
+
+// ── PR-approver (Verity) weekly agreement trend ──────────────────────────────
+// Verity runs in SHADOW mode: it records a decision on every PR
+// (WOULD_APPROVE | BLOCK | ABSTAIN_POLICY | ABSTAIN_INFRA) and we compare it
+// against what the humans ultimately did. The question these helpers answer is
+// "is Verity improving week over week, and is it safe to take out of shadow
+// mode?" — i.e. is agreement trending up, are abstains falling, and is the
+// SAFETY-critical error (Verity WOULD_APPROVE something a human wanted changed)
+// trending to zero.
+//
+// The hard part is the human ground truth. `human` (human_verdict) is the
+// authoritative recorded verdict from the GitHub webhook path, but it is null on
+// most still-open PRs, so we fall back to the review-cost signals the funnel
+// already computes for each PR. Precedence, strongest/most-authoritative signal
+// first:
+//   1. recorded human verdict (…APPROVED / …CHANGES_REQUESTED) — webhook ground truth
+//   2. humanChangesRequested > 0                 — a human formally blocked (strict signal);
+//                                                  wins even over a later merge, because Verity
+//                                                  approving a PR a human flagged IS the miss we price
+//   3. prState === 'merged'                      — shipped == the human accepted it
+//   4. reviewed (humanReviewers > 0) with humanChangesRequested === 0 — reviewed, not blocked
+//   5. humanFeedbackRounds > 0                   — human engaged but no acceptance yet → not a clean approve
+//   6. otherwise                                 — no verdict yet (excluded from agreement math)
+//
+// A COMMENTED-only review is deliberately NOT read as "requested changes" when
+// there is an acceptance signal (merge / reviewed-clean): the funnel keeps
+// CHANGES_REQUESTED strictly separate from COMMENTED for exactly this reason
+// (≈96% of reviewed PRs are COMMENTED-not-CHANGES_REQUESTED — see countHumanReview),
+// so a merge after some comments reads as approval, not rejection. feedbackRounds
+// only tips toward "changes" when there is NO acceptance signal at all.
+export type HumanVerdict = 'approved' | 'changes' | null;
+
+export interface ApproverWeeklyInput {
+  decidedAt: string;
+  decision: string;
+  human: string | null;
+  prState: string | null;
+  humanChangesRequested: number | null;
+  humanFeedbackRounds: number | null;
+  humanReviewers: number | null;
+}
+
+/** Best-available human ground truth for one Verity decision. See the block above. */
+export function humanVerdictOf(d: ApproverWeeklyInput): HumanVerdict {
+  const rec = (d.human ?? '').toUpperCase();
+  if (rec.includes('CHANGES')) return 'changes'; // CHANGES_REQUESTED
+  if (rec.includes('APPROV')) return 'approved'; // APPROVED
+  if ((d.humanChangesRequested ?? 0) > 0) return 'changes';
+  if (d.prState === 'merged') return 'approved';
+  if ((d.humanReviewers ?? 0) > 0 && d.humanChangesRequested === 0) return 'approved';
+  if ((d.humanFeedbackRounds ?? 0) > 0) return 'changes';
+  return null;
+}
+
+/**
+ * Monday (UTC) of the ISO week containing `iso`, as YYYY-MM-DD.
+ *
+ * Decisions are stamped ISO-8601 UTC, so bucketing is UTC throughout — no
+ * local-time drift, and a decision at 23:00 UTC Sunday lands in the week that
+ * ends that Sunday, not the next one.
+ */
+export function mondayUtc(iso: string): string {
+  const d = new Date(iso);
+  const dow = (d.getUTCDay() + 6) % 7; // Mon=0 … Sun=6
+  d.setUTCDate(d.getUTCDate() - dow);
+  d.setUTCHours(0, 0, 0, 0);
+  return d.toISOString().slice(0, 10);
+}
+
+const isApproveDecision = (decision: string) => decision === 'WOULD_APPROVE';
+const isBlockDecision = (decision: string) => decision === 'BLOCK';
+const isAbstainDecision = (decision: string) => decision.startsWith('ABSTAIN');
+
+export interface ApproverWeek {
+  weekStart: string; // YYYY-MM-DD (Monday, UTC)
+  total: number; // all decisions decided that week
+  wouldApprove: number;
+  block: number;
+  abstain: number; // ABSTAIN_POLICY + ABSTAIN_INFRA
+  withHumanVerdict: number; // decisions (any type) with a determinable human verdict
+  agreedApprove: number; // WOULD_APPROVE and human-approved
+  agreedBlock: number; // BLOCK and human-requested-changes
+  falseApprove: number; // WOULD_APPROVE but human-requested-changes ← the SAFETY-critical error
+  falseBlock: number; // BLOCK but human-approved
+  agreementPct: number | null; // (agreedApprove+agreedBlock)/withHumanVerdict × 100; null when no verdicts
+}
+
+/**
+ * Bucket Verity's decisions by the Monday (UTC) of `decidedAt` and, per week,
+ * count the decision mix and its agreement with the human ground truth.
+ *
+ * Feed this the SAME decision array the snapshot's `approverDecisions` is built
+ * from, so it inherits the provenance filter (trusted/agent_verified only) and
+ * the migration-935 legacy quarantine for free — no separate filtering here.
+ *
+ * `agreementPct` divides by withHumanVerdict — every decision with a determinable
+ * human verdict, ABSTAINs included. An abstain on a PR a human DID rule on is a
+ * coverage gap, not an agreement, so it belongs in the denominator but can never
+ * reach the numerator. Divide-by-zero (no human verdicts that week) → null, not
+ * 0: "no data" must never render as "0% agreement".
+ */
+export function aggregateApproverWeekly(decisions: ApproverWeeklyInput[]): ApproverWeek[] {
+  const byWeek = new Map<string, ApproverWeek>();
+  for (const d of decisions) {
+    if (!d.decidedAt) continue;
+    const wk = mondayUtc(d.decidedAt);
+    let w = byWeek.get(wk);
+    if (!w) {
+      w = {
+        weekStart: wk,
+        total: 0,
+        wouldApprove: 0,
+        block: 0,
+        abstain: 0,
+        withHumanVerdict: 0,
+        agreedApprove: 0,
+        agreedBlock: 0,
+        falseApprove: 0,
+        falseBlock: 0,
+        agreementPct: null,
+      };
+      byWeek.set(wk, w);
+    }
+    w.total++;
+    if (isApproveDecision(d.decision)) w.wouldApprove++;
+    else if (isBlockDecision(d.decision)) w.block++;
+    else if (isAbstainDecision(d.decision)) w.abstain++;
+
+    const hv = humanVerdictOf(d);
+    if (hv === null) continue; // no-human-verdict-yet — counts for total, not for agreement
+    w.withHumanVerdict++;
+    if (isApproveDecision(d.decision)) {
+      if (hv === 'approved') w.agreedApprove++;
+      else w.falseApprove++;
+    } else if (isBlockDecision(d.decision)) {
+      if (hv === 'changes') w.agreedBlock++;
+      else w.falseBlock++;
+    }
+  }
+  const weeks = [...byWeek.values()].sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+  for (const w of weeks) {
+    // Round to 1 decimal so small-N weeks still show movement without noise.
+    w.agreementPct =
+      w.withHumanVerdict > 0
+        ? Math.round(((w.agreedApprove + w.agreedBlock) / w.withHumanVerdict) * 1000) / 10
+        : null;
+  }
+  return weeks;
+}
