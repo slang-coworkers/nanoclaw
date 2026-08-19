@@ -5208,25 +5208,41 @@ function markStaleClient(client: any, clients: Set<any>, isWs: boolean): void {
     clientBlockedSince.delete(client);
     clearBlockedTimer(client);
     if (!clients.has(client)) return;
+    if (!isWs) {
+      // SSE recovery = RECONNECT, not an in-stream snapshot. A blocked SSE client
+      // skipped an arbitrary run of hook-event frames while stale; a full state
+      // snapshot restores coworker state but NOT those events, and the client's
+      // replay cursor (its last *delivered* event id) would then be advanced past
+      // the gap by the next live event — silently losing the skipped events.
+      // Ending the response makes the browser EventSource reconnect from that
+      // delivered id (?after= / Last-Event-ID), which replays the gap AND arrives
+      // with a fresh in-stream snapshot. The socket already drained, so end()
+      // closes cleanly — no need for the hard socket.destroy() of a slow drop.
+      clients.delete(client);
+      try {
+        client.end();
+      } catch {
+        /* ignore */
+      }
+      perfCounters.resyncsSent++;
+      return;
+    }
     try {
-      // Recover IN-STREAM with a full snapshot rather than a `resync` marker
-      // that sends the client off to /api/state: an HTTP resync races the live
-      // delta stream (the response can land before or after deltas it does or
-      // doesn't already contain). A same-stream snapshot is ordered by
-      // construction, so the client resumes from exactly this revision.
-      // publishState() first so any pending delta is flushed to everyone BEFORE
-      // this snapshot; the second call inside fullStateEnvelope() is throttled
-      // and cannot broadcast again.
+      // WS recovery: no per-frame event id or automatic reconnect to lean on, so
+      // recover IN-STREAM with a full snapshot rather than a `resync` marker that
+      // sends the client off to /api/state (an HTTP resync races the live delta
+      // stream). A same-stream snapshot is ordered by construction, so the client
+      // resumes from exactly this revision. publishState() first so any pending
+      // delta is flushed to everyone BEFORE this snapshot; the throttled second
+      // call inside fullStateEnvelope() cannot broadcast again.
       publishState();
       const json = fullStateEnvelope();
-      // Through sendToClient(), not a raw write(): a full snapshot is the
-      // LARGEST frame we ever send, so it is the one most likely to re-block the
-      // socket. A raw write that returns false left the client with no armed
-      // blocked-timer and no further state change to trigger one (the WS path
-      // has no heartbeat) — i.e. retained forever. sendToClient re-arms stale
-      // tracking, which both schedules the next drain-recovery and bounds the
-      // socket's lifetime.
-      sendToClient(client, clients, isWs ? createWsFrame(Buffer.from(json)) : `data: ${json}\n\n`, isWs);
+      // Through sendToClient(), not a raw write(): a full snapshot is the LARGEST
+      // frame we ever send, so it is the one most likely to re-block the socket.
+      // A raw write that returns false left the client with no armed blocked-timer
+      // and no further state change to trigger one (WS has no heartbeat) — i.e.
+      // retained forever. sendToClient re-arms stale tracking, bounding lifetime.
+      sendToClient(client, clients, createWsFrame(Buffer.from(json)), true);
       perfCounters.resyncsSent++;
     } catch {
       clients.delete(client);

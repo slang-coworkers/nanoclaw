@@ -117,7 +117,12 @@ function setLiveStatus(text, color) {
 function applyState(data) {
   liveSync.observeSnapshotFields(data);
   state = { ...state, ...data };
-  lastHookEventId = Math.max(lastHookEventId, Number(data.lastHookEventId) || 0);
+  // Do NOT advance the hook-event replay cursor from a snapshot's lastHookEventId:
+  // a snapshot reports the server's LATEST id, but those events have not been
+  // delivered on this stream. Jumping the cursor to it would skip past any events
+  // an SSE-backpressure gap dropped (they'd become unrequestable on reconnect).
+  // Only actually-delivered `hook-event` frames advance it (applyHookEvent), which
+  // is exactly how app.js already behaves.
   renderCwList();
   if (cwState.selected) {
     updateChatHeader();

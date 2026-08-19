@@ -73,6 +73,13 @@ function createStateSync(options) {
     /** Highest revision dropped while unreplayable — a snapshot at or after it
      *  provably contains everything we lost. */
     droppedRev: 0,
+    /** Epoch `droppedRev` was counted in. Revisions reset per server process, so
+     *  `droppedRev` is only meaningful within its own epoch: a snapshot from a
+     *  DIFFERENT epoch is a fresh full baseline that restores continuity outright,
+     *  regardless of its (smaller) revision. Without this, an old-epoch overflow at
+     *  rev 103 could never be cleared by a restarted process whose snapshots start
+     *  at rev 1 — an endless reconnect. */
+    droppedEpoch: null,
     /** One in-stream recovery request per overflow episode (no reconnect storm). */
     recoveryRequested: false,
   };
@@ -157,7 +164,12 @@ function createStateSync(options) {
 
   function bufferDelta(delta) {
     if (sync.unreplayable) {
-      if (typeof delta.rev === 'number' && delta.rev > sync.droppedRev) sync.droppedRev = delta.rev;
+      // Only track how far we've fallen WITHIN the dropped epoch — a cross-epoch
+      // delta's revision is an unrelated counter and must not inflate droppedRev.
+      const dEpoch = typeof delta.stateEpoch === 'string' ? delta.stateEpoch : null;
+      if (dEpoch === sync.droppedEpoch && typeof delta.rev === 'number' && delta.rev > sync.droppedRev) {
+        sync.droppedRev = delta.rev;
+      }
       return;
     }
     if (sync.buffered.length >= maxBufferedDeltas) {
@@ -172,6 +184,7 @@ function createStateSync(options) {
       if (typeof delta.rev === 'number' && delta.rev > sync.droppedRev) sync.droppedRev = delta.rev;
       sync.buffered = [];
       sync.unreplayable = true;
+      sync.droppedEpoch = sync.epoch; // droppedRev is only meaningful within this epoch
       sync.barrier = true; // nothing may apply onto a baseline we know is holed
       requestInStreamRecovery();
       return;
@@ -187,15 +200,21 @@ function createStateSync(options) {
   function drainBufferedDeltas() {
     if (sync.unreplayable) {
       sync.buffered = [];
-      // A snapshot at or beyond the highest revision we dropped provably
-      // contains everything we lost — continuity restored.
-      if (sync.rev >= sync.droppedRev) {
+      // Continuity is restored when EITHER:
+      //  • the snapshot came from a DIFFERENT epoch — a restarted server process,
+      //    whose full snapshot is a complete fresh baseline (its rev counter is
+      //    unrelated to droppedRev, so a numeric compare would loop forever); or
+      //  • within the SAME epoch, the snapshot reached or passed the highest
+      //    revision we dropped, so it provably contains everything we lost.
+      const newEpoch = sync.epoch !== null && sync.epoch !== sync.droppedEpoch;
+      if (newEpoch || sync.rev >= sync.droppedRev) {
         sync.unreplayable = false;
         sync.recoveryRequested = false;
         sync.droppedRev = 0;
+        sync.droppedEpoch = null;
         return;
       }
-      // The snapshot we got is older than what we dropped, so it doesn't close
+      // Same epoch, snapshot still older than what we dropped — it doesn't close
       // the hole. Ask again — bounded by snapshot arrivals, not a retry loop.
       sync.recoveryRequested = false;
       requestInStreamRecovery();
