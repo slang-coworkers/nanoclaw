@@ -337,14 +337,23 @@ export function humanVerdictOf(d: ApproverWeeklyInput): HumanVerdict {
 }
 
 /**
- * Monday (UTC) of the ISO week containing `iso`, as YYYY-MM-DD.
+ * Monday (UTC) of the ISO week containing `iso`, as YYYY-MM-DD. Returns '' when
+ * `iso` does not parse to a real date.
  *
  * Decisions are stamped ISO-8601 UTC, so bucketing is UTC throughout — no
  * local-time drift, and a decision at 23:00 UTC Sunday lands in the week that
  * ends that Sunday, not the next one.
+ *
+ * The unparseable-input guard matters once LEGACY (pre-enforcement) rows are
+ * bucketed: their decided_at was agent-supplied and never normalized, so a
+ * malformed value reaches here. Without the guard `new Date(garbage)` yields an
+ * Invalid Date whose `.toISOString()` THROWS — one bad legacy row would abort the
+ * whole weekly aggregation. Returning '' lets the caller skip it the same way it
+ * skips a missing timestamp.
  */
 export function mondayUtc(iso: string): string {
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
   const dow = (d.getUTCDay() + 6) % 7; // Mon=0 … Sun=6
   d.setUTCDate(d.getUTCDate() - dow);
   d.setUTCHours(0, 0, 0, 0);
@@ -377,6 +386,14 @@ export interface ApproverWeek {
  * from, so it inherits the provenance filter (trusted/agent_verified only) and
  * the migration-935 legacy quarantine for free — no separate filtering here.
  *
+ * It is deliberately provenance-agnostic — it buckets and scores whatever rows
+ * it is handed. The producer calls it TWICE: once on the trusted decisions
+ * (`approverWeekly`) and once on the quarantined pre-enforcement rows
+ * (`approverWeeklyLegacy`), so the two populations are aggregated by identical
+ * math but kept in separate series. Trust lives at the CALL SITE (which array),
+ * never here — mixing the two into one array would launder unverified rows into
+ * the trusted trend, exactly what the split tables exist to prevent.
+ *
  * `agreementPct` divides by withHumanVerdict — every decision with a determinable
  * human verdict, ABSTAINs included. An abstain on a PR a human DID rule on is a
  * coverage gap, not an agreement, so it belongs in the denominator but can never
@@ -388,6 +405,7 @@ export function aggregateApproverWeekly(decisions: ApproverWeeklyInput[]): Appro
   for (const d of decisions) {
     if (!d.decidedAt) continue;
     const wk = mondayUtc(d.decidedAt);
+    if (!wk) continue; // unparseable decided_at (legacy rows) — cannot bucket, drop it
     let w = byWeek.get(wk);
     if (!w) {
       w = {

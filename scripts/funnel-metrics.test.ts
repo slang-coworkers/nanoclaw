@@ -471,6 +471,14 @@ describe('mondayUtc — ISO week start (UTC)', () => {
     // The next minute past midnight UTC rolls into the new week.
     expect(mondayUtc('2026-08-24T00:00:01Z')).toBe('2026-08-24');
   });
+
+  it('returns "" for an unparseable timestamp rather than throwing', () => {
+    // Legacy (pre-enforcement) rows carry never-normalized, agent-supplied
+    // decided_at; a malformed one must not abort the whole aggregation. Without
+    // the guard, new Date(garbage).toISOString() throws a RangeError.
+    expect(mondayUtc('not-a-date')).toBe('');
+    expect(mondayUtc('')).toBe('');
+  });
 });
 
 describe('humanVerdictOf — best-available human ground truth', () => {
@@ -618,5 +626,45 @@ describe('aggregateApproverWeekly — bucketing + agreement math', () => {
     const weeks = aggregateApproverWeekly([dec({ decidedAt: '' }), dec({ decidedAt: '2026-08-17T10:00:00Z' })]);
     expect(weeks).toHaveLength(1);
     expect(weeks[0].total).toBe(1);
+  });
+
+  it('drops a legacy row with an unparseable decidedAt instead of throwing', () => {
+    // A quarantined pre-enforcement row can carry a malformed decided_at; it must
+    // be skipped, not abort the aggregation of the good rows around it.
+    const weeks = aggregateApproverWeekly([
+      dec({ decidedAt: 'garbage' }),
+      dec({ decidedAt: '2026-08-17T10:00:00Z', decision: 'BLOCK', human: 'CHANGES_REQUESTED' }),
+    ]);
+    expect(weeks).toHaveLength(1);
+    expect(weeks[0].weekStart).toBe('2026-08-17');
+    expect(weeks[0].total).toBe(1);
+    expect(weeks[0].agreedBlock).toBe(1);
+  });
+
+  it('buckets legacy-shaped rows (recorded verdict only, no GitHub fallback fields)', () => {
+    // Mirrors what the producer feeds for approverWeeklyLegacy: prState/reviewers
+    // all null, so a row scores agreement ONLY from its recorded human_verdict; a
+    // row without one stays in total/coverage but out of the agreement math.
+    const legacy = (o: Partial<ApproverWeeklyInput>): ApproverWeeklyInput => ({
+      decidedAt: '2026-07-06T10:00:00Z',
+      decision: 'WOULD_APPROVE',
+      human: null,
+      prState: null,
+      humanChangesRequested: null,
+      humanFeedbackRounds: null,
+      humanReviewers: null,
+      ...o,
+    });
+    const [w] = aggregateApproverWeekly([
+      legacy({ decision: 'WOULD_APPROVE', human: 'APPROVED' }), // agreed-approve
+      legacy({ decision: 'WOULD_APPROVE', human: 'CHANGES_REQUESTED' }), // false-approve
+      legacy({ decision: 'WOULD_APPROVE', human: null }), // no verdict → total only
+    ]);
+    expect(w.weekStart).toBe('2026-07-06');
+    expect(w.total).toBe(3);
+    expect(w.withHumanVerdict).toBe(2);
+    expect(w.agreedApprove).toBe(1);
+    expect(w.falseApprove).toBe(1);
+    expect(w.agreementPct).toBe(50); // 1 agreed / 2 with-verdict
   });
 });
