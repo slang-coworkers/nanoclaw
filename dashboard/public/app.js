@@ -11,19 +11,11 @@ if (!PixelSprites) {
 }
 
 let state = { coworkers: [], tasks: [], taskRunLogs: [], registeredGroups: [], hookEvents: [], timestamp: 0 };
-// Revision of the last full snapshot/delta we applied. The live channel carries
-// `state-delta` frames tagged { stateEpoch, baseRev, rev }; a delta whose baseRev
-// doesn't match ours means we missed one, so we resync.
-//
-// `stateEpoch` identifies the SERVER PROCESS. Revisions are per-process counters
-// that reset on restart, so rev alone is ambiguous across a restart: a client
-// left at rev 1 by the old process would accept `{baseRev:1, rev:2}` from the
-// new one and patch it onto a baseline the new process never had — anything
-// deleted during the downtime would then be pinned on screen forever, because
-// the new server's deltas can only ever remove rows its own baseline contained.
-// Any epoch change forces a full resync.
-let stateRev = 0;
-let stateEpoch = null;
+// Live-state reconciliation (revision/epoch continuity, key-order proof, resync
+// barrier + replay buffer, snapshot generations) lives in the shared
+// `state-sync.js` module that `mobile.js` and `state-delta.test.ts` also drive,
+// so all three can never describe different protocols. Created below, once the
+// transport callbacks it needs are in scope.
 const nativeFetch = window.fetch.bind(window);
 const dashboardAuth = {
   checked: false,
@@ -205,18 +197,32 @@ let liveReconnectTimer = null;
 let liveReconnectAttempt = 0;
 let hiddenDisconnectTimer = null;
 let lastHookEventId = 0;
-// Resync barrier. A resync fetches a full snapshot over HTTP while the live
-// delta stream keeps running, so the two race: without a barrier a delta that
-// arrives mid-flight is either applied and then rewound by an older snapshot, or
-// rejected and then lost forever (the snapshot's revision hides the gap). While
-// the barrier is up, deltas are buffered and replayed against the snapshot's
-// exact revision once it lands.
-let resyncBarrier = false;
+// Resync transport state. The barrier/replay/epoch logic itself lives in
+// `liveSync` (state-sync.js); what stays here is the HTTP fetch that feeds it:
+// one in-flight request at a time (concurrent responses can land out of order)
+// plus bounded-backoff retry, because a failed resync that silently gave up
+// would strand the client at a revision the server has already moved past.
 let resyncInFlight = null;
-let bufferedDeltas = [];
 let resyncRetryTimer = null;
 let resyncAttempt = 0;
-const MAX_BUFFERED_DELTAS = 200;
+if (!window.NanoclawStateSync) {
+  throw new Error('state-sync.js failed to load');
+}
+const liveSync = window.NanoclawStateSync.createStateSync({
+  getState: () => state,
+  applyState: (patch) => applyState(patch),
+  startResync: () => {
+    void resyncLiveData();
+  },
+  // Clear the HTTP transport's bookkeeping the moment a snapshot settles the
+  // resync, BEFORE buffered deltas replay (a replay may start a new resync).
+  onSettled: () => {
+    resyncAttempt = 0;
+    resyncInFlight = null;
+    clearResyncRetry();
+  },
+  reconnectLive: () => reconnectLiveChannel(),
+});
 let hoveredDesk = -1;
 let timelineFilter = null; // group folder filter for timeline
 let cachedMessages = []; // messages fetched from /api/messages
@@ -2404,8 +2410,7 @@ function applyState(nextState) {
   // new revision INTO the patch — so `state.stateRev` is never stale and a
   // caller that spreads `...state` back through applyState() (applyHookEvent)
   // cannot roll the live revision backwards.
-  if (typeof nextState.stateEpoch === 'string') stateEpoch = nextState.stateEpoch;
-  if (typeof nextState.stateRev === 'number') stateRev = nextState.stateRev;
+  liveSync.observeSnapshotFields(nextState);
   const nextHookEvents = Object.prototype.hasOwnProperty.call(nextState, 'hookEvents')
     ? nextState.hookEvents
     : state.hookEvents;
@@ -2465,81 +2470,22 @@ function applyState(nextState) {
   }
 }
 
-// Merge one keyed collection from a delta. Returns null when the result can't be
-// trusted (see below), which the caller turns into a resync.
-//
-// The delta carries the server's FULL key order alongside the upserts/removes.
-// A key-merge alone reproduces the server's *contents* but keeps the CLIENT's
-// Map insertion order, which silently diverges the moment the server reorders
-// without changing any item ([A,B] → [A,C,B] ships only an upsert for C and
-// yields [A,B,C] here). Index-positional UI — the pixel office assigns desks by
-// array index — then renders a different office than a full snapshot would, at a
-// revision the client considers perfectly in sync.
-function mergeKeyedDelta(current, change, keyOf) {
-  const map = new Map((current || []).map((item) => [keyOf(item), item]));
-  for (const item of change.upsert || []) map.set(keyOf(item), item);
-  for (const key of change.remove || []) map.delete(String(key));
-  if (!Array.isArray(change.order)) return Array.from(map.values());
-  const ordered = [];
-  for (const key of change.order) {
-    const item = map.get(String(key));
-    if (item !== undefined) ordered.push(item);
-  }
-  // Server order and our merged set must describe exactly the same membership.
-  if (ordered.length !== map.size || ordered.length !== change.order.length) return null;
-  return ordered;
+// ---- Live-state reconciliation -------------------------------------------
+// The protocol itself (epoch/revision continuity, key-order proof, resync
+// barrier + bounded replay buffer, snapshot generations) is implemented once in
+// `public/state-sync.js`; `mobile.js` and `state-delta.test.ts` drive the same
+// code. What remains here is the transport: fetching a snapshot over HTTP and
+// reopening the live channel.
+
+// Adopt a full snapshot from the live stream. No generation token: an in-stream
+// snapshot is ordered against the deltas by construction, so it is always
+// authoritative and supersedes any HTTP resync still in flight.
+function adoptSnapshot(data) {
+  liveSync.adoptSnapshot(data);
 }
 
-// Apply an incremental state-delta from the live channel. Only the changed keyed
-// objects (coworkers/registered-groups upsert+remove), the key order, and scalar
-// fields travel. Returns false if the patch can't be applied cleanly.
-function applyDeltaPatch(delta) {
-  const patch = {};
-  if (delta.coworkers) {
-    const merged = mergeKeyedDelta(state.coworkers, delta.coworkers, (c) => String(c.folder));
-    if (merged === null) return false;
-    patch.coworkers = merged;
-  }
-  if (delta.registeredGroups) {
-    const merged = mergeKeyedDelta(state.registeredGroups, delta.registeredGroups, (g) => String(g.id));
-    if (merged === null) return false;
-    patch.registeredGroups = merged;
-  }
-  if (delta.fields && typeof delta.fields === 'object') Object.assign(patch, delta.fields);
-  // Revision travels WITH the state (never as a side variable only): applyState
-  // merges it into `state`, so a later applyState({ ...state, ... }) can't carry
-  // a stale revision and roll the live one backwards.
-  patch.stateRev = delta.rev;
-  if (typeof delta.stateEpoch === 'string') patch.stateEpoch = delta.stateEpoch;
-  applyState(patch);
-  return true;
-}
-
-function bufferDelta(delta) {
-  if (bufferedDeltas.length >= MAX_BUFFERED_DELTAS) bufferedDeltas.shift();
-  bufferedDeltas.push(delta);
-}
-
-// Replay deltas that arrived while a resync was in flight, against the revision
-// the snapshot actually established. Anything at or below it is already
-// included; anything that doesn't chain means we still have a hole → resync.
-function drainBufferedDeltas() {
-  if (!bufferedDeltas.length) return;
-  const pending = bufferedDeltas.slice().sort((a, b) => a.rev - b.rev);
-  bufferedDeltas = [];
-  let gap = false;
-  for (const delta of pending) {
-    if (typeof delta.stateEpoch === 'string' && delta.stateEpoch !== stateEpoch) {
-      gap = true;
-      continue;
-    }
-    if (delta.rev <= stateRev) continue;
-    if (delta.baseRev !== stateRev || !applyDeltaPatch(delta)) {
-      gap = true;
-      break;
-    }
-  }
-  if (gap) void resyncLiveData();
+function applyStateDelta(delta) {
+  liveSync.applyStateDelta(delta);
 }
 
 function clearResyncRetry() {
@@ -2559,49 +2505,22 @@ function scheduleResyncRetry() {
   }, delay);
 }
 
-function finishResync() {
-  resyncBarrier = false;
-  resyncAttempt = 0;
-  resyncInFlight = null;
-  clearResyncRetry();
-  drainBufferedDeltas();
-}
-
-// Adopt a full snapshot from ANY source (HTTP /api/state or an in-stream
-// `state` frame) and lift the barrier. A delayed response that would rewind us —
-// same server instance, older revision than we already hold — is discarded
-// rather than applied.
-function adoptSnapshot(data) {
-  if (!data || typeof data !== 'object') {
-    finishResync();
-    return;
+// Drop and reopen the live channel so the server pushes a fresh, ordered
+// in-stream snapshot. This is the recovery path when the replay buffer
+// overflowed: repeating HTTP snapshots there can never converge (every response
+// lands behind the frames we had to drop), whereas a reconnect re-bases us on
+// the stream itself. With no EventSource — or while hidden, where we must not
+// hold a stream open — fall back to the HTTP resync.
+function reconnectLiveChannel() {
+  if (liveSource) {
+    liveSource.close();
+    liveSource = null;
   }
-  const epoch = typeof data.stateEpoch === 'string' ? data.stateEpoch : null;
-  const rev = typeof data.stateRev === 'number' ? data.stateRev : null;
-  if (epoch !== null && epoch === stateEpoch && rev !== null && rev < stateRev) {
-    finishResync();
-    return;
-  }
-  applyState(data);
-  finishResync();
-}
-
-function applyStateDelta(delta) {
-  if (!delta || typeof delta.baseRev !== 'number' || typeof delta.rev !== 'number') {
+  if (!('EventSource' in window) || document.hidden) {
     void resyncLiveData();
     return;
   }
-  if (resyncBarrier) {
-    bufferDelta(delta);
-    return;
-  }
-  // Epoch first: after a server restart the revision numbers alone will happily
-  // "chain" onto a baseline from the previous process.
-  const epochMismatch = typeof delta.stateEpoch === 'string' && delta.stateEpoch !== stateEpoch;
-  if (epochMismatch || delta.baseRev !== stateRev || !applyDeltaPatch(delta)) {
-    bufferDelta(delta);
-    void resyncLiveData();
-  }
+  connectLiveUpdates();
 }
 
 function hookEventKey(event) {
@@ -2643,12 +2562,16 @@ async function loadRecentHookEvents() {
   }
 }
 
-async function pollState() {
+// Fetch a snapshot over HTTP for the resync identified by `generation`. The
+// token is what lets a delayed response be recognised as superseded: an
+// in-stream snapshot installed while this request was in flight bumps the
+// generation, and adopting an old-process response over it would rewind the UI
+// with no epoch/revision signal able to catch it.
+async function pollState(generation) {
   try {
     const res = await fetch('/api/state', { cache: 'no-store' });
     if (!res.ok) return false;
-    adoptSnapshot(await res.json());
-    return true;
+    return liveSync.adoptSnapshot(await res.json(), generation);
   } catch {
     return false;
   }
@@ -2695,9 +2618,9 @@ function scheduleLiveReconnect() {
 // chain onto it.
 function resyncLiveData() {
   if (resyncInFlight) return resyncInFlight;
-  resyncBarrier = true;
+  const generation = liveSync.beginResync();
   clearResyncRetry();
-  const attempt = Promise.all([pollState(), loadRecentHookEvents()])
+  const attempt = Promise.all([pollState(generation), loadRecentHookEvents()])
     .then(([stateOk]) => {
       if (!stateOk) {
         // finishResync() didn't run (no snapshot adopted) — clear the in-flight

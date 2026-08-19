@@ -1382,6 +1382,13 @@
 
 
   <script src="sprites.js"></script>
+  <!-- state-sync.js is the shared live-state reconciliation protocol used by
+       BOTH app.js and mobile.js (and driven directly by state-delta.test.ts).
+       Classic script on purpose: mobile.js is not a module, so a plain global
+       is the only shape both pages can consume. It must load before the
+       module scripts below — module scripts are deferred, so this ordering
+       guarantees window.NanoclawStateSync exists when app.js runs. -->
+  <script src="state-sync.js"></script>
   <!-- session-slug.js is an ESM module that attaches window.sessionSlug /
        window.sessionLabel on load. app.js reads the window.* aliases so
        it doesn't need to import — keeps the lazy-load order simple. -->

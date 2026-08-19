@@ -58,7 +58,10 @@ const ACTIVITY_LOOKBACK_MS = 26 * 3600 * 1000; // query a little past the window
 // A single ENOENT does not tombstone a file that previously had data (a DB being
 // replaced/renamed looks momentarily absent); this many consecutive ones does.
 const MISSING_CONFIRMATIONS = 2;
-// Backstop so a permanently-unreadable path can't block the handoff forever.
+// Backstop so a permanently-unreadable path can't leave the warm-up pending
+// forever. It does NOT promote a partial cache to authoritative: on expiry the
+// worker reports `fatal` and the host reverts to its own main-thread scans.
+// Measured from the first SUCCESSFUL central-DB inventory.
 const WARMUP_MAX_MS = 120_000;
 
 // Open the central DB read-only. A failure here is fatal → Worker 'error' →
@@ -86,9 +89,18 @@ let lastStatsPublish = 0;
 // 400-open-per-tick budget and thousands of session DBs, an ungated first
 // publish would ship the first 400 files' activity as the whole fleet's and
 // clobber the main-thread cache with it.
-const attemptedPaths = new Set(); // paths whose cache state has settled at least once
-const workerStartedAt = Date.now();
+// A path is "settled" only once a read SUCCEEDED or an absence was CONFIRMED —
+// an errored stat/open leaves it unsettled, because caching an unverified empty
+// result and counting it as done is exactly how a partial cache gets declared
+// authoritative.
+const attemptedPaths = new Set();
+// The backstop clock starts at the first SUCCESSFUL inventory, not at worker
+// construction: if the central DB is unreadable for the first three minutes,
+// counting that time against the warm-up would hand off after classifying only
+// the first per-tick slice of the fleet.
+let inventoryOkAt = 0;
 let warmedUp = false;
+let warmupFailed = false;
 
 // Instrumentation.
 let statCalls = 0;
@@ -116,6 +128,7 @@ function refreshInventory(now) {
       next.push({ folder, inbound, outbound });
     }
     inventory = next;
+    if (!inventoryOk) inventoryOkAt = now;
     inventoryOk = true;
     // Drop per-file state for sessions that no longer exist.
     for (const path of files.keys()) if (!livePaths.has(path)) files.delete(path);
@@ -181,6 +194,10 @@ function refreshFile(path, direction, table, now, budget) {
       }
       // Nothing to preserve — record an empty entry but keep it hot so the first
       // successful stat lands immediately, and don't mark it `missing`.
+      //
+      // NOT added to `attemptedPaths`: an errored stat has told us nothing about
+      // this file, and counting it as settled would let the warm-up gate declare
+      // an unverified empty cache authoritative and hand off on it.
       files.set(path, {
         direction,
         table,
@@ -192,7 +209,6 @@ function refreshFile(path, direction, table, now, budget) {
         missing: false,
         missCount: 0,
       });
-      attemptedPaths.add(path);
       return false;
     }
     // Confirmed absent. Tolerate a single ENOENT against known-good state.
@@ -217,10 +233,17 @@ function refreshFile(path, direction, table, now, budget) {
     return false;
   }
 
+  // The stat SUCCEEDED, so the file is present right now: any earlier ENOENT is
+  // no longer part of a CONSECUTIVE run. Reset before the branches below —
+  // leaving it set let "ENOENT → present → (open-budget exhausted | DB read
+  // failed) → ENOENT" reach MISSING_CONFIRMATIONS and tombstone a file whose
+  // presence we had confirmed in between, dropping its unread timestamp and its
+  // slice of the activity histogram.
+  if (st) st.missCount = 0;
+
   if (st && !st.missing && st.mtimeMs === mtimeMs) {
     // Unchanged: reuse cached ts/hours; slide to cold cadence once idle a while.
     const idleFor = now - st.lastChangedAt;
-    st.missCount = 0;
     st.nextCheckAt = idleFor > COLD_AFTER_MS ? nextColdCheck(now, path) : now + HOT_INTERVAL_MS;
     attemptedPaths.add(path);
     return false;
@@ -264,6 +287,8 @@ function refreshFile(path, direction, table, now, budget) {
       st.nextCheckAt = now + HOT_INTERVAL_MS;
       return false;
     }
+    // Not added to `attemptedPaths` — a failed read is not a settled cache
+    // state, and the warm-up gate must not hand off on it.
     files.set(path, {
       direction,
       table,
@@ -275,7 +300,6 @@ function refreshFile(path, direction, table, now, budget) {
       missing: false,
       missCount: 0,
     });
-    attemptedPaths.add(path);
     return false;
   }
   try {
@@ -367,21 +391,45 @@ function publishStats(now) {
   dbOpens = 0;
 }
 
-/** True once the initial pass has settled every inventory path (or the backstop
- *  expired). Until then we publish nothing and never claim `ready`. */
+/** Number of inventory paths whose cache state has not settled yet. */
+function unsettledPathCount() {
+  let pending = 0;
+  for (const sess of inventory) {
+    if (!attemptedPaths.has(sess.inbound)) pending++;
+    if (!attemptedPaths.has(sess.outbound)) pending++;
+  }
+  return pending;
+}
+
+/**
+ * True once the initial pass has settled EVERY inventory path. Until then we
+ * publish nothing and never claim `ready`.
+ *
+ * The backstop no longer promotes a partial cache to authoritative: if paths are
+ * still unsettled WARMUP_MAX_MS after the first successful inventory, something
+ * is durably unreadable, and handing the host a fleet snapshot that is missing
+ * those files would silently drop their unread timestamps and their share of the
+ * activity histogram. We report the failure instead and the host reverts to its
+ * own (complete) main-thread scans.
+ */
 function warmupComplete(now) {
   if (warmedUp) return true;
+  if (warmupFailed) return false;
   if (!inventoryOk) return false;
-  let pending = false;
-  for (const sess of inventory) {
-    if (!attemptedPaths.has(sess.inbound) || !attemptedPaths.has(sess.outbound)) {
-      pending = true;
-      break;
-    }
+  const pending = unsettledPathCount();
+  if (pending === 0) {
+    warmedUp = true;
+    return true;
   }
-  if (pending && now - workerStartedAt <= WARMUP_MAX_MS) return false;
-  warmedUp = true;
-  return true;
+  if (now - inventoryOkAt <= WARMUP_MAX_MS) return false;
+  warmupFailed = true;
+  parentPort.postMessage({
+    kind: 'fatal',
+    message: `warm-up did not settle ${pending} of ${inventory.length * 2} session-DB paths within ${Math.round(
+      WARMUP_MAX_MS / 1000,
+    )}s`,
+  });
+  return false;
 }
 
 function tick() {
@@ -394,6 +442,17 @@ function tick() {
   }
   const warm = warmupComplete(start);
   if (warm) {
+    // `ready` MUST precede the first data frame. MessagePort delivery is
+    // strictly ordered, and the host ignores anything that arrives before the
+    // handoff — so publishing first meant the host DISCARDED the initial
+    // msgTs/activity frames while this side had already recorded them as
+    // published and would never resend them. Every group's lastMessageTs (the
+    // unread badge, the coworker-chat auto-refresh) then stayed empty until each
+    // file happened to change again: indefinitely, for an idle fleet.
+    if (!readySent) {
+      readySent = true;
+      parentPort.postMessage({ kind: 'ready' });
+    }
     publishMsgTs();
     publishActivity(start);
   }
@@ -406,17 +465,15 @@ function tick() {
 // its own scans) on `ready`, so we must not claim readiness on a tick that threw
 // (e.g. the central DB was momentarily unreadable), on a tick whose inventory
 // enumeration failed, or on a tick that has only classified the first slice of a
-// large fleet (the per-tick open budget). A fatal failure to even open the
-// central DB happens above, at module load, and surfaces as the Worker 'error'
-// event → host falls back.
+// large fleet (the per-tick open budget). `ready` is posted inside tick(),
+// immediately BEFORE the first publish, so the host's handoff is complete by the
+// time the first data frame reaches it. A fatal failure to even open the central
+// DB happens above, at module load, and surfaces as the Worker 'error' event →
+// host falls back.
 let readySent = false;
 function runTick() {
   try {
-    const warm = tick();
-    if (warm && !readySent) {
-      readySent = true;
-      parentPort.postMessage({ kind: 'ready' });
-    }
+    tick();
   } catch (e) {
     // Never let one bad tick kill the worker; report the first fault for debug.
     if (!readySent) parentPort.postMessage({ kind: 'error', message: String((e && e.message) || e) });
@@ -427,6 +484,15 @@ const timer = setInterval(runTick, TICK_MS);
 timer.unref?.();
 
 parentPort.on('message', (msg) => {
+  if (msg === 'republish') {
+    // The host lost frames (its pre-handoff queue overflowed) and cannot patch
+    // its caches from deltas alone. Forget what we believe it holds so the next
+    // tick re-sends the FULL msgTs map and activity histogram.
+    publishedMsgTs = new Map();
+    publishedActivityJson = '';
+    lastActivityPublish = 0;
+    return;
+  }
   if (msg === 'stop') {
     clearInterval(timer);
     try {

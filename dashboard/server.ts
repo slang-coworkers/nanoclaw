@@ -4642,15 +4642,24 @@ interface StablePublishedState {
 interface KeyedChange<T> {
   upsert: T[];
   remove: string[];
-  /** Full key list of the NEW array, in server order. The client rebuilds its
-   *  array in exactly this order — a keyed upsert/remove merge alone preserves
-   *  the CLIENT's insertion order, which silently diverges from the server's
-   *  whenever the server reorders without changing any item (index-positional UI
-   *  like the pixel-office desk assignment then renders the wrong layout). */
-  order: string[];
+  /** Full key list of the NEW array, in server order — present ONLY when
+   *  `orderChanged` is true. The client rebuilds its array in exactly this
+   *  order: a keyed upsert/remove merge alone preserves the CLIENT's insertion
+   *  order, which silently diverges from the server's whenever the server
+   *  reorders without changing any item (index-positional UI like the
+   *  pixel-office desk assignment then renders the wrong layout).
+   *
+   *  Omitted on an unchanged order because it is O(fleet) bytes on EVERY delta —
+   *  a one-coworker status change shipped the whole fleet's key list twice, which
+   *  is most of the bandwidth win this delta protocol exists to deliver. When it
+   *  is absent, `orderChanged: false` is the server's explicit statement that the
+   *  membership AND order are untouched, which a client-side Map merge
+   *  reproduces exactly. A keyed change carrying NEITHER is a legacy/mixed
+   *  version frame and the client refuses it (fail closed). */
+  order?: string[];
   /** True when `order` differs from the baseline's order. Ordering-only changes
    *  produce no upserts/removes, so this is what keeps them from being dropped
-   *  as an "empty" delta. */
+   *  as an "empty" delta — and its `false` is what licenses omitting `order`. */
   orderChanged: boolean;
 }
 interface StateDelta {
@@ -4714,7 +4723,8 @@ function keyedDiff<T extends Record<string, unknown>>(
   for (const k of prevByKey.keys()) if (!seen.has(k)) remove.push(k);
   const prevOrder = prev.map(keyOf);
   const orderChanged = prevOrder.length !== order.length || prevOrder.some((k, i) => k !== order[i]);
-  return { upsert, remove, order, orderChanged };
+  // Ship `order` only when it actually changed — see KeyedChange.order.
+  return orderChanged ? { upsert, remove, order, orderChanged } : { upsert, remove, orderChanged };
 }
 
 function diffStable(prev: StablePublishedState, next: StablePublishedState): StateDelta {
@@ -4741,11 +4751,12 @@ function isEmptyDelta(d: StateDelta): boolean {
   );
 }
 
-/** Test-only surface for the state-delta diff (dash-perf round 2). */
+/** Test-only surface for the state-delta diff + scan-worker handoff (dash-perf round 2). */
 export const __dashPerfTestHooks = {
   diffStable: (prev: StablePublishedState, next: StablePublishedState): StateDelta => diffStable(prev, next),
   isEmptyDelta: (d: StateDelta): boolean => isEmptyDelta(d),
   stateEpoch: (): string => STATE_EPOCH,
+  createScanHandoff: (hooks: ScanHandoffHooks) => createScanHandoff(hooks),
 };
 
 /**
@@ -4862,6 +4873,106 @@ function restartMainThreadScans(): void {
   }
 }
 
+/**
+ * Host half of the scan-worker handoff protocol.
+ *
+ * The worker publishes nothing until its warm-up pass has settled every session
+ * path, and posts `ready` immediately BEFORE its first data frame. This side
+ * still queues anything that arrives pre-`ready` instead of DISCARDING it — the
+ * bug that made round 1 wrong was structural, not cosmetic: MessagePort delivery
+ * is ordered, so a discarded frame is gone for good while the worker has already
+ * recorded it as published and will never resend it, leaving every group's
+ * lastMessageTs (unread badge, chat auto-refresh) stale indefinitely on an idle
+ * fleet. Queue-and-apply makes the handoff lossless from either side; the queue
+ * is bounded, and overflowing it asks the worker for a full republish rather
+ * than silently keeping a partial cache.
+ *
+ * Extracted (and exported via `__dashPerfTestHooks`) so the ordering can be
+ * tested without spawning a worker or a session fleet.
+ */
+interface ScanHandoffHooks {
+  applyMsgTs: (changed: [string, string][], removed: string[]) => void;
+  applyActivity: (buckets: unknown[]) => void;
+  /** Handoff complete: the worker owns these scans, stop the main-thread timers. */
+  onReady: () => void;
+  onStats: (stats: Record<string, unknown>) => void;
+  /** The worker declared its cache unusable — revert to main-thread scans. */
+  onFatal: (message: string) => void;
+  /** Ask the worker to re-send its full state (our pre-ready queue overflowed). */
+  requestRepublish: () => void;
+  maxPreReadyFrames?: number;
+}
+
+function createScanHandoff(hooks: ScanHandoffHooks): {
+  handle: (msg: any) => void;
+  isReady: () => boolean;
+  stop: () => void;
+} {
+  const maxPreReady = hooks.maxPreReadyFrames ?? 64;
+  let ready = false;
+  let stopped = false;
+  let pending: any[] = [];
+  let droppedPreReady = false;
+
+  const applyFrame = (msg: any): void => {
+    if (msg.kind === 'msgTs') hooks.applyMsgTs(msg.changed || [], msg.removed || []);
+    else if (msg.kind === 'activity' && Array.isArray(msg.buckets)) hooks.applyActivity(msg.buckets);
+  };
+
+  const handle = (msg: any): void => {
+    // After a fallback the main thread owns these scans again; a late frame from
+    // a dying worker must not write to the caches it is now rebuilding itself.
+    if (stopped) return;
+    if (!msg || typeof msg !== 'object') return;
+    switch (msg.kind) {
+      case 'ready': {
+        if (ready) break;
+        ready = true;
+        hooks.onReady();
+        // Apply in arrival order — the worker's frames are cumulative deltas
+        // against what it believes we hold, so order is load-bearing.
+        const queued = pending;
+        pending = [];
+        for (const frame of queued) applyFrame(frame);
+        if (droppedPreReady) {
+          droppedPreReady = false;
+          hooks.requestRepublish();
+        }
+        break;
+      }
+      case 'msgTs':
+      case 'activity':
+        if (!ready) {
+          if (pending.length >= maxPreReady) droppedPreReady = true;
+          else pending.push(msg);
+          break;
+        }
+        applyFrame(msg);
+        break;
+      case 'stats':
+        hooks.onStats(msg);
+        break;
+      case 'error':
+        console.error('[dashboard] scan worker init error:', msg.message);
+        break;
+      case 'fatal':
+        hooks.onFatal(String(msg.message || 'unspecified'));
+        break;
+      default:
+        break;
+    }
+  };
+
+  return {
+    handle,
+    isReady: () => ready,
+    stop: () => {
+      stopped = true;
+      pending = [];
+    },
+  };
+}
+
 function startScanWorker(): void {
   if (process.env.VITEST || process.env.DASHBOARD_DISABLE_SCAN_WORKER === '1') return;
   let worker: Worker;
@@ -4874,57 +4985,55 @@ function startScanWorker(): void {
     return;
   }
   scanWorker = worker;
-  // The worker only publishes once its warm-up scan has classified every
-  // inventory path, but the host refuses pre-`ready` data anyway: a partial
-  // snapshot applied over the main thread's (complete) caches would show wrong
-  // counts and drop unread timestamps until the next full worker pass.
-  let workerReady = false;
-  worker.on('message', (msg: any) => {
-    if (!msg || typeof msg !== 'object') return;
-    switch (msg.kind) {
-      case 'ready':
-        workerReady = true;
-        perfCounters.workerActive = true;
-        // Hand off: the worker now owns these scans, so stop the main-thread
-        // timers to avoid duplicate work.
-        if (msgTsTimer) {
-          clearInterval(msgTsTimer);
-          msgTsTimer = undefined;
-        }
-        if (activityTimer) {
-          clearInterval(activityTimer);
-          activityTimer = undefined;
-        }
-        break;
-      case 'msgTs':
-        if (!workerReady) break; // pre-handoff: main-thread scan still owns the cache
-        applyMsgTsDelta(msg.changed || [], msg.removed || []);
-        break;
-      case 'activity':
-        if (!workerReady) break;
-        if (Array.isArray(msg.buckets)) {
-          activityDataCache = msg.buckets;
-          perfCounters.scanActivityPublishes++;
-        }
-        break;
-      case 'stats':
-        workerStats = msg;
-        break;
-      case 'error':
-        console.error('[dashboard] scan worker init error:', msg.message);
-        break;
-      default:
-        break;
-    }
-  });
+  let stopHandoff: (() => void) | null = null;
   const fallback = (reason: string): void => {
     if (scanWorker !== worker) return; // already replaced
     scanWorker = null;
-    workerReady = false;
     perfCounters.workerActive = false;
+    // Stop applying worker frames BEFORE the main-thread scans resume, so the
+    // two can never both write the caches.
+    if (stopHandoff) stopHandoff();
     console.error(`[dashboard] scan worker ${reason}; reverting to main-thread scans`);
     restartMainThreadScans();
   };
+  const handoff = createScanHandoff({
+    applyMsgTs: (changed, removed) => applyMsgTsDelta(changed, removed),
+    applyActivity: (buckets) => {
+      activityDataCache = buckets as ActivityBucket[];
+      perfCounters.scanActivityPublishes++;
+    },
+    onReady: () => {
+      perfCounters.workerActive = true;
+      // Hand off: the worker now owns these scans, so stop the main-thread
+      // timers to avoid duplicate work. The queued pre-ready frames are applied
+      // by the handoff immediately after this returns, so there is no window in
+      // which neither side owns the cache.
+      if (msgTsTimer) {
+        clearInterval(msgTsTimer);
+        msgTsTimer = undefined;
+      }
+      if (activityTimer) {
+        clearInterval(activityTimer);
+        activityTimer = undefined;
+      }
+    },
+    onStats: (stats) => {
+      workerStats = stats;
+    },
+    onFatal: (message) => {
+      fallback(`reported a fatal warm-up failure (${message})`);
+      void worker.terminate();
+    },
+    requestRepublish: () => {
+      try {
+        worker.postMessage('republish');
+      } catch (e) {
+        console.error('[dashboard] scan worker republish request failed', e);
+      }
+    },
+  });
+  stopHandoff = handoff.stop;
+  worker.on('message', (msg: any) => handoff.handle(msg));
   worker.on('error', (e) => {
     console.error('[dashboard] scan worker error', e);
     fallback('errored');
@@ -5110,7 +5219,14 @@ function markStaleClient(client: any, clients: Set<any>, isWs: boolean): void {
       // and cannot broadcast again.
       publishState();
       const json = fullStateEnvelope();
-      client.write(isWs ? createWsFrame(Buffer.from(json)) : `data: ${json}\n\n`);
+      // Through sendToClient(), not a raw write(): a full snapshot is the
+      // LARGEST frame we ever send, so it is the one most likely to re-block the
+      // socket. A raw write that returns false left the client with no armed
+      // blocked-timer and no further state change to trigger one (the WS path
+      // has no heartbeat) — i.e. retained forever. sendToClient re-arms stale
+      // tracking, which both schedules the next drain-recovery and bounds the
+      // socket's lifetime.
+      sendToClient(client, clients, isWs ? createWsFrame(Buffer.from(json)) : `data: ${json}\n\n`, isWs);
       perfCounters.resyncsSent++;
     } catch {
       clients.delete(client);
@@ -6776,7 +6892,9 @@ export async function handleRequest(
     const wantsSnapshot = url.searchParams.get('snapshot') !== '0';
     const snapshotFrame = wantsSnapshot ? `data: ${fullStateEnvelope()}\n\n` : null;
     sseClients.add(res);
-    if (snapshotFrame) res.write(snapshotFrame);
+    // Every post-handshake write goes through sendToClient() so a blocked socket
+    // is tracked from its FIRST frame (see the WS upgrade handler).
+    if (snapshotFrame) sendToClient(res, sseClients, snapshotFrame, false);
 
     const cursorValue =
       url.searchParams.get('after') ||
@@ -6785,12 +6903,12 @@ export async function handleRequest(
     if (Number.isFinite(cursor) && cursor >= 0) {
       const firstBufferedId = hookEvents.find((event) => event.id !== undefined)?.id;
       if (firstBufferedId !== undefined && cursor < firstBufferedId - 1) {
-        res.write(`data: ${JSON.stringify({ type: 'resync' })}\n\n`);
+        sendToClient(res, sseClients, `data: ${JSON.stringify({ type: 'resync' })}\n\n`, false);
       } else {
         for (const event of hookEvents) {
           if (event.id === undefined || event.id <= cursor) continue;
           const payload = JSON.stringify({ type: 'hook-event', data: event });
-          res.write(`id: ${event.id}\ndata: ${payload}\n\n`);
+          sendToClient(res, sseClients, `id: ${event.id}\ndata: ${payload}\n\n`, false);
         }
       }
     }
@@ -13334,9 +13452,14 @@ function createDashboardHttpServer(options: DashboardRequestOptions = {}): impor
     // Snapshot BEFORE joining the broadcast set — see the SSE handler: building
     // the envelope can broadcast a delta, which an already-registered client
     // would receive before its own baseline.
+    //
+    // Written through sendToClient() like every other post-upgrade frame: a raw
+    // socket.write() that returns false (a large snapshot to a slow reader)
+    // armed no blocked-timer, so an otherwise idle fleet produced no further
+    // frame to notice it with and the socket was pinned for good.
     const snapshotFrame = createWsFrame(Buffer.from(fullStateEnvelope()));
     wsClients.add(socket);
-    socket.write(snapshotFrame);
+    sendToClient(socket, wsClients, snapshotFrame, true);
 
     let buffer = head.length > 0 ? Buffer.from(head) : Buffer.alloc(0);
     socket.on('data', (data: Buffer) => {
