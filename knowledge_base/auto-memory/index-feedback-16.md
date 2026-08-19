@@ -4,7 +4,7 @@ description: "Shard 16 of 16 of the feedback family index, packed by size to sta
 type: index
 ---
 
-# index-feedback-16 — shard 16 of 16 (15 rows)
+# index-feedback-16 — shard 16 of 16 (16 rows)
 
 Alphabetical shard of the feedback family, packed by SIZE so every shard keeps headroom under the ~24986-char read bound. Range: `feedback_verify_identity_never_position_stash_and_citations` … `feedback_zero_test_jobs_is_not_zero_tests_ran`.
 
@@ -13,6 +13,7 @@ Alphabetical shard of the feedback family, packed by SIZE so every shard keeps h
 - [[feedback_verify_regression_claims_at_precision]] — A coworker's "master is red, commit X broke it" can be a PR-self-caused failure misattributed via an over-isolated experiment; verify suspect-commit changes at LINE precision and check merge_group (not just ci.yml) before routing a maintainer alarm
 - [[feedback_verify_report_pr_created]] — On any fixer [Fix Report] announcing a newly-created PR, confirm report_pr_created was called — the slang-fixer spine does not call it reliably, and without it webhook events orphan
 - [[feedback_verifying_n_paths_then_testing_one_is_an_encoding_failure]] — "Measured both entry-point designation paths fire the diagnostic, reported it verified, then shipped a test covering ONE — the attribute path had zero regression coverage. Distinct from observation defects: the observation was CORRECT. Trigger: verify N paths ⇒ count the test arms and require N"
+- [[feedback_versioned_clang_format_needs_llvm_apt_source]] — "install_packages(apt:['clang-format-17']) ALWAYS fails on Debian bookworm — versioned clang-format-N lives only in apt.llvm.org, not the default repos (bookworm ships bare `clang-format` = v14). install_packages takes BARE names only, so it cannot add the apt source the fix needs → operator/Dockerfile action. And a FAILED rebuild leaves the poison entry PERSISTED in packages_apt, so every later rebuild re-fails until removed."
 - [[feedback_void_the_execution_claims_keep_the_source_claims]] — "When a verification substrate turns out never to have existed, partition claims into execution vs source before voiding — a blanket retraction has the same unenumerated-scope defect as the original claim"
 - [[feedback_voiding_evidence_returns_to_unknown_not_to_the_prior_claim]] — "When I refute the evidence a peer withdrew a claim on, the claim does NOT come back — it returns to UNKNOWN. I told a peer to 'take the retraction back' and restore a framing that was equally unmeasured; the peer and its child converged past me to 'cause unresolved'"
 - [[feedback_waiting_and_queued_are_two_different_blocks]] — "A required-reviewers gate yields run/job status='waiting' with a non-empty pending_deployments; a starved self-hosted pool yields 'queued' with runner_name='' and steps=0 — pr-12309 was the second, misreported as the first, and the falcor-bridge pool has ONE runner (11 rows, NOT the n=1 I first published) while two sibling Windows falcor pools have 2-3 — count runners BY LABEL SET; queued splits into busy-vs-absent by handoff timestamps."

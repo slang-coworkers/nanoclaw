@@ -85,4 +85,60 @@ Change (net **−21 lines** — following the maintainer's ask through allowed d
 - `e2befa07ef` — the assert-the-invariant restructure (the *reviewable code change*).
 - **`79297fa854` — TERMINAL PR HEAD.** Master merge clearing `behind: 0`; touches none of the PR's files. Fixer re-ran everything on the merged state (scope 8/8, `tests/reflection/` 52/52, 9 PR-regenerated baselines 10/10, zero `.expected` changed, no assert fired) before pushing, then dispatched draft CI.
 
-**RESUME after this:** @tangent-vector re-reviews **`79297fa854`** (the actual head — same code as `e2befa07ef` plus the merge; his call, he resolves the 2 inline threads) → mark ready/merge (OP-gated). Max-2-round path is CLOSED — a 3rd round needs fresh authorization; CI-break triage on an owned PR is ownership maintenance and does not count as a round. Or fresh substantive human comment.
+**2026-08-07 (later) — 3 webhooks, chain moving again:**
+1. `github.pr_review_thread` **RESOLVED by @tangent-vector**, path `source/slang/slang-reflection-json.cpp` — TWO such events arrived (one before the approval, one after) ⇒ **BOTH inline threads (r3737843847 + r3737850035) now resolved by the maintainer.** Review surface is fully clean.
+2. `github.ci_failed` on `79297fa854` (check-suite 86340606845) — new run on the prior head.
+3. `github.ci_failed` on **NEW head `5513c57823e9`** (check-suite 86340639079) — **FOURTH distinct SHA. ⚠️PROVENANCE UNKNOWN:** fixer's last msg (#60) said it was NOT touching the branch, so this commit's author is unestablished — could be @tangent-vector pushing to the branch himself, or a fixer rebase/merge. Do NOT assume it's a benign fixer rebase. Routed to fixer to establish provenance (`git log`) BEFORE any CI reasoning.
+
+4. **`github.pr_review` state=APPROVED by @tangent-vector** ([pullrequestreview-4939803036](https://github.com/shader-slang/slang/pull/12310#pullrequestreview-4939803036), empty body). ✅ **MAINTAINER HAS APPROVED THE ROUND-2 CODE.** Note: approval lands while PR is still DRAFT — valid, but does NOT auto-merge; merge still needs the OP-gated ready-flip.
+5. **`github.pr_mention` `/regenerate-toc`** from @tangent-vector ([issuecomment-5296375508](https://github.com/shader-slang/slang/pull/12310#issuecomment-5296375508)). Almost certainly a **repo-automation slash command** (regenerates docs TOC for the new `09-reflection.md` section + pushes) — likely the source of SHA `5513c57823e9`. NOT verified whether it self-executes via a GitHub Action or expects our coworker to act. Fixer (PR owner) to determine; do NOT run it myself.
+
+**STATE NOW: APPROVED, DRAFT, CI-green UNESTABLISHED.** The only remaining gate is the **operator-gated ready-flip + merge** — but two facts must be established first: (a) provenance + content of `5513c57823e9` (maintainer/bot push vs fixer), (b) whether `/regenerate-toc` needs action and (c) a real CI signal (yield discriminator on check-suites 86340606845 + 86340639079; still no confirmed build lane).
+
+6. **`/regenerate-toc` RESOLVED:** `slangbot` created **companion PR #12543** with the regenerated TOC ([issuecomment-5296388178](https://github.com/shader-slang/slang/pull/12310#issuecomment-5296388178): "please merge the changes from PR #12543"). Standard Slang docs-automation flow — a TOC bot makes a sub-PR you fold into the feature branch. This almost certainly IS SHA `5513c57823e9` (or #12543's commit is what gets merged in). Fixer owns incorporating it.
+
+**STATE: APPROVED + docs-TOC companion PR #12543 to fold in. DRAFT. CI-green still UNESTABLISHED.** Boundary: **incorporating #12543's TOC regen into the branch is ownership maintenance** (routine PR hygiene, the bot literally asks for it) — fixer may do it. **The final ready-flip + merge-to-master stays OPERATOR-GATED** even with approval in hand.
+
+**2026-08-14 — chain re-engaged after ~7 days idle; fixer mergeable-state report. HEAD is now 5th SHA `6be68909b1`, PR is NON-DRAFT, FIRST GENUINE CI BUILD RUNNING.**
+
+Provenance (fixer `git log`, none of it fixer's own work):
+- `5513c57823` (webhook "4th SHA") = **@tangent-vector merged master into the branch herself** (maintainer push). Fixer's local `79297fa854` was the stale tip; adopted remote head.
+- `6be68909b1` (current head) = **slangbot's TOC regen for #12543** — single line added to `docs/user-guide/toc.html` (`reflection#json-reflection-output` → "JSON Reflection Output"), no source/content change. TOC fold-in already on the branch, verified clean; nothing for fixer to push.
+- Round-2 code survived the maintainer's master-merge intact: `e2befa07ef` is an ancestor; asserts + `"version":"1.1"` (line 1388) + `globalScope` + 8 scope tests + `09-reflection.md` section all present.
+
+CI discriminator across heads:
+- `79297fa854` / suite 86340606845 — yield + a `cancelled` pull_request run; 34 jobs skipped. No real build.
+- `5513c57823` / suite 86340639079 — pull_request CI **`cancelled`** (superseded ~4 min later by TOC commit); its ToC-check `failure` is what triggered `/regenerate-toc`. Not a real failure.
+- **`6be68909b1` (current) — THE PAYOFF: PR non-draft ⇒ `wait-for-human-priority`=`success` (NO yield), all 9 build jobs `in_progress`** (linux/macos/windows compiling the merged state for the FIRST time). **First real CI signal the chain has ever had.** Fixer armed monitor on run `31825230417`; will report verdict + any failed lane.
+
+Mergeable state: `behind_by: 0` (maintainer's merge fixed staleness) but **APPROVE (pullrequestreview-4939803036) now `DISMISSED`** — auto-dismissed by the 2 commits that landed after it (maintainer's master-merge + TOC bot). ⇒ block is **REVIEW_REQUIRED** (re-review needed at current head), NOT a failing gate.
+
+⚠️**PR went NON-DRAFT — fixer says "someone flipped it," NOT the fixer and NOT us.** Most likely @tangent-vector readied her own engaged+approved PR (legitimate maintainer action). Not an unauthorized bot action; merge (the gated step) remains untouched.
+
+**OUTSTANDING (only 2 things between here and merge):**
+1. **Re-review** — dismissed approval needs @tangent-vector to re-approve at `6be68909b1`. HERS to re-issue; fixer must NOT re-request (no-pre-request-reviewers rule); she's actively engaged.
+2. **`gh pr merge` — OPERATOR-GATED.** `gh pr ready` is moot (already non-draft).
+
+**2026-08-14 (later) — 2 events, opposite directions:**
+- ✅ **@tangent-vector RE-APPROVED at current head** ([pullrequestreview-4942064946](https://github.com/shader-slang/slang/pull/12310#pullrequestreview-4942064946)). **Gate 2 (re-review) MET** — clears the DISMISSED/REVIEW_REQUIRED block.
+- ⚠️ **`ci_failed` on current head `6be68909b1`** (check-suite **86341544122**) — ⛔**DO NOT assume yield/benign: this lands on the head that finally had a REAL build** (run 31825230417, 9 build jobs in_progress, non-draft ⇒ no priority yield). This is the exact scenario I flagged where a rebase-onto-master failure can be genuine. Could still be: a single flaky lane, a ToC-check artifact, or a superseded/cancelled run — but the yield discriminator (all-jobs-skipped) will almost certainly NOT apply here. Fixer to triage which lane(s) failed and whether real.
+
+**STATE: gate 2 (re-review) MET; gate 1 (CI green) now IN QUESTION on a real build; gate 3 (operator merge) pending and MUST NOT fire until CI triaged.** A green re-approval does not override a red build.
+
+**CI TRIAGE RESULT (fixer, run `31825230417` attempt 2, current head `6be68909b1` — NOT superseded/cancelled): 34/35 lanes GREEN, 1 red = `test-falcor / Test (Falcor)`, an EXTERNAL failure, NOT the PR's code.**
+- Failing step is `Run external CI` — a thin wrapper handing the built slang to **NVIDIA's Falcor pipeline** (id 62833174), which "finished with status 'failed'" *inside Falcor's own pipeline*, off the slang runner (opaque from slang side).
+- `check-ci` red only as the rollup of that one Falcor failure.
+- ✅ **all 9 build lanes** (linux/macos/windows × debug/release × x86_64/aarch64/wasm) success; ✅ **`test-falcor / Test (Falcor Perf)` itself success** (same toolchain ⇒ the slang build Falcor consumed is fine); ✅ **all `test-slang` lanes green** including the macos/windows/aarch64/wasm/sanitizer backends the fixer couldn't build locally.
+- **Refutes my named risk directly:** the lanes exercising the reflection change built with asserts LIVE and passed. PR's only non-baseline code is the `-reflection-json` emitter; Falcor is the codegen/GPU render path and never calls `-reflection-json` — no causal path from the change to a Falcor render failure.
+
+✅**DISCRIMINATOR RESOLVED: Falcor is GREEN on master → the red is TRANSIENT, not upstream-broken.** Fixer read check-runs on latest master commit `b4853080d1` (2026-08-15T01:13Z) directly: `test-falcor / Test (Falcor)` = success + `Falcor Perf` = success; no PR-gate lane failing on master (only unrelated `agentic-tests`/`analyze`/`nightly` scheduled jobs red). ⚠️Trap noted: `gh run list --branch master` returns stale June `workflow_dispatch` runs because master's real CI is `merge_group` not push — read check-runs on the master head SHA directly instead. **Rerun triggered** `gh run rerun 31825230417 --failed` → attempt 3, reruns only Falcor + check-ci rollup, 34 green lanes untouched. Fixer monitoring.
+
+**GATE STATE: ✅ re-approved at head · ✅ 9/9 builds + all slang tests green · ⚠️ 1 external Falcor lane red (outside this PR).** Honest read: "our change is green; a non-code external lane is red." Whether that Falcor red blocks merge is a maintainer/operator judgment on an external lane, NOT a code fix.
+
+## ✅ MERGED / CLOSED (2026-08-15)
+
+**PR #12310 MERGED by @tangent-vector**, **merge commit `56f423ff1a` (2026-08-19T00:48Z)** — the squashed merge onto master, distinct from PR head `6be68909b1`. Falcor rerun cleared the transient external flake; maintainer merged directly. `Fixes #12307` ⇒ **issue #12307 CLOSED/COMPLETED. CHAIN TERMINAL.** Fixer post-merge housekeeping done: worktree `wt-slang-12307` removed (0 refs), sentinel `active-work/slang-12307` cleared, `fix-12307.md` marked DONE, Falcor stale-artifact-vs-master-control discriminator filed as a learning.
+
+**How the merge gate resolved:** all 3 gates met — (1) 9/9 builds + all slang tests green with asserts live, (2) @tangent-vector re-approved at head, (3) CI rollup green after the Falcor rerun. The **maintainer merged it herself**, so the operator-gated `gh pr merge` never needed my escalation — the human who owns the repo did the human-owned step. Clean outcome.
+
+**Chain arc (for the record):** design proposal (self-filed by our bot at @tangent-vector's request off #11135 review) → triaged PARKED → maintainer approved plan + 2 design decisions (hand-shaped globalScope/scope + `version:"1.1"`) → DRAFT PR #12310 → reviewer APPROVE_WITH_NITS → polish round → maintainer CHANGES_REQUESTED (assert-not-early-out) → round-2 restructure (net −21 lines, deleted provably-dead branches, reachability settled AGAINST fixer's own earlier claim) → maintainer approved → master-merge + TOC-bot commits (5 total SHAs) → approval auto-dismissed → re-approved → transient Falcor flake (green on master, rerun cleared) → **MERGED**.

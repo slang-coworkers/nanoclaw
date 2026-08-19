@@ -27,6 +27,81 @@ its scrub verdict on thread `gh-issue-shader-slang/slang-9661`.
   dispatch already CONSUMED — a dropped chain is byte-identical to one still thinking; the error row
   in `ncl sessions messages` is the only tell.**
 
+## 🔵 RE-OPENED 2026-08-18T17:04Z — prospective contributor, and he REVISES OUR PREMISE
+
+`0xivanm` (`author_association: NONE` — new to the project) commented `5331493289`, volunteering to
+work the issue and reporting **fresh CUDA 12.6 test results that partially overturn the January
+assessment we relied on**:
+
+- ✅`txq.width/height` work at runtime (already known).
+- 🆕**`txq.level.width/height` WORKS and returns correct per-mip dimensions** ⇒ the `mipLevel`
+  overload's dimensions ARE fixable via `txq.level`. **This is new** — the January thread only
+  established that `txq.num_mipmap_levels` fails; nobody had tested `txq.level.*`. Our scrub said "the
+  overload silently ignores `mipLevel`," which is true of the *current emit* but NOT a platform limit.
+- ❌`txq.num_mipmap_levels` and `txq.array_size`: accepted by NVCC/NVRTC and appear in PTX, but the
+  kernel **fails to load** (`named symbol not found`) — tested both native `sm_89` and driver-JIT'd
+  PTX; `array_size` fails for regular AND cube arrays. ⇒ mip-count + array-size still genuinely
+  unavailable in a plain CUDA kernel (consistent with `skallweitNV`'s Jan note that these need OptiX).
+
+**His design question is exactly our A/B/C/D, narrowed to a real case:** the mip-level overload could
+return correct width/height but not `numberOfLevels` — should that overload be **unavailable** on
+CUDA, or **available with a warning**? And: is this the right direction, may he keep going?
+
+⇒ **Substantive re-open (counter-evidence + scope-Q + contributor offer), routed to `slang-triager`**
+on the canonical thread `gh-issue-shader-slang/slang-9661`, `<github-post-authorized />`.
+
+⚠️**Verified before routing (2026-08-18):** issue still `open`, still assigned to the departed
+`mkeshavaNV`, labels unchanged — and **NO maintainer ever made the A/B/C/D call**: zero comments
+between our 08-05 verdict (`5196363753`) and this one. So the design question is still genuinely open;
+the contributor is not stepping on a decision, he's the reason to force one.
+
+⛔**Do NOT re-derive the emit mechanism from the 08-05 memo without re-checking master** — 13 days
+elapsed, and this comment plus the system-reminder both warn the code may have moved. The triager
+holds the repro at its `scratch-9661/`; re-measure `txq.level` support and the current emit before
+advising the contributor.
+
+### ✅ Triager replied to the contributor 2026-08-18T17:13Z (cmt `5331598186`), design fork ESCALATED to Main
+
+Triager re-verified at current master `9a948c67a` (did NOT trust the 13-day memo). **I independently
+re-verified the two load-bearing claims before carrying the escalation:**
+- ✅Comment `5331598186` real — `nv-slang-bot[bot]`, `created == updated` (fresh, not edit), count
+  8→9, 3981 chars ⇒ `0xivanm` notified.
+- ✅**"Emit file unchanged ⇒ no drift" CONFIRMED via GitHub API** (not my shallow clone): last commit
+  touching `slang-core-module-textures.cpp` is `72985f871`, **2026-07-24** — *before* the 08-05 scrub,
+  so the emit hasn't moved since. Triager re-measured the emit anyway: 3 literal-`0` at
+  `:374`/`:389`/`:403`, **`txq.level` emitted nowhere** (0 occ, must-hit control `txq.width`=3),
+  `cudaMipLevel`=0 vs `metalMipLevel`=8.
+
+**Resolved on the triager's side:** contributor's 4 observations all check out; per-mip w/h **is
+fixable via `txq.level`** (PTX ISA §9.7.11.5, `sm_30`+ — spec-backed), so the 08-05 "platform limit"
+framing is partially overturned; num-levels/array-size remain unavailable in a plain kernel (valid
+PTX, load fails at driver/runtime — outside ISA scope, and the triager correctly stated the
+GPU-less measure/cannot-measure boundary rather than asserting his runtime failure). Contributor given
+a **fork-independent slice to start now**: (1) docs fix `cuda-target.md:330`, (2) `txq.level` per-mip
+w/h (needs the small cursor addition mirroring Metal, not a one-line asm tweak — the sharpened repair
+estimate from the 08-05 mechanism audit carried forward correctly).
+
+🔴~~ESCALATED TO MAIN → OPERATOR~~ ✅**ESCALATION MOOT — a maintainer picked up the fork ORGANICALLY
+2026-08-18T21:02Z, ~4h after I sent it up.** `jhelferty-nv` (MEMBER) thanked `0xivanm`, quoted his
+unavailable-vs-warn question verbatim, and delegated: *"@kaizhangNV Can you provide @0xivanm with some
+guidance here?"* (cmt `5334019110`). ⇒ **the design fork now has a named human owner (`kaizhangNV`)** —
+exactly the source-compatibility authority we were escalating for. **RETRACTED the operator escalation**
+so they don't redundantly ping a maintainer who's already engaged.
+
+✅**REASSIGNMENT DONE (organically):** assignees are now **`0xivanm` + `kaizhangNV`** — the departed
+`mkeshavaNV` is REMOVED. That closes the loop our 08-05 scrub opened (departed-assignee cleanup +
+new owner), done by maintainers directly, not by us.
+
+⚠️**Two expectations I'd set are now obsolete:** (1) my "I'll thread the ruling back to you" to the
+triager — `kaizhangNV` will almost certainly guide `0xivanm` **directly** on GitHub, not through me;
+(2) the RESUME line "operator/maintainer rules ⇒ relay to triager." Corrected the triager.
+
+**CHAIN NOW MAINTAINER-DRIVEN — effectively out of our hands.** No writable GitHub state for our tier;
+nothing to post (a bot comment on a maintainer↔contributor exchange = noise). **RESUME:** `0xivanm`
+opens a PR ⇒ routes to `slang-fixer`/review · he asks the triager for exact generator lines (offered) ·
+a fresh inbound explicitly asks the bot/coworkers to do something. `kaizhangNV`'s guidance to `0xivanm`
+is a human↔human exchange — observe, don't interpose.
+
 ## ✅ SCRUB COMPLETE 08-05T19:28Z — verdict posted, OUR STEP DONE
 
 **Verdict: still relevant — RESCOPE + NEW OWNER.** Not a close, not a reassign-as-written.

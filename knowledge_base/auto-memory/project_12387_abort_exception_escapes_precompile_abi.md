@@ -200,6 +200,117 @@ per-directory split and residual are), so **not worth a second edit** to a maint
 but the correct clause-unit form is `grep -rn` in place of `grep -rl`, and that is what to hand over
 next time.
 
+## DRAFT PR OPEN — #12552, verified live 2026-08-14 22:4xZ
+
+`slang-fixer` reported a [Fix Report] **directly to me** (msg 34), not up through `slang-triager` (its
+dispatcher on this chain) — a topology skip; I replied on the fixer's own edge (`in_reply_to=34`,
+canonical thread), which is a peer-reply to an existing session, **not** a fresh Main→fixer dispatch,
+so it mints no phantom (distinct from anchor H's failure mode).
+
+✅ **Verified against the live artifact, not relayed** (`github_get_pull_request` #12552): real, **draft**,
+`state=open`, base `master`, head `fix/issue-12387`, author `nv-slang-bot[bot]`, label `pr: non-breaking`,
+reviewer `saipraveenb25`, `Fixes #12387` in body. Scope matches the authorization exactly — 3 files:
+(1) three-arm boundary guard in `slang-compiler-tu.cpp` mirroring `ComponentType::link`
+(`AbortCompilationException` / `Exception` / `...` → `outputExceptionDiagnostic` + `SLANG_FAIL`);
+(2) **comment-only** fix in `slang-emit.cpp:3462` (the dead-return comment; severity **NOT** changed —
+B correctly excluded); (3) new no-GPU `unit-test-precompile-exception-boundary.cpp` using the
+nested-`ParameterBlock` `InternalError`-during-emission trigger (survives #12385). The PR body's
+Process report is well-formed and answers the input-shape check (input is a legitimate module; guard
+belongs at the ABI boundary, not upstream). Fixer's own test claims (1/1 new, 578/578 suite, must-fail
+control) and CI characterization ("only check-ci + wait-for-human-priority; 83 jobs skipped = cosmetic
+draft priority-yield") are **the fixer's, un-recertified by me** — draft CI skipping is expected; the
+reviewer / CI-babysitter own real CI.
+
+## MAINTAINER APPROVED + both obligations closed — verified live 2026-08-14 23:1xZ
+
+✅ **Approval is real, not relayed** (`github_get_pull_request_reviews` #12552): review **4941844655**,
+`state=APPROVED`, user `tangent-vector` (the same maintainer who authorized the PR), submitted
+23:15:53Z, **empty body** = clean approve, no inline comments. ⚠️ Note it is an approve **on a draft** —
+the PR still needs a human ready-flip (auto-assigns CODEOWNERS) and merge; an approval does not flip or
+merge it. Fixer is holding correctly; `slang-reviewer`'s 3-reviewer pipeline still running (~20-30m),
+to be folded in.
+
+✅ **Both obligations I flagged were closed by the fixer, verified independently:** (1) footprint =
+`nv-slang-bot[bot]` cmt **5298936909** on #12387 at 22:51:39Z — the exact draft-held 5-bullet (verdict
+"fix in draft PR #12552, held pending reviewer + human ready-flip"), issue now at 3 comments; (2)
+`report_pr_created` done (fixer says hook confirmed the mapping — container-side, not independently
+checkable by me, but the footprint half checks out and the claim is consistent). My msg-34 flag was
+correct when I read the issue (comments_count=2) and either prompted or crossed the fixer's post — the
+flag worked as intended; nothing to walk back, nothing content-free to send back.
+
+## (superseded) TWO obligations flagged open on msg 34 — now CLOSED:
+1. **Draft-held footprint [MUST].** Issue #12387 has **0** bot comments since the draft opened — a
+   human sees Tim Foley's *"craft a PR"* (cmt 5296388896) then nothing. My rule: a draft's `Fixes #N`
+   is **not** a substitute (doesn't auto-close, doesn't surface prominently). The tier that opened the
+   PR posts the 5-bullet on the **issue** (verdict = "fix in draft PR #12552, held pending reviewer +
+   human ready-flip").
+2. **`report_pr_created({repo, pr:12552})`** — not mentioned in the report; without it, follow-up
+   review webhooks may fall through branch-resolution instead of routing to the fixer's session. Fixer
+   must call it (container-side; I cannot write `pr_session_mappings`).
+
+## NON-DRAFT + APPROVED, human-gated on merge — verified live 2026-08-15 06:0xZ
+
+✅ **PR #12552 is now non-draft** (`github_get_pull_request`: `draft=false`, `state=open`,
+`merged_at=null`, `closed_at=null`, base `master`, `pr: non-breaking`, `Fixes #12387` in body,
+`updated_at` 2026-08-15T00:15:50Z). Independently confirmed the state change the triager reported; I
+did not re-certify its head-SHA-binds-approval claim (`1efff15f38`) or the CI 27/0 count — those are
+the triager's, and not load-bearing for the chain state (non-draft + approved + open is what matters,
+and I confirmed non-draft directly; the APPROVED review 4941844655 I confirmed last turn).
+
+✅ **`report_pr_created` landed — verified via the mapping, not the fixer's word:** `ncl pr-mappings
+list` shows `shader-slang/slang 12552 → ag-1780667166439-vmjrwe / sess-1786740609065-4ox004`, thread
+`gh-issue-shader-slang/slang-12387`, created 22:43:00 (PR-open time). So follow-up review/CI webhooks
+on #12552 route to the fixer's session, not to me. This is the fixer's group, correct owner.
+
+**slang-reviewer's 3-reviewer pipeline: APPROVE_WITH_NITS** (triager's report), all non-blocking
+comment-wording; fixer correctly did **not** push a nit-fix commit (would move the head off
+`1efff15f38` and unbind tangent-vector's approval). Right call — do not disturb an approved head for
+cosmetics.
+
+⇒ **Chain terminal, human-gated. The ONLY remaining action is a maintainer rebase+merge of #12552**
+(`mergeable_state=behind`); merging auto-closes #12387 via `Fixes #12387`. The non-draft PR is the
+public trail, so no issue double-post — the triager sent its `[Triage Resolution]` upstream instead,
+correctly. **Triager holds the merge co-trigger:** on merge it re-reads the merged diff, refreshes
+verdict cmt 5202431980 in place, sends final resolution. Nothing on my edge until then — the human in
+the loop is a Slang maintainer acting on GitHub, not an operator I need to ping (tangent-vector already
+approved; merge is their call, already surfaced on the PR).
+
+⚠️ Triager's own reachability gate showed 3 orphans — **its store, not mine** (per-container path; its
+`triage-12387.md` reachable, the 3 are older other-chain memos it didn't create). My store confirmed
+clean last turn. Not my action.
+
+## 2026-08-15 21:58Z — fixer flags a dead a2a route; VERIFIED it's a fixer-edge bounce, NOT session death
+
+`slang-fixer` (msg 48) reported its a2a route to triager session `sess-1786003063013-gidfh3` on thread
+12387 bounced 4× "bounced-unknown / will not self-recover," re-drove once, bounced again, stopped.
+
+⛔ **The "dead session" framing is wrong, and I corrected it rather than relaying.** `ncl sessions
+list`: `sess-1786003063013-gidfh3` (ag-1780667166418-apezq5 = `slang-triager`) is **`active` /
+`running`**, last-active **21:58** (= now), and is the **only** triager session on the 12387 thread —
+i.e. it is the same session that replied to me through msg 46. My edge reaches it fine. ⇒ **What is
+dead is the fixer→triager a2a edge specifically, not the session.** Distinct failure: a route bounce on
+one wiring, not a wedged/dead recipient. ([[feedback_a_shared_identity_breaks_unanswered_as_badly_as_already_answered]]-adjacent:
+the same session id means different reachability per *source edge*.)
+
+✅ **No consequence to the chain.** Fixer confirms (and it's consistent) no content lost — its status
+was already delivered to me (msg 31/34) and to the triager. Chain is human-gated on a maintainer
+rebase+merge, which routes **GitHub webhook → PR#12552 mapping → fixer group** (`report_pr_created`
+row verified last turn), **not** over the fixer→triager a2a edge. The triager's post-merge co-trigger
+is webhook-driven by its own statement, independent of that edge. So the dead edge strands nothing
+today, and the fallback is armed: **any post-merge fixer→triager handoff routes through me** (my edge
+to the triager is live).
+
+✅ **Two new facts verified, not relayed:** `github_get_pull_request_reviews` #12552 → **two** APPROVED
+reviews, both `tangent-vector` (MEMBER): 4941844655 @ 2026-08-14T23:15:53Z, 4942068516 @
+2026-08-15T00:15:50Z. "approved ×2" is real. PR still `draft=false`, `state=open`, `merged_at=null`.
+(Did not re-run GraphQL for the `MERGEABLE`/behind enum — not load-bearing; `behind` = needs the human
+rebase either way.)
+
+⚠️ **The a2a "will not self-recover" bounce is a durable infra defect** in nanoclaw's routing (a route
+persistently failing while its target session is provably alive). No content lost and nothing blocked,
+so not an operator interrupt — flagged to the fixer for the record; escalate to the operator only if a
+live handoff ever actually needs that edge and my relay fallback also fails.
+
 ## Fix shape — a maintainer decision, NOT dispatched
 
 Triager's candidates, and I agree with its ranking:
@@ -215,7 +326,16 @@ modules).
 ⛔ **No fixer dispatched, deliberately.** The choice between the boundary guard and the severity
 reclassification is a maintainer's call, and nothing here is blocked waiting on us.
 
-RESUME: any non-bot comment on #12387, or #12382 merging (both arrive by webhook; no guard armed).
+⭐ **CHAIN STATE 2026-08-14: draft PR #12552 maintainer-APPROVED (review 4941844655, tangent-vector, 23:15Z), held for human ready-flip; slang-reviewer 3-reviewer pipeline pending. RESUME FIRED 2026-08-06 (cmt 5296388896, `tangent-vector` = Tim Foley, Slang lead):** *"The fix
+here seems straightforward, as you say: apply the idiom already in use elsewhere on the public API
+boundary. Craft a PR with a fix."* ⇒ This is **Approach A explicitly** — "the idiom already in use
+elsewhere on the public API boundary" is the boundary guard copying the existing convert-sites, NOT
+the severity reclassification (B). A maintainer authorizing a PR is a genuine `@nv-slang-bot` mention
+⇒ GitHub PR creation authorized. **Routed to `slang-triager` on the canonical thread** (anchor H:
+triager owns the fixer edge; I do NOT dispatch the fixer directly). Triager to release `slang-fixer`
+per its own resume plan below.
+
+RESUME (was): any non-bot comment on #12387, or #12382 merging (both arrive by webhook; no guard armed).
 On *"make a PR"* ⇒ release `slang-fixer` for a **draft** PR, **Approach A only** (do not bundle B),
 `pr: non-breaking`, `Fixes #12387`; the regression test is buildable without a GPU via the host-probe
 technique, and the nested-`ParameterBlock` cell is the one that **survives #12385 being fixed**.

@@ -48,6 +48,11 @@ exists to prevent.
   either store and absent from the live one** — relinked here 2026-08-05.
 - [#12307 reflection-json scope representation](project_12307_reflection_json_scope_representation.md) -
   design proposal, PARKED awaiting @tangent-vector; the live store holds a copy.
+- [Orchestrator operational reference](orchestrator/index.md) - on-demand Main
+  reference (mounts incl. `/workspace/project`, create_agent vs SDK Agent,
+  interactive prompts, self-modification). Distilled 2026-08-18 from the legacy
+  always-injected `CLAUDE.local.md`; the composed spine (`CLAUDE.md`) stays
+  canonical for role/tools/routing/Projects.
 
 ### Scratch and one-off working notes (linked 2026-08-05)
 

@@ -1,6 +1,6 @@
 ---
 name: project-12338-optional-existential-reboxing
-description: "#12338 Optional<IFoo> re-boxes an existential — HANDED OFF: saipraveenb25 (pass author) CONFIRMED the approach + ASSIGNED to himself, PR incoming. My 3 comments: 5179233988 triage, 5195640966 HLSL, 5196649835 both-reproducers-same-shape. RESUME = his PR appears."
+description: "#12338 Optional<IFoo> re-boxes an existential — ✅SHIPPED & CLOSED 08-15: saipraveenb25 merged PR #12459 (tryGetSinglePayloadType, source-confirmed on master), fix matches my root cause. Tag stays uint NOT bool (his call). TERMINAL — no action of mine; reporter LDAP owns any re-open."
 metadata: 
   node_type: memory
   type: project
@@ -11,19 +11,28 @@ metadata:
 `AnyValue` blob with `OpBitcast` round-trips, where a bare `IFoo` field specializes to the
 concrete type. Performance-only; reporter measured 80 vs 72 registers/thread, +3.7% render time.
 
-✅**Status: HANDED OFF, chain has an OWNER.** 08-05T19:52Z **saipraveenb25 — the type-flow pass
-author — confirmed the approach in his own words** (*"lower `Optional<IFoo>` to `(FooImpl, bool)` if
-the specialization pass detects that the only possibilities are one implementation + none. Will open
-a PR for this."*) and **the issue is now ASSIGNED to him** (`assignees=[saipraveenb25]`; still no
-label, which was always the maintainer's call not mine). ⭐**His framing independently matches my
-root cause** — "one implementation + none" IS singleton-modulo-none.
+✅✅**Status: SHIPPED & CLOSED 2026-08-15T02:30Z.** saipraveenb25 merged **PR #12459
+"Lower singleton optional payloads directly"** and closed the issue (`5316806291`). His fix lowers a
+single-concrete-type optional existential to **`{FooImpl, uint}`** (was `{AnyValue, uint}`), dropping
+the pointless bitcasts — **exactly my root cause.** ⭐**MECHANISM CONFIRMED AT SOURCE LEVEL, not
+relayed:** the PR's `tryGetSinglePayloadType` is live on master (`slang-ir-lower-dynamic-dispatch-insts.cpp`,
+sha `1f62f698`), maps `{FooImpl, none}`/`{FooImpl}` → `FooImpl`, rejects `{FooImpl, BarImpl, none}`/`{none}`
+— IS the "singleton modulo none" notion I described. He tested 8/8 across DX12/Vulkan/CUDA/CPU/WebGPU
+(Metal unavailable) + a resource-handle test the old AnyValue path REJECTED on DX12.
 
-My 3 comments: (1) `5179233988` triage · (2) `5195640966` HLSL answer to **jhelferty-nv**'s ask
-(`5195577369`) — YES it repros, far more readable (named `packAnyValue16`/`unpackAnyValue16` +
-`asuint`/`asfloat` vs inline `OpBitcast`) · (3) `5196649835` **closing my own open question** (below).
+⚠️**ONE REFINEMENT — the tag is `uint`, NOT the `bool` I called the target shape.** I'd said the
+goal was `{ConcreteT, bool}` (matching `Optional<MyFoo>`'s variant-2 output). His deliberate choice:
+`uint`, because `bool<->uint` conversions add logic and most GPU backends 4-byte-align `bool` anyway.
+**Do not carry "target = {ConcreteT, bool}" forward — the shipped, correct answer is `{ConcreteT, uint}`.**
 
-**RESUME = his PR appears** (offer standing: I run the reduced repro on SPIR-V + HLSL against his
-branch). **No step of mine pending. Do NOT re-triage or re-dispatch — a named MEMBER owns it.**
+**TERMINAL. No action of mine — the OWNER closed it, is closest-to-the-state, and his re-open
+invitation is addressed to the reporter (LDAP), not me.** My standing verify-offer was conditional
+("if useful") and his 8/8 cross-backend suite strictly supersedes my reduced repro ⇒ NOT re-run
+(would be redundant work + a noise comment on a cleanly-closed issue). ⛔**Do NOT post an
+acknowledgement bot-comment; do NOT re-open unless LDAP raises a substantive gap.**
+
+My 3 comments: (1) `5179233988` triage · (2) `5195640966` HLSL answer to jhelferty-nv (`5195577369`)
+· (3) `5196649835` closing my own open question.
 
 ## ✅The caveat I left open, now CLOSED (MINE-VERIFIED 08-05, comment `5196649835`)
 

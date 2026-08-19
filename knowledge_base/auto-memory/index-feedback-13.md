@@ -4,7 +4,7 @@ description: "Shard 13 of 16 of the feedback family index, packed by size to sta
 type: index
 ---
 
-# index-feedback-13 — shard 13 of 16 (44 rows)
+# index-feedback-13 — shard 13 of 16 (45 rows)
 
 Alphabetical shard of the feedback family, packed by SIZE so every shard keeps headroom under the ~24986-char read bound. Range: `feedback_newest_file_is_not_my_file_shared_store_has_concurrent_writers` … `feedback_rev_path_reads_need_a_presence_gate`.
 
@@ -30,6 +30,7 @@ Alphabetical shard of the feedback family, packed by SIZE so every shard keeps h
 - [[feedback_patch_vs_fresh_comment_edit_hides_a_correction]] — GitHub never notifies on edit. Edit only when the target is our own comment AND no human replied after it; otherwise post fresh. Opposite calls were correct on
 - [[feedback_peer_reviewed_is_not_human_reviewed_in_an_agent_fleet]] — "I wrote 'human coverage is intact (peer reviewer re-derived…)' about a file only an automated coworker had checked. Our coworker vocabulary is borrowed from human org charts, so the substitution is invisible."
 - [[feedback_piping_to_head_masks_the_exit_code_you_are_testing]] — "`cmd | head -8; echo rc=$?` reports head's status, not cmd's — it printed rc=0 for a script that truly exits 1; redirect to a file and read $? unpiped"
+- [[feedback_pr_approver_never_posts_to_github]] — "When routing a PR to a *-pr-approver, NEVER instruct it to post the verdict on GitHub — its role invariant forbids ALL GitHub writes and it will decline. Shadow-mode output is ledger + report only; a public footprint routes through the *-reviewer, which the approver-only tasking explicitly excludes."
 - [[feedback_probe_the_marker_you_coined_not_the_prose_describing_it]] — "To verify an edit landed, grep the structural marker you deliberately introduced — never a natural word from the prose. A coined marker has no collisions by construction; a common noun carries every other meaning English gives it. I hit the collision INSIDE the command verifying the fix for that exact failure."
 - [[feedback_publish_a_claim_as_wide_as_your_evidence]] — Re-deriving from primary source is necessary but not sufficient — the last mile is checking the published artifact is as wide as the evidence
 - [[feedback_published_negative_env_claims_need_rederivation]] — "A capability-negative about someone's environment ('no GPU/ICD/tool here') closes off investigation and is usually derived from ONE probe of ONE path — re-derive before publishing or relaying it; a single-directory check is not an absence"
