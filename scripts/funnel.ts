@@ -37,6 +37,7 @@ import path from 'node:path';
 import {
   REVIEW_PAGE_CAP,
   TTL_LONG,
+  type ApproverWeeklyInput,
   type TerminalLookup,
   aggregateApproverWeekly,
   aggregateReviewCycles,
@@ -428,9 +429,15 @@ async function main() {
   // indistinguishable from the thing it measures having stopped. Exactly the
   // reading error reviewCycles avoids by publishing unreviewedPrs beside the mean.
   //
-  // So: report what was set aside. Deliberately NOT unioned into the panel —
-  // counting unattributable rows in a calibration metric is the whole defect —
-  // but the size of the exclusion is stated so the drop explains itself.
+  // So: report what was set aside. The quarantined rows are NEVER unioned into the
+  // trusted panel (`approverDecisions`) or the trusted trend (`approverWeekly`) —
+  // counting unattributable rows in a calibration metric is the whole defect. But
+  // the week-over-week panel spans only the ~2 weeks since enforcement began, and
+  // the older history is real signal an operator wants to see. So we ALSO bucket
+  // the quarantined rows into a SEPARATE `approverWeeklyLegacy` series (same math,
+  // different array — see funnel-metrics.ts), which the dashboard renders visually
+  // distinct as unverified/pre-ledger. The two never merge: trust stays at the
+  // call site, so the extended history can't launder itself into the trusted line.
   // readOk:false means the counts are UNKNOWN, not zero. Reporting 0 after a
   // failed read would be the same confident zero this whole change is about.
   const legacyLedger: {
@@ -439,24 +446,52 @@ async function main() {
     quarantinedPrs: number | null;
     excludedFromPanelPrs: number | null;
   } = { tableFound: false, readOk: true, quarantinedPrs: 0, excludedFromPanelPrs: 0 };
+  // One ApproverWeeklyInput per quarantined PR (latest decision wins), built from
+  // the legacy table's OWN columns only. No GitHub enrichment: these rows are
+  // explicitly untrusted, so we do not spend fresh ground-truth reconstruction on
+  // them — agreement is computed solely from a human_verdict the row already
+  // carries (the old, unguarded record_human_verdict could stamp one). A legacy
+  // row with no recorded verdict lands in `total`/coverage but not the agreement
+  // math, exactly as an unverdicted trusted row does. `prState` etc. stay null,
+  // so humanVerdictOf falls back to nothing and returns null for those rows.
+  const legacyWeeklyByPr = new Map<string, ApproverWeeklyInput>();
   try {
     const cols = db.prepare('SELECT name FROM pragma_table_info(?)').all('approval_decisions_legacy') as Array<{
       name: string;
     }>;
     legacyLedger.tableFound = cols.length > 0;
     if (legacyLedger.tableFound) {
-      const rows = db.prepare('SELECT DISTINCT repo, pr_number AS pr FROM approval_decisions_legacy').all() as Array<{
-        repo: string;
-        pr: number;
-      }>;
+      // Full rows now (not DISTINCT keys): the legacy trend needs decision +
+      // human_verdict + decided_at per PR. ASC by decided_at so the last (newest)
+      // decision wins per PR, identical to the trusted read above.
+      const rows = db
+        .prepare(
+          `SELECT repo, pr_number AS pr, decision, human_verdict AS human, decided_at AS decidedAt
+             FROM approval_decisions_legacy
+            ORDER BY datetime(decided_at) ASC, rowid ASC`,
+        )
+        .all() as Array<{ repo: string; pr: number; decision: string; human: string | null; decidedAt: string }>;
       for (const r of rows) {
         if (!orgAllowed(r.repo)) continue;
         if (REPO_FILTER && r.repo !== REPO_FILTER) continue;
-        legacyLedger.quarantinedPrs!++;
-        // A PR re-decided after enforcement still appears in the panel; only PRs
-        // with NO trusted decision actually vanished from it. That second number
-        // is the one that explains a visible drop.
-        if (!approverByPrFull.has(`${r.repo}#${r.pr}`)) legacyLedger.excludedFromPanelPrs!++;
+        const key = `${r.repo}#${r.pr}`;
+        // Count each distinct PR once (the query can return several rows per PR).
+        if (!legacyWeeklyByPr.has(key)) {
+          legacyLedger.quarantinedPrs!++;
+          // A PR re-decided after enforcement still appears in the trusted panel;
+          // only PRs with NO trusted decision actually vanished from it. That
+          // second number is the one that explains a visible drop.
+          if (!approverByPrFull.has(key)) legacyLedger.excludedFromPanelPrs!++;
+        }
+        legacyWeeklyByPr.set(key, {
+          decidedAt: r.decidedAt,
+          decision: r.decision,
+          human: r.human,
+          prState: null,
+          humanChangesRequested: null,
+          humanFeedbackRounds: null,
+          humanReviewers: null,
+        });
       }
     }
   } catch (err) {
@@ -496,6 +531,15 @@ async function main() {
   // (provenance-filtered, legacy-quarantined) approverDecisions above, so it
   // inherits those exclusions with no extra filtering. See funnel-metrics.ts.
   const approverWeekly = aggregateApproverWeekly(approverDecisions);
+
+  // The SAME math over the QUARANTINED pre-enforcement rows, kept as a parallel
+  // series so the panel can extend the trend across the full history WITHOUT
+  // mixing unverified rows into the trusted line. Empty (and thus omitted-shaped)
+  // on any DB where 935 has not run or no legacy rows survive the org/repo filter.
+  // The dashboard renders these weeks visually distinct (hatched/greyed, dashed
+  // agreement line) and degrades to the verified-only chart when the field is
+  // absent from an older snapshot.
+  const approverWeeklyLegacy = aggregateApproverWeekly([...legacyWeeklyByPr.values()]);
 
   const rows: Row[] = [];
   const seenIssues = new Set<string>();
@@ -838,6 +882,11 @@ async function main() {
     rows,
     approverDecisions, // Verity shadow-mode decisions (incl. human-authored PRs); not gated by the PR spine
     approverWeekly, // Verity decisions bucketed by decidedAt-week: decision mix + agreement vs human
+    // The same weekly aggregation over the quarantined pre-enforcement rows — a
+    // SEPARATE, unverified series so the panel can show the older weeks' trend
+    // without pretending the legacy data is trusted. Never union this into
+    // approverWeekly; the dashboard renders it visually distinct. See above.
+    approverWeeklyLegacy,
 
     // Whether the ledger read was restricted to attributable decisions. False
     // means the DB predates migration 934 and this panel includes rows of
