@@ -71,6 +71,19 @@ run_step bot-contributions pnpm exec tsx scripts/bot-contributions.ts || FAILURE
 run_step regression-quality /usr/bin/python3 scripts/regression-quality.py --json reports/regression-quality.json ||
   FAILURES=$((FAILURES + 1))
 
+# Review-rounds snapshot for the panel beside the funnel (dashboard
+# /api/review-rounds serves reports/review-rounds.json cached and never
+# recomputes). How many human CHANGES_REQUESTED rounds a PR drew before it
+# merged, bot-authored vs human-authored, bucketed by merge week. Distinct from
+# reviewCycles (which prices feedback SESSIONS inside funnel.json) — this is a
+# simpler per-submission census over the GitHub GraphQL API. python3 on the HOST
+# (same reason as regression-quality above); same proxy-stripped env; direct
+# curl to api.github.com/graphql with the shader-slang App-installation token.
+# Its fail-closed exit code (nonzero when collection was incomplete, so an outage
+# cannot publish a clean zero) is what the rc capture surfaces in the log.
+run_step review-rounds /usr/bin/python3 scripts/review-rounds.py --json reports/review-rounds.json ||
+  FAILURES=$((FAILURES + 1))
+
 # Keep the log bounded.
 tail -200 "$LOG" > "$LOG.tmp" 2>/dev/null && mv "$LOG.tmp" "$LOG"
 
