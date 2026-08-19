@@ -178,13 +178,23 @@ function createStateSync(options) {
       // snapshot always lands behind the earliest retained delta, so nothing
       // ever chains and the client resyncs forever. Drop the whole queue, record
       // how far ahead we've fallen, and recover in-stream.
+      // droppedRev/droppedEpoch come from the DROPPED DELTAS, not sync.epoch: the
+      // live stream already carries an epoch (delta.stateEpoch) even before our
+      // first snapshot has set sync.epoch, and droppedRev is only meaningful
+      // within the epoch it was counted in. Using sync.epoch (possibly null) would
+      // let a SAME-epoch recovery snapshot be misread as a fresh-epoch baseline
+      // and clear `unreplayable` before it actually closes the hole.
+      const overflowEpoch = typeof delta.stateEpoch === 'string' ? delta.stateEpoch : sync.epoch;
+      let dropped = 0;
       for (const queued of sync.buffered) {
-        if (typeof queued.rev === 'number' && queued.rev > sync.droppedRev) sync.droppedRev = queued.rev;
+        const e = typeof queued.stateEpoch === 'string' ? queued.stateEpoch : sync.epoch;
+        if (e === overflowEpoch && typeof queued.rev === 'number' && queued.rev > dropped) dropped = queued.rev;
       }
-      if (typeof delta.rev === 'number' && delta.rev > sync.droppedRev) sync.droppedRev = delta.rev;
+      if (typeof delta.rev === 'number' && delta.rev > dropped) dropped = delta.rev;
       sync.buffered = [];
       sync.unreplayable = true;
-      sync.droppedEpoch = sync.epoch; // droppedRev is only meaningful within this epoch
+      sync.droppedEpoch = overflowEpoch; // droppedRev is only meaningful within this epoch
+      sync.droppedRev = dropped;
       sync.barrier = true; // nothing may apply onto a baseline we know is holed
       requestInStreamRecovery();
       return;

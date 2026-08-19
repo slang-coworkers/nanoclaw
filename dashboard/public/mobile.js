@@ -197,7 +197,10 @@ function reconnectLiveChannel() {
     void resyncLiveData();
     return;
   }
-  connectLiveUpdates();
+  // Route overflow recovery through the SAME floored scheduler as onerror.
+  // Reconnecting immediately here (on every >200-delta overflow) is exactly the
+  // churn path the 5s floor exists to bound.
+  scheduleLiveReconnect();
 }
 
 // Single in-flight snapshot fetch. Mobile used to fire pollState() from every
@@ -264,7 +267,11 @@ function stopPolling() {
 
 function scheduleLiveReconnect() {
   if (liveReconnectTimer || document.hidden) return;
-  const baseDelay = Math.min(30000, 1000 * 2 ** Math.min(liveReconnectAttempt, 5));
+  // Floor at 5s (the server's SSE `retry:`): a client that re-blocks on every
+  // snapshot is closed on drain-recovery and reconnects via this path; without a
+  // floor (attempt resets to 0 on each open) it would churn every 1-2s, re-fetching
+  // a full snapshot each time. 5s bounds that to the server's own retry cadence.
+  const baseDelay = Math.max(5000, Math.min(30000, 1000 * 2 ** Math.min(liveReconnectAttempt, 5)));
   const delay = baseDelay + Math.floor(Math.random() * 1000);
   liveReconnectAttempt += 1;
   liveReconnectTimer = setTimeout(() => {
