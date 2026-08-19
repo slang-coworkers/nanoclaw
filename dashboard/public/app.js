@@ -11,6 +11,10 @@ if (!PixelSprites) {
 }
 
 let state = { coworkers: [], tasks: [], taskRunLogs: [], registeredGroups: [], hookEvents: [], timestamp: 0 };
+// Revision of the last full snapshot/delta we applied. The live channel now
+// carries `state-delta` frames tagged { baseRev, rev }; a delta whose baseRev
+// doesn't match ours means we missed one, so we refetch /api/state (resync).
+let stateRev = 0;
 const nativeFetch = window.fetch.bind(window);
 const dashboardAuth = {
   checked: false,
@@ -2374,6 +2378,9 @@ function updateDetailHooks(cw) {
 }
 
 function applyState(nextState) {
+  // A full snapshot (/api/state, resync, initial live frame) carries the current
+  // server revision; adopt it so subsequent deltas can be continuity-checked.
+  if (typeof nextState.stateRev === 'number') stateRev = nextState.stateRev;
   const nextHookEvents = Object.prototype.hasOwnProperty.call(nextState, 'hookEvents')
     ? nextState.hookEvents
     : state.hookEvents;
@@ -2431,6 +2438,38 @@ function applyState(nextState) {
       hidePixelOfficeContext();
     }
   }
+}
+
+// Apply an incremental state-delta from the live channel. Only the changed
+// keyed objects (coworkers/registered-groups upsert+remove) and scalar fields
+// travel; we merge them into the current snapshot by key. If the delta doesn't
+// chain onto our revision (a frame was dropped, or the server restarted), we
+// refetch the full state instead of applying a partial patch onto a stale base.
+function applyStateDelta(delta) {
+  if (!delta || typeof delta.baseRev !== 'number' || typeof delta.rev !== 'number') {
+    void resyncLiveData();
+    return;
+  }
+  if (delta.baseRev !== stateRev) {
+    void resyncLiveData();
+    return;
+  }
+  const patch = {};
+  if (delta.coworkers) {
+    const map = new Map((state.coworkers || []).map((c) => [c.folder, c]));
+    for (const c of delta.coworkers.upsert || []) map.set(c.folder, c);
+    for (const f of delta.coworkers.remove || []) map.delete(f);
+    patch.coworkers = Array.from(map.values());
+  }
+  if (delta.registeredGroups) {
+    const map = new Map((state.registeredGroups || []).map((g) => [g.id, g]));
+    for (const g of delta.registeredGroups.upsert || []) map.set(g.id, g);
+    for (const id of delta.registeredGroups.remove || []) map.delete(id);
+    patch.registeredGroups = Array.from(map.values());
+  }
+  if (delta.fields && typeof delta.fields === 'object') Object.assign(patch, delta.fields);
+  stateRev = delta.rev;
+  applyState(patch);
 }
 
 function hookEventKey(event) {
@@ -2545,6 +2584,8 @@ function connectLiveUpdates() {
       const msg = JSON.parse(e.data);
       if (msg.type === 'state') {
         applyState(msg.data);
+      } else if (msg.type === 'state-delta') {
+        applyStateDelta(msg);
       } else if (msg.type === 'hook-event') {
         applyHookEvent(msg.data, msg.coworker);
       } else if (msg.type === 'resync') {

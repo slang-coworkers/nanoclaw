@@ -41,6 +41,7 @@ import {
 import { join, resolve, relative, normalize, isAbsolute, extname, basename, dirname } from 'path';
 import Database from 'better-sqlite3';
 import { createRequire } from 'node:module';
+import { Worker } from 'node:worker_threads';
 
 import { initDb as initSrcDb } from '../src/db/connection.js';
 import { CONTAINER_RUNTIME_BIN } from '../src/container-runtime.js';
@@ -1438,6 +1439,13 @@ bootstrapHookEvents();
 // Last message timestamp cache (group_folder -> ISO timestamp)
 const lastMessageTsCache = new Map<string, string>();
 
+// Fleet-scan timer handles at module scope so the scan worker (dash-perf round
+// 2) can stop them on handoff and restart them on fallback. When the worker is
+// active these are cleared and the corresponding caches are fed by worker deltas
+// instead; under VITEST (no worker) the timers are the live path.
+let msgTsTimer: ReturnType<typeof setInterval> | undefined;
+let activityTimer: ReturnType<typeof setInterval> | undefined;
+
 // Per-file mtime gate for refreshMessageTimestamps: session DBs use
 // journal_mode=DELETE (writes land in the main .db file, so its mtime advances
 // on every commit — see container/agent-runner/src/db/connection.ts). We stat
@@ -1501,7 +1509,7 @@ refreshMessageTimestamps();
 // is now mtime-gated (pickLatestMessageTs), so an idle session is a cheap stat rather
 // than a sqlite open — 1s is both snappier than the old 3s and lighter on disk I/O.
 if (!process.env.VITEST) {
-  const msgTsTimer = setInterval(refreshMessageTimestamps, 1000);
+  msgTsTimer = setInterval(refreshMessageTimestamps, 1000);
   msgTsTimer.unref?.();
 }
 
@@ -1558,6 +1566,12 @@ function modelMaxContext(model: string): number {
   return 200000;
 }
 const contextWindowCache = new Map<string, ContextWindowInfo>();
+// dash-perf round 2: remember which (newest-file path, mtime) produced each
+// group's current contextWindowCache entry, so an idle group whose newest
+// transcript hasn't advanced is a single stat rather than a full file re-read +
+// reverse-scan every 10s. Only the group whose active transcript actually grew
+// pays the read.
+const ctxWindowFileCache = new Map<string, { path: string; mtimeMs: number }>();
 
 function refreshContextWindowCache(): void {
   if (!db) return;
@@ -1569,15 +1583,32 @@ function refreshContextWindowCache(): void {
       const jsonlFiles = collectClaudeJsonlFiles(claudeShared);
       if (jsonlFiles.length === 0) continue;
 
-      jsonlFiles.sort((a, b) => {
+      // Stat each candidate exactly once (the old comparator called statSync
+      // twice per comparison → O(F log F) stats every 10s per group), then pick
+      // the single newest file.
+      let newestPath = '';
+      let newestMtime = -1;
+      for (const f of jsonlFiles) {
+        let m: number;
         try {
-          return statSync(b).mtimeMs - statSync(a).mtimeMs;
+          m = statSync(f).mtimeMs;
         } catch {
-          return 0;
+          continue;
         }
-      });
+        if (m > newestMtime) {
+          newestMtime = m;
+          newestPath = f;
+        }
+      }
+      if (!newestPath) continue;
 
-      const content = readFileSync(jsonlFiles[0], 'utf-8');
+      // mtime-gate: skip the read+parse when the newest transcript is unchanged
+      // since we last parsed it for this group.
+      const gate = ctxWindowFileCache.get(group.folder);
+      if (gate && gate.path === newestPath && gate.mtimeMs === newestMtime) continue;
+      ctxWindowFileCache.set(group.folder, { path: newestPath, mtimeMs: newestMtime });
+
+      const content = readFileSync(newestPath, 'utf-8');
       const lines = content.split('\n');
       for (let i = lines.length - 1; i >= 0; i--) {
         if (!lines[i].trim()) continue;
@@ -2042,6 +2073,48 @@ function readSessionCapState(agentGroupId: string, sessionId: string): SessionCa
   return state;
 }
 
+// ---------- claude-trace directory index (Sessions-tab deep links) ----------
+// dash-perf round 2: /api/sessions previously ran a readdirSync + a statSync per
+// matching file for EVERY priced session on every request — O(priced sessions ×
+// files in the group's trace dir) of synchronous filesystem work on the request
+// path, which starves stream flushing. Instead we cache the per-group trace-dir
+// listing (name + mtime) behind a short TTL: a warm request does ZERO trace
+// filesystem calls, and the per-row work is an in-memory prefix scan. The TTL
+// (not directory mtime alone) is the refresh trigger because appending to an
+// existing trace file doesn't bump the directory mtime.
+interface TraceDirListing {
+  scannedAt: number;
+  files: { name: string; mtimeMs: number }[];
+}
+const TRACE_DIR_TTL_MS = 45_000;
+const traceDirCache = new Map<string, TraceDirListing>();
+
+/** Cached listing of `session-*.html` files (with mtimes) under a group's
+ *  `.claude-trace` dir. Rebuilt at most once per TTL per dir; warm calls touch
+ *  no filesystem. A missing/unreadable dir caches as empty. */
+function getTraceDirListing(traceDir: string): { name: string; mtimeMs: number }[] {
+  const now = Date.now();
+  const cached = traceDirCache.get(traceDir);
+  if (cached && now - cached.scannedAt < TRACE_DIR_TTL_MS) return cached.files;
+  const files: { name: string; mtimeMs: number }[] = [];
+  try {
+    for (const f of readdirSync(traceDir)) {
+      if (!f.startsWith('session-') || !f.endsWith('.html')) continue;
+      let m = 0;
+      try {
+        m = statSync(join(traceDir, f)).mtimeMs;
+      } catch {
+        /* unreadable — treat as oldest */
+      }
+      files.push({ name: f, mtimeMs: m });
+    }
+  } catch {
+    /* dir missing/unreadable — cache empty so we don't retry every request */
+  }
+  traceDirCache.set(traceDir, { scannedAt: now, files });
+  return files;
+}
+
 // Guard against overlapping cold scans: the uncapped 30d pass can exceed the 60s
 // tick interval on a cold cache, so a second tick must not stack on the first.
 let sessionCostScanning = false;
@@ -2373,86 +2446,16 @@ if (!process.env.VITEST) {
   sessCostTimer.unref?.();
 }
 
-// ---------- Per-group token aggregation (JSONL scanning) ----------
-interface GroupTokenBucket {
-  requests: number;
-  inputTokens: number;
-  outputTokens: number;
-  cacheReadTokens: number;
-  cacheCreationTokens: number;
-  name: string;
-}
-let groupTokenCache: Record<string, GroupTokenBucket> = {};
-
-function refreshGroupTokens(): void {
-  const sessionsDir = join(getDataDir(), 'v2-sessions');
-  if (!existsSync(sessionsDir)) {
-    groupTokenCache = {};
-    return;
-  }
-
-  const nameMap = new Map<string, string>();
-  if (db) {
-    try {
-      const groups = db.prepare('SELECT id, name FROM agent_groups').all() as { id: string; name: string }[];
-      for (const g of groups) nameMap.set(g.id, g.name);
-    } catch {
-      /* ignore */
-    }
-  }
-
-  const byGroup: Record<string, GroupTokenBucket> = {};
-  let agDirs: string[];
-  try {
-    agDirs = readdirSync(sessionsDir).filter((d) => d.startsWith('ag-'));
-  } catch {
-    return;
-  }
-
-  for (const agDir of agDirs) {
-    const claudeShared = join(sessionsDir, agDir, '.claude-shared');
-    const jsonlFiles = collectClaudeJsonlFiles(claudeShared);
-
-    for (const file of jsonlFiles) {
-      let content: string;
-      try {
-        content = readFileSync(file, 'utf-8');
-      } catch {
-        continue;
-      }
-      for (const line of content.split('\n')) {
-        if (!line.trim()) continue;
-        try {
-          const r = JSON.parse(line);
-          if (r.type !== 'assistant' || !r.message?.usage) continue;
-          const u = r.message.usage;
-          if (!byGroup[agDir])
-            byGroup[agDir] = {
-              requests: 0,
-              inputTokens: 0,
-              outputTokens: 0,
-              cacheReadTokens: 0,
-              cacheCreationTokens: 0,
-              name: nameMap.get(agDir) || agDir,
-            };
-          byGroup[agDir].requests++;
-          byGroup[agDir].inputTokens += u.input_tokens || 0;
-          byGroup[agDir].outputTokens += u.output_tokens || 0;
-          byGroup[agDir].cacheReadTokens += u.cache_read_input_tokens || 0;
-          byGroup[agDir].cacheCreationTokens += u.cache_creation_input_tokens || 0;
-        } catch {
-          /* skip line */
-        }
-      }
-    }
-  }
-  groupTokenCache = byGroup;
-}
-refreshGroupTokens();
-if (!process.env.VITEST) {
-  const groupTokenTimer = setInterval(refreshGroupTokens, 30000);
-  groupTokenTimer.unref?.();
-}
+// ---------- Per-group token aggregation (removed — dash-perf round 2) ----------
+// The former `GroupTokenBucket` / `groupTokenCache` / `refreshGroupTokens()` +
+// 30s timer recursively discovered every JSONL transcript across the whole
+// fleet, read each file from byte zero, split every line, and JSON.parsed every
+// object — twice a minute — yet the resulting cache had NO reader anywhere in
+// the dashboard (it was only ever written and reset). It was the single largest
+// avoidable CPU sink on a large install, so it is deleted outright. If a future
+// panel needs per-group token totals, derive them from the already-parsed,
+// mtime-gated `perFileCostCache` (see refreshSessionCostCache) rather than
+// reintroducing a full-fleet whole-file re-parse on a timer.
 
 // ---------- Token metrics via ccusage (container data only) ----------
 interface CcusageDayEntry {
@@ -3455,7 +3458,7 @@ function refreshActivityData(): void {
     .sort((a, b) => a.hour.localeCompare(b.hour));
 }
 refreshActivityData();
-const activityTimer = setInterval(refreshActivityData, 30000);
+activityTimer = setInterval(refreshActivityData, 30000);
 activityTimer.unref?.();
 
 // ---------- Users data collection ----------
@@ -4578,43 +4581,292 @@ function computeAcceptKey(key: string): string {
 const wsClients = new Set<any>();
 const sseClients = new Set<import('http').ServerResponse>();
 
-let lastBroadcastJson: string | null = null;
-let stateCache:
-  | {
-      data: DashboardState;
-      json: string;
-      envelope: string;
-      dedupJson: string;
-      createdAt: number;
-    }
-  | undefined;
-let stateCacheDirty = true;
-const clientSkipCounts = new WeakMap<any, number>();
 const STATE_REFRESH_MS = 5_000;
 const BACKPRESSURE_THRESHOLD = 512 * 1024;
-const MAX_CONSECUTIVE_SKIPS = 5;
+// A client kept continuously blocked (never drains) past this bound is
+// disconnected — a slow reader must not pin memory forever. This replaces the
+// old "5 consecutive skipped frames" heuristic with a wall-clock bound, since a
+// blocked client now receives at most one small `resync` marker on drain rather
+// than a queue of full snapshots.
+const BLOCKED_MAX_MS = 60_000;
 
+// ---- Revisioned state + delta broadcast (dash-perf round 2) --------------
+// The live channel (WS + SSE) no longer fans out a full state snapshot every
+// 5s. Instead:
+//   • A client obtains a full snapshot from /api/state (initial load, resync)
+//     or the SSE `snapshot`/WS-connect frame — the legacy `type:'state'`
+//     envelope, now carrying a monotonic `stateRev`.
+//   • On each reconciliation pass we rebuild state, diff it against the last
+//     broadcast baseline, and push only the CHANGED keyed objects as a
+//     `state-delta` (coworker/registered-group upsert+remove + scalar fields)
+//     tagged with `{ baseRev, rev }`. An empty diff sends nothing.
+//   • A client that misses a delta (slow socket) sees the next delta's baseRev
+//     fail to match its local rev and refetches /api/state (self-healing). On
+//     drain a blocked client is nudged with a single `resync` marker.
+// This eliminates the periodic triple-serialization + full-state fan-out that
+// dominated idle CPU/bandwidth while keeping correctness: the client's merged
+// state always converges to exactly what a full snapshot would produce, and any
+// ambiguity resolves to a resync rather than a wrong count.
+interface StablePublishedState {
+  coworkers: CoworkerState[];
+  registeredGroups: any[];
+  maxConcurrentContainers: number;
+}
+interface KeyedChange<T> {
+  upsert: T[];
+  remove: string[];
+}
+interface StateDelta {
+  coworkers: KeyedChange<CoworkerState>;
+  registeredGroups: KeyedChange<any>;
+  fields: Record<string, unknown>;
+}
+let publishedRev = 0; // rev of `publishedStable`; 0 == nothing published yet
+let publishedStable: StablePublishedState | null = null; // diff baseline == what in-sync live clients hold
+let publishedData: DashboardState | null = null; // full data for /api/state, matching publishedRev
+let publishedAt = 0;
+let stateDirtyHint = true; // a mutating path asked for a prompt rebuild
+
+// Instrumentation (dash-perf acceptance gates) — exposed via /api/debug.
+const perfCounters = {
+  deltaFramesSent: 0,
+  deltaBytesSent: 0,
+  fullStateFramesSent: 0,
+  resyncsSent: 0,
+  emptyPublishes: 0,
+  changedPublishes: 0,
+  slowClientDrops: 0,
+  blockedClientEvents: 0,
+  maxObservedWritableLength: 0,
+  scanMsgTsPublishes: 0,
+  scanActivityPublishes: 0,
+  workerActive: false,
+};
+
+/** Ask the next publish to rebuild promptly rather than reuse the throttle window. */
 function invalidateStateCache(): void {
-  stateCacheDirty = true;
+  stateDirtyHint = true;
 }
 
-function getStateCache(): NonNullable<typeof stateCache> {
-  const now = Date.now();
-  if (!stateCache || stateCacheDirty || now - stateCache.createdAt >= STATE_REFRESH_MS) {
-    if (!db) db = openDb();
-    const data = getState();
-    const { timestamp: _timestamp, lastHookEventId: _lastHookEventId, ...stableData } = data;
-    stateCache = {
-      data,
-      json: JSON.stringify(data),
-      envelope: JSON.stringify({ type: 'state', data }),
-      dedupJson: JSON.stringify(stableData),
-      createdAt: now,
-    };
-    stateCacheDirty = false;
+function keyedDiff<T extends Record<string, unknown>>(
+  prev: T[],
+  next: T[],
+  keyOf: (x: T) => string,
+): KeyedChange<T> {
+  const prevByKey = new Map<string, string>();
+  for (const p of prev) prevByKey.set(keyOf(p), JSON.stringify(p));
+  const upsert: T[] = [];
+  const seen = new Set<string>();
+  for (const n of next) {
+    const k = keyOf(n);
+    seen.add(k);
+    const pj = prevByKey.get(k);
+    if (pj === undefined || pj !== JSON.stringify(n)) upsert.push(n);
   }
-  return stateCache;
+  const remove: string[] = [];
+  for (const k of prevByKey.keys()) if (!seen.has(k)) remove.push(k);
+  return { upsert, remove };
 }
+
+function diffStable(prev: StablePublishedState, next: StablePublishedState): StateDelta {
+  const fields: Record<string, unknown> = {};
+  if (prev.maxConcurrentContainers !== next.maxConcurrentContainers) {
+    fields.maxConcurrentContainers = next.maxConcurrentContainers;
+  }
+  return {
+    coworkers: keyedDiff(prev.coworkers as any, next.coworkers as any, (c: any) => String(c.folder)),
+    registeredGroups: keyedDiff(prev.registeredGroups as any, next.registeredGroups as any, (g: any) => String(g.id)),
+    fields,
+  };
+}
+
+function isEmptyDelta(d: StateDelta): boolean {
+  return (
+    d.coworkers.upsert.length === 0 &&
+    d.coworkers.remove.length === 0 &&
+    d.registeredGroups.upsert.length === 0 &&
+    d.registeredGroups.remove.length === 0 &&
+    Object.keys(d.fields).length === 0
+  );
+}
+
+/** Test-only surface for the state-delta diff (dash-perf round 2). */
+export const __dashPerfTestHooks = {
+  diffStable: (prev: StablePublishedState, next: StablePublishedState): StateDelta => diffStable(prev, next),
+  isEmptyDelta: (d: StateDelta): boolean => isEmptyDelta(d),
+};
+
+/**
+ * Rebuild state, diff it against the last broadcast baseline, broadcast a
+ * `state-delta` if the stable body changed, and return the current full data +
+ * its rev. Throttled: unless `force` or a dirty hint is set, a call within
+ * STATE_REFRESH_MS of the last build reuses the previous result so bursty
+ * /api/state polls don't each trigger a full rebuild. The reconciliation timer
+ * calls it with `force` so out-of-band (DB/filesystem-backed) changes — e.g. a
+ * container status the dashboard has no JS hook for — are still picked up.
+ */
+function publishState(force = false): { data: DashboardState; rev: number } {
+  const now = Date.now();
+  if (!force && !stateDirtyHint && publishedData && now - publishedAt < STATE_REFRESH_MS) {
+    return { data: publishedData, rev: publishedRev };
+  }
+  if (!db) db = openDb();
+  const data = getState();
+  const stable: StablePublishedState = {
+    coworkers: data.coworkers,
+    registeredGroups: data.registeredGroups,
+    maxConcurrentContainers: data.maxConcurrentContainers,
+  };
+  stateDirtyHint = false;
+  publishedAt = now;
+
+  if (publishedStable) {
+    const delta = diffStable(publishedStable, stable);
+    if (isEmptyDelta(delta)) {
+      perfCounters.emptyPublishes++;
+      publishedData = data; // refresh volatile fields (timestamp/lastHookEventId) without a rev bump
+      return { data, rev: publishedRev };
+    }
+    perfCounters.changedPublishes++;
+    const prevRev = publishedRev;
+    publishedRev += 1;
+    publishedStable = stable;
+    publishedData = data;
+    if (wsClients.size || sseClients.size) {
+      broadcastMessageJson(JSON.stringify({ type: 'state-delta', baseRev: prevRev, rev: publishedRev, ...delta }));
+    }
+    return { data, rev: publishedRev };
+  }
+
+  // First publish: establish the baseline at rev 1. No delta (no client has an
+  // older baseline to patch — new connections fetch full state at this rev).
+  publishedRev = 1;
+  publishedStable = stable;
+  publishedData = data;
+  return { data, rev: publishedRev };
+}
+
+/** Full-state envelope for the live channel's initial/resync frame (WS connect,
+ *  SSE snapshot). Carries the current rev so the client can base its deltas. */
+function fullStateEnvelope(): string {
+  const { data, rev } = publishState();
+  perfCounters.fullStateFramesSent++;
+  return JSON.stringify({ type: 'state', data: { ...data, stateRev: rev } });
+}
+
+/** Full-state JSON for /api/state (raw body, no envelope) with the rev inlined. */
+function fullStateJson(): string {
+  const { data, rev } = publishState();
+  return JSON.stringify({ ...data, stateRev: rev });
+}
+
+// ---- Session-DB scan worker (dash-perf round 2) --------------------------
+// A dedicated worker_threads worker owns the message-timestamp + activity fleet
+// scans (the ~6k stats/sec + thousands of SQLite opens/30s that used to run on
+// the event loop). It publishes immutable cache deltas; the main thread applies
+// them here and never opens a session DB for these scans. If the worker can't
+// start or dies, we fall back to the main-thread timers so behavior degrades to
+// pre-round-2, never breaks. Disabled under VITEST and via
+// DASHBOARD_DISABLE_SCAN_WORKER=1 (the escape hatch for the adversarial review).
+let scanWorker: Worker | null = null;
+let workerStats: Record<string, unknown> | null = null;
+
+function applyMsgTsDelta(changed: [string, string][], removed: string[]): void {
+  let any = false;
+  for (const [folder, ts] of changed) {
+    if (typeof folder === 'string' && typeof ts === 'string') {
+      lastMessageTsCache.set(folder, ts);
+      any = true;
+    }
+  }
+  for (const folder of removed) {
+    if (lastMessageTsCache.delete(folder)) any = true;
+  }
+  // lastMessageTs feeds coworker state → ask the next publish to pick it up so a
+  // new message surfaces as a state-delta.
+  if (any) invalidateStateCache();
+  perfCounters.scanMsgTsPublishes++;
+}
+
+function restartMainThreadScans(): void {
+  if (process.env.VITEST) return;
+  if (!msgTsTimer) {
+    refreshMessageTimestamps();
+    msgTsTimer = setInterval(refreshMessageTimestamps, 1000);
+    msgTsTimer.unref?.();
+  }
+  if (!activityTimer) {
+    refreshActivityData();
+    activityTimer = setInterval(refreshActivityData, 30000);
+    activityTimer.unref?.();
+  }
+}
+
+function startScanWorker(): void {
+  if (process.env.VITEST || process.env.DASHBOARD_DISABLE_SCAN_WORKER === '1') return;
+  let worker: Worker;
+  try {
+    worker = new Worker(new URL('./scan-worker.mjs', import.meta.url), {
+      workerData: { dataDir: getDataDir(), centralDbPath: getDbPath() },
+    });
+  } catch (e) {
+    console.error('[dashboard] scan worker failed to start; using main-thread scans', e);
+    return;
+  }
+  scanWorker = worker;
+  worker.on('message', (msg: any) => {
+    if (!msg || typeof msg !== 'object') return;
+    switch (msg.kind) {
+      case 'ready':
+        perfCounters.workerActive = true;
+        // Hand off: the worker now owns these scans, so stop the main-thread
+        // timers to avoid duplicate work.
+        if (msgTsTimer) {
+          clearInterval(msgTsTimer);
+          msgTsTimer = undefined;
+        }
+        if (activityTimer) {
+          clearInterval(activityTimer);
+          activityTimer = undefined;
+        }
+        break;
+      case 'msgTs':
+        applyMsgTsDelta(msg.changed || [], msg.removed || []);
+        break;
+      case 'activity':
+        if (Array.isArray(msg.buckets)) {
+          activityDataCache = msg.buckets;
+          perfCounters.scanActivityPublishes++;
+        }
+        break;
+      case 'stats':
+        workerStats = msg;
+        break;
+      case 'error':
+        console.error('[dashboard] scan worker init error:', msg.message);
+        break;
+      default:
+        break;
+    }
+  });
+  const fallback = (reason: string): void => {
+    if (scanWorker !== worker) return; // already replaced
+    scanWorker = null;
+    perfCounters.workerActive = false;
+    console.error(`[dashboard] scan worker ${reason}; reverting to main-thread scans`);
+    restartMainThreadScans();
+  };
+  worker.on('error', (e) => {
+    console.error('[dashboard] scan worker error', e);
+    fallback('errored');
+  });
+  worker.on('exit', (code) => {
+    if (code !== 0) fallback(`exited (code ${code})`);
+  });
+  worker.unref?.();
+}
+
+startScanWorker();
 
 function getLiveCoworkerPatch(event: HookEvent): Partial<CoworkerState> & { folder: string } {
   const hookState = liveHookState.get(event.group);
@@ -4647,9 +4899,11 @@ export function resetTransientDashboardStateForTests(): void {
   cachedTypes = null;
   wsClients.clear();
   sseClients.clear();
-  lastBroadcastJson = null;
-  stateCache = undefined;
-  stateCacheDirty = true;
+  publishedRev = 0;
+  publishedStable = null;
+  publishedData = null;
+  publishedAt = 0;
+  stateDirtyHint = true;
   try {
     db?.close();
   } catch {
@@ -4675,7 +4929,6 @@ export function resetTransientDashboardStateForTests(): void {
     all: { ...emptyCcusagePeriod },
     lastRefresh: 0,
   };
-  groupTokenCache = {};
   activityDataCache = null;
 }
 
@@ -4684,52 +4937,121 @@ export function forceOpenDbForTests(): void {
   if (!db) db = openDb();
 }
 
+/** Reconciliation tick: force a rebuild + diff so DB/filesystem-backed changes
+ *  (e.g. a container status the dashboard has no JS hook for) are picked up, and
+ *  push a delta if anything changed. Skipped when no client is connected — the
+ *  next connection rebuilds a fresh baseline on demand via /api/state. */
 function broadcastState(): void {
   if (wsClients.size === 0 && sseClients.size === 0) return;
-  const cached = getStateCache();
-  if (cached.dedupJson === lastBroadcastJson) return;
-  lastBroadcastJson = cached.dedupJson;
-  broadcastMessageJson(cached.envelope);
+  publishState(true);
 }
 
-function removeSlowClient(client: any, clients: Set<any>): void {
-  const skipCount = (clientSkipCounts.get(client) ?? 0) + 1;
-  clientSkipCounts.set(client, skipCount);
-  if (skipCount < MAX_CONSECUTIVE_SKIPS) return;
-  try {
-    client.end();
-  } catch {
-    /* ignore */
+// Clients we skipped a frame for because their socket was blocked; each gets a
+// single `resync` marker once it drains (bounding the pending queue to one small
+// frame instead of a growing pile of snapshots). Wall-clock start of the current
+// blocked stretch, used to disconnect a reader that never drains.
+const staleClients = new WeakSet<any>();
+const clientBlockedSince = new WeakMap<any, number>();
+const RESYNC_JSON = '{"type":"resync"}';
+
+/** True when the socket can't accept another frame right now. Both a raw WS
+ *  net.Socket and an SSE ServerResponse expose writableLength/writableNeedDrain. */
+function isClientBlocked(client: any): boolean {
+  const len = client.writableLength ?? 0;
+  if (len > perfCounters.maxObservedWritableLength) perfCounters.maxObservedWritableLength = len;
+  return client.writableNeedDrain === true || len > BACKPRESSURE_THRESHOLD;
+}
+
+/** Mark a blocked client stale and, once, arrange to nudge it with a `resync`
+ *  marker on drain. A client blocked continuously past BLOCKED_MAX_MS is
+ *  disconnected. `isWs` selects the frame encoding + the hard-close method. */
+function markStaleClient(client: any, clients: Set<any>, isWs: boolean): void {
+  const now = Date.now();
+  const since = clientBlockedSince.get(client);
+  if (since === undefined) {
+    clientBlockedSince.set(client, now);
+    perfCounters.blockedClientEvents++;
+  } else if (now - since > BLOCKED_MAX_MS) {
+    try {
+      if (isWs) client.destroy();
+      else client.end();
+    } catch {
+      /* ignore */
+    }
+    clients.delete(client);
+    clientBlockedSince.delete(client);
+    staleClients.delete(client);
+    perfCounters.slowClientDrops++;
+    return;
   }
-  clients.delete(client);
+  if (staleClients.has(client)) return;
+  staleClients.add(client);
+  const onDrain = (): void => {
+    staleClients.delete(client);
+    clientBlockedSince.delete(client);
+    if (!clients.has(client)) return;
+    try {
+      client.write(isWs ? createWsFrame(Buffer.from(RESYNC_JSON)) : `data: ${RESYNC_JSON}\n\n`);
+      perfCounters.resyncsSent++;
+    } catch {
+      clients.delete(client);
+    }
+  };
+  try {
+    client.once('drain', onDrain);
+  } catch {
+    /* socket without an event emitter — best-effort */
+  }
+}
+
+/** Write to one client, honoring backpressure: skip (and schedule a drain
+ *  resync) if the socket is blocked or the write fills the buffer; never enqueue
+ *  another frame for a blocked client. */
+function sendToClient(client: any, clients: Set<any>, payload: string | Buffer, isWs: boolean): void {
+  if (isClientBlocked(client)) {
+    markStaleClient(client, clients, isWs);
+    return;
+  }
+  let ok = true;
+  try {
+    ok = client.write(payload);
+  } catch {
+    clients.delete(client);
+    clientBlockedSince.delete(client);
+    staleClients.delete(client);
+    return;
+  }
+  if (ok) {
+    clientBlockedSince.delete(client);
+  } else {
+    // The frame was buffered but the socket is now full — wait for drain before
+    // sending anything else, then resync.
+    markStaleClient(client, clients, isWs);
+  }
 }
 
 function broadcastMessageJson(json: string, eventId?: number): void {
-  const wsFrame = createWsFrame(Buffer.from(json));
-  for (const ws of wsClients) {
-    try {
-      if (ws.writableLength > BACKPRESSURE_THRESHOLD) {
-        removeSlowClient(ws, wsClients);
+  if (json.startsWith('{"type":"state-delta"')) {
+    perfCounters.deltaFramesSent++;
+    perfCounters.deltaBytesSent += json.length;
+  }
+  // Build the WS frame only when at least one WS client can take it.
+  if (wsClients.size) {
+    let wsFrame: Buffer | null = null;
+    for (const ws of wsClients) {
+      if (isClientBlocked(ws)) {
+        markStaleClient(ws, wsClients, true);
         continue;
       }
-      clientSkipCounts.set(ws, 0);
-      ws.write(wsFrame);
-    } catch {
-      wsClients.delete(ws);
+      if (!wsFrame) wsFrame = createWsFrame(Buffer.from(json));
+      sendToClient(ws, wsClients, wsFrame, true);
     }
   }
 
-  const ssePayload = `${eventId ? `id: ${eventId}\n` : ''}data: ${json}\n\n`;
-  for (const client of sseClients) {
-    try {
-      if (client.writableLength > BACKPRESSURE_THRESHOLD) {
-        removeSlowClient(client, sseClients);
-        continue;
-      }
-      clientSkipCounts.set(client, 0);
-      if (!client.write(ssePayload)) removeSlowClient(client, sseClients);
-    } catch {
-      sseClients.delete(client);
+  if (sseClients.size) {
+    const ssePayload = `${eventId ? `id: ${eventId}\n` : ''}data: ${json}\n\n`;
+    for (const client of sseClients) {
+      sendToClient(client, sseClients, ssePayload, false);
     }
   }
 }
@@ -6028,7 +6350,7 @@ export async function handleRequest(
   if (url.pathname === '/api/state') {
     if (!requireAuth(req, res)) return;
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(getStateCache().json);
+    res.end(fullStateJson());
     return;
   }
 
@@ -6322,7 +6644,7 @@ export async function handleRequest(
     sseClients.add(res);
 
     if (url.searchParams.get('snapshot') !== '0') {
-      res.write(`data: ${getStateCache().envelope}\n\n`);
+      res.write(`data: ${fullStateEnvelope()}\n\n`);
     }
 
     const cursorValue =
@@ -8913,26 +9235,22 @@ export async function handleRequest(
       // skip idle rows (s.cost<=0) to stay as cheap as the cap read above.
       if (traceBase && s.cost > 0 && s.group_folder && s.session_id) {
         try {
+          // Warm path: no filesystem calls — the group's trace-dir listing is
+          // cached (TTL) and reused across rows and requests. Same selection as
+          // before: newest `session-<id>*.html` by mtime.
           const traceDir = join(getGroupsDir(), s.group_folder, '.claude-trace');
-          if (existsSync(traceDir)) {
-            const prefix = `session-${s.session_id}`;
-            let newest = '';
-            let newestMs = -1;
-            for (const f of readdirSync(traceDir)) {
-              if (!f.startsWith(prefix) || !f.endsWith('.html')) continue;
-              let m = 0;
-              try {
-                m = statSync(join(traceDir, f)).mtimeMs;
-              } catch {
-                /* unreadable — treat as oldest */
-              }
-              if (m >= newestMs) {
-                newestMs = m;
-                newest = f;
-              }
+          const listing = getTraceDirListing(traceDir);
+          const prefix = `session-${s.session_id}`;
+          let newest = '';
+          let newestMs = -1;
+          for (const f of listing) {
+            if (!f.name.startsWith(prefix)) continue;
+            if (f.mtimeMs >= newestMs) {
+              newestMs = f.mtimeMs;
+              newest = f.name;
             }
-            if (newest) s.traceUrl = `${traceBase}/${s.group_folder}__${newest}`;
           }
+          if (newest) s.traceUrl = `${traceBase}/${s.group_folder}__${newest}`;
         } catch {
           /* fail-soft: no trace link for this row */
         }
@@ -11751,7 +12069,16 @@ export async function handleRequest(
       dbAvailable: !!db,
       rowCounts: {} as Record<string, number>,
       wsClients: wsClients.size,
+      sseClients: sseClients.size,
       hookEventsBuffered: hookEvents.length,
+      // dash-perf round 2 acceptance-gate instrumentation: delta-vs-full frame
+      // counts + bytes, backpressure activity, publish churn, and scan-worker
+      // health (files tracked, stats/opens per interval, last tick ms).
+      perf: {
+        stateRev: publishedRev,
+        ...perfCounters,
+        scanWorker: workerStats,
+      },
     };
     if (db) {
       try {
@@ -12314,6 +12641,7 @@ export async function handleRequest(
       }
 
       lastMessageTsCache.set(group, new Date().toISOString());
+      invalidateStateCache(); // reflect the just-sent message in the next publish
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true }));
     } catch (e: any) {
@@ -12871,7 +13199,7 @@ function createDashboardHttpServer(options: DashboardRequestOptions = {}): impor
 
     wsClients.add(socket);
 
-    socket.write(createWsFrame(Buffer.from(getStateCache().envelope)));
+    socket.write(createWsFrame(Buffer.from(fullStateEnvelope())));
 
     let buffer = head.length > 0 ? Buffer.from(head) : Buffer.alloc(0);
     socket.on('data', (data: Buffer) => {
@@ -12945,8 +13273,12 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
 
   const heartbeatTimer = setInterval(() => {
     for (const client of sseClients) {
+      if (isClientBlocked(client)) {
+        markStaleClient(client, sseClients, false);
+        continue;
+      }
       try {
-        if (!client.write(': keepalive\n\n')) removeSlowClient(client, sseClients);
+        if (!client.write(': keepalive\n\n')) markStaleClient(client, sseClients, false);
       } catch {
         sseClients.delete(client);
       }

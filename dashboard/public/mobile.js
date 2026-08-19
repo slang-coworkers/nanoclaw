@@ -2,6 +2,9 @@
 // NanoClaw Mobile Dashboard
 
 let state = { coworkers: [], tasks: [], taskRunLogs: [], registeredGroups: [], hookEvents: [], timestamp: 0 };
+// Revision of the last full snapshot/delta applied; drives state-delta
+// continuity checking (see applyStateDelta).
+let stateRev = 0;
 const nativeFetch = window.fetch.bind(window);
 
 // --- Auth ---
@@ -111,6 +114,7 @@ function setLiveStatus(text, color) {
 }
 
 function applyState(data) {
+  if (typeof data.stateRev === 'number') stateRev = data.stateRev;
   state = { ...state, ...data };
   lastHookEventId = Math.max(lastHookEventId, Number(data.lastHookEventId) || 0);
   renderCwList();
@@ -119,6 +123,31 @@ function applyState(data) {
     renderDetail();
   }
   updateTabBadges();
+}
+
+// Apply an incremental live state-delta by key; refetch full state if the delta
+// doesn't chain onto our current revision (dropped frame or server restart).
+function applyStateDelta(delta) {
+  if (!delta || typeof delta.baseRev !== 'number' || typeof delta.rev !== 'number' || delta.baseRev !== stateRev) {
+    void pollState();
+    return;
+  }
+  const patch = {};
+  if (delta.coworkers) {
+    const map = new Map((state.coworkers || []).map((c) => [c.folder, c]));
+    for (const c of delta.coworkers.upsert || []) map.set(c.folder, c);
+    for (const f of delta.coworkers.remove || []) map.delete(f);
+    patch.coworkers = Array.from(map.values());
+  }
+  if (delta.registeredGroups) {
+    const map = new Map((state.registeredGroups || []).map((g) => [g.id, g]));
+    for (const g of delta.registeredGroups.upsert || []) map.set(g.id, g);
+    for (const id of delta.registeredGroups.remove || []) map.delete(id);
+    patch.registeredGroups = Array.from(map.values());
+  }
+  if (delta.fields && typeof delta.fields === 'object') Object.assign(patch, delta.fields);
+  stateRev = delta.rev;
+  applyState(patch);
 }
 
 function applyHookEvent(event, coworkerPatch) {
@@ -186,6 +215,7 @@ function connectLiveUpdates() {
     try {
       const msg = JSON.parse(e.data);
       if (msg.type === 'state') applyState(msg.data);
+      else if (msg.type === 'state-delta') applyStateDelta(msg);
       else if (msg.type === 'hook-event') applyHookEvent(msg.data, msg.coworker);
       else if (msg.type === 'resync') void pollState();
     } catch {}
