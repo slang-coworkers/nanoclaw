@@ -50,6 +50,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import datetime, timezone
 
 SCHEMA = 2
@@ -130,39 +131,81 @@ class Collection:
 
 MISSING = object()  # a 404: a real ANSWER ("no such PR"), not a collection failure
 NOT_FOUND = re.compile(r"HTTP 404|Not Found", re.IGNORECASE)
+# A 403/429 whose body carries one of these is the shared App budget momentarily
+# exhausted — transient, not an outage. Anything else on a 403 (e.g. "Resource not
+# accessible by integration") is a real permission failure and still fails closed.
+RATE_LIMITED = re.compile(
+    r"rate limit exceeded|secondary rate limit|abuse detection|HTTP 429|Too Many Requests",
+    re.IGNORECASE)
+RATE_LIMIT_MAX_WAIT = 180  # cap any backoff at 3 min — a cron must not hang on it
+
+
+def rate_limit_wait(default=60):
+    """Seconds to wait for the core REST budget to refill.
+
+    Read from the `rate_limit` endpoint, which is itself exempt from the limit it
+    reports and exposes the same `core.reset` epoch a 403's X-RateLimit-Reset
+    header carries — without scraping gh's error text for it. Capped at
+    RATE_LIMIT_MAX_WAIT so a reset far in the future can never hang the cron; falls
+    back to `default` when the probe itself fails.
+    """
+    try:
+        r = subprocess.run(["gh", "api", "rate_limit"], capture_output=True,
+                           text=True, timeout=30, check=False)
+        if r.returncode == 0:
+            core = (json.loads(r.stdout).get("resources") or {}).get("core") or {}
+            reset = core.get("reset")
+            if reset:
+                return max(0.0, min(RATE_LIMIT_MAX_WAIT, float(reset) - time.time())) + 1
+    except (OSError, subprocess.SubprocessError, ValueError, json.JSONDecodeError):
+        pass
+    return min(RATE_LIMIT_MAX_WAIT, default)
 
 
 def gh(col, path, paginate=False, what=None, allow_missing=False, timeout=900):
     what = what or path
     cmd = ["gh", "api", path] + (["--paginate"] if paginate else [])
-    try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
-                           check=False)
-    except (OSError, subprocess.SubprocessError) as e:
-        col.fail(what, f"{type(e).__name__}: {e}")
-        return None
-    if r.returncode != 0:
-        err = r.stderr or r.stdout
-        # A 404 on pulls/N means "that reference is not a PR", which is an
-        # answer. Treating it as an outage would fail every single run, because
-        # issue bodies routinely cite issue numbers alongside PR numbers.
-        if allow_missing and NOT_FOUND.search(err or ""):
-            return MISSING
-        col.fail(what, err)
-        return None
-    try:
-        return json.loads(r.stdout)
-    except json.JSONDecodeError:
-        # `gh --paginate` concatenates one JSON array per page with no separator:
-        # "[...][...]". Splice them into ONE array. The previous repair wrapped
-        # the spliced text in a SECOND pair of brackets, yielding [[...]] — so the
-        # first multi-page response crashed the caller on `.get()`, and a
-        # multi-page response is precisely what --paginate exists to produce.
+    # One rate-limit backoff+retry. The 5000/hr App budget is shared with live
+    # coworkers, so a burst of theirs can 403 us mid-run; that is transient — the
+    # budget refills — so on a "rate limit exceeded" 403 we sleep until reset
+    # (capped) and try ONCE more, instead of marking the whole run INCOMPLETE over
+    # a momentary squeeze. Every other failure still fails closed on the first hit.
+    for attempt in range(2):
         try:
-            return json.loads(re.sub(r"\]\s*\[", ",", r.stdout))
-        except json.JSONDecodeError as e:
-            col.fail(what, f"unparseable response: {e}")
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
+                               check=False)
+        except (OSError, subprocess.SubprocessError) as e:
+            col.fail(what, f"{type(e).__name__}: {e}")
             return None
+        if r.returncode != 0:
+            err = r.stderr or r.stdout
+            # A 404 on pulls/N means "that reference is not a PR", which is an
+            # answer. Treating it as an outage would fail every single run, because
+            # issue bodies routinely cite issue numbers alongside PR numbers.
+            if allow_missing and NOT_FOUND.search(err or ""):
+                return MISSING
+            if attempt == 0 and RATE_LIMITED.search(err or ""):
+                wait = rate_limit_wait()
+                print(f"rate-limited on {what}: sleeping {wait:.0f}s for the budget "
+                      "to reset, then retrying once", file=sys.stderr)
+                time.sleep(wait)
+                continue
+            col.fail(what, err)
+            return None
+        try:
+            return json.loads(r.stdout)
+        except json.JSONDecodeError:
+            # `gh --paginate` concatenates one JSON array per page with no separator:
+            # "[...][...]". Splice them into ONE array. The previous repair wrapped
+            # the spliced text in a SECOND pair of brackets, yielding [[...]] — so the
+            # first multi-page response crashed the caller on `.get()`, and a
+            # multi-page response is precisely what --paginate exists to produce.
+            try:
+                return json.loads(re.sub(r"\]\s*\[", ",", r.stdout))
+            except json.JSONDecodeError as e:
+                col.fail(what, f"unparseable response: {e}")
+                return None
+    return None  # unreachable: attempt 1 always returns above; a safety net for readers
 
 
 def pr_info(col, repo, num, cache):
