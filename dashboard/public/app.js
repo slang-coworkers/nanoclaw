@@ -6619,6 +6619,42 @@ function renderApprovalItem(item) {
     <div class="cw-msg-time">${formatTime(item.createdAt)} <span style="font-size:7px;color:#f59e0b;font-style:italic">critique gate</span></div>
   </div>`;
   }
+  if (item.action === 'stop_runaway_session') {
+    // A runaway's whole harm is spend, so lead with the two facts the approver
+    // needs: how much it has cost, and a door into the session. Both fall back
+    // gracefully — cost is null on cost-disabled groups, and the session link
+    // degrades to copyable text when the folder/id isn't resolvable.
+    const cost =
+      typeof item.spentUsd === 'number' && typeof item.capUsd === 'number'
+        ? `<div style="margin-top:4px;font-size:13px;font-weight:700;color:#f85149">$${item.spentUsd.toFixed(2)} of $${item.capUsd.toFixed(2)}</div>`
+        : '';
+    // The coworkers router is hash-based: #/cw/<folder>/s/<sessionId>. Built as
+    // a raw anchor (md() only linkifies http(s), so a markdown link to the hash
+    // route would render as literal text).
+    const sessionLink =
+      item.sessionId && item.coworkerFolder
+        ? `<a href="#/cw/${encodeURIComponent(item.coworkerFolder)}/s/${encodeURIComponent(item.sessionId)}">session ${esc(String(item.sessionId).slice(0, 16))}</a>`
+        : item.sessionId
+          ? `<code>${esc(item.sessionId)}</code>`
+          : '';
+    const detail = item.question
+      ? `<div style="margin-top:6px;font-size:10px;color:#8b949e">${clampedReason(item.question, item.approvalId)}</div>`
+      : '';
+    return `<div class="cw-msg assistant">
+    <div class="cw-msg-bubble" style="border-left:3px solid #f85149;padding-left:8px">
+      ${coworkerHeader}
+      <div style="font-weight:600">${esc(item.title || 'Possible runaway session')}</div>
+      ${cost}
+      ${sessionLink ? `<div style="margin-top:4px;font-size:10px">${sessionLink}</div>` : ''}
+      ${detail}
+      <div style="margin-top:8px">
+        <button class="approval-btn" data-qid="${esc(item.approvalId)}" data-decision="Approve" style="background:#238636;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;cursor:pointer;font-size:10px">Stop session</button>
+        <button class="approval-btn" data-qid="${esc(item.approvalId)}" data-decision="Reject" style="background:#da3633;color:#fff;border:none;border-radius:3px;padding:4px 14px;cursor:pointer;font-size:10px">Keep running</button>
+      </div>
+    </div>
+    <div class="cw-msg-time">${formatTime(item.createdAt)} <span style="font-size:7px;color:#f85149;font-style:italic">runaway</span></div>
+  </div>`;
+  }
   if (item.action === 'install_packages') {
     desc = `**Install packages:** ${(item.packages || []).map((p) => esc(p)).join(', ')}${safeReason}`;
   } else if (item.action === 'request_rebuild') {
