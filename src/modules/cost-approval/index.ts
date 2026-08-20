@@ -2,35 +2,28 @@
  * Cost-cap escalation approval card — host module (NanoClaw #1 cost cap, Option 2).
  *
  * The durable data model + the compare-and-set resolver live in
- * `src/db/cost-escalation-episodes.ts` (migration 939); this module is the ACTION
- * surface that drives them: INGEST a runner escalation into the central table, and
- * DECIDE (card click / dashboard pill / expiry) through the CAS, enqueuing at most one
- * epoch-fenced `cost_override` on a win.
+ * `src/db/cost-escalation-episodes.ts` (migration 939); this module drives them: INGEST a
+ * runner escalation into the central table, deliver the decision via the OFFICIAL approval
+ * card (`requestApproval` — the same surface install_packages / runaway use, which renders
+ * on the dashboard AND chat and is authorization-gated), and DECIDE through the CAS.
+ *
+ * Why the official card and not a bespoke one: `requestApproval` persists a `pending_approvals`
+ * row that the dashboard renders even when no chat channel exists ("row persisted for
+ * dashboard"), does approver-picking + click-authz for us, and shows `$spent/$cap` from the
+ * payload. So the cost decision reuses proven infra — no custom card render / click code.
  *
  * MONEY-SAFETY (see the runner's budget-generation fence in poll-loop.ts):
- *   - At-most-one DECISION: every surface funnels through `resolveCostEpisode` (the CAS).
- *     First writer wins; a loser is a no-op re-render. So the episode is resolved once.
- *   - Exactly-once GRANT: the override carries the episode's `epoch_key`; the runner
- *     APPLIES at most one per generation and refuses any whose epoch ≠ its live budget
- *     generation (post-/clear, superseded, re-enqueued). Enqueue itself is AT-LEAST-once
- *     (a crash between the CAS and the durable inbound write is re-driven by the
+ *   - At-most-one DECISION: the approval row is at-most-once (deleted on resolve), and every
+ *     surface funnels through `resolveCostEpisode` (the CAS). So the episode resolves once.
+ *   - Exactly-once GRANT: the override carries the episode's `epoch_key`; the runner APPLIES
+ *     at most one per generation and refuses any whose epoch ≠ its live budget generation.
+ *     Enqueue is at-least-once (a crash before the durable inbound write is re-driven by the
  *     reconciler), but the fence makes a duplicate override a no-op — so no double-grant.
- *   - The host stays READ-ONLY on outbound.db — it only reads the durable `cost_cap`
- *     state and writes the central table + the session's inbound override (router path).
- *   - Best-effort card: delivery/expiry are notification-only. A missed card is a lost
- *     notice, never lost money (the ceiling still bounds spend).
+ *   - The host stays READ-ONLY on outbound.db — it reads `cost_cap` and writes the central
+ *     table + the session's inbound override (router path).
  *
- * Lifecycle:
- *   INGEST   host consumes the runner's `cost_escalation` outbound row → ingestEpisode()
- *            (idempotent). Under the OFF flag (S1) it records `decision_state:'observed'`
- *            and the legacy plain-text DM still fires. Under ON (S2) it records `pending`
- *            (or born-terminal `stopped` for a non-immortal ceiling) and the card owns
- *            the notification.
- *   DECIDE   card click / dashboard pill / expiry funnel through resolveCostEpisode() —
- *            first writer wins; a win enqueues ONE epoch-fenced cost_override (continue/
- *            stop) or, for expiry, DISMISSES (no session mutation — T1 advisory).
- *   RECONCILE the host-sweep re-sends undelivered cards, re-drives decided-but-unapplied
- *            effects, and expiry-dismisses (host-sweep.ts, using the accessor's queries).
+ * Mapping: Approve → CONTINUE (raise cap + resume), Reject → STOP (quiesce). Both outcomes
+ * arrive via `registerApprovalResolvedHandler` and funnel to `decideCostEpisode`.
  */
 import { COST_APPROVAL_CARD } from '../../config.js';
 import {
@@ -41,8 +34,6 @@ import {
   ingestEpisode,
   listExpiredPending,
   listUnappliedEffects,
-  listUndeliveredCards,
-  markCard,
   markEffectApplied,
   markEffectEnqueued,
   resolveCostEpisode,
@@ -54,35 +45,38 @@ import {
   type CostWindow,
   type ResolveResult,
 } from '../../db/cost-escalation-episodes.js';
-import { getMessagingGroup } from '../../db/messaging-groups.js';
-import { getSession } from '../../db/sessions.js';
-import { getDeliveryAdapter } from '../../delivery.js';
 import { log } from '../../log.js';
 import { routeCostOverrideToSession } from '../../router.js';
 import type { Session } from '../../types.js';
-import { pickApprovalDelivery, pickApprover } from '../approvals/primitive.js';
-import { hasAdminPrivilege } from '../permissions/db/user-roles.js';
-import { buildCostCardContent, type CostCardOutcome } from './card.js';
+// Import from primitive.js DIRECTLY, not the approvals barrel: the barrel pulls in
+// onecli-approvals, whose import-time onDeliveryAdapterReady() re-enters delivery.ts
+// mid-initialization (delivery → cost-approval → approvals/index → delivery), a
+// circular-import TDZ crash. primitive.js only touches delivery inside functions.
+import {
+  registerApprovalResolvedHandler,
+  requestApproval,
+  type ApprovalResolvedEvent,
+} from '../approvals/primitive.js';
 
 /**
- * T1 advisory expiry: a pending cap card no human answers within 24h is DISMISSED — no
+ * T1 advisory expiry: a pending cap decision no human answers within 24h is DISMISSED — no
  * session mutation (the ceiling still bounds spend). Born-terminal ceiling episodes and
  * observation-era (S1) episodes never expire.
  */
 export const COST_ESCALATION_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
+/** The approval action key the decision card is registered under. */
+const COST_DECISION_ACTION = 'cost_decision';
+
 /**
- * A short, button/URL-safe episode handle for the card custom_id, collision-retried
- * against the UNIQUE `short_id` column. `cst-` namespace so a cross-surface click can't
- * be confused with another card kind (approvals, runaway, …).
+ * A short, unique handle for the episode's NOT-NULL UNIQUE `short_id` column (a stable
+ * per-row id used for joins/traceability), collision-retried against the column.
  */
 function freshShortId(): string {
   for (let i = 0; i < 8; i++) {
     const candidate = `cst-${Math.random().toString(36).slice(2, 9)}`;
     if (!getEpisodeByShortId(candidate)) return candidate;
   }
-  // Astronomically unlikely after 8 draws; take a longer draw rather than throw on the
-  // delivery hot path (a duplicate would fail the UNIQUE constraint → ingest no-ops).
   return `cst-${Math.random().toString(36).slice(2, 13)}`;
 }
 
@@ -101,8 +95,8 @@ export interface IngestResult {
   episodeId?: string;
   /** True iff this ingest inserted a NEW row (so the caller cards/logs exactly once). */
   isNew: boolean;
-  /** True once the interactive card owns the notification (S2) — the caller must NOT
-   *  also send the legacy plain-text DM. False under S1 (DM stays as-is). */
+  /** True once the approval card owns the notification (S2) — the caller must NOT also send
+   *  the legacy plain-text DM. False under S1 (DM stays as-is). */
   cardOwnsNotification: boolean;
 }
 
@@ -131,9 +125,8 @@ export function ingestCostEscalation(
 
   const active = COST_APPROVAL_CARD;
   // A non-immortal ceiling episode is BORN TERMINAL: the runner already hard-stopped, so
-  // the card is informational (no Continue buys past the ceiling). A cap episode — and an
-  // immortal ceiling (never stops) — is a live decision (pending) under S2, or
-  // observation-only under S1.
+  // there is no decision to make. A cap episode — and an immortal ceiling (never stops) —
+  // is a live decision (pending) under S2, or observation-only under S1.
   const bornTerminal = reason === 'ceiling' && !immortal;
   const decisionState = !active ? 'observed' : bornTerminal ? 'stopped' : 'pending';
   const cardState = active ? 'undelivered' : 'observed';
@@ -163,9 +156,8 @@ export function ingestCostEscalation(
   // mark its effect applied so the reconciler never tries to re-drive it.
   if (isNew && bornTerminal) markEffectApplied(episodeId);
 
-  // Ceiling supersedes any still-live cap card for the same (session, epoch): a stopped
-  // session must never also show a "raise the cap?" card. Runs on every re-emit too, to
-  // reconcile a race where the cap card landed first.
+  // Ceiling supersedes any still-live cap decision for the same (session, epoch): a stopped
+  // session must never also show a live "raise the cap?" card.
   if (reason === 'ceiling') supersedeLiveCapEpisodes(session.id, epochKey, nowIso);
 
   if (isNew) {
@@ -183,14 +175,44 @@ export function ingestCostEscalation(
 }
 
 /**
+ * Deliver the decision card via the OFFICIAL approval adapter. `requestApproval` persists a
+ * `pending_approvals` row (rendered on the dashboard even with no chat channel) and delivers
+ * to chat if a channel exists — approver-picking + click-authz handled for us. The episode id
+ * rides the payload so the resolved-handler maps the click back to the episode; `spentUsd` /
+ * `capUsd` are surfaced by the dashboard card renderer. Skipped for a born-terminal ceiling
+ * (already stopped — no decision to make).
+ */
+export async function requestCostDecisionCard(session: Session, ep: CostEpisodeRow): Promise<void> {
+  if (ep.reason === 'ceiling' && !ep.immortal) return;
+  const spent = ep.spent_usd != null ? `$${ep.spent_usd.toFixed(2)}` : '$?';
+  const cap = ep.cap_usd != null ? `$${ep.cap_usd.toFixed(2)}` : '$?';
+  const immortalNote = ep.immortal
+    ? ' (∞ immortal: Approve raises today’s cap; Reject is a no-op — immortal never stops.)'
+    : '';
+  await requestApproval({
+    session,
+    agentName: session.agent_group_id,
+    action: COST_DECISION_ACTION,
+    payload: {
+      episodeId: ep.episode_id,
+      sessionId: ep.session_id,
+      ...(ep.spent_usd != null ? { spentUsd: Number(ep.spent_usd.toFixed(4)) } : {}),
+      ...(ep.cap_usd != null ? { capUsd: Number(ep.cap_usd.toFixed(4)) } : {}),
+    },
+    title: 'Cost cap — decision needed',
+    question:
+      `Session ${ep.session_id} (${ep.agent_group_id}) crossed its cost cap: spent ${spent} of ${cap}. ` +
+      'Approve to CONTINUE (raise the cap by one allotment and resume), or Reject to STOP ' +
+      `(finish the current turn, take no new work).${immortalNote}`,
+  });
+  log.info('cost-approval: decision card requested', { episodeId: ep.episode_id, sessionId: ep.session_id });
+}
+
+/**
  * DECIDE a human verdict through the CAS. On a win, enqueue EXACTLY ONE epoch-fenced
  * `cost_override` (continue/stop) via the router, or — for `expired` — DISMISS with no
  * session mutation (T1 advisory). A loser (already resolved / expired / epoch-superseded)
- * gets `won:false` and the terminal row to re-render. Idempotent: safe to call twice.
- *
- * The CAS is epoch-gated on the episode's own `epoch_key`, a belt-and-braces with the
- * runner fence: even if two surfaces race, only one enqueues, and the runner refuses any
- * that arrives against a rotated generation.
+ * gets `won:false`. Idempotent: safe to call twice.
  */
 export async function decideCostEpisode(
   episodeId: string,
@@ -225,8 +247,8 @@ export async function decideCostEpisode(
 
   // Continue/Stop enqueue exactly one epoch-fenced override. effect_state semantics:
   // 'applied' = the override is DURABLY in the session's inbound.db (the host's job is
-  // done — the runner WILL consume it, epoch-fenced + idempotent). 'enqueued' = the route
-  // threw before it landed → the reconciler re-drives (money-safe to repeat).
+  // done — the runner WILL consume it, epoch-fenced + idempotent). 'enqueued'/'none' = the
+  // route threw / a crash landed before it → the reconciler re-drives (money-safe to repeat).
   markEffectEnqueued(episodeId);
   try {
     await routeCostOverrideToSession({
@@ -242,8 +264,6 @@ export async function decideCostEpisode(
       epochKey: current.epoch_key,
     });
   } catch (err) {
-    // Left effect_state='enqueued' → the host-sweep reconciler re-drives. The CAS already
-    // marked the decision terminal, so no second decision can slip in.
     log.error('cost-approval: failed to route override (reconciler will re-drive)', {
       episodeId,
       decision,
@@ -253,137 +273,42 @@ export async function decideCostEpisode(
   return res;
 }
 
-export interface CostClickResult {
-  /** The episode after the decision (the standing row when this click lost the CAS). */
-  episode: CostEpisodeRow | undefined;
-  /** How to render the terminal card: this actor's outcome, or 'already' if it lost. */
-  outcome: CostCardOutcome;
-}
-
 /**
- * Resolve a card click by its `short_id` (the handle in the button action id). Maps to the
- * episode and funnels through the same CAS as every surface. Returns the standing episode +
- * a terminal-render outcome. The bridge calls this from both click sites (Chat SDK onAction
- * + Discord forwarded interaction) and terminal-edits the card with `buildCostTerminalCard`.
- *
- * AUTHORIZATION: only an approver (owner / global admin / scoped admin for the episode's
- * agent group) may decide — a forwarded/shared card or a replayed component action from a
- * non-admin (even an unknown/empty identity) is REJECTED before the CAS, mirroring the
- * unknown-sender approval-card check. `clickerId` must already be namespaced
- * (`<channelType>:<handle>`) by the caller.
- *
- * FLAG: gated on COST_APPROVAL_CARD so flipping the flag OFF is an effective kill switch —
- * a click on a card left over from an S2 session is a no-op once the flag is off.
+ * The approval-resolved callback for cost decisions. Fires on EVERY resolution of a
+ * `cost_decision` card, in BOTH outcomes: Approve → CONTINUE, Reject → STOP. The approval
+ * system already authorized the clicker (owner/admin) and is at-most-once (row deleted on
+ * resolve); we map the outcome to the epoch-fenced CAS. No-op for other actions.
  */
-export async function decideCostEpisodeByShortId(
-  shortId: string,
-  decision: 'continue' | 'stop',
-  clickerId: string | null,
-): Promise<CostClickResult> {
-  if (!COST_APPROVAL_CARD) {
-    log.info('cost-approval: card click ignored — flag OFF (kill switch)', { shortId });
-    return { episode: undefined, outcome: 'already' };
-  }
-  const ep = getEpisodeByShortId(shortId);
-  if (!ep) {
-    log.warn('cost-approval: click on unknown short_id', { shortId, decision });
-    return { episode: undefined, outcome: 'already' };
-  }
-  if (!clickerId || !ep.agent_group_id || !hasAdminPrivilege(clickerId, ep.agent_group_id)) {
-    log.warn('cost-approval: unauthorized card click rejected', {
-      shortId,
-      clickerId,
-      agentGroupId: ep.agent_group_id,
-    });
-    return { episode: ep, outcome: 'unauthorized' };
-  }
-  const res = await decideCostEpisode(ep.episode_id, decision, `chat:${clickerId}`);
-  const outcome: CostCardOutcome = res.won ? (decision === 'continue' ? 'continued' : 'stopped') : 'already';
-  return { episode: res.episode ?? ep, outcome };
-}
-
-/**
- * Send (or re-send) the interactive card for an episode to a human approver's DM. Best-effort
- * — a missed card is a lost notice, never lost money (the ceiling still bounds spend). Resolves
- * the approver via the same primitive the OneCLI approval bridge uses (scoped admin → global
- * admin → owner). Marks the card lifecycle so the reconciler can retry a failed/undelivered send.
- *
- * Idempotent-ish: only sends when the card is still awaiting delivery (undelivered/failed) and
- * the episode is actionable (pending, or a born-terminal ceiling that shows an informational
- * card once). A resolved/superseded episode is skipped.
- */
-export async function sendCostCard(ep: CostEpisodeRow): Promise<void> {
-  const actionable = ep.decision_state === 'pending' || (ep.reason === 'ceiling' && !ep.immortal);
-  // 'sending' is included so a crash mid-send is retried (a stuck 'sending' would otherwise
-  // never resend); at-least-once delivery is terminal-edit-deduped on the platform.
-  const awaitingDelivery = ep.card_state === 'undelivered' || ep.card_state === 'failed' || ep.card_state === 'sending';
-  if (!actionable || !awaitingDelivery) return;
-  if (!ep.agent_group_id) {
-    log.warn('cost-approval: episode has no agent group — cannot resolve approver', { episodeId: ep.episode_id });
-    markCard(ep.episode_id, 'failed');
-    return;
-  }
-
-  const approvers = pickApprover(ep.agent_group_id);
-  if (approvers.length === 0) {
-    log.warn('cost-approval: no approver to card', { episodeId: ep.episode_id });
-    markCard(ep.episode_id, 'failed');
-    return;
-  }
-  const session = getSession(ep.session_id);
-  const originChannelType = session?.messaging_group_id
-    ? (getMessagingGroup(session.messaging_group_id)?.channel_type ?? '')
-    : '';
-  const target = await pickApprovalDelivery(approvers, originChannelType);
-  if (!target) {
-    log.warn('cost-approval: no DM channel for any approver', { episodeId: ep.episode_id });
-    markCard(ep.episode_id, 'failed');
-    return;
-  }
-  const adapter = getDeliveryAdapter();
-  if (!adapter) return; // not ready yet — reconciler retries next tick
-
-  markCard(ep.episode_id, 'sending');
+async function costDecisionResolved(event: ApprovalResolvedEvent): Promise<void> {
+  if (event.approval.action !== COST_DECISION_ACTION) return;
+  let episodeId: string | undefined;
   try {
-    const messageId = await adapter.deliver(
-      target.messagingGroup.channel_type,
-      target.messagingGroup.platform_id,
-      null,
-      'chat',
-      JSON.stringify(buildCostCardContent(ep)),
-    );
-    markCard(ep.episode_id, 'delivered', messageId ?? null);
-    log.info('cost-approval: card delivered', {
-      episodeId: ep.episode_id,
-      approver: target.userId,
-      messageId: messageId ?? null,
-    });
-  } catch (err) {
-    markCard(ep.episode_id, 'failed');
-    log.error('cost-approval: card delivery failed (reconciler will retry)', { episodeId: ep.episode_id, err });
+    const parsed = JSON.parse(event.approval.payload) as { episodeId?: unknown };
+    if (typeof parsed.episodeId === 'string') episodeId = parsed.episodeId;
+  } catch {
+    /* unparseable payload — nothing to resolve */
   }
+  if (!episodeId) return;
+  const decision: CostDecision = event.outcome === 'approve' ? 'continue' : 'stop';
+  await decideCostEpisode(episodeId, decision, `approval:${event.userId || 'unknown'}`);
 }
 
 /**
  * The host-sweep reconciler (once per tick). Repairs half-done best-effort state without
  * ever touching money-safety (the CAS + epoch fence already guarantee exactly-once):
- *   - EXPIRY: T1 advisory cards past 24h → 'expired' (pure dismiss; a late click on the
- *     stale card self-resolves to 'already' via the CAS).
- *   - CARD RESEND: undelivered/failed cards (a crash between ingest and the prompt send).
- *   - EFFECT RE-DRIVE: a decided episode whose override route THREW (effect_state stuck at
- *     'enqueued') is re-routed — epoch-fenced, so the runner refuses a stale/duplicate.
- *     Bounded by effect_attempts. 'expired' episodes have no override → mark applied.
- * No-op under S1 (flag OFF).
+ *   - EXPIRY: T1 advisory decisions past 24h → 'expired' (pure dismiss; a late resolve on the
+ *     stale approval no-ops via the CAS).
+ *   - EFFECT RE-DRIVE: a decided episode whose override route THREW or crashed before landing
+ *     (effect_state 'enqueued'/'none') is re-routed — epoch-fenced, so the runner refuses a
+ *     stale/duplicate. Bounded by effect_attempts. 'expired' episodes have no override.
+ * No-op under S1 (flag OFF). Card DELIVERY is not reconciled here — `requestApproval`
+ * persists the dashboard-visible row up front, so there is no separate card to re-send.
  */
 export async function reconcileCostCards(nowIso: string = new Date().toISOString()): Promise<void> {
   if (!COST_APPROVAL_CARD) return;
 
   for (const ep of listExpiredPending(nowIso)) {
     await decideCostEpisode(ep.episode_id, 'expired', 'sweep:expiry');
-  }
-
-  for (const ep of listUndeliveredCards()) {
-    await sendCostCard(ep);
   }
 
   const MAX_EFFECT_ATTEMPTS = 5;
@@ -393,10 +318,6 @@ export async function reconcileCostCards(nowIso: string = new Date().toISOString
       continue;
     }
     if (ep.decision_state !== 'continued' && ep.decision_state !== 'stopped') continue;
-    // Re-drive effect_state 'none' AND 'enqueued'. 'none' means the CAS committed the
-    // decision but a crash landed before the override was routed — the human's decision
-    // would otherwise be PERMANENTLY LOST. 'enqueued' means the route threw. Both re-route;
-    // the runner's epoch fence refuses any stale/duplicate, so re-drive is money-safe.
     if (ep.effect_state !== 'none' && ep.effect_state !== 'enqueued') continue;
     if (ep.effect_attempts >= MAX_EFFECT_ATTEMPTS) {
       log.error('cost-approval: giving up re-driving override after max attempts', {
@@ -421,22 +342,22 @@ export async function reconcileCostCards(nowIso: string = new Date().toISOString
 }
 
 /**
- * Wire the cost-approval module at boot. Under S1 (flag OFF) episodes are still ingested
- * read-only from the delivery handler (observation mode) and the legacy DM fires — this
- * only logs the mode. Under S2 (flag ON) the ingest handler cards instead of DMing, and
- * the host-sweep reconciler + bridge interceptor (registered elsewhere) drive delivery
- * and clicks. The single flag flip is the activation point.
+ * Wire the cost-approval module at boot. Under S1 (flag OFF) episodes are ingested read-only
+ * (observation mode) and the legacy DM fires — this only logs. Under S2 (flag ON) it
+ * supersedes observation-era episodes and registers the cost-decision resolved-handler so
+ * Approve/Reject on the official card drives the epoch-fenced CAS. The single flag flip is
+ * the activation point.
  */
 export function registerCostApproval(): void {
   if (!COST_APPROVAL_CARD) {
     log.info('cost-approval: card flag OFF — episodes recorded read-only (S1)');
     return;
   }
-  // Activation boundary: supersede any observation-era (S1) episodes so flipping the flag
-  // on never cards a backlog of pre-activation observations. Targets only 'observed', so a
-  // genuine in-flight 'pending' card that a restart is resuming is untouched.
+  // Activation boundary: supersede observation-era (S1) episodes so a flag flip never cards a
+  // backlog. Targets only 'observed' — a genuine in-flight 'pending' decision is untouched.
   const superseded = supersedeObservedEpisodes();
-  log.info('cost-approval: card flag ON — interactive escalation cards active (S2)', {
+  registerApprovalResolvedHandler(costDecisionResolved);
+  log.info('cost-approval: card flag ON — cost decisions via official approval cards (S2)', {
     supersededObserved: superseded,
   });
 }

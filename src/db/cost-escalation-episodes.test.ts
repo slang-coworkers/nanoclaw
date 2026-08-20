@@ -21,8 +21,6 @@ import {
   getPendingEpisodeForSession,
   ingestEpisode,
   listExpiredPending,
-  listUndeliveredCards,
-  markCard,
   markEffectApplied,
   markEffectEnqueued,
   resolveCostEpisode,
@@ -220,32 +218,7 @@ describe('cost-escalation-episodes — getPendingEpisodeForSession (the dashboar
   });
 });
 
-describe('cost-escalation-episodes — card resend + activation supersede (reconciler fixes)', () => {
-  it('listUndeliveredCards resends a born-terminal ceiling card, not only pending cap cards', () => {
-    ingestEpisode(capEpisode()); // pending cap, card undelivered
-    ingestEpisode(
-      capEpisode({
-        episode_id: 'esc-sess-cost-1-ceiling-5',
-        short_id: 'cst-ceil05',
-        reason: 'ceiling',
-        decision_state: 'stopped', // born-terminal hard-stop
-      }),
-    );
-    const ids = listUndeliveredCards().map((e) => e.episode_id);
-    expect(ids).toContain('esc-sess-cost-1-cap-5'); // pending cap
-    expect(ids).toContain('esc-sess-cost-1-ceiling-5'); // born-terminal ceiling — was dropped before the fix
-
-    // A resolved cap card is NOT resent.
-    resolveCostEpisode('esc-sess-cost-1-cap-5', 'continue', 'user:A', { nowIso: NOW });
-    expect(listUndeliveredCards().map((e) => e.episode_id)).not.toContain('esc-sess-cost-1-cap-5');
-  });
-
-  it('a stale "sending" card is still listed for resend (crash mid-send)', () => {
-    ingestEpisode(capEpisode());
-    markCard('esc-sess-cost-1-cap-5', 'sending');
-    expect(listUndeliveredCards().map((e) => e.episode_id)).toContain('esc-sess-cost-1-cap-5');
-  });
-
+describe('cost-escalation-episodes — activation supersede', () => {
   it('supersedeObservedEpisodes marks only S1 observed rows — never a live pending card', () => {
     ingestEpisode(capEpisode({ decision_state: 'observed', card_state: 'observed' }));
     ingestEpisode(
