@@ -200,6 +200,35 @@ export function resolveCostEpisode(
 }
 
 /**
+ * The expiry CAS. `resolveCostEpisode` deliberately REFUSES any resolution on a
+ * past-expiry row (so a late human click can't win) — which means it can't be used to
+ * mark a row `expired` either. Expiry has the mirror-image predicate: win ONLY on a
+ * still-`pending` row that IS past its expiry. This races safely with a human click on
+ * the same row — SQLite serializes the two UPDATEs, whichever commits first flips
+ * `decision_state` off `pending`, and the other finds 0 rows. So exactly-once holds
+ * across the click/expiry boundary. Dismiss is advisory (T1): no session mutation.
+ */
+export function expireEpisode(
+  episodeId: string,
+  resolvedBy = 'sweep:expiry',
+  nowIso = new Date().toISOString(),
+): ResolveResult {
+  const d = db();
+  if (!d) return { won: false, episode: undefined };
+  const info = d
+    .prepare(
+      `UPDATE cost_escalation_episodes
+          SET decision_state = 'expired', resolved_at = @now, resolved_by = @by
+        WHERE episode_id = @id
+          AND decision_state = 'pending'
+          AND expires_at IS NOT NULL
+          AND datetime(expires_at) <= datetime(@now)`,
+    )
+    .run({ id: episodeId, now: nowIso, by: resolvedBy });
+  return { won: info.changes > 0, episode: getEpisode(episodeId) };
+}
+
+/**
  * Atomic cap→ceiling supersession: called inside the ceiling-episode INGEST txn.
  * Marks any still-live T1 (`reason='cap'`) episode for this (session, epoch)
  * `superseded`, so a live cap card and a ceiling close can never coexist.

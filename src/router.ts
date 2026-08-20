@@ -701,6 +701,15 @@ export async function routeInboundToSession(opts: {
 export async function routeCostOverrideToSession(opts: {
   sessionId: string;
   decision: 'continue' | 'stop';
+  /**
+   * The budget generation the escalation episode was stamped with (the
+   * cost-approval card path supplies it; the legacy dashboard pill omits it).
+   * When present it is echoed onto the `cost_override` as the runner's epoch
+   * fence — applyCostOverride refuses a decision whose epoch no longer matches
+   * the live generation (superseded / post-/clear / re-enqueued). When absent
+   * the runner applies unconditionally (back-compat with the pill).
+   */
+  epochKey?: string;
 }): Promise<void> {
   if (opts.decision !== 'continue' && opts.decision !== 'stop') {
     throw new Error(`invalid cost-override decision: ${String(opts.decision)}`);
@@ -715,7 +724,10 @@ export async function routeCostOverrideToSession(opts: {
     platformId: 'dashboard:admin',
     channelType: 'dashboard',
     threadId: session.thread_id ?? null,
-    content: JSON.stringify({ decision: opts.decision }),
+    content: JSON.stringify({
+      decision: opts.decision,
+      ...(opts.epochKey != null ? { epochKey: opts.epochKey } : {}),
+    }),
     trigger: 1,
   });
 
@@ -723,6 +735,7 @@ export async function routeCostOverrideToSession(opts: {
     sessionId: session.id,
     agentGroup: session.agent_group_id,
     decision: opts.decision,
+    ...(opts.epochKey != null ? { epochKey: opts.epochKey } : {}),
   });
 
   const freshSession = getSession(session.id);

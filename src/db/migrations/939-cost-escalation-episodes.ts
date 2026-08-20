@@ -28,10 +28,13 @@ import type { Migration } from './index.js';
  *       stale/duplicate transition is a no-op that re-renders the terminal result.
  *       `observed` = recorded under the OFF feature flag (S1); never carded/actioned.
  *   - `effect_state`    none | enqueued | applied
- *       Whether the decision's effect (Continue → runner +allotment via a receipt
- *       ledger; Stop → host close+kill) actually landed. The reconciler re-drives
- *       decided-but-not-applied episodes until the runner acks (Continue) or the
- *       host confirms the kill (Stop).
+ *       Whether the decision's effect landed. The decision enqueues ONE epoch-fenced
+ *       `cost_override` (Continue → runner raises the cap by one allotment; Stop →
+ *       runner soft-quiesces, taking no new work). The host stays READ-ONLY on
+ *       outbound.db: it marks `applied` by observing the runner's durable `cost_cap`
+ *       (episodeId cleared → the override was consumed). The reconciler re-drives a
+ *       decided-but-`enqueued` episode until that observation lands. No receipt ledger,
+ *       no host kill.
  *   - `card_state`      observed | undelivered | sending | delivered | edited | failed
  *       Delivery of the interactive card. Retryable: a crash between INGEST and send
  *       leaves `undelivered`, which the card reconciler resends; `platform_message_id`
@@ -42,10 +45,13 @@ import type { Migration } from './index.js';
  * created after activation and marks all prior `observed` rows `superseded`, so a
  * flag flip can never suddenly card a backlog of observation-era episodes.
  *
- * `epoch_key` (escalatedAt for a lifetime window, dayKey for a daily/immortal window)
- * is validated on resolve and by the runner: a decision whose epoch no longer matches
- * the session's current cost epoch (a pre-`/clear` escalation, yesterday's daily card)
- * is refused, so an old-epoch action can never touch fresh work.
+ * `epoch_key` is the runner's monotonic BUDGET GENERATION (`String(budgetGen)`) live when
+ * the episode escalated — one counter for both windows, rotated on every budget-epoch
+ * change (/clear, new_session, daily rollover, each applied Continue). It is validated on
+ * resolve and by the runner's fence: a decision whose epoch no longer matches the
+ * session's live generation (a pre-`/clear` escalation, a re-enqueued click, yesterday's
+ * daily card) is refused, so an old-epoch action can never touch fresh work — the
+ * exactly-once GRANT guarantee (see applyCostOverride in poll-loop.ts).
  *
  * FK to `sessions(id) ON DELETE CASCADE`: deleting a session removes its episodes, so
  * a session/group delete can't be blocked by, or leave, orphan episodes.
