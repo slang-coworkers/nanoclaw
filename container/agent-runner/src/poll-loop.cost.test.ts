@@ -420,3 +420,27 @@ describe('two-tier cost cap — budget-generation grant fence (g)', () => {
     expect(H.getState().costStopRequested).toBe(false);
   });
 });
+
+describe('two-tier cost cap — ceiling soft-brake (maxBudgetUsd)', () => {
+  it('non-immortal with a ceiling → remaining headroom, floored at $0.01, never below zero', () => {
+    seed({ costCeilingUsd: 50, costSpentUsd: 30 });
+    expect(H.costCeilingRemainingUsd()).toBeCloseTo(20); // 50 - 30
+
+    seed({ costCeilingUsd: 50, costSpentUsd: 50 }); // exactly at the ceiling
+    expect(H.costCeilingRemainingUsd()).toBeCloseTo(0.01); // floored, not 0/negative
+
+    seed({ costCeilingUsd: 50, costSpentUsd: 80 }); // over (one pathological turn)
+    expect(H.costCeilingRemainingUsd()).toBeCloseTo(0.01);
+  });
+
+  it('no brake when there is no ceiling, when disabled, or for an immortal group', () => {
+    seed({ costCeilingUsd: 0 });
+    expect(H.costCeilingRemainingUsd()).toBeUndefined(); // no ceiling configured
+
+    seed({ costEnabled: false, costCeilingUsd: 50 });
+    expect(H.costCeilingRemainingUsd()).toBeUndefined(); // cap disabled
+
+    seed({ costImmortal: true, costWindow: 'daily', costCeilingUsd: 50, costSpentUsd: 10 });
+    expect(H.costCeilingRemainingUsd()).toBeUndefined(); // immortal is never hard-stopped
+  });
+});

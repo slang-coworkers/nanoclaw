@@ -245,6 +245,18 @@ function resetCostForNewSession(): void {
   persistCostCap();
 }
 
+/**
+ * The per-turn ceiling soft-brake handed to the provider as `maxBudgetUsd`: the spend
+ * headroom left before the Tier-2 ceiling, or undefined when no ceiling applies
+ * (disabled, no ceiling configured, or an immortal group — which is never hard-stopped).
+ * Best-effort: the SDK checks between calls, so a turn may overshoot by ≤ one in-flight
+ * call; `recordTurnCost` stays the canonical basis and the sole close decider.
+ */
+function costCeilingRemainingUsd(): number | undefined {
+  if (!costEnabled || costImmortal || costCeilingUsd <= 0) return undefined;
+  return Math.max(0.01, costCeilingUsd - costSpentUsd);
+}
+
 /** Current status band from spent/cap/escalation/stop state. */
 function computeCostStatus(): CostCapStatus {
   // Tier-2 hard ceiling: a non-immortal session past the ceiling reads 'stopped'
@@ -503,6 +515,7 @@ function applyCostOverride(msg: MessageInRow): void {
 export const __costCapTestHooks = {
   recordTurnCost,
   computeCostStatus,
+  costCeilingRemainingUsd,
   applyCostOverride,
   resetCostForNewSession,
   initCostTracking,
@@ -1048,6 +1061,8 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
       continuation: newSessionBatch ? undefined : continuation,
       cwd: config.cwd,
       systemContext: config.systemContext,
+      // Tier-2 ceiling soft-brake for THIS turn (undefined when no ceiling applies).
+      maxBudgetUsd: costCeilingRemainingUsd(),
     });
 
     // Process the query while concurrently polling for new messages
