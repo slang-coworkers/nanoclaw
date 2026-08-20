@@ -10,8 +10,8 @@ Standalone wiki built from **3978 agent learnings**, synthesized into **235 conc
 **Navigate:** concept (synthesized) → its linked learnings.
 
 > Links below are relative to the KB root. In a container that root is `/workspace/shared/`,
-> and your cwd is `/workspace/agent` — so read `](concepts/x.md)` as
-> `/workspace/shared/wiki/concepts/x.md`. Keyword fallback:
+> and your cwd is `/workspace/agent` — so read a `wiki/concepts/<page>.md` link as
+> `/workspace/shared/wiki/concepts/<page>.md`. Keyword fallback:
 > `grep -ril <term> /workspace/shared/sources/learnings/`.
 
 ## Concepts (synthesized)
