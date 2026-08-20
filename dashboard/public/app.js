@@ -5585,7 +5585,7 @@ function renderAdminTasks() {
 // Sessions tab view state: cost period window + sort. Cost is summed per
 // session from transcripts server-side (see /api/sessions); default view is
 // ranked by cost over 30d so the fat tail (few sessions, most spend) is on top.
-const sessionsView = { period: '30d', sort: 'cost', unavailable: null };
+const sessionsView = { period: '30d', sort: 'cost', filter: 'all', unavailable: null };
 
 async function loadAdminSessions() {
   const el = document.getElementById('admin-sessions-content');
@@ -5657,6 +5657,14 @@ function renderAdminSessions() {
     `<button class="admin-action-btn${p === val ? ' success' : ''}" data-sessions-period="${val}">${label}</button>`;
   const sortBtn = (val, label) =>
     `<button class="admin-action-btn${sessionsView.sort === val ? ' success' : ''}" data-sessions-sort="${val}">${label}</button>`;
+  // Status counts for the filter chips — from the FULL unfiltered set so a chip's
+  // count is stable regardless of which filter is active.
+  const nEsc = adminState.sessions.filter((s) => s.costStatus === 'escalated').length;
+  const nStop = adminState.sessions.filter((s) => s.costStatus === 'stopped').length;
+  const filterBtn = (val, label, count) =>
+    `<button class="admin-action-btn${sessionsView.filter === val ? ' success' : ''}" data-sessions-filter="${val}">${label}${
+      count != null ? ` <span style="color:var(--text-muted)">${count}</span>` : ''
+    }</button>`;
   const controls =
     `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">` +
     `<span style="color:var(--text-muted);font-size:10px">Cost window:</span>` +
@@ -5666,6 +5674,12 @@ function renderAdminSessions() {
     `<span style="color:var(--text-muted);font-size:10px;margin-left:8px">Sort:</span>` +
     sortBtn('cost', 'Cost') +
     sortBtn('recent', 'Recent') +
+    // Cost-status filter — jump straight to the sessions needing a decision.
+    `<span style="color:var(--text-muted);font-size:10px;margin-left:8px">Show:</span>` +
+    filterBtn('all', 'All') +
+    filterBtn('actionable', '⚑ Needs decision', nEsc + nStop) +
+    filterBtn('escalated', 'Escalated', nEsc) +
+    filterBtn('stopped', 'Stopped', nStop) +
     (costUnavailable
       ? `<span title="${escAttr(String(sessionsView.unavailable))}" style="color:#94A3B8;font-size:10px;margin-left:8px">cost: ccusage unavailable</span>`
       : '') +
@@ -5678,6 +5692,19 @@ function renderAdminSessions() {
   let rows = adminState.sessions;
   if (sessionsView.sort === 'recent') {
     rows = [...rows].sort((a, b) => String(b.last_active || '').localeCompare(String(a.last_active || '')));
+  }
+  // Client-side cost-status filter (the dropdown chips). 'actionable' = escalated OR
+  // stopped — the sessions a human still needs to Continue/Stop.
+  if (sessionsView.filter === 'actionable') {
+    rows = rows.filter((s) => s.costStatus === 'escalated' || s.costStatus === 'stopped');
+  } else if (sessionsView.filter === 'escalated') {
+    rows = rows.filter((s) => s.costStatus === 'escalated');
+  } else if (sessionsView.filter === 'stopped') {
+    rows = rows.filter((s) => s.costStatus === 'stopped');
+  }
+  if (rows.length === 0) {
+    el.innerHTML = controls + `<div class="admin-empty">No sessions match "${esc(sessionsView.filter)}"</div>`;
+    return;
   }
   const totalCost = rows.reduce((s, r) => s + (r.cost || 0), 0);
   // Cost distribution across sessions with priced activity in the window. The
@@ -6019,6 +6046,13 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
   if (sSort) {
     sessionsView.sort = sSort.dataset.sessionsSort;
     loadAdminSessions();
+    return;
+  }
+  // Cost-status filter chip — client-side (no re-fetch), just re-render the table.
+  const sFilter = e.target.closest('[data-sessions-filter]');
+  if (sFilter) {
+    sessionsView.filter = sFilter.dataset.sessionsFilter;
+    renderAdminSessions();
     return;
   }
   const btn = e.target.closest('[data-action]');
