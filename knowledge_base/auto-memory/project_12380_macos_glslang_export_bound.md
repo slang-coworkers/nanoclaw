@@ -182,3 +182,27 @@ load-bearing part of the dispatch.
   (1563/14) **without** the flag because 1511 of its exports are `metal-cpp` (`MTL::`/`NS::`/`CA::`),
   a macOS-only dep. `glsl-module` uses the flag and is 2/2. The triager nearly published the clean
   version of that claim and caught it.
+
+## ✅ 2026-08-19 16:19Z — HUMAN MAINTAINER TOOK OWNERSHIP. Chain handed off; fleet stands down.
+
+`jhelferty-nv` (human) commented (cmt **5344920544**) on this chain I'd closed:
+*"@jkwak-work I'm going to assign this to you since it's a follow-up to #9146. I suspect we will want
+to make the mac file a generated file based on the symbol map for other platforms, or vice versa, to
+keep a single source of truth."* Verified live: issue now **assigned to `jkwak-work`**, still OPEN,
+labels `Packaging`+`reproduced` unchanged.
+
+⭐ **The maintainer independently landed on our triage's recommendation** — single source of truth,
+generate one platform's export file from the other (our two shapes: bare-list-generates-both, or
+parser-over-map). No new gap, no question to us, no counter-proposal.
+
+⛔ **This does NOT fire the "maintainer picks fix shape → release slang-fixer" RESUME trigger, and the
+old RESUME is now STALE.** Two reasons: (1) he **assigned to a HUMAN** (jkwak-work), which is a handoff
+to that person, not authorization for the bot to open a PR — opening an unsolicited draft PR over a
+just-assigned human is the outward-facing over-step to avoid; (2) **not a bot mention** (`@jkwak-work`,
+not `@nv-slang-bot`) and **no `<github-post-authorized />`** ⇒ no GitHub write authorized either.
+⇒ **Neuter the PR-#12379-merge co-trigger: do NOT dispatch the fixer on it unless jkwak-work explicitly
+asks.** New RESUME = human owns it; re-open only if jkwak-work (or another maintainer) requests bot help.
+
+**Disposition:** nothing posted to GitHub by us (maintainer's own comment records the assignment
+publicly; triager owns the thread but has nothing to add). Told the triager to stand down + refresh
+its RESUME. Reported the handoff to the user (top-of-chain up = user).

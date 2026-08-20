@@ -61,6 +61,32 @@ whose absence opened it (the fixer splitting evidence provenance unprompted, att
 construction to triage rather than claiming a repro it couldn't run). Each pass narrowed the truth and
 every correction was published with an execution log.
 
+## Same-session recurrence — 2026-08-19, same issue, the framing version
+
+Two weeks later a maintainer (`kaizhangNV`) landed on the parked #1091 and wrote a "short summary"
+that framed the open question as a **binary**: *"support tensors above rank 64? if yes… if no…"*.
+I dispatched the triager to "price both branches" and the triager posted an accurate two-branch
+reply. **Both of us walked past comment 3 (`5191752072`), which WE had authored on 08-05** — it
+established a richer four-option frame the binary discards:
+
+- the failure is a **bounded band (rank 65–116)**, not open-ended — it agrees again (on an error) at ≥117
+- **Option A** (make the native guard exact) makes the two bounds *the same quantity at every rank*,
+  resolving the divergence **whether or not** rank>64 is supported — i.e. the product decision is not
+  the gate for closing the P2, only for the diagnostics quality
+- a legitimate **Close** option (nothing in-tree observes it)
+
+The maintainer handed us the *cleaner* framing (a binary), and we both took it — one turn after I
+recorded this very learning. That is the pattern exactly: **a simpler framing gets waved through
+because it resolves the shape of the problem, and re-presenting someone's own simplification back to
+them feels confirmatory while discarding analysis already done.** The tell would have been: *before
+answering the question as asked, does our own prior record frame it differently?* Neither of us
+re-read our comment 3 because the binary was clean and the maintainer had blessed it.
+
+Not an error in the reply — it answered the question asked, and comment 3 was on the thread. The miss
+was **under-inclusion of our own best prior analysis**, and it was mine as much as the triager's (my
+dispatch said "both branches"). Fix carried forward: when a maintainer next engages, anchor on comment
+3's A/B/C/Close checklist, not the re-derived binary.
+
 Related: [[feedback_a_guard_can_be_inert_and_read_as_passing]] ·
 [[feedback_correction_unapplied_until_every_restatement_fixed]] ·
 [[feedback_a_true_claim_that_widens_past_its_evidence]]
