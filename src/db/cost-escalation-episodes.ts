@@ -154,6 +154,30 @@ export function getEpisodeByShortId(shortId: string): CostEpisodeRow | undefined
     .get(shortId) as CostEpisodeRow | undefined;
 }
 
+/**
+ * The live (still-pending, un-expired) episode for a session, if any. The dashboard pill
+ * routes its decision through THIS episode's CAS so the secondary surface is money-safe and
+ * epoch-carrying — the same guarantee as the card. Newest-first (a ceiling supersedes a cap
+ * within the same epoch). Returns undefined when there is no live episode (S1 observation
+ * mode, an already-expired card, or a session whose escalation was already resolved) — the
+ * pill then falls back to the legacy unconditional override.
+ */
+export function getPendingEpisodeForSession(
+  sessionId: string,
+  nowIso = new Date().toISOString(),
+): CostEpisodeRow | undefined {
+  const d = db();
+  if (!d) return undefined;
+  return d
+    .prepare(
+      `SELECT * FROM cost_escalation_episodes
+        WHERE session_id = ? AND decision_state = 'pending'
+          AND (expires_at IS NULL OR datetime(expires_at) > datetime(?))
+        ORDER BY created_at DESC LIMIT 1`,
+    )
+    .get(sessionId, nowIso) as CostEpisodeRow | undefined;
+}
+
 export interface ResolveResult {
   /** True iff THIS call won the compare-and-set (was the first to resolve a pending row). */
   won: boolean;

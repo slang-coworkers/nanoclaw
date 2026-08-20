@@ -17,6 +17,7 @@ import { createSession } from './sessions.js';
 import {
   expireEpisode,
   getEpisode,
+  getPendingEpisodeForSession,
   ingestEpisode,
   listExpiredPending,
   markEffectApplied,
@@ -167,6 +168,36 @@ describe('cost-escalation-episodes — cap→ceiling supersession', () => {
     expect(getEpisode('esc-sess-cost-1-cap-5')?.decision_state).toBe('superseded');
     // A subsequent click on the superseded cap card cannot win.
     expect(resolveCostEpisode('esc-sess-cost-1-cap-5', 'continue', 'user:A', { nowIso: NOW }).won).toBe(false);
+  });
+});
+
+describe('cost-escalation-episodes — getPendingEpisodeForSession (the dashboard-pill route)', () => {
+  it('returns a live pending episode, but NOT an expired or already-resolved one', () => {
+    // No episode → pill falls back to the legacy unconditional override.
+    expect(getPendingEpisodeForSession(SESSION_ID, NOW)).toBeUndefined();
+
+    ingestEpisode(capEpisode()); // pending, expires +24h
+    expect(getPendingEpisodeForSession(SESSION_ID, NOW)?.episode_id).toBe('esc-sess-cost-1-cap-5');
+
+    // An expired pending episode is excluded (the CAS would refuse it anyway → pill routes legacy).
+    expect(getPendingEpisodeForSession(SESSION_ID, '2026-08-25T00:00:00.000Z')).toBeUndefined();
+
+    // Once resolved, it is no longer returned (reversing a Stop routes legacy).
+    resolveCostEpisode('esc-sess-cost-1-cap-5', 'stop', 'user:A', { nowIso: NOW });
+    expect(getPendingEpisodeForSession(SESSION_ID, NOW)).toBeUndefined();
+  });
+
+  it('returns the newest pending episode when more than one exists', () => {
+    ingestEpisode(capEpisode({ created_at: '2026-08-20T10:00:00.000Z' }));
+    ingestEpisode(
+      capEpisode({
+        episode_id: 'esc-sess-cost-1-cap-6',
+        short_id: 'cst-newer',
+        epoch_key: '6',
+        created_at: '2026-08-20T11:00:00.000Z',
+      }),
+    );
+    expect(getPendingEpisodeForSession(SESSION_ID, NOW)?.episode_id).toBe('esc-sess-cost-1-cap-6');
   });
 });
 

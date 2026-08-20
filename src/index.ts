@@ -354,6 +354,17 @@ async function main(): Promise<void> {
       log.debug('Dashboard credential reject — response registry not yet implemented');
     },
     onCostOverrideFn: async (sessionId: string, decision: 'continue' | 'stop') => {
+      // Pill = the SECONDARY surface, but with the SAME money-safety as the card: if the
+      // session has a live escalation episode, route the decision through its CAS (epoch
+      // echo + at-most-once enqueue). Otherwise — S1 observation mode, an already-expired
+      // card, or reversing a prior Stop — fall back to the legacy unconditional override.
+      const { getPendingEpisodeForSession } = await import('./db/cost-escalation-episodes.js');
+      const episode = getPendingEpisodeForSession(sessionId);
+      if (episode) {
+        const { decideCostEpisode } = await import('./modules/cost-approval/index.js');
+        await decideCostEpisode(episode.episode_id, decision, 'dashboard:pill');
+        return;
+      }
       const { routeCostOverrideToSession } = await import('./router.js');
       await routeCostOverrideToSession({ sessionId, decision });
     },
