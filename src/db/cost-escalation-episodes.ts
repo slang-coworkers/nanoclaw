@@ -297,41 +297,7 @@ export function bumpEffectAttempt(episodeId: string, error?: string): void {
     ?.prepare(`UPDATE cost_escalation_episodes SET effect_attempts=effect_attempts+1, last_error=? WHERE episode_id=?`)
     .run(error ?? null, episodeId);
 }
-export function markCard(
-  episodeId: string,
-  state: CostCardState,
-  platformMessageId?: string | null,
-  approvalId?: string | null,
-): void {
-  db()
-    ?.prepare(
-      `UPDATE cost_escalation_episodes
-        SET card_state=@state,
-            platform_message_id=COALESCE(@pmid, platform_message_id),
-            approval_id=COALESCE(@aid, approval_id)
-      WHERE episode_id=@id`,
-    )
-    .run({ id: episodeId, state, pmid: platformMessageId ?? null, aid: approvalId ?? null });
-}
-
 // ── reconciler queries (the host-sweep repairs half-done state from these) ──
-/**
- * Cards that still need (re)sending. Includes a stale `sending` (a crash mid-send) so it is
- * retried, and a born-terminal ceiling episode (decision_state='stopped', reason='ceiling')
- * whose informational hard-stop card failed to deliver — otherwise that notice is lost.
- */
-export function listUndeliveredCards(limit = 50): CostEpisodeRow[] {
-  const d = db();
-  if (!d) return [];
-  return d
-    .prepare(
-      `SELECT * FROM cost_escalation_episodes
-      WHERE card_state IN ('undelivered','sending','failed')
-        AND (decision_state = 'pending' OR (reason = 'ceiling' AND decision_state = 'stopped'))
-      ORDER BY created_at LIMIT ?`,
-    )
-    .all(limit) as CostEpisodeRow[];
-}
 /** Decided episodes whose effect has not yet landed — re-drive them. */
 export function listUnappliedEffects(limit = 50): CostEpisodeRow[] {
   const d = db();

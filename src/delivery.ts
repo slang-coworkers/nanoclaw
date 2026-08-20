@@ -32,7 +32,7 @@ import { runGuarded, type DeliveryGuardSpec, type GuardedDeliveryHandler } from 
 import { isUnguarded, unguarded, type Unguarded } from './guard/index.js';
 import { pickApprover, pickApprovalDelivery } from './modules/approvals/primitive.js';
 import { getEpisode as getCostEpisode } from './db/cost-escalation-episodes.js';
-import { ingestCostEscalation, sendCostCard } from './modules/cost-approval/index.js';
+import { ingestCostEscalation, requestCostDecisionCard } from './modules/cost-approval/index.js';
 import { log } from './log.js';
 import { normalizeOptions } from './channels/ask-question.js';
 import { clearOutbox, openInboundDb, openOutboundDb, readOutboxFiles } from './session-manager.js';
@@ -715,9 +715,9 @@ registerDeliveryAction(
     // runner emits no episodeId → ingest no-ops → DM fires (back-compat).
     const ingest = ingestCostEscalation(content, session);
     if (ingest.cardOwnsNotification) {
-      if (ingest.episodeId) {
+      if (ingest.episodeId && ingest.isNew) {
         const ep = getCostEpisode(ingest.episodeId);
-        if (ep) await sendCostCard(ep);
+        if (ep) await requestCostDecisionCard(session, ep);
       }
       return;
     }
