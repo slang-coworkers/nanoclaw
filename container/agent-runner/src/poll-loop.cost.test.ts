@@ -32,7 +32,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 
 import { closeSessionDb, initTestSessionDb } from './db/connection.js';
 import { getUndeliveredMessages } from './db/messages-out.js';
-import { setCostCap } from './db/session-state.js';
+import { getCostCap, setCostCap } from './db/session-state.js';
 import { __setConfigForTest } from './config.js';
 import { __costCapTestHooks as H } from './poll-loop.js';
 import type { RunnerConfig } from './config.js';
@@ -70,6 +70,8 @@ function seed(over: Parameters<typeof H.setState>[0] = {}): void {
     costCeilingUsd: 0,
     costCeilingEscalated: false,
     costCeilingHardStop: false,
+    costBudgetGen: 0,
+    costEpisodeId: undefined,
     ...over,
   });
 }
@@ -105,9 +107,22 @@ function escalations(reason?: 'cap' | 'ceiling') {
   });
 }
 
-/** A cost_override inbound row carrying `{ decision }`. */
+/** A cost_override inbound row carrying `{ decision }` (legacy — no epoch fence). */
 function override(decision: 'continue' | 'stop'): MessageInRow {
   return { id: `ov-${decision}`, content: JSON.stringify({ decision }) } as unknown as MessageInRow;
+}
+
+/** A cost_override inbound row carrying `{ decision, epochKey }` (fenced, card path). */
+function fencedOverride(decision: 'continue' | 'stop', epochKey: number | string): MessageInRow {
+  return {
+    id: `ov-${decision}-${epochKey}`,
+    content: JSON.stringify({ decision, epochKey: String(epochKey) }),
+  } as unknown as MessageInRow;
+}
+
+/** The persisted cost_cap row on the real outbound DB (what the host reads). */
+function persistedCap() {
+  return getCostCap();
 }
 
 const todayUtc = () => new Date().toISOString().slice(0, 10);
@@ -292,5 +307,116 @@ describe('two-tier cost cap — FIX #4: only the Claude provider accrues', () =>
 
     expect(H.getState().costSpentUsd).toBe(0);
     expect(escalations()).toHaveLength(0);
+  });
+});
+
+/**
+ * Budget-generation GRANT fence (cost-approval card, money-safety).
+ *
+ * The card lets a human enqueue at most one `cost_override` per episode (the host
+ * central CAS), but delivery is at-least-once: a host crash between CAS-commit and
+ * enqueue-retry can re-deliver the SAME override. The runner's exactly-once guarantee
+ * is a monotonic `budgetGen`: an escalation stamps its episode with the gen live at
+ * escalation; an override carries that gen as `epochKey`; applyCostOverride refuses any
+ * whose epoch ≠ the current gen. Applying a Continue rotates the gen, so a re-enqueue is
+ * auto-stale — and any epoch-changing event (/clear, new_session, daily rollover) also
+ * rotates it, closing the one money-unsafe path v8 had (a decision landing after a reset).
+ * These cases pin: no double-grant, no post-reset/rollover stale apply, no stale-Stop
+ * quiesce of a fresh session, legacy (no-epoch) back-compat, and the host-ingest contract.
+ */
+describe('two-tier cost cap — budget-generation grant fence (g)', () => {
+  it('(g1) a re-enqueued Continue (same epoch) is REFUSED — grants exactly once, never twice', () => {
+    seed({ costCeilingUsd: 100 });
+    H.recordTurnCost(usage(12)); // escalate 'cap' at gen 0; episode stamped epoch "0"
+    expect(H.getState().costBudgetGen).toBe(0);
+    expect(H.computeCostStatus()).toBe('escalated');
+
+    // Host resolves the episode → enqueues continue{epoch:"0"}. Applies: cap +$10, gen→1.
+    H.applyCostOverride(fencedOverride('continue', 0));
+    expect(H.getState().costCapUsd).toBeCloseTo(20);
+    expect(H.getState().costBudgetGen).toBe(1);
+    expect(H.getState().costEpisodeId).toBeUndefined(); // episode resolved → dropped
+    expect(persistedCap()?.episodeId).toBeUndefined();
+
+    // Host crash + retry re-delivers the IDENTICAL override. Its epoch "0" ≠ live gen 1.
+    H.applyCostOverride(fencedOverride('continue', 0));
+    expect(H.getState().costCapUsd).toBeCloseTo(20); // NOT 30 — the second grant is refused
+    expect(H.getState().costBudgetGen).toBe(1); // refused → no rotation
+  });
+
+  it('(g2) a Continue that lands AFTER a /clear reset is REFUSED (the v8 money-unsafe path, closed)', () => {
+    seed({ costCeilingUsd: 100 });
+    H.recordTurnCost(usage(12)); // escalate at gen 0
+    expect(H.getState().costBudgetGen).toBe(0);
+
+    H.resetCostForNewSession(); // /clear → gen→1, fresh $10 cap, $0 spend
+    expect(H.getState().costBudgetGen).toBe(1);
+    expect(H.getState().costCapUsd).toBeCloseTo(10);
+
+    // The pre-clear decision arrives late. Its epoch "0" ≠ live gen 1 → refused.
+    H.applyCostOverride(fencedOverride('continue', 0));
+    expect(H.getState().costCapUsd).toBeCloseTo(10); // NOT 20 — no grant on the cleared session
+  });
+
+  it('(g3) a yesterday-daily Continue is REFUSED after a UTC-day rollover rotates the gen', () => {
+    seed({ costImmortal: true, costWindow: 'daily', costDayKey: todayUtc(), costCeilingUsd: 100 });
+    H.recordTurnCost(usage(12)); // escalate 'cap' on day 1 at gen 0
+    expect(H.getState().costBudgetGen).toBe(0);
+
+    H.setState({ costDayKey: '2000-01-01' }); // backdate → force rollover on next turn
+    H.recordTurnCost(usage(1)); // rollover: gen→1, spend reset, cap back to allotment
+    expect(H.getState().costBudgetGen).toBe(1);
+    const capAfterRollover = H.getState().costCapUsd;
+
+    // Yesterday's decision (epoch "0") arrives today. "0" ≠ live gen 1 → refused.
+    H.applyCostOverride(fencedOverride('continue', 0));
+    expect(H.getState().costCapUsd).toBeCloseTo(capAfterRollover); // no cross-day grant
+  });
+
+  it('(g4) a LEGACY override with no epochKey applies unconditionally (dashboard-pill back-compat)', () => {
+    // An escalated state at a non-zero gen; the pill path enqueues no epochKey.
+    seed({ costCeilingUsd: 100, costBudgetGen: 7, costSpentUsd: 12, costEscalatedAt: 'x' });
+
+    H.applyCostOverride(override('continue')); // no epochKey → fence is a no-op
+    expect(H.getState().costCapUsd).toBeCloseTo(20); // applied despite gen 7
+    expect(H.getState().costBudgetGen).toBe(8); // still re-arms after applying
+  });
+
+  it('(g5) a stale Stop (wrong epoch) is REFUSED — it cannot quiesce a fresh session', () => {
+    seed({ costCeilingUsd: 100 });
+    H.recordTurnCost(usage(12)); // escalate at gen 0
+    H.resetCostForNewSession(); // fresh session, gen→1, not stopped
+    expect(H.getState().costStopRequested).toBe(false);
+
+    H.applyCostOverride(fencedOverride('stop', 0)); // pre-reset Stop, epoch "0" ≠ gen 1
+    expect(H.getState().costStopRequested).toBe(false); // still running
+    expect(H.computeCostStatus()).toBe('ok');
+  });
+
+  it('(g6) escalation stamps the episode id + persists budgetGen (host read-only ingest contract)', () => {
+    seed({ costCeilingUsd: 100, costBudgetGen: 3 });
+    H.recordTurnCost(usage(12)); // escalate 'cap' at gen 3
+
+    expect(H.getState().costEpisodeId).toBeDefined();
+    const cap = persistedCap();
+    expect(cap?.status).toBe('escalated');
+    expect(cap?.budgetGen).toBe(3); // host reads the same gen the runner fences on
+    expect(cap?.episodeId).toBeDefined();
+    expect(cap?.episodeId).toMatch(/^esc-.*-cap-3$/); // esc-<sid>-<reason>-<gen>
+    // The outbox escalation carries the same epoch fence the override must echo back.
+    const [row] = escalations('cap');
+    const payload = JSON.parse(row.content) as { epochKey?: string; episodeId?: string };
+    expect(payload.epochKey).toBe('3');
+    expect(payload.episodeId).toBe(cap?.episodeId);
+  });
+
+  it('(g7) a correctly-fenced Continue at the LIVE gen still applies (fence is not over-eager)', () => {
+    seed({ costCeilingUsd: 100, costBudgetGen: 5 });
+    H.recordTurnCost(usage(12)); // escalate at gen 5
+
+    H.applyCostOverride(fencedOverride('continue', 5)); // matches live gen → applies
+    expect(H.getState().costCapUsd).toBeCloseTo(20);
+    expect(H.getState().costBudgetGen).toBe(6);
+    expect(H.getState().costStopRequested).toBe(false);
   });
 });
