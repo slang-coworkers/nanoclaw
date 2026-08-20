@@ -178,6 +178,23 @@ export function getPendingEpisodeForSession(
     .get(sessionId, nowIso) as CostEpisodeRow | undefined;
 }
 
+/**
+ * The newest episode for a session in ANY state — used by the dashboard pill to fence a
+ * decision even when there is no live PENDING episode. A resolved episode still carries an
+ * `epoch_key`; routing the pill override with it lets the runner refuse a duplicate/stale
+ * press (no double-grant, since a Continue already rotated the generation) while still
+ * applying a genuine reversal (the generation is unchanged after a Stop). A session that
+ * has NEVER emitted a protocol episode returns undefined → the pill's legacy unconditional
+ * override (stale runner) is the only place an unfenced override is allowed.
+ */
+export function getLatestEpisodeForSession(sessionId: string): CostEpisodeRow | undefined {
+  const d = db();
+  if (!d) return undefined;
+  return d
+    .prepare(`SELECT * FROM cost_escalation_episodes WHERE session_id = ? ORDER BY created_at DESC LIMIT 1`)
+    .get(sessionId) as CostEpisodeRow | undefined;
+}
+
 export interface ResolveResult {
   /** True iff THIS call won the compare-and-set (was the first to resolve a pending row). */
   won: boolean;
@@ -299,13 +316,18 @@ export function markCard(episodeId: string, state: CostCardState, platformMessag
 }
 
 // ── reconciler queries (the host-sweep repairs half-done state from these) ──
-/** Cards that still need (re)sending. */
+/**
+ * Cards that still need (re)sending. Includes a stale `sending` (a crash mid-send) so it is
+ * retried, and a born-terminal ceiling episode (decision_state='stopped', reason='ceiling')
+ * whose informational hard-stop card failed to deliver — otherwise that notice is lost.
+ */
 export function listUndeliveredCards(limit = 50): CostEpisodeRow[] {
   const d = db();
   if (!d) return [];
   return d.prepare(
     `SELECT * FROM cost_escalation_episodes
-      WHERE card_state IN ('undelivered','sending','failed') AND decision_state='pending'
+      WHERE card_state IN ('undelivered','sending','failed')
+        AND (decision_state = 'pending' OR (reason = 'ceiling' AND decision_state = 'stopped'))
       ORDER BY created_at LIMIT ?`,
   ).all(limit) as CostEpisodeRow[];
 }
@@ -331,16 +353,18 @@ export function listExpiredPending(nowIso = new Date().toISOString(), limit = 50
 }
 
 /**
- * S2 activation guard: mark every pre-activation 'observed'/'pending' episode
- * `superseded` so flipping the flag on never cards a backlog of observation-era
- * (S1) episodes. Called once at activation with the activation timestamp.
+ * S2 activation guard: mark every observation-era ('observed', S1) episode `superseded`.
+ * Called at each S2 boot. Targets ONLY 'observed' — never 'pending' — so it can never
+ * nuke a genuine in-flight card that a restart is resuming. (Observed rows also carry
+ * card_state='observed', which the reconciler's card query excludes, so this is defense
+ * in depth: it guarantees a flag flip can never card a backlog of S1 episodes.)
  */
-export function supersedePreActivationEpisodes(activationIso: string): number {
+export function supersedeObservedEpisodes(nowIso = new Date().toISOString()): number {
   const d = db();
   if (!d) return 0;
   return d.prepare(
     `UPDATE cost_escalation_episodes
         SET decision_state='superseded', resolved_at=?, resolved_by='supersede:activation'
-      WHERE created_at < ? AND decision_state IN ('observed','pending')`,
-  ).run(activationIso, activationIso).changes;
+      WHERE decision_state='observed'`,
+  ).run(nowIso).changes;
 }

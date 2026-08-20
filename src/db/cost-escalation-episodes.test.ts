@@ -17,13 +17,17 @@ import { createSession } from './sessions.js';
 import {
   expireEpisode,
   getEpisode,
+  getLatestEpisodeForSession,
   getPendingEpisodeForSession,
   ingestEpisode,
   listExpiredPending,
+  listUndeliveredCards,
+  markCard,
   markEffectApplied,
   markEffectEnqueued,
   resolveCostEpisode,
   supersedeLiveCapEpisodes,
+  supersedeObservedEpisodes,
   type CostEpisodeInsert,
 } from './cost-escalation-episodes.js';
 
@@ -198,6 +202,59 @@ describe('cost-escalation-episodes — getPendingEpisodeForSession (the dashboar
       }),
     );
     expect(getPendingEpisodeForSession(SESSION_ID, NOW)?.episode_id).toBe('esc-sess-cost-1-cap-6');
+  });
+
+  it('getLatestEpisodeForSession returns the newest episode in ANY state (the pill fence)', () => {
+    // No episodes → undefined → pill uses the legacy unconditional override.
+    expect(getLatestEpisodeForSession(SESSION_ID)).toBeUndefined();
+
+    ingestEpisode(capEpisode({ created_at: '2026-08-20T10:00:00.000Z' }));
+    resolveCostEpisode('esc-sess-cost-1-cap-5', 'continue', 'user:A', { nowIso: NOW }); // resolved
+
+    // Even resolved, it is returned so the pill carries its epoch as the fence (P0 fix:
+    // a bare unfenced pill Continue after a card Continue would double-grant).
+    const latest = getLatestEpisodeForSession(SESSION_ID);
+    expect(latest?.episode_id).toBe('esc-sess-cost-1-cap-5');
+    expect(latest?.epoch_key).toBe('5');
+    expect(getPendingEpisodeForSession(SESSION_ID, NOW)).toBeUndefined(); // but not "pending"
+  });
+});
+
+describe('cost-escalation-episodes — card resend + activation supersede (reconciler fixes)', () => {
+  it('listUndeliveredCards resends a born-terminal ceiling card, not only pending cap cards', () => {
+    ingestEpisode(capEpisode()); // pending cap, card undelivered
+    ingestEpisode(
+      capEpisode({
+        episode_id: 'esc-sess-cost-1-ceiling-5',
+        short_id: 'cst-ceil05',
+        reason: 'ceiling',
+        decision_state: 'stopped', // born-terminal hard-stop
+      }),
+    );
+    const ids = listUndeliveredCards().map((e) => e.episode_id);
+    expect(ids).toContain('esc-sess-cost-1-cap-5'); // pending cap
+    expect(ids).toContain('esc-sess-cost-1-ceiling-5'); // born-terminal ceiling — was dropped before the fix
+
+    // A resolved cap card is NOT resent.
+    resolveCostEpisode('esc-sess-cost-1-cap-5', 'continue', 'user:A', { nowIso: NOW });
+    expect(listUndeliveredCards().map((e) => e.episode_id)).not.toContain('esc-sess-cost-1-cap-5');
+  });
+
+  it('a stale "sending" card is still listed for resend (crash mid-send)', () => {
+    ingestEpisode(capEpisode());
+    markCard('esc-sess-cost-1-cap-5', 'sending');
+    expect(listUndeliveredCards().map((e) => e.episode_id)).toContain('esc-sess-cost-1-cap-5');
+  });
+
+  it('supersedeObservedEpisodes marks only S1 observed rows — never a live pending card', () => {
+    ingestEpisode(capEpisode({ decision_state: 'observed', card_state: 'observed' }));
+    ingestEpisode(
+      capEpisode({ episode_id: 'esc-sess-cost-1-cap-6', short_id: 'cst-pending', epoch_key: '6' }), // pending
+    );
+
+    expect(supersedeObservedEpisodes(NOW)).toBe(1); // only the observed row
+    expect(getEpisode('esc-sess-cost-1-cap-5')?.decision_state).toBe('superseded');
+    expect(getEpisode('esc-sess-cost-1-cap-6')?.decision_state).toBe('pending'); // untouched
   });
 });
 

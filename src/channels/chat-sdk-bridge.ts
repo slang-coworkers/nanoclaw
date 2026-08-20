@@ -155,6 +155,7 @@ async function handleCostCardAction(
   actionId: string,
   threadId: string,
   messageId: string,
+  channelType: string,
   user: { userId?: string; userName?: string; fullName?: string } | undefined,
   editor: Pick<Adapter, 'editMessage'>,
 ): Promise<void> {
@@ -164,9 +165,13 @@ async function handleCostCardAction(
   const decision = parts[2];
   if (decision !== 'continue' && decision !== 'stop') return;
   const actorName = user?.userName || user?.fullName || '';
-  const resolvedBy = `chat:${user?.userId || 'unknown'}`;
-  const { episode, outcome } = await decideCostEpisodeByShortId(shortId, decision, resolvedBy);
-  if (!episode) return; // unknown short_id — leave the card untouched
+  // Namespace the platform user id to users(id) form (`<channelType>:<handle>`), mirroring
+  // the approval-card clicker check; the module verifies approver privilege before the CAS.
+  const clickerId = user?.userId ? (user.userId.includes(':') ? user.userId : `${channelType}:${user.userId}`) : null;
+  const { episode, outcome } = await decideCostEpisodeByShortId(shortId, decision, clickerId);
+  // Unauthorized / unknown-card: do NOT edit the message — a non-approver must not be able
+  // to blank an approver's card. Leave it standing for a real approver to act on.
+  if (!episode || outcome === 'unauthorized') return;
   try {
     const terminal = buildCostTerminalCard(episode, actorName, outcome);
     await editor.editMessage(threadId, messageId, {
@@ -366,7 +371,7 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
       chat.onAction(async (event) => {
         // Cost-cap escalation card click — funnels through the same CAS as every surface.
         if (event.actionId.startsWith('ncc:')) {
-          await handleCostCardAction(event.actionId, event.threadId, event.messageId, event.user, adapter);
+          await handleCostCardAction(event.actionId, event.threadId, event.messageId, adapter.name, event.user, adapter);
           return;
         }
         if (!event.actionId.startsWith('ncq:')) return;
@@ -778,12 +783,11 @@ async function handleForwardedEvent(
         const decision = parts[2];
         if (parts.length >= 3 && (decision === 'continue' || decision === 'stop')) {
           const actorName = user?.global_name || user?.username || '';
-          const { episode, outcome } = await decideCostEpisodeByShortId(
-            parts[1],
-            decision,
-            `chat:${user?.id || 'unknown'}`,
-          );
-          if (episode) {
+          // Namespace the Discord user id; the module verifies approver privilege pre-CAS.
+          const rawId = user?.id;
+          const clickerId = rawId ? (rawId.includes(':') ? rawId : `${adapter.name}:${rawId}`) : null;
+          const { episode, outcome } = await decideCostEpisodeByShortId(parts[1], decision, clickerId);
+          if (episode && outcome !== 'unauthorized') {
             const terminal = buildCostTerminalCard(episode, actorName, outcome);
             try {
               await fetch(`https://discord.com/api/v10/interactions/${interactionId}/${interactionToken}/callback`, {

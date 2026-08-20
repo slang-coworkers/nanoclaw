@@ -354,19 +354,31 @@ async function main(): Promise<void> {
       log.debug('Dashboard credential reject — response registry not yet implemented');
     },
     onCostOverrideFn: async (sessionId: string, decision: 'continue' | 'stop') => {
-      // Pill = the SECONDARY surface, but with the SAME money-safety as the card: if the
-      // session has a live escalation episode, route the decision through its CAS (epoch
-      // echo + at-most-once enqueue). Otherwise — S1 observation mode, an already-expired
-      // card, or reversing a prior Stop — fall back to the legacy unconditional override.
-      const { getPendingEpisodeForSession } = await import('./db/cost-escalation-episodes.js');
-      const episode = getPendingEpisodeForSession(sessionId);
-      if (episode) {
+      // Pill = the SECONDARY surface, but with the SAME money-safety as the card.
+      //  1. A live PENDING episode → route through its CAS (at-most-once decision + fence).
+      //  2. No pending, but the session HAS a (resolved) episode → route with THAT episode's
+      //     epoch as the fence. This is the P0 fix: a bare unfenced override here would let a
+      //     pill Continue double-grant after a card Continue already rotated the generation.
+      //     The fence makes a duplicate/stale press a no-op, while a genuine reversal (the
+      //     generation is unchanged after a Stop) still applies.
+      //  3. No episode ever (stale runner / never escalated) → the legacy unconditional
+      //     override — the ONLY place an unfenced override is allowed.
+      const { getPendingEpisodeForSession, getLatestEpisodeForSession } = await import(
+        './db/cost-escalation-episodes.js'
+      );
+      const pending = getPendingEpisodeForSession(sessionId);
+      if (pending) {
         const { decideCostEpisode } = await import('./modules/cost-approval/index.js');
-        await decideCostEpisode(episode.episode_id, decision, 'dashboard:pill');
+        await decideCostEpisode(pending.episode_id, decision, 'dashboard:pill');
         return;
       }
       const { routeCostOverrideToSession } = await import('./router.js');
-      await routeCostOverrideToSession({ sessionId, decision });
+      const latest = getLatestEpisodeForSession(sessionId);
+      await routeCostOverrideToSession({
+        sessionId,
+        decision,
+        ...(latest ? { epochKey: latest.epoch_key } : {}),
+      });
     },
   });
 

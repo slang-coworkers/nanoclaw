@@ -88,7 +88,7 @@ export function buildCostCardContent(ep: CostEpisodeRow): CostCardContent {
   };
 }
 
-export type CostCardOutcome = 'continued' | 'stopped' | 'expired' | 'already';
+export type CostCardOutcome = 'continued' | 'stopped' | 'expired' | 'already' | 'unauthorized';
 
 /**
  * The terminal card content shown after a click / expiry resolves the episode: keep the
