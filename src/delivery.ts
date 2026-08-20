@@ -31,6 +31,8 @@ import {
 import { runGuarded, type DeliveryGuardSpec, type GuardedDeliveryHandler } from './delivery-guard.js';
 import { isUnguarded, unguarded, type Unguarded } from './guard/index.js';
 import { pickApprover, pickApprovalDelivery } from './modules/approvals/primitive.js';
+import { getEpisode as getCostEpisode } from './db/cost-escalation-episodes.js';
+import { ingestCostEscalation, sendCostCard } from './modules/cost-approval/index.js';
 import { log } from './log.js';
 import { normalizeOptions } from './channels/ask-question.js';
 import { clearOutbox, openInboundDb, openOutboundDb, readOutboxFiles } from './session-manager.js';
@@ -705,6 +707,20 @@ registerDeliveryAction(
     const spentUsd = Number(content.spentUsd);
     const capUsd = Number(content.capUsd);
     const immortal = content.immortal === true;
+
+    // Ingest into the durable episode table (idempotent, fail-soft). Under S2 the
+    // interactive card owns the notification — send it (prompt path) and skip the legacy
+    // plain-text DM below; the host-sweep reconciler is the delivery backstop. Under S1
+    // (flag OFF) this records an observation-era row and the DM still fires. A stale
+    // runner emits no episodeId → ingest no-ops → DM fires (back-compat).
+    const ingest = ingestCostEscalation(content, session);
+    if (ingest.cardOwnsNotification) {
+      if (ingest.episodeId) {
+        const ep = getCostEpisode(ingest.episodeId);
+        if (ep) await sendCostCard(ep);
+      }
+      return;
+    }
 
     const approvers = pickApprover(session.agent_group_id);
     if (approvers.length === 0) {

@@ -321,6 +321,19 @@ export const APPROVER_CI_GATE = /^(1|true|yes|on)$/i.test(
 );
 
 /**
+ * Cost-cap escalation APPROVAL CARD (NanoClaw #1 cost cap, Option 2) — staged rollout.
+ * OFF (default): S1 — episodes are recorded (`cost_escalation_episodes`) and rendered
+ * read-only, but NO card is delivered, NO decision is actioned, and `maxBudgetUsd` is
+ * not enforced. Behavior is byte-for-byte the pre-card cost cap. ON: S2 — the full
+ * card + compare-and-set resolver + effect/receipt reconciler + expiry + native
+ * ceiling bound activate together, acting only on episodes created after activation.
+ * Default OFF so existing installs are unaffected until explicitly enabled.
+ */
+export const COST_APPROVAL_CARD = /^(1|true|yes|on)$/i.test(
+  (process.env.COST_APPROVAL_CARD || envConfig.COST_APPROVAL_CARD || '').trim(),
+);
+
+/**
  * Agent groups permitted to append to the approval-decision ledger — the
  * `record_decision` capability, enforced at the host boundary by
  * `approval_ledger.record_decision` (src/modules/approval-ledger/guard.ts).

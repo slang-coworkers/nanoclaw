@@ -103,6 +103,17 @@ export interface QueryInput {
   systemContext?: {
     instructions?: string;
   };
+
+  /**
+   * Per-turn spend ceiling in USD (the Tier-2 cost ceiling's remaining headroom).
+   * A provider that supports it (Claude → `maxBudgetUsd`) ends the in-flight query
+   * once this turn's cost reaches it — a SOFT brake on runaway spend. Best-effort:
+   * the SDK checks between calls, so a turn may overshoot by ≤ one in-flight call;
+   * `recordTurnCost` remains the canonical spend basis and the sole close decider.
+   * Undefined = no applicable ceiling (disabled, no ceiling, or an immortal group,
+   * which is never hard-stopped).
+   */
+  maxBudgetUsd?: number;
 }
 
 /**

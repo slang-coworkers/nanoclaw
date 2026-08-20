@@ -123,6 +123,22 @@ let costCeilingEscalated = false;
 // clear it, mirroring the absolute ceiling.
 let costCeilingHardStop = false;
 
+// Monotonic BUDGET GENERATION — the exactly-once GRANT fence for the cost-approval
+// card. Rotated on EVERY event that changes the budget epoch: /clear or new_session
+// (resetCostForNewSession), a daily rollover (recordTurnCost / respawn across a UTC
+// day), and each applied Continue (re-arm). An escalation stamps its episode with the
+// gen live at escalation; a cost_override carries that gen as `epochKey`, and
+// applyCostOverride REFUSES one whose epochKey ≠ the current gen. Because applying a
+// Continue rotates the gen, a re-enqueued Continue (host crash + retry) is auto-stale,
+// and a decision that lands after a /clear reset is refused — the one money-unsafe
+// path v8 had. Loaded from the persisted cost_cap so it survives respawn (never resets
+// backward). Legacy/pill overrides without epochKey apply unconditionally (back-compat).
+let costBudgetGen = 0;
+// The current escalation episode's stable id (`esc-<sid>-<reason>-<gen>`). Set when an
+// escalation fires, persisted into cost_cap so the host can ingest the episode from
+// durable state (read-only), cleared on reset/rollover/applied-Continue.
+let costEpisodeId: string | undefined;
+
 /** Current UTC day as "YYYY-MM-DD" — the daily-window bucket key. */
 function utcDayKey(): string {
   return new Date().toISOString().slice(0, 10);
@@ -161,21 +177,32 @@ function initCostTracking(providerName: string): void {
   if (!costEnabled) return;
 
   const persisted = getCostCap();
+  // Budget generation is MONOTONIC across the session lifetime — adopt the persisted
+  // value so a respawn keeps the same live gen (a mid-session respawn must NOT re-arm
+  // a pending grant). Rotations only ever move it forward (below + on reset/rollover).
+  costBudgetGen = persisted?.budgetGen ?? 0;
 
   if (costWindow === 'daily') {
     costDayKey = utcDayKey();
     const persistedIsToday = persisted?.dayKey === costDayKey;
+    // A respawn that crosses a UTC day is a daily rollover — rotate the gen so a
+    // yesterday-daily decision that arrives now is refused (mirrors the in-loop
+    // rollover in recordTurnCost). Guard on `persisted` so a brand-new session
+    // (no prior row) starts at gen 0 rather than spuriously rotating to 1.
+    if (!persistedIsToday && persisted) costBudgetGen++;
     // A fresh UTC day starts back at the p90/day allotment so the daily bound
     // holds day-over-day; only a same-day respawn adopts the persisted (possibly
     // 'continue'-raised) cap, spend, and escalation.
     costCapUsd = persistedIsToday && persisted?.capUsd && persisted.capUsd > 0 ? persisted.capUsd : costAllotmentUsd;
     costSpentUsd = persistedIsToday && persisted?.spentUsd && persisted.spentUsd > 0 ? persisted.spentUsd : 0;
     costEscalatedAt = persistedIsToday ? persisted?.escalatedAt : undefined;
+    costEpisodeId = persistedIsToday ? persisted?.episodeId : undefined;
   } else {
     costCapUsd = persisted?.capUsd && persisted.capUsd > 0 ? persisted.capUsd : costAllotmentUsd;
     costDayKey = undefined;
     costSpentUsd = persisted?.spentUsd && persisted.spentUsd > 0 ? persisted.spentUsd : 0;
     costEscalatedAt = persisted?.escalatedAt;
+    costEpisodeId = persisted?.episodeId;
   }
   costDecision = persisted?.decision;
   costDecidedAt = persisted?.decidedAt;
@@ -211,7 +238,23 @@ function resetCostForNewSession(): void {
   costCeilingHardStop = false;
   costDecision = undefined;
   costDecidedAt = undefined;
+  // /clear or new_session is a budget-epoch change: rotate the gen so a decision
+  // stamped for the pre-clear escalation is refused, and drop the resolved episode.
+  costBudgetGen++;
+  costEpisodeId = undefined;
   persistCostCap();
+}
+
+/**
+ * The per-turn ceiling soft-brake handed to the provider as `maxBudgetUsd`: the spend
+ * headroom left before the Tier-2 ceiling, or undefined when no ceiling applies
+ * (disabled, no ceiling configured, or an immortal group — which is never hard-stopped).
+ * Best-effort: the SDK checks between calls, so a turn may overshoot by ≤ one in-flight
+ * call; `recordTurnCost` stays the canonical basis and the sole close decider.
+ */
+function costCeilingRemainingUsd(): number | undefined {
+  if (!costEnabled || costImmortal || costCeilingUsd <= 0) return undefined;
+  return Math.max(0.01, costCeilingUsd - costSpentUsd);
 }
 
 /** Current status band from spent/cap/escalation/stop state. */
@@ -228,17 +271,24 @@ function computeCostStatus(): CostCapStatus {
 
 function persistCostCap(): void {
   if (!costEnabled) return;
+  const status = computeCostStatus();
   const state: CostCapState = {
     capUsd: costCapUsd,
     spentUsd: costSpentUsd,
-    status: computeCostStatus(),
+    status,
     immortal: costImmortal,
     window: costWindow,
+    // Always publish the live budget generation so the host reads the same gen the
+    // runner is fencing on (it stamps overrides with it via the escalation episode).
+    budgetGen: costBudgetGen,
     // dayKey is present ONLY for the daily window (shared contract #1).
     ...(costWindow === 'daily' && costDayKey ? { dayKey: costDayKey } : {}),
     ...(costEscalatedAt ? { escalatedAt: costEscalatedAt } : {}),
     ...(costDecision ? { decision: costDecision } : {}),
     ...(costDecidedAt ? { decidedAt: costDecidedAt } : {}),
+    // episodeId is meaningful only while an escalation is live (escalated/stopped);
+    // the host ingests it from this durable state (read-only) to build the card.
+    ...(costEpisodeId && (status === 'escalated' || status === 'stopped') ? { episodeId: costEpisodeId } : {}),
   };
   setCostCap(state);
 }
@@ -262,6 +312,10 @@ function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void 
       costDayKey = today;
       costSpentUsd = 0;
       costEscalatedAt = undefined;
+      // New UTC day = new budget epoch: rotate the gen so a yesterday-daily decision
+      // that arrives now is refused, and drop the resolved episode.
+      costBudgetGen++;
+      costEpisodeId = undefined;
       // Re-arm the immortal ceiling re-escalation for the new day — otherwise a
       // day-1 crossing latches it forever and every later day's ceiling breach
       // goes silent, killing the only visibility signal for a group class we
@@ -339,6 +393,11 @@ function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void 
  */
 function emitCostEscalation(reason: 'cap' | 'ceiling'): void {
   const sessionId = process.env.NANOCLAW_SESSION_ID || '';
+  // Stamp the episode with the budget generation LIVE at escalation. The host echoes
+  // this back as the override's `epochKey`; applyCostOverride refuses one whose epoch
+  // ≠ the then-current gen (superseded / post-/clear / yesterday-daily). A distinct
+  // `reason` in the same gen is a distinct episode (cap → ceiling supersession).
+  costEpisodeId = `esc-${sessionId}-${reason}-${costBudgetGen}`;
   writeMessageOut({
     id: generateId(),
     kind: 'system',
@@ -349,6 +408,10 @@ function emitCostEscalation(reason: 'cap' | 'ceiling'): void {
       // "please decide" from a "this was hard-stopped / is running away".
       reason,
       sessionId,
+      // The card/episode identity + the epoch fence the runner will enforce on the
+      // returning cost_override (see applyCostOverride).
+      episodeId: costEpisodeId,
+      epochKey: String(costBudgetGen),
       spentUsd: Number(costSpentUsd.toFixed(4)),
       capUsd: Number(costCapUsd.toFixed(4)),
       ...(costCeilingUsd > 0 ? { ceilingUsd: Number(costCeilingUsd.toFixed(4)) } : {}),
@@ -372,11 +435,27 @@ function emitCostEscalation(reason: 'cap' | 'ceiling'): void {
  */
 function applyCostOverride(msg: MessageInRow): void {
   if (!costEnabled) return;
-  let decision: unknown;
+  let parsed: { decision?: unknown; epochKey?: unknown };
   try {
-    decision = (JSON.parse(msg.content) as { decision?: unknown }).decision;
+    parsed = JSON.parse(msg.content) as { decision?: unknown; epochKey?: unknown };
   } catch {
     log(`cost_override with unparseable content — ignoring (id=${msg.id})`);
+    return;
+  }
+  const decision = parsed.decision;
+  const epochKey = parsed.epochKey;
+  // EPOCH FENCE — the exactly-once GRANT guarantee. An override carries the budget
+  // generation live when its episode escalated. Refuse it if that gen no longer
+  // matches: the episode was superseded, the session was /clear-reset, a prior
+  // Continue already re-armed (this is a crash re-enqueue of the same click), or a
+  // daily window rolled over. A stale Continue must not raise the cap twice, and a
+  // stale Stop must not quiesce a fresh session. Overrides WITHOUT an epochKey
+  // (legacy S1 rows, dashboard-pill path) apply unconditionally for back-compat.
+  if (epochKey != null && String(epochKey) !== String(costBudgetGen)) {
+    log(
+      `cost_override ${String(decision)} REFUSED — epoch ${String(epochKey)} ≠ live gen ` +
+        `${costBudgetGen} (superseded/stale/re-enqueued); ignoring (id=${msg.id})`,
+    );
     return;
   }
   const now = new Date().toISOString();
@@ -402,6 +481,11 @@ function applyCostOverride(msg: MessageInRow): void {
     costCapUsd += costAllotmentUsd;
     costDecision = 'continue';
     costDecidedAt = now;
+    // Re-arm: rotate the gen so a re-enqueue of THIS same Continue (host crash + retry)
+    // is auto-stale (its epochKey now ≠ live gen), and drop the resolved episode. The
+    // next cap crossing escalates a fresh episode stamped with the new gen.
+    costBudgetGen++;
+    costEpisodeId = undefined;
     log(`cost_override continue — cap raised to $${costCapUsd.toFixed(2)}, resuming`);
   } else if (decision === 'stop') {
     costDecision = 'stop';
@@ -431,6 +515,7 @@ function applyCostOverride(msg: MessageInRow): void {
 export const __costCapTestHooks = {
   recordTurnCost,
   computeCostStatus,
+  costCeilingRemainingUsd,
   applyCostOverride,
   resetCostForNewSession,
   initCostTracking,
@@ -450,6 +535,8 @@ export const __costCapTestHooks = {
     costCeilingUsd,
     costCeilingEscalated,
     costCeilingHardStop,
+    costBudgetGen,
+    costEpisodeId,
   }),
   setState: (p: {
     costEnabled?: boolean;
@@ -466,6 +553,8 @@ export const __costCapTestHooks = {
     costCeilingUsd?: number;
     costCeilingEscalated?: boolean;
     costCeilingHardStop?: boolean;
+    costBudgetGen?: number;
+    costEpisodeId?: string | undefined;
   }): void => {
     if ('costEnabled' in p) costEnabled = p.costEnabled!;
     if ('costImmortal' in p) costImmortal = p.costImmortal!;
@@ -481,6 +570,8 @@ export const __costCapTestHooks = {
     if ('costCeilingUsd' in p) costCeilingUsd = p.costCeilingUsd!;
     if ('costCeilingEscalated' in p) costCeilingEscalated = p.costCeilingEscalated!;
     if ('costCeilingHardStop' in p) costCeilingHardStop = p.costCeilingHardStop!;
+    if ('costBudgetGen' in p) costBudgetGen = p.costBudgetGen!;
+    if ('costEpisodeId' in p) costEpisodeId = p.costEpisodeId;
   },
 };
 
@@ -970,6 +1061,8 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
       continuation: newSessionBatch ? undefined : continuation,
       cwd: config.cwd,
       systemContext: config.systemContext,
+      // Tier-2 ceiling soft-brake for THIS turn (undefined when no ceiling applies).
+      maxBudgetUsd: costCeilingRemainingUsd(),
     });
 
     // Process the query while concurrently polling for new messages

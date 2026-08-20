@@ -238,6 +238,15 @@ async function sweep(): Promise<void> {
   }
   // MODULE-HOOK:approvals-reason-sweep:end
 
+  // Cost-approval reconciler: 24h expiry-dismiss, card resend, and override re-drive for
+  // any decision whose enqueue threw. No-op under the S1 flag. Central-DB scan, once/tick.
+  try {
+    const { reconcileCostCards } = await import('./modules/cost-approval/index.js');
+    await reconcileCostCards();
+  } catch (err) {
+    log.error('Cost-approval reconcile failed', { err });
+  }
+
   setTimeout(sweep, SWEEP_INTERVAL_MS);
 }
 

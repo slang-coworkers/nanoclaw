@@ -178,6 +178,21 @@ export interface CostCapState {
   escalatedAt?: string;
   decision?: 'continue' | 'stop';
   decidedAt?: string;
+  /**
+   * Monotonic BUDGET GENERATION (cost-approval card). Rotated on every event that
+   * changes the budget epoch — /clear, new_session, daily rollover, and each
+   * Continue (re-arm). An escalation episode is stamped with the generation live
+   * at escalation; a `cost_override` carries that generation as `epochKey`, and
+   * the runner refuses one whose `epochKey` ≠ the current generation. Because a
+   * Continue rotates the generation, a re-enqueued Continue (host crash + retry)
+   * is auto-stale — this is the exactly-once GRANT fence, and it also refuses a
+   * decision that arrives after a `/clear` reset (the one money-unsafe path v8
+   * had). Absent on legacy/pre-card overrides (they apply as before).
+   */
+  budgetGen?: number;
+  /** The current escalation episode's stable id (`esc-<sid>-<reason>-<gen>`), for
+   *  host state-ingest. Present only while status is escalated/stopped. */
+  episodeId?: string;
 }
 
 const COST_CAP_KEY = 'cost_cap';

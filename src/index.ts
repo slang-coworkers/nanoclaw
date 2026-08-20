@@ -25,6 +25,7 @@ import { getMessagingGroupsByChannel, getMessagingGroupAgents } from './db/messa
 import { ensureContainerRuntimeRunning, cleanupOrphans } from './container-runtime.js';
 import { startActiveDeliveryPoll, startSweepDeliveryPoll, setDeliveryAdapter, stopDeliveryPolls } from './delivery.js';
 import { startHostSweep, stopHostSweep } from './host-sweep.js';
+import { registerCostApproval } from './modules/cost-approval/index.js';
 import { routeInbound } from './router.js';
 import { log } from './log.js';
 import { startMcpServers, getRunningServerNames, getServerUpstreamPort } from './mcp-registry.js';
@@ -353,8 +354,30 @@ async function main(): Promise<void> {
       log.debug('Dashboard credential reject — response registry not yet implemented');
     },
     onCostOverrideFn: async (sessionId: string, decision: 'continue' | 'stop') => {
+      // Pill = the SECONDARY surface, but with the SAME money-safety as the card.
+      //  1. A live PENDING episode → route through its CAS (at-most-once decision + fence).
+      //  2. No pending, but the session HAS a (resolved) episode → route with THAT episode's
+      //     epoch as the fence. This is the P0 fix: a bare unfenced override here would let a
+      //     pill Continue double-grant after a card Continue already rotated the generation.
+      //     The fence makes a duplicate/stale press a no-op, while a genuine reversal (the
+      //     generation is unchanged after a Stop) still applies.
+      //  3. No episode ever (stale runner / never escalated) → the legacy unconditional
+      //     override — the ONLY place an unfenced override is allowed.
+      const { getPendingEpisodeForSession, getLatestEpisodeForSession } =
+        await import('./db/cost-escalation-episodes.js');
+      const pending = getPendingEpisodeForSession(sessionId);
+      if (pending) {
+        const { decideCostEpisode } = await import('./modules/cost-approval/index.js');
+        await decideCostEpisode(pending.episode_id, decision, 'dashboard:pill');
+        return;
+      }
       const { routeCostOverrideToSession } = await import('./router.js');
-      await routeCostOverrideToSession({ sessionId, decision });
+      const latest = getLatestEpisodeForSession(sessionId);
+      await routeCostOverrideToSession({
+        sessionId,
+        decision,
+        ...(latest ? { epochKey: latest.epoch_key } : {}),
+      });
     },
   });
 
@@ -393,6 +416,11 @@ async function main(): Promise<void> {
   // 6. Start host sweep
   startHostSweep();
   log.info('Host sweep started');
+
+  // Cost-approval escalation card: log the active mode (S1 read-only vs S2 interactive).
+  // The ingest handler (delivery.ts), reconciler (host-sweep), and bridge interceptor are
+  // wired independently; this is the single place the flag state is announced at boot.
+  registerCostApproval();
 
   // 7. Start the `ncl` CLI socket server (data/ncl.sock).
   await startCliServer();

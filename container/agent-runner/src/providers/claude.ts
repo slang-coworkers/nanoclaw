@@ -782,6 +782,10 @@ export class ClaudeProvider implements AgentProvider {
         env: this.env,
         model: this.model,
         fallbackModel: this.fallbackModel,
+        // Tier-2 ceiling SOFT brake: the SDK ends this query once its cost reaches the
+        // remaining headroom (checked between calls → best-effort, ≤ one in-flight-call
+        // overshoot). Omitted (undefined) when there is no applicable ceiling.
+        ...(input.maxBudgetUsd != null ? { maxBudgetUsd: input.maxBudgetUsd } : {}),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         effort: this.effort as any,
         permissionMode: 'bypassPermissions',
