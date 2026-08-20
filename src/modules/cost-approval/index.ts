@@ -33,22 +33,33 @@
  */
 import { COST_APPROVAL_CARD } from '../../config.js';
 import {
+  bumpEffectAttempt,
   expireEpisode,
   getEpisode,
   getEpisodeByShortId,
   ingestEpisode,
+  listExpiredPending,
+  listUnappliedEffects,
+  listUndeliveredCards,
+  markCard,
   markEffectApplied,
   markEffectEnqueued,
   resolveCostEpisode,
   supersedeLiveCapEpisodes,
   type CostDecision,
+  type CostEpisodeRow,
   type CostReason,
   type CostWindow,
   type ResolveResult,
 } from '../../db/cost-escalation-episodes.js';
+import { getMessagingGroup } from '../../db/messaging-groups.js';
+import { getSession } from '../../db/sessions.js';
+import { getDeliveryAdapter } from '../../delivery.js';
 import { log } from '../../log.js';
 import { routeCostOverrideToSession } from '../../router.js';
 import type { Session } from '../../types.js';
+import { pickApprovalDelivery, pickApprover } from '../approvals/primitive.js';
+import { buildCostCardContent, type CostCardOutcome } from './card.js';
 
 /**
  * T1 advisory expiry: a pending cap card no human answers within 24h is DISMISSED — no
@@ -211,7 +222,10 @@ export async function decideCostEpisode(
     return res;
   }
 
-  // Continue/Stop enqueue exactly one epoch-fenced override.
+  // Continue/Stop enqueue exactly one epoch-fenced override. effect_state semantics:
+  // 'applied' = the override is DURABLY in the session's inbound.db (the host's job is
+  // done — the runner WILL consume it, epoch-fenced + idempotent). 'enqueued' = the route
+  // threw before it landed → the reconciler re-drives (money-safe to repeat).
   markEffectEnqueued(episodeId);
   try {
     await routeCostOverrideToSession({
@@ -219,6 +233,7 @@ export async function decideCostEpisode(
       decision,
       epochKey: current.epoch_key,
     });
+    markEffectApplied(episodeId);
     log.info('cost-approval: override enqueued', {
       episodeId,
       decision,
@@ -226,9 +241,8 @@ export async function decideCostEpisode(
       epochKey: current.epoch_key,
     });
   } catch (err) {
-    // The override write failed — leave effect_state='enqueued' so the host-sweep
-    // reconciler re-drives it. The CAS already marked the decision terminal, so no
-    // second decision can slip in.
+    // Left effect_state='enqueued' → the host-sweep reconciler re-drives. The CAS already
+    // marked the decision terminal, so no second decision can slip in.
     log.error('cost-approval: failed to route override (reconciler will re-drive)', {
       episodeId,
       decision,
@@ -236,6 +250,146 @@ export async function decideCostEpisode(
     });
   }
   return res;
+}
+
+export interface CostClickResult {
+  /** The episode after the decision (the standing row when this click lost the CAS). */
+  episode: CostEpisodeRow | undefined;
+  /** How to render the terminal card: this actor's outcome, or 'already' if it lost. */
+  outcome: CostCardOutcome;
+}
+
+/**
+ * Resolve a card click by its `short_id` (the handle in the button action id). Maps to the
+ * episode and funnels through the same CAS as every surface. Returns the standing episode +
+ * a terminal-render outcome. The bridge calls this from `onAction` and terminal-edits the
+ * card with `buildCostTerminalCard`.
+ */
+export async function decideCostEpisodeByShortId(
+  shortId: string,
+  decision: 'continue' | 'stop',
+  resolvedBy: string,
+): Promise<CostClickResult> {
+  const ep = getEpisodeByShortId(shortId);
+  if (!ep) {
+    log.warn('cost-approval: click on unknown short_id', { shortId, decision });
+    return { episode: undefined, outcome: 'already' };
+  }
+  const res = await decideCostEpisode(ep.episode_id, decision, resolvedBy);
+  const outcome: CostCardOutcome = res.won ? (decision === 'continue' ? 'continued' : 'stopped') : 'already';
+  return { episode: res.episode ?? ep, outcome };
+}
+
+/**
+ * Send (or re-send) the interactive card for an episode to a human approver's DM. Best-effort
+ * — a missed card is a lost notice, never lost money (the ceiling still bounds spend). Resolves
+ * the approver via the same primitive the OneCLI approval bridge uses (scoped admin → global
+ * admin → owner). Marks the card lifecycle so the reconciler can retry a failed/undelivered send.
+ *
+ * Idempotent-ish: only sends when the card is still awaiting delivery (undelivered/failed) and
+ * the episode is actionable (pending, or a born-terminal ceiling that shows an informational
+ * card once). A resolved/superseded episode is skipped.
+ */
+export async function sendCostCard(ep: CostEpisodeRow): Promise<void> {
+  const actionable = ep.decision_state === 'pending' || (ep.reason === 'ceiling' && !ep.immortal);
+  const awaitingDelivery = ep.card_state === 'undelivered' || ep.card_state === 'failed';
+  if (!actionable || !awaitingDelivery) return;
+  if (!ep.agent_group_id) {
+    log.warn('cost-approval: episode has no agent group — cannot resolve approver', { episodeId: ep.episode_id });
+    markCard(ep.episode_id, 'failed');
+    return;
+  }
+
+  const approvers = pickApprover(ep.agent_group_id);
+  if (approvers.length === 0) {
+    log.warn('cost-approval: no approver to card', { episodeId: ep.episode_id });
+    markCard(ep.episode_id, 'failed');
+    return;
+  }
+  const session = getSession(ep.session_id);
+  const originChannelType = session?.messaging_group_id
+    ? (getMessagingGroup(session.messaging_group_id)?.channel_type ?? '')
+    : '';
+  const target = await pickApprovalDelivery(approvers, originChannelType);
+  if (!target) {
+    log.warn('cost-approval: no DM channel for any approver', { episodeId: ep.episode_id });
+    markCard(ep.episode_id, 'failed');
+    return;
+  }
+  const adapter = getDeliveryAdapter();
+  if (!adapter) return; // not ready yet — reconciler retries next tick
+
+  markCard(ep.episode_id, 'sending');
+  try {
+    const messageId = await adapter.deliver(
+      target.messagingGroup.channel_type,
+      target.messagingGroup.platform_id,
+      null,
+      'chat',
+      JSON.stringify(buildCostCardContent(ep)),
+    );
+    markCard(ep.episode_id, 'delivered', messageId ?? null);
+    log.info('cost-approval: card delivered', {
+      episodeId: ep.episode_id,
+      approver: target.userId,
+      messageId: messageId ?? null,
+    });
+  } catch (err) {
+    markCard(ep.episode_id, 'failed');
+    log.error('cost-approval: card delivery failed (reconciler will retry)', { episodeId: ep.episode_id, err });
+  }
+}
+
+/**
+ * The host-sweep reconciler (once per tick). Repairs half-done best-effort state without
+ * ever touching money-safety (the CAS + epoch fence already guarantee exactly-once):
+ *   - EXPIRY: T1 advisory cards past 24h → 'expired' (pure dismiss; a late click on the
+ *     stale card self-resolves to 'already' via the CAS).
+ *   - CARD RESEND: undelivered/failed cards (a crash between ingest and the prompt send).
+ *   - EFFECT RE-DRIVE: a decided episode whose override route THREW (effect_state stuck at
+ *     'enqueued') is re-routed — epoch-fenced, so the runner refuses a stale/duplicate.
+ *     Bounded by effect_attempts. 'expired' episodes have no override → mark applied.
+ * No-op under S1 (flag OFF).
+ */
+export async function reconcileCostCards(nowIso: string = new Date().toISOString()): Promise<void> {
+  if (!COST_APPROVAL_CARD) return;
+
+  for (const ep of listExpiredPending(nowIso)) {
+    await decideCostEpisode(ep.episode_id, 'expired', 'sweep:expiry');
+  }
+
+  for (const ep of listUndeliveredCards()) {
+    await sendCostCard(ep);
+  }
+
+  const MAX_EFFECT_ATTEMPTS = 5;
+  for (const ep of listUnappliedEffects()) {
+    if (ep.decision_state === 'expired') {
+      markEffectApplied(ep.episode_id); // dismiss has no override to land
+      continue;
+    }
+    if (ep.effect_state !== 'enqueued') continue; // 'none' shouldn't reach here; skip defensively
+    if (ep.decision_state !== 'continued' && ep.decision_state !== 'stopped') continue;
+    if (ep.effect_attempts >= MAX_EFFECT_ATTEMPTS) {
+      log.error('cost-approval: giving up re-driving override after max attempts', {
+        episodeId: ep.episode_id,
+        attempts: ep.effect_attempts,
+        lastError: ep.last_error,
+      });
+      continue;
+    }
+    try {
+      await routeCostOverrideToSession({
+        sessionId: ep.session_id,
+        decision: ep.decision_state === 'continued' ? 'continue' : 'stop',
+        epochKey: ep.epoch_key,
+      });
+      markEffectApplied(ep.episode_id);
+      log.info('cost-approval: override re-driven', { episodeId: ep.episode_id, decision: ep.decision_state });
+    } catch (err) {
+      bumpEffectAttempt(ep.episode_id, String(err));
+    }
+  }
 }
 
 /**

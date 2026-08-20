@@ -22,6 +22,8 @@ import { log } from '../log.js';
 import { SqliteStateAdapter } from '../state-sqlite.js';
 import { registerWebhookAdapter } from '../webhook-server.js';
 import { getAskQuestionRender } from '../db/sessions.js';
+import { buildCostTerminalCard } from '../modules/cost-approval/card.js';
+import { decideCostEpisodeByShortId } from '../modules/cost-approval/index.js';
 import { normalizeOptions, type NormalizedOption } from './ask-question.js';
 import type { ChannelAdapter, ChannelDefaults, ChannelSetup, InboundMessage } from './adapter.js';
 
@@ -141,6 +143,38 @@ function terminalApprovalMessage(spec: TerminalApprovalCard) {
     card: buildTerminalApprovalCard(spec),
     fallbackText: [spec.title, spec.question, spec.resolution].filter(Boolean).join('\n\n'),
   };
+}
+
+/**
+ * Resolve a cost-cap card button click (`ncc:<shortId>:<decision>`) through the module CAS
+ * and terminal-edit the card. Shared by the Chat SDK `onAction` path and the Discord
+ * forwarded-interaction path. A click that loses the CAS still edits to the standing
+ * decision ('already') — never re-fires an effect.
+ */
+async function handleCostCardAction(
+  actionId: string,
+  threadId: string,
+  messageId: string,
+  user: { userId?: string; userName?: string; fullName?: string } | undefined,
+  editor: Pick<Adapter, 'editMessage'>,
+): Promise<void> {
+  const parts = actionId.split(':'); // ncc:<shortId>:<decision>
+  if (parts.length < 3) return;
+  const shortId = parts[1];
+  const decision = parts[2];
+  if (decision !== 'continue' && decision !== 'stop') return;
+  const actorName = user?.userName || user?.fullName || '';
+  const resolvedBy = `chat:${user?.userId || 'unknown'}`;
+  const { episode, outcome } = await decideCostEpisodeByShortId(shortId, decision, resolvedBy);
+  if (!episode) return; // unknown short_id — leave the card untouched
+  try {
+    const terminal = buildCostTerminalCard(episode, actorName, outcome);
+    await editor.editMessage(threadId, messageId, {
+      card: Card({ title: terminal.title, children: terminal.bodyLines.map((l) => CardText(l)) }),
+    });
+  } catch (err) {
+    log.warn('Failed to update cost card after action', { err });
+  }
 }
 
 export function splitForLimit(text: string, limit: number): string[] {
@@ -330,6 +364,11 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
 
       // Handle button clicks (ask_user_question)
       chat.onAction(async (event) => {
+        // Cost-cap escalation card click — funnels through the same CAS as every surface.
+        if (event.actionId.startsWith('ncc:')) {
+          await handleCostCardAction(event.actionId, event.threadId, event.messageId, event.user, adapter);
+          return;
+        }
         if (!event.actionId.startsWith('ncq:')) return;
         const parts = event.actionId.split(':');
         if (parts.length < 3) return;
@@ -499,6 +538,35 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
         const result = await adapter.postMessage(tid, {
           card,
           fallbackText: `${title}\n\n${question}\nOptions: ${options.map((o) => o.label).join(', ')}`,
+        });
+        return result?.id;
+      }
+
+      // Cost-cap escalation card — interactive Continue/Stop. The content is the
+      // module's already-built CostCardContent; buttons carry the episode short_id
+      // (`ncc:<shortId>:<decision>`, short enough for Telegram's 64-byte cap). Zero
+      // buttons = an informational (born-terminal ceiling) card. Clicks land in the
+      // onAction / Discord-interaction handlers below (both intercept `ncc:`).
+      if (content.type === 'cost_card' && content.shortId) {
+        const shortId = content.shortId as string;
+        const cardTitle = (content.title as string) || 'Cost cap';
+        const bodyLines = Array.isArray(content.bodyLines) ? (content.bodyLines as string[]) : [];
+        const buttons = Array.isArray(content.buttons)
+          ? (content.buttons as { decision: string; label: string; style?: 'primary' | 'danger' | 'default' }[])
+          : [];
+        const children: CardChild[] = bodyLines.filter(Boolean).map((l) => CardText(l));
+        if (buttons.length > 0) {
+          children.push(
+            Actions(
+              buttons.map((b) =>
+                Button({ id: `ncc:${shortId}:${b.decision}`, label: b.label, value: b.decision, style: b.style }),
+              ),
+            ),
+          );
+        }
+        const result = await adapter.postMessage(tid, {
+          card: Card({ title: cardTitle, children }),
+          fallbackText: `${cardTitle}\n${bodyLines.join(' ')}`,
         });
         return result?.id;
       }
@@ -702,6 +770,37 @@ async function handleForwardedEvent(
         (interaction.user as Record<string, string> | undefined);
       const interactionId = interaction.id as string;
       const interactionToken = interaction.token as string;
+
+      // Cost-cap escalation card click (Discord forwarded interaction) — same CAS as the
+      // Chat SDK onAction path, updated via Discord's UPDATE_MESSAGE callback.
+      if (customId?.startsWith('ncc:')) {
+        const parts = customId.split(':'); // ncc:<shortId>:<decision>
+        const decision = parts[2];
+        if (parts.length >= 3 && (decision === 'continue' || decision === 'stop')) {
+          const actorName = user?.global_name || user?.username || '';
+          const { episode, outcome } = await decideCostEpisodeByShortId(
+            parts[1],
+            decision,
+            `chat:${user?.id || 'unknown'}`,
+          );
+          if (episode) {
+            const terminal = buildCostTerminalCard(episode, actorName, outcome);
+            try {
+              await fetch(`https://discord.com/api/v10/interactions/${interactionId}/${interactionToken}/callback`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  type: 7, // UPDATE_MESSAGE
+                  data: { embeds: [{ title: terminal.title, description: terminal.bodyLines.join('\n') }], components: [] },
+                }),
+              });
+            } catch (err) {
+              log.error('Failed to update cost-card interaction', { err });
+            }
+          }
+        }
+        return;
+      }
 
       // Parse the selected option from custom_id
       let questionId: string | undefined;

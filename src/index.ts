@@ -25,6 +25,7 @@ import { getMessagingGroupsByChannel, getMessagingGroupAgents } from './db/messa
 import { ensureContainerRuntimeRunning, cleanupOrphans } from './container-runtime.js';
 import { startActiveDeliveryPoll, startSweepDeliveryPoll, setDeliveryAdapter, stopDeliveryPolls } from './delivery.js';
 import { startHostSweep, stopHostSweep } from './host-sweep.js';
+import { registerCostApproval } from './modules/cost-approval/index.js';
 import { routeInbound } from './router.js';
 import { log } from './log.js';
 import { startMcpServers, getRunningServerNames, getServerUpstreamPort } from './mcp-registry.js';
@@ -393,6 +394,11 @@ async function main(): Promise<void> {
   // 6. Start host sweep
   startHostSweep();
   log.info('Host sweep started');
+
+  // Cost-approval escalation card: log the active mode (S1 read-only vs S2 interactive).
+  // The ingest handler (delivery.ts), reconciler (host-sweep), and bridge interceptor are
+  // wired independently; this is the single place the flag state is announced at boot.
+  registerCostApproval();
 
   // 7. Start the `ncl` CLI socket server (data/ncl.sock).
   await startCliServer();
