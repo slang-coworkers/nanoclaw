@@ -48,8 +48,15 @@ import {
 import { log } from '../../log.js';
 import { routeCostOverrideToSession } from '../../router.js';
 import type { Session } from '../../types.js';
-import { registerApprovalResolvedHandler, requestApproval } from '../approvals/index.js';
-import type { ApprovalResolvedEvent } from '../approvals/primitive.js';
+// Import from primitive.js DIRECTLY, not the approvals barrel: the barrel pulls in
+// onecli-approvals, whose import-time onDeliveryAdapterReady() re-enters delivery.ts
+// mid-initialization (delivery → cost-approval → approvals/index → delivery), a
+// circular-import TDZ crash. primitive.js only touches delivery inside functions.
+import {
+  registerApprovalResolvedHandler,
+  requestApproval,
+  type ApprovalResolvedEvent,
+} from '../approvals/primitive.js';
 
 /**
  * T1 advisory expiry: a pending cap decision no human answers within 24h is DISMISSED — no
