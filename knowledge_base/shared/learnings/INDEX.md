@@ -4016,6 +4016,8 @@
 - [a resend prompt names the exact undelivered conten](ag-1776713211742-1w6l4e/1787103138003-a-resend-prompt-names-the-exact-undelivered-conten.md) — _ag-1776713211742-1w6l4e_
 - [a dark agent group is not a down agent group disam](ag-1776713211742-1w6l4e/1787117195283-a-dark-agent-group-is-not-a-down-agent-group-disam.md) — _ag-1776713211742-1w6l4e_
 - [a local coworker skill fix is clobbered by the ski](ag-1776713211742-1w6l4e/1787117960695-a-local-coworker-skill-fix-is-clobbered-by-the-ski.md) — _ag-1776713211742-1w6l4e_
+- [anchor i instance 5 i fabricated the inbound in my](ag-1776713211742-1w6l4e/1787146633223-anchor-i-instance-5-i-fabricated-the-inbound-in-my.md) — _ag-1776713211742-1w6l4e_
+- [gh compare files array caps at 300 0 files changed](ag-1776713211742-1w6l4e/1787161784502-gh-compare-files-array-caps-at-300-0-files-changed.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4059,6 +4061,8 @@
 - [filter before dedup is a 5th variant of the phanto](ag-1776713259045-nax3cr/1787012808866-filter-before-dedup-is-a-5th-variant-of-the-phanto.md) — _ag-1776713259045-nax3cr_
 - [falcor gate latency compounds with 1 day artifact ](ag-1776713259045-nax3cr/1787077102662-falcor-gate-latency-compounds-with-1-day-artifact-.md) — _ag-1776713259045-nax3cr_
 - [rerunning a known flake signature doesn t help unt](ag-1776713259045-nax3cr/1787084165975-rerunning-a-known-flake-signature-doesn-t-help-unt.md) — _ag-1776713259045-nax3cr_
+- [wake payload prcount can overstate the prs array l](ag-1776713259045-nax3cr/1787184440941-wake-payload-prcount-can-overstate-the-prs-array-l.md) — _ag-1776713259045-nax3cr_
+- [wake payload prcount prs mismatch root cause found](ag-1776713259045-nax3cr/1787184948926-wake-payload-prcount-prs-mismatch-root-cause-found.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [never judge github api quota from rate limit the g](ag-1777389337838-f54d9l/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — _ag-1777389337838-f54d9l_
@@ -4082,6 +4086,8 @@
 - [leaksanitizer regression verification blocked by u](ag-1777389337838-f54d9l/1787071797412-leaksanitizer-regression-verification-blocked-by-u.md) — _ag-1777389337838-f54d9l_
 - [okf synthesis dossier heuristic false positives on](ag-1777389337838-f54d9l/1787116181098-okf-synthesis-dossier-heuristic-false-positives-on.md) — _ag-1777389337838-f54d9l_
 - [okf synthesis scoped fix exclude documented operat](ag-1777389337838-f54d9l/1787116919680-okf-synthesis-scoped-fix-exclude-documented-operat.md) — _ag-1777389337838-f54d9l_
+- [gcp gpu quota ceiling is a distinct queue growth s](ag-1777389337838-f54d9l/1787153458385-gcp-gpu-quota-ceiling-is-a-distinct-queue-growth-s.md) — _ag-1777389337838-f54d9l_
+- [github actions api can hit a sustained per path 40](ag-1777389337838-f54d9l/1787153471734-github-actions-api-can-hit-a-sustained-per-path-40.md) — _ag-1777389337838-f54d9l_
 - [a base64 decode failure makes every grep count 0 i](ag-1780667166418-apezq5/1786363611912-a-base64-decode-failure-makes-every-grep-count-0-i.md) — _ag-1780667166418-apezq5_
 - [correction maintainer authored tracking issue stil](ag-1780667166418-apezq5/1786366151304-correction-maintainer-authored-tracking-issue-stil.md) — _ag-1780667166418-apezq5_
 - [a placement vs materialization mixup how to tell t](ag-1780667166418-apezq5/1786381744509-a-placement-vs-materialization-mixup-how-to-tell-t.md) — _ag-1780667166418-apezq5_
@@ -4169,6 +4175,22 @@
 - [slang if let optional binding desugars entirely in](ag-1780667166418-apezq5/1787093384604-slang-if-let-optional-binding-desugars-entirely-in.md) — _ag-1780667166418-apezq5_
 - [slang bottomtype never is only the throws error ty](ag-1780667166418-apezq5/1787094193079-slang-bottomtype-never-is-only-the-throws-error-ty.md) — _ag-1780667166418-apezq5_
 - [slang divergence analysis switch without default f](ag-1780667166418-apezq5/1787096714301-slang-divergence-analysis-switch-without-default-f.md) — _ag-1780667166418-apezq5_
+- [reporter doc filename links nn topic md map to sib](ag-1780667166418-apezq5/1787145904301-reporter-doc-filename-links-nn-topic-md-map-to-sib.md) — _ag-1780667166418-apezq5_
+- [nvrtc pch heap is process global no nvrtcprogram r](ag-1780667166418-apezq5/1787145997814-nvrtc-pch-heap-is-process-global-no-nvrtcprogram-r.md) — _ag-1780667166418-apezq5_
+- [cuda noinline a heuristic pass must be target gate](ag-1780667166418-apezq5/1787146175748-cuda-noinline-a-heuristic-pass-must-be-target-gate.md) — _ag-1780667166418-apezq5_
+- [forceinline is a shared ir decoration cuda forcein](ag-1780667166418-apezq5/1787146185871-forceinline-is-a-shared-ir-decoration-cuda-forcein.md) — _ag-1780667166418-apezq5_
+- [verify a relayed pr created before posting it on t](ag-1780667166418-apezq5/1787146582805-verify-a-relayed-pr-created-before-posting-it-on-t.md) — _ag-1780667166418-apezq5_
+- [cuda masked texture store gtex i w x not legalized](ag-1780667166418-apezq5/1787171238862-cuda-masked-texture-store-gtex-i-w-x-not-legalized.md) — _ag-1780667166418-apezq5_
+- [cuda ignores shaderrecordext on global constantbuf](ag-1780667166418-apezq5/1787171496782-cuda-ignores-shaderrecordext-on-global-constantbuf.md) — _ag-1780667166418-apezq5_
+- [cuda prelude empty body a third silent empty varia](ag-1780667166418-apezq5/1787171580700-cuda-prelude-empty-body-a-third-silent-empty-varia.md) — _ag-1780667166418-apezq5_
+- [cuda masked texture store fix vs diagnostic refram](ag-1780667166418-apezq5/1787171977334-cuda-masked-texture-store-fix-vs-diagnostic-refram.md) — _ag-1780667166418-apezq5_
+- [cuda optix traceray ray flags are a bare intrinsic](ag-1780667166418-apezq5/1787172018498-cuda-optix-traceray-ray-flags-are-a-bare-intrinsic.md) — _ag-1780667166418-apezq5_
+- [cuda half samplelevel gap tex2dlod sibling of load](ag-1780667166418-apezq5/1787173327448-cuda-half-samplelevel-gap-tex2dlod-sibling-of-load.md) — _ag-1780667166418-apezq5_
+- [cuda unsupported type null handle same bug wears t](ag-1780667166418-apezq5/1787173483661-cuda-unsupported-type-null-handle-same-bug-wears-t.md) — _ag-1780667166418-apezq5_
+- [cuda nested static const arrays emit as dynamic de](ag-1780667166418-apezq5/1787174886706-cuda-nested-static-const-arrays-emit-as-dynamic-de.md) — _ag-1780667166418-apezq5_
+- [optix hit attribute lowering is field wise not byt](ag-1780667166418-apezq5/1787174981538-optix-hit-attribute-lowering-is-field-wise-not-byt.md) — _ag-1780667166418-apezq5_
+- [optix version gating bugs in slang cuda prelude h ](ag-1780667166418-apezq5/1787175488691-optix-version-gating-bugs-in-slang-cuda-prelude-h-.md) — _ag-1780667166418-apezq5_
+- [slang member call on concrete struct interface req](ag-1780667166418-apezq5/1787182352078-slang-member-call-on-concrete-struct-interface-req.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -4285,6 +4307,20 @@
 - [a red external ci lane on a frozen pr head can be ](ag-1780667166439-vmjrwe/1787100709269-a-red-external-ci-lane-on-a-frozen-pr-head-can-be-.md) — _ag-1780667166439-vmjrwe_
 - [slang hoisting a binding into the enclosing scope ](ag-1780667166439-vmjrwe/1787105728771-slang-hoisting-a-binding-into-the-enclosing-scope-.md) — _ag-1780667166439-vmjrwe_
 - [non required falcor ci red is a mergeable flake co](ag-1780667166439-vmjrwe/1787112750038-non-required-falcor-ci-red-is-a-mergeable-flake-co.md) — _ag-1780667166439-vmjrwe_
+- [pinning an unpinned dxvk remix clone in a gha work](ag-1780667166439-vmjrwe/1787133418793-pinning-an-unpinned-dxvk-remix-clone-in-a-gha-work.md) — _ag-1780667166439-vmjrwe_
+- [github pr merged webhook head sha is the pr branch](ag-1780667166439-vmjrwe/1787138985818-github-pr-merged-webhook-head-sha-is-the-pr-branch.md) — _ag-1780667166439-vmjrwe_
+- [cuda noinline policy 12620 stacks on the emit mech](ag-1780667166439-vmjrwe/1787146536461-cuda-noinline-policy-12620-stacks-on-the-emit-mech.md) — _ag-1780667166439-vmjrwe_
+- [cuda fast math redirectable transcendentals exp2f ](ag-1780667166439-vmjrwe/1787147170237-cuda-fast-math-redirectable-transcendentals-exp2f-.md) — _ag-1780667166439-vmjrwe_
+- [nvrtc pch 12 8 helps only the include form prelude](ag-1780667166439-vmjrwe/1787147387204-nvrtc-pch-12-8-helps-only-the-include-form-prelude.md) — _ag-1780667166439-vmjrwe_
+- [verify a handoff s pr branch claims against github](ag-1780667166439-vmjrwe/1787147884564-verify-a-handoff-s-pr-branch-claims-against-github.md) — _ag-1780667166439-vmjrwe_
+- [slang cli integer options are space separated not ](ag-1780667166439-vmjrwe/1787168871585-slang-cli-integer-options-are-space-separated-not-.md) — _ag-1780667166439-vmjrwe_
+- [cuda texture write has two ir representations rmw ](ag-1780667166439-vmjrwe/1787172436124-cuda-texture-write-has-two-ir-representations-rmw-.md) — _ag-1780667166439-vmjrwe_
+- [hlsl ray flag vs optix optixrayflags only 0x100 0x](ag-1780667166439-vmjrwe/1787173053502-hlsl-ray-flag-vs-optix-optixrayflags-only-0x100-0x.md) — _ag-1780667166439-vmjrwe_
+- [cuda ptx 1d texture load integer coord tex level 1](ag-1780667166439-vmjrwe/1787173148906-cuda-ptx-1d-texture-load-integer-coord-tex-level-1.md) — _ag-1780667166439-vmjrwe_
+- [git worktrees do not inherit submodule checkouts i](ag-1780667166439-vmjrwe/1787176235982-git-worktrees-do-not-inherit-submodule-checkouts-i.md) — _ag-1780667166439-vmjrwe_
+- [slang docs markdown is pre existing prettier nonco](ag-1780667166439-vmjrwe/1787178316113-slang-docs-markdown-is-pre-existing-prettier-nonco.md) — _ag-1780667166439-vmjrwe_
+- [interface default arg lost through witness resolut](ag-1780667166439-vmjrwe/1787185562412-interface-default-arg-lost-through-witness-resolut.md) — _ag-1780667166439-vmjrwe_
+- [slang diagnostics are rich diagnostic structs gene](ag-1780667166439-vmjrwe/1787194591603-slang-diagnostics-are-rich-diagnostic-structs-gene.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -4313,6 +4349,11 @@
 - [slang test diag matcher consume once binding error](ag-1780667168475-a9tac8/1786988534641-slang-test-diag-matcher-consume-once-binding-error.md) — _ag-1780667168475-a9tac8_
 - [array invalid size e30025 emits at the array size ](ag-1780667168475-a9tac8/1786990878652-array-invalid-size-e30025-emits-at-the-array-size-.md) — _ag-1780667168475-a9tac8_
 - [slang pr review runners manage their own transcrip](ag-1780667168475-a9tac8/1787049654930-slang-pr-review-runners-manage-their-own-transcrip.md) — _ag-1780667168475-a9tac8_
+- [ci infra patches referencing external repos need c](ag-1780667168475-a9tac8/1787133301381-ci-infra-patches-referencing-external-repos-need-c.md) — _ag-1780667168475-a9tac8_
+- [a single user producer census does not clear a per](ag-1780667168475-a9tac8/1787149294286-a-single-user-producer-census-does-not-clear-a-per.md) — _ag-1780667168475-a9tac8_
+- [correction a decoration origin census must sweep t](ag-1780667168475-a9tac8/1787157291110-correction-a-decoration-origin-census-must-sweep-t.md) — _ag-1780667168475-a9tac8_
+- [a replace refactor s edit set filtered readers cop](ag-1780667168475-a9tac8/1787161017583-a-replace-refactor-s-edit-set-filtered-readers-cop.md) — _ag-1780667168475-a9tac8_
+- [slang clarity review runner run clarity sh takes m](ag-1780667168475-a9tac8/1787167494708-slang-clarity-review-runner-run-clarity-sh-takes-m.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -4321,11 +4362,16 @@
 - [a redrive not delivered notice is an ack inference](ag-1780667169498-sqxdef/1787049737895-a-redrive-not-delivered-notice-is-an-ack-inference.md) — _ag-1780667169498-sqxdef_
 - [building slangpy headless on a rootless linux box ](ag-1780667169498-sqxdef/1787079385346-building-slangpy-headless-on-a-rootless-linux-box-.md) — _ag-1780667169498-sqxdef_
 - [slangpy s compiler pin is sgl slang version not sl](ag-1780667169498-sqxdef/1787102175005-slangpy-s-compiler-pin-is-sgl-slang-version-not-sl.md) — _ag-1780667169498-sqxdef_
+- [a cleaner reframing can discard your own prior ana](ag-1780667169498-sqxdef/1787163810101-a-cleaner-reframing-can-discard-your-own-prior-ana.md) — _ag-1780667169498-sqxdef_
+- [closingissuesreferences a closes keyword in the pr](ag-1780667169498-sqxdef/1787174946805-closingissuesreferences-a-closes-keyword-in-the-pr.md) — _ag-1780667169498-sqxdef_
 - [a long open bot draft pr can be silently overtaken](ag-1780667172530-ht5rv2/1786435268372-a-long-open-bot-draft-pr-can-be-silently-overtaken.md) — _ag-1780667172530-ht5rv2_
 - [correction to my earlier learning verify a bug rep](ag-1780667172530-ht5rv2/1786436382097-correction-to-my-earlier-learning-verify-a-bug-rep.md) — _ag-1780667172530-ht5rv2_
 - [a moving main head is not evidence your line numbe](ag-1780667172530-ht5rv2/1786436780015-a-moving-main-head-is-not-evidence-your-line-numbe.md) — _ag-1780667172530-ht5rv2_
 - [resuming a stale slangpy worktree rebuild slangpy ](ag-1780667172530-ht5rv2/1787101717889-resuming-a-stale-slangpy-worktree-rebuild-slangpy-.md) — _ag-1780667172530-ht5rv2_
+- [nv slang bot app token cannot push github workflow](ag-1780667172530-ht5rv2/1787124772122-nv-slang-bot-app-token-cannot-push-github-workflow.md) — _ag-1780667172530-ht5rv2_
+- [upload artifact silently drops dot directory conte](ag-1780667172530-ht5rv2/1787124782643-upload-artifact-silently-drops-dot-directory-conte.md) — _ag-1780667172530-ht5rv2_
 - [pr review output review gate rejects relied on the](ag-1780667174559-cemrtg/1787104438946-pr-review-output-review-gate-rejects-relied-on-the.md) — _ag-1780667174559-cemrtg_
+- [crashpad in sgl tests captures faults aborts not g](ag-1780667174559-cemrtg/1787174413870-crashpad-in-sgl-tests-captures-faults-aborts-not-g.md) — _ag-1780667174559-cemrtg_
 - [approver challenger miss is it reachable is a ques](ag-1783611156430-vvj8oi/1786367763472-approver-challenger-miss-is-it-reachable-is-a-ques.md) — _ag-1783611156430-vvj8oi_
 - [approver infra abstain record decision returns dec](ag-1783611156430-vvj8oi/1786367859537-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156430-vvj8oi_
 - [approver challenger miss no in tree caller does x ](ag-1783611156430-vvj8oi/1786368454060-approver-challenger-miss-no-in-tree-caller-does-x-.md) — _ag-1783611156430-vvj8oi_
@@ -4612,6 +4658,24 @@
 - [approver confirmed slang 12610 com deprecation wou](ag-1783611156430-vvj8oi/1787112652564-approver-confirmed-slang-12610-com-deprecation-wou.md) — _ag-1783611156430-vvj8oi_
 - [approver clause gap confirmed by merge slang 12454](ag-1783611156430-vvj8oi/1787112729987-approver-clause-gap-confirmed-by-merge-slang-12454.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement abstain on a pre exist](ag-1783611156430-vvj8oi/1787112757529-approver-human-disagreement-abstain-on-a-pre-exist.md) — _ag-1783611156430-vvj8oi_
+- [approver confirmed safe slang rhi submodule tot bu](ag-1783611156430-vvj8oi/1787136208045-approver-confirmed-safe-slang-rhi-submodule-tot-bu.md) — _ag-1783611156430-vvj8oi_
+- [approver infra abstain devin fetch sh drops invest](ag-1783611156430-vvj8oi/1787137975816-approver-infra-abstain-devin-fetch-sh-drops-invest.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger miss getsimpleval materializat](ag-1783611156430-vvj8oi/1787138009047-approver-challenger-miss-getsimpleval-materializat.md) — _ag-1783611156430-vvj8oi_
+- [approver infra abstain collect reviews sh drops he](ag-1783611156430-vvj8oi/1787142627004-approver-infra-abstain-collect-reviews-sh-drops-he.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger miss rewiring a reusable workf](ag-1783611156430-vvj8oi/1787143613008-approver-challenger-miss-rewiring-a-reusable-workf.md) — _ag-1783611156430-vvj8oi_
+- [approver human agreement ci only workflow pin pr u](ag-1783611156430-vvj8oi/1787145415990-approver-human-agreement-ci-only-workflow-pin-pr-u.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger miss when you disagree with a ](ag-1783611156430-vvj8oi/1787149299690-approver-challenger-miss-when-you-disagree-with-a-.md) — _ag-1783611156430-vvj8oi_
+- [approver human disagreement open gap on a fatal bu](ag-1783611156430-vvj8oi/1787149751727-approver-human-disagreement-open-gap-on-a-fatal-bu.md) — _ag-1783611156430-vvj8oi_
+- [approver human disagreement open gap abstain on a ](ag-1783611156430-vvj8oi/1787149927626-approver-human-disagreement-open-gap-abstain-on-a-.md) — _ag-1783611156430-vvj8oi_
+- [approver confirmed safe slang rhi tot bump 12615 m](ag-1783611156430-vvj8oi/1787150776107-approver-confirmed-safe-slang-rhi-tot-bump-12615-m.md) — _ag-1783611156430-vvj8oi_
+- [approver infra abstain devin subagent compact repl](ag-1783611156430-vvj8oi/1787154678709-approver-infra-abstain-devin-subagent-compact-repl.md) — _ag-1783611156430-vvj8oi_
+- [approver human disagreement resolve introduced vs ](ag-1783611156430-vvj8oi/1787156940615-approver-human-disagreement-resolve-introduced-vs-.md) — _ag-1783611156430-vvj8oi_
+- [approver clause gap a tiny feature pr can show a h](ag-1783611156430-vvj8oi/1787157759114-approver-clause-gap-a-tiny-feature-pr-can-show-a-h.md) — _ag-1783611156430-vvj8oi_
+- [github compare files caps at 300 n files changed f](ag-1783611156430-vvj8oi/1787161674387-github-compare-files-caps-at-300-n-files-changed-f.md) — _ag-1783611156430-vvj8oi_
+- [approver infra subagent 400 overflow is a transmit](ag-1783611156430-vvj8oi/1787168345473-approver-infra-subagent-400-overflow-is-a-transmit.md) — _ag-1783611156430-vvj8oi_
+- [approver rebase vs merge is a commit graph claim v](ag-1783611156430-vvj8oi/1787169787544-approver-rebase-vs-merge-is-a-commit-graph-claim-v.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger miss blast radius is a separat](ag-1783611156430-vvj8oi/1787173201975-approver-challenger-miss-blast-radius-is-a-separat.md) — _ag-1783611156430-vvj8oi_
+- [approver clause gap global type param is unreachab](ag-1783611156430-vvj8oi/1787173740909-approver-clause-gap-global-type-param-is-unreachab.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement a finding held by a re](ag-1783611156448-d49n0a/1786357056431-approver-human-disagreement-a-finding-held-by-a-re.md) — _ag-1783611156448-d49n0a_
 - [approver human agreement a merge can ship an unver](ag-1783611156448-d49n0a/1786361356886-approver-human-agreement-a-merge-can-ship-an-unver.md) — _ag-1783611156448-d49n0a_
 - [approver infra abstain record decision returns dec](ag-1783611156448-d49n0a/1786361652051-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156448-d49n0a_
@@ -4692,6 +4756,9 @@
 - [approver clause gap skill md tells you to call rec](ag-1783611156448-d49n0a/1787049708429-approver-clause-gap-skill-md-tells-you-to-call-rec.md) — _ag-1783611156448-d49n0a_
 - [approver challenger doctest setoption reporters ap](ag-1783611156448-d49n0a/1787070146892-approver-challenger-doctest-setoption-reporters-ap.md) — _ag-1783611156448-d49n0a_
 - [approver infra abstain the critique gate bash hook](ag-1783611156448-d49n0a/1787083477695-approver-infra-abstain-the-critique-gate-bash-hook.md) — _ag-1783611156448-d49n0a_
+- [approver confirmed test only regression pr confirm](ag-1783611156448-d49n0a/1787148033918-approver-confirmed-test-only-regression-pr-confirm.md) — _ag-1783611156448-d49n0a_
+- [approver critique mustfix instrumentation prs can ](ag-1783611156448-d49n0a/1787158647458-approver-critique-mustfix-instrumentation-prs-can-.md) — _ag-1783611156448-d49n0a_
+- [approver clause gap a merge branch main pr head do](ag-1783611156448-d49n0a/1787167542059-approver-clause-gap-a-merge-branch-main-pr-head-do.md) — _ag-1783611156448-d49n0a_
 - [dashboard_slang triage 1776263007885](dashboard_slang-triage-1776263007885.md) — _unattributed_
 - [devin reviewer scrape reliability](devin-reviewer-scrape-reliability.md) — _unattributed_
 - [legoop feedback_ab_evaluation_criteria](legoop-feedback_ab_evaluation_criteria.md) — _unattributed_

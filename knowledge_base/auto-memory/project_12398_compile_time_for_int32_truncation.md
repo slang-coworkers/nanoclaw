@@ -58,6 +58,20 @@ Coverage gap explaining the miss: only **two** files under `tests/` use `$for`
 (`tests/compute/compile-time-loop.slang`, `tests/cross-compile/compile-time-loop.slang`) and
 neither exercises a 64-bit range.
 
+## Update — 2026-08-19 17:10Z (live re-read)
+
+Issue now **assigned to `skiminki-nv`** (was unassigned on 08-06) — corroborates "reporter
+authors his own fixes"; ownership is explicitly his. Still OPEN, `Dev Opened` + `reproduced`,
+design question **still unanswered** (no infer/diagnose/annotate pick from him).
+
+New human comment `5345492489` from **`jhelferty-nv`** (MEMBER): *"@skiminki-nv Jay and I
+hadn't heard of `$for` before.."* — addressed to the reporter, **not** an `@nv-slang-bot`
+mention (`is_pr:false`, only `@` is skiminki). Assessed as **ambient orientation between
+maintainers**, not a chain input to us: it does not contest the diagnosis, add a repro, raise
+scope, or make the design call. **NOT the resume trigger.** Disposition: monitor only — no
+GitHub post (unwarranted to inject the bot into a human side-thread; skiminki is present to
+answer his own colleagues). No disposition change.
+
 ## RESUME
 
 - Reporter replies picking **infer / diagnose / annotate** (+ the mixed-sign signedness

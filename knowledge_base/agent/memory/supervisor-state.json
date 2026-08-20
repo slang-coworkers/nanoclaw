@@ -1,15 +1,11 @@
 {
 "_meta": {
-"tick": 139,
-"at": "2026-08-18T17:23:47.128390Z",
-"in_flight": 382,
-"new": 7,
-"updated": 15,
-"same": 360,
-"scan_must_nudge": 119,
-"nudges_sent": 1,
-"note": "scan.py must_nudge=119 is a classification-gate bug (ball==ours branch skips the human-owned disposition + PR-artifact gate that ball==human uses). Verified-genuine set after live re-check = 1 solid (#7982); #12574 reclassified in-review (not nudged); rest are park-dispositions(45), already-nudged-2x(34), review-bot/CI-last(11), automated-notice/approval-under-human-login(~20). Escalated bug to operator.",
-"escalated_scan_bug": true
+"tick": 140,
+"at": "2026-08-20T00:11:54.860584Z",
+"in_flight": 967,
+"new": 42,
+"degraded": "gh_auth_down + disk_100pct",
+"note": "gh 401 (OneCLI app_not_connected) \u2014 no PR/CI/comment enrichment this tick; scan.py nudge-classification SKIPPED to avoid the tick-139 over-flag bug. NEW chains journaled by key so R2 dedup holds. Disk emergency: /ephemeral 1G free; dispatched 10 build-only reclaims (gh-independent, running sessions excluded)."
 },
 "_ci_health_alert": {
 "id": "master-wide-slangpy-tests-shader-o-2026-06-09",
@@ -6761,12 +6757,13 @@
 "githubArtifactUrl": "https://github.com/shader-slang/slangpy/issues/1066#issuecomment-4985640503"
 },
 "_diskEscalation": {
-"at": "2026-07-16T00:01:39Z",
-"tick": 88,
-"volFreeMB": 185,
-"vol": "/dev/vdb",
-"note": "251G vol 100% full (185M free) <10GB threshold; docker /ephemeral/docker root-only=operator reclaim; GC reap dispatched to fixers for closed chains",
-"escalatedTo": "orchestrator-dashboard"
+"at": "2026-08-20T00:11:54.860584Z",
+"free_gb": 1,
+"used_pct": 100,
+"worktree_footprint_gb": 927,
+"builds_dispatched": 10,
+"reclaim_target_gb": 146,
+"lever": "worktree-build-reclaim (dominant, not docker this time)"
 },
 "gh-issue-shader-slang/slang-11083": {
 "discoveredAt": "2026-07-16T15:50:00.000Z",
@@ -10721,5 +10718,257 @@
 "lastActivityAt": "2026-08-18T14:48:45.725000Z",
 "lastPrState": null,
 "lastObservedActivity": "2026-08-18T16:41:25Z"
+},
+"gh-issue-shader-slang/slang-11335": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12410": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12419": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12454": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12522": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12552": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12572": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12599": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12600": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12609": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12610": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12611": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12612": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12614": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12615": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12616": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12617": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12618": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12619": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12620": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12621": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12622": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12623": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12624": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12627": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12628": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12629": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12630": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12631": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12632": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12633": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12634": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12635": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12636": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12637": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12638": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12639": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-12640": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slang-vscode-extension-72": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slangpy-1116": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slangpy-1117": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
+},
+"gh-issue-shader-slang/slangpy-1118": {
+"lastObservedActivity": "2026-08-20T00:11:54.860584Z",
+"awareness": "journaled tick140 (degraded: gh auth down, unenriched)",
+"nudgedAt": [],
+"githubArtifactUrl": null
 }
 }

@@ -13,23 +13,16 @@ Read that index first; everything operational lives there.
 
 Verified 2026-08-04: this file was the untouched OKF template ("Nothing stored yet"), dated Jul 15.
 
-⛔ **CORRECTION to my own first framing — the sibling `MEMORY.md` here is NOT a stale duplicate.**
-I called it "~4 weeks stale" from its Jul 7 mtime. Measured instead: it indexes **52 `legoop-*.md`
-leaf files that exist ONLY in this tree** (all 53 of its links are absent from the live store's index;
-`ls legoop-* | wc -l` → 52 here, **0** there). It is a **ported lego-operator-memory archive** — a
-distinct namespace, not a copy. Content includes load-bearing operator facts (e.g. `gh auth status` /
-`gh api user` 401 by construction under OneCLI while push actually works).
-
-⇒ ⛔ **A `cp` in EITHER direction destroys the other store entirely.** The two are fully disjoint,
-not divergent-with-overlap. **Never sync these; they are different stores that happen to share a
-filename.** ⭐ *An old mtime is evidence about writes, never about relevance* — I inferred "stale"
-from a timestamp and the content refuted it.
-
-⭐ **Why a pointer and not a copy:** the two stores differ in shape (flat `MEMORY.md` vs OKF
-`index.md`), and a blind index copy between them has already clobbered an unread file once.
-**Sync leaf notes if you must; never indexes.** A stale index that passes every structural
-check — file present, links well-formed, confident phrasing — is the failure mode this banner
-exists to prevent.
+⛔ **Two-store hazard (kept — this is why the archive is a distinct folder).** The
+[ported lego-operator archive](legoop-archive/index.md) holds **52 `legoop-*.md`
+operator facts that exist ONLY here** (all absent from the live store's index). It is a
+distinct namespace, not a copy of anything. ⛔ **A `cp` in EITHER direction destroys the
+other store entirely** — they are fully disjoint, not divergent-with-overlap. Never sync
+these; different stores that only share a shape. ⭐ *An old mtime is evidence about
+writes, never about relevance.* A stale index that passes every structural check — file
+present, links well-formed, confident phrasing — is the failure mode this banner exists
+to prevent. (2026-08-19: the archive, formerly a loose `MEMORY.md` + 52 root siblings,
+was folded into `legoop-archive/` with `type:` frontmatter on each file.)
 
 ## Map
 
@@ -38,16 +31,15 @@ exists to prevent.
 - [Slang / slang-rhi chain records](slang/index.md) - per-chain state for shader-slang issue/PR work
   (written here because it's this session's own chain detail; operational routing rules still live in
   the live store above)
-- [Ported lego-operator archive](MEMORY.md) - **52 `legoop-*.md` operator facts that exist ONLY in
-  this store.** Measured 2026-08-05: this file was named in prose/backticks but never *linked*, so a
-  link-walk from `index.md` reached **3 of 77** files here and reported the other 74 as orphans.
-  ⭐ **A backtick is not a link — a filename in prose is invisible to every reachability check**, and
-  the store looked catastrophically broken when it was mostly fine.
+- [Ported lego-operator archive](legoop-archive/index.md) - **52 `legoop-*.md` operator facts that
+  exist ONLY in this store**, now in their own folder with a proper folder index and `type:`
+  frontmatter on each. ⭐ **A backtick is not a link — a filename in prose is invisible to every
+  reachability check**; link the folder, not the filenames in prose.
 - [#11135 IRTypeAlignmentAttr chain](project_11135_ir_type_alignment_attr_12306.md) - maintainer-requested
   impl; peer review found a triple-verified 🔴 `addAttrs` interleaving bug. **Reachable from no index in
   either store and absent from the live one** — relinked here 2026-08-05.
 - [#12307 reflection-json scope representation](project_12307_reflection_json_scope_representation.md) -
-  design proposal, PARKED awaiting @tangent-vector; the live store holds a copy.
+  MERGED 2026-08-15/19 (PR #12310). Terminal record + durable CI/reachability lessons.
 - [Orchestrator operational reference](orchestrator/index.md) - on-demand Main
   reference (mounts incl. `/workspace/project`, create_agent vs SDK Agent,
   interactive prompts, self-modification). Distilled 2026-08-18 from the legacy
@@ -72,7 +64,7 @@ Provider / harness experiments (May 2026, superseded but hold real findings):
 Dated snapshots — point-in-time, superseded by design (kept for audit, not for reading):
 
 - [Supervise 06-01T1501Z](supervise-table-20260601T1501Z.md) · [06-02T0631Z](supervise-report-2026-06-02T0631Z.md) · [06-02T0708Z](supervise-report-2026-06-02T0708Z.md)
-- [Tracker tick 66](tracker-tick.md) - 176 chains, 2026-07-01
+- [Tracker tick 66](tracker-tick.md) - 176-chain board, 2026-07-01; **pruned to a stub** (dead snapshot, live successor is `supervisor-state.json`)
 - Dashboard board renderings: [board-inline](board-inline.md) · [chat-board](chat-board.md) · [final-board](final-board.md) · [inline-board](inline-board.md)
 
 **Residual after this pass: 0.** Verify with the walk described in
