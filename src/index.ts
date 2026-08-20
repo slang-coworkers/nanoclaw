@@ -363,9 +363,8 @@ async function main(): Promise<void> {
       //     generation is unchanged after a Stop) still applies.
       //  3. No episode ever (stale runner / never escalated) → the legacy unconditional
       //     override — the ONLY place an unfenced override is allowed.
-      const { getPendingEpisodeForSession, getLatestEpisodeForSession } = await import(
-        './db/cost-escalation-episodes.js'
-      );
+      const { getPendingEpisodeForSession, getLatestEpisodeForSession } =
+        await import('./db/cost-escalation-episodes.js');
       const pending = getPendingEpisodeForSession(sessionId);
       if (pending) {
         const { decideCostEpisode } = await import('./modules/cost-approval/index.js');

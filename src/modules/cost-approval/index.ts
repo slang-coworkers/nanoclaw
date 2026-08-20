@@ -138,9 +138,7 @@ export function ingestCostEscalation(
   const decisionState = !active ? 'observed' : bornTerminal ? 'stopped' : 'pending';
   const cardState = active ? 'undelivered' : 'observed';
   const expiresAt =
-    active && !bornTerminal
-      ? new Date(new Date(nowIso).getTime() + COST_ESCALATION_EXPIRY_MS).toISOString()
-      : null;
+    active && !bornTerminal ? new Date(new Date(nowIso).getTime() + COST_ESCALATION_EXPIRY_MS).toISOString() : null;
 
   const isNew = ingestEpisode({
     episode_id: episodeId,
@@ -318,8 +316,7 @@ export async function sendCostCard(ep: CostEpisodeRow): Promise<void> {
   const actionable = ep.decision_state === 'pending' || (ep.reason === 'ceiling' && !ep.immortal);
   // 'sending' is included so a crash mid-send is retried (a stuck 'sending' would otherwise
   // never resend); at-least-once delivery is terminal-edit-deduped on the platform.
-  const awaitingDelivery =
-    ep.card_state === 'undelivered' || ep.card_state === 'failed' || ep.card_state === 'sending';
+  const awaitingDelivery = ep.card_state === 'undelivered' || ep.card_state === 'failed' || ep.card_state === 'sending';
   if (!actionable || !awaitingDelivery) return;
   if (!ep.agent_group_id) {
     log.warn('cost-approval: episode has no agent group — cannot resolve approver', { episodeId: ep.episode_id });

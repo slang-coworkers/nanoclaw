@@ -91,7 +91,9 @@ export const migration939: Migration = {
     // Reconciler hot paths: find undelivered cards, decided-but-unapplied effects,
     // and expired-but-pending episodes without a full scan.
     db.exec(`CREATE INDEX IF NOT EXISTS idx_cost_ep_card    ON cost_escalation_episodes (card_state)`);
-    db.exec(`CREATE INDEX IF NOT EXISTS idx_cost_ep_effect  ON cost_escalation_episodes (decision_state, effect_state)`);
+    db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_cost_ep_effect  ON cost_escalation_episodes (decision_state, effect_state)`,
+    );
     db.exec(`CREATE INDEX IF NOT EXISTS idx_cost_ep_session ON cost_escalation_episodes (session_id)`);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_cost_ep_pending ON cost_escalation_episodes (decision_state, expires_at)`);
   },

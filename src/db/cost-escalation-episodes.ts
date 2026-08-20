@@ -20,21 +20,9 @@ import { getDb, hasTable } from './connection.js';
 export type CostReason = 'cap' | 'ceiling';
 export type CostWindow = 'lifetime' | 'daily';
 export type CostDecision = 'continue' | 'stop' | 'expired';
-export type CostDecisionState =
-  | 'pending'
-  | 'continued'
-  | 'stopped'
-  | 'expired'
-  | 'superseded'
-  | 'observed';
+export type CostDecisionState = 'pending' | 'continued' | 'stopped' | 'expired' | 'superseded' | 'observed';
 export type CostEffectState = 'none' | 'enqueued' | 'applied';
-export type CostCardState =
-  | 'observed'
-  | 'undelivered'
-  | 'sending'
-  | 'delivered'
-  | 'edited'
-  | 'failed';
+export type CostCardState = 'observed' | 'undelivered' | 'sending' | 'delivered' | 'edited' | 'failed';
 
 /** The protocol version this host/runner build speaks. Bumped only on a breaking
  *  change to the episode contract; gates the S1→S2 flag rollout. */
@@ -141,17 +129,17 @@ export function ingestEpisode(ep: CostEpisodeInsert): boolean {
 export function getEpisode(episodeId: string): CostEpisodeRow | undefined {
   const d = db();
   if (!d) return undefined;
-  return d
-    .prepare(`SELECT * FROM cost_escalation_episodes WHERE episode_id = ?`)
-    .get(episodeId) as CostEpisodeRow | undefined;
+  return d.prepare(`SELECT * FROM cost_escalation_episodes WHERE episode_id = ?`).get(episodeId) as
+    | CostEpisodeRow
+    | undefined;
 }
 
 export function getEpisodeByShortId(shortId: string): CostEpisodeRow | undefined {
   const d = db();
   if (!d) return undefined;
-  return d
-    .prepare(`SELECT * FROM cost_escalation_episodes WHERE short_id = ?`)
-    .get(shortId) as CostEpisodeRow | undefined;
+  return d.prepare(`SELECT * FROM cost_escalation_episodes WHERE short_id = ?`).get(shortId) as
+    | CostEpisodeRow
+    | undefined;
 }
 
 /**
@@ -297,22 +285,33 @@ export function supersedeLiveCapEpisodes(
 
 // ── effect + card lifecycle setters (idempotent single-column advances) ──
 export function markEffectEnqueued(episodeId: string): void {
-  db()?.prepare(`UPDATE cost_escalation_episodes SET effect_state='enqueued' WHERE episode_id=? AND effect_state='none'`).run(episodeId);
+  db()
+    ?.prepare(`UPDATE cost_escalation_episodes SET effect_state='enqueued' WHERE episode_id=? AND effect_state='none'`)
+    .run(episodeId);
 }
 export function markEffectApplied(episodeId: string): void {
   db()?.prepare(`UPDATE cost_escalation_episodes SET effect_state='applied' WHERE episode_id=?`).run(episodeId);
 }
 export function bumpEffectAttempt(episodeId: string, error?: string): void {
-  db()?.prepare(`UPDATE cost_escalation_episodes SET effect_attempts=effect_attempts+1, last_error=? WHERE episode_id=?`).run(error ?? null, episodeId);
+  db()
+    ?.prepare(`UPDATE cost_escalation_episodes SET effect_attempts=effect_attempts+1, last_error=? WHERE episode_id=?`)
+    .run(error ?? null, episodeId);
 }
-export function markCard(episodeId: string, state: CostCardState, platformMessageId?: string | null, approvalId?: string | null): void {
-  db()?.prepare(
-    `UPDATE cost_escalation_episodes
+export function markCard(
+  episodeId: string,
+  state: CostCardState,
+  platformMessageId?: string | null,
+  approvalId?: string | null,
+): void {
+  db()
+    ?.prepare(
+      `UPDATE cost_escalation_episodes
         SET card_state=@state,
             platform_message_id=COALESCE(@pmid, platform_message_id),
             approval_id=COALESCE(@aid, approval_id)
       WHERE episode_id=@id`,
-  ).run({ id: episodeId, state, pmid: platformMessageId ?? null, aid: approvalId ?? null });
+    )
+    .run({ id: episodeId, state, pmid: platformMessageId ?? null, aid: approvalId ?? null });
 }
 
 // ── reconciler queries (the host-sweep repairs half-done state from these) ──
@@ -324,32 +323,38 @@ export function markCard(episodeId: string, state: CostCardState, platformMessag
 export function listUndeliveredCards(limit = 50): CostEpisodeRow[] {
   const d = db();
   if (!d) return [];
-  return d.prepare(
-    `SELECT * FROM cost_escalation_episodes
+  return d
+    .prepare(
+      `SELECT * FROM cost_escalation_episodes
       WHERE card_state IN ('undelivered','sending','failed')
         AND (decision_state = 'pending' OR (reason = 'ceiling' AND decision_state = 'stopped'))
       ORDER BY created_at LIMIT ?`,
-  ).all(limit) as CostEpisodeRow[];
+    )
+    .all(limit) as CostEpisodeRow[];
 }
 /** Decided episodes whose effect has not yet landed — re-drive them. */
 export function listUnappliedEffects(limit = 50): CostEpisodeRow[] {
   const d = db();
   if (!d) return [];
-  return d.prepare(
-    `SELECT * FROM cost_escalation_episodes
+  return d
+    .prepare(
+      `SELECT * FROM cost_escalation_episodes
       WHERE decision_state IN ('continued','stopped','expired') AND effect_state <> 'applied'
       ORDER BY resolved_at LIMIT ?`,
-  ).all(limit) as CostEpisodeRow[];
+    )
+    .all(limit) as CostEpisodeRow[];
 }
 /** Pending episodes past their expiry — the sweep resolves each to 'expired'. */
 export function listExpiredPending(nowIso = new Date().toISOString(), limit = 50): CostEpisodeRow[] {
   const d = db();
   if (!d) return [];
-  return d.prepare(
-    `SELECT * FROM cost_escalation_episodes
+  return d
+    .prepare(
+      `SELECT * FROM cost_escalation_episodes
       WHERE decision_state='pending' AND expires_at IS NOT NULL AND datetime(expires_at) <= datetime(?)
       ORDER BY expires_at LIMIT ?`,
-  ).all(nowIso, limit) as CostEpisodeRow[];
+    )
+    .all(nowIso, limit) as CostEpisodeRow[];
 }
 
 /**
@@ -362,9 +367,11 @@ export function listExpiredPending(nowIso = new Date().toISOString(), limit = 50
 export function supersedeObservedEpisodes(nowIso = new Date().toISOString()): number {
   const d = db();
   if (!d) return 0;
-  return d.prepare(
-    `UPDATE cost_escalation_episodes
+  return d
+    .prepare(
+      `UPDATE cost_escalation_episodes
         SET decision_state='superseded', resolved_at=?, resolved_by='supersede:activation'
       WHERE decision_state='observed'`,
-  ).run(nowIso).changes;
+    )
+    .run(nowIso).changes;
 }

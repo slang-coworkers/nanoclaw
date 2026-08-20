@@ -371,7 +371,14 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
       chat.onAction(async (event) => {
         // Cost-cap escalation card click — funnels through the same CAS as every surface.
         if (event.actionId.startsWith('ncc:')) {
-          await handleCostCardAction(event.actionId, event.threadId, event.messageId, adapter.name, event.user, adapter);
+          await handleCostCardAction(
+            event.actionId,
+            event.threadId,
+            event.messageId,
+            adapter.name,
+            event.user,
+            adapter,
+          );
           return;
         }
         if (!event.actionId.startsWith('ncq:')) return;
@@ -795,7 +802,10 @@ async function handleForwardedEvent(
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   type: 7, // UPDATE_MESSAGE
-                  data: { embeds: [{ title: terminal.title, description: terminal.bodyLines.join('\n') }], components: [] },
+                  data: {
+                    embeds: [{ title: terminal.title, description: terminal.bodyLines.join('\n') }],
+                    components: [],
+                  },
                 }),
               });
             } catch (err) {
