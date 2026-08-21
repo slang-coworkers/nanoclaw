@@ -6962,6 +6962,42 @@ function renderApprovalItem(item) {
     <div class="cw-msg-time">${formatTime(item.createdAt)} <span style="font-size:7px;color:#f85149;font-style:italic">runaway</span></div>
   </div>`;
   }
+  if (item.action === 'cost_decision') {
+    // A cost-cap escalation: the approver must see WHAT they're deciding on — current
+    // spend vs cap, and a door into the session — before Approve (Continue: raise the
+    // cap by one allotment and resume) or Reject (Stop: quiesce). Falling through to the
+    // generic branch rendered only a bare title. Mirrors the runaway card's cost+session
+    // treatment; the button labels carry the Continue/Stop meaning of Approve/Reject.
+    const cost =
+      typeof item.spentUsd === 'number' && typeof item.capUsd === 'number'
+        ? `<div style="margin-top:4px;font-size:13px;font-weight:700;color:#f59e0b">$${item.spentUsd.toFixed(2)} spent of $${item.capUsd.toFixed(2)} cap</div>`
+        : '';
+    // Hash-based coworkers router: #/cw/<folder>/s/<sessionId>. Raw anchor (md() only
+    // linkifies http(s)); degrades to copyable text when the folder isn't resolvable.
+    const sessionLink =
+      item.sessionId && item.coworkerFolder
+        ? `<a href="#/cw/${encodeURIComponent(item.coworkerFolder)}/s/${encodeURIComponent(item.sessionId)}">session ${esc(String(item.sessionId).slice(0, 22))}</a>`
+        : item.sessionId
+          ? `<code>${esc(item.sessionId)}</code>`
+          : '';
+    const detail = item.question
+      ? `<div style="margin-top:6px;font-size:10px;color:#8b949e">${clampedReason(item.question, item.approvalId)}</div>`
+      : '';
+    return `<div class="cw-msg assistant">
+    <div class="cw-msg-bubble" style="border-left:3px solid #f59e0b;padding-left:8px">
+      ${coworkerHeader}
+      <div style="font-weight:600">${esc(item.title || 'Cost cap — decision needed')}</div>
+      ${cost}
+      ${sessionLink ? `<div style="margin-top:4px;font-size:10px">${sessionLink}</div>` : ''}
+      ${detail}
+      <div style="margin-top:8px">
+        <button class="approval-btn" data-qid="${esc(item.approvalId)}" data-decision="Approve" style="background:#238636;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;cursor:pointer;font-size:10px">Continue (raise cap)</button>
+        <button class="approval-btn" data-qid="${esc(item.approvalId)}" data-decision="Reject" style="background:#da3633;color:#fff;border:none;border-radius:3px;padding:4px 14px;cursor:pointer;font-size:10px">Stop</button>
+      </div>
+    </div>
+    <div class="cw-msg-time">${formatTime(item.createdAt)} <span style="font-size:7px;color:#f59e0b;font-style:italic">cost cap</span></div>
+  </div>`;
+  }
   if (item.action === 'install_packages') {
     desc = `**Install packages:** ${(item.packages || []).map((p) => esc(p)).join(', ')}${safeReason}`;
   } else if (item.action === 'request_rebuild') {
