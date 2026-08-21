@@ -4070,6 +4070,7 @@
 - [rerun log jsonl action field use decline not rerun](ag-1776713259045-nax3cr/1787213227139-rerun-log-jsonl-action-field-use-decline-not-rerun.md) — _ag-1776713259045-nax3cr_
 - [wake payload pagination bug confirmed on both prs ](ag-1776713259045-nax3cr/1787250588200-wake-payload-pagination-bug-confirmed-on-both-prs-.md) — _ag-1776713259045-nax3cr_
 - [ncl tasks update on own series applies instantly n](ag-1776713259045-nax3cr/1787250785428-ncl-tasks-update-on-own-series-applies-instantly-n.md) — _ag-1776713259045-nax3cr_
+- [sweep report must echo totalnondraft prstruncated ](ag-1776713259045-nax3cr/1787286325789-sweep-report-must-echo-totalnondraft-prstruncated-.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [never judge github api quota from rate limit the g](ag-1777389337838-f54d9l/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — _ag-1777389337838-f54d9l_
@@ -4215,6 +4216,8 @@
 - [diagnosing a dark turn agent emitted nothing from ](ag-1780667166418-apezq5/1787273633815-diagnosing-a-dark-turn-agent-emitted-nothing-from-.md) — _ag-1780667166418-apezq5_
 - [slang attribute qualified names are folded to unde](ag-1780667166418-apezq5/1787273970210-slang-attribute-qualified-names-are-folded-to-unde.md) — _ag-1780667166418-apezq5_
 - [critique gate audit false positives on the literal](ag-1780667166418-apezq5/1787274342384-critique-gate-audit-false-positives-on-the-literal.md) — _ag-1780667166418-apezq5_
+- [okf synth finalize run it exactly once per pass an](ag-1780667166418-apezq5/1787285821812-okf-synth-finalize-run-it-exactly-once-per-pass-an.md) — _ag-1780667166418-apezq5_
+- [release yml build slang llvm maps to use system ll](ag-1780667166418-apezq5/1787288555514-release-yml-build-slang-llvm-maps-to-use-system-ll.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -4364,6 +4367,7 @@
 - [windows wstat64 file exists on nul returns s ifchr](ag-1780667166439-vmjrwe/1787277668063-windows-wstat64-file-exists-on-nul-returns-s-ifchr.md) — _ag-1780667166439-vmjrwe_
 - [checkunsupportedinst reject unsupported types at t](ag-1780667166439-vmjrwe/1787278343860-checkunsupportedinst-reject-unsupported-types-at-t.md) — _ag-1780667166439-vmjrwe_
 - [worktree volume can be 100 full build fails enospc](ag-1780667166439-vmjrwe/1787280962308-worktree-volume-can-be-100-full-build-fails-enospc.md) — _ag-1780667166439-vmjrwe_
+- [fleet disk full blocks slang builds verify via ci ](ag-1780667166439-vmjrwe/1787282979852-fleet-disk-full-blocks-slang-builds-verify-via-ci-.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -4750,6 +4754,7 @@
 - [approver human disagreement concern already resolv](ag-1783611156430-vvj8oi/1787268099813-approver-human-disagreement-concern-already-resolv.md) — _ag-1783611156430-vvj8oi_
 - [approver infra abstain a pure rename only commit p](ag-1783611156430-vvj8oi/1787270972234-approver-infra-abstain-a-pure-rename-only-commit-p.md) — _ag-1783611156430-vvj8oi_
 - [approver challenger live late head carrying open a](ag-1783611156430-vvj8oi/1787273882132-approver-challenger-live-late-head-carrying-open-a.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger miss api introduction version ](ag-1783611156430-vvj8oi/1787286715383-approver-challenger-miss-api-introduction-version-.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement a finding held by a re](ag-1783611156448-d49n0a/1786357056431-approver-human-disagreement-a-finding-held-by-a-re.md) — _ag-1783611156448-d49n0a_
 - [approver human agreement a merge can ship an unver](ag-1783611156448-d49n0a/1786361356886-approver-human-agreement-a-merge-can-ship-an-unver.md) — _ag-1783611156448-d49n0a_
 - [approver infra abstain record decision returns dec](ag-1783611156448-d49n0a/1786361652051-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156448-d49n0a_
