@@ -190,3 +190,43 @@ add 5.2/5.3/6.1/6.2; deprecate phantom 4.0; should a CASE-less atom diagnose; im
 **State:** memo verified. No GitHub comment from me (triager owns the verdict — closest-to-the-state).
 **RESUME:** triager posts its verdict, or a maintainer/`tdavidovicNV` comments, or someone opens a PR
 from `claude/issue-12426-20260807-1745`.
+
+
+## 2026-08-20 ~11:2xZ — maintainer opened PR #12649 (part C), answers Q6. CHAIN RE-OPENED then re-routed.
+
+`jvepsalainen-nv` (maintainer) commented on #12426 (cmt 5355168615) and **opened
+[PR #12649](https://github.com/shader-slang/slang/pull/12649)** — OPEN, non-draft, head
+`fix/issue-12426-nvrtc-supported-archs`, **one file: `slang-nvrtc-compiler.cpp`** = the query half (C)
+only. **Not ours — a maintainer's own PR. I did NOT call `report_pr_created` and must not.**
+
+**Verified against the live diff (`gh pr diff 12649`), consistent with my earlier measurements:**
+- Adds `nvrtcGetNumSupportedArchs`/`nvrtcGetSupportedArchs` as a **second, optional** macro list
+  (no `return SLANG_FAIL`) — exactly the ~10-line mechanism the triage said "does not exist yet."
+  Confirms my constraint note: the existing `SLANG_NVRTC_FUNCS` is fail-closed.
+- Uses the reported **floor** (`supportedArchs[0]`) to replace the hand-maintained version ladder, and
+  a **ceiling clamp** (`supportedArchs.getLast()`) — this is the fix for **Q6**. So Q6 is answered by
+  a maintainer, C-first.
+- Maintainer states the clamp is **currently inert** (highest atom is `_cuda_sm_9_0`; both NVRTC
+  11.8 and 12.6 report ceiling 90) — matches my finding that no atom above 9_0 exists and this NVRTC
+  tops out at 90. Floor claim (11.8→35, 12.6→50) matches my 12.6 sweep (cuda_sm_1_0..5_0 → sm_50).
+
+**Maintainer's counter to the triage's A→B→C framing** (reasonable, recorded): the three parts are
+more *coupled* than a strict ordering implies — C is motivated by device-vs-compiler disagreement and
+does **not** depend on A or B; the ceiling can't fire until B grows atoms past 9_0; A remains
+separately worth doing because `-capability cuda_sm_8_9` still silently resolves to sm_80.
+
+**State of the three parts now:**
+- **A (CASE-table bug):** STILL UNDONE on master — 9 `CASE(CUDASM` rows, `_cuda_sm_8_9`/`_cuda_sm_3_5`
+  gap persists. Nobody assigned. Maintainer acknowledges it's worth doing.
+- **B (atoms):** the bot's `claude/issue-12426-...` branch **never became a PR** (`gh pr list` empty).
+  Still maintainer-gated on Q1 (renumbering).
+- **C (query):** PR #12649 OPEN, maintainer-driven.
+- On testing #12649: author deliberately adds no test, reasoning that nothing in emitted output
+  changes on any reachable config (clamp inert) — a test would pass identically pre/post; the
+  arch-flag test belongs with A. **This matches my own inert-flag finding exactly.**
+
+**Routed to `slang-triager`** on canonical thread (closest-to-state, holds the verdict + memo). It owns
+whether any GitHub reply is warranted (likely none — maintainer is driving) and whether to offer the A
+fix. **I did NOT dispatch a fixer** — maintainer is engaged and driving; A is unassigned but offering
+it is the triager's call, not an unsolicited Main dispatch. **RESUME:** triager acts, or #12649 gets a
+review request / CI event, or a maintainer asks for A/B.

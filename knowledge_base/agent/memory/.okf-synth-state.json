@@ -11,6 +11,28 @@
     "class": "DOSSIER",
     "size": 72521
    }
+  },
+  {
+   "at": "2026-08-20T04:08:41Z",
+   "backlog": 6500,
+   "defects": 13,
+   "offenders": 13,
+   "top": {
+    "path": "full-abcd-comparison.md",
+    "class": "NO-FRONTMATTER",
+    "size": 6468
+   }
+  },
+  {
+   "at": "2026-08-20T04:08:59Z",
+   "backlog": 5500,
+   "defects": 11,
+   "offenders": 11,
+   "top": {
+    "path": "full-abcd-comparison.md",
+    "class": "NO-FRONTMATTER",
+    "size": 6468
+   }
   }
  ]
 }

@@ -45,6 +45,12 @@ was folded into `legoop-archive/` with `type:` frontmatter on each file.)
   interactive prompts, self-modification). Distilled 2026-08-18 from the legacy
   always-injected `CLAUDE.local.md`; the composed spine (`CLAUDE.md`) stays
   canonical for role/tools/routing/Projects.
+- [Harness / provider findings](harness/index.md) - durable structural facts about
+  running a group on the Codex provider vs Claude (headline: settings.json hooks are
+  inert for Codex). Distilled 2026-08-20 from the May-2026 A/B and parity R&D notes.
+- [Supervise-tick delivery guardrail](project_supervise_tick_no_cc_discord.md) - each
+  `/supervise-issues` tick delivers to `orchestrator-dashboard` and nowhere else; never
+  CC a coworker.
 
 ### Scratch and one-off working notes (linked 2026-08-05)
 
@@ -53,21 +59,22 @@ banner diagnoses: a filename in prose is invisible to every reachability check.*
 not linking it, so the count was *known* and the files were still unreachable. ⭐⭐ **Recording a lesson
 is not applying it.** Now linked, as rows added — nothing deleted.
 
-Provider / harness experiments (May 2026, superseded but hold real findings):
+Provider / harness experiments (May 2026, superseded — durable findings folded into [harness/](harness/index.md)):
 
 - [A2A handoff test](a2a-handoff-test.md) - task #13: free-form handoff sufficient; **a finding, not scratch**
-- [Codex↔Claude provider parity](codex-parity-test-results.md) - 210-line parity matrix, 2026-05-09
 - [Claude vs Codex on triage #943](claude-vs-codex-triage-943.md) · [Fixer A/B on slangpy#943](fixer-ab-test-943.md)
 - [Full A/B/C/D comparison](full-abcd-comparison.md) · [v2, fixed buddy](full-abcd-comparison-v2.md)
-- [Plan: triage→fixer A/B](plan-triage-fixer-ab-test.md) · [Plan: webhook→session routing](plan-webhook-session-routing-test.md)
+- [Plan: webhook→session routing](plan-webhook-session-routing-test.md)
+- Pruned 2026-08-20 (content distilled into `harness/codex-provider-parity.md`): the 210-line
+  `codex-parity-test-results.md` and the `plan-triage-fixer-ab-test.md` plan.
 
 Dated snapshots — point-in-time, superseded by design (kept for audit, not for reading):
 
 - [Supervise 06-01T1501Z](supervise-table-20260601T1501Z.md) · [06-02T0631Z](supervise-report-2026-06-02T0631Z.md) · [06-02T0708Z](supervise-report-2026-06-02T0708Z.md)
 - [Tracker tick 66](tracker-tick.md) - 176-chain board, 2026-07-01; **pruned to a stub** (dead snapshot, live successor is `supervisor-state.json`)
-- Dashboard board renderings: [board-inline](board-inline.md) · [chat-board](chat-board.md) · [final-board](final-board.md) · [inline-board](inline-board.md)
+- Dashboard board renderings: [chat-board](chat-board.md) · [final-board](final-board.md). (`board-inline` + `inline-board` pruned 2026-08-20 as dead point-in-time renders.)
 
-**Residual after this pass: 0.** Verify with the walk described in
+**Residual after this pass: dated snapshots + May-2026 R&D remain frontmatter-less; being retired incrementally by the daily okf-synthesis fold.** Verify reachability with the walk described in
 `/home/node/.claude/projects/-workspace-agent/memory/technique_keeping_this_store_reachable.md`
 (store A — **absolute path, deliberately NOT a `[[wikilink]]`**: a wikilink here resolves against *this*
 store and dangles, which is the two-store hazard in miniature). Orphans from the readable prefix, both
