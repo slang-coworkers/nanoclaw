@@ -1,3 +1,10 @@
+---
+type: feedback
+title: Deliver /supervise-issues tick only to orchestrator-dashboard — never CC a coworker
+description: Standing guardrail — each /supervise-issues tick delivers its board to orchestrator-dashboard and nowhere else; do NOT CC slang-discord-support or any coworker. Recurs because the tick runs new_session:true, so only this memory survives across fires.
+tags: [supervise-issues, routing, discord, guardrail]
+---
+
 # Do NOT CC the /supervise-issues tick summary to slang-discord-support (or any coworker) — deliver only to orchestrator-dashboard
 
 Every `/supervise-issues` tick I run has been sending its "Tick N delivered…" summary to the **Slang Discord Support** coworker (`ag-1777389337838-f54d9l`) as an extra CC, on top of the real board delivery to `orchestrator-dashboard`. This is wrong: nothing asks for it (the skill R7 and the scheduled prompt both say deliver ONLY `to="orchestrator-dashboard"`; discord-support's instructions never ask to receive ticks), discord-support does nothing with them, and it's pure noise + token burn in the wrong inbox. It's been happening nearly every tick since ~2026-06-05.

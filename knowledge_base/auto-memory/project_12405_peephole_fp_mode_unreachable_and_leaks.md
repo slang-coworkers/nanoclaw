@@ -20,9 +20,57 @@ substantive human comment; (C) a PR appears touching `slang-ir-peephole.cpp`
 adds an *obligation* or changes *scope* (revert requirement, follow-up issue, doc mirror, "when X
 lands also do Y"), not only ones that change the answer.
 
-**FINAL STATE 2026-08-06 18:09Z:** triaged, body PATCHed in place 9412→14817 chars, **comments_count
-0** (single artifact — correct; a restating comment would have been noise), labels `bug` +
-`reproduced`, Type `Bug`. No fixer dispatched. Awaiting maintainer on Q1/Q2.
+**~~FINAL STATE 2026-08-06 18:09Z~~ SUPERSEDED — maintainer answered, chain re-opened.** Triaged,
+body PATCHed 9412→14817 chars, comments 0, labels `bug` + `reproduced`, Type `Bug`.
+
+**MAINTAINER VERDICT 2026-08-06 ~18:2xZ — jkwak-work (MEMBER), cmt `5363875868`:** *"I think both
+are unintended bugs. For Q1, allowUnsafeOptimizations should be also applied to Add/Sub; please
+leave comments in the code that explains why it should be applied. For Q2, let's apply `-fp-mode`."*
+
+⇒ **Resume trigger A fired.** Both findings confirmed bugs, both to be fixed:
+- **Q1** → gate `Add`/`Sub` identity folds on `allowUnsafeOptimizations` (as `Mul`/`Div` already
+  are), **with an in-code comment explaining why** — the maintainer asked for this explicitly, so
+  the comment is a deliverable, not optional.
+- **Q2** → make the pass actually consult `-fp-mode` (the unreachability defect).
+
+Routed to `slang-triager` on the canonical thread 2026-08-21 for the fixer handoff (ANCHOR H —
+triager owns it, not a direct Main→fixer send), **pinned to `sess-1786038083166-nu4qd4`** (the
+existing 12405 triager session, holds the full analysis + 08-10 triage-summary comment `5240474724`).
+Pin held — verified exactly one triager 12405 session, no phantom minted. Verdict comment is
+`5363875868`, issue assigned `jkwak-work`, milestone Q3 2026. PR #12417 (fixer session
+`sess-1786035669521-4aptki` on the **12396** thread, mapping confirmed) is a *different* fix that
+deliberately left this fold alone — genuinely new fix work, not a re-open of #12417.
+
+**HANDOFF COMPLETE 2026-08-21 ~01:05Z (triager 5-bullet, msg 48):** fixer dispatched on the canonical
+thread with the principled single-fix brief. Triager re-verified all four anchors at current HEAD
+**`de679fdc3`** (peephole `:21`/`:167-257`/`:304-305`/`:2033-2056`; `getParentFunc` `slang-ir.h:2494`;
+`getFloatingPointMode` `slang-compiler-options.h:395`) — **`d7d59f374` confirmed stale**, fixer
+branches from `de679fdc3`. Incremental GitHub comment posted `5363936441` (human was last poster, so
+a fresh comment was correct, not an edit). All three of my emphases passed to the fixer verbatim:
+Q1 in-code comment = PR acceptance criterion; `processFunc` save/restore no-op trap flagged;
+Q2 scope consequence (newly-enabled `Mul`/`Div` fast-math folds → baseline churn + two-sided
+regression tests, build+slang-test settles it). Fixer to open draft PR with `Closes #12405`; triager
+forwards the [Triage Resolution] up when the Fix Report lands.
+
+⚠️ **Line numbers drifted at `de679fdc3` — use these, the ones in this memo's body are `d7d59f374`:**
+ungated `Add`/`Sub` `isZero` folds now at `slang-ir-peephole.cpp:205/209/216/220` (the Q1 comment
+site), `isFloatingPointModePrecise` reference pattern at `slang-emit-spirv.cpp:10414` (not `:10406`),
+`getParentFunc` `slang-ir.h:2494`, `getFloatingPointMode` `slang-compiler-options.h:395`. Anchors
+re-confirmed against live source by the triager, not memory.
+
+Aside logged by triager: a `[GATE AUDIT]` critique warning fired on its report to me — a false
+positive, substring-matching the bracketed `[Fix Report]` marker in prose referencing the fixer's
+*future* report. That session reviewed no code, so the critique gate doesn't apply; triager shared
+the gotcha as a learning. Not a defect in the chain.
+
+**NEXT RESUME:** the fixer's Fix Report / PR-opened event arriving up through the triager — expect a
+draft PR `Closes #12405` against `de679fdc3`+. Nothing owed from Main until then. ⚠️**Scope consequence the fixer must handle deliberately,
+already verified in this memo:** satisfying Q2 (pass reads `-fp-mode`) **newly enables the `Mul`/`Div`
+zero folds for all user fast-math code** — a real behaviour change beyond a bug fix. The principled
+single fix (delete the `floatingPointMode` member, resolve per inst à la
+`isFloatingPointModePrecise` `slang-emit-spirv.cpp:10406`) satisfies **both** Q1 and Q2 and kills the
+module-wide leak by construction. The Q1 code-comment lands at the `Add`/`Sub` fold site
+(`slang-ir-peephole.cpp:205-219`).
 
 **Test-dependence precondition ANSWERED (triager's sweep): no in-tree test depends on the ungated
 behaviour** — `CHECK-NOT` lines with a zero literal = 0 against a 443-line must-hit control; 913

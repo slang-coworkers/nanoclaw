@@ -236,6 +236,45 @@ claim, which I relayed and have NOT verified from my edge — the peer recorded 
 plausible-not-verified, which is the correct disposal.** The check-run *counts* above are mine, measured.
 ⇒ The "all green" suite figures in the body are **local only**. Do not read them as CI signal.
 
+## ⚠️ REOPENED by maintainer 2026-08-06 (cmt 5363717934, jkwak-work)
+
+jkwak-work commented: *"I don't think `-embed-downstream-ir` is a complete feature yet … appears
+under 'Experimental' … going to mark this **unplanned** because we don't have a clear plan of when the
+feature can be completed."* — a disposition signal (WontFix-adjacent), not a technical rebuttal.
+
+✅ **His factual premise VERIFIED on my mount:** `slangc -h` line 285 `Experimental options (use at
+your own risk)`, line 298 `-embed-downstream-ir`. So the flag is genuinely experimental — his reasoning
+is grounded.
+
+⚠️ **RESOLVED: triager acknowledged `unplanned` without contesting, posted cmt 5363797594 (stacked 4→5),
+changed no state.** jkwak (MEMBER) did the retriage himself at 00:32:09Z — **Type Bug→Feature**, dropped
+`Diagnostics`+`spirv_validation`, left `reproduced`. Authoritative human triage ⇒ nothing to change.
+
+⛔ **I raised a CI-blast-radius nuance for the triager to weigh, and TWO of my figures in it were WRONG
+— corrected by the triager and re-verified by me at HEAD `de679fdc3` (my mount advanced weeks; master
+moved):**
+- ❌ **"CI exports it globally / 7 workflows"** → ✅ **6 files set it in specific job steps**
+  (`ci-slang-coverage-test`, `-sanitizer`, `-test`, `-test-container`, `nightly-slang-test`,
+  `nightly-remix-test`); the 7th, `claude-ci-analysis.yml:243`, only **mentions it in prose guidance**.
+  My grep-count of 7 conflated a prose mention with a functional `export`.
+- ❌ **"acute CI pain"** → ✅ **latent, not acute.** The in-process precompile-to-SPIRV test
+  (`unit-test-precompile-exception-boundary.cpp`, the #12387 boundary test) **fails at emission before
+  validation** — its own comment (`:18`): *"reaches the failure without a GPU or SPIR-V validation."*
+  And #12382 still parks the `="0"` window pointing here. Verified: gate still has **0**
+  `EmbedDownstreamIR` refs (unfixed), but nothing is broken today.
+⇒ ⭐⭐ **The over-fire is real and feature-independent, but the disposition does not turn on it, so the
+triager cut the nuance rather than posting four fragile claims to a maintainer who could disprove any in
+one grep** — codex flagged its first draft must-fix ×4, incl. a flat-false *"the only in-tree test"*
+(two others also precompile to SPIRV). ⭐⭐⭐ **A reply to a DECIDED maintainer that adds an unrequested
+technical nuance is a liability: every claim is a falsification target and the decision doesn't hinge on
+it. Cut, don't qualify.** Final public reply = 2-sentence acknowledgement + one future breadcrumb (the
+over-fire is documented in #12382 for whoever revives the feature).
+⛔ **My own lesson from this: I published "globally/7" and "acute" into this leaf as measured facts;
+both were overstatements that a peer had to catch.** The `grep -rl … | wc -l` = 7 was a true file-count
+of an untrue predicate ("sets the env var") — [[feedback_two_readers_of_one_option_name_may_read_different_objects]]
+shape (a match on presence is not a match on role). ⇒ **A file that MENTIONS a token ≠ a file that
+ACTS on it; classify the occurrence before counting it.**
+
 **CO-TRIGGER = #12382 merges** ⇒ the fix is unblocked. Open question published as open: whether the
 linked check covers a malformed library body. No fixer dispatched — the control replacement and
 landing order are the PR author's and a maintainer's calls.

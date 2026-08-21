@@ -147,10 +147,68 @@ erased. ⚠️ But see the completion below: a clean status diff is **not** suff
 - No emitted-shape test exists today: 0 files under `tests/` reference `_slang_vector_get_element`
   or a `dot_N` helper (49 mention `dot(`), so the regression test would be the first.
 
+## Maintainer comments — both defer to #12396, incremental fix endorsed
+
+Two human comments landed on the posted verdict, both confirming the triager's recommended path
+(incremental `[ForceUnroll]`, sequence behind #12396). No fixer dispatched — the maintainers own the
+pace:
+
+- **`jhelferty-nv` 2026-08-12 18:26Z (cmt `5271029475`):** relays Tess's architectural preference —
+  do it *structurally* better by generating `dot` as a **map/reduction that only lowers to a loop
+  when the trip count is unknown**, so the common (static-N) case never emits a loop in the first
+  place (*"we might have done something similar for coopvector?"* — unverified lead, do not assert).
+  Explicitly de-prioritizes it: *"for now, easier to incrementally fix … than to pursue a riskier
+  rearchitecting."* ⇒ soft green-light for `[ForceUnroll]`; the map-then-lower rearchitecting is the
+  recorded, deferred long-term direction.
+- **`jkwak-work` 2026-08-21 (cmt `5363806863`):** *"I will revisit this after #12396 is resolved."*
+  ⇒ jkwak-work takes personal ownership of the revisit and **hard-defers #12403 behind #12396's
+  resolution.** This is a *handoff to a maintainer*, not a request for us to act.
+
+⛔ **CORRECTION 2026-08-21 — my 08-21 memo "HOLD, do not dispatch the fixer, no `fix/issue-12403`
+branch" was FALSE, and I nearly re-published it. The fixer WAS dispatched and a PR is OPEN.**
+I wrote HOLD without checking GitHub, on the assumption nothing had happened while my session was
+inactive 08-12→08-21. In fact:
+
+- **The triager dispatched the fixer after jhelferty's 08-12 soft green-light** (legitimately — the
+  triager owns the fixer handoff, [[feedback_triage_memo_is_not_my_cue_to_dispatch_the_fixer]]).
+- **PR #12548 opened 2026-08-14 20:51Z** — head `fix/issue-12403`, title "Unroll the generic integer
+  `dot` fallback", body "Fixes #12403", by `nv-slang-bot`. **State OPEN, `isDraft: false`
+  (ready-for-review, NOT draft), `mergeable: MERGEABLE`, `mergeStateStatus: BLOCKED`,
+  `reviewDecision: REVIEW_REQUIRED`.** Last updated 08-17 16:33Z. `report_pr_created` claimed —
+  `pr-mappings` row: `ag-1780667166439-vmjrwe` / `sess-1786734534539-5plq0h` / thread
+  `gh-issue-shader-slang/slang-12403`. So webhook routing for #12548 lands on the fixer session.
+- **`fix/issue-12403` DOES exist upstream** (contra my 08-21 memo).
+
+⇒ **TRUE STATE: the fix is DONE and the PR is awaiting maintainer review, which jkwak-work has
+deferred behind #12396.** jkwak's 08-21 comment is a *review-deferral on an already-open PR*, not a
+"we haven't started" — the PR is ready and `REVIEW_REQUIRED`, and he is the reviewer choosing to wait.
+This is a **handoff-awaiting-maintainer** state (5-bullet category 4 lives in PR #12548's own
+description, posted by the fixer), not a HOLD-before-dispatch.
+
+⇒ **Still nothing for Main to DO:** no GitHub post (jkwak's deferral is an ack; a bot reply is a
+meta-ack), no dispatch (done). But the *reason* is "PR open, review deferred," not "not yet started."
+
+⭐ **Lesson (ANCHOR B / ANCHOR I family): a memo written across a multi-day inactive gap is a
+CONCLUSION about a period I did not observe. I asserted a negative ("no PR, no dispatch") about days
+my session was asleep — the exact window a peer acts in. Verify GitHub state before writing HOLD;
+`gh pr list --head fix/issue-<n>` is the one-line check I skipped.** Caught only because the triager
+mentioned "#12548" in passing and I verified it rather than glossing it.
+
+⚠️ **Handoff to the triager on 08-12 produced NO OUTPUT — a dark turn** (`sess-1786035994167-0xh01d`).
+Re-sent 08-21. Triager diagnosed it 08-21: **one-off genuine empty model return** (host emitted its
+canonical zero-content-block fallback, seq 29; ruled out API error / compaction / tag-leak /
+scratchpad-only; fired once in this session, every later inbound — the two supervisor nudges, the
+fix dispatch, the redrive — produced real output; ~3 of 367 transcripts show it). Wake path intact,
+not systemic. Shared learning recorded by the triager. Re-send on the host fallback notice is the
+right reflex regardless of cause.
+
 ## RESUME when
 
-- The triager posts its verdict on #12403 (watch for the ordering decision: sequence behind #12396
-  vs fold), **or**
-- the #12396 PR opens/lands (then #12403's rebase obligation activates), **or**
+- **#12396 resolves** (its issue closes / a merged PR lands — as of 08-21 it is still OPEN, branch
+  `fix/issue-12396` exists with an unroll commit but no merged PR). That is jkwak-work's stated
+  revisit trigger, which unblocks his review of the **already-open PR #12548**. Primary resume. **or**
+- **#12548 gets a review verdict or CI failure** — routes to the *fixer* session (pr-mapping above),
+  not here; Main only rolls up. **or**
 - any fresh substantive human comment on either issue — catch-all, outranks the above
-  (cf. [[feedback_resume_triggers_fail_three_ways_enumerations_are_category_blind]]).
+  (cf. [[feedback_resume_triggers_fail_three_ways_enumerations_are_category_blind]]). A pure
+  restatement/ack does NOT resume beyond a positive close.

@@ -1,0 +1,15 @@
+---
+author_agent_group: ag-1783611156448-d49n0a
+author_session: sess-1787213436865-39m9ue
+written_at: 2026-08-20T09:05:19.469Z
+---
+
+# [approver/challenger] A red build with a transient-looking cause (curl/SSL/network) still abstains — disclose the uncertainty, don't round to approve
+
+**Symptom.** slangpy#1120 R3 ("Pin vcpkg to 2026.06.24"): third revision of a chain where R1/R2 each abstained on a Windows MSVC build break. R3's Windows MSVC Release failed a THIRD time, but the proximate cause looked different in kind — not a code/config defect but a **network download failure**: crashpad's built-in vcpkg port called `vcpkg_find_acquire_program` to fetch `python-3.14.2-embed-amd64.zip` from python.org and got `curl error 35 (SSL connect error)` → `BUILD_FAILED` → `cmake --preset windows-msvc -DSGL_ENABLE_CRASHPAD=ON` exit 1. The tempting move is to dismiss it as "just a flaky CI network blip, not the PR's fault" and lean toward approve.
+
+**Root cause of the trap.** A red build whose proximate cause is transient-looking (curl/SSL/DNS/timeout, or vcpkg's own generic "Not a transient network error" text — which is just a curl-nonzero heuristic, NOT a real determination) presents a two-branch ambiguity: (a) genuine transient CI infra flake a re-run would clear, or (b) a **persistent new external dependency the change introduced**. Here (b) was live and plausible: unlike the custom overlay this PR deleted (which built crashpad against a python *venv from the already-present interpreter*), the built-in port downloads an embedded Python from python.org — a network dependency that did not exist before. You usually cannot re-run CI as the read-only approver, so you cannot collapse the ambiguity yourself.
+
+**How to catch / handle it.** (1) Separate the FACT (head is red on a shipped config — verified from the job log) from the HYPOTHESIS (transient vs persistent). (2) Do the cheap read that discriminates the branches even without a re-run: compare the failing build step against the base/prior revision's mechanism — did this change INTRODUCE the network fetch? If the deleted/old path didn't need it and the new path does, that's evidence for "persistent," not "flake." (3) Resolve toward ABSTAIN regardless: a red head on a shipped config (`-DSGL_ENABLE_CRASHPAD=ON`) is not approvable; "might be a flake" is uncertainty, and uncertainty never rounds up to approve. (4) DISCLOSE the transient-vs-persistent split explicitly in the `challenger` field so the human knows the exact next probe (re-run to test transient; if it persists, address the new dependency) — this is more useful than either over-claiming a code defect or hand-waving "flaky CI."
+
+**Fix / decision shape.** `ABSTAIN_POLICY:CHALLENGER_CONCERN`, own ledger row per revision. The verdict class is identical to a clear code-defect failure; only the reason/next-action differ, and honesty about the uncertainty is what makes the row actionable. Do NOT downgrade to an infra reason_code (e.g. HARNESS_FAIL) — the failure is in the PR's build on the PR's head, not in the approver pipeline; the approver's own instruments worked.
