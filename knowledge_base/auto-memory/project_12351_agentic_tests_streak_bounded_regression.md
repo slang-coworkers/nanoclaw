@@ -180,6 +180,19 @@ FLATTENED to 1** ⇒ ⭐⭐⭐**both directions of a broken probe read as a plau
 (`grep -oF` or `4\.5`) and sanity-check any count against a `grep -n` that shows you the LINE.**
 ✅Resolved by re-running literal: `4.5`→**0**, `4.6`→**1**. Body was clean; my instrument wasn't.
 
+### 08-21 13:04Z — ✅ CLOSED `completed` by `jvepsalainen-nv` ("Fixed. Closing."). TERMINAL. No bot post (false-positive `pr_mention`, 0 mentions; maintainer closing own issue).
+
+All three named PRs merged: **#12571** (08-17), **#12573** (08-17), **#12539** our-bot unorm fix (08-19).
+**First GREEN nightly since 2026-06-29 landed 08-19** (run population: 08-19 success / 08-20 cancelled /
+08-21 failure). ⚠️**08-21 is red AGAIN but it is the KNOWN-ACCEPTED residual, verified not a new cause:**
+run `32446287510`, `6277/6302`, **1 failing** = `module-roundtrip-preserves-public-symbol.slang.1`, a
+single rotating test with **12 transport-fault signatures** (malformed/rpc-failed/pending-retry) in the
+log ⇒ the #12534 flake profile that **#12573 mitigates but does not fix** (#12534 stays open by design).
+⭐**Closing an issue `completed` while a mitigated-not-fixed flake still reds the odd night is CORRECT —
+the TRACKED problem (drift / always-red-carries-no-signal) is gone; the residual is a different, tracked,
+non-blocking cause.** ⇒ **Do not reopen #12351 for an 08-2x red unless it's a NON-transport, repeating
+failure.** Chain fully closed; superseded sections below are history.
+
 ### 08-17 — RESOLVED by the maintainer; the drift this issue documented is fixed. No bot post (false-positive `pr_mention`, 0 mentions).
 
 `jvepsalainen-nv` chose a route on 08-05 (comment `5240462238`) and then EXECUTED it; his 08-17 `[Agent]`

@@ -29,12 +29,50 @@ chars, stacked 2→3 because the last commenter was human, never an edit). Every
 immediately pre-post** rather than reused from session state, because it was going in front of a
 maintainer pre-decision.
 
-⇒ **RESUME on the outcome of the jkwak + @csyonghe office-hours discussion.** Bound decided ⇒
-release `slang-fixer` for a **DRAFT** PR, `pr: non-breaking`. If they take the third option, the
-scalar-operators change is a **core-module edit that lands first**. Approach A's interpretation slice
-stays independently shippable either way — **Approach A only** in that PR (SPIR-V
-`slang-emit-spirv.cpp:9920` + CUDA `slang-emit-cuda.cpp:25` mapper cases and new
-`tests/cooperative-vector/` coverage in the same change; **bound change not bundled**).
+## ✅ 2026-08-21 — AUTHORIZED, DISPATCHED, PR1 BUILDING
+
+jkwak authorized at 16:10Z (*"make a PR as discussed"*) **and** answered the free-function scope
+question: **two `coopVecLoad` overloads** — one `__BuiltinArithmeticType`, one `ICoopElement`, NOT a
+single relaxed bound. (I dropped the handoff ~6h; he chased at 22:30Z — see
+[[feedback_a_verified_authorization_not_dispatched_is_a_dropped_handoff]].) Triager posted honest
+status ([5376102291](https://github.com/shader-slang/slang/issues/12411#issuecomment-5376102291),
+22:35Z) and dispatched `slang-fixer`. **PR1** (`fix/issue-12411`, worktree `wt-slang-12411`):
+bound → `ICoopElement` + `IArithmetic` extension + the two `coopVecLoad` overloads; **debug build in
+progress** as of 23:25Z. **Two PRs**: PR1 core-module (spelling-independent) first, PR2 the caveated
+HLSL-only interpretation slice.
+
+⛔ **CORRECTION to my own relayed brief — the SPIR-V/CUDA mapper-case instruction below was STALE and
+is RETRACTED.** I relayed "don't ship the enum without SPIR-V (`:9920`) + CUDA (`:25`) mapper cases,
+else `SLANG_UNEXPECTED`." The fixer flagged it wrong at HEAD; **I re-verified from source at
+`6a009a7f9`** (not on the triager's say-so):
+- **SPIR-V short-circuits BEFORE the mapper:** the `SLANG_SCALAR_TYPE_BFLOAT16` guard at
+  `slang-emit-spirv.cpp:10000` fires `UnsupportedTargetIntrinsic`, emits `0`, and **returns** — the
+  `mapSlangCoopVecComponentTypeToSpv` call at `:10010` is never reached. A BFloat16 case there is
+  **dead code**, and no `Spv…BFloat16` component constant exists to map to anyway.
+- **CUDA/OptiX diagnoses gracefully:** `getOptixCoopVecComponentTypeName` returns an **empty slice**
+  at its `default` (`slang-emit-cuda.cpp:46`) and the caller diagnoses — no `SLANG_UNEXPECTED`, and
+  no OptiX BFloat16 constant exists.
+⇒ **BFloat16-as-coopvec-component is genuinely HLSL-SM6.10-only.** PR2 touches **only the HLSL path**.
+The stale reading was the memo's `d7d59f374` state; the two mapper line numbers (`9920`/`25`) below
+are from that era and no longer describe the guard structure. See
+[[feedback_a_stored_claim_re_shipped_as_a_live_finding]] — a 15-day-old file:line is a conclusion,
+not a measurement, and this one shipped into a fixer brief before being re-checked.
+
+**DXC spelling — interim decision (triager, greenlit):** proceed with the **proposal spelling
+`BFloat16` = 23** in the caveated draft PR2, do NOT hold — the pinned DXC `v1.9.2602` (`21d28f727`)
+will *never* validate it, so "wait for validation" has no bounded end; emit is a one-line swap if the
+shipped spelling differs. Conditions: loud in-code flag citing the `F8_E4M3FN`→`F8_E4M3` precedent
+([[feedback_a_spec_proposals_spelling_is_not_the_emission_authority]]) + PR2-body caveat; jkwak's
+review is the real confirmation gate.
+
+⚠️ **Watch: `report_pr_created` must fire when PR1/PR2 open** (fixer spine unreliable —
+[[feedback_verify_report_pr_created]]); disk on the fixer's edge was at 99% / ~14G free at build
+start, one debug build should fit but could block.
+
+---
+_Historical (pre-dispatch resume note; superseded above):_ RESUME was on the jkwak + @csyonghe
+office-hours outcome; Approach A interpretation slice + new `tests/cooperative-vector/` coverage;
+bound change not bundled.
 
 ⭐ **This was the one moment evidence changed an outcome** — he was reasoning from the half of the
 precedent our measurements showed insufficient, and the gap reached him before the decision rather
