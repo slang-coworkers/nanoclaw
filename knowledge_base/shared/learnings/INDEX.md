@@ -4024,6 +4024,8 @@
 - [a2a redrive can emit false bounced unknown for del](ag-1776713211742-1w6l4e/1787311045570-a2a-redrive-can-emit-false-bounced-unknown-for-del.md) — _ag-1776713211742-1w6l4e_
 - [supervisor awaiting us over fires uncredited bot c](ag-1776713211742-1w6l4e/1787331439589-supervisor-awaiting-us-over-fires-uncredited-bot-c.md) — _ag-1776713211742-1w6l4e_
 - [stall remedy distinguish hung build from repeatedl](ag-1776713211742-1w6l4e/1787337196578-stall-remedy-distinguish-hung-build-from-repeatedl.md) — _ag-1776713211742-1w6l4e_
+- [run a proposed classifier change yourself a reclas](ag-1776713211742-1w6l4e/1787374271043-run-a-proposed-classifier-change-yourself-a-reclas.md) — _ag-1776713211742-1w6l4e_
+- [run the critique gate before the resolution not af](ag-1776713211742-1w6l4e/1787375940428-run-the-critique-gate-before-the-resolution-not-af.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4395,6 +4397,11 @@
 - [nvrtc automatic pch keys on tu leading directive t](ag-1780667166439-vmjrwe/1787354583234-nvrtc-automatic-pch-keys-on-tu-leading-directive-t.md) — _ag-1780667166439-vmjrwe_
 - [coopvec icoopelement conditional conformance refac](ag-1780667166439-vmjrwe/1787354644407-coopvec-icoopelement-conditional-conformance-refac.md) — _ag-1780667166439-vmjrwe_
 - [slang overload split by constraint only disambigua](ag-1780667166439-vmjrwe/1787359986220-slang-overload-split-by-constraint-only-disambigua.md) — _ag-1780667166439-vmjrwe_
+- [filecheck check not layout re run the must fail co](ag-1780667166439-vmjrwe/1787368063094-filecheck-check-not-layout-re-run-the-must-fail-co.md) — _ag-1780667166439-vmjrwe_
+- [slangc dump module get module info inspection sess](ag-1780667166439-vmjrwe/1787370746933-slangc-dump-module-get-module-info-inspection-sess.md) — _ag-1780667166439-vmjrwe_
+- [okf synthesis backlog is inflated by frontmatter c](ag-1780667166439-vmjrwe/1787373318278-okf-synthesis-backlog-is-inflated-by-frontmatter-c.md) — _ag-1780667166439-vmjrwe_
+- [okf synthesis nested metadata type recognition sel](ag-1780667166439-vmjrwe/1787375075036-okf-synthesis-nested-metadata-type-recognition-sel.md) — _ag-1780667166439-vmjrwe_
+- [okf synthesis round 2 frontmatter regexes must not](ag-1780667166439-vmjrwe/1787376438827-okf-synthesis-round-2-frontmatter-regexes-must-not.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -4441,6 +4448,7 @@
 - [reviewer a transient 400 payload truncation reprod](ag-1780667168475-a9tac8/1787341192642-reviewer-a-transient-400-payload-truncation-reprod.md) — _ag-1780667168475-a9tac8_
 - [slang cpu compare compute default is cpp host call](ag-1780667168475-a9tac8/1787341661124-slang-cpu-compare-compute-default-is-cpp-host-call.md) — _ag-1780667168475-a9tac8_
 - [enum case parsemodifiers swallows bareword modifie](ag-1780667168475-a9tac8/1787344413642-enum-case-parsemodifiers-swallows-bareword-modifie.md) — _ag-1780667168475-a9tac8_
+- [clarity reviewer api 400 is payload accumulation n](ag-1780667168475-a9tac8/1787371827876-clarity-reviewer-api-400-is-payload-accumulation-n.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -4833,6 +4841,8 @@
 - [approver challenger miss a green ci check proves o](ag-1783611156430-vvj8oi/1787351678782-approver-challenger-miss-a-green-ci-check-proves-o.md) — _ag-1783611156430-vvj8oi_
 - [approver infra abstain devin s analysis is up to d](ag-1783611156430-vvj8oi/1787352628706-approver-infra-abstain-devin-s-analysis-is-up-to-d.md) — _ag-1783611156430-vvj8oi_
 - [approver infra abstain confirmed by merge the devi](ag-1783611156430-vvj8oi/1787361513735-approver-infra-abstain-confirmed-by-merge-the-devi.md) — _ag-1783611156430-vvj8oi_
+- [approver critique mustfix a cited negative test co](ag-1783611156430-vvj8oi/1787369819615-approver-critique-mustfix-a-cited-negative-test-co.md) — _ag-1783611156430-vvj8oi_
+- [approver human disagreement confirmed hit descript](ag-1783611156430-vvj8oi/1787371051821-approver-human-disagreement-confirmed-hit-descript.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement a finding held by a re](ag-1783611156448-d49n0a/1786357056431-approver-human-disagreement-a-finding-held-by-a-re.md) — _ag-1783611156448-d49n0a_
 - [approver human agreement a merge can ship an unver](ag-1783611156448-d49n0a/1786361356886-approver-human-agreement-a-merge-can-ship-an-unver.md) — _ag-1783611156448-d49n0a_
 - [approver infra abstain record decision returns dec](ag-1783611156448-d49n0a/1786361652051-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156448-d49n0a_
