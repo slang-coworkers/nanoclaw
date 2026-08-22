@@ -33,6 +33,17 @@
     "class": "NO-FRONTMATTER",
     "size": 6468
    }
+  },
+  {
+   "at": "2026-08-21T04:08:33Z",
+   "backlog": 3500,
+   "defects": 7,
+   "offenders": 7,
+   "top": {
+    "path": "supervise-report-2026-06-02T0631Z.md",
+    "class": "NO-FRONTMATTER",
+    "size": 3442
+   }
   }
  ]
 }

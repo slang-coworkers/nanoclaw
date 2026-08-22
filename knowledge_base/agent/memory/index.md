@@ -62,9 +62,14 @@ is not applying it.** Now linked, as rows added — nothing deleted.
 Provider / harness experiments (May 2026, superseded — durable findings folded into [harness/](harness/index.md)):
 
 - [A2A handoff test](a2a-handoff-test.md) - task #13: free-form handoff sufficient; **a finding, not scratch**
-- [Claude vs Codex on triage #943](claude-vs-codex-triage-943.md) · [Fixer A/B on slangpy#943](fixer-ab-test-943.md)
-- [Full A/B/C/D comparison](full-abcd-comparison.md) · [v2, fixed buddy](full-abcd-comparison-v2.md)
-- [Plan: webhook→session routing](plan-webhook-session-routing-test.md)
+- [Claude vs Codex on triage #943](claude-vs-codex-triage-943.md) - provider-comparison slice; durable
+  provider finding lives in [harness/codex-provider-parity.md](harness/codex-provider-parity.md).
+- Pruned 2026-08-21 (durable overlay findings distilled into
+  [harness/overlay-modes-comparison.md](harness/overlay-modes-comparison.md)): the A/B/C/D root files
+  `full-abcd-comparison.md`, `full-abcd-comparison-v2.md`, `fixer-ab-test-943.md`.
+- Pruned 2026-08-21 (shipped): `plan-webhook-session-routing-test.md` — its `pr_session_mappings`
+  table + `report_pr_created` MCP tool both shipped and are documented in CLAUDE.md; a superseded
+  implementation plan carries no audit value.
 - Pruned 2026-08-20 (content distilled into `harness/codex-provider-parity.md`): the 210-line
   `codex-parity-test-results.md` and the `plan-triage-fixer-ab-test.md` plan.
 
