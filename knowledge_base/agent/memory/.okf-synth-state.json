@@ -44,6 +44,17 @@
     "class": "NO-FRONTMATTER",
     "size": 3442
    }
+  },
+  {
+   "at": "2026-08-22T04:07:42Z",
+   "backlog": 1500,
+   "defects": 3,
+   "offenders": 3,
+   "top": {
+    "path": "claude-vs-codex-triage-943.md",
+    "class": "NO-FRONTMATTER",
+    "size": 2730
+   }
   }
  ]
 }

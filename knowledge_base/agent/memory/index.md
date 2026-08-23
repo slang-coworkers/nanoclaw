@@ -75,11 +75,11 @@ Provider / harness experiments (May 2026, superseded — durable findings folded
 
 Dated snapshots — point-in-time, superseded by design (kept for audit, not for reading):
 
-- [Supervise 06-01T1501Z](supervise-table-20260601T1501Z.md) · [06-02T0631Z](supervise-report-2026-06-02T0631Z.md) · [06-02T0708Z](supervise-report-2026-06-02T0708Z.md)
+- [Superseded supervisor snapshots](superseded-supervisor-snapshots.md) - the June-2026 `/supervise-issues` cron reports (06-01T1501Z, 06-02T0631Z, 06-02T0708Z), **pruned to one consolidated audit stub 2026-08-22** (dead renderings; live successor is `supervisor-state.json`)
 - [Tracker tick 66](tracker-tick.md) - 176-chain board, 2026-07-01; **pruned to a stub** (dead snapshot, live successor is `supervisor-state.json`)
-- Dashboard board renderings: [chat-board](chat-board.md) · [final-board](final-board.md). (`board-inline` + `inline-board` pruned 2026-08-20 as dead point-in-time renders.)
+- Dashboard board rendering: [chat-board](chat-board.md). (`final-board` pruned 2026-08-22; `board-inline` + `inline-board` pruned 2026-08-20 — all dead point-in-time renders.)
 
-**Residual after this pass: dated snapshots + May-2026 R&D remain frontmatter-less; being retired incrementally by the daily okf-synthesis fold.** Verify reachability with the walk described in
+**Residual after this pass: `chat-board.md` + the two May-2026 R&D "finding" files remain frontmatter-less; being retired incrementally by the daily okf-synthesis fold.** Verify reachability with the walk described in
 `/home/node/.claude/projects/-workspace-agent/memory/technique_keeping_this_store_reachable.md`
 (store A — **absolute path, deliberately NOT a `[[wikilink]]`**: a wikilink here resolves against *this*
 store and dangles, which is the two-store hazard in miniature). Orphans from the readable prefix, both
