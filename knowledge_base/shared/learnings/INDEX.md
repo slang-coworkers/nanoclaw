@@ -4026,6 +4026,8 @@
 - [stall remedy distinguish hung build from repeatedl](ag-1776713211742-1w6l4e/1787337196578-stall-remedy-distinguish-hung-build-from-repeatedl.md) — _ag-1776713211742-1w6l4e_
 - [run a proposed classifier change yourself a reclas](ag-1776713211742-1w6l4e/1787374271043-run-a-proposed-classifier-change-yourself-a-reclas.md) — _ag-1776713211742-1w6l4e_
 - [run the critique gate before the resolution not af](ag-1776713211742-1w6l4e/1787375940428-run-the-critique-gate-before-the-resolution-not-af.md) — _ag-1776713211742-1w6l4e_
+- [worktree gc must resolve owning repo from the gitd](ag-1776713211742-1w6l4e/1787401355432-worktree-gc-must-resolve-owning-repo-from-the-gitd.md) — _ag-1776713211742-1w6l4e_
+- [supervise issues scan py over flags nudges bots ta](ag-1776713211742-1w6l4e/1787402461318-supervise-issues-scan-py-over-flags-nudges-bots-ta.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4233,6 +4235,7 @@
 - [background builds die on container teardown foregr](ag-1780667166418-apezq5/1787337179999-background-builds-die-on-container-teardown-foregr.md) — _ag-1780667166418-apezq5_
 - [bot coworker prs stay draft ready flip merge are m](ag-1780667166418-apezq5/1787344144243-bot-coworker-prs-stay-draft-ready-flip-merge-are-m.md) — _ag-1780667166418-apezq5_
 - [triage memo file line findings go stale across hea](ag-1780667166418-apezq5/1787353491544-triage-memo-file-line-findings-go-stale-across-hea.md) — _ag-1780667166418-apezq5_
+- [interface requirement default argument crash produ](ag-1780667166418-apezq5/1787411384320-interface-requirement-default-argument-crash-produ.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -4402,6 +4405,8 @@
 - [okf synthesis backlog is inflated by frontmatter c](ag-1780667166439-vmjrwe/1787373318278-okf-synthesis-backlog-is-inflated-by-frontmatter-c.md) — _ag-1780667166439-vmjrwe_
 - [okf synthesis nested metadata type recognition sel](ag-1780667166439-vmjrwe/1787375075036-okf-synthesis-nested-metadata-type-recognition-sel.md) — _ag-1780667166439-vmjrwe_
 - [okf synthesis round 2 frontmatter regexes must not](ag-1780667166439-vmjrwe/1787376438827-okf-synthesis-round-2-frontmatter-regexes-must-not.md) — _ag-1780667166439-vmjrwe_
+- [coopvecload two overload split regresses fully exp](ag-1780667166439-vmjrwe/1787395523470-coopvecload-two-overload-split-regresses-fully-exp.md) — _ag-1780667166439-vmjrwe_
+- [fixing ir lowering default arg crash narrow redire](ag-1780667166439-vmjrwe/1787412153690-fixing-ir-lowering-default-arg-crash-narrow-redire.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -4449,6 +4454,8 @@
 - [slang cpu compare compute default is cpp host call](ag-1780667168475-a9tac8/1787341661124-slang-cpu-compare-compute-default-is-cpp-host-call.md) — _ag-1780667168475-a9tac8_
 - [enum case parsemodifiers swallows bareword modifie](ag-1780667168475-a9tac8/1787344413642-enum-case-parsemodifiers-swallows-bareword-modifie.md) — _ag-1780667168475-a9tac8_
 - [clarity reviewer api 400 is payload accumulation n](ag-1780667168475-a9tac8/1787371827876-clarity-reviewer-api-400-is-payload-accumulation-n.md) — _ag-1780667168475-a9tac8_
+- [worktree gc save step is vacuous when tree clean o](ag-1780667168475-a9tac8/1787400986130-worktree-gc-save-step-is-vacuous-when-tree-clean-o.md) — _ag-1780667168475-a9tac8_
+- [alignment guaranteed by one path when two conforma](ag-1780667168475-a9tac8/1787413809758-alignment-guaranteed-by-one-path-when-two-conforma.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

@@ -20,6 +20,8 @@ state the board is generated from). Per-chain durable records live under
 audit breadcrumb — "a tick-66 board existed" — survives without carrying the
 dead table.
 
-The board renderers ([chat-board](chat-board.md) · [final-board](final-board.md))
-are the same class of superseded rendering. (`board-inline` and `inline-board`
-were pruned 2026-08-20 as dead point-in-time renders.)
+The board renderer ([chat-board](chat-board.md)) is the same class of superseded
+rendering. (`final-board` pruned 2026-08-22; `board-inline` and `inline-board`
+pruned 2026-08-20 — all dead point-in-time renders.) The June-2026 supervisor
+cron snapshots of this same class are recorded in
+[superseded supervisor snapshots](superseded-supervisor-snapshots.md).
