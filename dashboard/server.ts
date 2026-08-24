@@ -2038,6 +2038,9 @@ interface SessionCapState {
   escalatedAt?: string;
   decision?: 'continue' | 'stop';
   decidedAt?: string;
+  /** Live Tier-2 ceiling (base + any approved raises) — the number a 'stopped'
+   *  row was actually blocked at, distinct from the (no-longer-carded) capUsd. */
+  ceilingUsd?: number;
 }
 const CAP_CACHE_TTL_MS = 5000;
 const sessionCapCache = new Map<string, { at: number; state: SessionCapState | null }>();
@@ -2326,6 +2329,45 @@ function writeCostThresholdFile(byPeriod: SessionCostByPeriod): void {
   } catch {
     /* fail-soft: threshold file is advisory */
   }
+}
+
+/**
+ * Per-group p99 of priced cost for a period-scoped cost map — the "is this
+ * session unusually expensive for ITS group" signal the Sessions-tab pill
+ * colors by (see renderCostCapCell in app.js). Purely visual/informational:
+ * unlike the runner's Tier-2 ceiling (which actually blocks new work), this
+ * never gates or stops anything — it's read fresh per `/api/sessions` request
+ * from the already-cached `sessionCostCache[period]`, no disk I/O, no shared
+ * contract with the runner (compare `writeCostThresholdFile` above, which
+ * publishes p90 for the runner's Tier-1 cap — a completely separate number
+ * for a completely separate purpose). Small groups (<MIN_GROUP_SAMPLE priced
+ * sessions) fall back to the fleet p99 rather than a noisy few-sample stat.
+ */
+function computeCostP99ByGroup(costByNano: Map<string, SessionCostEntry>): {
+  fleetP99: number | null;
+  perGroupP99: Map<string, number>;
+} {
+  const MIN_GROUP_SAMPLE = 10;
+  const priced = [...costByNano.values()].filter((e) => e.cost > 0);
+  if (priced.length === 0) return { fleetP99: null, perGroupP99: new Map() };
+
+  // Same percentile method as writeCostThresholdFile's p90Of: sort asc, index
+  // = floor(p*(n-1)).
+  const percentileOf = (arr: number[], p: number): number => {
+    const s = [...arr].sort((a, b) => a - b);
+    return s[Math.min(s.length - 1, Math.floor(p * (s.length - 1)))];
+  };
+
+  const byGroup = new Map<string, number[]>();
+  for (const e of priced) {
+    if (!e.groupFolder) continue;
+    (byGroup.get(e.groupFolder) ?? byGroup.set(e.groupFolder, []).get(e.groupFolder)!).push(e.cost);
+  }
+  const perGroupP99 = new Map<string, number>();
+  for (const [folder, arr] of byGroup) {
+    if (arr.length >= MIN_GROUP_SAMPLE) perGroupP99.set(folder, percentileOf(arr, 0.99));
+  }
+  return { fleetP99: percentileOf(priced.map((e) => e.cost), 0.99), perGroupP99 };
 }
 
 // ---------- Warm-start persistence for the per-file cost cache ----------
@@ -9482,6 +9524,11 @@ export async function handleRequest(
       ? (periodParam as ContextPeriod)
       : '30d';
     const costByNano = sessionCostCache[period] || new Map<string, SessionCostEntry>();
+    // p99-relative color signal for the Sessions pill (see computeCostP99ByGroup) —
+    // scoped to the SAME period the request already selected, so it matches
+    // whatever window (Today/7d/30d) the user is looking at. Cheap: reuses the
+    // in-memory cache, no disk I/O, no dependency on the runner's cap tracking.
+    const { fleetP99, perGroupP99 } = computeCostP99ByGroup(costByNano);
     // Base URL of the flat claude-trace archive (scripts/refresh-claude-trace-www.sh,
     // served separately). When set, each priced row links to its session-precise
     // trace file `<base>/<folder>__session-<id>*.html`. Resolved once outside the
@@ -9492,6 +9539,14 @@ export async function handleRequest(
       s.cost = c ? c.cost : 0;
       s.costTokens = c ? c.tokens : 0;
       s.costUnpriced = c ? c.unpriced : false;
+      // p99 threshold this row is judged against for pill color — the group's own
+      // (statistically meaningful sample) or the fleet's. Independent of the cap
+      // read below: a non-Claude-provider session (no cost_cap row at all) still
+      // gets a meaningful color from its raw priced spend.
+      if (s.cost > 0) {
+        const p99 = (s.group_folder && perGroupP99.get(s.group_folder)) ?? fleetP99;
+        if (p99 != null && p99 > 0) s.costP99 = p99;
+      }
       // Cost-cap state, published by the runner into outbound.db session_state.
       // Absent (older runner / no accrual yet) → cap fields stay undefined and
       // the UI renders no pill for the row. Read ONLY for sessions with priced
@@ -9505,6 +9560,10 @@ export async function handleRequest(
         s.costStatus = cap.status;
         s.costImmortal = cap.immortal;
         s.costWindow = cap.window;
+        // The real number a 'stopped' row was blocked at (Tier-2 ceiling, possibly
+        // raised by an approved continue) — distinct from costCap (Tier-1, no
+        // longer carded, kept only as a legacy/back-compat numeric).
+        s.costCeiling = cap.ceilingUsd;
       }
       // Session-precise trace deep-link. Sessions live under
       // data/v2-sessions/<agent_group_id>/… but traces live under
@@ -12989,14 +13048,19 @@ export async function handleRequest(
     return;
   }
 
-  // POST /api/cost-override — human decision on an escalated per-session cost
-  // cap. The WRITE (into the session's inbound.db as a kind='cost_override'
-  // message + container wake) lives on the HOST; the dashboard is a separate
-  // process, so it proxies to the host ingress /api/dashboard/cost-override with
-  // the Bearer secret, exactly like send-to-session. Decisions: 'continue'
-  // (raise the window cap by one allotment) and 'stop' (recorded-only for
-  // immortal). This dashboard is SSO-protected (no DASHBOARD_SECRET by design),
-  // so the override intentionally does NOT fail-closed when the secret is unset.
+  // POST /api/cost-override — a human decision on a per-session cost cap, sent
+  // WITHOUT an epoch (the pill's manual path, distinct from the epoch-fenced
+  // cost_decision approval card — see renderCostCapCell in app.js). The WRITE
+  // (into the session's inbound.db as a kind='cost_override' message + container
+  // wake) lives on the HOST; the dashboard is a separate process, so it proxies
+  // to the host ingress /api/dashboard/cost-override with the Bearer secret,
+  // exactly like send-to-session. Decisions: 'continue' on a session actually at
+  // its ceiling raises the ceiling by one allotment and resumes (the pill only
+  // offers this when costStatus==='stopped'); 'stop' quiesces a running,
+  // non-immortal session (a genuine manual kill switch — recorded-only for
+  // immortal, which never quiesces). This dashboard is SSO-protected (no
+  // DASHBOARD_SECRET by design), so the override intentionally does NOT
+  // fail-closed when the secret is unset.
   if (req.method === 'POST' && url.pathname === '/api/cost-override') {
     if (!requireAuth(req, res)) return;
     const body = await readBody(req, res);
