@@ -399,11 +399,19 @@ class ReverseProxyServer {
     }
     handleRequest(req, res) {
         const requestTimestamp = Date.now();
-        let requestBody = "";
+        // FIX (2026-08-24): was `let requestBody = ""; req.on("data", chunk =>
+        // requestBody += chunk)` — each Buffer chunk got implicitly .toString()'d
+        // in isolation, so a multi-byte UTF-8 character straddling a TCP chunk
+        // boundary silently dropped bytes. Accumulate raw Buffers and convert
+        // ONCE on the complete body instead (matches this file's own convention
+        // elsewhere, e.g. rawResponse/connectBuffer below).
+        const requestBodyChunks = [];
         req.on("data", (chunk) => {
-            requestBody += chunk;
+            requestBodyChunks.push(chunk);
         });
         req.on("end", () => {
+            const requestBodyBuffer = Buffer.concat(requestBodyChunks);
+            const requestBody = requestBodyBuffer.toString("utf8");
             if (this.upstreamProxy) {
                 this.forwardViaManualProxy(req, res, requestBody, requestTimestamp);
                 return;
@@ -420,6 +428,19 @@ class ReverseProxyServer {
                     host: this.targetHost,
                 },
             };
+            // Stopgap: assert the body we're about to forward actually matches
+            // the Content-Length we're forwarding (copied from the original
+            // request headers above). A mismatch here means something upstream
+            // of this point corrupted the body — better to fail loudly than
+            // silently send a request the far end will reject anyway.
+            const declaredLength = Number(req.headers["content-length"]);
+            const actualLength = Buffer.byteLength(requestBody, "utf8");
+            if (Number.isFinite(declaredLength) && declaredLength !== actualLength) {
+                console.error(`Body length mismatch: Content-Length=${declaredLength} actual=${actualLength} — rejecting rather than forwarding a corrupt request`);
+                res.writeHead(502);
+                res.end("Proxy error: body length mismatch before forwarding");
+                return;
+            }
             // When an outbound proxy is configured (OneCLI), open a CONNECT
             // tunnel to it and run TLS to the real host over that socket, so the
             // proxy performs its usual credential injection. Otherwise connect
