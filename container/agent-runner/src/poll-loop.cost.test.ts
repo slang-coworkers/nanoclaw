@@ -68,10 +68,12 @@ function seed(over: Parameters<typeof H.setState>[0] = {}): void {
     costDecidedAt: undefined,
     costStopRequested: false,
     costCeilingUsd: 0,
+    costCeilingAllotmentUsd: 0,
     costCeilingEscalated: false,
     costCeilingHardStop: false,
     costBudgetGen: 0,
     costEpisodeId: undefined,
+    pendingCostNudge: undefined,
     ...over,
   });
 }
@@ -225,18 +227,57 @@ describe('two-tier cost cap — applyCostOverride (d)', () => {
     expect(s.costDecision).toBe('continue');
   });
 
-  it('continue at/over the ceiling is IGNORED for a non-immortal group (stop stays, cap unchanged)', () => {
-    seed({ costCeilingUsd: 50 });
+  it('continue at/over the ceiling RAISES the ceiling by one allotment, clears the stop, and queues a cost nudge', () => {
+    seed({ costCeilingUsd: 50, costCeilingAllotmentUsd: 50 });
     H.recordTurnCost(usage(60)); // over ceiling → hard stop
-    const capBefore = H.getState().costCapUsd;
+    expect(H.getState().costCeilingHardStop).toBe(true);
+    const genBefore = H.getState().costBudgetGen;
 
     H.applyCostOverride(override('continue'));
 
     const s = H.getState();
-    expect(s.costStopRequested).toBe(true); // still stopped — Continue can't buy past the ceiling
-    expect(s.costCapUsd).toBe(capBefore); // cap NOT raised
-    expect(s.costDecision).toBe('continue'); // decision still recorded for the UI
-    expect(H.computeCostStatus()).toBe('stopped');
+    expect(s.costStopRequested).toBe(false); // resumed
+    expect(s.costCeilingHardStop).toBe(false); // hard-stop marker cleared too
+    expect(s.costCeilingUsd).toBeCloseTo(100); // $50 base + one $50 allotment — bounded, not unbounded
+    expect(s.costDecision).toBe('continue');
+    expect(s.costBudgetGen).toBe(genBefore + 1); // re-armed, same as the cap-continue path
+    // Status reads 'escalated', not 'stopped': the (untouched, no-longer-carded)
+    // Tier-1 cap is still $10 and spend ($60) is still over it — only the ceiling
+    // hard-stop was resolved.
+    expect(H.computeCostStatus()).toBe('escalated');
+    // A one-shot cost-sensitivity note is queued for the next real turn.
+    expect(s.pendingCostNudge).toBeDefined();
+    expect(s.pendingCostNudge).toContain('$60.00');
+    expect(s.pendingCostNudge).toContain('$100.00');
+  });
+
+  it('a session that burns through the raise re-stops and re-cards (bounded, not a blank check)', () => {
+    seed({ costCeilingUsd: 50, costCeilingAllotmentUsd: 50 });
+    H.recordTurnCost(usage(60)); // over ceiling → hard stop at $50
+    H.applyCostOverride(override('continue')); // ceiling → $100
+    expect(H.getState().costCeilingUsd).toBeCloseTo(100);
+
+    H.recordTurnCost(usage(45)); // $105 total → over the raised $100 ceiling again
+    const s = H.getState();
+    expect(s.costCeilingHardStop).toBe(true);
+    expect(s.costStopRequested).toBe(true);
+    expect(escalations('ceiling')).toHaveLength(2); // re-armed → crosses again → cards again
+
+    // A second approve raises by the SAME fixed allotment (arithmetic, not compounding).
+    H.applyCostOverride(override('continue'));
+    expect(H.getState().costCeilingUsd).toBeCloseTo(150); // 100 + 50, not 100 + 100
+  });
+
+  it('continue is a no-op on costCeilingUsd for an immortal group (immortal never hard-stops, so never hits this branch)', () => {
+    seed({ costImmortal: true, costWindow: 'daily', costDayKey: todayUtc(), costCeilingUsd: 50, costCeilingAllotmentUsd: 50 });
+    H.recordTurnCost(usage(60)); // immortal: escalated, never stopped
+    expect(H.computeCostStatus()).toBe('escalated');
+
+    H.applyCostOverride(override('continue'));
+
+    // Falls through to the legacy cap-raise path — the ceiling itself is untouched.
+    expect(H.getState().costCeilingUsd).toBeCloseTo(50);
+    expect(H.getState().pendingCostNudge).toBeUndefined();
   });
 });
 
@@ -259,6 +300,20 @@ describe('two-tier cost cap — resetCostForNewSession clears ceiling flags (e)'
     expect(s.costCapUsd).toBeCloseTo(10);
     expect(s.costDecision).toBeUndefined();
     expect(H.computeCostStatus()).toBe('ok');
+  });
+
+  it('a new session also reverts a raised ceiling to its base allotment and drops any queued nudge', () => {
+    seed({ costCeilingUsd: 50, costCeilingAllotmentUsd: 50 });
+    H.recordTurnCost(usage(60)); // over ceiling → hard stop
+    H.applyCostOverride(override('continue')); // ceiling raised to $100, nudge queued
+    expect(H.getState().costCeilingUsd).toBeCloseTo(100);
+    expect(H.getState().pendingCostNudge).toBeDefined();
+
+    H.resetCostForNewSession();
+
+    const s = H.getState();
+    expect(s.costCeilingUsd).toBeCloseTo(50); // back to the base allotment, not the raised value
+    expect(s.pendingCostNudge).toBeUndefined(); // a fresh window makes the stale nudge moot
   });
 });
 
@@ -293,6 +348,28 @@ describe('two-tier cost cap — initCostTracking derives stop from spend-vs-ceil
     expect(H.getState().costSpentUsd).toBeCloseTo(60);
     expect(H.getState().costStopRequested).toBe(false);
     expect(H.computeCostStatus()).toBe('escalated');
+  });
+
+  it('a respawn adopts a previously-raised ceiling (survives container restart) instead of the base allotment', () => {
+    // Persisted state from before a respawn: a ceiling-continue already raised
+    // ceilingUsd to $100 (base allotment is $50 per container.json).
+    setCostCap({ capUsd: 10, spentUsd: 90, ceilingUsd: 100, status: 'ok', immortal: false, window: 'lifetime' });
+    __setConfigForTest(cfg({ immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 50 }));
+
+    H.initCostTracking('claude');
+
+    const s = H.getState();
+    expect(s.costCeilingUsd).toBeCloseTo(100); // adopted the raised value, not re-derived from cfg
+    expect(s.costStopRequested).toBe(false); // $90 spend is still under the raised $100 ceiling
+  });
+
+  it('a respawn with no persisted ceiling falls back to the config allotment', () => {
+    setCostCap({ capUsd: 10, spentUsd: 5, status: 'ok', immortal: false, window: 'lifetime' });
+    __setConfigForTest(cfg({ immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 50 }));
+
+    H.initCostTracking('claude');
+
+    expect(H.getState().costCeilingUsd).toBeCloseTo(50);
   });
 });
 

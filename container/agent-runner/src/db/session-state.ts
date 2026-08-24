@@ -173,6 +173,9 @@ export interface CostCapState {
   status: CostCapStatus;
   immortal: boolean;
   window: CostCapWindow;
+  /** Live Tier-2 hard ceiling (base + any approved raises). Adopted on respawn
+   *  so an approved raise survives a container restart, mirroring capUsd. */
+  ceilingUsd?: number;
   /** UTC day ("YYYY-MM-DD") the daily spend belongs to. Present only when window === 'daily'. */
   dayKey?: string;
   escalatedAt?: string;
