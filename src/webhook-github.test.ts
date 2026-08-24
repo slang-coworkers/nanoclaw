@@ -1057,7 +1057,13 @@ describe('deliverGitHubIssueOpened', () => {
     expect(originRuns).toHaveLength(1);
     const run = originRuns[0] as { sql: string; args: unknown[] };
     expect(run.sql).toMatch(/INSERT OR IGNORE INTO gh_thread_origin/);
-    expect(run.args).toEqual(['gh-issue-shader-slang/slang-1234', 'shader-slang/slang', 1234, 'issue', 'reporter-login']);
+    expect(run.args).toEqual([
+      'gh-issue-shader-slang/slang-1234',
+      'shader-slang/slang',
+      1234,
+      'issue',
+      'reporter-login',
+    ]);
   });
 
   it('does not record gh_thread_origin when the thread session already exists (no mint)', async () => {
