@@ -47,7 +47,7 @@ Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or 
 
 ### nv-main (8 PRs)
 - **#1239** `funnel: emit approverWeekly trend for the Verity panel (producer)`
-- **#1238** ``feat(cost-cap): runtime-configurable Tier-2 cost cap via `ncl cost-cap```
+- **#1238** `` feat(cost-cap): runtime-configurable Tier-2 cost cap via `ncl cost-cap` ``
 - **#1242** `feat(funnel): collect human-review rounds per PR, bot vs human, over time`
 - **#1245** `feat(runaway): enrich runaway approval card with cost + session id`
 - **#1247** `fix(funnel): stop regression-quality losing the shared REST rate-limit race`
