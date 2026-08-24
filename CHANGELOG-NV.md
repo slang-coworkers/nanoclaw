@@ -6,7 +6,7 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 475 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 476 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 214 |
 | `nv-slang` | slang project spine, skills, workflows | 137 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 68 |
@@ -18,9 +18,10 @@ Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or 
 
 ## 📅 2026-08-24
 
-### nv-main (2 PRs)
+### nv-main (3 PRs)
 - **#1268** `cost-approval: card the ceiling only, fix missing approve handler`
 - **#1271** `fix(claude-trace): stop dropping bytes when a UTF-8 char spans TCP chunks`
+- **#1273** `gh-thread-origin: capture who filed a GitHub issue/PR behind a session`
 
 ### nv-dashboard (1 PRs)
 - **#1269** `dashboard: Sessions pill — p99 color, stopped is the only actionable state`
