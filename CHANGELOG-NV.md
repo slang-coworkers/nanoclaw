@@ -29,6 +29,43 @@ Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or 
 ### nv-slang (1 PRs)
 - **#1270** `fix(slang-workflows): repoint stale Reports heading reference`
 
+## 📅 2026-08-21
+
+### nv-dashboard (1 PRs)
+- **#1261** `dashboard: cost-decision card shows spend/cap + session (not a bare title)`
+
+## 📅 2026-08-20
+
+### nv-main (2 PRs)
+- **#1258** `cost-approval escalation card (Option 2) — money-safe, behind COST_APPROVAL_CARD flag`
+- **#1259** `cost-approval: official approval card (dashboard-native), -377 lines`
+
+### nv-dashboard (1 PRs)
+- **#1260** `dashboard: cost-status filter (Needs decision / Escalated / Stopped) on Sessions tab`
+
+## 📅 2026-08-19
+
+### nv-main (8 PRs)
+- **#1239** `funnel: emit approverWeekly trend for the Verity panel (producer)`
+- **#1238** ``feat(cost-cap): runtime-configurable Tier-2 cost cap via `ncl cost-cap```
+- **#1242** `feat(funnel): collect human-review rounds per PR, bot vs human, over time`
+- **#1245** `feat(runaway): enrich runaway approval card with cost + session id`
+- **#1247** `fix(funnel): stop regression-quality losing the shared REST rate-limit race`
+- **#1249** `feat(review-rounds): headline the review-CYCLE metric, align producer with the slide`
+- **#1251** `funnel: extend Verity WoW trend across legacy (pre-ledger) history`
+- **#1254** `docs: refresh slang-coworkers-prod scheduled-task snapshot (26→51)`
+
+### nv-dashboard (9 PRs)
+- **#1241** `dashboard: weekly agreement trend chart for the Verity panel (renderer)`
+- **#1243** `feat(nv-dashboard): review-rounds panel — human review rounds per PR, bot vs human`
+- **#1240** `perf(nv-dashboard): serve scheduled-task counts from a memoized snapshot (kill the per-request session-DB scan)`
+- **#1246** `dashboard: show cost + session link on the runaway approval card`
+- **#1248** `fix(dashboard): render regression-quality errors as text, not [object Object]`
+- **#1250** `feat(nv-dashboard): plot review CYCLES, align the panel to the slide`
+- **#1252** `dashboard: extend Verity WoW approver panel with legacy (unverified) history`
+- **#1253** `perf(nv-dashboard): dash-perf round 2 — scan worker, delta broadcast, trace index`
+- **#1255** `fix(nv-dashboard): dash-perf r2 follow-ups — overflow-epoch recovery, reconnect floor, SSE listener cleanup`
+
 ## 📅 2026-08-18
 
 ### nv-main (5 PRs)
