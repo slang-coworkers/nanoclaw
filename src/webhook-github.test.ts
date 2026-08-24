@@ -998,6 +998,126 @@ describe('deliverGitHubIssueOpened', () => {
     expect(parsed.labels).toEqual(['bug']);
   });
 
+  it('records the issue filer into gh_thread_origin when minting the thread session, keyed by thread_id', async () => {
+    const originRuns: unknown[] = [];
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'prod',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
+    }));
+    // No existing session on this thread → deliverToAgentGroup takes the
+    // mint branch (mintOrchestratorSession), which is the one place origin
+    // capture is meant to fire.
+    vi.doMock('./db/connection.js', () => ({
+      getDb: () => ({
+        prepare: (sql: string) => ({
+          run: (...args: unknown[]) => originRuns.push({ sql, args }),
+        }),
+      }),
+    }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => undefined,
+      findSessionByAgentThread: () => undefined,
+      getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: () => undefined,
+    }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
+      insertMessage: () => undefined,
+    }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/orch.db',
+      initSessionFolder: () => undefined,
+    }));
+
+    const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
+    const outcome = deliverGitHubIssueOpened({
+      repo: 'shader-slang/slang',
+      issueNumber: 1234,
+      issueUrl: 'https://github.com/shader-slang/slang/issues/1234',
+      title: 'Crash on null deref',
+      body: 'Repro: ...',
+      author: 'reporter-login',
+      labels: ['bug'],
+      deliveryId: 'd-issues-1',
+    });
+
+    expect(outcome).toBe('local');
+    expect(originRuns).toHaveLength(1);
+    const run = originRuns[0] as { sql: string; args: unknown[] };
+    expect(run.sql).toMatch(/INSERT OR IGNORE INTO gh_thread_origin/);
+    expect(run.args).toEqual(['gh-issue-shader-slang/slang-1234', 'shader-slang/slang', 1234, 'issue', 'reporter-login']);
+  });
+
+  it('does not record gh_thread_origin when the thread session already exists (no mint)', async () => {
+    const originRuns: unknown[] = [];
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'prod',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
+    }));
+    vi.doMock('./db/connection.js', () => ({
+      getDb: () => ({
+        prepare: (sql: string) => ({
+          run: (...args: unknown[]) => originRuns.push({ sql, args }),
+        }),
+      }),
+    }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => undefined,
+      // A session already exists on this thread — deliverToAgentGroup takes
+      // the "found" branch, never mints, and must not write an origin row.
+      findSessionByAgentThread: () => ({ id: 'sess-orch-existing' }),
+      getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: () => undefined,
+    }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
+      insertMessage: () => undefined,
+    }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/orch.db',
+      initSessionFolder: () => undefined,
+    }));
+
+    const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
+    const outcome = deliverGitHubIssueOpened({
+      repo: 'shader-slang/slang',
+      issueNumber: 1234,
+      issueUrl: 'https://github.com/shader-slang/slang/issues/1234',
+      title: 'Crash on null deref',
+      body: 'Repro: ...',
+      author: 'reporter-login',
+      labels: ['bug'],
+      deliveryId: 'd-issues-2',
+    });
+
+    expect(outcome).toBe('local');
+    expect(originRuns).toHaveLength(0);
+  });
+
   it('forwards new issues to peer when ROUTE_ISSUES_TO is set', async () => {
     const insertCalls: unknown[] = [];
     vi.doMock('./config.js', () => ({
@@ -1320,6 +1440,68 @@ describe('deliverGitHubPrReviewable', () => {
     expect(content.event).toBe('github.pr_ready_for_review');
     expect(content.reason).toBe('opened');
     expect(content.is_pr).toBe(true);
+  });
+
+  it('records the PR submitter into gh_thread_origin when minting the thread session', async () => {
+    const originRuns: unknown[] = [];
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'lego',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
+      ROUTE_READY_PRS_TO: '', // consumer: handle locally
+    }));
+    vi.doMock('./db/connection.js', () => ({
+      getDb: () => ({
+        prepare: (sql: string) => ({
+          run: (...args: unknown[]) => originRuns.push({ sql, args }),
+        }),
+      }),
+    }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => undefined,
+      // No existing session on this thread → mint branch fires.
+      findSessionByAgentThread: () => undefined,
+      getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: () => undefined,
+    }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
+      insertMessage: () => undefined,
+    }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/orch.db',
+      initSessionFolder: () => undefined,
+    }));
+
+    const { deliverGitHubPrReviewable } = await import('./webhook-github.js');
+    const outcome = deliverGitHubPrReviewable({
+      repo: 'shader-slang/slang',
+      prNumber: 321,
+      prUrl: 'https://github.com/shader-slang/slang/pull/321',
+      title: 'My feature',
+      author: 'contributor-login',
+      reason: 'opened',
+      rawBody: '{}',
+      eventType: 'pull_request',
+      deliveryId: 'd-ready-2',
+    });
+
+    expect(outcome).toBe('local');
+    expect(originRuns).toHaveLength(1);
+    const run = originRuns[0] as { sql: string; args: unknown[] };
+    expect(run.sql).toMatch(/INSERT OR IGNORE INTO gh_thread_origin/);
+    expect(run.args).toEqual(['gh-pr-shader-slang/slang-321', 'shader-slang/slang', 321, 'pr', 'contributor-login']);
   });
 
   it('re-fires on a new deliveryId but dedups a repeat of the same delivery', async () => {
