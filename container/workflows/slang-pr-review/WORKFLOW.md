@@ -80,7 +80,7 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
 
    Use `Agent(run_in_background=true)` or `Bash(run_in_background=true)`; capture `run_dir_C`. Produces `<run_dir_C>/clarity-review.md`. Never posts.
 
-   **End your turn after dispatching.** Apply the quietness protocol from the spine's **Reports — shape and content** rules: substantive inbounds (new patch, abort, completion, error) → respond; status-only → end silently.
+   **End your turn after dispatching.** Apply the quietness protocol from the spine's **Report shape** rules (`chain-reporting.md`, under Mechanics): substantive inbounds (new patch, abort, completion, error) → respond; status-only → end silently.
 
 5. **Merge + report** {#report} — On all subprocesses finishing (or whichever ran), call `slang-pr-review-runner`'s summarizer on `run_dir_A`. It returns severity counts, per-subagent cost, and a drift signal (must be 0 — nonzero = a non-COMMENT bot review was submitted). Reviewer C must also be drift-free: confirm `<run_dir_C>/tool-uses.jsonl` contains no GitHub-write tool call (no `gh api … --method POST/PUT`).
 

@@ -157,7 +157,7 @@ uses:
    send_message(to="slang-reviewer", text="[Fix Review Request] shader-slang/slang#<number>: <title>\n\nMode: pr (or patch)\nPR / Patch: <url-or-path>\nBase: shader-slang/slang@master\nTests added: tests/<area>/test-<issue_number>.slang\nTest results: <PASS / X failures>")
    ```
 
-   End your turn after sending. Reviewer A's pipeline runs ~20-30 min; **don't reply to status echoes** — apply the quietness protocol from the spine's **Reports — shape and content** rules ("don't reply to status echoes").
+   End your turn after sending. Reviewer A's pipeline runs ~20-30 min; **don't reply to status echoes** — apply the quietness protocol from the spine's **Report shape** rules (`chain-reporting.md`, under Mechanics): "No echoes, no meta-acks... Nothing substantive → send nothing."
 
    On the reviewer's substantive reply:
    - APPROVE or 0 critical/high findings → the **Report** step.
