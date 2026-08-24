@@ -6,15 +6,27 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 463 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 202 |
-| `nv-slang` | slang project spine, skills, workflows | 136 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 475 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 214 |
+| `nv-slang` | slang project spine, skills, workflows | 137 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 68 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 47 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-08-24
+
+### nv-main (2 PRs)
+- **#1268** `cost-approval: card the ceiling only, fix missing approve handler`
+- **#1271** `fix(claude-trace): stop dropping bytes when a UTF-8 char spans TCP chunks`
+
+### nv-dashboard (1 PRs)
+- **#1269** `dashboard: Sessions pill — p99 color, stopped is the only actionable state`
+
+### nv-slang (1 PRs)
+- **#1270** `fix(slang-workflows): repoint stale Reports heading reference`
 
 ## 📅 2026-08-18
 
