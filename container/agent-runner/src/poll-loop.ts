@@ -110,9 +110,13 @@ let costDecidedAt: string | undefined;
 // for immortal groups.
 let costStopRequested = false;
 // Tier-2 hard ceiling (USD; 0 = disabled). A NON-immortal session that reaches
-// it hard-stops (quiesce, no more work) regardless of Tier-1 continues; an
-// immortal one is never blocked — the ceiling only re-escalates for visibility.
+// it hard-stops (quiesce, no more work); an immortal one is never blocked — the
+// ceiling only re-escalates for visibility. This is the LIVE ceiling — the base
+// value plus any raises from an approved ceiling-continue (mirrors costCapUsd).
 let costCeilingUsd = 0;
+// The base ceiling from config — the fixed amount each ceiling-continue adds.
+// Set once in initCostTracking; never mutated (mirrors costAllotmentUsd).
+let costCeilingAllotmentUsd = 0;
 // One-shot dedup for the immortal ceiling re-escalation (in-memory: a respawn
 // re-alerting a still-over-ceiling immortal session is acceptable and rare).
 let costCeilingEscalated = false;
@@ -138,6 +142,12 @@ let costBudgetGen = 0;
 // escalation fires, persisted into cost_cap so the host can ingest the episode from
 // durable state (read-only), cleared on reset/rollover/applied-Continue.
 let costEpisodeId: string | undefined;
+
+// One-shot cost-sensitivity note queued by a ceiling-continue, consumed as a
+// <system> prefix on the NEXT real turn's prompt (not injected immediately —
+// cost_override rows are never fed to the agent, so this rides the following
+// genuine message instead). Cleared on consumption and on a fresh session.
+let pendingCostNudge: string | undefined;
 
 /** Current UTC day as "YYYY-MM-DD" — the daily-window bucket key. */
 function utcDayKey(): string {
@@ -170,7 +180,7 @@ function initCostTracking(providerName: string): void {
     return;
   }
   costAllotmentUsd = cfg.costCapT2Usd && cfg.costCapT2Usd > 0 ? cfg.costCapT2Usd : 0;
-  costCeilingUsd = cfg.costCeilingT2Usd && cfg.costCeilingT2Usd > 0 ? cfg.costCeilingT2Usd : 0;
+  costCeilingAllotmentUsd = cfg.costCeilingT2Usd && cfg.costCeilingT2Usd > 0 ? cfg.costCeilingT2Usd : 0;
   costImmortal = cfg.immortal === true;
   costWindow = costImmortal ? 'daily' : 'lifetime';
   costEnabled = costAllotmentUsd > 0 && providerName === 'claude';
@@ -194,11 +204,17 @@ function initCostTracking(providerName: string): void {
     // holds day-over-day; only a same-day respawn adopts the persisted (possibly
     // 'continue'-raised) cap, spend, and escalation.
     costCapUsd = persistedIsToday && persisted?.capUsd && persisted.capUsd > 0 ? persisted.capUsd : costAllotmentUsd;
+    costCeilingUsd =
+      persistedIsToday && persisted?.ceilingUsd && persisted.ceilingUsd > 0
+        ? persisted.ceilingUsd
+        : costCeilingAllotmentUsd;
     costSpentUsd = persistedIsToday && persisted?.spentUsd && persisted.spentUsd > 0 ? persisted.spentUsd : 0;
     costEscalatedAt = persistedIsToday ? persisted?.escalatedAt : undefined;
     costEpisodeId = persistedIsToday ? persisted?.episodeId : undefined;
   } else {
     costCapUsd = persisted?.capUsd && persisted.capUsd > 0 ? persisted.capUsd : costAllotmentUsd;
+    costCeilingUsd =
+      persisted?.ceilingUsd && persisted.ceilingUsd > 0 ? persisted.ceilingUsd : costCeilingAllotmentUsd;
     costDayKey = undefined;
     costSpentUsd = persisted?.spentUsd && persisted.spentUsd > 0 ? persisted.spentUsd : 0;
     costEscalatedAt = persisted?.escalatedAt;
@@ -232,12 +248,16 @@ function resetCostForNewSession(): void {
   if (!costEnabled || costWindow !== 'lifetime') return;
   costSpentUsd = 0;
   costCapUsd = costAllotmentUsd;
+  costCeilingUsd = costCeilingAllotmentUsd;
   costEscalatedAt = undefined;
   costStopRequested = false;
   costCeilingEscalated = false;
   costCeilingHardStop = false;
   costDecision = undefined;
   costDecidedAt = undefined;
+  // A fresh window makes any queued cost nudge moot — the session is starting
+  // over below both thresholds, not resuming from a ceiling raise.
+  pendingCostNudge = undefined;
   // /clear or new_session is a budget-epoch change: rotate the gen so a decision
   // stamped for the pre-clear escalation is refused, and drop the resolved episode.
   costBudgetGen++;
@@ -278,6 +298,9 @@ function persistCostCap(): void {
     status,
     immortal: costImmortal,
     window: costWindow,
+    // Live ceiling (base + any approved raises) — adopted on respawn so a raise
+    // survives a container restart, mirroring capUsd.
+    ...(costCeilingUsd > 0 ? { ceilingUsd: costCeilingUsd } : {}),
     // Always publish the live budget generation so the host reads the same gen the
     // runner is fencing on (it stamps overrides with it via the escalation episode).
     budgetGen: costBudgetGen,
@@ -415,6 +438,9 @@ function emitCostEscalation(reason: 'cap' | 'ceiling'): void {
       spentUsd: Number(costSpentUsd.toFixed(4)),
       capUsd: Number(costCapUsd.toFixed(4)),
       ...(costCeilingUsd > 0 ? { ceilingUsd: Number(costCeilingUsd.toFixed(4)) } : {}),
+      // The fixed step a ceiling-continue adds (host uses this to preview the
+      // post-approve ceiling in the card text). Absent when no ceiling is set.
+      ...(costCeilingAllotmentUsd > 0 ? { ceilingAllotmentUsd: Number(costCeilingAllotmentUsd.toFixed(4)) } : {}),
       immortal: costImmortal,
       window: costWindow,
     }),
@@ -429,7 +455,12 @@ function emitCostEscalation(reason: 'cap' | 'ceiling'): void {
 
 /**
  * Apply a human cost-override decision (from a `cost_override` inbound row).
- *   - continue: clear the escalation, raise the cap by one allotment, resume.
+ * The Tier-2 ceiling is the only actionable decision now (Tier-1 'cap' crossings
+ * are dashboard-observation only — the host never cards them, so a legitimate
+ * 'continue' only ever arrives for a session at/over its ceiling):
+ *   - continue: raise the ceiling by one ceiling-allotment (bounded, not
+ *     unbounded — a session that burns through the raise re-stops and re-cards)
+ *     and resume, queuing a one-shot cost-sensitivity nudge for the next turn.
  *   - stop: quiesce (finish current turn, take no new work). Immortal groups
  *     never stop — the decision is recorded but status stays at 'escalated'.
  */
@@ -460,30 +491,47 @@ function applyCostOverride(msg: MessageInRow): void {
   }
   const now = new Date().toISOString();
   if (decision === 'continue') {
-    // A Tier-2 ceiling hard stop is ABSOLUTE for non-immortal groups: Continue
-    // cannot buy past it (that is the whole point of the ceiling). Only a new
-    // session / /clear resets spend below it. Record the decision for the UI but
-    // do NOT clear the stop or raise the cap — otherwise gate (runs) and status
-    // (still 'stopped' by the stateless ceiling check) would disagree and each
-    // press would silently buy one more turn.
+    // A non-immortal session at/over its ceiling: this IS the actionable ceiling
+    // decision (see the doc comment above applyCostOverride) — raise the ceiling
+    // by one fixed allotment (bounded: a session that burns through it re-stops
+    // and re-cards rather than running unbounded) and resume.
     if (!costImmortal && costCeilingUsd > 0 && costSpentUsd >= costCeilingUsd) {
+      const previousCeiling = costCeilingUsd;
+      costCeilingUsd += costCeilingAllotmentUsd > 0 ? costCeilingAllotmentUsd : 0;
+      costStopRequested = false;
+      costCeilingHardStop = false;
       costDecision = 'continue';
       costDecidedAt = now;
+      // Re-arm: rotate the gen so a re-enqueue of THIS same Continue (host crash + retry)
+      // is auto-stale (its epochKey now ≠ live gen), and drop the resolved episode. The
+      // next ceiling crossing escalates a fresh episode stamped with the new gen.
+      costBudgetGen++;
+      costEpisodeId = undefined;
+      // Queued for the NEXT real turn's prompt (cost_override rows are never fed
+      // to the agent directly) — tells the agent it's in expensive territory and
+      // to actively wind down rather than keep accumulating context.
+      pendingCostNudge =
+        `Cost checkpoint: this session has spent $${costSpentUsd.toFixed(2)}. A human just approved ` +
+        `raising the cost ceiling to $${costCeilingUsd.toFixed(2)} so you can continue — this is not a ` +
+        `blank check. You're likely carrying a large accumulated context; be frugal from here: avoid ` +
+        `re-reading files or context you already have, summarize progress instead of re-deriving it, and ` +
+        `aim to finish or hand off the current task within the next few turns rather than continuing to ` +
+        `accumulate more context.`;
       persistCostCap();
       log(
-        `cost_override continue IGNORED — spend $${costSpentUsd.toFixed(2)} is at/over the ` +
-          `$${costCeilingUsd.toFixed(2)} hard ceiling; /clear to reset`,
+        `cost_override continue — CEILING raised $${previousCeiling.toFixed(2)} -> ` +
+          `$${costCeilingUsd.toFixed(2)}, resuming with cost nudge queued`,
       );
       return;
     }
+    // Legacy: resolves an in-flight Tier-1 'cap' episode from before this redesign
+    // (the host no longer creates new ones, but a stale approval could still land
+    // right after deploy). Harmless — raises the now-unused cap number only.
     costStopRequested = false;
     costEscalatedAt = undefined;
     costCapUsd += costAllotmentUsd;
     costDecision = 'continue';
     costDecidedAt = now;
-    // Re-arm: rotate the gen so a re-enqueue of THIS same Continue (host crash + retry)
-    // is auto-stale (its epochKey now ≠ live gen), and drop the resolved episode. The
-    // next cap crossing escalates a fresh episode stamped with the new gen.
     costBudgetGen++;
     costEpisodeId = undefined;
     log(`cost_override continue — cap raised to $${costCapUsd.toFixed(2)}, resuming`);
@@ -533,10 +581,12 @@ export const __costCapTestHooks = {
     costDecidedAt,
     costStopRequested,
     costCeilingUsd,
+    costCeilingAllotmentUsd,
     costCeilingEscalated,
     costCeilingHardStop,
     costBudgetGen,
     costEpisodeId,
+    pendingCostNudge,
   }),
   setState: (p: {
     costEnabled?: boolean;
@@ -551,10 +601,12 @@ export const __costCapTestHooks = {
     costDecidedAt?: string | undefined;
     costStopRequested?: boolean;
     costCeilingUsd?: number;
+    costCeilingAllotmentUsd?: number;
     costCeilingEscalated?: boolean;
     costCeilingHardStop?: boolean;
     costBudgetGen?: number;
     costEpisodeId?: string | undefined;
+    pendingCostNudge?: string | undefined;
   }): void => {
     if ('costEnabled' in p) costEnabled = p.costEnabled!;
     if ('costImmortal' in p) costImmortal = p.costImmortal!;
@@ -568,10 +620,12 @@ export const __costCapTestHooks = {
     if ('costDecidedAt' in p) costDecidedAt = p.costDecidedAt;
     if ('costStopRequested' in p) costStopRequested = p.costStopRequested!;
     if ('costCeilingUsd' in p) costCeilingUsd = p.costCeilingUsd!;
+    if ('costCeilingAllotmentUsd' in p) costCeilingAllotmentUsd = p.costCeilingAllotmentUsd!;
     if ('costCeilingEscalated' in p) costCeilingEscalated = p.costCeilingEscalated!;
     if ('costCeilingHardStop' in p) costCeilingHardStop = p.costCeilingHardStop!;
     if ('costBudgetGen' in p) costBudgetGen = p.costBudgetGen!;
     if ('costEpisodeId' in p) costEpisodeId = p.costEpisodeId;
+    if ('pendingCostNudge' in p) pendingCostNudge = p.pendingCostNudge;
   },
 };
 
@@ -1040,6 +1094,14 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     // Format messages: passthrough commands get raw text (only if the
     // provider natively handles slash commands), others get XML.
     let prompt = formatMessagesWithCommands(keep, config.provider.supportsNativeSlashCommands);
+
+    // A ceiling-continue queued a one-shot cost-sensitivity note — this is the
+    // first real turn since, so prepend it. cost_override rows are never fed to
+    // the agent directly (see applyCostOverride), so it has to ride here instead.
+    if (pendingCostNudge) {
+      prompt = `<system>${pendingCostNudge}</system>\n\n${prompt}`;
+      pendingCostNudge = undefined;
+    }
 
     // Non-native providers: run intent router on the initial prompt too.
     // Claude SDK fires UserPromptSubmit hooks natively; for Codex/OpenCode
