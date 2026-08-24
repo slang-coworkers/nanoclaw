@@ -5604,47 +5604,52 @@ async function loadAdminSessions() {
   }
 }
 
-// Per-session cost-cap pill + escalation override buttons. Mirrors the Cost
-// column's pill styling. Status → color: ok green, warn amber, escalated red,
-// stopped grey. A daily-window cap (immortal orchestrator's per-DAY visibility
-// bound) renders "/day" after the cap and keeps the ∞ marker. When
-// status==='escalated' the row offers override buttons: Continue + Stop for a
-// NON-immortal per-run cap, but Continue ONLY (no Stop) for an immortal one —
-// immortal runs by design; the DM/pill is the bound, not a kill switch. Buttons
-// POST the human decision to the cost-override endpoint (which the dashboard
-// proxies to the host ingress). Shared contract with the runner: s.costStatus /
-// s.costSpent / s.costCap / s.costImmortal / s.costWindow.
+// Per-session cost pill + manual override button. 'stopped' is the ONE real,
+// actionable state — the runner actually hard-stopped the session at its Tier-2
+// ceiling — so it always renders grey with the real ceiling number and a
+// Continue button (un-stops + resumes; cost_override 'continue' at the epoch-
+// fenced CAS). Every other row's COLOR is a p99-relative signal (this session's
+// spend vs its group's typical p99 spend, computeCostP99ByGroup server-side) —
+// informational only, never gates or stops anything; a Stop button lets an
+// operator manually kill a session that looks expensive even though it hasn't
+// hit its ceiling. Immortal (orchestrator/admin) never stops — no buttons, ever,
+// matching the runner's own "immortal is never quiesced" invariant. A
+// daily-window cap (immortal's per-DAY visibility bound) renders "/day". Shared
+// contract with the host: s.costStatus / s.costSpent / s.costCap / s.costCeiling
+// / s.costP99 / s.costImmortal / s.costWindow.
 function renderCostCapCell(s) {
   const status = s.costStatus;
   if (!status) return '<span style="color:#64748B">—</span>';
-  const colors = {
-    ok: '#10B981',
-    warn: '#F59E0B',
-    escalated: '#EF4444',
-    stopped: '#94A3B8',
-  };
-  const color = colors[status] || '#94A3B8';
   const spent = typeof s.costSpent === 'number' ? fmtUsd(s.costSpent) : '?';
-  const cap = typeof s.costCap === 'number' ? fmtUsd(s.costCap) : '?';
   const perDay = s.costWindow === 'daily' ? ' /day' : '';
   const immortalMark = s.costImmortal
     ? '<span title="immortal (orchestrator/admin) — never stopped" style="color:var(--text-muted)"> ∞</span>'
     : '';
-  let cell =
-    `<span style="border:1px solid ${color};border-radius:4px;padding:1px 6px;white-space:nowrap">` +
-    `<b style="color:${color}">${spent}</b><span style="color:var(--text-muted)"> / ${cap}${perDay}</span>` +
-    `<span style="color:${color};font-size:9px"> ${esc(status)}</span>${immortalMark}</span>`;
-  // Continue is offered on BOTH 'escalated' and 'stopped' rows so a stop is
-  // always reversible from the UI (cost_override 'continue' clears the stop and
-  // re-arms). Stop is offered only on an escalated non-immortal row (immortal is
-  // never halted; a 'stopped' row is already halted).
-  if ((status === 'escalated' || status === 'stopped') && s.session_id) {
+  let cell;
+  if (status === 'stopped') {
+    const ceiling = typeof s.costCeiling === 'number' ? fmtUsd(s.costCeiling) : '?';
+    cell =
+      `<span style="border:1px solid #94A3B8;border-radius:4px;padding:1px 6px;white-space:nowrap">` +
+      `<b style="color:#94A3B8">${spent}</b><span style="color:var(--text-muted)"> / ${ceiling} ceiling${perDay}</span>` +
+      `<span style="color:#94A3B8;font-size:9px"> stopped</span>${immortalMark}</span>`;
+  } else {
+    // p99-relative color, same 0.8 "warn" fraction the runner itself uses (now
+    // applied to spend-vs-typical instead of spend-vs-cap — the mental model
+    // carries over even though the underlying threshold changed).
+    const ratio =
+      typeof s.costP99 === 'number' && s.costP99 > 0 && typeof s.costSpent === 'number' ? s.costSpent / s.costP99 : null;
+    const color = ratio == null ? '#64748B' : ratio >= 1 ? '#EF4444' : ratio >= 0.8 ? '#F59E0B' : '#10B981';
+    cell =
+      `<span style="border:1px solid ${color};border-radius:4px;padding:1px 6px;white-space:nowrap">` +
+      `<b style="color:${color}">${spent}</b>${perDay}${immortalMark}</span>`;
+  }
+  if (s.session_id && !s.costImmortal) {
     const sid = escAttr(s.session_id);
-    let btns = `<button class="admin-action-btn success" data-action="cost-override" data-session-id="${sid}" data-decision="continue">Continue</button>`;
-    if (!s.costImmortal && status === 'escalated') {
-      btns += `<button class="admin-action-btn danger" data-action="cost-override" data-session-id="${sid}" data-decision="stop">Stop</button>`;
-    }
-    cell += `<span style="display:inline-flex;gap:4px;margin-left:6px">` + btns + `</span>`;
+    const btn =
+      status === 'stopped'
+        ? `<button class="admin-action-btn success" data-action="cost-override" data-session-id="${sid}" data-decision="continue">Continue</button>`
+        : `<button class="admin-action-btn danger" data-action="cost-override" data-session-id="${sid}" data-decision="stop">Stop</button>`;
+    cell += `<span style="display:inline-flex;gap:4px;margin-left:6px">` + btn + `</span>`;
   }
   return cell;
 }
@@ -5657,9 +5662,13 @@ function renderAdminSessions() {
     `<button class="admin-action-btn${p === val ? ' success' : ''}" data-sessions-period="${val}">${label}</button>`;
   const sortBtn = (val, label) =>
     `<button class="admin-action-btn${sessionsView.sort === val ? ' success' : ''}" data-sessions-sort="${val}">${label}</button>`;
-  // Status counts for the filter chips — from the FULL unfiltered set so a chip's
-  // count is stable regardless of which filter is active.
-  const nEsc = adminState.sessions.filter((s) => s.costStatus === 'escalated').length;
+  // Stopped count for the filter chip — from the FULL unfiltered set so the
+  // chip's count is stable regardless of which filter is active. 'stopped' is
+  // the ONLY state a human still needs to act on (a ceiling hard-stop); a mere
+  // high-p99 color is informational, not a queue to work through, so there is
+  // no "escalated"/"needs decision" chip any more — collapsing that noisy
+  // distinction (nearly every session used to cross the old $10 Tier-1 cap) was
+  // the whole point of this redesign.
   const nStop = adminState.sessions.filter((s) => s.costStatus === 'stopped').length;
   const filterBtn = (val, label, count) =>
     `<button class="admin-action-btn${sessionsView.filter === val ? ' success' : ''}" data-sessions-filter="${val}">${label}${
@@ -5677,9 +5686,7 @@ function renderAdminSessions() {
     // Cost-status filter — jump straight to the sessions needing a decision.
     `<span style="color:var(--text-muted);font-size:10px;margin-left:8px">Show:</span>` +
     filterBtn('all', 'All') +
-    filterBtn('actionable', '⚑ Needs decision', nEsc + nStop) +
-    filterBtn('escalated', 'Escalated', nEsc) +
-    filterBtn('stopped', 'Stopped', nStop) +
+    filterBtn('stopped', '⚑ Stopped (needs decision)', nStop) +
     (costUnavailable
       ? `<span title="${escAttr(String(sessionsView.unavailable))}" style="color:#94A3B8;font-size:10px;margin-left:8px">cost: ccusage unavailable</span>`
       : '') +
@@ -5693,13 +5700,8 @@ function renderAdminSessions() {
   if (sessionsView.sort === 'recent') {
     rows = [...rows].sort((a, b) => String(b.last_active || '').localeCompare(String(a.last_active || '')));
   }
-  // Client-side cost-status filter (the dropdown chips). 'actionable' = escalated OR
-  // stopped — the sessions a human still needs to Continue/Stop.
-  if (sessionsView.filter === 'actionable') {
-    rows = rows.filter((s) => s.costStatus === 'escalated' || s.costStatus === 'stopped');
-  } else if (sessionsView.filter === 'escalated') {
-    rows = rows.filter((s) => s.costStatus === 'escalated');
-  } else if (sessionsView.filter === 'stopped') {
+  // Client-side cost-status filter (the dropdown chips).
+  if (sessionsView.filter === 'stopped') {
     rows = rows.filter((s) => s.costStatus === 'stopped');
   }
   if (rows.length === 0) {
@@ -5738,7 +5740,7 @@ function renderAdminSessions() {
     `<div style="color:var(--text-muted);font-size:10px;margin-bottom:6px">${rows.length} sessions · ${costUnavailable ? 'n/a' : fmtUsd(totalCost)} over ${p}</div>` +
     distPills +
     `<table class="admin-table">
-    <tr><th>#</th><th>Coworker</th><th>Session ID</th><th style="text-align:right">Cost (${p})</th><th>Cost cap</th><th style="text-align:right">Tokens</th><th>Last active</th><th>Actions</th></tr>`;
+    <tr><th>#</th><th>Coworker</th><th>Session ID</th><th style="text-align:right">Cost (${p})</th><th title="Color = spend vs this group's typical (p99). Grey 'stopped' = actually blocked at its cost ceiling.">Cost status</th><th style="text-align:right">Tokens</th><th>Last active</th><th>Actions</th></tr>`;
   let i = 0;
   for (const s of rows) {
     i++;
@@ -6125,7 +6127,7 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
     const sessionId = btn.dataset.sessionId;
     const decision = btn.dataset.decision;
     if (!sessionId || (decision !== 'continue' && decision !== 'stop')) return;
-    const verb = decision === 'stop' ? 'Stop (quiesce)' : 'Continue (raise cap)';
+    const verb = decision === 'stop' ? 'Stop (quiesce)' : 'Continue (raise ceiling)';
     if (!confirm(`${verb} session "${sessionId}"?`)) return;
     btn.disabled = true;
     try {
@@ -6963,14 +6965,17 @@ function renderApprovalItem(item) {
   </div>`;
   }
   if (item.action === 'cost_decision') {
-    // A cost-cap escalation: the approver must see WHAT they're deciding on — current
-    // spend vs cap, and a door into the session — before Approve (Continue: raise the
-    // cap by one allotment and resume) or Reject (Stop: quiesce). Falling through to the
+    // A Tier-2 ceiling breach: the runner already hard-stopped this session, so the
+    // approver must see WHAT they're deciding on — current spend vs the ceiling it hit,
+    // and a door into the session — before Approve (Continue: raise the ceiling by one
+    // allotment and resume) or Reject (Stop: stay stopped). Falling through to the
     // generic branch rendered only a bare title. Mirrors the runaway card's cost+session
     // treatment; the button labels carry the Continue/Stop meaning of Approve/Reject.
+    // (item.capUsd carries the CEILING value — same payload key the pre-redesign Tier-1
+    // card used, reused so the host needed no wire-format change; only this label did.)
     const cost =
       typeof item.spentUsd === 'number' && typeof item.capUsd === 'number'
-        ? `<div style="margin-top:4px;font-size:13px;font-weight:700;color:#f59e0b">$${item.spentUsd.toFixed(2)} spent of $${item.capUsd.toFixed(2)} cap</div>`
+        ? `<div style="margin-top:4px;font-size:13px;font-weight:700;color:#f59e0b">$${item.spentUsd.toFixed(2)} spent of $${item.capUsd.toFixed(2)} ceiling</div>`
         : '';
     // Hash-based coworkers router: #/cw/<folder>/s/<sessionId>. Raw anchor (md() only
     // linkifies http(s)); degrades to copyable text when the folder isn't resolvable.
@@ -6986,12 +6991,12 @@ function renderApprovalItem(item) {
     return `<div class="cw-msg assistant">
     <div class="cw-msg-bubble" style="border-left:3px solid #f59e0b;padding-left:8px">
       ${coworkerHeader}
-      <div style="font-weight:600">${esc(item.title || 'Cost cap — decision needed')}</div>
+      <div style="font-weight:600">${esc(item.title || 'Cost ceiling reached — session blocked')}</div>
       ${cost}
       ${sessionLink ? `<div style="margin-top:4px;font-size:10px">${sessionLink}</div>` : ''}
       ${detail}
       <div style="margin-top:8px">
-        <button class="approval-btn" data-qid="${esc(item.approvalId)}" data-decision="Approve" style="background:#238636;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;cursor:pointer;font-size:10px">Continue (raise cap)</button>
+        <button class="approval-btn" data-qid="${esc(item.approvalId)}" data-decision="Approve" style="background:#238636;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;cursor:pointer;font-size:10px">Continue (raise ceiling)</button>
         <button class="approval-btn" data-qid="${esc(item.approvalId)}" data-decision="Reject" style="background:#da3633;color:#fff;border:none;border-radius:3px;padding:4px 14px;cursor:pointer;font-size:10px">Stop</button>
       </div>
     </div>
