@@ -41,6 +41,31 @@ The patch was authored against lemmy at the merge of `richard-weiss/main`
 (`4688853`). If it stops applying, reconcile `src/interceptor.ts` by hand — the
 change is confined to `TARGET_DOMAINS` / `isTargetAPI()` plus the smithy deps.
 
+**`0001-nvidia-bedrock-interception.patch` does NOT cover the whole fork.** The
+deployed `dist/reverse-proxy.js` also carries an `upstreamProxy`/
+`forwardViaManualProxy` method (OneCLI proxy-chaining — opens a CONNECT tunnel
+through the configured outbound proxy so credential injection still happens).
+That method exists in neither this patch nor `apps/claude-trace/src/reverse-proxy.ts`
+in any `lemmy` checkout we've had available — its actual source-level origin is
+untraced. Do not assume `git apply` + rebuild reproduces the currently-deployed
+`reverse-proxy.js` byte-for-byte; diff the rebuilt output against the committed
+one before replacing it, and expect to reconcile `reverse-proxy.ts` by hand too,
+the same way the note above already says to do for `interceptor.ts`.
+
+**Known manual fix to reapply after any rebuild** (landed directly against
+`dist/reverse-proxy.js` on 2026-08-24, PR #1271, because of the gap above — no
+git-apply-able source patch exists for it): `handleRequest()`'s request-body
+accumulation used to be `let requestBody = ""; req.on("data", chunk =>
+requestBody += chunk)`, which implicitly `.toString()`s each Buffer chunk in
+isolation — a multi-byte UTF-8 character straddling a chunk boundary silently
+corrupts the body. Grep the rebuilt `handleRequest()` for that pattern and
+replace it with: accumulate raw `Buffer` chunks into an array, `Buffer.concat()`
+them once `req` ends, decode the complete buffer in one `.toString("utf8")`
+call, and assert the decoded body's byte length matches the request's
+`Content-Length` header before forwarding (502 + log on mismatch, rather than
+silently sending a truncated request). See `container/claude-trace/dist/reverse-proxy.js`'s
+current `handleRequest()` for the exact applied form.
+
 ## Layout
 
 | path | what |
@@ -48,7 +73,7 @@ change is confined to `TARGET_DOMAINS` / `isTargetAPI()` plus the smithy deps.
 | `dist/` | built CLI — `dist/cli.js` is the entry the wrapper runs, and its presence is what enables the whole feature |
 | `frontend/` | HTML viewer assets used to render the `.html` next to each `.jsonl` |
 | `claude-trace-wrapper.sh` | what `CLAUDE_CODE_EXECUTABLE` points at; forwards SDK args to the real binary under the proxy |
-| `0001-nvidia-bedrock-interception.patch` | the source of truth for the fork |
+| `0001-nvidia-bedrock-interception.patch` | source of truth for the `interceptor.ts` domain-widening change ONLY — see the rebuild note above for what it does NOT cover |
 
 ## Disk
 
