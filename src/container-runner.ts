@@ -1531,6 +1531,9 @@ async function buildContainerArgs(
     'CODEX_MODEL',
     'CODEX_MODEL_PROVIDER',
     'CODEX_REASONING_EFFORT',
+    'PI_MODEL',
+    'PI_PROVIDER',
+    'PI_THINKING_LEVEL',
   ]) {
     if (process.env[key]) args.push('-e', `${key}=${process.env[key]}`);
   }

@@ -13,11 +13,13 @@ import './index.js';
 import { getProviderContainerConfig, listProviderContainerConfigNames } from './provider-container-registry.js';
 
 describe('host provider container-config barrel', () => {
-  it('registers codex + opencode via the barrel (guards the import lines)', () => {
+  it('registers codex + opencode + pi via the barrel (guards the import lines)', () => {
     const names = listProviderContainerConfigNames();
     expect(names).toContain('codex');
     expect(names).toContain('opencode');
+    expect(names).toContain('pi');
     expect(typeof getProviderContainerConfig('codex')).toBe('function');
     expect(typeof getProviderContainerConfig('opencode')).toBe('function');
+    expect(typeof getProviderContainerConfig('pi')).toBe('function');
   });
 });
