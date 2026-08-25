@@ -1,0 +1,15 @@
+---
+author_agent_group: ag-1783611156430-vvj8oi
+author_session: sess-1787302158874-9mwk5s
+written_at: 2026-08-24T12:06:12.557Z
+---
+
+# [approver/critique-mustfix] a false documented invariant in a methodology tool is a blocking defect, not a clarity nit — even when the code is correct
+
+**Symptom.** Reviewing slang#12677 R3 (a compile-perf commit swapping gen_codegen's sin/cos filler for an fma recurrence), I twice drafted WOULD_APPROVE, treating the author's code comment at workloads.py:717 — "keeps the linear coefficient below 1 ... as it was before rather than compounding geometrically" — as a "loosely worded" clarity nit that "does not move the decision." The codex DECISION_REVIEW gate returned must-fix across rounds 8–10 and I ultimately resolved to ABSTAIN_POLICY(CRITIQUE_MUSTFIX).
+
+**Root cause — two errors.** (1) The comment is not loosely worded, it is MATERIALLY FALSE: the OLD recurrence's `1.0009*acc` term has a linear coefficient >1, and bounded sin/cos + sublinear sqrt do NOT neutralize it, so the old form DID weakly compound (grows once acc ≳ 833). The new form (coeff 0.8759) is an IMPROVEMENT, not the "as it was before" preservation the comment claims. I verified the arithmetic correctly but kept excusing the comment's *history claim*. (2) I mis-weighted where the defect sits: "it's the author's comment, not shipping code, no runtime effect" felt like grounds to clear. But in a file whose ENTIRE PURPOSE is characterizing synthetic-generator growth, a false documented growth-invariant is exactly what a future retuner reads and tries to preserve — the comment IS the load-bearing artifact, not incidental prose. Comment-hygiene + "documents the invariant future work must preserve" makes it blocking.
+
+**How to catch it.** When a change's whole point is a measured/characterized property (growth order, op-count, complexity, a perf invariant), a comment/docstring asserting that property is not decorative — verify it like code. Test the specific claim: here, "as it was before" is a claim about the OLD form; compute the OLD form's property independently before accepting "preserved." A correct implementation with a false description of WHY it's correct is still a defect in a methodology tool. And: "it's the author's comment / no runtime effect / dev-only tool" is NOT a clearing argument when the comment states a false invariant others will rely on.
+
+**Fix / disposition.** Code correct + false documented invariant I cannot revise (approver is read-only, never writes to GitHub) + unresolved DECISION_REVIEW must-fix ⇒ revise-or-ABSTAIN ⇒ ABSTAIN_POLICY(CRITIQUE_MUSTFIX), human decides whether the comment must be corrected before merge. This is NOT a fabricated abstain over wording: the claim is false, in a growth-characterization file, and two careful reviewers disagreed on disposition (genuine uncertainty ⇒ abstain). Meta: don't let "author's comment / not shipping code" reflexively downgrade a false invariant to a nit; and when the critique gate holds a line across multiple rounds on a point you keep re-excusing, re-examine whether YOUR framing (not the reviewer's) is the error.

@@ -9,6 +9,37 @@ metadata:
 
 # slang#12392 — entry point calling an entry point → release-only null deref
 
+## 🔧 DRAFT PR #12721 OPEN — 2026-08-24 23:47Z, verified at source
+
+**Verified by me:** `state=open`, `draft=true`, title *"Fix #12392: attach entry-point decoration at
+selection time (also fixes #12397)"*, body carries **both** `Fixes #12392` and `fixes #12397`,
+`report_pr_created` registered (`pr-mappings`: 12721 → fixer sess-…un38y5 on the canonical thread).
+Held pending review — **no human action needed yet.** https://github.com/shader-slang/slang/pull/12721
+
+**What shipped (fixer-reported, structurally confirms the maintainer's core fix):** stop attaching
+`IREntryPointDecoration` at module lowering; let link-time `specializeIRForEntryPoint` be the single
+selection-aware producer, so **decorated-set == laid-out-set by construction** — kills the orphaned
+entry point that caused the null layout. Plus the #12397 SPIR-V `LocalSize` gate + cascade fixes.
+
+⚠️⭐⭐ **SCOPE TRIM vs the maintainer's 08-18 sketch — the reviewer/maintainer MUST know:** the fixer
+**reverted** the two companion changes `tangent-vector` sketched — (1) moving `fixEntryPointCallsites`
+earlier, and (2) the constref release-assert — **after codex caught real regressions**; pass ordering is
+now **byte-identical to master**. So the delivered PR is the *decoration-source* fix alone, not the
+full two-fix package that was requested. This is a legitimate, evidence-driven trim (the early-split
+broke things), but it means one half of the maintainer's near-term plan is deferred — a reviewer nodding
+the PR through without noticing would miss that `fixEntryPointCallsites` was NOT moved. ⭐ *A revert that
+brings behavior back to master is invisible in the diff by definition — it must be called out in prose,
+which the fixer did in its report; ensure it survives into the PR body / review.*
+
+**Verification (fixer-reported, NOT independently re-run by me):** repro 2/2, derivative 35/35, broad
+sweep 3785/3786 (lone failure `scalar-bf16.slang (vk)` fails identically on master = pre-existing);
+codex PLAN/CODE/OUTPUT approve. CI run 32790939853 dispatched.
+
+**Chain state:** fixer dispatched `[Fix Review Request]` to `slang-reviewer` and owns #12721's webhook
+CI/review follow-up; `slang-triager` holds until the fixer's post-review `[Fix Report]`, then forwards
+upstream. ✅ **The restart-hold call (#112) was right — near-done, not stalled; restart-risk retracted.**
+RESUME on review verdict / CI / a human comment.
+
 ## ✅ CLOSED WITH THE MAINTAINER 2026-08-06 16:14Z — verified live by me, not from the report
 
 | artifact | state (verified) |
@@ -47,6 +78,52 @@ claimed "already fixed at HEAD"; caught with `git merge-base --is-ancestor`. ⭐
 
 **Ball is on `tangent-vector`** for the (b)-vs-early-(a) design decision. RESUME on that ruling or a
 PR implementing either path.
+
+## ⚠️ MAINTAINER PINGING, 6 DAYS, NO ARTIFACT — 2026-08-24 19:26Z (`5400220205`)
+
+`tangent-vector`: *"Any updates? Are you working on this, as directed?"* State when it arrived:
+- **`slang-fixer` session `sess-1787081467438-un38y5`** (ag-1780667166439-vmjrwe) on the canonical
+  thread, created 08-18 19:31 (right after dispatch), **active/running, last_active 2026-08-24 07:54**
+  — alive, was working ~this morning.
+- **No `fix/issue-12392` branch, no PR** referencing 12392 (checked `gh pr list` + branch API → 404).
+- **`slang-triager` 12392 session `sess-1786023730364-8w6v1g` is STOPPED** (last active 08-18 21:38) —
+  the chain owner went quiet after dispatching.
+
+⇒ Routed to `slang-triager` (chain owner, reach the fixer on its edge — ANCHOR H) to get the fixer's
+real status and **post a status update to the maintainer on GitHub**.
+
+**Triager's read (RELAYED, not yet verified by me — treat as its finding):** design is **settled**, not
+a stuck question — `tangent-vector` on 08-18 pre-authorized the TargetProgram fallback *"if the
+per-EntryPoint IRModule proves intractable."* Fixer's **last report 08-18 20:56Z** found the primary
+intractable (mangled name lives on `SpecializedComponentType`, **not** `EntryPoint`) and was shipping
+the authorized fallback, build **~60%**. ⇒ execution of a green-lit plan.
+⚠️⭐⭐ **THE "~60% as of 08-18 20:56Z" IS A 6-DAY-OLD STORED FIGURE — do NOT let it reach the maintainer
+as current state** ([[feedback_a_stored_claim_re_shipped_as_a_live_finding]], ANCHOR G). A session
+running 6 days with no branch is as consistent with *stalled on link-pass cascade* as with *nearly
+done*. The GitHub reply must carry the fixer's **freshly-queried** state, not the 08-18 percentage.
+Triager says it queried live (its msg 93) and will post that — correct.
+
+✅ **STATUS POSTED to maintainer `5400470472` (08-24 19:48Z), verified: no stale `60%`, states no branch
+pushed.** Triager refused the 08-18 figure, posted verifiable-only + candid 6-day-silence acknowledgment,
+and gave `tangent-vector` the option to redirect to the primary per-EntryPoint route. Fixer did **not**
+answer the triager's live query in two windows. **Verdict content (fixer's own, relayed):** primary
+per-EntryPoint-IRModule route intractable for **generic** entry points (specialized mangled name lives on
+`SpecializedComponentType`, not `EntryPoint`); shipping the pre-authorized fallback (decoration removed
+from module lowering, re-introduced selection-aware in `createIRModuleForLayout`; `fixEntryPointCallsites`
+moved earlier as the single split point). Not blocked on a maintainer decision.
+
+⚠️⭐⭐ **FIXER-LIVENESS — do NOT restart on a "looks stalled" heuristic: the session is ACTIVE.**
+`sess-1787081467438-un38y5` `last_active 2026-08-24 19:34` (14 min before I checked) — actively doing
+*something*. Six days + no pushed branch is consistent with a genuinely long representational change
+(EntryPoint→IRModule + link-pass reorder churns builds for days; worktree is on the fixer's own mount,
+so local commits are invisible externally) OR with a wedge. **A restart of an active session destroys
+its uncommitted worktree work** — same class as the shared-clone `reset --hard` hazard
+([[feedback_group_clone_is_shared_by_all_sibling_sessions]]). ⇒ **Restart trigger must require BOTH: no
+branch appears AND `last_active` stops advancing.** An active session that isn't answering its parent is
+most likely mid-build, not dead — don't kill it to satisfy an anxiety about silence. ⭐ **A big representational change
+(EntryPoint→IRModule + reordering link passes) legitimately takes days — "no PR yet" is not "stalled";
+but 6 days of silence to a waiting maintainer is a reporting failure regardless of build state.**
+The maintainer is owed a *this is in progress, here's where* or a *blocked on X*, not more silence.
 
 ## 🔨 MAINTAINER RULED + REQUESTED A DRAFT PR — 2026-08-18 19:26Z (`5333006652`)
 

@@ -76,5 +76,6 @@ full base context to codex at setup, and stopped polluting the critique counter
 historical; confirm against the current buddy skill + hook chain.
 
 Related: provider-level parity (Codex ignores `settings.json` hooks, so overlay
-enforcement is inert on a Codex group) lives in [[codex-provider-parity.md]];
-the free-form triage→fixer handoff finding is [[a2a-handoff-test.md]].
+enforcement is inert on a Codex group — but Codex still follows overlay text
+voluntarily) and the free-form triage→fixer handoff finding both live in
+[[codex-provider-parity.md]].

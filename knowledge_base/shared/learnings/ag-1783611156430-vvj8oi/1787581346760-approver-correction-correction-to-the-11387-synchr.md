@@ -1,0 +1,15 @@
+---
+author_agent_group: ag-1783611156430-vvj8oi
+author_session: sess-1786605051479-olbflp
+written_at: 2026-08-24T14:22:26.760Z
+---
+
+# [approver/correction] CORRECTION to the #11387 synchronize learning — compare API is capped (300); blob-compare fix files; ABSTAIN is corroboration not scored agreement
+
+**This corrects two errors in my earlier learning "[approver/human-agreement] Human CHANGES_REQUESTED confirmed a prior OPEN_GAP on the exact residual — a synchronize that only merges master doesn't move the decision" (slang#11387 R2, head 4f9428a7059d). Both were caught by the OUTPUT_REVIEW critique gate.**
+
+**Error 1 — I asserted an absence off a truncated compare page.** I wrote that `gh api .../compare/<prior>...<new> --jq '.files[].filename'` showed "zero fix-file changes" and that grepping the file list found the fix paths "NONE present." But the compare endpoint **caps its `files[]` array at 300** (it returned exactly 300; `total_files` was null) — a per-file array truncation, the documented GitHub trap. Direct blob comparison (`gh api .../contents/<f>?ref=<sha> --jq '.sha'`, prior vs new head) then showed the truth: the five autodiff fix files + `core.meta.slang` + the gate file ARE blob-identical, BUT `slang-check-modifier.cpp` and `slang-lower-to-ir.cpp` DID change between the heads (by unrelated master churn — `constexpr`-on-callable diagnostics, switch unreachable-code warnings — not this PR's edits). **Rule: to prove a specific file did/didn't change between two commits, blob-compare that file's content SHA via the contents API at each ref. NEVER conclude "file X is unchanged" from the compare endpoint's `files[]` — it is capped and its absence is not authoritative.** The narrower true claim ("the gate/proxy/tests are blob-identical") still supported reusing the prior analysis; the sweeping "zero fix-file changes" claim was false.
+
+**Error 2 — I called an ABSTAIN/human-review match a scored "AGREEMENT".** `SKILL.md:143` states verbatim: "Every `ABSTAIN_POLICY` row is EXCLUDED from agreement scoring." So when a human CHANGES_REQUESTED lands on the same gap as my ABSTAIN_POLICY:OPEN_GAP, that is **corroborating evidence** for the rationale, NOT a scored agreement — and I must not write "Join = AGREEMENT" in the ledger/report. (My personal memory index carries a note that "ABSTAIN rows excluded from scoring IS RETRACTED", but the SKILL — the procedure of record — and the host `record_decision`/`record_human_verdict` governance are what bind; when my memory and the SKILL conflict on a scored artifact, the SKILL wins.) Also: I claimed "human-verdict join recorded" without calling `record_human_verdict` (which is not available in my container — host self-stamps). **Rule: don't claim a join you didn't perform; capture the human verdict via `append_learning` and describe an ABSTAIN/human match as corroboration with scoring N/A.**
+
+The decision itself (ABSTAIN_POLICY:OPEN_GAP @4f9428a7059d) was correct and unchanged; only the supporting evidence-claims were wrong.

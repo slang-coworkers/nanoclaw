@@ -230,3 +230,82 @@ whether any GitHub reply is warranted (likely none — maintainer is driving) an
 fix. **I did NOT dispatch a fixer** — maintainer is engaged and driving; A is unassigned but offering
 it is the triager's call, not an unsolicited Main dispatch. **RESUME:** triager acts, or #12649 gets a
 review request / CI event, or a maintainer asks for A/B.
+
+
+## 2026-08-24 — issue author pivots the API design (meeting outcome). Live inbound, chain re-opened.
+
+`tdavidovicNV` (author) commented (cmt 5399213522): *"After a meeting discussion, we agreed the
+easiest solution is to actually provide `GetDownstreamCompiler` (symmetric to existing
+`SetDownstreamCompiler`). Then the caller can get any information they want from that compiler. We
+still probably want to expand the capabilities enum, for completeness, but it now becomes a separate
+thing."*
+
+**This supersedes the original half-2 design** (the narrow `getDownstreamCompilerCapabilities(count*,ids*)`
+count/array query) with a **return-the-compiler-object** design, and **explicitly demotes the atom
+expansion (B) to a separate, non-blocking task.**
+
+**Grounding checks I ran before relaying (header @ current master):**
+- ⚠️ **The claimed symmetry is loose.** There is **no bare `SetDownstreamCompiler`** in `include/slang.h`.
+  The actual setters are `setDownstreamCompilerPath` (:4102), `setDownstreamCompilerPrelude` (:4114),
+  and the symmetric pair `set/getDownstreamCompilerForTransition` (:4255/:4267). So "symmetric to
+  SetDownstreamCompiler" is a paraphrase of intent, not an exact existing name.
+- ⛔ **The bigger fact for whoever designs this: `IDownstreamCompiler` is INTERNAL** —
+  `source/compiler-core/slang-downstream-compiler.h:328` (`: public ICastable`), **not in the public
+  header.** "Return the compiler so the caller gets any info" means either exposing that whole COM
+  interface publicly (a large, open-ended ABG surface — the opposite of the tightly-scoped count/array
+  query) or wrapping it in a new narrow public interface. That is a **design expansion, not a
+  simplification**, from an ABI-stability standpoint — worth flagging even though the maintainers
+  decided it in a meeting I wasn't in. Not mine to relitigate; theirs to weigh.
+
+**Effect on the three parts:**
+- **C:** the *approach* changed. PR #12649 (OPEN, still the arch floor/ceiling clamp in
+  `slang-nvrtc-compiler.cpp`) is **not** the new `GetDownstreamCompiler` API — it's the internal
+  consumer of exactly the kind of query this API would expose. It likely stands on its own regardless
+  (it fixes the missing-ceiling hard-fail), but someone should confirm the maintainer still wants it
+  given the pivot.
+- **B (atoms):** author explicitly says "separate thing now" — de-coupled, still gated on Q1.
+- **A (CASE-table `sm_89→sm_80` bug):** untouched by any of this, still live on master, still the one
+  piece ready today. The pivot does not affect it.
+
+**Routed to `slang-triager`** (holds verdict+memo, closest-to-state) with the grounding facts. Human
+comment on an issue is a live inbound even on a chain I'd closed — routed on the canonical thread.
+Triager owns any GitHub reply + whether to re-offer A / re-scope its verdict. **RESUME:** triager acts,
+or #12649 state change, or further human comment.
+
+
+## 2026-08-24 (later) — author CLARIFIES: he means `getDownstreamCompilerPath`, a string getter. My ABI caution is DEFUSED.
+
+`tdavidovicNV`, cmt 5399364838: *"`IGlobalSession::getDownstreamCompilerPath` was the meant, to
+complement `setDownstreamCompilerPath`, the way `getDownstreamCompilerPrelude` complements
+`setDownstreamCompilerPrelude`."*
+
+⇒ **The prior "GetDownstreamCompiler → get any info from the compiler" was NOT a proposal to expose a
+compiler OBJECT.** He means a **path string getter** — trivial, exact precedent, one appended method.
+
+**Grounded @ master `ba1f1aecb`:**
+- `getDownstreamCompilerPath` does **not** exist yet (`grep include/slang.h` empty) — it's the ask.
+- `setDownstreamCompilerPath` exists (:4102). The precedent pair `set/getDownstreamCompilerPrelude`
+  exists (:4114 setter / getter after) — getter returns `ISlangBlob**`, `SLANG_NO_THROW void`,
+  appended to IGlobalSession. A path getter mirrors that shape exactly.
+
+⚠️ **This DEFUSES the ABI-expansion caution I raised and the triager POSTED to GitHub (cmt 5399251696):**
+"return the compiler means exposing internal `IDownstreamCompiler` publicly." That concern was correct
+*for the object-getter reading* but the author has now clarified he never meant that. **A path getter
+is a `const char*`/blob, no COM interface, no `IDownstreamCompiler` exposure — the simplification he
+originally claimed is real under this reading.** The triager has a live GitHub comment arguing a
+concern the clarification removes; it (closest-to-state, it posted it) should acknowledge/correct on
+the record. Routed to it.
+
+🔎 **One genuine design subtlety worth a gentle flag (not a blocker, theirs to weigh):**
+`setDownstreamCompilerPath` sets a *search prefix*; the actually-loaded compiler is found via normal
+discovery order + memoized (per the issue's own note on `getDownstreamCompilerVersion`). A getter that
+returns only the *set* path is near-useless when the caller relied on discovery (returns empty). To
+serve the issue's use case it should return the **resolved/loaded** path — which the caller can then
+`dlopen` and query (`nvrtcGetSupportedArchs`) themselves. That pushes NVRTC-specific logic to the
+caller (vs. the original in-Slang capabilities query), a real tradeoff but the maintainers' call.
+
+**Effect:** half-2 is now a small string-getter, not a capabilities API. PR #12649 (arch clamp) still
+stands alone. **A (CASE-table bug) and B (atoms) unchanged** — A still live, still ready today.
+
+Routed clarification + the defuses-your-posted-caution note to `slang-triager`. **RESUME:** triager
+acts / posts, or #12649 changes, or further human comment.

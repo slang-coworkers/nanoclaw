@@ -28,4 +28,4 @@ survives without carrying the dead tables.
 
 The board renderings of the same superseded class are recorded in
 [tracker tick-66](tracker-tick.md) (`final-board` pruned 2026-08-22; `chat-board`
-pending the next fold).
+pruned 2026-08-23).

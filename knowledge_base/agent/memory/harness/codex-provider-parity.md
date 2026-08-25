@@ -34,7 +34,23 @@ Claude group, or accept the gap for review/critique-only Codex use.
   Codex reads it natively.
 - **Skill files are readable** from the container FS (`/home/node/.claude/skills/*/SKILL.md`).
 - **Free-form A2A handoff is sufficient** — a plain-text triage→fixer handoff worked as
-  well as structured JSON; no structured brief required. See [[a2a-handoff-test.md]].
+  well as structured JSON; no structured brief required (task #13, 2026-05-10: fixer
+  variants A/B/D all parsed the same `Priority+Component+Summary+Files+Action` handoff and
+  produced senior-level output; the orchestrator, which has full context, should craft the
+  handoff rather than forcing triage to forward directly).
+- **Codex follows overlay/critique text voluntarily, even though the hooks are inert.**
+  On triage #943 (2026-05-10) the Codex `slang-triager` read the critique-overlay
+  instructions embedded in its `CLAUDE.md` and *voluntarily* ran both DIAGNOSIS_REVIEW and
+  OUTPUT_REVIEW — with **no** hook enforcement to compel it. So the inert-hooks finding
+  above is about the *enforcement* mechanism, not instruction-following: Codex honors
+  structured-workflow text delivered through `baseInstructions`, it just can't be *forced*
+  to. Treat overlay text as advisory-but-usually-honored on Codex, not as a hard gate.
+
+**Observability caveat (the real cost of inert hooks):** because the hook stack is what
+emits dashboard events, a Codex group is a **blind spot** — zero tool-call counts, no MCP
+usage visibility, only the final outbound messages are observed. On triage #943 the Claude
+variant was scored higher on depth and observability; Codex was faster (~3 min vs ~7) and
+showed strong voluntary workflow compliance.
 
 ## Dated implementation details — VERIFY before relying (May 2026)
 
