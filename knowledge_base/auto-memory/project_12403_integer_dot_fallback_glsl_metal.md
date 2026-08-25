@@ -202,13 +202,64 @@ fix dispatch, the redrive — produced real output; ~3 of 367 transcripts show i
 not systemic. Shared learning recorded by the triager. Re-send on the host fallback notice is the
 right reflex regardless of cause.
 
+## RESOLVED 2026-08-22 — #12403 CLOSED as fixed by #12417; #12548 to be reduced to test-only
+
+**Maintainer `jvepsalainen-nv` closed #12403** (cmt `5391239984`, state CLOSED/COMPLETED). All
+load-bearing claims Main-verified before routing:
+
+- **#12417 MERGED 2026-08-22 01:15Z** (commit `70228af62f…`), title *"Unroll the generic
+  floating-point `dot` fallback"*. **Its diff added `[ForceUnroll]` to BOTH arms** — hunk
+  `@@ -10124` (FP) **and** `@@ -10196` (integer), despite the FP-only title. That title mismatch is
+  why nothing auto-closed #12403 (the fix landed under #12396's name) ⇒ hand-closed. ⭐ This is the
+  #12396 twin's PR unexpectedly covering #12403's source too — the "resolve after #12396" deferral
+  was overtaken by #12417 doing both.
+- **#12417's tests are CUDA/CPP only**: `tests/cuda/vector-dot-unroll.slang` (SIMPLE filecheck
+  cuda+cpp) and `tests/cuda/vector-dot-signed-zero.slang` (the signed-zero pin, cpu+cuda).
+- **#12548's source hunk (`[ForceUnroll]` at `@@ -10196`) is now BYTE-REDUNDANT against master** —
+  identical to what #12417 merged. But its **test `tests/hlsl-intrinsic/vector-dot-int-unroll.slang`
+  covers GLSL + Metal + CUDA** (`-target glsl`/`metal`/`cuda`) — exactly the fallback targets #12417
+  does NOT cover (integer fallback has no native GLSL/Metal arm, so both reach it; #12417 tested
+  neither).
+
+**Maintainer directive: reduce #12548 to TEST-ONLY** (drop the redundant source hunk, keep the
+GLSL/Metal/CUDA coverage test). Real PR-update work → **dispatched to `slang-fixer`** (owns #12548,
+pr-mapping `sess-1786734534539-5plq0h`, thread `gh-issue-shader-slang/slang-12403`).
+
+## #12548 REDUCED TO TEST-ONLY 2026-08-24 (fixer, Main-verified against GitHub)
+
+Fixer executed the maintainer directive and I verified the pushed PR (not just relayed the report):
+
+- **#12548 OPEN, head `715dec4e0a`** (matches fixer's report), retitled *"Test: integer `dot`
+  fallback emits no loop on GLSL/Metal/CUDA (complements #12417)"*, body rewritten test-only,
+  **`Fixes #12403` dropped** (issue already CLOSED), references #12417 as the source fix.
+- **Diff is a single new test file** `tests/hlsl-intrinsic/vector-dot-int-unroll.slang` — **no
+  `hlsl.meta.slang` source hunk** (confirmed via `gh pr diff`: only `+++ b/tests/...`). Redundant
+  `[ForceUnroll]` hunk dropped as directed.
+- Fixer rebuilt slangc against master and reports the test passes: integer `dot` widths 2/3/4 emit
+  0 `for` tokens (whitespace-insensitive CHECK) on glsl/metal/cuda; hardened CHECK to
+  `for{{[[:space:]]*}}(`. Used the sibling-erasure guard (grepped the test's own content intact
+  before each push) — the exact discipline from this chain's own learning.
+- Not draft (jhelferty-nv marked ready 08-14, own authority). Real `pull_request` CI running on the
+  new head; fixer owns the GitHub side and watches CI + review via webhook.
+
+## #12548 APPROVED 2026-08-24 10:23Z (fixer report; not independently re-verified — no action pending on it)
+
+Fixer reports maintainer `jvepsalainen-nv` **APPROVED** ("LGTM") at head `715dec4e0a`:
+`reviewDecision=APPROVED`, full CI matrix passed (the FileCheck test ran in CI — not skipped as it is
+locally — and passed). `mergeable=MERGEABLE`, `mergeStateStatus=BLOCKED` only on two still-`pending`
+checks (`test-windows-debug-cl-x86_64-gpu-dx`, `test-falcor`) — transient, clears when they finish;
+`review`/`Claude`/`bridge` "skipping" are normal no-ops. Relayed as the fixer's report, not
+Main-verified (no action hinges on it — the merge is the maintainer's own-authority action).
+
 ## RESUME when
 
-- **#12396 resolves** (its issue closes / a merged PR lands — as of 08-21 it is still OPEN, branch
-  `fix/issue-12396` exists with an unroll commit but no merged PR). That is jkwak-work's stated
-  revisit trigger, which unblocks his review of the **already-open PR #12548**. Primary resume. **or**
-- **#12548 gets a review verdict or CI failure** — routes to the *fixer* session (pr-mapping above),
-  not here; Main only rolls up. **or**
-- any fresh substantive human comment on either issue — catch-all, outranks the above
-  (cf. [[feedback_resume_triggers_fail_three_ways_enumerations_are_category_blind]]). A pure
-  restatement/ack does NOT resume beyond a positive close.
+- **#12548 merges** — fixer cleans up its worktree on the merge webhook and reports closure; Main
+  rolls up then. **or**
+- **CI regresses / a pending check fails, or a fresh review lands** — routes to the *fixer* session
+  (pr-mapping `sess-1786734534539-5plq0h`), not here. **or**
+- any fresh substantive human comment on #12403/#12548 — catch-all
+  (cf. [[feedback_resume_triggers_fail_three_ways_enumerations_are_category_blind]]).
+
+⭐ **Verification note (ANCHOR I family):** every claim in the maintainer's close was checkable and
+I checked each before routing — #12417's *diff* (not its title) is what proves it touched the integer
+arm; #12548's *diff* is what proves source-redundant-but-test-not. Titles and prose lie; diffs don't.

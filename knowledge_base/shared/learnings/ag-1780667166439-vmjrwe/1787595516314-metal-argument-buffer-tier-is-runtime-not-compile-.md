@@ -1,0 +1,17 @@
+---
+author_agent_group: ag-1780667166439-vmjrwe
+author_session: sess-1787594721563-mj4hgs
+written_at: 2026-08-24T18:18:36.314Z
+---
+
+# Metal argument-buffer tier is runtime, not compile-time — encode both offsets, don't hard-switch
+
+Investigated for PR #12544 ("[Metal] carry the argument buffer tier 2 element layout on the IR"). Two durable facts:
+
+**1. Metal tier-1 vs tier-2 argument buffers is a RUNTIME device capability, NOT a compile-time / MSL-version choice.** `MTLDevice.argumentBuffersSupport` is a runtime query; tier-1 is a universal baseline ("supported on all iOS/tvOS/macOS GPUs"); tier is a GPU-family attribute (Apple2 vs Apple6 in the Feature Set Tables), not an AIR/MSL version. A portable argument-buffer struct compiles ONCE and runs on BOTH tiers — the host adapts at runtime (MTLArgumentEncoder on tier-1 vs direct resource-ID writes on tier-2). Only source using tier-2-only features (pointer indexing, bindless arrays, writable textures) is tier-2-specific by construction. Slang already emits a single form of MSL for argument buffers regardless of tier. Consequence: any design that BAKES a tier into the compiled program (hard switch via target/capability or via a ParameterBlock<T,Layout> generic) models a distinction that doesn't exist at compile time and forfeits compile-once-run-both.
+
+**2. Slang's layout encoding already stores multiple offsets per field / multiple sizes per type layout, one per LayoutResourceKind — no new encoding needed to hold a byte offset AND a slot offset on the same field.** `TypeLayout` holds `List<ResourceInfo>{kind,count}` (slang-type-layout.h:753); `VarLayout` holds `List<ResourceInfo>{kind,space,index}` (slang-type-layout.h:904); IR mirror is `IRTypeLayout::getSizeAttrs()`/`IRVarLayout::getOffsetAttrs()` keyed by a LayoutResourceKind operand (slang-ir-insts.h:1130,1685). This is how a D3D var already carries a Uniform byte offset + a register binding at once. The difficulty for Metal tier-2 is not STORAGE but PRODUCTION: the default Metal PB ruleset (MetalArgumentBufferElementLayoutRulesImpl, slang-type-layout.cpp:2624) emits only MetalArgumentBufferElement slots; the tier-2 ruleset (MetalTier2ObjectLayoutRulesImpl, :2684) emits only Uniform bytes. The principled fix (maintainer's "option 2") is ONE argument-buffer-contents ruleset that returns BOTH a slot count and a byte size per field (float4 → 16 bytes + 1 slot), letting the existing struct aggregator produce both offset sets in one front-end pass.
+
+**3. Architectural smell to watch:** invoking front-end layout rules (`getTypeLayout`/`createTypeLayout`/`getInitialLayoutContext`) from IR lowering/linking. On master `slang-lower-to-ir.cpp` has ZERO such calls; front-end layout is invoked only in generateParameterBindings and the reflection API. The in-tree principled alternative when byte layout must be produced post-front-end is the `ConstantBuffer<T,Layout>` model: carry the rule choice as an IR type operand (IRUniformParameterGroupType::getDataLayout()) and derive layout in an IR pass (slang-ir-lower-buffer-element-type.cpp:2485) — no front-end call.
+
+**Gotcha (from prior learning, confirmed relevant):** `findAttrs<T>()`/`getSizeAttrs()` return only the FIRST contiguous run of an attr type; interleaving a new attr type between size attrs silently truncates the list (bit PR #12306). Option 2 is safe because byte+slot offsets are the same attr type differing only by LayoutResourceKind operand, so they share one run — a design that adds a NEW parallel attr type would hit this trap.

@@ -52,35 +52,27 @@ was folded into `legoop-archive/` with `type:` frontmatter on each file.)
   `/supervise-issues` tick delivers to `orchestrator-dashboard` and nowhere else; never
   CC a coworker.
 
-### Scratch and one-off working notes (linked 2026-08-05)
+### Superseded / pruned working notes
 
-⛔ **These were listed in BACKTICKS here an hour earlier — which is the exact defect this index's own
-banner diagnoses: a filename in prose is invisible to every reachability check.** Naming a residual is
-not linking it, so the count was *known* and the files were still unreachable. ⭐⭐ **Recording a lesson
-is not applying it.** Now linked, as rows added — nothing deleted.
+Provider / harness experiments (May 2026): the durable findings are folded into
+[harness/](harness/index.md); the raw R&D files were pruned once distilled — retiring a
+distilled note is a success, not a loss.
 
-Provider / harness experiments (May 2026, superseded — durable findings folded into [harness/](harness/index.md)):
-
-- [A2A handoff test](a2a-handoff-test.md) - task #13: free-form handoff sufficient; **a finding, not scratch**
-- [Claude vs Codex on triage #943](claude-vs-codex-triage-943.md) - provider-comparison slice; durable
-  provider finding lives in [harness/codex-provider-parity.md](harness/codex-provider-parity.md).
-- Pruned 2026-08-21 (durable overlay findings distilled into
-  [harness/overlay-modes-comparison.md](harness/overlay-modes-comparison.md)): the A/B/C/D root files
-  `full-abcd-comparison.md`, `full-abcd-comparison-v2.md`, `fixer-ab-test-943.md`.
+- Pruned 2026-08-23 (durable findings live in
+  [harness/codex-provider-parity.md](harness/codex-provider-parity.md)): `a2a-handoff-test.md`
+  (task #13 — free-form triage→fixer handoff is sufficient) and `claude-vs-codex-triage-943.md`
+  (Codex follows overlay/critique text voluntarily despite inert hooks; observability blind spot).
+- Pruned 2026-08-21 (distilled into
+  [harness/overlay-modes-comparison.md](harness/overlay-modes-comparison.md)): the A/B/C/D root
+  files `full-abcd-comparison.md`, `full-abcd-comparison-v2.md`, `fixer-ab-test-943.md`.
 - Pruned 2026-08-21 (shipped): `plan-webhook-session-routing-test.md` — its `pr_session_mappings`
   table + `report_pr_created` MCP tool both shipped and are documented in CLAUDE.md; a superseded
   implementation plan carries no audit value.
-- Pruned 2026-08-20 (content distilled into `harness/codex-provider-parity.md`): the 210-line
+- Pruned 2026-08-20 (distilled into `harness/codex-provider-parity.md`): the 210-line
   `codex-parity-test-results.md` and the `plan-triage-fixer-ab-test.md` plan.
 
-Dated snapshots — point-in-time, superseded by design (kept for audit, not for reading):
+Dated snapshots — point-in-time, superseded by design (kept as audit stubs, not for reading):
 
-- [Superseded supervisor snapshots](superseded-supervisor-snapshots.md) - the June-2026 `/supervise-issues` cron reports (06-01T1501Z, 06-02T0631Z, 06-02T0708Z), **pruned to one consolidated audit stub 2026-08-22** (dead renderings; live successor is `supervisor-state.json`)
+- [Superseded supervisor snapshots](superseded-supervisor-snapshots.md) - June-2026 `/supervise-issues` cron reports, **pruned to one consolidated audit stub 2026-08-22** (dead renderings; live successor is `supervisor-state.json`)
 - [Tracker tick 66](tracker-tick.md) - 176-chain board, 2026-07-01; **pruned to a stub** (dead snapshot, live successor is `supervisor-state.json`)
-- Dashboard board rendering: [chat-board](chat-board.md). (`final-board` pruned 2026-08-22; `board-inline` + `inline-board` pruned 2026-08-20 — all dead point-in-time renders.)
-
-**Residual after this pass: `chat-board.md` + the two May-2026 R&D "finding" files remain frontmatter-less; being retired incrementally by the daily okf-synthesis fold.** Verify reachability with the walk described in
-`/home/node/.claude/projects/-workspace-agent/memory/technique_keeping_this_store_reachable.md`
-(store A — **absolute path, deliberately NOT a `[[wikilink]]`**: a wikilink here resolves against *this*
-store and dangles, which is the two-store hazard in miniature). Orphans from the readable prefix, both
-notation classes, over *both* stores.
+- Dashboard board renderings (`chat-board` pruned 2026-08-23; `final-board` pruned 2026-08-22; `board-inline` + `inline-board` pruned 2026-08-20) — all dead point-in-time renders, recorded in the two stubs above.
