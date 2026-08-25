@@ -12,7 +12,7 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 
 import { getSession } from '../db/sessions.js';
-import { inboundDbPath, outboundDbPath } from '../session-manager.js';
+import { inboundDbPath, outboundDbPath } from '../mailbox/sqlite/paths.js';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 500;
@@ -49,7 +49,7 @@ interface RawRow {
 export async function readSessionMessages(opts: ReadOpts): Promise<TranscriptRow[]> {
   if (!opts.id) throw new Error('--id is required');
 
-  const session = getSession(opts.id);
+  const session = await getSession(opts.id);
   if (!session) throw new Error(`session not found: ${opts.id}`);
 
   const limit = clampLimit(opts.limit);

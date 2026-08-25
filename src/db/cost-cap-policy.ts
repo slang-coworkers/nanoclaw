@@ -13,7 +13,7 @@
  * back-compat and keeping hermetic (no-DB) tests green. WRITES require an
  * initialized DB (they run host-side, behind the guarded `ncl cost-cap` gate).
  */
-import type Database from 'better-sqlite3';
+import type { DbDriver } from './driver.js';
 
 import { getDb, hasTable } from './connection.js';
 
@@ -34,10 +34,10 @@ export interface CostCapPolicyRow {
 const COLS = 'group_folder, ceiling_usd, cap_usd, updated_at, updated_by';
 
 /** The DB iff it is initialized and the table exists; otherwise null (fail-soft). */
-function readableDb(): Database.Database | null {
+async function readableDb(): Promise<DbDriver | null> {
   try {
     const db = getDb();
-    return hasTable(db, 'cost_cap_policy') ? db : null;
+    return (await hasTable(db, 'cost_cap_policy')) ? db : null;
   } catch {
     return null; // DB not initialized (e.g. a hermetic unit test)
   }
@@ -49,21 +49,19 @@ function scopeKey(groupFolder?: string | null): string {
 }
 
 /** Read one policy row (fleet when `groupFolder` is empty/undefined). Fail-soft. */
-export function getCostCapPolicy(groupFolder?: string | null): CostCapPolicyRow | undefined {
-  const db = readableDb();
+export async function getCostCapPolicy(groupFolder?: string | null): Promise<CostCapPolicyRow | undefined> {
+  const db = await readableDb();
   if (!db) return undefined;
-  return db.prepare(`SELECT ${COLS} FROM cost_cap_policy WHERE group_folder = ?`).get(scopeKey(groupFolder)) as
-    | CostCapPolicyRow
-    | undefined;
+  return db.get<CostCapPolicyRow>(`SELECT ${COLS} FROM cost_cap_policy WHERE group_folder = ?`, scopeKey(groupFolder));
 }
 
 /** All policy rows (fleet first, then group overrides by folder). Fail-soft → []. */
-export function listCostCapPolicies(): CostCapPolicyRow[] {
-  const db = readableDb();
+export async function listCostCapPolicies(): Promise<CostCapPolicyRow[]> {
+  const db = await readableDb();
   if (!db) return [];
-  return db
-    .prepare(`SELECT ${COLS} FROM cost_cap_policy ORDER BY (group_folder = '') DESC, group_folder ASC`)
-    .all() as CostCapPolicyRow[];
+  return db.all<CostCapPolicyRow>(
+    `SELECT ${COLS} FROM cost_cap_policy ORDER BY (group_folder = '') DESC, group_folder ASC`,
+  );
 }
 
 /**
@@ -71,17 +69,15 @@ export function listCostCapPolicies(): CostCapPolicyRow[] {
  * `ceilingUsd` / `capUsd` leaves that column as it was (a fresh row's omitted
  * column is NULL). Requires an initialized DB. Returns the resulting row.
  */
-export function setCostCapPolicy(opts: {
+export async function setCostCapPolicy(opts: {
   groupFolder?: string | null;
   ceilingUsd?: number;
   capUsd?: number;
   updatedBy?: string | null;
-}): CostCapPolicyRow {
+}): Promise<CostCapPolicyRow> {
   const db = getDb();
   const key = scopeKey(opts.groupFolder);
-  const existing = db.prepare(`SELECT ${COLS} FROM cost_cap_policy WHERE group_folder = ?`).get(key) as
-    | CostCapPolicyRow
-    | undefined;
+  const existing = await db.get<CostCapPolicyRow>(`SELECT ${COLS} FROM cost_cap_policy WHERE group_folder = ?`, key);
 
   const ceiling = opts.ceilingUsd !== undefined ? opts.ceilingUsd : (existing?.ceiling_usd ?? null);
   const cap = opts.capUsd !== undefined ? opts.capUsd : (existing?.cap_usd ?? null);
@@ -93,7 +89,7 @@ export function setCostCapPolicy(opts: {
     updated_by: opts.updatedBy ?? null,
   };
 
-  db.prepare(
+  await db.run(
     `INSERT INTO cost_cap_policy (group_folder, ceiling_usd, cap_usd, updated_at, updated_by)
      VALUES (@group_folder, @ceiling_usd, @cap_usd, @updated_at, @updated_by)
      ON CONFLICT(group_folder) DO UPDATE SET
@@ -101,14 +97,15 @@ export function setCostCapPolicy(opts: {
        cap_usd     = @cap_usd,
        updated_at  = @updated_at,
        updated_by  = @updated_by`,
-  ).run(row);
+    row,
+  );
 
   return row;
 }
 
 /** Delete a policy row (restores env/thresholds fallback). Returns true if a row was removed. */
-export function clearCostCapPolicy(groupFolder?: string | null): boolean {
+export async function clearCostCapPolicy(groupFolder?: string | null): Promise<boolean> {
   const db = getDb();
-  const result = db.prepare('DELETE FROM cost_cap_policy WHERE group_folder = ?').run(scopeKey(groupFolder));
+  const result = await db.run('DELETE FROM cost_cap_policy WHERE group_folder = ?', scopeKey(groupFolder));
   return result.changes > 0;
 }

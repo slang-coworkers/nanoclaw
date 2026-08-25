@@ -11,7 +11,7 @@ import { log } from '../../log.js';
 import { writeSessionMessage } from '../../session-manager.js';
 import type { DeliveryActionHandler } from '../../delivery.js';
 
-export const handleRequestRestart: DeliveryActionHandler = async (content, session, _inDb) => {
+export const handleRequestRestart: DeliveryActionHandler = async (content, session) => {
   const reason = (content.reason as string) || 'restart requested';
   log.info('Container restart requested', { sessionId: session.id, reason });
 
@@ -22,7 +22,7 @@ export const handleRequestRestart: DeliveryActionHandler = async (content, sessi
   // restart message. The prior code fired killContainer unawaited (no onExit)
   // and relied on a 5s processAfter delay, which loses the race whenever the
   // grace period exceeds 5s.
-  writeSessionMessage(session.agent_group_id, session.id, {
+  await writeSessionMessage(session.agent_group_id, session.id, {
     id: `restart-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     kind: 'chat',
     timestamp: new Date().toISOString(),
@@ -37,11 +37,12 @@ export const handleRequestRestart: DeliveryActionHandler = async (content, sessi
       sender: 'system',
       senderId: 'system',
     }),
-    onWake: 1,
+    onWake: true,
   });
 
   killContainer(session.id, `request_restart: ${reason}`, () => {
-    const s = getSession(session.id);
-    if (s) wakeContainer(s);
+    void getSession(session.id).then((s) => {
+      if (s) return wakeContainer(s);
+    });
   });
 };

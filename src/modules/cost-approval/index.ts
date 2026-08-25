@@ -124,11 +124,11 @@ export interface IngestResult {
  * → nothing to ingest and the caller falls back to the legacy DM (back-compat for
  * un-refreshed groups).
  */
-export function ingestCostEscalation(
+export async function ingestCostEscalation(
   content: Record<string, unknown>,
   session: Session,
   nowIso: string = new Date().toISOString(),
-): IngestResult {
+): Promise<IngestResult> {
   const p = content as EscalationPayload;
   const episodeId = typeof p.episodeId === 'string' && p.episodeId ? p.episodeId : undefined;
   const epochKey = p.epochKey != null ? String(p.epochKey) : undefined;
@@ -155,7 +155,7 @@ export function ingestCostEscalation(
   // harmless to leave live, and it costs nothing per sweep tick when nothing matches.
   const expiresAt = null;
 
-  const isNew = ingestEpisode({
+  const isNew = await ingestEpisode({
     episode_id: episodeId,
     short_id: freshShortId(),
     session_id: session.id,
@@ -178,8 +178,8 @@ export function ingestCostEscalation(
   // depth from the pre-redesign S1/legacy path (a NEW cap episode is never 'pending' any more,
   // so this typically matches nothing) — reap the superseded rows' cards so none go stale.
   if (reason === 'ceiling') {
-    for (const superseded of supersedeLiveCapEpisodes(session.id, epochKey, nowIso)) {
-      reapPendingApprovalCard(superseded.episode_id);
+    for (const superseded of await supersedeLiveCapEpisodes(session.id, epochKey, nowIso)) {
+      await reapPendingApprovalCard(superseded.episode_id);
     }
   }
 
@@ -240,8 +240,8 @@ export async function requestCostDecisionCard(session: Session, ep: CostEpisodeR
  * resolved BEHIND the card's back — today, only the supersede path above. Idempotent: finds
  * nothing (and does nothing) once the row is already gone.
  */
-function reapPendingApprovalCard(episodeId: string): void {
-  for (const approval of getPendingApprovalsByAction(COST_DECISION_ACTION)) {
+async function reapPendingApprovalCard(episodeId: string): Promise<void> {
+  for (const approval of await getPendingApprovalsByAction(COST_DECISION_ACTION)) {
     if (approval.status !== 'pending') continue;
     let payloadEpisodeId: unknown;
     try {
@@ -249,7 +249,7 @@ function reapPendingApprovalCard(episodeId: string): void {
     } catch {
       continue;
     }
-    if (payloadEpisodeId === episodeId) deletePendingApproval(approval.approval_id);
+    if (payloadEpisodeId === episodeId) await deletePendingApproval(approval.approval_id);
   }
 }
 
@@ -264,7 +264,7 @@ export async function decideCostEpisode(
   decision: CostDecision,
   resolvedBy: string,
 ): Promise<ResolveResult> {
-  const current = getEpisode(episodeId);
+  const current = await getEpisode(episodeId);
   if (!current) {
     log.warn('cost-approval: decide on unknown episode', { episodeId, decision });
     return { won: false, episode: undefined };
@@ -274,15 +274,15 @@ export async function decideCostEpisode(
   // DISMISS — no override, no session mutation (T1 advisory). resolveCostEpisode can't do
   // it: its predicate refuses any resolution on an already-expired row.
   if (decision === 'expired') {
-    const res = expireEpisode(episodeId, resolvedBy);
+    const res = await expireEpisode(episodeId, resolvedBy);
     if (res.won) {
       log.info('cost-approval: episode expired (dismissed)', { episodeId });
-      reapPendingApprovalCard(episodeId);
+      await reapPendingApprovalCard(episodeId);
     }
     return res;
   }
 
-  const res = resolveCostEpisode(episodeId, decision, resolvedBy, {
+  const res = await resolveCostEpisode(episodeId, decision, resolvedBy, {
     expectedEpochKey: current.epoch_key,
   });
   if (!res.won) {
@@ -295,20 +295,20 @@ export async function decideCostEpisode(
   // A human click already deletes its own card (response-handler.ts); this covers every
   // OTHER path that can win the CAS (today: none, going forward: defense in depth) so a
   // decision made behind the card's back never leaves it stale on the dashboard.
-  reapPendingApprovalCard(episodeId);
+  await reapPendingApprovalCard(episodeId);
 
   // Continue/Stop enqueue exactly one epoch-fenced override. effect_state semantics:
   // 'applied' = the override is DURABLY in the session's inbound.db (the host's job is
   // done — the runner WILL consume it, epoch-fenced + idempotent). 'enqueued'/'none' = the
   // route threw / a crash landed before it → the reconciler re-drives (money-safe to repeat).
-  markEffectEnqueued(episodeId);
+  await markEffectEnqueued(episodeId);
   try {
     await routeCostOverrideToSession({
       sessionId: current.session_id,
       decision,
       epochKey: current.epoch_key,
     });
-    markEffectApplied(episodeId);
+    await markEffectApplied(episodeId);
     log.info('cost-approval: override enqueued', {
       episodeId,
       decision,
@@ -380,14 +380,14 @@ async function costDecisionRejected(event: ApprovalResolvedEvent): Promise<void>
 export async function reconcileCostCards(nowIso: string = new Date().toISOString()): Promise<void> {
   if (!COST_APPROVAL_CARD) return;
 
-  for (const ep of listExpiredPending(nowIso)) {
+  for (const ep of await listExpiredPending(nowIso)) {
     await decideCostEpisode(ep.episode_id, 'expired', 'sweep:expiry');
   }
 
   const MAX_EFFECT_ATTEMPTS = 5;
-  for (const ep of listUnappliedEffects()) {
+  for (const ep of await listUnappliedEffects()) {
     if (ep.decision_state === 'expired') {
-      markEffectApplied(ep.episode_id); // dismiss has no override to land
+      await markEffectApplied(ep.episode_id); // dismiss has no override to land
       continue;
     }
     if (ep.decision_state !== 'continued' && ep.decision_state !== 'stopped') continue;
@@ -406,10 +406,10 @@ export async function reconcileCostCards(nowIso: string = new Date().toISOString
         decision: ep.decision_state === 'continued' ? 'continue' : 'stop',
         epochKey: ep.epoch_key,
       });
-      markEffectApplied(ep.episode_id);
+      await markEffectApplied(ep.episode_id);
       log.info('cost-approval: override re-driven', { episodeId: ep.episode_id, decision: ep.decision_state });
     } catch (err) {
-      bumpEffectAttempt(ep.episode_id, String(err));
+      await bumpEffectAttempt(ep.episode_id, String(err));
     }
   }
 }
@@ -421,14 +421,14 @@ export async function reconcileCostCards(nowIso: string = new Date().toISOString
  * action handler and the reject-filtered resolved-handler — so Approve/Reject on the official
  * ceiling card drives the epoch-fenced CAS. The single flag flip is the activation point.
  */
-export function registerCostApproval(): void {
+export async function registerCostApproval(): Promise<void> {
   if (!COST_APPROVAL_CARD) {
     log.info('cost-approval: card flag OFF — episodes recorded read-only (S1)');
     return;
   }
   // Activation boundary: supersede observation-era (S1) episodes so a flag flip never cards a
   // backlog. Targets only 'observed' — a genuine in-flight 'pending' decision is untouched.
-  const superseded = supersedeObservedEpisodes();
+  const superseded = await supersedeObservedEpisodes();
   registerApprovalHandler(COST_DECISION_ACTION, applyCostApproveHandler);
   registerApprovalResolvedHandler(costDecisionRejected);
   log.info('cost-approval: card flag ON — cost decisions via official approval cards (S2)', {

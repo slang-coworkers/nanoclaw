@@ -45,25 +45,25 @@ function group(): AgentGroup {
 }
 
 describe('per-group agent-runner copy — lifecycle', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     fs.rmSync(TEST_ROOT, { recursive: true, force: true });
     fs.mkdirSync(path.join(TEST_ROOT, 'data'), { recursive: true });
     fs.mkdirSync(path.join(TEST_ROOT, 'groups'), { recursive: true });
-    runMigrations(initTestDb());
-    createAgentGroup(group());
+    await runMigrations(await initTestDb());
+    await createAgentGroup(group());
   });
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     fs.rmSync(TEST_ROOT, { recursive: true, force: true });
   });
 
-  it('creates the copy on first init', () => {
-    initGroupFilesystem(group());
+  it('creates the copy on first init', async () => {
+    await initGroupFilesystem(group());
     expect(fs.existsSync(path.join(COPY, 'index.ts'))).toBe(true);
   });
 
-  it('DOES NOT refresh it on a later init — this is the staleness defect', () => {
-    initGroupFilesystem(group());
+  it('DOES NOT refresh it on a later init — this is the staleness defect', async () => {
+    await initGroupFilesystem(group());
 
     // Simulate the group having been created before a fix landed: its copy of a
     // file is an older version than the repo's.
@@ -72,20 +72,20 @@ describe('per-group agent-runner copy — lifecycle', () => {
 
     // initGroupFilesystem runs on EVERY wake (container-runner.ts calls it from
     // buildMounts). Skills and subagent mirrors are refreshed there; this is not.
-    initGroupFilesystem(group());
+    await initGroupFilesystem(group());
 
     expect(fs.readFileSync(target, 'utf-8')).toBe('// pre-fix version\n');
     expect(fs.readFileSync(target, 'utf-8')).not.toBe(fs.readFileSync(path.join(REPO_SRC, 'index.ts'), 'utf-8'));
   });
 
-  it('leaves files the group added alone', () => {
-    initGroupFilesystem(group());
+  it('leaves files the group added alone', async () => {
+    await initGroupFilesystem(group());
     // /add-opencode writes provider files directly into the overlay.
     const local = path.join(COPY, 'providers', 'local-only.ts');
     fs.mkdirSync(path.dirname(local), { recursive: true });
     fs.writeFileSync(local, 'local\n');
 
-    initGroupFilesystem(group());
+    await initGroupFilesystem(group());
 
     expect(fs.readFileSync(local, 'utf-8')).toBe('local\n');
   });
@@ -115,6 +115,8 @@ describe('per-group agent-runner copy — the docs must not re-claim shared/read
     const runner = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
     // If this ever becomes readonly:true, the docs above need revisiting and so
     // does the whole "never overwrite a local edit" premise of the checker.
-    expect(runner).toMatch(/containerPath: '\/app\/src', readonly: false/);
+    // Matched across lines because the driver seam's `MountSpec` is a
+    // multi-field object literal, not the old single-line mount arg.
+    expect(runner).toMatch(/containerPath: '\/app\/src',\s*\n\s*readonly: false,/);
   });
 });

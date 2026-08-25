@@ -10,6 +10,14 @@ You've just been connected to a new user. First impressions matter — introduce
 
 Ground the message in `docs/USAGE.md` and other repo docs when needed. Use documented NanoClaw workflows and capabilities as the source of truth — do not invent features or tools that aren't described in the docs or available in the current environment.
 
+## Channel addenda
+
+The instruction that triggered this welcome may name a channel addendum file
+(e.g. `/app/skills/welcome/addenda/slack.md`). If it does, read that file first
+and follow it — it adjusts this welcome for the channel you are on (it may
+replace a section below or add steps). If no addendum is named, run this skill
+exactly as written.
+
 ## What to do
 
 1. Send a short, warm greeting using `send_message`.

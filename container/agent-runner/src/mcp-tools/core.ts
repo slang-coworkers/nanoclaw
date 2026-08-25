@@ -343,7 +343,7 @@ export const sendMessage: McpToolDefinition = {
         : null;
 
     const id = generateId();
-    const seq = writeMessageOut({
+    const seq = await writeMessageOut({
       id,
       kind: 'chat',
       platform_id: routing.platform_id,
@@ -449,7 +449,7 @@ export const sendFile: McpToolDefinition = {
     };
     if (targetSessionId) fileContent.target_session_id = targetSessionId;
 
-    writeMessageOut({
+    await writeMessageOut({
       id,
       kind: 'chat',
       platform_id: routing.platform_id,
@@ -494,7 +494,7 @@ export const addReaction: McpToolDefinition = {
     }
 
     const id = generateId();
-    writeMessageOut({
+    await writeMessageOut({
       id,
       kind: 'chat',
       platform_id: routing.platform_id,

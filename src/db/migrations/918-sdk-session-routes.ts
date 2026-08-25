@@ -25,18 +25,15 @@ import type { Migration } from './index.js';
 export const migration918: Migration = {
   version: 918,
   name: 'sdk-session-routes',
-  up(db) {
-    const hasTable = (name: string) =>
-      (db.prepare("SELECT count(*) as c FROM sqlite_master WHERE type='table' AND name = ?").get(name) as { c: number })
-        .c > 0;
-    if (hasTable('sdk_session_routes')) return;
+  async up(db) {
+    if (await db.hasTable('sdk_session_routes')) return;
 
     // FK declarations document intent even when PRAGMA foreign_keys is off
     // (the default for this DB). Helpers in src/db/sdk-session-routes.ts
     // additionally validate nanoclaw_session_id + agent_group_id exist
     // before inserting, so bad routes can't slip in via the live-intake
     // path even without FK enforcement.
-    db.exec(`
+    await db.exec(`
       CREATE TABLE sdk_session_routes (
         sdk_session_id       TEXT PRIMARY KEY,
         nanoclaw_session_id  TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,

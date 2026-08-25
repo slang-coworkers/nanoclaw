@@ -10,8 +10,7 @@
  * All functions no-op / return empty (never throw) if the table doesn't exist
  * yet (pre-migration), matching prMappingExists's defensive convention.
  */
-import type Database from 'better-sqlite3';
-
+import type { DbDriver } from '../../db/driver.js';
 import { log } from '../../log.js';
 
 export interface ParkedReviewable {
@@ -24,13 +23,19 @@ export interface ParkedReviewable {
 }
 
 /** Park (or refresh) a reviewable PR. Last-writer-wins on (repo, pr_number). */
-export function parkReviewable(db: Database.Database, p: ParkedReviewable): void {
+export async function parkReviewable(db: DbDriver, p: ParkedReviewable): Promise<void> {
   try {
-    db.prepare(
+    await db.run(
       `INSERT OR REPLACE INTO pending_reviewable_prs
        (repo, pr_number, head_sha, reason, raw_event_json, parked_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run(p.repo, p.prNumber, p.headSha, p.reason, p.rawEventJson, new Date().toISOString());
+      p.repo,
+      p.prNumber,
+      p.headSha,
+      p.reason,
+      p.rawEventJson,
+      new Date().toISOString(),
+    );
     log.info('ci-gate: parked reviewable PR pending CI', {
       repo: p.repo,
       pr: p.prNumber,
@@ -47,27 +52,25 @@ export function parkReviewable(db: Database.Database, p: ParkedReviewable): void
  * only when the parked head matches — a check_suite for a superseded head does
  * NOT release (the newer push replaced the row with its own head).
  */
-export function findParkedByHead(
-  db: Database.Database,
+export async function findParkedByHead(
+  db: DbDriver,
   repo: string,
   headSha: string,
-): (ParkedReviewable & { parkedAt: string }) | null {
+): Promise<(ParkedReviewable & { parkedAt: string }) | null> {
   try {
-    const row = db
-      .prepare(
-        `SELECT repo, pr_number, head_sha, reason, raw_event_json, parked_at
+    const row = await db.get<{
+      repo: string;
+      pr_number: number;
+      head_sha: string;
+      reason: string;
+      raw_event_json: string;
+      parked_at: string;
+    }>(
+      `SELECT repo, pr_number, head_sha, reason, raw_event_json, parked_at
          FROM pending_reviewable_prs WHERE repo = ? AND head_sha = ?`,
-      )
-      .get(repo, headSha) as
-      | {
-          repo: string;
-          pr_number: number;
-          head_sha: string;
-          reason: string;
-          raw_event_json: string;
-          parked_at: string;
-        }
-      | undefined;
+      repo,
+      headSha,
+    );
     if (!row) return null;
     return {
       repo: row.repo,
@@ -83,9 +86,9 @@ export function findParkedByHead(
 }
 
 /** Remove a parked row once released (or superseded/abandoned). Idempotent. */
-export function deleteParked(db: Database.Database, repo: string, prNumber: number): void {
+export async function deleteParked(db: DbDriver, repo: string, prNumber: number): Promise<void> {
   try {
-    db.prepare('DELETE FROM pending_reviewable_prs WHERE repo = ? AND pr_number = ?').run(repo, prNumber);
+    await db.run('DELETE FROM pending_reviewable_prs WHERE repo = ? AND pr_number = ?', repo, prNumber);
   } catch {
     /* table missing pre-migration — nothing to delete */
   }

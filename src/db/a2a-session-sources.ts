@@ -23,7 +23,7 @@ export interface A2aSessionSource {
  * from the same source refresh the mapping; a different source replacing
  * another indicates a misuse we surface in logs rather than silently merge.
  */
-export function recordSource(params: {
+export async function recordSource(params: {
   recipientSessionId: string;
   recipientAgentGroupId: string;
   recipientThreadId: string | null;
@@ -31,7 +31,7 @@ export function recordSource(params: {
   sourceAgentGroupId: string;
   sourceThreadId: string | null;
   now?: string;
-}): void {
+}): Promise<void> {
   // Defense in depth: never record a self-referential lineage edge
   // (recipient === source). Such a row is a 1-cycle that corrupts the
   // ancestor walk (self-loop). The main-route caller already drops
@@ -46,9 +46,8 @@ export function recordSource(params: {
     return;
   }
   const now = params.now ?? new Date().toISOString();
-  getDb()
-    .prepare(
-      `INSERT INTO a2a_session_sources
+  await getDb().run(
+    `INSERT INTO a2a_session_sources
          (recipient_session_id, recipient_agent_group_id, recipient_thread_id,
           source_session_id, source_agent_group_id, source_thread_id, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -58,22 +57,21 @@ export function recordSource(params: {
          source_session_id        = excluded.source_session_id,
          source_agent_group_id    = excluded.source_agent_group_id,
          source_thread_id         = excluded.source_thread_id`,
-    )
-    .run(
-      params.recipientSessionId,
-      params.recipientAgentGroupId,
-      params.recipientThreadId,
-      params.sourceSessionId,
-      params.sourceAgentGroupId,
-      params.sourceThreadId,
-      now,
-    );
+    params.recipientSessionId,
+    params.recipientAgentGroupId,
+    params.recipientThreadId,
+    params.sourceSessionId,
+    params.sourceAgentGroupId,
+    params.sourceThreadId,
+    now,
+  );
 }
 
-export function getSourceFor(recipientSessionId: string): A2aSessionSource | undefined {
-  return getDb().prepare('SELECT * FROM a2a_session_sources WHERE recipient_session_id = ?').get(recipientSessionId) as
-    | A2aSessionSource
-    | undefined;
+export function getSourceFor(recipientSessionId: string): Promise<A2aSessionSource | undefined> {
+  return getDb().get<A2aSessionSource>(
+    'SELECT * FROM a2a_session_sources WHERE recipient_session_id = ?',
+    recipientSessionId,
+  );
 }
 
 /** Upper bound on the ancestor walk — also caps the guard's lineage check. */
@@ -92,9 +90,12 @@ export const ANCESTOR_HOP_LIMIT = 16;
  * explicit destination row. Keeping ONE implementation ensures the guard's
  * authorization decision and the router's delivery target can never diverge.
  */
-export function findAncestorSource(startSessionId: string, targetAgentGroupId: string): A2aSessionSource | null {
+export async function findAncestorSource(
+  startSessionId: string,
+  targetAgentGroupId: string,
+): Promise<A2aSessionSource | null> {
   const visited = new Set<string>([startSessionId]);
-  let cursor = getSourceFor(startSessionId);
+  let cursor = await getSourceFor(startSessionId);
   let hops = 0;
   while (cursor && hops < ANCESTOR_HOP_LIMIT) {
     if (cursor.source_agent_group_id === targetAgentGroupId) {
@@ -109,7 +110,7 @@ export function findAncestorSource(startSessionId: string, targetAgentGroupId: s
       return null;
     }
     visited.add(cursor.source_session_id);
-    cursor = getSourceFor(cursor.source_session_id);
+    cursor = await getSourceFor(cursor.source_session_id);
     hops++;
   }
   return null;
@@ -124,6 +125,6 @@ export function findAncestorSource(startSessionId: string, targetAgentGroupId: s
  * privilege. A non-ancestor target returns false → the guard falls through to
  * the strict destination-row check.
  */
-export function isAncestorGroup(startSessionId: string, targetAgentGroupId: string): boolean {
-  return findAncestorSource(startSessionId, targetAgentGroupId) !== null;
+export async function isAncestorGroup(startSessionId: string, targetAgentGroupId: string): Promise<boolean> {
+  return (await findAncestorSource(startSessionId, targetAgentGroupId)) !== null;
 }

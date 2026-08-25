@@ -19,8 +19,10 @@ import {
   type MessageInRow,
 } from './db/messages-in.js';
 import { classifyTurnError } from './transient-error.js';
-import { hasIdenticalSend, outboundWatermark, writeMessageOut } from './db/messages-out.js';
-import { getInboundDb, touchHeartbeat, clearStaleProcessingAcks } from './db/connection.js';
+import { getUndeliveredMessages, hasIdenticalSend, outboundWatermark, writeMessageOut } from './db/messages-out.js';
+import { clearStaleProcessingAcks } from './db/container-state.js';
+import { touchHeartbeat } from './heartbeat.js';
+import { getAgentMailbox } from './mailbox/index.js';
 import {
   clearContinuation,
   getContinuationAgeMs,
@@ -42,10 +44,12 @@ import {
   categorizeMessage,
   isClearCommand,
   isRunnerCommand,
+  isSessionEcho,
   stripInternalTags,
   type RoutingContext,
 } from './formatter.js';
 import { classifyAndPrepend } from './intent-router-bridge.js';
+import { stripHarnessTagArtifacts } from './harness-tag-strip.js';
 import { isUploadTraceCommand, uploadTrace } from './upload-trace.js';
 import type { AgentProvider, AgentQuery, ProviderEvent, ProviderExchange } from './providers/types.js';
 
@@ -58,13 +62,13 @@ const IDLE_END_MS = process.env.NANOCLAW_IDLE_END_MS
   : 1_200_000;
 
 /**
- * Number of consecutive `database disk image is malformed` errors after which
- * the follow-up poll gives up and exits the process. At ACTIVE_POLL_INTERVAL_MS
+ * Number of consecutive driver-classified read failures after which the
+ * follow-up poll gives up and exits the process. At ACTIVE_POLL_INTERVAL_MS
  * = 500ms this is roughly 5 seconds — long enough to dodge a transient torn
  * read during a host write, short enough to recover quickly from a poisoned
  * page cache (host-sweep then respawns with a fresh mount).
  */
-const CORRUPTION_STREAK_EXIT = 10;
+const MAILBOX_FAILURE_STREAK_EXIT = 10;
 
 // ── Per-session cost cap (NanoClaw #1, v2 two-window) ─────────────────────────
 //
@@ -421,7 +425,12 @@ function emitCostEscalation(reason: 'cap' | 'ceiling'): void {
   // ≠ the then-current gen (superseded / post-/clear / yesterday-daily). A distinct
   // `reason` in the same gen is a distinct episode (cap → ceiling supersession).
   costEpisodeId = `esc-${sessionId}-${reason}-${costBudgetGen}`;
-  writeMessageOut({
+  // Fire-and-forget: this stays synchronous because `recordTurnCost` (its only
+  // runtime caller) runs inside the provider event loop and its signature is
+  // pinned by __costCapTestHooks. The escalation is advisory — the row is the
+  // ONLY signal and the runner never blocks on it — so a failed write must not
+  // take down the turn, but it must not become an unhandled rejection either.
+  void writeMessageOut({
     id: generateId(),
     kind: 'system',
     content: JSON.stringify({
@@ -444,6 +453,8 @@ function emitCostEscalation(reason: 'cap' | 'ceiling'): void {
       immortal: costImmortal,
       window: costWindow,
     }),
+  }).catch((err: unknown) => {
+    log(`Cost escalation row failed to write: ${err instanceof Error ? err.message : String(err)}`);
   });
   log(
     `Cost cap escalation (${reason}): spent=$${costSpentUsd.toFixed(2)} ` +
@@ -644,6 +655,12 @@ const SILENT_TURN_NOTICE =
  * actual file damage (host-side integrity_check passes). Reopening the DB
  * handle inside this process does NOT recover; only a fresh container mount
  * does. Caller's job is to exit so host-sweep respawns the container.
+ *
+ * The LIVE classification the poll loop acts on now belongs to the mailbox
+ * driver (`SqliteAgentMailbox.shouldRestartAfter`) — a non-SQLite driver has
+ * its own idea of "needs a fresh runner". This predicate is kept as the
+ * SQLite-specific statement of the symptom for callers that hold a bare
+ * message string rather than a mailbox.
  */
 export function isCorruptionError(msg: string): boolean {
   return (
@@ -875,10 +892,10 @@ export interface PollLoopConfig {
 /**
  * Main poll loop. Runs indefinitely until the process is killed.
  *
- * 1. Poll messages_in for pending rows
+ * 1. Poll the mailbox for pending messages
  * 2. Format into prompt, call provider.query()
  * 3. While query active: continue polling, push new messages via provider.push()
- * 4. On result: write messages_out
+ * 4. On result: write outbound messages
  * 5. Mark messages completed
  * 6. Loop
  */
@@ -961,7 +978,7 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     // query. Without this gate, a warm container keeps processing
     // (and potentially responding to) every accumulate-only batch, defeating
     // the "store as context, don't engage" contract. Host-side countDueMessages
-    // gates the same way for wake-from-cold (see src/db/session-db.ts).
+    // gates the same way for wake-from-cold through countDueMessages().
     if (!messages.some((m) => m.trigger === 1)) {
       await sleep(POLL_INTERVAL_MS);
       continue;
@@ -1021,7 +1038,7 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
         // /clear is a genuine restart — zero the lifetime cost window too so the
         // fresh conversation starts on a fresh allotment (no-op for daily).
         resetCostForNewSession();
-        writeMessageOut({
+        await writeMessageOut({
           id: generateId(),
           kind: 'chat',
           platform_id: routing.platformId,
@@ -1032,9 +1049,11 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
         commandIds.push(msg.id);
         continue;
       }
-      if ((msg.kind === 'chat' || msg.kind === 'chat-sdk') && isUploadTraceCommand(msg)) {
+      // isSessionEcho guard: a copied "/upload-trace" from another session is
+      // ambient context, never a runner command (isClearCommand self-guards).
+      if ((msg.kind === 'chat' || msg.kind === 'chat-sdk') && !isSessionEcho(msg) && isUploadTraceCommand(msg)) {
         log('Uploading session trace to Hugging Face');
-        writeMessageOut({
+        await writeMessageOut({
           id: generateId(),
           kind: 'chat',
           platform_id: routing.platformId,
@@ -1126,7 +1145,6 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
       // Tier-2 ceiling soft-brake for THIS turn (undefined when no ceiling applies).
       maxBudgetUsd: costCeilingRemainingUsd(),
     });
-
     // Process the query while concurrently polling for new messages
     const skippedSet = new Set(skipped.map((s) => s.id));
     const processingIds = ids.filter((id) => !commandIds.includes(id) && !skippedSet.has(id));
@@ -1138,19 +1156,32 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     // Kept separate from queryResult.bouncedIds because a throw means
     // processQuery never returned a result to carry them.
     let thrownBouncedIds: string[] = [];
+    // Forward a loop stop to the ACTIVE query. The stream deliberately stays
+    // open between turns, so the loop can be parked inside processQuery when
+    // config.signal fires; without this, the "stopped" loop's query — and its
+    // 500ms follow-up poller — outlives the stop and keeps polling (and
+    // claiming) messages from whatever inbound DB the process points at. In
+    // tests that leaked one immortal poller per loop-driven test, which could
+    // steal a later test's follow-up message into a dead query.
+    // Belt-and-braces with the signal processQuery registers internally: only
+    // this one covers a signal that is ALREADY aborted at query-start.
+    const abortActiveQuery = () => query.abort();
+    if (config.signal?.aborted) abortActiveQuery();
+    else config.signal?.addEventListener('abort', abortActiveQuery, { once: true });
     try {
       queryResult = await processQuery(
         query,
         routing,
         processingIds,
         config.providerName,
-        newSessionBatch,
-        refreshDestinations,
         config.provider.onExchangeComplete?.bind(config.provider),
         prompt,
         continuation,
+        config.provider.emitsMidTurnText === true,
         config.signal,
         config.activePollIntervalMs,
+        newSessionBatch,
+        refreshDestinations,
       );
       // Don't overwrite the stored chat continuation with a task's ephemeral session.
       if (!newSessionBatch && queryResult.continuation && queryResult.continuation !== continuation) {
@@ -1192,7 +1223,7 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
         );
       } else {
         // Write error response so the user knows something went wrong
-        writeMessageOut({
+        await writeMessageOut({
           id: generateId(),
           kind: 'chat',
           platform_id: routing.platformId,
@@ -1208,6 +1239,7 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
       }
     } finally {
       clearCurrentInReplyTo();
+      config.signal?.removeEventListener('abort', abortActiveQuery);
     }
 
     // A caller-requested stop is not a completed turn. If the query already
@@ -1353,13 +1385,23 @@ export async function processQuery(
   routing: RoutingContext,
   initialBatchIds: string[],
   providerName: string,
-  skipPersistContinuation = false,
-  refreshDestinations: () => string | null = () => null,
   onExchangeComplete: ((exchange: ProviderExchange) => void) | undefined = undefined,
   initialPrompt = '',
   initialContinuation: string | undefined = undefined,
+  /**
+   * The provider's declared `emitsMidTurnText` capability (see
+   * providers/types.ts). True → mid-turn streaming is the single content
+   * door: complete <message> blocks deliver exactly once, at parse time from
+   * streamed 'text' events (with cross-segment assembly of split blocks),
+   * and the final result never delivers content — it only surfaces error
+   * results and decides the wrap-nudge. False → text events are
+   * delivery-inert and the final result stays the single delivery door.
+   */
+  emitsMidTurnText = false,
   signal?: AbortSignal,
   activePollIntervalMs = ACTIVE_POLL_INTERVAL_MS,
+  skipPersistContinuation = false,
+  refreshDestinations: () => string | null = () => null,
 ): Promise<QueryResult> {
   let queryContinuation: string | undefined;
   let done = false;
@@ -1381,6 +1423,36 @@ export async function processQuery(
   // no text is only truly silent if this has not moved (see the silent-turn
   // branch); resampled after every result event.
   let turnWatermark = outboundWatermark();
+  // How many <message> blocks were delivered from 'text' events this turn
+  // (chat runs, emitsMidTurnText providers only). A frame-local count, never
+  // keyed by content: it feeds the result door's nudge decision ("did this
+  // turn deliver anything?"). Reset at the turn boundary (the 'result'
+  // event) — NOT at the follow-up push seam: query.push() does not end the
+  // in-flight turn, and its result's nudge decision still describes the
+  // turn that is streaming.
+  let midTurnSent = 0;
+  // Outbound seq high-water mark at the turn boundary — a frame-local NUMBER,
+  // not a content record. Two uses: (1) the mid-turn door recognizes a block
+  // that is a verbatim repeat of a message already written to outbound.db
+  // EARLIER THIS TURN by a previous streamed segment (live-observed: the
+  // model re-emits the identical block as its final text after a trailing
+  // tool call; delivering both copies is the double-send this design must
+  // not reintroduce); (2) the result-door nudge decision asks "did ANYTHING
+  // user-visible go out this turn?" — which must also see MCP send_message
+  // rows the frame-local midTurnSent count never observes. The "have we sent
+  // this?" truth lives in the outbound DB the door already writes to — no
+  // in-process delivery ledger. Reset alongside midTurnSent at each result.
+  let turnStartSeq = maxOutboundSeq();
+  // Cross-segment assembly buffer: the unresolved TAIL of the previous text
+  // event — an unclosed <message …> block (or a bare open-tag prefix like
+  // "<mess" literally split mid-token), or an unclosed <internal span. Frame-
+  // local and turn-local: it carries a fragment forward so a block opened in
+  // one assistant message and closed in a later one delivers ONCE, mid-turn,
+  // when its close arrives. Only the unresolved tail is ever carried —
+  // settled text is consumed exactly once, so already-delivered blocks are
+  // never re-matched. Dropped at the turn boundary: a block that never
+  // closes anywhere is the wrap-nudge's job, not the buffer's.
+  let midTurnTail = '';
   // Prompt queue for the exchange hook — each result event consumes the
   // oldest unanswered prompt, except a wrapping-retry result, which answers
   // the same prompt again. Unused (and unmaintained) when the provider
@@ -1394,11 +1466,11 @@ export async function processQuery(
    * maps it onto the inbound row, so the silence is recorded once and the
    * message is not re-driven into an identical silent turn forever.
    */
-  const finalizeSilentTurn = (resultText: string | null): void => {
+  const finalizeSilentTurn = async (resultText: string | null): Promise<void> => {
     silentTurnOpen = false;
     log('Turn delivered nothing (no text, no outbound row) — acking failed, not completed');
     if (routing.channelType && routing.platformId && routing.channelType !== 'system') {
-      writeMessageOut({
+      await writeMessageOut({
         id: generateId(),
         in_reply_to: routing.inReplyTo,
         kind: 'chat',
@@ -1432,7 +1504,7 @@ export async function processQuery(
   // will kill the container and messages get reset to pending.
   let pollInFlight = false;
   let endedForCommand = false;
-  let corruptionStreak = 0;
+  let mailboxFailureStreak = 0;
   const onSignalAbort = () => query.abort();
   signal?.addEventListener('abort', onSignalAbort, { once: true });
   const pollHandle = setInterval(() => {
@@ -1467,10 +1539,18 @@ export async function processQuery(
         // everything. Filtering on thread_id here caused deadlocks when the
         // initial batch and follow-ups had mismatched thread_ids (e.g. a
         // host-generated welcome trigger with null thread vs a Discord DM reply).
+        //
+        // Accumulated trigger=0 context rows must never be pushed into a live
+        // turn on their own — the agent would answer ambient context that was
+        // not addressed to it. They ride along only when a real trigger=1
+        // follow-up is also pending; otherwise they stay pending for a future
+        // batch (mirrors the two-phase initial-batch selection in
+        // db/messages-in.ts).
+        const hasFollowUpTrigger = pending.some((m) => m.kind !== 'system' && m.trigger === 1);
         const newMessages = pending.filter((m) => {
           if (m.kind === 'system') return false;
           if ((m.kind === 'chat' || m.kind === 'chat-sdk') && isClearCommand(m)) return false;
-          return true;
+          return m.trigger === 1 || hasFollowUpTrigger;
         });
 
         // Cost-cap override mid-query (FIX #1): the router writes cost_override
@@ -1591,18 +1671,12 @@ export async function processQuery(
         const errMsg = err instanceof Error ? err.message : String(err);
         log(`Follow-up poll error: ${errMsg}`);
 
-        // Detect SQLite cross-mount corruption (Docker Desktop macOS virtiofs /
-        // gRPC-FUSE coherency bug — the kernel page cache for the inbound.db
-        // bind mount can latch a torn snapshot mid-host-write, after which
-        // every fresh openInboundDb() in this process sees the same broken
-        // view. Reopening inside the container does NOT recover; only a fresh
-        // container mount does. Exit so the host sweep respawns us.
-        if (isCorruptionError(errMsg)) {
-          corruptionStreak += 1;
-          if (corruptionStreak >= CORRUPTION_STREAK_EXIT) {
+        if (getAgentMailbox().shouldRestartAfter?.(err)) {
+          mailboxFailureStreak += 1;
+          if (mailboxFailureStreak >= MAILBOX_FAILURE_STREAK_EXIT) {
             log(
-              `Follow-up poll: ${corruptionStreak} consecutive '${errMsg}' errors — ` +
-                `inbound.db page cache is poisoned. Exiting so host respawns with a fresh mount.`,
+              `Follow-up poll: ${mailboxFailureStreak} consecutive '${errMsg}' errors — ` +
+                `mailbox driver requested a fresh runner. Exiting so the host respawns it.`,
             );
             // Stop touching the heartbeat so host-sweep stale detection fires
             // promptly even if exit() races with in-flight async work.
@@ -1613,7 +1687,7 @@ export async function processQuery(
             setTimeout(() => process.exit(75), 100);
           }
         } else {
-          corruptionStreak = 0;
+          mailboxFailureStreak = 0;
         }
       } finally {
         pollInFlight = false;
@@ -1655,6 +1729,25 @@ export async function processQuery(
         // effectively orphaned and the next message started a blank
         // Claude session with no prior context.
         if (!skipPersistContinuation) setContinuation(providerName, event.continuation);
+      } else if (event.type === 'text') {
+        // Assistant text emitted mid-turn (e.g. between tool calls). The
+        // final result only carries the LAST assistant text, so complete
+        // <message> blocks composed here would otherwise be lost — deliver
+        // them now (chat runs only; task runs stay one-door). Gated on the
+        // provider's static capability: for a provider that does not declare
+        // emitsMidTurnText the result stays the only delivery door, so a
+        // stray text event must not open a second one.
+        if (emitsMidTurnText) {
+          const scan = await deliverMidTurnBlocks(event.text, routing, turnStartSeq, midTurnTail);
+          midTurnSent += scan.delivered;
+          midTurnTail = scan.tail;
+          // Gate refusals are sender feedback — push them back so the agent
+          // re-sends correctly, same contract as the result door. The gates'
+          // own 3-denial soft-cap bounds the re-send loop.
+          if (scan.gateRefusals?.length) {
+            query.push(`<system>${scan.gateRefusals.join('\n\n')}</system>`);
+          }
+        }
       } else if (event.type === 'result') {
         // A result — with or without text — means the turn is done. We normally
         // mark the initial batch completed (at the BOTTOM of this branch) so the
@@ -1690,10 +1783,22 @@ export async function processQuery(
           });
           archivePrompts.shift();
         } else if (event.text?.trim()) {
-          const { sent, hasUnwrapped, danglingOpen, gateRefusals, taskBlocks } = dispatchResultText(
-            event.text,
-            routing,
-          );
+          const { sent, hasUnwrapped, danglingOpen, gateRefusals, taskBlocks, resultBlocks } =
+            await dispatchResultText(event.text, routing, {
+              midTurnSent,
+              // For emitsMidTurnText providers the result door NEVER delivers
+              // a <message> block: mid-turn streaming is the single content
+              // door. The result door's remaining jobs are the error-result
+              // surface (below) and the nudge decision — see turnDelivered.
+              suppressDelivery: emitsMidTurnText,
+              // "Did anything user-visible go out this turn?" — door
+              // deliveries (midTurnSent) plus any chat row written since the
+              // turn boundary (which also sees MCP send_message calls the
+              // frame-local count can't). When false and the result still
+              // carries content, the wrap-nudge fires so the model re-sends
+              // and the retry streams through the mid-turn door.
+              turnDelivered: emitsMidTurnText ? midTurnSent > 0 || chatRowWrittenSince(turnStartSeq) : undefined,
+            });
           const willRetryTaskBlocks = shouldNudgeTaskBlocks(routing.taskRun, taskBlocks, taskBlockNudged);
           // Gate refusals are sender feedback — push them back to the emitting
           // agent so it re-sends correctly (parity with the bash-hook gates).
@@ -1706,22 +1811,21 @@ export async function processQuery(
           // Errors included: a failed run's text belongs in its log, not chat.
           // A corrective retry handles delivery only; its result is not a
           // second run summary.
-          if (routing.taskRun && !taskBlockNudged) autoAppendTaskLog(event.text);
-          if (sent === 0 && event.isError === true && !routing.taskRun) {
-            // Non-retryable error turn (e.g. a 403 billing_error) on a
-            // non-task channel, whose text dispatchResultText could not route:
-            // skip the re-wrap nudge — it would just re-hammer the failing
-            // gateway turn after turn. The common case (plain error text, known
-            // channel) is already delivered by the auto-route gate above.
+          if (routing.taskRun && !taskBlockNudged) await autoAppendTaskLog(event.text);
+          if (resultBlocks === 0 && event.isError === true && !routing.taskRun) {
+            // Non-retryable error turn (e.g. a 403 billing_error) with no
+            // <message> envelope: deliver the notice instead of dropping it as
+            // scratchpad, and skip the re-wrap nudge — it would just re-hammer
+            // the failing gateway turn after turn.
             //
-            // NOTE: the `deliverErrorResult(event.text, routing)` call that used
-            // to head this branch was dropped by the e77ee838e2 upstream-sync
-            // merge, which also left this comment truncated mid-sentence. It is
-            // deliberately NOT restored here: as written it also fired when the
-            // critique/routing gates had BLOCKED every <message> block, which
-            // would push the withheld body straight to the channel. Restoring a
-            // safe version needs `blocked` out of dispatchResultText and a rule
-            // for un-routable turns — its own change, not this one.
+            // Keyed on `resultBlocks` (blocks present in THIS result text),
+            // NOT on `sent`. That distinction is what makes the call safe for
+            // the fork's gates: when the critique/routing gate WITHHELD every
+            // block, `sent` is 0 but `resultBlocks` is not, so this branch
+            // stays shut and the gated body is never pushed to the channel.
+            // The fork previously had to drop this call entirely for want of
+            // exactly this counter.
+            await deliverErrorResult(event.text, routing);
             notifyExchangeComplete(onExchangeComplete, {
               prompt: archivePrompts[0] ?? initialPrompt,
               result: event.text,
@@ -1730,6 +1834,12 @@ export async function processQuery(
             });
             archivePrompts.shift();
           } else {
+            // An unwrapped final text only warrants the wrap-nudge when NOTHING
+            // was delivered this turn — hasUnwrapped already folds in the
+            // turn's mid-turn sent count. If a reply already went out as a
+            // mid-turn block, the unwrapped tail is a self-summary; nudging
+            // coaxes a redundant second message (live-observed). It stays in
+            // the scratchpad log.
             const willRetryWrapping = hasUnwrapped && !unwrappedNudged;
             // A turn with no meaningful text never reaches here — the branch
             // below owns it. (It used to be tested for HERE, inside a branch
@@ -1808,7 +1918,7 @@ export async function processQuery(
             // Either the nudged retry came back empty too, or the turn was
             // already flagged as an error (re-asking would just re-hammer it).
             // Emit the durable notice and ack failed.
-            finalizeSilentTurn(event.text);
+            await finalizeSilentTurn(event.text);
           }
         }
         // Ack the turn as completed UNLESS it was a transient a2a bounce (left
@@ -1818,6 +1928,18 @@ export async function processQuery(
         // markCompleted at the top of the branch.
         if (!bounced && !silentTurnOpen && undeliveredIds.length === 0) markCompleted(initialBatchIds);
         turnWatermark = outboundWatermark();
+        // Turn boundary: reset the per-turn sent count after the result's
+        // nudge decision has used it. A nudge retry re-counts via its own
+        // text events before the retry result, so resetting on every result
+        // is safe. The seq high-water mark advances past everything written
+        // this turn (door and error deliveries alike), so the next turn's
+        // echo check never reaches back across the boundary — a later turn
+        // genuinely re-sending the same body still delivers. The assembly
+        // buffer dies with the turn: a fragment that never closed is not
+        // carried into the next turn — the wrap-nudge owns that case.
+        midTurnSent = 0;
+        turnStartSeq = maxOutboundSeq();
+        midTurnTail = '';
       }
     }
   } catch (err) {
@@ -1839,7 +1961,7 @@ export async function processQuery(
   // provider never answered the re-send). The batch is still un-acked at this
   // point — close it out the same way a second silent result would, so the
   // outer loop's fallback markCompleted can't quietly call it a success.
-  if (silentTurnOpen) finalizeSilentTurn(null);
+  if (silentTurnOpen) await finalizeSilentTurn(null);
 
   return { continuation: queryContinuation, bouncedIds, undeliveredIds };
 }
@@ -2445,16 +2567,16 @@ export function checkCritiqueGate(
  * This is the same user-facing write the outer catch block does, minus the
  * `Error:` prefix — the provider's text is already a user-facing message.
  */
-function deliverErrorResult(text: string, routing: RoutingContext): void {
+async function deliverErrorResult(text: string, routing: RoutingContext): Promise<void> {
   log('Error result with no <message> envelope — delivering to channel');
-  writeMessageOut({
+  await writeMessageOut({
     id: generateId(),
     in_reply_to: routing.inReplyTo,
     kind: 'chat',
     platform_id: routing.platformId,
     channel_type: routing.channelType,
     thread_id: routing.threadId,
-    content: JSON.stringify({ text }),
+    content: JSON.stringify({ text: stripHarnessTagArtifacts(text) }),
   });
 }
 
@@ -2471,16 +2593,313 @@ export interface TaskMessageBlock {
   body: string;
 }
 
-export function dispatchResultText(
+/** Options for `dispatchResultText`, describing the turn it closes. */
+export interface ResultDispatchOptions {
+  /**
+   * How many <message> blocks were already delivered from streamed text
+   * events this turn. Folds into the returned `sent` total so a bare final
+   * text after a mid-turn delivery reads as a self-summary, not an
+   * undelivered reply.
+   */
+  midTurnSent?: number;
+  /**
+   * Providers declaring `emitsMidTurnText`: the result door NEVER delivers
+   * content. Mid-turn streaming (parse-time block delivery plus cross-
+   * segment assembly) is the single content door; a complete <message>
+   * block in the result text is at best a repeat of a mid-turn delivery and
+   * at worst content the streaming door missed — either way it is not sent
+   * from here. The result door keeps exactly two jobs: surfacing error
+   * results (see the isError branch in processQuery) and the wrap-nudge
+   * decision (`turnDelivered` below). Task runs, unknown destinations and
+   * empty bodies keep their existing result-door handling, none of which
+   * delivers content.
+   */
+  suppressDelivery?: boolean;
+  /**
+   * Did anything user-visible go out this turn? True when the mid-turn door
+   * delivered (midTurnSent > 0) OR any chat row landed in outbound.db since
+   * the turn boundary (covers MCP send_message calls the frame-local count
+   * cannot see). Only meaningful with `suppressDelivery`. When false and the
+   * result carries content — wrapped blocks or unwrapped prose — the turn
+   * counts as undelivered and the wrap-nudge fires, so the model re-sends
+   * and the retry streams through the mid-turn door. This is the deliberate
+   * degradation path for streaming-door misses (SDK drift, a destination
+   * appearing only after streaming, a block that never closed): nudge and
+   * retry, never a direct result-door send.
+   */
+  turnDelivered?: boolean;
+}
+/**
+ * `<internal>…</internal>` spans are explicitly not-for-delivery scratchpad.
+ * Broader than `stripInternalTags` (which the scratchpad log uses): it also
+ * matches an opening tag carrying attributes, and is case-insensitive, so a
+ * draft quoted inside one can never be promoted to a real send by the
+ * mid-turn scan.
+ */
+const INTERNAL_SPAN_RE = /<internal\b[\s\S]*?<\/internal>/gi;
+/**
+ * Deliver complete <message to="...">...</message> blocks found in a mid-turn
+ * assistant text segment. The SDK's final result carries only the last
+ * assistant text, so a wrapped reply composed before a trailing tool call
+ * would otherwise never be seen (and the unwrapped-nudge would coax out only
+ * a mangled re-send of the final fragment). Chat runs only — in task runs
+ * mid-turn blocks stay inert exactly like final-text blocks (one-door: only
+ * the send_message tool delivers). Blocks inside an <internal> span are never
+ * delivered. Blocks to unknown destinations are left for the result path,
+ * which logs the drop into the scratchpad and lets the nudge decide.
+ *
+ * Cross-segment assembly: `carry` is the unresolved tail of the previous
+ * text event (frame-local, turn-local — see midTurnTail in processQuery).
+ * The scan runs over carry + text, delivers every complete block in the
+ * SETTLED prefix, and returns the new unresolved tail: an unclosed
+ * <message …> open (or a bare tag prefix literally split mid-token, e.g.
+ * "<mess" / "age to=…"), or an unclosed <internal span — a draft quoted
+ * inside one must never be promoted to a send by assembly, so judgment on
+ * everything from an open <internal is deferred until it closes. Settled
+ * text is consumed exactly once: already-delivered blocks are never inside
+ * the carried tail, so they cannot re-match. Net effect: mid-turn parsing
+ * behaves as if run over the concatenation of all streamed text, delivered
+ * incrementally. A block that never closes anywhere stays in the tail until
+ * the turn ends and is then dropped — the wrap-nudge owns that case.
+ *
+ * Failure ordering: a writeMessageOut failure here propagates and fails the
+ * whole turn loudly — the result door never delivers content, so swallowing
+ * the error would silently lose the block. An outbound write failure means
+ * the session DB is broken; loud is correct.
+ */
+export interface MidTurnScanResult {
+  delivered: number;
+  tail: string;
+  /**
+   * Fork: gate refusals raised on blocks in THIS segment. The mid-turn door is
+   * the only delivery door for an `emitsMidTurnText` provider, so the critique
+   * and chain-routing gates have to run here or they would be unreachable for
+   * that provider. Refusals are sender feedback — the caller pushes them back
+   * as a <system> nudge, exactly as the result door does.
+   */
+  gateRefusals?: string[];
+}
+
+export async function deliverMidTurnBlocks(
   text: string,
   routing: RoutingContext,
-): {
+  turnStartSeq?: number,
+  carry = '',
+): Promise<MidTurnScanResult> {
+  if (routing.taskRun) return { delivered: 0, tail: '' };
+  const input = carry + text;
+  const tailStart = unresolvedTailStart(input);
+  const settled = input.slice(0, tailStart);
+  const tail = input.slice(tailStart);
+  if (tail && carry !== tail) {
+    log(`Mid-turn scan: carrying ${tail.length}-char unresolved tail to the next segment`);
+  }
+  // Seq high-water mark at THIS scan's start: the echo check below only
+  // looks at rows written by EARLIER segments of the same turn — a verbatim
+  // duplicate within one settled scan (two identical blocks in one text) is
+  // an explicit double-send and still delivers twice, exactly as the result
+  // door always treated it.
+  const segStartSeq = turnStartSeq === undefined ? 0 : maxOutboundSeq();
+  const visible = settled.replace(INTERNAL_SPAN_RE, '');
+  // Fork regex: tolerate extra attributes (`thread_id`, `in_reply_to`, plus
+  // unknown ones) between `to="…"` and `>`. Upstream's narrower form demands
+  // `>` immediately after `to="…"`, which would make every branching-workflow
+  // block (`<message to="X" thread_id="Y">`) invisible to this door — and with
+  // the result door suppressed, invisible here means silently undelivered.
+  const MESSAGE_RE = /<message\s+to="([^"]+)"((?:\s+\w+="[^"]*")*)\s*>([\s\S]*?)<\/message>/g;
+  const ATTR_RE = /(\w+)="([^"]*)"/g;
+  let match: RegExpExecArray | null;
+  let delivered = 0;
+  const gateRefusals: string[] = [];
+  while ((match = MESSAGE_RE.exec(visible)) !== null) {
+    const toName = match[1];
+    const attrsStr = match[2] ?? '';
+    const rawBody = match[3];
+    const body = stripHarnessTagArtifacts(rawBody.trim());
+    const dest = findByName(toName);
+    if (!dest) continue;
+    // Never deliver a blank message: a body that is empty (or was only
+    // harness-tag artifacts) is skipped here; the result path logs it.
+    if (!body) {
+      log(`Mid-turn <message to="${toName}"> empty after sanitization — skipped`);
+      continue;
+    }
+    // Cross-segment echo guard (live-captured shape, SDK battery s03): after
+    // a tool call the model often re-emits the ALREADY-SENT block verbatim as
+    // its final text. That final text streams as its own text event, so
+    // without this check the door would deliver the same message twice. The
+    // check consults the outbound DB — the durable record of what this turn
+    // actually wrote — over the frame-local seq window (turnStartSeq,
+    // segStartSeq]: identical body, same destination, written this turn by an
+    // earlier segment ⇒ echo, skip. No in-process content ledger; cross-turn
+    // repeats are out of the window and deliver normally.
+    if (turnStartSeq !== undefined && wasWrittenInSeqWindow(dest, body, turnStartSeq, segStartSeq)) {
+      log(`Mid-turn <message to="${toName}"> is a verbatim repeat of a message already sent this turn — skipped`);
+      continue;
+    }
+
+    let threadIdOverride: string | undefined;
+    let inReplyToOverride: string | undefined;
+    for (const am of attrsStr.matchAll(ATTR_RE)) {
+      if (am[1] === 'thread_id') threadIdOverride = am[2];
+      else if (am[1] === 'in_reply_to') inReplyToOverride = am[2];
+      // Unknown attributes are tolerated and ignored — keeps the parser
+      // forward-compatible with future protocol extensions.
+    }
+
+    // Fork gates, re-applied at this door. With `suppressDelivery` on for an
+    // emitsMidTurnText provider this is the ONLY path that writes a block, so
+    // gating only in dispatchResultText would let every gated body through for
+    // that provider. Same gates, same state, same sender-directed refusal: the
+    // body is withheld from the peer and the reason goes back to the emitter.
+    const routingGate = checkRoutingGate(body, { threadIdOverride, inReplyToOverride });
+    if (routingGate.blocked) {
+      log(`Chain-routing gate refused mid-turn delivery to "${toName}": handoff marker missing thread_id/in_reply_to`);
+      postOverlayEvent('chain-routing-gate.refused', { destination: toName, reason: routingGate.reason });
+      gateRefusals.push(routingGate.reason!);
+      continue;
+    }
+    const gate = checkCritiqueGate(body);
+    if (gate.blocked) {
+      log(`Critique-gate refused mid-turn delivery to "${toName}": body contained delivery marker, critique_rounds=0`);
+      postOverlayEvent('critique-gate.refused', { destination: toName, reason: gate.reason });
+      gateRefusals.push(gate.reason!);
+      continue;
+    }
+
+    await sendToDestination(dest, body, routing, { threadIdOverride, inReplyToOverride });
+    delivered++;
+    log(`Mid-turn delivery: <message to="${toName}"> (${body.length} chars)`);
+  }
+  return { delivered, tail, ...(gateRefusals.length ? { gateRefusals } : {}) };
+}
+
+const OPEN_INTERNAL_RE = /<internal\b/i;
+const OPEN_MESSAGE_RE = /<message\b/;
+
+/**
+ * Index where the UNRESOLVED tail of a mid-turn scan begins — everything
+ * before it is settled (safe to parse and deliver now), everything from it
+ * on must wait for the next text event. input.length when fully settled.
+ *
+ * Unresolved constructs, earliest wins:
+ *  - an unclosed <internal span (case-insensitive, attributes allowed):
+ *    blocks quoted inside must not deliver until the span closes and the
+ *    exclusion can apply — assembly must never promote a draft;
+ *  - an unclosed <message open after the last </message>: the growing block
+ *    the assembly exists for. Opens with a close somewhere after them are
+ *    finished text (a complete block, or malformed-and-done) — settled;
+ *  - a bare tag prefix at the very end ("<mess", "<inter"): a tag literally
+ *    split mid-token at the event boundary.
+ *
+ * Complete <internal> spans are blanked (same length, positions preserved)
+ * before looking: an unclosed construct inside a COMPLETED span is settled
+ * garbage, not a reason to buffer.
+ */
+export function unresolvedTailStart(input: string): number {
+  const masked = input.replace(INTERNAL_SPAN_RE, (m) => ' '.repeat(m.length));
+  const candidates: number[] = [];
+  const internalOpen = OPEN_INTERNAL_RE.exec(masked);
+  if (internalOpen) candidates.push(internalOpen.index);
+  const lastClose = masked.lastIndexOf('</message>');
+  const searchFrom = lastClose === -1 ? 0 : lastClose + '</message>'.length;
+  const msgOpen = OPEN_MESSAGE_RE.exec(masked.slice(searchFrom));
+  if (msgOpen) candidates.push(searchFrom + msgOpen.index);
+  if (candidates.length > 0) return Math.min(...candidates);
+  const prefixStart = trailingTagPrefixStart(masked);
+  return prefixStart === -1 ? input.length : prefixStart;
+}
+
+/**
+ * Start index of a proper prefix of '<message' (case-sensitive, mirroring
+ * MESSAGE_RE) or '<internal' (case-insensitive, mirroring INTERNAL_SPAN_RE)
+ * sitting at the very end of the string; -1 when the string does not end
+ * mid-token. Longest prefix wins.
+ */
+function trailingTagPrefixStart(masked: string): number {
+  const maxK = Math.min('<internal'.length - 1, masked.length);
+  for (let k = maxK; k >= 1; k--) {
+    const tailK = masked.slice(masked.length - k);
+    if (tailK === '<message'.slice(0, k)) return masked.length - k;
+    if (tailK.toLowerCase() === '<internal'.slice(0, k)) return masked.length - k;
+  }
+  return -1;
+}
+
+/** Current outbound seq high-water mark (0 when the table is empty). */
+function maxOutboundSeq(): number {
+  return getUndeliveredMessages().reduce((max, message) => Math.max(max, message.seq ?? 0), 0);
+}
+
+/**
+ * Has ANY chat row been written to outbound.db after `afterSeq`? Feeds the
+ * result door's nudge decision: unlike the frame-local midTurnSent count,
+ * this also sees MCP send_message / send_file deliveries made this turn, so
+ * an agent that already replied via tools is not nudged into repeating
+ * itself. Fail-open to false: if the lookup breaks, the nudge may fire
+ * spuriously (a repeat coax), never silently swallow an undelivered turn.
+ */
+function chatRowWrittenSince(afterSeq: number): boolean {
+  try {
+    // ponytail: reuse the existing semantic read; add a cursor operation only if history scans show up in profiles.
+    return getUndeliveredMessages().some((message) => (message.seq ?? 0) > afterSeq && message.kind === 'chat');
+  } catch (err) {
+    log(`chatRowWrittenSince failed: ${err instanceof Error ? err.message : String(err)}`);
+    return false;
+  }
+}
+
+/**
+ * Does messages_out already hold a chat row with this exact destination and
+ * body, written in the seq window (afterSeq, uptoSeq]? Used by the mid-turn
+ * door's cross-segment echo guard. Content equality is exact: the door writes
+ * `JSON.stringify({ text: body })` after the same trim/sanitize pipeline, so
+ * a true door-written duplicate always matches; a body differing by even one
+ * character is a different message and delivers.
+ */
+function wasWrittenInSeqWindow(dest: DestinationEntry, body: string, afterSeq: number, uptoSeq: number): boolean {
+  if (uptoSeq <= afterSeq) return false;
+  try {
+    const platformId = dest.type === 'channel' ? dest.platformId! : dest.agentGroupId!;
+    const channelType = dest.type === 'channel' ? dest.channelType! : 'agent';
+    const content = JSON.stringify({ text: body });
+    return getUndeliveredMessages().some(
+      (message) =>
+        (message.seq ?? 0) > afterSeq &&
+        (message.seq ?? 0) <= uptoSeq &&
+        message.kind === 'chat' &&
+        message.platform_id === platformId &&
+        message.channel_type === channelType &&
+        message.content === content,
+    );
+  } catch (err) {
+    // The guard is an anti-duplication refinement; if the lookup itself
+    // fails, fall through to delivery (the write will surface any real DB
+    // breakage loudly).
+    log(`Echo-guard lookup failed: ${err instanceof Error ? err.message : String(err)}`);
+    return false;
+  }
+}
+
+export async function dispatchResultText(
+  text: string,
+  routing: RoutingContext,
+  options?: ResultDispatchOptions,
+): Promise<{
   sent: number;
   hasUnwrapped: boolean;
   danglingOpen?: boolean;
   gateRefusals?: string[];
   taskBlocks: TaskMessageBlock[];
-} {
+  resultBlocks: number;
+}> {
+  // <internal> spans are not-for-delivery scratchpad. Remove them BEFORE block
+  // extraction so a <message> drafted inside one is never delivered from the
+  // final text either — the mid-turn seam already guarantees this; without the
+  // same strip here the guarantee had a final-text hole. Span content still
+  // never reaches the user (the closing stripInternalTags pass removed it from
+  // the scratchpad already), so nudge/scratchpad semantics are unchanged.
+  text = text.replace(INTERNAL_SPAN_RE, '');
   // Capture the destination name (group 1), any additional attributes as one
   // string (group 2), and the body (group 3). Extra attributes — `thread_id`,
   // `in_reply_to`, plus unknown ones — are tolerated. Earlier versions of
@@ -2495,8 +2914,15 @@ export function dispatchResultText(
   const ATTR_RE = /(\w+)="([^"]*)"/g;
 
   let match: RegExpExecArray | null;
-  let sent = 0;
+  // Blocks delivered mid-turn count toward this turn's sent total — a final
+  // text with no (new) blocks after a mid-turn delivery is scratchpad, not an
+  // undelivered reply.
+  let sent = options?.midTurnSent ?? 0;
   let blocked = 0;
+  // <message> blocks present in THIS result text (delivered, stripped, task
+  // or dropped alike) — drives the bare-error-text delivery gate, which must
+  // key on the error result itself, not on earlier mid-turn deliveries.
+  let resultBlocks = 0;
   // <message to> blocks left inert in a task run — drives the same-turn
   // "use send_message" nudge in processQuery (upstream task-delivery feature).
   const taskBlocks: TaskMessageBlock[] = [];
@@ -2513,8 +2939,9 @@ export function dispatchResultText(
     }
     const toName = match[1];
     const attrsStr = match[2] ?? '';
-    const body = match[3].trim();
+    const body = stripHarnessTagArtifacts(match[3].trim());
     lastIndex = MESSAGE_RE.lastIndex;
+    resultBlocks++;
 
     // One-door delivery in task sessions: only the send_message tool delivers.
     // A final-text <message to> block here is either an echo of a tool send the
@@ -2542,6 +2969,14 @@ export function dispatchResultText(
     if (!dest) {
       log(`Unknown destination in <message to="${toName}">, dropping block`);
       scratchpadParts.push(`[dropped: unknown destination "${toName}"] ${body}`);
+      continue;
+    }
+    // Never deliver a blank message: a body that is empty (or was only
+    // harness-tag artifacts stripped by sanitization) goes to the scratchpad
+    // log instead of writing an empty chat row.
+    if (!body) {
+      log(`Empty <message to="${toName}"> body after sanitization — not delivered`);
+      scratchpadParts.push(`[not delivered — empty after sanitization; to="${toName}"]`);
       continue;
     }
     const routingGate = checkRoutingGate(body, { threadIdOverride, inReplyToOverride });
@@ -2573,7 +3008,29 @@ export function dispatchResultText(
       blocked++;
       continue;
     }
-    sendToDestination(dest, body, routing, { threadIdOverride, inReplyToOverride });
+    // One content door: with an emitsMidTurnText provider the result door
+    // never sends. A deliverable block here is either a repeat of a mid-turn
+    // delivery (turnDelivered — keep it out of the scratchpad so it does not
+    // read as an undelivered reply) or content the streaming door missed —
+    // then it goes to the scratchpad as undelivered content, which makes the
+    // turn count as undelivered and fires the wrap-nudge: the model re-sends
+    // and the retry streams through the mid-turn door.
+    //
+    // Placed AFTER the gates deliberately: a gated block must be counted as
+    // gated (blocked++, refusal to the sender) rather than silently folded
+    // into "the streaming door already handled it".
+    if (options?.suppressDelivery) {
+      if (options.turnDelivered) {
+        log(`<message to="${toName}"> in final result after a same-turn delivery — repeat, result door does not send`);
+      } else {
+        log(
+          `<message to="${toName}"> in final result but nothing was delivered this turn — nudging for a mid-turn resend`,
+        );
+        scratchpadParts.push(`[not delivered — the result door does not send; to="${toName}"] ${body}`);
+      }
+      continue;
+    }
+    await sendToDestination(dest, body, routing, { threadIdOverride, inReplyToOverride });
     sent++;
   }
   if (lastIndex < text.length) {
@@ -2603,10 +3060,18 @@ export function dispatchResultText(
   // never auto-delivered to a destination. Without this guard the fork's
   // single-destination shortcut would deliver task-run scratchpad, breaking the
   // "final-output blocks stay inert" invariant.
-  if (!routing.taskRun && sent === 0 && blocked === 0 && scratchpad && !danglingOpen) {
+  //
+  // NOT under `suppressDelivery` either: auto-routing IS a result-door
+  // delivery, and for an emitsMidTurnText provider the result door never
+  // delivers content. Letting it through here would re-open the double-send
+  // the one-door design closes — and would deliver the "[not delivered — the
+  // result door does not send]" scratchpad note itself as chat. Unwrapped
+  // final text from a streaming provider is a self-summary; the wrap-nudge
+  // owns it. Non-streaming providers (codex, opencode) keep the shortcut.
+  if (!routing.taskRun && !options?.suppressDelivery && sent === 0 && blocked === 0 && scratchpad && !danglingOpen) {
     const internalChannel = routing.channelType === 'system';
     if (routing.channelType && routing.platformId && !internalChannel) {
-      writeMessageOut({
+      await writeMessageOut({
         id: generateId(),
         in_reply_to: routing.inReplyTo,
         kind: 'chat',
@@ -2615,13 +3080,13 @@ export function dispatchResultText(
         thread_id: routing.threadId,
         content: JSON.stringify({ text: scratchpad }),
       });
-      return { sent: 1, hasUnwrapped: false, taskBlocks: [] };
+      return { sent: 1, hasUnwrapped: false, taskBlocks: [], resultBlocks };
     }
     if (!internalChannel) {
       const all = getAllDestinations();
       if (all.length === 1) {
-        sendToDestination(all[0], scratchpad, routing);
-        return { sent: 1, hasUnwrapped: false, taskBlocks: [] };
+        await sendToDestination(all[0], scratchpad, routing);
+        return { sent: 1, hasUnwrapped: false, taskBlocks: [], resultBlocks };
       }
     }
   }
@@ -2635,7 +3100,11 @@ export function dispatchResultText(
   // gate-specific refusal nudge instead of the generic "wrap your output" one.
   // In a task run, plain final text is the NORMAL ending (it becomes the run
   // log) — never treat it as an undelivered reply or nudge the agent to wrap it.
-  const hasUnwrapped = !routing.taskRun && sent === 0 && blocked === 0 && (!!scratchpad || danglingOpen);
+  // With suppressDelivery the delivered-this-turn question is answered by
+  // turnDelivered (door deliveries + DB-visible sends like MCP send_message);
+  // otherwise by this dispatch's own send count.
+  const anythingDelivered = options?.suppressDelivery ? options.turnDelivered === true : sent > 0;
+  const hasUnwrapped = !routing.taskRun && !anythingDelivered && blocked === 0 && (!!scratchpad || danglingOpen);
   if (hasUnwrapped) {
     if (danglingOpen) {
       log(`WARNING: agent emitted <message to="..."> with no closing </message>; nothing was sent`);
@@ -2649,6 +3118,7 @@ export function dispatchResultText(
     danglingOpen,
     gateRefusals: gateRefusals.length ? gateRefusals : undefined,
     taskBlocks,
+    resultBlocks,
   };
 }
 
@@ -2692,7 +3162,7 @@ function escapePromptXml(value: string): string {
  * `task_log` outbound row; the host appends it to the series' tasks/<id>.md
  * with its usual timestamp stamp. Never delivered to anyone.
  */
-export function autoAppendTaskLog(text: string): void {
+export async function autoAppendTaskLog(text: string): Promise<void> {
   // Run-log hygiene: an inert <message to> block never belongs in the log as
   // raw XML — replace each with its inner text, marked undelivered, so the
   // log stays readable prose.
@@ -2702,7 +3172,7 @@ export function autoAppendTaskLog(text: string): void {
   );
   const line = stripInternalTags(prose).replace(/\s+/g, ' ').trim().slice(0, 500);
   if (!line) return;
-  writeMessageOut({
+  await writeMessageOut({
     id: generateId(),
     kind: 'task_log',
     content: JSON.stringify({ text: line }),
@@ -2736,12 +3206,12 @@ export function resolveInReplyToOverride(raw: string | undefined): string | unde
   }
 }
 
-function sendToDestination(
+async function sendToDestination(
   dest: DestinationEntry,
   body: string,
   routing: RoutingContext,
   overrides?: { threadIdOverride?: string; inReplyToOverride?: string },
-): void {
+): Promise<void> {
   const platformId = dest.type === 'channel' ? dest.platformId! : dest.agentGroupId!;
   const channelType = dest.type === 'channel' ? dest.channelType! : 'agent';
   // Task runs: an explicitly-addressed final-text block that duplicates an MCP
@@ -2770,7 +3240,7 @@ function sendToDestination(
   // peer-affinity guessing. That is the seq-as-id ("D2") misroute.
   const resolvedOverride = resolveInReplyToOverride(overrides?.inReplyToOverride);
   const inReplyTo = resolvedOverride ?? destRouting?.inReplyTo ?? routing.inReplyTo;
-  writeMessageOut({
+  await writeMessageOut({
     id: generateId(),
     in_reply_to: routing.taskRun ? null : inReplyTo,
     kind: 'chat',
@@ -2790,15 +3260,7 @@ function resolveDestinationThread(
   platformId: string,
 ): { threadId: string | null; inReplyTo: string | null } | null {
   try {
-    const db = getInboundDb();
-    const row = db
-      .prepare(
-        `SELECT thread_id, id FROM messages_in
-         WHERE channel_type = ? AND platform_id = ?
-         ORDER BY seq DESC LIMIT 1`,
-      )
-      .get(channelType, platformId) as { thread_id: string | null; id: string } | undefined;
-    if (row) return { threadId: row.thread_id, inReplyTo: row.id };
+    return getAgentMailbox().operations.getLatestInboundRoute(channelType, platformId);
   } catch (err) {
     log(`resolveDestinationThread error: ${err instanceof Error ? err.message : String(err)}`);
   }

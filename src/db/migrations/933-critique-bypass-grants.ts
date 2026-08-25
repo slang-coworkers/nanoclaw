@@ -1,5 +1,3 @@
-import type Database from 'better-sqlite3';
-
 import type { Migration } from './index.js';
 
 /**
@@ -42,8 +40,8 @@ import type { Migration } from './index.js';
 export const migration933: Migration = {
   version: 933,
   name: 'critique-bypass-grants',
-  up(db: Database.Database) {
-    db.exec(`
+  async up(db) {
+    await db.exec(`
       CREATE TABLE IF NOT EXISTS critique_bypass_grants (
         grant_id       TEXT PRIMARY KEY,   -- the approval_id that authorized it
         session_id     TEXT NOT NULL,

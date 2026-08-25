@@ -59,8 +59,8 @@ import type { Migration } from './index.js';
 export const migration939: Migration = {
   version: 939,
   name: 'cost-escalation-episodes',
-  up(db) {
-    db.exec(`
+  async up(db) {
+    await db.exec(`
       CREATE TABLE IF NOT EXISTS cost_escalation_episodes (
         episode_id          TEXT PRIMARY KEY,
         short_id            TEXT NOT NULL UNIQUE,
@@ -90,11 +90,13 @@ export const migration939: Migration = {
     `);
     // Reconciler hot paths: find undelivered cards, decided-but-unapplied effects,
     // and expired-but-pending episodes without a full scan.
-    db.exec(`CREATE INDEX IF NOT EXISTS idx_cost_ep_card    ON cost_escalation_episodes (card_state)`);
-    db.exec(
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_cost_ep_card    ON cost_escalation_episodes (card_state)`);
+    await db.exec(
       `CREATE INDEX IF NOT EXISTS idx_cost_ep_effect  ON cost_escalation_episodes (decision_state, effect_state)`,
     );
-    db.exec(`CREATE INDEX IF NOT EXISTS idx_cost_ep_session ON cost_escalation_episodes (session_id)`);
-    db.exec(`CREATE INDEX IF NOT EXISTS idx_cost_ep_pending ON cost_escalation_episodes (decision_state, expires_at)`);
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_cost_ep_session ON cost_escalation_episodes (session_id)`);
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_cost_ep_pending ON cost_escalation_episodes (decision_state, expires_at)`,
+    );
   },
 };

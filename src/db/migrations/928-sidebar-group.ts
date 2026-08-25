@@ -1,5 +1,4 @@
-import type Database from 'better-sqlite3';
-
+import { addColumnIfMissing } from './column-guard.js';
 import type { Migration } from './index.js';
 
 /**
@@ -18,9 +17,7 @@ import type { Migration } from './index.js';
 export const migration928: Migration = {
   version: 928,
   name: 'sidebar-group',
-  up(db: Database.Database) {
-    const cols = db.prepare('PRAGMA table_info(agent_groups)').all() as Array<{ name: string }>;
-    const names = new Set(cols.map((c) => c.name));
-    if (!names.has('sidebar_group')) db.exec('ALTER TABLE agent_groups ADD COLUMN sidebar_group TEXT');
+  async up(db) {
+    await addColumnIfMissing(db, 'agent_groups', 'sidebar_group TEXT');
   },
 };

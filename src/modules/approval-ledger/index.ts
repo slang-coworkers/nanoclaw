@@ -48,7 +48,7 @@ const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v));
  * from a legitimate approver reads as "you sent the wrong arguments" rather
  * than as an authorization failure.
  */
-function validateRecordDecision(content: Record<string, unknown>, session: Session): boolean {
+async function validateRecordDecision(content: Record<string, unknown>, session: Session): Promise<boolean> {
   const repo = str(content.repo);
   const prNumber = num(content.pr_number);
   const commitSha = str(content.commit_sha);
@@ -56,12 +56,12 @@ function validateRecordDecision(content: Record<string, unknown>, session: Sessi
 
   if (!repo || !Number.isFinite(prNumber) || !commitSha || !decision) {
     log.warn('record_decision: missing repo/pr_number/commit_sha/decision', { content });
-    notifyAgent(session, 'record_decision ignored: repo, pr_number, commit_sha and decision are all required.');
+    await notifyAgent(session, 'record_decision ignored: repo, pr_number, commit_sha and decision are all required.');
     return false;
   }
   if (!isValidDecision(decision)) {
     log.warn('record_decision: invalid decision state (dropped)', { decision, repo, pr: prNumber });
-    notifyAgent(
+    await notifyAgent(
       session,
       `record_decision ignored: "${decision}" is not a decision state. Use WOULD_APPROVE, BLOCK or ABSTAIN_POLICY.`,
     );
@@ -71,7 +71,7 @@ function validateRecordDecision(content: Record<string, unknown>, session: Sessi
 }
 
 async function applyRecordDecision(content: Record<string, unknown>, session: Session): Promise<void> {
-  const outcome = appendDecision(getDb(), {
+  const outcome = await appendDecision(getDb(), {
     repo: str(content.repo) as string,
     prNumber: num(content.pr_number),
     commitSha: str(content.commit_sha) as string,
@@ -93,9 +93,9 @@ async function applyRecordDecision(content: Record<string, unknown>, session: Se
   // Tell the agent what happened on every non-success branch. A refusal it
   // cannot see is a refusal it will retry forever.
   if (outcome.status === 'invalid') {
-    notifyAgent(session, `record_decision rejected: ${outcome.reason}`);
+    await notifyAgent(session, `record_decision rejected: ${outcome.reason}`);
   } else if (outcome.status === 'conflict') {
-    notifyAgent(
+    await notifyAgent(
       session,
       `record_decision refused: a decision for this commit is already recorded (${outcome.existingDecision}). ` +
         'The ledger is append-only — record a decision for the new head instead of restating this one.',

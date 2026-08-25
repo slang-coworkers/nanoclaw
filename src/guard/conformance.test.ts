@@ -2,7 +2,7 @@
  * Guard conformance — checked with the real registries.
  *
  * The old registry walk is gone: an unmapped consult or an undeclared
- * unguarded registration is now unconstructible — guard() takes the defined
+ * unguarded registration is now unconstructible — await guard() takes the defined
  * GuardedAction value (a dropped module-edge import or typo'd name is a
  * compile error), and the keyed registries require a guard spec or an
  * explicit unguarded(<reason>) declaration. What's left to verify is the
@@ -106,21 +106,21 @@ describe('approval-ledger authorization (F14)', () => {
     else process.env.APPROVAL_LEDGER_WRITERS = prevWriters;
   });
 
-  it('a container without the ledger-writer capability cannot record a decision', () => {
+  it('a container without the ledger-writer capability cannot record a decision', async () => {
     process.env.APPROVAL_LEDGER_WRITERS = 'ag-slang-pr-approver';
-    const d = guard(approvalLedgerRecordDecision, NON_APPROVER);
+    const d = await guard(approvalLedgerRecordDecision, NON_APPROVER);
     expect(d.effect).toBe('deny');
     // Specifically a refusal, NOT a hold: an approval card asking a human to
     // bless an unverifiable claim would launder the forgery, not stop it.
     expect(approvalLedgerRecordDecision.grantActionName).toBeUndefined();
   });
 
-  it('a container without the ledger-writer capability cannot record a human verdict', () => {
+  it('a container without the ledger-writer capability cannot record a human verdict', async () => {
     process.env.APPROVAL_LEDGER_WRITERS = 'ag-slang-pr-approver';
-    expect(guard(approvalLedgerRecordHumanVerdict, NON_APPROVER).effect).toBe('deny');
+    expect((await guard(approvalLedgerRecordHumanVerdict, NON_APPROVER)).effect).toBe('deny');
   });
 
-  it('NO container may record a human verdict — not even a declared ledger writer', () => {
+  it('NO container may record a human verdict — not even a declared ledger writer', async () => {
     // The human outcome is not the agent's to report about its own work. The
     // host stamps it from the GitHub delivery that observed it.
     process.env.APPROVAL_LEDGER_WRITERS = 'ag-slang-pr-approver';
@@ -128,19 +128,19 @@ describe('approval-ledger authorization (F14)', () => {
       actor: { kind: 'agent', agentGroupId: 'ag-slang-pr-approver', sessionId: 'sess-a' },
       payload: NON_APPROVER.payload,
     };
-    expect(guard(approvalLedgerRecordHumanVerdict, approver).effect).toBe('deny');
+    expect((await guard(approvalLedgerRecordHumanVerdict, approver)).effect).toBe('deny');
   });
 
-  it('a declared ledger writer is allowed to record a decision', () => {
+  it('a declared ledger writer is allowed to record a decision', async () => {
     process.env.APPROVAL_LEDGER_WRITERS = 'ag-slang-pr-approver,slangpy-pr-approver';
     const approver: GuardInput = {
       actor: { kind: 'agent', agentGroupId: 'ag-slang-pr-approver', sessionId: 'sess-a' },
       payload: NON_APPROVER.payload,
     };
-    expect(guard(approvalLedgerRecordDecision, approver).effect).toBe('allow');
+    expect((await guard(approvalLedgerRecordDecision, approver)).effect).toBe('allow');
   });
 
-  it('an empty allowlist denies everyone — the capability is never implicit', () => {
+  it('an empty allowlist denies everyone — the capability is never implicit', async () => {
     // `= ''` is a truly empty allowlist here: the `../env.js` mock above forces the
     // envConfig fallback empty, so it can't leak a value from the host's on-disk `.env`.
     process.env.APPROVAL_LEDGER_WRITERS = '';
@@ -148,13 +148,13 @@ describe('approval-ledger authorization (F14)', () => {
       actor: { kind: 'agent', agentGroupId: 'ag-slang-pr-approver', sessionId: 'sess-a' },
       payload: NON_APPROVER.payload,
     };
-    const d = guard(approvalLedgerRecordDecision, approver);
+    const d = await guard(approvalLedgerRecordDecision, approver);
     expect(d.effect).toBe('deny');
     expect(d.reason).toContain('APPROVAL_LEDGER_WRITERS');
   });
 
-  it('a non-agent actor cannot reach the container-originated action', () => {
+  it('a non-agent actor cannot reach the container-originated action', async () => {
     process.env.APPROVAL_LEDGER_WRITERS = 'ag-slang-pr-approver';
-    expect(guard(approvalLedgerRecordDecision, { actor: { kind: 'system' }, payload: {} }).effect).toBe('deny');
+    expect((await guard(approvalLedgerRecordDecision, { actor: { kind: 'system' }, payload: {} })).effect).toBe('deny');
   });
 });

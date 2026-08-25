@@ -1,3 +1,4 @@
+import { addColumnIfMissing } from './column-guard.js';
 import type { Migration } from './index.js';
 
 export const migration915: Migration = {
@@ -7,18 +8,11 @@ export const migration915: Migration = {
   // the edge so the loader's topo-sort guarantees 006 runs first, even if
   // a future registry picks overlapping version numbers.
   dependsOn: ['coworker-fields'],
-  up(db) {
-    const hasCol = (
-      db.prepare("SELECT count(*) as c FROM pragma_table_info('agent_groups') WHERE name = 'routing'").get() as {
-        c: number;
-      }
-    ).c;
-    if (!hasCol) {
-      db.exec(`ALTER TABLE agent_groups ADD COLUMN routing TEXT NOT NULL DEFAULT 'direct'`);
-    }
+  async up(db) {
+    await addColumnIfMissing(db, 'agent_groups', "routing TEXT NOT NULL DEFAULT 'direct'");
 
     // Backfill: agents with no messaging_group_agents row are internal-only
-    db.exec(`
+    await db.exec(`
       UPDATE agent_groups SET routing = 'internal'
       WHERE id NOT IN (
         SELECT DISTINCT agent_group_id FROM messaging_group_agents mga

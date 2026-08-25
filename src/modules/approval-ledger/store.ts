@@ -42,8 +42,7 @@
  * reads BOTH tables, because telling an approver session how its PR ended is
  * routing, not calibration.
  */
-import type Database from 'better-sqlite3';
-
+import type { DbDriver } from '../../db/driver.js';
 import { log } from '../../log.js';
 import {
   boundBlob,
@@ -121,7 +120,7 @@ export type AppendOutcome =
  * closed vulnerability would live on as a denial-of-service primitive against
  * the ledger that replaced it.
  */
-export function appendDecision(db: Database.Database, w: DecisionWrite): AppendOutcome {
+export async function appendDecision(db: DbDriver, w: DecisionWrite): Promise<AppendOutcome> {
   const bad = validatePrRef(w.repo, w.prNumber, w.commitSha);
   if (bad) {
     log.warn('record_decision: rejected malformed reference', { field: bad.field, reason: bad.reason });
@@ -143,19 +142,18 @@ export function appendDecision(db: Database.Database, w: DecisionWrite): AppendO
 
   // One transaction: a legacy row displaced by the retry below must not be able
   // to vanish without the verified row that replaced it landing.
-  return db.transaction(() => insertDecision(db, w, commitSha, decidedAt.iso))();
+  return db.transaction(() => insertDecision(db, w, commitSha, decidedAt.iso));
 }
 
-function insertDecision(
-  db: Database.Database,
+async function insertDecision(
+  db: DbDriver,
   w: DecisionWrite,
   commitSha: string,
   decidedAtIso: string,
   isRetry = false,
-): AppendOutcome {
-  const res = db
-    .prepare(
-      `INSERT INTO approval_decisions (
+): Promise<AppendOutcome> {
+  const res = await db.run(
+    `INSERT INTO approval_decisions (
          repo, pr_number, commit_sha, mode, decision, reason_code,
          review_diff_hash, policy_version, clauses_json, challenger_json,
          human_verdict, agent_group_id, session_id, thread_id, decided_at,
@@ -167,8 +165,7 @@ function insertDecision(
          @provenance
        )
        ON CONFLICT(repo, pr_number, commit_sha) DO NOTHING`,
-    )
-    .run({
+    {
       repo: w.repo,
       prNumber: w.prNumber,
       commitSha,
@@ -184,7 +181,8 @@ function insertDecision(
       threadId: w.threadId,
       decidedAt: decidedAtIso,
       provenance: TRUSTED_PROVENANCE,
-    });
+    },
+  );
 
   if (res.changes > 0) {
     log.info('approval decision recorded', {
@@ -197,15 +195,18 @@ function insertDecision(
     return { status: 'recorded' };
   }
 
-  const existing = db
-    .prepare('SELECT decision, provenance FROM approval_decisions WHERE repo=? AND pr_number=? AND commit_sha=?')
-    .get(w.repo, w.prNumber, commitSha) as { decision: string; provenance: string | null } | undefined;
+  const existing = await db.get<{ decision: string; provenance: string | null }>(
+    'SELECT decision, provenance FROM approval_decisions WHERE repo=? AND pr_number=? AND commit_sha=?',
+    w.repo,
+    w.prNumber,
+    commitSha,
+  );
 
   // An untrusted occupant is not evidence and does not get to win. Move it to
   // the history table and let the verified write take the key. Guarded by
   // isRetry so a pathological state cannot loop.
   if (existing && existing.provenance !== TRUSTED_PROVENANCE && !isRetry) {
-    quarantineLegacyRow(db, w.repo, w.prNumber, commitSha);
+    await quarantineLegacyRow(db, w.repo, w.prNumber, commitSha);
     log.warn('approval decision: displaced a pre-enforcement row so the verified decision could land', {
       repo: w.repo,
       pr: w.prNumber,
@@ -242,17 +243,26 @@ function insertDecision(
  * verbatim. Copy-then-delete, and delete only what the copy accepted, so the
  * row cannot disappear. Callers run inside a transaction.
  */
-function quarantineLegacyRow(db: Database.Database, repo: string, prNumber: number, commitSha: string): void {
-  db.prepare(
+async function quarantineLegacyRow(db: DbDriver, repo: string, prNumber: number, commitSha: string): Promise<void> {
+  await db.run(
     `INSERT OR IGNORE INTO approval_decisions_legacy
        SELECT * FROM approval_decisions WHERE repo=? AND pr_number=? AND commit_sha=?`,
-  ).run(repo, prNumber, commitSha);
-  db.prepare(
+    repo,
+    prNumber,
+    commitSha,
+  );
+  await db.run(
     `DELETE FROM approval_decisions
       WHERE repo=? AND pr_number=? AND commit_sha=?
         AND EXISTS (SELECT 1 FROM approval_decisions_legacy l
                      WHERE l.repo=? AND l.pr_number=? AND l.commit_sha=?)`,
-  ).run(repo, prNumber, commitSha, repo, prNumber, commitSha);
+    repo,
+    prNumber,
+    commitSha,
+    repo,
+    prNumber,
+    commitSha,
+  );
 }
 
 /**
@@ -279,22 +289,28 @@ export interface DecisionSessionRow {
   human_verdict: string | null;
 }
 
-export function getDecisionSessionsForPr(db: Database.Database, repo: string, prNumber: number): DecisionSessionRow[] {
+export async function getDecisionSessionsForPr(
+  db: DbDriver,
+  repo: string,
+  prNumber: number,
+): Promise<DecisionSessionRow[]> {
   // The ORDER BY lives outside the union: SQLite only accepts bare result
   // columns as compound-select ORDER BY terms, and `datetime(decided_at)` is an
   // expression — which the store needs, since a bare TEXT sort mis-orders the
   // offset forms and truncated fractions these rows carry.
-  return db
-    .prepare(
-      `SELECT agent_group_id, session_id, thread_id, commit_sha, decision, human_verdict FROM (
+  return db.all<DecisionSessionRow>(
+    `SELECT agent_group_id, session_id, thread_id, commit_sha, decision, human_verdict FROM (
          SELECT agent_group_id, session_id, thread_id, commit_sha, decision, human_verdict, decided_at, rowid AS rid
            FROM approval_decisions WHERE repo=? AND pr_number=?
          UNION ALL
          SELECT agent_group_id, session_id, thread_id, commit_sha, decision, human_verdict, decided_at, rowid AS rid
            FROM approval_decisions_legacy WHERE repo=? AND pr_number=?
        ) ORDER BY datetime(decided_at) ASC, rid ASC`,
-    )
-    .all(repo, prNumber, repo, prNumber) as DecisionSessionRow[];
+    repo,
+    prNumber,
+    repo,
+    prNumber,
+  );
 }
 
 export interface TrustedDecisionRow {
@@ -318,15 +334,13 @@ export interface TrustedDecisionRow {
  * name says what the rows are for and the filter survives a partially applied
  * migration.
  */
-export function listTrustedDecisions(db: Database.Database): TrustedDecisionRow[] {
-  return db
-    .prepare(
-      `SELECT repo, pr_number, commit_sha, decision, human_verdict, join_mode, decided_at
+export async function listTrustedDecisions(db: DbDriver): Promise<TrustedDecisionRow[]> {
+  return db.all<TrustedDecisionRow>(
+    `SELECT repo, pr_number, commit_sha, decision, human_verdict, join_mode, decided_at
          FROM approval_decisions
         WHERE ${TRUSTED_PROVENANCE_SQL}
         ORDER BY datetime(decided_at) ASC, rowid ASC`,
-    )
-    .all() as TrustedDecisionRow[];
+  );
 }
 
 /**
@@ -371,14 +385,14 @@ export function listTrustedDecisions(db: Database.Database): TrustedDecisionRow[
  * head_advanced group ever scores materially better than exact, the
  * merge-outcome over-credit bias has arrived and it is visible in one query.
  */
-export function recordHumanVerdict(
-  db: Database.Database,
+export async function recordHumanVerdict(
+  db: DbDriver,
   repo: string,
   prNumber: number,
   commitSha: string,
   humanVerdict: string,
   source: VerdictSource,
-): boolean {
+): Promise<boolean> {
   if (!source || !source.eventId) {
     log.error('human verdict refused — no source event id (only the trusted ingestion path may stamp verdicts)', {
       repo,
@@ -412,12 +426,13 @@ export function recordHumanVerdict(
   // GitHub redelivers; a redelivery must not be mistaken for a second
   // observation. If this exact event already stamped a row for this PR, we are
   // done.
-  const already = db
-    .prepare(
-      `SELECT 1 FROM approval_decisions
+  const already = await db.get(
+    `SELECT 1 FROM approval_decisions
         WHERE repo=? AND pr_number=? AND verdict_source_event_id=? AND ${TRUSTED_PROVENANCE_SQL} LIMIT 1`,
-    )
-    .get(repo, prNumber, source.eventId);
+    repo,
+    prNumber,
+    source.eventId,
+  );
   if (already) {
     log.info('human verdict already applied for this source event — idempotent no-op', {
       repo,
@@ -428,22 +443,21 @@ export function recordHumanVerdict(
   }
 
   if (exactSha) {
-    const res = db
-      .prepare(
-        `UPDATE approval_decisions
+    const res = await db.run(
+      `UPDATE approval_decisions
             SET human_verdict=@humanVerdict, join_mode='exact',
                 verdict_source=@sourceKind, verdict_source_event_id=@eventId
           WHERE repo=@repo AND pr_number=@prNumber AND commit_sha=@commitSha
             AND human_verdict IS NULL AND ${TRUSTED_PROVENANCE_SQL}`,
-      )
-      .run({
+      {
         humanVerdict,
         repo,
         prNumber,
         commitSha: exactSha,
         sourceKind: source.kind,
         eventId: source.eventId,
-      });
+      },
+    );
     if (res.changes > 0) {
       log.info('approval decision joined to human verdict', {
         repo,
@@ -467,13 +481,13 @@ export function recordHumanVerdict(
   // produced are quarantined out of this table — which is also why the
   // provenance scope below matters most HERE: an unnormalized future timestamp
   // is exactly what would win a "latest" ordering and steal the verdict.
-  const latest = db
-    .prepare(
-      `SELECT rowid AS rid, commit_sha AS decidedSha FROM approval_decisions
+  const latest = await db.get<{ rid: number; decidedSha: string }>(
+    `SELECT rowid AS rid, commit_sha AS decidedSha FROM approval_decisions
         WHERE repo=? AND pr_number=? AND human_verdict IS NULL AND ${TRUSTED_PROVENANCE_SQL}
         ORDER BY datetime(decided_at) DESC, rowid DESC LIMIT 1`,
-    )
-    .get(repo, prNumber) as { rid: number; decidedSha: string } | undefined;
+    repo,
+    prNumber,
+  );
 
   if (!latest) {
     // Genuinely nothing to join: no decision for this PR, or every decision
@@ -487,11 +501,15 @@ export function recordHumanVerdict(
     return false;
   }
 
-  db.prepare(
+  await db.run(
     `UPDATE approval_decisions
         SET human_verdict=?, join_mode='head_advanced', verdict_source=?, verdict_source_event_id=?
       WHERE rowid=?`,
-  ).run(humanVerdict, source.kind, source.eventId, latest.rid);
+    humanVerdict,
+    source.kind,
+    source.eventId,
+    latest.rid,
+  );
   log.info('approval decision joined to human verdict (head advanced past the decision)', {
     repo,
     pr: prNumber,

@@ -1,15 +1,13 @@
 import type { AgentGroup } from '../types.js';
 import { getDb } from './connection.js';
 
-export function createAgentGroup(
+export async function createAgentGroup(
   group: Partial<AgentGroup> & Pick<AgentGroup, 'id' | 'name' | 'folder' | 'created_at'>,
-): void {
-  getDb()
-    .prepare(
-      `INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, overlays, routing, sidebar_group, created_at)
-       VALUES (@id, @name, @folder, @is_admin, @agent_provider, @container_config, @coworker_type, @allowed_mcp_tools, @overlays, @routing, @sidebar_group, @created_at)`,
-    )
-    .run({
+): Promise<void> {
+  await getDb().run(
+    `INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, overlays, routing, sidebar_group, created_at)
+     VALUES (@id, @name, @folder, @is_admin, @agent_provider, @container_config, @coworker_type, @allowed_mcp_tools, @overlays, @routing, @sidebar_group, @created_at)`,
+    {
       is_admin: 0,
       agent_provider: null,
       container_config: null,
@@ -19,26 +17,27 @@ export function createAgentGroup(
       routing: 'direct',
       sidebar_group: null,
       ...group,
-    });
+    },
+  );
 }
 
-export function getAgentGroup(id: string): AgentGroup | undefined {
-  return getDb().prepare('SELECT * FROM agent_groups WHERE id = ?').get(id) as AgentGroup | undefined;
+export async function getAgentGroup(id: string): Promise<AgentGroup | undefined> {
+  return getDb().get<AgentGroup>('SELECT * FROM agent_groups WHERE id = ?', id);
 }
 
-export function getAgentGroupByFolder(folder: string): AgentGroup | undefined {
-  return getDb().prepare('SELECT * FROM agent_groups WHERE folder = ?').get(folder) as AgentGroup | undefined;
+export async function getAgentGroupByFolder(folder: string): Promise<AgentGroup | undefined> {
+  return getDb().get<AgentGroup>('SELECT * FROM agent_groups WHERE folder = ?', folder);
 }
 
-export function getAllAgentGroups(): AgentGroup[] {
-  return getDb().prepare('SELECT * FROM agent_groups ORDER BY name').all() as AgentGroup[];
+export async function getAllAgentGroups(): Promise<AgentGroup[]> {
+  return getDb().all<AgentGroup>('SELECT * FROM agent_groups ORDER BY name');
 }
 
-export function getAdminAgentGroup(): AgentGroup | undefined {
-  return getDb().prepare('SELECT * FROM agent_groups WHERE is_admin = 1 LIMIT 1').get() as AgentGroup | undefined;
+export async function getAdminAgentGroup(): Promise<AgentGroup | undefined> {
+  return getDb().get<AgentGroup>('SELECT * FROM agent_groups WHERE is_admin = 1 LIMIT 1');
 }
 
-export function updateAgentGroup(
+export async function updateAgentGroup(
   id: string,
   updates: Partial<
     Pick<
@@ -46,7 +45,7 @@ export function updateAgentGroup(
       'name' | 'agent_provider' | 'container_config' | 'coworker_type' | 'allowed_mcp_tools' | 'overlays' | 'paused'
     >
   >,
-): void {
+): Promise<void> {
   const fields: string[] = [];
   const values: Record<string, unknown> = { id };
 
@@ -58,11 +57,9 @@ export function updateAgentGroup(
   }
   if (fields.length === 0) return;
 
-  getDb()
-    .prepare(`UPDATE agent_groups SET ${fields.join(', ')} WHERE id = @id`)
-    .run(values);
+  await getDb().run(`UPDATE agent_groups SET ${fields.join(', ')} WHERE id = @id`, values);
 }
 
-export function deleteAgentGroup(id: string): void {
-  getDb().prepare('DELETE FROM agent_groups WHERE id = ?').run(id);
+export async function deleteAgentGroup(id: string): Promise<void> {
+  await getDb().run('DELETE FROM agent_groups WHERE id = ?', id);
 }

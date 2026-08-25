@@ -200,9 +200,9 @@ describe('webhook handler: 👀 ack + own-bot gate', () => {
 
     readEnvFileMock.mockReturnValue({});
     process.env.GH_TOKEN = 'fake-token';
-    deliverMock.mockReset().mockReturnValue('forwarded');
-    readyMock.mockReset().mockReturnValue('forwarded');
-    prMappingMock.mockReset().mockReturnValue(false);
+    deliverMock.mockReset().mockResolvedValue('forwarded');
+    readyMock.mockReset().mockResolvedValue('forwarded');
+    prMappingMock.mockReset().mockResolvedValue(false);
 
     handle = startGitHubWebhookServer();
     // listen() is async — wait for the OS to assign the ephemeral port (config
@@ -270,7 +270,7 @@ describe('webhook handler: 👀 ack + own-bot gate', () => {
   });
 
   it('reacts 👀 on a review comment on a PR we own, without an @-mention', async () => {
-    prMappingMock.mockReturnValue(true); // isOwnedPr
+    prMappingMock.mockResolvedValue(true); // isOwnedPr
     const json = await postComment('pull_request_review_comment', {
       action: 'created',
       repository: { full_name: 'org/repo' },

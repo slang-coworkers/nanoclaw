@@ -1,5 +1,4 @@
-import type Database from 'better-sqlite3';
-
+import { addColumnIfMissing } from './column-guard.js';
 import type { Migration } from './index.js';
 
 /**
@@ -37,27 +36,19 @@ export const migration934: Migration = {
   version: 934,
   name: 'approval-decision-provenance',
   dependsOn: ['approval-decisions'],
-  up(db: Database.Database) {
-    const cols = db.prepare(`PRAGMA table_info(approval_decisions)`).all() as Array<{ name: string }>;
-    if (!cols.length) return; // table not created yet — 929 owns it
-    const have = new Set(cols.map((c) => c.name));
+  async up(db) {
+    if (!(await db.hasTable('approval_decisions'))) return; // 929 owns the table
 
     // DEFAULT 'legacy' is what backfills the existing rows; the write path
     // always supplies the column explicitly, so the default only ever applies
     // to rows that predate enforcement.
-    if (!have.has('provenance')) {
-      db.exec(`ALTER TABLE approval_decisions ADD COLUMN provenance TEXT NOT NULL DEFAULT 'legacy'`);
-    }
-    if (!have.has('verdict_source')) {
-      db.exec(`ALTER TABLE approval_decisions ADD COLUMN verdict_source TEXT`);
-    }
-    if (!have.has('verdict_source_event_id')) {
-      db.exec(`ALTER TABLE approval_decisions ADD COLUMN verdict_source_event_id TEXT`);
-    }
+    await addColumnIfMissing(db, 'approval_decisions', "provenance TEXT NOT NULL DEFAULT 'legacy'");
+    await addColumnIfMissing(db, 'approval_decisions', 'verdict_source TEXT');
+    await addColumnIfMissing(db, 'approval_decisions', 'verdict_source_event_id TEXT');
 
     // The metric path reads "trusted rows for this PR"; without this index it
     // is a full scan once the ledger has a few thousand rows.
-    db.exec(`CREATE INDEX IF NOT EXISTS idx_approval_decisions_provenance
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_approval_decisions_provenance
                ON approval_decisions(provenance, repo, pr_number)`);
   },
 };

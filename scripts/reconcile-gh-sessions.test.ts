@@ -13,8 +13,9 @@ import os from 'os';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { initDb, closeDb } from '../src/db/connection.js';
+import { sqliteRaw } from '../src/db/drivers/sqlite.js';
 import { runMigrations } from '../src/db/migrations/index.js';
-import { ensureSchema } from '../src/db/session-db.js';
+import { ensureSchema } from '../src/mailbox/sqlite/session-db.js';
 import { reconcileGhSessions } from '../src/reconcile-gh-sessions.js';
 
 let dataDir: string;
@@ -71,12 +72,15 @@ function seedSessionDbs(
   outDb.close();
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reconcile-test-'));
   fs.mkdirSync(path.join(dataDir, 'v2-sessions'), { recursive: true });
 
-  const db = initDb(path.join(dataDir, 'v2.db'));
-  runMigrations(db);
+  // `reconcileGhSessions` is a standalone repair tool that opens its own raw
+  // handle, so the fixture seeds raw too — the driver here only builds schema.
+  const driver = await initDb(path.join(dataDir, 'v2.db'));
+  await runMigrations(driver);
+  const db = sqliteRaw(driver);
 
   // Two agent groups so a2a_session_sources FKs resolve.
   db.prepare(
@@ -108,7 +112,7 @@ beforeEach(() => {
        VALUES (?, 'ag-fixer', ?, 'sess-src', 'ag-src', 'other', '2026-06-05T11:30:00.000Z')`,
     ).run(r, thread);
   }
-  closeDb();
+  await closeDb();
 
   // canonical: in seq 2 / out seq 1
   seedSessionDbs('ag-fixer', 'sess-canon', {
@@ -134,8 +138,8 @@ beforeEach(() => {
   });
 });
 
-afterEach(() => {
-  closeDb();
+afterEach(async () => {
+  await closeDb();
   if (dataDir && fs.existsSync(dataDir)) fs.rmSync(dataDir, { recursive: true, force: true });
 });
 
@@ -246,11 +250,11 @@ describe('reconcile-gh-sessions migration', () => {
     expect(backups.length).toBeGreaterThan(0);
   });
 
-  it('aborts (no mutation) when an affected session is live', () => {
+  it('aborts (no mutation) when an affected session is live', async () => {
     // Flip a merged session to a live container status.
-    const db = initDb(path.join(dataDir, 'v2.db'));
-    db.prepare("UPDATE sessions SET container_status = 'running' WHERE id = 'sess-late'").run();
-    closeDb();
+    const db = await initDb(path.join(dataDir, 'v2.db'));
+    await db.run("UPDATE sessions SET container_status = 'running' WHERE id = 'sess-late'");
+    await closeDb();
 
     const res = reconcileGhSessions({ dataDir, apply: true });
     expect(res.abortedLive).toBe(true);
@@ -265,20 +269,20 @@ describe('reconcile-gh-sessions migration', () => {
     expect(active.n).toBe(3);
   });
 
-  it('clearing stale running/idle status (as startup does) lets the reconcile proceed', () => {
+  it('clearing stale running/idle status (as startup does) lets the reconcile proceed', async () => {
     // Simulate an unclean shutdown: a split session left at container_status
     // 'running' with no real container alive. The reconcile would abort...
-    const db = initDb(path.join(dataDir, 'v2.db'));
-    db.prepare("UPDATE sessions SET container_status = 'running' WHERE id = 'sess-late'").run();
-    db.prepare("UPDATE sessions SET container_status = 'idle' WHERE id = 'sess-mid'").run();
-    closeDb();
+    const db = await initDb(path.join(dataDir, 'v2.db'));
+    await db.run("UPDATE sessions SET container_status = 'running' WHERE id = 'sess-late'");
+    await db.run("UPDATE sessions SET container_status = 'idle' WHERE id = 'sess-mid'");
+    await closeDb();
     expect(reconcileGhSessions({ dataDir, apply: false }).abortedLive).toBe(true);
 
     // ...but the startup stale-status reset (src/index.ts, run BEFORE the
     // reconcile) clears running/idle → stopped, after which it proceeds.
-    const db2 = initDb(path.join(dataDir, 'v2.db'));
-    db2.prepare("UPDATE sessions SET container_status = 'stopped' WHERE container_status IN ('running', 'idle')").run();
-    closeDb();
+    const db2 = await initDb(path.join(dataDir, 'v2.db'));
+    await db2.run("UPDATE sessions SET container_status = 'stopped' WHERE container_status IN ('running', 'idle')");
+    await closeDb();
 
     const res = reconcileGhSessions({ dataDir, apply: true });
     expect(res.abortedLive).toBe(false);

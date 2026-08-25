@@ -79,8 +79,8 @@ describe('webhook handler: isParticipantIssue exemption (ROUTE_ISSUES_TO unset)'
     fetchMock = vi.fn(() => Promise.resolve({ ok: true, status: 201 } as Response));
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     process.env.GH_TOKEN = 'fake-token';
-    deliverMock.mockReset().mockReturnValue('local');
-    issueSessionMock.mockReset().mockReturnValue(false);
+    deliverMock.mockReset().mockResolvedValue('local');
+    issueSessionMock.mockReset().mockResolvedValue(false);
 
     handle = startGitHubWebhookServer();
     await new Promise<void>((resolve) => {
@@ -103,7 +103,7 @@ describe('webhook handler: isParticipantIssue exemption (ROUTE_ISSUES_TO unset)'
   }
 
   it('drops a non-mentioning issue follow-up when no active chain session exists', async () => {
-    issueSessionMock.mockReturnValue(false);
+    issueSessionMock.mockResolvedValue(false);
     const json = await postComment('issue_comment', {
       action: 'created',
       repository: { full_name: 'shader-slang/slang' },
@@ -116,7 +116,7 @@ describe('webhook handler: isParticipantIssue exemption (ROUTE_ISSUES_TO unset)'
   });
 
   it('processes + reacts 👀 on a non-mentioning issue follow-up when we own the chain', async () => {
-    issueSessionMock.mockReturnValue(true); // isParticipantIssue
+    issueSessionMock.mockResolvedValue(true); // isParticipantIssue
     const json = await postComment('issue_comment', {
       action: 'created',
       repository: { full_name: 'shader-slang/slang' },
@@ -132,7 +132,7 @@ describe('webhook handler: isParticipantIssue exemption (ROUTE_ISSUES_TO unset)'
   });
 
   it('does NOT consult the chain lookup for PR comments (PRs use pr_session_mappings)', async () => {
-    issueSessionMock.mockReturnValue(true);
+    issueSessionMock.mockResolvedValue(true);
     await postComment('issue_comment', {
       action: 'created',
       repository: { full_name: 'shader-slang/slang' },

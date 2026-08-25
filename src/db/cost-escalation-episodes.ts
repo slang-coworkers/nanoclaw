@@ -13,9 +13,8 @@
  * unconditionally and hermetic (no-DB) tests stay green. WRITES require an
  * initialized DB (host-side only).
  */
-import type Database from 'better-sqlite3';
-
 import { getDb, hasTable } from './connection.js';
+import type { DbDriver } from './driver.js';
 
 export type CostReason = 'cap' | 'ceiling';
 export type CostWindow = 'lifetime' | 'daily';
@@ -78,10 +77,10 @@ export interface CostEpisodeInsert {
 }
 
 /** Fail-soft handle: null when there is no initialized DB with the table. */
-function db(): Database.Database | null {
+async function db(): Promise<DbDriver | null> {
   const d = getDb();
   if (!d) return null;
-  return hasTable(d, 'cost_escalation_episodes') ? d : null;
+  return (await hasTable(d, 'cost_escalation_episodes')) ? d : null;
 }
 
 /**
@@ -89,22 +88,20 @@ function db(): Database.Database | null {
  * escalation (runner respawn, host retry) produces exactly one row. Returns true iff
  * a NEW row was inserted (so the caller sends the card exactly once).
  */
-export function ingestEpisode(ep: CostEpisodeInsert): boolean {
-  const d = db();
+export async function ingestEpisode(ep: CostEpisodeInsert): Promise<boolean> {
+  const d = await db();
   if (!d) return false;
-  const info = d
-    .prepare(
-      `INSERT INTO cost_escalation_episodes
-         (episode_id, short_id, protocol_version, session_id, agent_group_id, reason, window,
-          epoch_key, day_key, spent_usd, cap_usd, ceiling_usd, immortal,
-          decision_state, effect_state, card_state, created_at, expires_at)
-       VALUES
-         (@episode_id, @short_id, @protocol_version, @session_id, @agent_group_id, @reason, @window,
-          @epoch_key, @day_key, @spent_usd, @cap_usd, @ceiling_usd, @immortal,
-          @decision_state, 'none', @card_state, @created_at, @expires_at)
-       ON CONFLICT(episode_id) DO NOTHING`,
-    )
-    .run({
+  const info = await d.run(
+    `INSERT INTO cost_escalation_episodes
+       (episode_id, short_id, protocol_version, session_id, agent_group_id, reason, window,
+        epoch_key, day_key, spent_usd, cap_usd, ceiling_usd, immortal,
+        decision_state, effect_state, card_state, created_at, expires_at)
+     VALUES
+       (@episode_id, @short_id, @protocol_version, @session_id, @agent_group_id, @reason, @window,
+        @epoch_key, @day_key, @spent_usd, @cap_usd, @ceiling_usd, @immortal,
+        @decision_state, 'none', @card_state, @created_at, @expires_at)
+     ON CONFLICT(episode_id) DO NOTHING`,
+    {
       episode_id: ep.episode_id,
       short_id: ep.short_id,
       protocol_version: COST_EPISODE_PROTOCOL_VERSION,
@@ -122,24 +119,21 @@ export function ingestEpisode(ep: CostEpisodeInsert): boolean {
       card_state: ep.card_state ?? 'undelivered',
       created_at: ep.created_at,
       expires_at: ep.expires_at ?? null,
-    });
+    },
+  );
   return info.changes > 0;
 }
 
-export function getEpisode(episodeId: string): CostEpisodeRow | undefined {
-  const d = db();
+export async function getEpisode(episodeId: string): Promise<CostEpisodeRow | undefined> {
+  const d = await db();
   if (!d) return undefined;
-  return d.prepare(`SELECT * FROM cost_escalation_episodes WHERE episode_id = ?`).get(episodeId) as
-    | CostEpisodeRow
-    | undefined;
+  return d.get<CostEpisodeRow>(`SELECT * FROM cost_escalation_episodes WHERE episode_id = ?`, episodeId);
 }
 
-export function getEpisodeByShortId(shortId: string): CostEpisodeRow | undefined {
-  const d = db();
+export async function getEpisodeByShortId(shortId: string): Promise<CostEpisodeRow | undefined> {
+  const d = await db();
   if (!d) return undefined;
-  return d.prepare(`SELECT * FROM cost_escalation_episodes WHERE short_id = ?`).get(shortId) as
-    | CostEpisodeRow
-    | undefined;
+  return d.get<CostEpisodeRow>(`SELECT * FROM cost_escalation_episodes WHERE short_id = ?`, shortId);
 }
 
 /**
@@ -150,20 +144,20 @@ export function getEpisodeByShortId(shortId: string): CostEpisodeRow | undefined
  * mode, an already-expired card, or a session whose escalation was already resolved) — the
  * pill then falls back to the legacy unconditional override.
  */
-export function getPendingEpisodeForSession(
+export async function getPendingEpisodeForSession(
   sessionId: string,
   nowIso = new Date().toISOString(),
-): CostEpisodeRow | undefined {
-  const d = db();
+): Promise<CostEpisodeRow | undefined> {
+  const d = await db();
   if (!d) return undefined;
-  return d
-    .prepare(
-      `SELECT * FROM cost_escalation_episodes
-        WHERE session_id = ? AND decision_state = 'pending'
-          AND (expires_at IS NULL OR datetime(expires_at) > datetime(?))
-        ORDER BY created_at DESC LIMIT 1`,
-    )
-    .get(sessionId, nowIso) as CostEpisodeRow | undefined;
+  return d.get<CostEpisodeRow>(
+    `SELECT * FROM cost_escalation_episodes
+      WHERE session_id = ? AND decision_state = 'pending'
+        AND (expires_at IS NULL OR datetime(expires_at) > datetime(?))
+      ORDER BY created_at DESC LIMIT 1`,
+    sessionId,
+    nowIso,
+  );
 }
 
 /**
@@ -175,12 +169,13 @@ export function getPendingEpisodeForSession(
  * has NEVER emitted a protocol episode returns undefined → the pill's legacy unconditional
  * override (stale runner) is the only place an unfenced override is allowed.
  */
-export function getLatestEpisodeForSession(sessionId: string): CostEpisodeRow | undefined {
-  const d = db();
+export async function getLatestEpisodeForSession(sessionId: string): Promise<CostEpisodeRow | undefined> {
+  const d = await db();
   if (!d) return undefined;
-  return d
-    .prepare(`SELECT * FROM cost_escalation_episodes WHERE session_id = ? ORDER BY created_at DESC LIMIT 1`)
-    .get(sessionId) as CostEpisodeRow | undefined;
+  return d.get<CostEpisodeRow>(
+    `SELECT * FROM cost_escalation_episodes WHERE session_id = ? ORDER BY created_at DESC LIMIT 1`,
+    sessionId,
+  );
 }
 
 export interface ResolveResult {
@@ -202,30 +197,29 @@ export interface ResolveResult {
  * requires the episode's epoch to match the caller's view of the session's current
  * cost epoch — refusing an old-epoch decision (pre-`/clear`, yesterday's daily card).
  */
-export function resolveCostEpisode(
+export async function resolveCostEpisode(
   episodeId: string,
   decision: CostDecision,
   resolvedBy: string,
   opts: { nowIso?: string; expectedEpochKey?: string } = {},
-): ResolveResult {
-  const d = db();
+): Promise<ResolveResult> {
+  const d = await db();
   if (!d) return { won: false, episode: undefined };
   const now = opts.nowIso ?? new Date().toISOString();
   const nextState: CostDecisionState =
     decision === 'continue' ? 'continued' : decision === 'stop' ? 'stopped' : 'expired';
 
-  const info = d
-    .prepare(
-      `UPDATE cost_escalation_episodes
-          SET decision_state = @next, resolved_at = @now, resolved_by = @by
-        WHERE episode_id = @id
-          AND decision_state = 'pending'
-          AND (expires_at IS NULL OR datetime(expires_at) > datetime(@now))
-          AND (@epoch IS NULL OR epoch_key = @epoch)`,
-    )
-    .run({ id: episodeId, next: nextState, now, by: resolvedBy, epoch: opts.expectedEpochKey ?? null });
+  const info = await d.run(
+    `UPDATE cost_escalation_episodes
+        SET decision_state = @next, resolved_at = @now, resolved_by = @by
+      WHERE episode_id = @id
+        AND decision_state = 'pending'
+        AND (expires_at IS NULL OR datetime(expires_at) > datetime(@now))
+        AND (@epoch IS NULL OR epoch_key = @epoch)`,
+    { id: episodeId, next: nextState, now, by: resolvedBy, epoch: opts.expectedEpochKey ?? null },
+  );
 
-  return { won: info.changes > 0, episode: getEpisode(episodeId) };
+  return { won: info.changes > 0, episode: await getEpisode(episodeId) };
 }
 
 /**
@@ -237,24 +231,23 @@ export function resolveCostEpisode(
  * `decision_state` off `pending`, and the other finds 0 rows. So exactly-once holds
  * across the click/expiry boundary. Dismiss is advisory (T1): no session mutation.
  */
-export function expireEpisode(
+export async function expireEpisode(
   episodeId: string,
   resolvedBy = 'sweep:expiry',
   nowIso = new Date().toISOString(),
-): ResolveResult {
-  const d = db();
+): Promise<ResolveResult> {
+  const d = await db();
   if (!d) return { won: false, episode: undefined };
-  const info = d
-    .prepare(
-      `UPDATE cost_escalation_episodes
-          SET decision_state = 'expired', resolved_at = @now, resolved_by = @by
-        WHERE episode_id = @id
-          AND decision_state = 'pending'
-          AND expires_at IS NOT NULL
-          AND datetime(expires_at) <= datetime(@now)`,
-    )
-    .run({ id: episodeId, now: nowIso, by: resolvedBy });
-  return { won: info.changes > 0, episode: getEpisode(episodeId) };
+  const info = await d.run(
+    `UPDATE cost_escalation_episodes
+        SET decision_state = 'expired', resolved_at = @now, resolved_by = @by
+      WHERE episode_id = @id
+        AND decision_state = 'pending'
+        AND expires_at IS NOT NULL
+        AND datetime(expires_at) <= datetime(@now)`,
+    { id: episodeId, now: nowIso, by: resolvedBy },
+  );
+  return { won: info.changes > 0, episode: await getEpisode(episodeId) };
 }
 
 /**
@@ -262,65 +255,74 @@ export function expireEpisode(
  * Marks any still-live T1 (`reason='cap'`) episode for this (session, epoch)
  * `superseded`, so a live cap card and a ceiling close can never coexist.
  */
-export function supersedeLiveCapEpisodes(
+export async function supersedeLiveCapEpisodes(
   sessionId: string,
   epochKey: string,
   nowIso = new Date().toISOString(),
-): CostEpisodeRow[] {
-  const d = db();
+): Promise<CostEpisodeRow[]> {
+  const d = await db();
   if (!d) return [];
-  const rows = d
-    .prepare(
-      `SELECT * FROM cost_escalation_episodes
-        WHERE session_id = ? AND epoch_key = ? AND reason = 'cap' AND decision_state = 'pending'`,
-    )
-    .all(sessionId, epochKey) as CostEpisodeRow[];
-  d.prepare(
+  const rows = await d.all<CostEpisodeRow>(
+    `SELECT * FROM cost_escalation_episodes
+      WHERE session_id = ? AND epoch_key = ? AND reason = 'cap' AND decision_state = 'pending'`,
+    sessionId,
+    epochKey,
+  );
+  await d.run(
     `UPDATE cost_escalation_episodes
         SET decision_state = 'superseded', resolved_at = ?, resolved_by = 'supersede:ceiling'
       WHERE session_id = ? AND epoch_key = ? AND reason = 'cap' AND decision_state = 'pending'`,
-  ).run(nowIso, sessionId, epochKey);
+    nowIso,
+    sessionId,
+    epochKey,
+  );
   return rows;
 }
 
 // ── effect + card lifecycle setters (idempotent single-column advances) ──
-export function markEffectEnqueued(episodeId: string): void {
-  db()
-    ?.prepare(`UPDATE cost_escalation_episodes SET effect_state='enqueued' WHERE episode_id=? AND effect_state='none'`)
-    .run(episodeId);
+export async function markEffectEnqueued(episodeId: string): Promise<void> {
+  await (
+    await db()
+  )?.run(
+    `UPDATE cost_escalation_episodes SET effect_state='enqueued' WHERE episode_id=? AND effect_state='none'`,
+    episodeId,
+  );
 }
-export function markEffectApplied(episodeId: string): void {
-  db()?.prepare(`UPDATE cost_escalation_episodes SET effect_state='applied' WHERE episode_id=?`).run(episodeId);
+export async function markEffectApplied(episodeId: string): Promise<void> {
+  await (await db())?.run(`UPDATE cost_escalation_episodes SET effect_state='applied' WHERE episode_id=?`, episodeId);
 }
-export function bumpEffectAttempt(episodeId: string, error?: string): void {
-  db()
-    ?.prepare(`UPDATE cost_escalation_episodes SET effect_attempts=effect_attempts+1, last_error=? WHERE episode_id=?`)
-    .run(error ?? null, episodeId);
+export async function bumpEffectAttempt(episodeId: string, error?: string): Promise<void> {
+  await (
+    await db()
+  )?.run(
+    `UPDATE cost_escalation_episodes SET effect_attempts=effect_attempts+1, last_error=? WHERE episode_id=?`,
+    error ?? null,
+    episodeId,
+  );
 }
 // ── reconciler queries (the host-sweep repairs half-done state from these) ──
 /** Decided episodes whose effect has not yet landed — re-drive them. */
-export function listUnappliedEffects(limit = 50): CostEpisodeRow[] {
-  const d = db();
+export async function listUnappliedEffects(limit = 50): Promise<CostEpisodeRow[]> {
+  const d = await db();
   if (!d) return [];
-  return d
-    .prepare(
-      `SELECT * FROM cost_escalation_episodes
+  return d.all<CostEpisodeRow>(
+    `SELECT * FROM cost_escalation_episodes
       WHERE decision_state IN ('continued','stopped','expired') AND effect_state <> 'applied'
       ORDER BY resolved_at LIMIT ?`,
-    )
-    .all(limit) as CostEpisodeRow[];
+    limit,
+  );
 }
 /** Pending episodes past their expiry — the sweep resolves each to 'expired'. */
-export function listExpiredPending(nowIso = new Date().toISOString(), limit = 50): CostEpisodeRow[] {
-  const d = db();
+export async function listExpiredPending(nowIso = new Date().toISOString(), limit = 50): Promise<CostEpisodeRow[]> {
+  const d = await db();
   if (!d) return [];
-  return d
-    .prepare(
-      `SELECT * FROM cost_escalation_episodes
+  return d.all<CostEpisodeRow>(
+    `SELECT * FROM cost_escalation_episodes
       WHERE decision_state='pending' AND expires_at IS NOT NULL AND datetime(expires_at) <= datetime(?)
       ORDER BY expires_at LIMIT ?`,
-    )
-    .all(nowIso, limit) as CostEpisodeRow[];
+    nowIso,
+    limit,
+  );
 }
 
 /**
@@ -330,14 +332,14 @@ export function listExpiredPending(nowIso = new Date().toISOString(), limit = 50
  * card_state='observed', which the reconciler's card query excludes, so this is defense
  * in depth: it guarantees a flag flip can never card a backlog of S1 episodes.)
  */
-export function supersedeObservedEpisodes(nowIso = new Date().toISOString()): number {
-  const d = db();
+export async function supersedeObservedEpisodes(nowIso = new Date().toISOString()): Promise<number> {
+  const d = await db();
   if (!d) return 0;
-  return d
-    .prepare(
-      `UPDATE cost_escalation_episodes
-        SET decision_state='superseded', resolved_at=?, resolved_by='supersede:activation'
-      WHERE decision_state='observed'`,
-    )
-    .run(nowIso).changes;
+  const info = await d.run(
+    `UPDATE cost_escalation_episodes
+      SET decision_state='superseded', resolved_at=?, resolved_by='supersede:activation'
+    WHERE decision_state='observed'`,
+    nowIso,
+  );
+  return info.changes;
 }

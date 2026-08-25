@@ -1,5 +1,3 @@
-import type Database from 'better-sqlite3';
-
 import { log } from '../../log.js';
 import type { Migration } from './index.js';
 
@@ -66,11 +64,10 @@ export const migration935: Migration = {
   version: 935,
   name: 'approval-decisions-quarantine-legacy',
   dependsOn: ['approval-decision-provenance'],
-  up(db: Database.Database) {
-    const cols = db.prepare(`PRAGMA table_info(approval_decisions)`).all() as Array<{ name: string }>;
-    if (!cols.length) return; // table not created yet — 929 owns it
+  async up(db) {
+    if (!(await db.hasTable('approval_decisions'))) return; // 929 owns the table
 
-    db.exec(`
+    await db.exec(`
       CREATE TABLE IF NOT EXISTS approval_decisions_legacy (
         repo             TEXT NOT NULL,
         pr_number        INTEGER NOT NULL,
@@ -98,25 +95,31 @@ export const migration935: Migration = {
     `);
 
     // Copy first, then delete — and only delete what the copy accepted, so a
-    // row can never be dropped without a surviving counterpart. INSERT OR
-    // IGNORE makes a re-run harmless; the migration runner wraps this in a
+    // row can never be dropped without a surviving counterpart. The NOT EXISTS
+    // guard makes a re-run harmless (it is the portable form of `INSERT OR
+    // IGNORE`, which is SQLite-only); the migration runner wraps this in a
     // transaction, so a failure anywhere leaves the original table untouched.
-    const moved = db
-      .prepare(
-        `INSERT OR IGNORE INTO approval_decisions_legacy (${COLUMNS})
-         SELECT ${COLUMNS} FROM approval_decisions WHERE provenance IS NOT 'agent_verified'`,
-      )
-      .run();
-    db.prepare(
+    const moved = await db.run(
+      `INSERT INTO approval_decisions_legacy (${COLUMNS})
+       SELECT ${COLUMNS} FROM approval_decisions d
+        WHERE (d.provenance IS NULL OR d.provenance <> 'agent_verified')
+          AND NOT EXISTS (
+            SELECT 1 FROM approval_decisions_legacy l
+             WHERE l.repo = d.repo
+               AND l.pr_number = d.pr_number
+               AND l.commit_sha = d.commit_sha
+          )`,
+    );
+    await db.run(
       `DELETE FROM approval_decisions
-        WHERE provenance IS NOT 'agent_verified'
+        WHERE (provenance IS NULL OR provenance <> 'agent_verified')
           AND EXISTS (
             SELECT 1 FROM approval_decisions_legacy l
              WHERE l.repo = approval_decisions.repo
                AND l.pr_number = approval_decisions.pr_number
                AND l.commit_sha = approval_decisions.commit_sha
           )`,
-    ).run();
+    );
 
     if (moved.changes > 0) {
       // The count matters operationally: it is the answer to "why do the

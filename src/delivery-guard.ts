@@ -35,7 +35,7 @@ export interface DeliveryGuardSpec {
    */
   requestHold?: (content: Record<string, unknown>, session: Session) => Promise<void>;
   /** Tell the requester about a deny. */
-  onDeny?: (content: Record<string, unknown>, session: Session, reason: string) => void;
+  onDeny?: (content: Record<string, unknown>, session: Session, reason: string) => void | Promise<void>;
 }
 
 /**
@@ -55,7 +55,7 @@ export async function runGuarded(
 ): Promise<void> {
   if (spec.precheck && !(await spec.precheck(content, session))) return;
 
-  const decision = guard(spec.guardAction, {
+  const decision = await guard(spec.guardAction, {
     actor: { kind: 'agent', agentGroupId: session.agent_group_id, sessionId: session.id },
     payload: content,
     grant,
@@ -63,7 +63,7 @@ export async function runGuarded(
 
   if (decision.effect === 'deny') {
     log.warn('Delivery action denied by guard', { action, reason: decision.reason });
-    spec.onDeny?.(content, session, decision.reason);
+    await spec.onDeny?.(content, session, decision.reason);
     return;
   }
   if (decision.effect === 'hold') {

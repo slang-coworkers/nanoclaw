@@ -121,11 +121,11 @@ function mirroredSkills(groupId: string): string[] {
   return fs.existsSync(dir) ? fs.readdirSync(dir).sort() : [];
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   fs.rmSync(TEST_ROOT, { recursive: true, force: true });
   fs.mkdirSync(TEST_ROOT, { recursive: true });
   buildFixtureRoot(path.join(TEST_ROOT, 'project'));
-  runMigrations(initTestDb());
+  await runMigrations(await initTestDb());
   process.chdir(path.join(TEST_ROOT, 'project'));
 });
 
@@ -170,36 +170,36 @@ describe('resolveMirroredSkillScope', () => {
 });
 
 describe('initGroupFilesystem skills mirror', () => {
-  it('mirrors only the scoped set for a typed group', () => {
+  it('mirrors only the scoped set for a typed group', async () => {
     const ag = makeGroup('ag-typed', 'proj-a-reader');
-    initGroupFilesystem(ag, {});
+    await initGroupFilesystem(ag, {});
 
     expect(mirroredSkills(ag.id)).toEqual(PROJ_A_SCOPE);
     expect(mirroredSkills(ag.id)).not.toContain('proj-b-tools');
   });
 
-  it('mirrors every skill for a null-coworker_type group', () => {
+  it('mirrors every skill for a null-coworker_type group', async () => {
     const ag = makeGroup('ag-untyped', null);
-    initGroupFilesystem(ag, {});
+    await initGroupFilesystem(ag, {});
 
     expect(mirroredSkills(ag.id)).toEqual([...ALL_SKILLS].sort());
   });
 
-  it('mirrors every skill for the flat main type', () => {
+  it('mirrors every skill for the flat main type', async () => {
     const ag = makeGroup('ag-main', 'main');
-    initGroupFilesystem(ag, {});
+    await initGroupFilesystem(ag, {});
 
     expect(mirroredSkills(ag.id)).toEqual([...ALL_SKILLS].sort());
   });
 
-  it('prunes an already-mirrored skill that is no longer in scope', () => {
+  it('prunes an already-mirrored skill that is no longer in scope', async () => {
     // Simulate a group mirrored before scoping existed (or whose type changed).
     const ag = makeGroup('ag-prune', null);
-    initGroupFilesystem(ag, {});
+    await initGroupFilesystem(ag, {});
     expect(mirroredSkills(ag.id)).toContain('proj-b-tools');
 
     const typed = { ...ag, coworker_type: 'proj-a-reader' } as AgentGroup;
-    initGroupFilesystem(typed, {});
+    await initGroupFilesystem(typed, {});
 
     expect(mirroredSkills(ag.id)).not.toContain('proj-b-tools');
     expect(mirroredSkills(ag.id)).toContain('proj-a-tools');

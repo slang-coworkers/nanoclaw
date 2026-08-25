@@ -30,10 +30,12 @@ interface PrMappingRow {
   created_at: string;
 }
 
-function readMapping(repo: string, prNumber: number): PrMappingRow | undefined {
-  return getDb().prepare('SELECT * FROM pr_session_mappings WHERE repo = ? AND pr_number = ?').get(repo, prNumber) as
-    | PrMappingRow
-    | undefined;
+function readMapping(repo: string, prNumber: number): Promise<PrMappingRow | undefined> {
+  return getDb().get<PrMappingRow>(
+    'SELECT * FROM pr_session_mappings WHERE repo = ? AND pr_number = ?',
+    repo,
+    prNumber,
+  );
 }
 
 registerResource({
@@ -87,9 +89,9 @@ registerResource({
         // Derive the group from the session rather than accepting it. A caller
         // that could name both could point a PR at a session in one group while
         // labelling it another, and the routing layer reads the group.
-        const target = getSession(sessionId);
+        const target = await getSession(sessionId);
         if (!target) throw new Error(`No session ${sessionId}`);
-        const group = getAgentGroup(target.agent_group_id);
+        const group = await getAgentGroup(target.agent_group_id);
         if (!group) throw new Error(`Session ${sessionId} belongs to unknown agent group ${target.agent_group_id}`);
 
         if (ctx?.caller === 'agent' && ctx.agentGroupId === target.agent_group_id) {
@@ -98,8 +100,8 @@ registerResource({
           );
         }
 
-        const before = readMapping(repo, prNumber);
-        const { prior } = overridePrMapping(
+        const before = await readMapping(repo, prNumber);
+        const { prior } = await overridePrMapping(
           getDb(),
           {
             repo,

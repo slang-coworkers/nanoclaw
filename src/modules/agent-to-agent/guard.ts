@@ -42,9 +42,9 @@ export const agentsCreate = defineGuardedAction({
       return false;
     }
   },
-  decide: (input) => {
+  decide: async (input) => {
     if (input.actor.kind !== 'agent') return DENY('create_agent is a container-originated action.');
-    const cliScope = getContainerConfig(input.actor.agentGroupId)?.cli_scope ?? 'group';
+    const cliScope = (await getContainerConfig(input.actor.agentGroupId))?.cli_scope ?? 'group';
     if (cliScope === 'global') {
       // Trusted owner agent group — an approval tap on every sub-agent spawn
       // would be needless friction.
@@ -68,7 +68,7 @@ export const a2aSend = defineGuardedAction({
       return false;
     }
   },
-  decide: (input) => {
+  decide: async (input) => {
     if (input.actor.kind !== 'agent') return DENY('agent-to-agent send requires an agent actor');
     const from = input.actor.agentGroupId;
     const to = input.resource?.to ?? '';
@@ -87,17 +87,17 @@ export const a2aSend = defineGuardedAction({
     //   3. otherwise a fresh peer-to-peer send requires an explicit
     //      destination row (fail-closed).
     const sessionId = input.actor.sessionId;
-    const isAncestorReply = !isSelf && sessionId != null && isAncestorGroup(sessionId, to);
-    if (!isSelf && !isAncestorReply && !hasDestination(from, 'agent', to)) {
+    const isAncestorReply = !isSelf && sessionId != null && (await isAncestorGroup(sessionId, to));
+    if (!isSelf && !isAncestorReply && !(await hasDestination(from, 'agent', to))) {
       return DENY(`unauthorized agent-to-agent: ${from} has no destination for ${to}`);
     }
-    if (!getAgentGroup(to)) {
+    if (!(await getAgentGroup(to))) {
       return DENY(`target agent group ${to} not found for message ${String(input.payload.id)}`);
     }
     if (isSelf) return ALLOW('self-send');
     // The per-edge message policy holds even an authorized send (lineage or
     // destination) for admin approval when a policy row names an approver.
-    const policy = getMessagePolicy(from, to);
+    const policy = await getMessagePolicy(from, to);
     if (policy) {
       return HOLD(`a2a message policy ${from}→${to} holds for ${policy.approver}`, policy.approver);
     }

@@ -67,28 +67,26 @@ describe('deliverGitHubMention — owner_instance routing', () => {
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({
-        prepare: () => ({
-          get: () => ({
-            agent_group_id: 'g-lego',
-            session_id: 's-lego',
-            thread_id: 't-lego',
-            owner_instance: 'lego',
-          }),
+        get: async () => ({
+          agent_group_id: 'g-lego',
+          session_id: 's-lego',
+          thread_id: 't-lego',
+          owner_instance: 'lego',
         }),
       }),
     }));
     vi.doMock('./db/sessions.js', () => ({
-      findSessionByAgentGroup: () => undefined,
-      findSessionByAgentThread: () => undefined,
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      findSessionByAgentGroup: async () => undefined,
+      findSessionByAgentThread: async () => undefined,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => undefined,
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => undefined,
+      getAgentGroupByFolder: async () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         // prepare().get() backs the idempotency guard added in #513
         // (SELECT 1 FROM messages_in WHERE id = ?). Returning undefined means
@@ -100,7 +98,7 @@ describe('deliverGitHubMention — owner_instance routing', () => {
     }));
 
     const { deliverGitHubMention } = await import('./webhook-github.js');
-    const outcome = deliverGitHubMention({
+    const outcome = await deliverGitHubMention({
       repo: 'shader-slang/slang',
       issueNumber: 42,
       commentId: 1,
@@ -132,28 +130,26 @@ describe('deliverGitHubMention — owner_instance routing', () => {
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({
-        prepare: () => ({
-          get: () => ({
-            agent_group_id: 'g-lego',
-            session_id: 's-lego',
-            thread_id: 't',
-            owner_instance: 'lego',
-          }),
+        get: async () => ({
+          agent_group_id: 'g-lego',
+          session_id: 's-lego',
+          thread_id: 't',
+          owner_instance: 'lego',
         }),
       }),
     }));
     vi.doMock('./db/sessions.js', () => ({
-      findSessionByAgentGroup: () => undefined,
-      findSessionByAgentThread: () => undefined,
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      findSessionByAgentGroup: async () => undefined,
+      findSessionByAgentThread: async () => undefined,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => undefined,
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => undefined,
+      getAgentGroupByFolder: async () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         // prepare().get() backs the idempotency guard added in #513
         // (SELECT 1 FROM messages_in WHERE id = ?). Returning undefined means
@@ -165,7 +161,7 @@ describe('deliverGitHubMention — owner_instance routing', () => {
     }));
 
     const { deliverGitHubMention } = await import('./webhook-github.js');
-    const outcome = deliverGitHubMention({
+    const outcome = await deliverGitHubMention({
       repo: 'shader-slang/slang',
       issueNumber: 42,
       commentId: 1,
@@ -195,41 +191,40 @@ describe('deliverGitHubMention — owner_instance routing', () => {
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({
-        prepare: () => ({
-          get: () => ({
-            agent_group_id: 'g-prod',
-            session_id: 's-prod',
-            thread_id: 't',
-            owner_instance: 'prod',
-          }),
+        get: async () => ({
+          agent_group_id: 'g-prod',
+          session_id: 's-prod',
+          thread_id: 't',
+          owner_instance: 'prod',
         }),
       }),
     }));
     vi.doMock('./db/sessions.js', () => ({
-      findSessionByAgentGroup: () => undefined,
-      findSessionByAgentThread: () => undefined,
+      findSessionByAgentGroup: async () => undefined,
+      findSessionByAgentThread: async () => undefined,
       getSession: () => ({ id: 's-prod' }),
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => undefined,
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => undefined,
+      getAgentGroupByFolder: async () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
         close: () => undefined,
       }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
+    vi.doMock('./mailbox/sqlite/paths.js', () => ({ inboundDbPath: () => '/tmp/inbox.db' }));
     vi.doMock('./session-manager.js', () => ({
       inboundDbPath: () => '/tmp/inbox.db',
       initSessionFolder: () => undefined,
     }));
 
     const { deliverGitHubMention } = await import('./webhook-github.js');
-    const outcome = deliverGitHubMention({
+    const outcome = await deliverGitHubMention({
       repo: 'shader-slang/slang',
       issueNumber: 42,
       commentId: 9,
@@ -264,7 +259,7 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({
-      getDb: () => ({ prepare: () => ({ get: () => undefined }) }), // no mapping row
+      getDb: () => ({ get: async () => undefined }), // no mapping row
     }));
     vi.doMock('./db/sessions.js', () => ({
       findSessionByAgentGroup: () => ({ id: 'sess-generic' }),
@@ -272,28 +267,29 @@ describe('deliverGitHubMention — owner_instance routing', () => {
         threadLookups.push(thread);
         return { id: 'sess-pr-chain' };
       },
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: async () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
         close: () => undefined,
       }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
+    vi.doMock('./mailbox/sqlite/paths.js', () => ({ inboundDbPath: () => '/tmp/orch.db' }));
     vi.doMock('./session-manager.js', () => ({
       inboundDbPath: () => '/tmp/orch.db',
       initSessionFolder: () => undefined,
     }));
 
     const { deliverGitHubMention } = await import('./webhook-github.js');
-    const outcome = deliverGitHubMention({
+    const outcome = await deliverGitHubMention({
       repo: 'shader-slang/slang',
       issueNumber: 99,
       commentId: 5,
@@ -333,7 +329,7 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({
-      getDb: () => ({ prepare: () => ({ get: () => undefined }) }), // no mapping row
+      getDb: () => ({ get: async () => undefined }), // no mapping row
     }));
     vi.doMock('./db/sessions.js', () => ({
       findSessionByAgentGroup: () => ({ id: 'sess-generic' }),
@@ -341,28 +337,29 @@ describe('deliverGitHubMention — owner_instance routing', () => {
         threadLookups.push(thread);
         return { id: 'sess-issue-chain' };
       },
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: async () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
         close: () => undefined,
       }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
+    vi.doMock('./mailbox/sqlite/paths.js', () => ({ inboundDbPath: () => '/tmp/orch.db' }));
     vi.doMock('./session-manager.js', () => ({
       inboundDbPath: () => '/tmp/orch.db',
       initSessionFolder: () => undefined,
     }));
 
     const { deliverGitHubMention } = await import('./webhook-github.js');
-    const outcome = deliverGitHubMention({
+    const outcome = await deliverGitHubMention({
       repo: 'shader-slang/slang',
       issueNumber: 11372,
       commentId: 4593542165,
@@ -395,20 +392,20 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({
-      getDb: () => ({ prepare: () => ({ get: () => undefined }) }),
+      getDb: () => ({ get: async () => undefined }),
     }));
     vi.doMock('./db/sessions.js', () => ({
-      findSessionByAgentGroup: () => undefined,
-      findSessionByAgentThread: () => undefined,
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      findSessionByAgentGroup: async () => undefined,
+      findSessionByAgentThread: async () => undefined,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => undefined,
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => undefined,
+      getAgentGroupByFolder: async () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         // prepare().get() backs the idempotency guard added in #513
         // (SELECT 1 FROM messages_in WHERE id = ?). Returning undefined means
@@ -420,7 +417,7 @@ describe('deliverGitHubMention — owner_instance routing', () => {
     }));
 
     const { deliverGitHubMention } = await import('./webhook-github.js');
-    const outcome = deliverGitHubMention({
+    const outcome = await deliverGitHubMention({
       repo: 'slang-coworkers/nanoclaw',
       issueNumber: 511,
       commentId: 4591326399,
@@ -452,33 +449,34 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({
-      getDb: () => ({ prepare: () => ({ get: () => undefined }) }),
+      getDb: () => ({ get: async () => undefined }),
     }));
     vi.doMock('./db/sessions.js', () => ({
       findSessionByAgentGroup: () => ({ id: 'sess-orch' }),
       findSessionByAgentThread: () => ({ id: 'sess-orch' }),
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: async () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
         close: () => undefined,
       }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
+    vi.doMock('./mailbox/sqlite/paths.js', () => ({ inboundDbPath: () => '/tmp/orch.db' }));
     vi.doMock('./session-manager.js', () => ({
       inboundDbPath: () => '/tmp/orch.db',
       initSessionFolder: () => undefined,
     }));
 
     const { deliverGitHubMention } = await import('./webhook-github.js');
-    const outcome = deliverGitHubMention({
+    const outcome = await deliverGitHubMention({
       repo: 'shader-slang/slang',
       issueNumber: 100,
       commentId: 7,
@@ -509,41 +507,40 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({
-        prepare: () => ({
-          get: () => ({
-            agent_group_id: 'g-fixer',
-            session_id: 's-fixer',
-            thread_id: 't-pr',
-            owner_instance: 'lego',
-          }),
+        get: async () => ({
+          agent_group_id: 'g-fixer',
+          session_id: 's-fixer',
+          thread_id: 't-pr',
+          owner_instance: 'lego',
         }),
       }),
     }));
     vi.doMock('./db/sessions.js', () => ({
-      findSessionByAgentGroup: () => undefined,
-      findSessionByAgentThread: () => undefined,
-      getSession: () => ({ id: 's-fixer' }),
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      findSessionByAgentGroup: async () => undefined,
+      findSessionByAgentThread: async () => undefined,
+      getSession: async () => ({ id: 's-fixer' }),
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => undefined,
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => undefined,
+      getAgentGroupByFolder: async () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
         close: () => undefined,
       }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
+    vi.doMock('./mailbox/sqlite/paths.js', () => ({ inboundDbPath: () => '/tmp/fixer.db' }));
     vi.doMock('./session-manager.js', () => ({
       inboundDbPath: () => '/tmp/fixer.db',
       initSessionFolder: () => undefined,
     }));
 
     const { deliverGitHubPrEvent } = await import('./webhook-github.js');
-    const outcome = deliverGitHubPrEvent({
+    const outcome = await deliverGitHubPrEvent({
       repo: 'shader-slang/slang',
       prNumber: 11372,
       event: 'github.pr_review',
@@ -580,41 +577,44 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./modules/pending-reviewable/store.js', () => ({
-      parkReviewable: () => undefined,
-      deleteParked: (_db: unknown, repo: string, pr: number) => deleted.push({ repo, pr }),
+      parkReviewable: async () => undefined,
+      deleteParked: async (_db: unknown, repo: string, pr: number) => {
+        deleted.push({ repo, pr });
+      },
     }));
     // No approver decided this PR — the learning-loop side-channel no-ops, so
     // this test isolates the GC.
-    vi.doMock('./modules/approval-ledger/store.js', () => ({ getDecisionSessionsForPr: () => [] }));
+    vi.doMock('./modules/approval-ledger/store.js', () => ({ getDecisionSessionsForPr: async () => [] }));
     vi.doMock('./db/connection.js', () => ({
-      getDb: () => ({ prepare: () => ({ get: () => undefined }) }),
+      getDb: () => ({ get: async () => undefined }),
     }));
     vi.doMock('./db/sessions.js', () => ({
-      findSessionByAgentGroup: () => undefined,
-      findSessionByAgentThread: () => undefined,
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      findSessionByAgentGroup: async () => undefined,
+      findSessionByAgentThread: async () => undefined,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => undefined,
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => undefined,
+      getAgentGroupByFolder: async () => undefined,
       getAgentGroup: () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
         close: () => undefined,
       }),
       insertMessage: () => undefined,
     }));
+    vi.doMock('./mailbox/sqlite/paths.js', () => ({ inboundDbPath: () => '/tmp/x.db' }));
     vi.doMock('./session-manager.js', () => ({
       inboundDbPath: () => '/tmp/x.db',
       initSessionFolder: () => undefined,
     }));
 
     const { deliverGitHubPrEvent } = await import('./webhook-github.js');
-    deliverGitHubPrEvent({
+    await deliverGitHubPrEvent({
       repo: 'shader-slang/slang',
       prNumber: 12141,
       event: 'github.pr_merged',
@@ -639,39 +639,42 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./modules/pending-reviewable/store.js', () => ({
-      parkReviewable: () => undefined,
-      deleteParked: (_db: unknown, repo: string, pr: number) => deleted.push({ repo, pr }),
+      parkReviewable: async () => undefined,
+      deleteParked: async (_db: unknown, repo: string, pr: number) => {
+        deleted.push({ repo, pr });
+      },
     }));
-    vi.doMock('./modules/approval-ledger/store.js', () => ({ getDecisionSessionsForPr: () => [] }));
+    vi.doMock('./modules/approval-ledger/store.js', () => ({ getDecisionSessionsForPr: async () => [] }));
     vi.doMock('./db/connection.js', () => ({
-      getDb: () => ({ prepare: () => ({ get: () => undefined }) }),
+      getDb: () => ({ get: async () => undefined }),
     }));
     vi.doMock('./db/sessions.js', () => ({
-      findSessionByAgentGroup: () => undefined,
-      findSessionByAgentThread: () => undefined,
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      findSessionByAgentGroup: async () => undefined,
+      findSessionByAgentThread: async () => undefined,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => undefined,
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => undefined,
+      getAgentGroupByFolder: async () => undefined,
       getAgentGroup: () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
         close: () => undefined,
       }),
       insertMessage: () => undefined,
     }));
+    vi.doMock('./mailbox/sqlite/paths.js', () => ({ inboundDbPath: () => '/tmp/x.db' }));
     vi.doMock('./session-manager.js', () => ({
       inboundDbPath: () => '/tmp/x.db',
       initSessionFolder: () => undefined,
     }));
 
     const { deliverGitHubPrEvent } = await import('./webhook-github.js');
-    deliverGitHubPrEvent({
+    await deliverGitHubPrEvent({
       repo: 'shader-slang/slang',
       prNumber: 12141,
       event: 'github.pr_review',
@@ -701,45 +704,46 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./modules/approval-ledger/store.js', () => ({
-      getDecisionSessionsForPr: () => [
+      getDecisionSessionsForPr: async () => [
         { agent_group_id: 'g-app', session_id: 's-app', thread_id: null, commit_sha: 'a'.repeat(40) },
       ],
-      recordHumanVerdict: (_db: unknown, repo: string, pr: number, sha: string, verdict: string) => {
+      recordHumanVerdict: async (_db: unknown, repo: string, pr: number, sha: string, verdict: string) => {
         joins.push({ repo, pr, sha, verdict });
         return true;
       },
     }));
     vi.doMock('./modules/pending-reviewable/store.js', () => ({
-      parkReviewable: () => undefined,
-      deleteParked: () => undefined,
+      parkReviewable: async () => undefined,
+      deleteParked: async () => undefined,
     }));
-    vi.doMock('./db/connection.js', () => ({ getDb: () => ({ prepare: () => ({ get: () => undefined }) }) }));
+    vi.doMock('./db/connection.js', () => ({ getDb: () => ({ get: async () => undefined }) }));
     vi.doMock('./db/sessions.js', () => ({
-      findSessionByAgentGroup: () => undefined,
-      findSessionByAgentThread: () => undefined,
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      findSessionByAgentGroup: async () => undefined,
+      findSessionByAgentThread: async () => undefined,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => undefined,
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => undefined,
+      getAgentGroupByFolder: async () => undefined,
       getAgentGroup: () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
         close: () => undefined,
       }),
       insertMessage: () => undefined,
     }));
+    vi.doMock('./mailbox/sqlite/paths.js', () => ({ inboundDbPath: () => '/tmp/x.db' }));
     vi.doMock('./session-manager.js', () => ({
       inboundDbPath: () => '/tmp/x.db',
       initSessionFolder: () => undefined,
     }));
 
     const { deliverGitHubPrEvent } = await import('./webhook-github.js');
-    deliverGitHubPrEvent({
+    await deliverGitHubPrEvent({
       repo: 'shader-slang/slang',
       prNumber: 12034,
       event: 'github.pr_merged',
@@ -777,36 +781,37 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       },
     }));
     vi.doMock('./modules/pending-reviewable/store.js', () => ({
-      parkReviewable: () => undefined,
-      deleteParked: () => undefined,
+      parkReviewable: async () => undefined,
+      deleteParked: async () => undefined,
     }));
-    vi.doMock('./db/connection.js', () => ({ getDb: () => ({ prepare: () => ({ get: () => undefined }) }) }));
+    vi.doMock('./db/connection.js', () => ({ getDb: () => ({ get: async () => undefined }) }));
     vi.doMock('./db/sessions.js', () => ({
-      findSessionByAgentGroup: () => undefined,
-      findSessionByAgentThread: () => undefined,
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      findSessionByAgentGroup: async () => undefined,
+      findSessionByAgentThread: async () => undefined,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => undefined,
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => undefined,
+      getAgentGroupByFolder: async () => undefined,
       getAgentGroup: () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
         close: () => undefined,
       }),
       insertMessage: () => undefined,
     }));
+    vi.doMock('./mailbox/sqlite/paths.js', () => ({ inboundDbPath: () => '/tmp/x.db' }));
     vi.doMock('./session-manager.js', () => ({
       inboundDbPath: () => '/tmp/x.db',
       initSessionFolder: () => undefined,
     }));
 
     const { deliverGitHubPrEvent } = await import('./webhook-github.js');
-    deliverGitHubPrEvent({
+    await deliverGitHubPrEvent({
       repo: 'shader-slang/slang',
       prNumber: 12035,
       event: 'github.pr_closed',
@@ -831,41 +836,40 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({
-        prepare: () => ({
-          get: () => ({
-            agent_group_id: 'g-lego',
-            session_id: 's-lego',
-            thread_id: 't',
-            owner_instance: 'lego',
-          }),
+        get: async () => ({
+          agent_group_id: 'g-lego',
+          session_id: 's-lego',
+          thread_id: 't',
+          owner_instance: 'lego',
         }),
       }),
     }));
     vi.doMock('./db/sessions.js', () => ({
-      findSessionByAgentGroup: () => undefined,
-      findSessionByAgentThread: () => undefined,
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      findSessionByAgentGroup: async () => undefined,
+      findSessionByAgentThread: async () => undefined,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => undefined,
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => undefined,
+      getAgentGroupByFolder: async () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
         close: () => undefined,
       }),
       insertMessage: () => undefined,
     }));
+    vi.doMock('./mailbox/sqlite/paths.js', () => ({ inboundDbPath: () => '/tmp/x.db' }));
     vi.doMock('./session-manager.js', () => ({
       inboundDbPath: () => '/tmp/x.db',
       initSessionFolder: () => undefined,
     }));
 
     const { deliverGitHubPrEvent } = await import('./webhook-github.js');
-    const outcome = deliverGitHubPrEvent({
+    const outcome = await deliverGitHubPrEvent({
       repo: 'shader-slang/slang',
       prNumber: 11372,
       event: 'github.ci_failed',
@@ -894,34 +898,35 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({
-      getDb: () => ({ prepare: () => ({ get: () => undefined }) }), // no mapping row
+      getDb: () => ({ get: async () => undefined }), // no mapping row
     }));
     vi.doMock('./db/sessions.js', () => ({
       // Even if an orchestrator session exists, a PR event must NOT use it.
       findSessionByAgentGroup: () => ({ id: 'sess-orch' }),
       findSessionByAgentThread: () => ({ id: 'sess-orch' }),
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: async () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
         close: () => undefined,
       }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
+    vi.doMock('./mailbox/sqlite/paths.js', () => ({ inboundDbPath: () => '/tmp/orch.db' }));
     vi.doMock('./session-manager.js', () => ({
       inboundDbPath: () => '/tmp/orch.db',
       initSessionFolder: () => undefined,
     }));
 
     const { deliverGitHubPrEvent } = await import('./webhook-github.js');
-    const outcome = deliverGitHubPrEvent({
+    const outcome = await deliverGitHubPrEvent({
       repo: 'shader-slang/slang',
       prNumber: 99999,
       event: 'github.pr_review',
@@ -950,33 +955,34 @@ describe('deliverGitHubIssueOpened', () => {
       CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({
-      getDb: () => ({ prepare: () => ({ get: () => undefined }) }),
+      getDb: () => ({ get: async () => undefined }),
     }));
     vi.doMock('./db/sessions.js', () => ({
       findSessionByAgentGroup: () => ({ id: 'sess-orch' }),
       findSessionByAgentThread: () => ({ id: 'sess-orch' }),
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: async () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
         close: () => undefined,
       }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
+    vi.doMock('./mailbox/sqlite/paths.js', () => ({ inboundDbPath: () => '/tmp/orch.db' }));
     vi.doMock('./session-manager.js', () => ({
       inboundDbPath: () => '/tmp/orch.db',
       initSessionFolder: () => undefined,
     }));
 
     const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
-    const outcome = deliverGitHubIssueOpened({
+    const outcome = await deliverGitHubIssueOpened({
       repo: 'shader-slang/slang',
       issueNumber: 1234,
       issueUrl: 'https://github.com/shader-slang/slang/issues/1234',
@@ -1010,28 +1016,29 @@ describe('deliverGitHubIssueOpened', () => {
     }));
     vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
     vi.doMock('./db/sessions.js', () => ({
-      findSessionByAgentGroup: () => undefined,
-      findSessionByAgentThread: () => undefined,
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      findSessionByAgentGroup: async () => undefined,
+      findSessionByAgentThread: async () => undefined,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => undefined,
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => undefined,
+      getAgentGroupByFolder: async () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
         close: () => undefined,
       }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
+    vi.doMock('./mailbox/sqlite/paths.js', () => ({ inboundDbPath: () => '/tmp/x.db' }));
     vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/x.db', initSessionFolder: () => undefined }));
 
     const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
     const rawBody = JSON.stringify({ action: 'opened', issue: { number: 5555 } });
-    const outcome = deliverGitHubIssueOpened({
+    const outcome = await deliverGitHubIssueOpened({
       repo: 'shader-slang/slang',
       issueNumber: 5555,
       issueUrl: 'https://example.com/i/5555',
@@ -1067,27 +1074,28 @@ describe('deliverGitHubIssueOpened', () => {
     }));
     vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
     vi.doMock('./db/sessions.js', () => ({
-      findSessionByAgentGroup: () => undefined,
-      findSessionByAgentThread: () => undefined,
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      findSessionByAgentGroup: async () => undefined,
+      findSessionByAgentThread: async () => undefined,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => undefined,
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => undefined,
+      getAgentGroupByFolder: async () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
         close: () => undefined,
       }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
+    vi.doMock('./mailbox/sqlite/paths.js', () => ({ inboundDbPath: () => '/tmp/x.db' }));
     vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/x.db', initSessionFolder: () => undefined }));
 
     const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
-    const outcome = deliverGitHubIssueOpened({
+    const outcome = await deliverGitHubIssueOpened({
       repo: 'shader-slang/slang',
       issueNumber: 5555,
       issueUrl: '',
@@ -1121,28 +1129,29 @@ describe('deliverGitHubIssueOpened', () => {
     vi.doMock('./db/sessions.js', () => ({
       findSessionByAgentGroup: () => ({ id: 'sess-orch' }),
       findSessionByAgentThread: () => ({ id: 'sess-orch' }),
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
       getAdminAgentGroup: () => ({ id: 'g-admin', name: 'lego-orchestrator' }),
-      getAgentGroupByFolder: () => undefined,
+      getAgentGroupByFolder: async () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
         close: () => undefined,
       }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
+    vi.doMock('./mailbox/sqlite/paths.js', () => ({ inboundDbPath: () => '/tmp/orch.db' }));
     vi.doMock('./session-manager.js', () => ({
       inboundDbPath: () => '/tmp/orch.db',
       initSessionFolder: () => undefined,
     }));
 
     const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
-    const outcome = deliverGitHubIssueOpened({
+    const outcome = await deliverGitHubIssueOpened({
       repo: 'x/y',
       issueNumber: 1,
       issueUrl: '',
@@ -1174,17 +1183,17 @@ describe('deliverGitHubPrReviewable', () => {
     }));
     vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
     vi.doMock('./db/sessions.js', () => ({
-      findSessionByAgentGroup: () => undefined,
-      findSessionByAgentThread: () => undefined,
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      findSessionByAgentGroup: async () => undefined,
+      findSessionByAgentThread: async () => undefined,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => undefined,
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => undefined,
+      getAgentGroupByFolder: async () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
         close: () => undefined,
@@ -1193,7 +1202,7 @@ describe('deliverGitHubPrReviewable', () => {
     }));
 
     const { deliverGitHubPrReviewable } = await import('./webhook-github.js');
-    const outcome = deliverGitHubPrReviewable({
+    const outcome = await deliverGitHubPrReviewable({
       repo: 'shader-slang/slang',
       prNumber: 321,
       prUrl: 'https://github.com/shader-slang/slang/pull/321',
@@ -1224,17 +1233,17 @@ describe('deliverGitHubPrReviewable', () => {
     }));
     vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
     vi.doMock('./db/sessions.js', () => ({
-      findSessionByAgentGroup: () => undefined,
-      findSessionByAgentThread: () => undefined,
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      findSessionByAgentGroup: async () => undefined,
+      findSessionByAgentThread: async () => undefined,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => undefined,
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => undefined,
+      getAgentGroupByFolder: async () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
         close: () => undefined,
@@ -1243,7 +1252,7 @@ describe('deliverGitHubPrReviewable', () => {
     }));
 
     const { deliverGitHubPrReviewable } = await import('./webhook-github.js');
-    const outcome = deliverGitHubPrReviewable({
+    const outcome = await deliverGitHubPrReviewable({
       repo: 'shader-slang/slang',
       prNumber: 321,
       prUrl: '',
@@ -1278,28 +1287,29 @@ describe('deliverGitHubPrReviewable', () => {
         threadLookups.push(thread);
         return { id: 'sess-orch' };
       },
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: async () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
         close: () => undefined,
       }),
       insertMessage: (_db: unknown, msg: Record<string, unknown>) => insertCalls.push(msg),
     }));
+    vi.doMock('./mailbox/sqlite/paths.js', () => ({ inboundDbPath: () => '/tmp/orch.db' }));
     vi.doMock('./session-manager.js', () => ({
       inboundDbPath: () => '/tmp/orch.db',
       initSessionFolder: () => undefined,
     }));
 
     const { deliverGitHubPrReviewable } = await import('./webhook-github.js');
-    const outcome = deliverGitHubPrReviewable({
+    const outcome = await deliverGitHubPrReviewable({
       repo: 'shader-slang/slang',
       prNumber: 321,
       prUrl: 'https://github.com/shader-slang/slang/pull/321',
@@ -1339,17 +1349,17 @@ describe('deliverGitHubPrReviewable', () => {
     }));
     vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
     vi.doMock('./db/sessions.js', () => ({
-      findSessionByAgentGroup: () => undefined,
-      findSessionByAgentThread: () => ({ id: 'sess-orch' }),
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
+      findSessionByAgentGroup: async () => undefined,
+      findSessionByAgentThread: async () => ({ id: 'sess-orch' }),
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
-      getAgentGroupByFolder: () => undefined,
+      getAdminAgentGroup: async () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: async () => undefined,
     }));
-    vi.doMock('./db/session-db.js', () => ({
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
       openInboundDb: () => ({
         // Idempotency guard: report a row as existing iff we've inserted its id.
         prepare: (sql: string) => ({
@@ -1363,6 +1373,7 @@ describe('deliverGitHubPrReviewable', () => {
         seenIds.add(msg.id as string);
       },
     }));
+    vi.doMock('./mailbox/sqlite/paths.js', () => ({ inboundDbPath: () => '/tmp/orch.db' }));
     vi.doMock('./session-manager.js', () => ({
       inboundDbPath: () => '/tmp/orch.db',
       initSessionFolder: () => undefined,
@@ -1381,11 +1392,11 @@ describe('deliverGitHubPrReviewable', () => {
     } as const;
 
     // First push.
-    expect(deliverGitHubPrReviewable({ ...base, deliveryId: 'd-1' })).toBe('local');
+    expect(await deliverGitHubPrReviewable({ ...base, deliveryId: 'd-1' })).toBe('local');
     // Same delivery retried → dedup.
-    expect(deliverGitHubPrReviewable({ ...base, deliveryId: 'd-1' })).toBe('local');
+    expect(await deliverGitHubPrReviewable({ ...base, deliveryId: 'd-1' })).toBe('local');
     // Second push (new delivery) → re-fire.
-    expect(deliverGitHubPrReviewable({ ...base, deliveryId: 'd-2' })).toBe('local');
+    expect(await deliverGitHubPrReviewable({ ...base, deliveryId: 'd-2' })).toBe('local');
 
     expect(insertCalls).toHaveLength(2);
     expect(insertCalls.map((m) => m.id)).toEqual([

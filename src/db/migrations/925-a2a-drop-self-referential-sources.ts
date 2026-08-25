@@ -20,14 +20,8 @@ export const migration925: Migration = {
   version: 925,
   name: 'a2a-drop-self-referential-sources',
   dependsOn: ['a2a-session-sources'],
-  up(db) {
-    const hasTable =
-      (
-        db
-          .prepare("SELECT count(*) as c FROM sqlite_master WHERE type='table' AND name = 'a2a_session_sources'")
-          .get() as { c: number }
-      ).c > 0;
-    if (!hasTable) return;
-    db.prepare('DELETE FROM a2a_session_sources WHERE recipient_session_id = source_session_id').run();
+  async up(db) {
+    if (!(await db.hasTable('a2a_session_sources'))) return;
+    await db.run('DELETE FROM a2a_session_sources WHERE recipient_session_id = source_session_id');
   },
 };

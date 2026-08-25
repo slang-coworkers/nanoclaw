@@ -1,5 +1,3 @@
-import type Database from 'better-sqlite3';
-
 import type { Migration } from './index.js';
 
 /**
@@ -24,8 +22,8 @@ import type { Migration } from './index.js';
 export const migration930: Migration = {
   version: 930,
   name: 'pending-reviewable-prs',
-  up(db: Database.Database) {
-    db.exec(`
+  async up(db) {
+    await db.exec(`
       CREATE TABLE IF NOT EXISTS pending_reviewable_prs (
         repo           TEXT NOT NULL,
         pr_number      INTEGER NOT NULL,

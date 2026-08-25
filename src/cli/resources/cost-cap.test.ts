@@ -40,28 +40,28 @@ describe('cost-cap scope gate (elevated only)', () => {
   beforeEach(() => mockGetContainerConfig.mockReset());
 
   for (const cmd of COMMANDS) {
-    it(`${cmd}: the host operator is allowed`, () => {
-      expect(guard(commandGuard(cmd), { actor: { kind: 'host' }, payload: {} }).effect).toBe('allow');
+    it(`${cmd}: the host operator is allowed`, async () => {
+      expect((await guard(commandGuard(cmd), { actor: { kind: 'host' }, payload: {} })).effect).toBe('allow');
     });
 
-    it(`${cmd}: a cli_scope=global agent is allowed`, () => {
-      mockGetContainerConfig.mockReturnValue({ cli_scope: 'global' });
-      expect(guard(commandGuard(cmd), { actor: AGENT, payload: {} }).effect).toBe('allow');
+    it(`${cmd}: a cli_scope=global agent is allowed`, async () => {
+      mockGetContainerConfig.mockResolvedValue({ cli_scope: 'global' });
+      expect((await guard(commandGuard(cmd), { actor: AGENT, payload: {} })).effect).toBe('allow');
     });
 
-    it(`${cmd}: a cli_scope=group agent is denied`, () => {
-      mockGetContainerConfig.mockReturnValue({ cli_scope: 'group' });
-      expect(guard(commandGuard(cmd), { actor: AGENT, payload: {} }).effect).toBe('deny');
+    it(`${cmd}: a cli_scope=group agent is denied`, async () => {
+      mockGetContainerConfig.mockResolvedValue({ cli_scope: 'group' });
+      expect((await guard(commandGuard(cmd), { actor: AGENT, payload: {} })).effect).toBe('deny');
     });
 
-    it(`${cmd}: a cli_scope=disabled agent is denied`, () => {
-      mockGetContainerConfig.mockReturnValue({ cli_scope: 'disabled' });
-      expect(guard(commandGuard(cmd), { actor: AGENT, payload: {} }).effect).toBe('deny');
+    it(`${cmd}: a cli_scope=disabled agent is denied`, async () => {
+      mockGetContainerConfig.mockResolvedValue({ cli_scope: 'disabled' });
+      expect((await guard(commandGuard(cmd), { actor: AGENT, payload: {} })).effect).toBe('deny');
     });
 
-    it(`${cmd}: an agent with no config row (defaults to group) is denied`, () => {
-      mockGetContainerConfig.mockReturnValue(undefined);
-      expect(guard(commandGuard(cmd), { actor: AGENT, payload: {} }).effect).toBe('deny');
+    it(`${cmd}: an agent with no config row (defaults to group) is denied`, async () => {
+      mockGetContainerConfig.mockResolvedValue(undefined);
+      expect((await guard(commandGuard(cmd), { actor: AGENT, payload: {} })).effect).toBe('deny');
     });
   }
 });

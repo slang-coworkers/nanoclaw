@@ -33,8 +33,8 @@ import { log } from '../../log.js';
 import { writeSessionMessage } from '../../session-manager.js';
 import type { Session } from '../../types.js';
 
-function notifyAgent(session: Session, text: string): void {
-  writeSessionMessage(session.agent_group_id, session.id, {
+async function notifyAgent(session: Session, text: string): Promise<void> {
+  await writeSessionMessage(session.agent_group_id, session.id, {
     id: `sys-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     kind: 'chat',
     timestamp: new Date().toISOString(),
@@ -43,7 +43,7 @@ function notifyAgent(session: Session, text: string): void {
     threadId: null,
     content: JSON.stringify({ text, sender: 'system', senderId: 'system' }),
   });
-  const fresh = getSession(session.id);
+  const fresh = await getSession(session.id);
   if (fresh) {
     wakeContainer(fresh).catch((err) => log.error('Failed to wake container after notification', { err }));
   }
@@ -139,7 +139,7 @@ export async function handleAppendLearning(content: Record<string, unknown>, ses
   const title = content.title as string;
   const body = content.content as string;
   if (!title || !body) {
-    notifyAgent(session, 'append_learning failed: title and content are required.');
+    await notifyAgent(session, 'append_learning failed: title and content are required.');
     return;
   }
   const sharedDir = path.join(SHARED_DIR, 'learnings');
@@ -163,6 +163,6 @@ export async function handleAppendLearning(content: Record<string, unknown>, ses
 
   fs.writeFileSync(path.join(sharedDir, 'INDEX.md'), renderLearningsIndex(sharedDir) + '\n');
 
-  notifyAgent(session, `Learning saved: ${title}`);
+  await notifyAgent(session, `Learning saved: ${title}`);
   log.info('Shared learning appended', { title, file: relPath, agentGroup: session.agent_group_id });
 }

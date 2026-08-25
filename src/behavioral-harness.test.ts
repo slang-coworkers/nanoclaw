@@ -44,9 +44,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { validateContainerTimeouts } from './config.js';
 import { startDashboardIngress } from './dashboard-ingress.js';
+import { SqliteDriver } from './db/drivers/sqlite.js';
 import { runMigrations } from './db/migrations/index.js';
-import { countDueMessages, ensureSchema, openInboundDb } from './db/session-db.js';
-import { cancelTask, insertTaskRow, pauseTask } from './modules/scheduling/db.js';
+import { countDueMessages, ensureSchema, openInboundDb } from './mailbox/sqlite/session-db.js';
+// These moved from src/modules/scheduling/db.ts into the SQLite mailbox driver
+// during the async central-DB port. Per-session mailbox DBs are still sync
+// better-sqlite3, so these remain synchronous.
+import { cancelTask, insertTaskRow, pauseTask } from './mailbox/sqlite/tasks.js';
 import { once } from 'events';
 
 const tempRoots: string[] = [];
@@ -296,14 +300,17 @@ describe('CL01: IDLE_TIMEOUT / CONTAINER_TIMEOUT invariant', () => {
 // no duplicate applied rows, no errors, and the schema_version state stays
 // the same. Guards against future regressions in the migration loader.
 describe('MG01: migrations are idempotent', () => {
-  it('runMigrations twice produces identical schema_version state and does not throw', () => {
+  it('runMigrations twice produces identical schema_version state and does not throw', async () => {
     const dir = makeTempDir('mg01');
     const dbPath = path.join(dir, 'app.db');
     const db = new Database(dbPath);
     db.pragma('journal_mode = DELETE');
+    // runMigrations takes the async DbDriver boundary now; the raw handle stays
+    // for the SQLite-only schema_version / sqlite_master assertions below.
+    const driver = new SqliteDriver(db);
 
     // Run #1: apply everything.
-    runMigrations(db);
+    await runMigrations(driver);
     const after1 = db.prepare('SELECT name, version FROM schema_version ORDER BY version').all() as Array<{
       name: string;
       version: number;
@@ -311,7 +318,7 @@ describe('MG01: migrations are idempotent', () => {
     expect(after1.length).toBeGreaterThan(0);
 
     // Run #2: must be a silent no-op.
-    expect(() => runMigrations(db)).not.toThrow();
+    await expect(runMigrations(driver)).resolves.toBeUndefined();
 
     const after2 = db.prepare('SELECT name, version FROM schema_version ORDER BY version').all() as Array<{
       name: string;
@@ -328,16 +335,17 @@ describe('MG01: migrations are idempotent', () => {
     db.close();
   });
 
-  it('migration 016 (disable-overlays) survives a rerun cycle with no schema drift', () => {
+  it('migration 016 (disable-overlays) survives a rerun cycle with no schema drift', async () => {
     const dir = makeTempDir('mg01-016');
     const dbPath = path.join(dir, 'app.db');
     const db = new Database(dbPath);
     db.pragma('journal_mode = DELETE');
-    runMigrations(db);
+    const driver = new SqliteDriver(db);
+    await runMigrations(driver);
 
     const before = db.prepare("SELECT name, type, sql FROM sqlite_master WHERE type = 'table' ORDER BY name").all();
 
-    runMigrations(db);
+    await runMigrations(driver);
 
     const after = db.prepare("SELECT name, type, sql FROM sqlite_master WHERE type = 'table' ORDER BY name").all();
     expect(after).toEqual(before);

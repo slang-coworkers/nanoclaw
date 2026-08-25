@@ -3,7 +3,9 @@ import path from 'path';
 
 import { resolveMirroredSkillScope } from './claude-composer.js';
 import { DATA_DIR, DEFAULT_AGENT_PROVIDER, GROUPS_DIR } from './config.js';
+import { getDb } from './db/connection.js';
 import { ensureContainerConfig } from './db/container-configs.js';
+import { stageGroupPersona } from './group-persona.js';
 import { log } from './log.js';
 import { providerProvidesAgentSurfaces } from './providers/provider-container-registry.js';
 import type { AgentGroup } from './types.js';
@@ -99,10 +101,10 @@ export function refreshMirror(src: string, dst: string): boolean {
  * agent.md siblings are kept current automatically so upstream skill
  * changes propagate without a manual refresh tool.
  */
-export function initGroupFilesystem(
+export async function initGroupFilesystem(
   group: AgentGroup,
   opts?: { instructions?: string; provider?: string | null },
-): void {
+): Promise<void> {
   const projectRoot = process.cwd();
   const initialized: string[] = [];
 
@@ -124,6 +126,14 @@ export function initGroupFilesystem(
   if (!fs.existsSync(groupDir)) {
     fs.mkdirSync(groupDir, { recursive: true });
     initialized.push('groupDir');
+  }
+
+  // plugins/ always exists (even for plugin-less groups) so the read-only
+  // plugins mount in container-runner.ts is unconditional.
+  const pluginsDir = path.join(groupDir, 'plugins');
+  if (!fs.existsSync(pluginsDir)) {
+    fs.mkdirSync(pluginsDir, { recursive: true });
+    initialized.push('plugins/');
   }
 
   // groups/<folder>/memory/ — agent-writable per-group notes (triage memos,
@@ -175,11 +185,15 @@ export function initGroupFilesystem(
     initialized.push('.seed.md consumed');
   }
 
+  if (opts?.instructions && stageGroupPersona(groupDir, opts.instructions)) {
+    initialized.push('instructions.prepend.md');
+  }
+
   // Ensure container_configs row exists in the DB. Idempotent — no-op if
   // the row already exists (e.g. created by backfill or group creation). On a
   // fresh row, stamp the resolved provider hint so a new group is created on
   // the instance default (or the caller's explicit pick).
-  ensureContainerConfig(group.id, providerHint);
+  await ensureContainerConfig(group.id, providerHint);
   initialized.push('container_configs');
 
   // 2. data/v2-sessions/<id>/.claude-shared/ — Claude state + per-group skills
@@ -315,12 +329,9 @@ export function initGroupFilesystem(
   if (group.agent_provider === 'codex') {
     if (group.disable_overlays !== 1) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const Database = require('better-sqlite3');
-        const dbPath = path.join(DATA_DIR, 'v2.db');
-        const db = new Database(dbPath);
-        db.prepare('UPDATE agent_groups SET disable_overlays = 1 WHERE id = ?').run(group.id);
-        db.close();
+        // Goes through the async central-DB driver rather than a private
+        // better-sqlite3 handle: `updateAgentGroup` does not expose this column.
+        await getDb().run('UPDATE agent_groups SET disable_overlays = 1 WHERE id = ?', group.id);
         initialized.push('disable_overlays=1 (codex: hooks unsupported)');
       } catch {
         /* non-critical — overlays just render uselessly */

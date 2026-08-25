@@ -30,8 +30,8 @@ import type { Migration } from './index.js';
 export const migration938: Migration = {
   version: 938,
   name: 'cost-cap-policy',
-  up(db) {
-    db.exec(`
+  async up(db) {
+    await db.exec(`
       CREATE TABLE IF NOT EXISTS cost_cap_policy (
         group_folder TEXT PRIMARY KEY,
         ceiling_usd  REAL,

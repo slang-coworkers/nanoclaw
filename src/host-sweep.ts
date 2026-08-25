@@ -1,11 +1,8 @@
 /**
- * Host sweep — periodic maintenance of all session DBs.
+ * Host sweep — periodic maintenance of all session mailboxes.
  *
- * Two-DB architecture:
- *   - Reads processing_ack + container_state from outbound.db
- *   - Writes to inbound.db (host-owned) for status updates + recurrence
- *   - Uses heartbeat file mtime for liveness (never polls DB for it)
- *   - Never writes to outbound.db — preserves single-writer-per-file invariant
+ * Reads runner-owned processing/container state and maintains host-owned
+ * inbound state through the registered mailbox.
  *
  * Stuck / idle detection (replaces the old IDLE_TIMEOUT setTimeout + 10-min
  * heartbeat threshold):
@@ -19,6 +16,11 @@
  *        → kill. Covers the "alive but silent for 30 min" case. Extended
  *        only while Bash is declared as running longer, honouring the
  *        user's own timeout directive. Kill then resets processing rows.
+ *        When no heartbeat file exists yet, falls back to the tracked
+ *        container spawn time so a container that goes idle without ever
+ *        reaching an SDK event —
+ *        and so never writes a heartbeat — still ages out instead of
+ *        living forever (see decideStuckAction's grace-period comment).
  *
  *     2. Message-scoped stuck: for each 'processing' row, tolerance =
  *        max(60s, current_bash_timeout_ms_if_Bash_running). If
@@ -26,46 +28,42 @@
  *        → kill + reset this message + tries++. Semantics: "container
  *        claimed a message and went quiet past tolerance since the claim."
  */
-import type Database from 'better-sqlite3';
 import fs from 'fs';
 
 import { ensureEgressNetwork } from './egress-lockdown.js';
 import { getActiveSessions, getSession, isTaskThread, updateSession } from './db/sessions.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { getSourceFor } from './db/a2a-session-sources.js';
+// Raw SQLite handles for the one host path the mailbox surface does not cover:
+// the a2a bounce/redrive sweep reads and clears 'bounced-*' processing_ack rows,
+// a status the MailboxSession ProcessingStatus union cannot express.
+import type { SessionDbHandle } from './mailbox/sqlite/session-db.js';
 import {
-  clearOrphanProcessingAcks,
-  countDueMessages,
   deleteBouncedClaims,
-  deleteOrphanProcessingClaims,
   getBouncedClaims,
   getBouncedTriggerRow,
-  getContainerState,
-  getMessageForRetry,
-  getProcessingClaims,
   markMessageFailed,
   retryWithBackoff,
-  syncProcessingAcks,
-  type ContainerState,
-} from './db/session-db.js';
+} from './mailbox/sqlite/session-db.js';
 import { log } from './log.js';
 import {
+  heartbeatPath,
   openInboundDb,
   openOutboundDb,
   openOutboundDbRw,
-  inboundDbPath,
-  outboundDbPath,
-  heartbeatPath,
+  withExistingMailboxSession,
   writeSessionMessage,
 } from './session-manager.js';
 import {
   detectStaleContainers,
+  getContainerStartedAtMs,
   isContainerRunning,
   killContainer,
   recomposeAndUpdateHash,
   wakeContainer,
 } from './container-runner.js';
 import type { Session } from './types.js';
+import type { ContainerState, InboundMailbox, OutboundMailbox } from './mailbox/index.js';
 
 const SWEEP_INTERVAL_MS = 60_000;
 // Absolute idle ceiling for a running container. If the heartbeat file hasn't
@@ -119,28 +117,38 @@ export type StuckDecision =
 
 /**
  * Pure decision for whether a running container should be killed this sweep
- * tick. Inputs are all deterministic; filesystem + DB reads happen in the
+ * tick. Inputs are all deterministic; filesystem and mailbox reads happen in the
  * caller.
  */
 export function decideStuckAction(args: {
   now: number;
   heartbeatMtimeMs: number; // 0 when heartbeat file absent
+  containerStartedAtMs?: number; // fallback when heartbeat file absent
   containerState: ContainerState | null;
-  claims: Array<{ message_id: string; status_changed: string }>;
+  claims: Array<{ messageId: string; statusChanged: string }>;
 }): StuckDecision {
-  const { now, heartbeatMtimeMs, containerState, claims } = args;
+  const { now, heartbeatMtimeMs, containerStartedAtMs, containerState, claims } = args;
   const declaredBashMs = bashTimeoutMs(containerState);
 
-  // Ceiling check only applies when we have an actual heartbeat timestamp.
-  // A freshly-spawned container hasn't had any SDK activity yet so no
-  // heartbeat file exists — if we treated that as infinitely stale we'd
-  // kill every container within seconds of spawn. Genuinely-dead containers
-  // that never wrote a heartbeat are caught by the separate "container
-  // process not running" cleanup path, not here. If a fresh container is
-  // hanging at the gate (claimed a message but never did anything) the
-  // claim-stuck check below handles it.
-  if (heartbeatMtimeMs !== 0) {
-    const heartbeatAge = now - heartbeatMtimeMs;
+  // Ceiling check prefers the heartbeat file's mtime. A freshly-spawned
+  // container hasn't had any SDK activity yet so no heartbeat file exists —
+  // if we treated that as infinitely stale we'd kill every container within
+  // seconds of spawn. But "no heartbeat file" isn't only a spawn-grace-period
+  // signal: a container can also finish its one turn (or find nothing to do)
+  // without its poll loop ever reaching an SDK event, in which case a
+  // heartbeat file is never created for the rest of that container's life,
+  // and it sits alive-but-idle forever, immune to this check. Falling back
+  // to the container's spawn timestamp gives fresh spawns the same grace
+  // period as before (age starts at ~0) while still aging out a
+  // container that never ticks. Genuinely-dead containers that never wrote a
+  // heartbeat AND have no session record are caught by the separate
+  // "container process not running" cleanup path, not here. If a fresh
+  // container is hanging at the gate (claimed a message but never did
+  // anything) the claim-stuck check below handles it independently of this
+  // fallback.
+  const effectiveHeartbeatMs = heartbeatMtimeMs !== 0 ? heartbeatMtimeMs : (containerStartedAtMs ?? 0);
+  if (effectiveHeartbeatMs !== 0) {
+    const heartbeatAge = now - effectiveHeartbeatMs;
     const ceiling = Math.max(ABSOLUTE_CEILING_MS, declaredBashMs ?? 0);
     if (heartbeatAge > ceiling) {
       return { action: 'kill-ceiling', heartbeatAgeMs: heartbeatAge, ceilingMs: ceiling };
@@ -149,12 +157,12 @@ export function decideStuckAction(args: {
 
   const tolerance = Math.max(CLAIM_STUCK_MS, declaredBashMs ?? 0);
   for (const claim of claims) {
-    const claimedAt = parseSqliteUtc(claim.status_changed);
+    const claimedAt = parseSqliteUtc(claim.statusChanged);
     if (Number.isNaN(claimedAt)) continue;
     const claimAge = now - claimedAt;
     if (claimAge <= tolerance) continue;
     if (heartbeatMtimeMs > claimedAt) continue;
-    return { action: 'kill-claim', messageId: claim.message_id, claimAgeMs: claimAge, toleranceMs: tolerance };
+    return { action: 'kill-claim', messageId: claim.messageId, claimAgeMs: claimAge, toleranceMs: tolerance };
   }
 
   return { action: 'ok' };
@@ -165,7 +173,7 @@ let running = false;
 export function startHostSweep(): void {
   if (running) return;
   running = true;
-  sweep();
+  void sweep();
 }
 
 export function stopHostSweep(): void {
@@ -186,7 +194,7 @@ async function sweep(): Promise<void> {
   }
 
   try {
-    const sessions = getActiveSessions();
+    const sessions = await getActiveSessions();
     for (const session of sessions) {
       await sweepSession(session);
     }
@@ -198,13 +206,13 @@ async function sweep(): Promise<void> {
     // Session history is preserved in the inbound/outbound DBs — the
     // agent picks up where it left off with updated instructions.
     // No /clear: that wipes conversation context and causes amnesia.
-    const stale = detectStaleContainers();
+    const stale = await detectStaleContainers();
     for (const { sessionId, agentGroupId, folder } of stale) {
       log.warn('CLAUDE.md stale — killing container for respawn', { sessionId, folder });
-      recomposeAndUpdateHash(sessionId);
+      await recomposeAndUpdateHash(sessionId);
       killContainer(sessionId, 'claude-md-stale');
-      const staleSession = getSession(sessionId);
-      writeSessionMessage(agentGroupId, sessionId, {
+      const staleSession = await getSession(sessionId);
+      await writeSessionMessage(agentGroupId, sessionId, {
         id: `claudemd-refresh-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         kind: 'chat',
         timestamp: new Date().toISOString(),
@@ -216,10 +224,7 @@ async function sweep(): Promise<void> {
           sender: 'system',
           senderId: 'system',
         }),
-        processAfter: new Date(Date.now() + 5000)
-          .toISOString()
-          .replace('T', ' ')
-          .replace(/\.\d+Z$/, ''),
+        processAfter: new Date(Date.now() + 5000).toISOString(),
       });
     }
   } catch (err) {
@@ -247,7 +252,7 @@ async function sweep(): Promise<void> {
     log.error('Cost-approval reconcile failed', { err });
   }
 
-  setTimeout(sweep, SWEEP_INTERVAL_MS);
+  setTimeout(() => void sweep(), SWEEP_INTERVAL_MS);
 }
 
 /** A per-task session with no live tasks and no running container is spent → close it. */
@@ -260,52 +265,19 @@ export function shouldCloseTaskSession(
 }
 
 async function sweepSession(session: Session): Promise<void> {
-  const agentGroup = getAgentGroup(session.agent_group_id);
+  const agentGroup = await getAgentGroup(session.agent_group_id);
   if (!agentGroup) return;
 
-  const inPath = inboundDbPath(agentGroup.id, session.id);
-  if (!fs.existsSync(inPath)) return;
-
-  let inDb: Database.Database;
-  let outDb: Database.Database | null = null;
   try {
-    inDb = openInboundDb(agentGroup.id, session.id);
-  } catch {
-    return;
-  }
-
-  try {
-    outDb = openOutboundDb(agentGroup.id, session.id);
-  } catch {
-    // outbound.db might not exist yet (container hasn't started)
-  }
-
-  try {
-    // 1. Sync processing_ack → messages_in status
-    if (outDb) {
-      syncProcessingAcks(inDb, outDb);
-    }
-
-    // 1b. Runaway detection (non-blocking). Runs after ack-sync so the
-    // turn/output counts reflect synced state. NEVER stops the session — on a
-    // fresh runaway episode it only surfaces an admin card; a human clicking
-    // Stop is the only thing that ends the session. Module-gated: no-op when
-    // the runaway module isn't installed.
+    // Runaway detection (non-blocking). NEVER stops the session — on a fresh
+    // runaway episode it only surfaces an admin card; a human clicking Stop is
+    // the only thing that ends the session. Module-gated: no-op when the
+    // runaway module isn't installed.
     // MODULE-HOOK:runaway-detect:start
-    if (outDb) {
-      try {
-        const [{ checkRunaway }, { runawayCardDeps }] = await Promise.all([
-          import('./modules/runaway/detect.js'),
-          import('./modules/runaway/index.js'),
-        ]);
-        await checkRunaway(session, outDb, runawayCardDeps);
-      } catch (err) {
-        log.debug('runaway detect skipped', { sessionId: session.id, err });
-      }
-    }
+    await checkRunawayForSession(session, agentGroup.id);
     // MODULE-HOOK:runaway-detect:end
 
-    // 1c. Critique-gate escalation: a session that hit the gate's denial cap
+    // Critique-gate escalation: a session that hit the gate's denial cap
     // writes .claude/critique-escalation.json (host-visible — /workspace is
     // the session-dir mount); turn a fresh request into an admin approval
     // card. Non-blocking and module-gated like runaway.
@@ -318,7 +290,7 @@ async function sweepSession(session: Session): Promise<void> {
     }
     // MODULE-HOOK:critique-escalation:end
 
-    // 1b. Reclaim bounced claims BEFORE the wake below. Ordering is
+    // Reclaim bounced claims BEFORE the due-count/wake below. Ordering is
     // load-bearing, and the reason is subtle:
     //
     // A `bounced-*` processing_ack hides its message from the container's poll
@@ -327,85 +299,147 @@ async function sweepSession(session: Session): Promise<void> {
     // status='processing' (clearStaleProcessingAcks), so a container restart can
     // never reclaim a bounced row — only this path can.
     //
-    // Left in step 4, it was unreachable in EVERY state: container up => the
-    // !alive gate skips it; container down => step 2 sees the still-due hidden
-    // message, spawns a container, and `alive` flips true before step 4 is
-    // reached. The message that needs healing is exactly what arms the wake that
-    // suppresses the healing. Observed in prod 2026-07-17..08-04: a `*/5` task
-    // frozen 18 days behind one bounced-transient ack, tries stuck at 0, while
-    // the container truthfully logged "0 pending" on every poll.
+    // Left after the wake, it was unreachable in EVERY state: container up =>
+    // the !alive gate skips it; container down => the wake sees the still-due
+    // hidden message, spawns a container, and `alive` flips true before the
+    // reset path is reached. The message that needs healing is exactly what
+    // arms the wake that suppresses the healing. Observed in prod
+    // 2026-07-17..08-04: a `*/5` task frozen 18 days behind one
+    // bounced-transient ack, tries stuck at 0, while the container truthfully
+    // logged "0 pending" on every poll.
     //
     // Still gated on the container being down: this DELETEs from outbound.db,
     // and exactly-one-writer per file is the invariant that makes the two-DB
-    // split safe.
-    if (outDb && !isContainerRunning(session.id)) {
-      redriveBouncedA2a(inDb, outDb, session);
+    // split safe. Runs OUTSIDE the mailbox session below so its raw handles
+    // never contend with the ones that session holds open on the same files.
+    if (!isContainerRunning(session.id)) {
+      redriveBouncedA2aForSession(session);
     }
 
-    // 2. Wake a container if work is due and nothing is running. Ordered
-    // before the crashed-container cleanup so a fresh container gets a chance
-    // to clean its own orphan processing_ack rows on startup (see
-    // container/agent-runner/src/db/connection.ts). Otherwise the reset path
-    // would keep bumping process_after into the future, dueCount would stay 0,
-    // and the wake would never fire.
-    let justSpawned = false;
-    const dueCount = countDueMessages(inDb);
-    if (dueCount > 0 && !isContainerRunning(session.id)) {
-      log.info('Waking container for due messages', { sessionId: session.id, count: dueCount });
-      // wakeContainer never throws — transient spawn failures (OneCLI down,
-      // etc.) return false and leave messages pending for the next tick.
-      await wakeContainer(session);
-      justSpawned = true;
-    }
-
-    const alive = isContainerRunning(session.id);
-
-    // 3. Running-container SLA: absolute ceiling + per-claim stuck rules.
-    // Skip on the same tick that spawned the container — give it time to
-    // start up and clear orphan processing_ack rows from a prior crash.
-    // Without this gate, stale claims from the crashed container cause an
-    // immediate kill (spawn-kill loop).
-    if (alive && outDb && !justSpawned) {
-      enforceRunningContainerSla(inDb, outDb, session, agentGroup.id);
-    }
-
-    // 4. Crashed-container cleanup: processing rows left behind get retried.
-    // Only fires when wake in step 2 didn't pick up the work (no due messages,
-    // or wake failed). resetStuckProcessingRows itself is idempotent — it
-    // skips messages already scheduled for a future retry.
-    if (!alive && outDb) {
-      resetStuckProcessingRows(inDb, outDb, session, 'container not running');
-      // Bounced-claim redrive moved to step 1b — see the note there. Running it
-      // here made it unreachable whenever the bounced message was itself due.
-    }
-
-    // 5. Recurrence fanout for completed recurring tasks.
-    // MODULE-HOOK:scheduling-recurrence:start
-    const { handleRecurrence } = await import('./modules/scheduling/recurrence.js');
-    await handleRecurrence(inDb, session);
-    // MODULE-HOOK:scheduling-recurrence:end
-
-    // 6. GC spent task sessions. An isolated per-task session with no live task
-    // rows left (one-shot fired, or all cancelled/deleted) and no container
-    // running is dead — close it so it stops being swept and listed. Runs after
-    // recurrence so a just-fired recurring series has already re-armed its next
-    // pending row and is never collected. The per-task log file in the workspace
-    // is the durable history and survives the close.
-    if (isTaskThread(session.thread_id)) {
-      const liveTasks = (
-        inDb
-          .prepare("SELECT COUNT(*) AS c FROM messages_in WHERE kind = 'task' AND status IN ('pending', 'paused')")
-          .get() as { c: number }
-      ).c;
-      if (shouldCloseTaskSession(session.thread_id, isContainerRunning(session.id), liveTasks)) {
-        updateSession(session.id, { status: 'closed' });
-        log.info('Closed spent task session', { sessionId: session.id, threadId: session.thread_id });
+    let dueCount = 0;
+    let shouldWake = false;
+    const exists = await withExistingMailboxSession(agentGroup.id, session.id, async (mailbox) => {
+      mailbox.applyProcessingAcks(mailbox.getTerminalProcessingAcks());
+      dueCount = mailbox.countDueMessages();
+      shouldWake = dueCount > 0 && !isContainerRunning(session.id);
+      if (!shouldWake) {
+        await maintainSessionMailbox(mailbox, session, agentGroup.id, false);
       }
-    }
+      return true;
+    });
+    if (!exists) return;
+
+    if (!shouldWake) return;
+
+    // Waking refreshes routing through the mailbox. Keep it outside the
+    // session transaction so serialized implementations do not re-enter
+    // themselves while the sweep still owns the session.
+    log.info('Waking container for due messages', { sessionId: session.id, count: dueCount });
+    // wakeContainer never throws — transient spawn failures (OneCLI down,
+    // etc.) return false and leave messages pending for the next tick.
+    await wakeContainer(session);
+
+    await withExistingMailboxSession(agentGroup.id, session.id, async (mailbox) => {
+      await maintainSessionMailbox(mailbox, session, agentGroup.id, true);
+    });
+  } catch (err) {
+    log.error('Session mailbox sweep failed', {
+      agentGroupId: agentGroup.id,
+      sessionId: session.id,
+      err,
+    });
+  }
+}
+
+/**
+ * Runaway detection needs the raw outbound handle: it measures turn/output
+ * volume straight off `messages_out`, which the mailbox surface does not
+ * expose. Read-only, so it is safe alongside a live container.
+ */
+async function checkRunawayForSession(session: Session, agentGroupId: string): Promise<void> {
+  let outDb: SessionDbHandle | null = null;
+  try {
+    outDb = openOutboundDb(agentGroupId, session.id);
+    const [{ checkRunaway }, { runawayCardDeps }] = await Promise.all([
+      import('./modules/runaway/detect.js'),
+      import('./modules/runaway/index.js'),
+    ]);
+    await checkRunaway(session, outDb, runawayCardDeps);
+  } catch (err) {
+    log.debug('runaway detect skipped', { sessionId: session.id, err });
   } finally {
-    inDb.close();
     outDb?.close();
   }
+}
+
+/** Open the raw handles the bounce sweep needs, run it, and always close them. */
+function redriveBouncedA2aForSession(session: Session): void {
+  let inDb: SessionDbHandle | null = null;
+  let outDb: SessionDbHandle | null = null;
+  try {
+    inDb = openInboundDb(session.agent_group_id, session.id);
+    outDb = openOutboundDb(session.agent_group_id, session.id);
+    redriveBouncedA2a(inDb, outDb, session);
+  } catch (err) {
+    log.debug('a2a bounce redrive skipped', { sessionId: session.id, err });
+  } finally {
+    inDb?.close();
+    outDb?.close();
+  }
+}
+
+async function maintainSessionMailbox(
+  mailbox: InboundMailbox & OutboundMailbox,
+  session: Session,
+  agentGroupId: string,
+  justWoke: boolean,
+): Promise<void> {
+  const alive = isContainerRunning(session.id);
+
+  // Running-container SLA: absolute ceiling + per-claim stuck rules.
+  // Skip on the same tick that spawned the container — give it time to
+  // start up and clear orphan processing_ack rows from a prior crash.
+  // Without this gate, stale claims from the crashed container cause an
+  // immediate kill (spawn-kill loop).
+  if (alive && !justWoke) {
+    enforceRunningContainerSla(mailbox, mailbox, session, agentGroupId);
+  }
+
+  // Crashed-container cleanup: processing rows left behind get retried.
+  // resetStuckProcessingRows itself is idempotent — it skips messages already
+  // scheduled for a future retry.
+  if (!alive) {
+    resetStuckProcessingRows(mailbox, mailbox, session, 'container not running');
+  }
+
+  // MODULE-HOOK:scheduling-recurrence:start
+  const { handleRecurrence } = await import('./modules/scheduling/recurrence.js');
+  await handleRecurrence(mailbox, session);
+  // MODULE-HOOK:scheduling-recurrence:end
+
+  // GC spent task sessions. An isolated per-task session with no live task
+  // rows left (one-shot fired, or all cancelled/deleted) and no container
+  // running is dead — close it so it stops being swept and listed. Runs after
+  // recurrence so a just-fired recurring series has already re-armed its next
+  // pending row and is never collected. The per-task log file in the workspace
+  // is the durable history and survives the close.
+  if (isTaskThread(session.thread_id)) {
+    const liveTasks = mailbox.countLiveTasks();
+    if (shouldCloseTaskSession(session.thread_id, isContainerRunning(session.id), liveTasks)) {
+      await updateSession(session.id, { status: 'closed' });
+      log.info('Closed spent task session', { sessionId: session.id, threadId: session.thread_id });
+    }
+  }
+
+  // MODULE-HOOK:cross-session-echo-prune:start
+  try {
+    const { pruneEchoBacklog } = await import('./modules/cross-session-context/index.js');
+    const pruned = pruneEchoBacklog(mailbox);
+    if (pruned > 0) log.info('Pruned session-echo backlog', { sessionId: session.id, pruned });
+  } catch (err) {
+    log.error('Echo backlog prune failed', { sessionId: session.id, err });
+  }
+  // MODULE-HOOK:cross-session-echo-prune:end
 }
 
 function heartbeatMtimeMs(agentGroupId: string, sessionId: string): number {
@@ -418,29 +452,30 @@ function heartbeatMtimeMs(agentGroupId: string, sessionId: string): number {
 }
 
 function bashTimeoutMs(state: ContainerState | null): number | null {
-  if (!state || state.current_tool !== 'Bash') return null;
-  return typeof state.tool_declared_timeout_ms === 'number' ? state.tool_declared_timeout_ms : null;
+  if (!state || state.currentTool !== 'Bash') return null;
+  return state.toolDeclaredTimeoutMs;
 }
 
 function enforceRunningContainerSla(
-  inDb: Database.Database,
-  outDb: Database.Database,
+  inDb: InboundMailbox,
+  outDb: OutboundMailbox,
   session: Session,
   agentGroupId: string,
 ): void {
   // Filter out orphan claims from before this service started — they're
   // leftovers from a prior run. The container cleans its own processing_ack
   // on startup; killing it before that cleanup runs causes a respawn loop.
-  const allClaims = getProcessingClaims(outDb);
+  const allClaims = outDb.getProcessingClaims();
   const claims = allClaims.filter((c) => {
-    const ts = parseSqliteUtc(c.status_changed);
+    const ts = parseSqliteUtc(c.statusChanged);
     return !Number.isNaN(ts) && ts >= SERVICE_START_MS;
   });
 
   const decision = decideStuckAction({
     now: Date.now(),
     heartbeatMtimeMs: heartbeatMtimeMs(agentGroupId, session.id),
-    containerState: getContainerState(outDb),
+    containerStartedAtMs: getContainerStartedAtMs(session.id),
+    containerState: outDb.getContainerState(),
     claims,
   });
 
@@ -468,12 +503,12 @@ function enforceRunningContainerSla(
 }
 
 export function _resetStuckProcessingRowsForTesting(
-  inDb: Database.Database,
-  outDb: Database.Database,
+  inDb: InboundMailbox,
+  outDb: OutboundMailbox,
   session: Session,
   reason: string,
 ): void {
-  resetStuckProcessingRows(inDb, outDb, session, reason, outDb);
+  resetStuckProcessingRows(inDb, outDb, session, reason);
 }
 
 /**
@@ -492,6 +527,9 @@ export function _resetStuckProcessingRowsForTesting(
  *      once its per-class budget is spent.
  *
  * Recovery lives entirely in the session layer — no GitHub dependency.
+ *
+ * Operates on raw SQLite handles: 'bounced-*' is not in the mailbox surface's
+ * ProcessingStatus union, so there is no MailboxSession operation for it.
  */
 type DeadLetterFn = (
   recipientSession: Session,
@@ -500,11 +538,11 @@ type DeadLetterFn = (
 ) => void;
 
 function redriveBouncedA2a(
-  inDb: Database.Database,
-  outDb: Database.Database,
+  inDb: SessionDbHandle,
+  outDb: SessionDbHandle,
   session: Session,
   // Injectable seams for unit testing — production passes neither.
-  writableOutDb?: Database.Database,
+  writableOutDb?: SessionDbHandle,
   deadLetter: DeadLetterFn = (s, r, st) =>
     deadLetterBouncedHandoff(s, r, st).catch((err) =>
       log.error('a2a dead-letter delivery failed', { sessionId: s.id, messageId: r.id, err }),
@@ -582,7 +620,7 @@ function redriveBouncedA2a(
   // opens one (the read-only outDb the sweep holds can't DELETE).
   if (handled.length > 0) {
     const ownsDb = !writableOutDb;
-    let rw: Database.Database | null = writableOutDb ?? null;
+    let rw: SessionDbHandle | null = writableOutDb ?? null;
     try {
       if (!rw) rw = openOutboundDbRw(session.agent_group_id, session.id);
       const cleared = deleteBouncedClaims(rw, handled);
@@ -597,8 +635,8 @@ function redriveBouncedA2a(
 
 /** Test-only shim: run redriveBouncedA2a with injected writable DB + dead-letter spy. */
 export function _redriveBouncedA2aForTesting(
-  inDb: Database.Database,
-  outDb: Database.Database,
+  inDb: SessionDbHandle,
+  outDb: SessionDbHandle,
   session: Session,
   deadLetter: DeadLetterFn,
 ): void {
@@ -616,7 +654,7 @@ async function deadLetterBouncedHandoff(
   row: { id: string; tries: number; sourceSessionId: string | null; threadId: string | null },
   status: string,
 ): Promise<void> {
-  const sourceSessionId = row.sourceSessionId ?? getSourceFor(recipientSession.id)?.source_session_id ?? null;
+  const sourceSessionId = row.sourceSessionId ?? (await getSourceFor(recipientSession.id))?.source_session_id ?? null;
   const detail =
     `[a2a-redrive] Handoff to ${recipientSession.agent_group_id} (session ${recipientSession.id}` +
     `${row.threadId ? `, thread ${row.threadId}` : ''}) bounced ${row.tries}× on transient/unknown ` +
@@ -626,10 +664,10 @@ async function deadLetterBouncedHandoff(
   const { notifyAgent, pickApprover, pickApprovalDelivery } = await import('./modules/approvals/primitive.js');
 
   if (sourceSessionId) {
-    const sourceSession = getSession(sourceSessionId);
+    const sourceSession = await getSession(sourceSessionId);
     if (sourceSession && sourceSession.status === 'active') {
       // Self-heal one hop up the chain: let the delegator re-drive or escalate.
-      notifyAgent(sourceSession, detail);
+      await notifyAgent(sourceSession, detail);
       return;
     }
   }
@@ -637,7 +675,7 @@ async function deadLetterBouncedHandoff(
   // No live delegator — escalate to an admin as a plain chat notification (NOT
   // an approval gate). Reuse the same approver resolution + DM delivery the
   // approvals primitive uses, but send a chat, not an ask_question card.
-  const approvers = pickApprover(recipientSession.agent_group_id);
+  const approvers = await pickApprover(recipientSession.agent_group_id);
   const delivery = await pickApprovalDelivery(approvers, '');
   if (delivery) {
     const { getDeliveryAdapter } = await import('./delivery.js');
@@ -660,25 +698,24 @@ async function deadLetterBouncedHandoff(
 }
 
 function resetStuckProcessingRows(
-  inDb: Database.Database,
-  outDb: Database.Database,
+  inDb: InboundMailbox,
+  outDb: OutboundMailbox,
   session: Session,
   reason: string,
-  writableOutDb?: Database.Database,
 ): void {
-  const claims = getProcessingClaims(outDb);
+  const claims = outDb.getProcessingClaims();
   const now = Date.now();
-  for (const { message_id } of claims) {
-    const msg = getMessageForRetry(inDb, message_id, 'pending');
+  for (const { messageId } of claims) {
+    const msg = inDb.getMessageForRetry(messageId, 'pending');
     if (!msg) continue;
 
     // Already rescheduled for a future retry — don't bump tries again. The
-    // wake path (sweep step 2) will fire when process_after elapses and a
-    // fresh container will clean the orphan claim on startup.
+    // wake path will fire when process_after elapses and a fresh container
+    // will clean the orphan claim on startup.
     if (msg.processAfter && parseSqliteUtc(msg.processAfter) > now) continue;
 
     if (msg.tries >= MAX_TRIES) {
-      markMessageFailed(inDb, msg.id);
+      inDb.markMessageFailed(msg.id);
       log.warn('Message marked as failed after max retries', {
         messageId: msg.id,
         sessionId: session.id,
@@ -687,7 +724,7 @@ function resetStuckProcessingRows(
     } else {
       const backoffMs = BACKOFF_BASE_MS * Math.pow(2, msg.tries);
       const backoffSec = Math.floor(backoffMs / 1000);
-      retryWithBackoff(inDb, msg.id, backoffSec);
+      inDb.retryWithBackoff(msg.id, backoffSec);
       log.info('Reset stale message with backoff', {
         messageId: msg.id,
         tries: msg.tries,
@@ -701,21 +738,13 @@ function resetStuckProcessingRows(
   // would re-read them, see the old status_changed timestamp, conclude the
   // freshly respawned container is stuck, and SIGKILL it before its
   // agent-runner has a chance to run clearStaleProcessingAcks() on startup.
-  // Safe because this only runs when the container is dead (step 4) or just
-  // killed (step 3 kill path).
-  if (claims.length > 0) {
-    const ownsDb = !writableOutDb;
-    let useDb: Database.Database | null = writableOutDb ?? null;
-    try {
-      if (!useDb) useDb = openOutboundDbRw(session.agent_group_id, session.id);
-      const cleared = deleteOrphanProcessingClaims(useDb);
-      if (cleared > 0) {
-        log.info('Cleared orphan processing claims', { sessionId: session.id, cleared, reason });
-      }
-    } catch (err) {
-      log.warn('Failed to clear orphan processing claims', { sessionId: session.id, err });
-    } finally {
-      if (ownsDb) useDb?.close();
+  // Safe because this only runs when the container is dead or just killed.
+  try {
+    const cleared = outDb.deleteOrphanProcessingClaims();
+    if (cleared > 0) {
+      log.info('Cleared orphan processing claims', { sessionId: session.id, cleared, reason });
     }
+  } catch (err) {
+    log.warn('Failed to clear orphan processing claims', { sessionId: session.id, err });
   }
 }

@@ -142,7 +142,7 @@ function createPairingInterceptor(
       // code-bearing message never reaches an agent. Privilege is now a
       // property of the paired user, not the chat: upsert the user, and if
       // this instance has no owner yet, promote them to owner.
-      const existing = getMessagingGroupByPlatform('telegram', platformId);
+      const existing = await getMessagingGroupByPlatform('telegram', platformId);
       if (existing) {
         updateMessagingGroup(existing.id, {
           is_group: consumed.consumed!.isGroup ? 1 : 0,

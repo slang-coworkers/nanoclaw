@@ -39,7 +39,7 @@ import {
 } from './config.js';
 import { getAdminAgentGroup } from './db/agent-groups.js';
 import { getDb } from './db/connection.js';
-import { openInboundDb, insertMessage } from './db/session-db.js';
+import { openInboundDb, insertMessage } from './mailbox/sqlite/session-db.js';
 import {
   createSession,
   findSessionByAgentGroup,
@@ -53,7 +53,8 @@ import { forwardWebhookToPeer } from './modules/pr-mapping/forward.js';
 import { prMappingExists } from './modules/pr-mapping/store.js';
 import { deleteParked, parkReviewable } from './modules/pending-reviewable/store.js';
 import { getAgentGroup } from './db/agent-groups.js';
-import { inboundDbPath, initSessionFolder } from './session-manager.js';
+import { inboundDbPath } from './mailbox/sqlite/paths.js';
+import { initSessionFolder } from './session-manager.js';
 import type { AgentGroup, Session } from './types.js';
 
 export interface GitHubMentionEvent {
@@ -178,7 +179,7 @@ export type DeliveryOutcome =
  * session so the dashboard timeline label reads "<repo> #<num>: <title>"
  * rather than inheriting the first inbound message's text.
  */
-function deliverToOrchestrator(args: {
+async function deliverToOrchestrator(args: {
   repo: string;
   issueNumber: number;
   rowId: string;
@@ -186,8 +187,8 @@ function deliverToOrchestrator(args: {
   eventContent: string;
   mintPerThread?: boolean;
   displayTitle?: string;
-}): DeliveryOutcome {
-  const group: AgentGroup | undefined = getAdminAgentGroup();
+}): Promise<DeliveryOutcome> {
+  const group: AgentGroup | undefined = await getAdminAgentGroup();
   if (!group) {
     log.warn('github-webhook: no admin agent group configured — cannot deliver to orchestrator', {
       repo: args.repo,
@@ -204,7 +205,7 @@ function deliverToOrchestrator(args: {
  * are identical to the orchestrator path — see deliverToOrchestrator's doc
  * comment for the mint-per-thread / display-title rationale.
  */
-function deliverToAgentGroup(
+async function deliverToAgentGroup(
   group: AgentGroup,
   args: {
     repo: string;
@@ -215,17 +216,17 @@ function deliverToAgentGroup(
     mintPerThread?: boolean;
     displayTitle?: string;
   },
-): DeliveryOutcome {
+): Promise<DeliveryOutcome> {
   let session: Session | undefined;
   let minted = false;
   if (args.mintPerThread && args.threadId) {
-    session = findSessionByAgentThread(group.id, args.threadId);
+    session = await findSessionByAgentThread(group.id, args.threadId);
     if (!session) {
-      session = mintOrchestratorSession(group.id, args.threadId);
+      session = await mintOrchestratorSession(group.id, args.threadId);
       minted = true;
     }
   } else {
-    session = findSessionByAgentGroup(group.id);
+    session = await findSessionByAgentGroup(group.id);
   }
 
   if (!session) {
@@ -241,7 +242,7 @@ function deliverToAgentGroup(
   // "<repo> #<num>: <title>" instead of inheriting the first inbound's first
   // 80 chars.
   if (minted && args.displayTitle) {
-    updateSessionTitle(session.id, args.displayTitle, 'auto');
+    await updateSessionTitle(session.id, args.displayTitle, 'auto');
   }
 
   const dbPath = inboundDbPath(group.id, session.id);
@@ -293,7 +294,7 @@ function deliverToAgentGroup(
  * row stays empty; the agent's outbound messages route by their explicit
  * `<message to=...>` destinations, not by the session's default channel.
  */
-function mintOrchestratorSession(agentGroupId: string, threadId: string): Session {
+async function mintOrchestratorSession(agentGroupId: string, threadId: string): Promise<Session> {
   const id = `sess-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const session: Session = {
     id,
@@ -309,7 +310,7 @@ function mintOrchestratorSession(agentGroupId: string, threadId: string): Sessio
     last_active: null,
     created_at: new Date().toISOString(),
   };
-  createSession(session);
+  await createSession(session);
   initSessionFolder(agentGroupId, id);
   return session;
 }
@@ -326,7 +327,7 @@ function mintOrchestratorSession(agentGroupId: string, threadId: string): Sessio
  * verdict, a resolved review thread, and a failed CI run on the same PR all
  * land in the same fixer session via this function.
  */
-function deliverMappedPrEvent(args: {
+async function deliverMappedPrEvent(args: {
   repo: string;
   prNumber: number;
   rowId: string;
@@ -334,16 +335,19 @@ function deliverMappedPrEvent(args: {
   rawBody?: string;
   eventType?: string;
   deliveryId?: string;
-}): DeliveryOutcome | null {
+}): Promise<DeliveryOutcome | null> {
   try {
     const centralDb = getDb();
-    const mapping = centralDb
-      .prepare(
-        'SELECT agent_group_id, session_id, thread_id, owner_instance FROM pr_session_mappings WHERE repo = ? AND pr_number = ?',
-      )
-      .get(args.repo, args.prNumber) as
-      | { agent_group_id: string; session_id: string; thread_id: string | null; owner_instance: string }
-      | undefined;
+    const mapping = await centralDb.get<{
+      agent_group_id: string;
+      session_id: string;
+      thread_id: string | null;
+      owner_instance: string;
+    }>(
+      'SELECT agent_group_id, session_id, thread_id, owner_instance FROM pr_session_mappings WHERE repo = ? AND pr_number = ?',
+      args.repo,
+      args.prNumber,
+    );
 
     if (!mapping) return null;
 
@@ -378,7 +382,7 @@ function deliverMappedPrEvent(args: {
     }
 
     // Local owner — deliver to the mapped session.
-    const mappedSession = getSession(mapping.session_id);
+    const mappedSession = await getSession(mapping.session_id);
     if (mappedSession) {
       const dbPath = inboundDbPath(mapping.agent_group_id, mapping.session_id);
       const db = openInboundDb(dbPath);
@@ -432,7 +436,7 @@ function deliverMappedPrEvent(args: {
  * or forward to a peer instance when the PR is foreign-owned, or hand off
  * to the orchestrator when no mapping exists.
  */
-export function deliverGitHubMention(event: GitHubMentionEvent): DeliveryOutcome {
+export async function deliverGitHubMention(event: GitHubMentionEvent): Promise<DeliveryOutcome> {
   const eventContent = JSON.stringify({
     event: 'github.pr_mention',
     repo: event.repo,
@@ -485,7 +489,7 @@ export function deliverGitHubMention(event: GitHubMentionEvent): DeliveryOutcome
   // created the PR (foreign owner → forward; local owner → mapped session).
   // Returns null only when there's no usable mapping, in which case we fall
   // through to the orchestrator hand-off below.
-  const mapped = deliverMappedPrEvent({
+  const mapped = await deliverMappedPrEvent({
     repo: event.repo,
     prNumber: event.issueNumber,
     rowId: `gh-${event.commentId}`,
@@ -512,7 +516,7 @@ export function deliverGitHubMention(event: GitHubMentionEvent): DeliveryOutcome
   const threadId = event.isPr
     ? `gh-pr-${event.repo}-${event.issueNumber}`
     : `gh-issue-${event.repo}-${event.issueNumber}`;
-  return deliverToOrchestrator({
+  return await deliverToOrchestrator({
     repo: event.repo,
     issueNumber: event.issueNumber,
     rowId: `gh-${event.commentId}`,
@@ -534,7 +538,7 @@ export function deliverGitHubMention(event: GitHubMentionEvent): DeliveryOutcome
  * trust-channel mechanism as PR-comment forwards (X-Webhook-Trust=
  * pre-validated, signed with INTERNAL_REGISTER_SECRET).
  */
-export function deliverGitHubIssueOpened(event: GitHubIssueOpenedEvent): DeliveryOutcome {
+export async function deliverGitHubIssueOpened(event: GitHubIssueOpenedEvent): Promise<DeliveryOutcome> {
   // Dev-route every issue to a peer when configured. Fires before the
   // local-orchestrator branch so prod-side issue triage can be redirected
   // to lego while we iterate. Off by default; set ROUTE_ISSUES_TO=<slug>
@@ -582,7 +586,7 @@ export function deliverGitHubIssueOpened(event: GitHubIssueOpenedEvent): Deliver
     body: event.body,
   });
 
-  return deliverToOrchestrator({
+  return await deliverToOrchestrator({
     repo: event.repo,
     issueNumber: event.issueNumber,
     rowId: `gh-issue-${event.repo}-${event.issueNumber}`,
@@ -613,7 +617,7 @@ export function deliverGitHubIssueOpened(event: GitHubIssueOpenedEvent): Deliver
  * The rowId embeds the GitHub delivery id, so every flip/push re-fires while
  * retries of the same delivery dedup via the shared idempotency guard.
  */
-export function deliverGitHubPrReviewable(event: GitHubPrReviewableEvent): DeliveryOutcome {
+export async function deliverGitHubPrReviewable(event: GitHubPrReviewableEvent): Promise<DeliveryOutcome> {
   // Forward to a peer when configured (prod → lego). Fires before local
   // routing so the canonical instance ships reviewable PRs to the consumer.
   if (ROUTE_READY_PRS_TO && INSTANCE_SLUG && ROUTE_READY_PRS_TO !== INSTANCE_SLUG) {
@@ -655,7 +659,7 @@ export function deliverGitHubPrReviewable(event: GitHubPrReviewableEvent): Deliv
   // Requires a head sha to know which CI to wait on; without one we fall through
   // to immediate delivery rather than park a PR we could never release.
   if (APPROVER_CI_GATE && event.headSha) {
-    parkReviewable(getDb(), {
+    await parkReviewable(getDb(), {
       repo: event.repo,
       prNumber: event.prNumber,
       headSha: event.headSha,
@@ -691,7 +695,7 @@ export function deliverGitHubPrReviewable(event: GitHubPrReviewableEvent): Deliv
   // Always to the orchestrator on the PR's canonical thread. Delivery id in the
   // rowId → each flip/push is a distinct row and re-fires; retries of the same
   // delivery collide and dedup.
-  return deliverToOrchestrator({
+  return await deliverToOrchestrator({
     repo: event.repo,
     issueNumber: event.prNumber,
     rowId: `gh-pr-ready-${event.repo}-${event.prNumber}-${event.deliveryId ?? ''}`,
@@ -710,7 +714,7 @@ export function deliverGitHubPrReviewable(event: GitHubPrReviewableEvent): Deliv
  * — it flows straight to the orchestrator delivery, minting the one fresh
  * approver session for this settled+green head.
  */
-export function releaseParkedReviewable(rawEventJson: string): DeliveryOutcome {
+export async function releaseParkedReviewable(rawEventJson: string): Promise<DeliveryOutcome> {
   let saved: Record<string, unknown>;
   try {
     saved = JSON.parse(rawEventJson) as Record<string, unknown>;
@@ -720,7 +724,7 @@ export function releaseParkedReviewable(rawEventJson: string): DeliveryOutcome {
   }
   // Deliberately omit headSha so deliverGitHubPrReviewable skips the park branch
   // and delivers. Peer-forward still applies if ROUTE_READY_PRS_TO is set.
-  const outcome = deliverGitHubPrReviewable({
+  const outcome = await deliverGitHubPrReviewable({
     repo: String(saved.repo ?? ''),
     prNumber: Number(saved.prNumber ?? 0),
     prUrl: String(saved.prUrl ?? ''),
@@ -766,9 +770,9 @@ export function releaseParkedReviewable(rawEventJson: string): DeliveryOutcome {
  * (agent_group_id, thread_id) so an R0..Rn multi-decision PR wakes the session
  * once.
  */
-function notifyApproverOfTerminalPr(event: GitHubPrEvent, eventContent: string): void {
+async function notifyApproverOfTerminalPr(event: GitHubPrEvent, eventContent: string): Promise<void> {
   try {
-    const rows = getDecisionSessionsForPr(getDb(), event.repo, event.prNumber);
+    const rows = await getDecisionSessionsForPr(getDb(), event.repo, event.prNumber);
     if (rows.length === 0) return;
 
     // Stamp the verdict HERE, deterministically, before waking anyone.
@@ -800,7 +804,7 @@ function notifyApproverOfTerminalPr(event: GitHubPrEvent, eventContent: string):
       // The delivery id is the provenance key: it names the GitHub event that
       // observed the human, and makes a webhook redelivery (routine) an
       // idempotent no-op rather than a second observation.
-      recordHumanVerdict(
+      await recordHumanVerdict(
         getDb(),
         event.repo,
         event.prNumber,
@@ -822,12 +826,12 @@ function notifyApproverOfTerminalPr(event: GitHubPrEvent, eventContent: string):
       const key = `${row.agent_group_id} ${row.thread_id}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      const group = getAgentGroup(row.agent_group_id);
+      const group = await getAgentGroup(row.agent_group_id);
       if (!group) continue;
       // mintPerThread:false — only deliver to a session that still exists; a
       // reaped approver session isn't re-minted for a backward-looking learning
       // signal (the ledger already carries the row for offline scoring).
-      const session = findSessionByAgentThread(group.id, row.thread_id);
+      const session = await findSessionByAgentThread(group.id, row.thread_id);
       if (!session) {
         log.info('github-webhook: approver session gone — terminal PR learning skipped', {
           repo: event.repo,
@@ -874,7 +878,7 @@ function notifyApproverOfTerminalPr(event: GitHubPrEvent, eventContent: string):
   }
 }
 
-export function deliverGitHubPrEvent(event: GitHubPrEvent): DeliveryOutcome {
+export async function deliverGitHubPrEvent(event: GitHubPrEvent): Promise<DeliveryOutcome> {
   const eventContent = JSON.stringify({
     event: event.event,
     repo: event.repo,
@@ -886,14 +890,14 @@ export function deliverGitHubPrEvent(event: GitHubPrEvent): DeliveryOutcome {
   // Terminal events (merged/closed) also feed the approver's learning loop, in
   // addition to the fixer routing below. Independent side-channel.
   if (event.event === 'github.pr_merged' || event.event === 'github.pr_closed') {
-    notifyApproverOfTerminalPr(event, eventContent);
+    await notifyApproverOfTerminalPr(event, eventContent);
     // GC the CI-gate park slot. A parked reviewable row is released only by a
     // later check_suite=success for its head — which a finished PR will never
     // emit — so without this the row is immortal. Prod 2026-08-05 had 112 parked
     // rows of which 74 (71 merged, 3 closed) could never fire again; the table
     // only ever grew. Terminal is the one moment we know the wait is pointless.
     try {
-      deleteParked(getDb(), event.repo, event.prNumber);
+      await deleteParked(getDb(), event.repo, event.prNumber);
     } catch (err) {
       log.warn('github-webhook: parked-row GC failed (non-fatal)', {
         repo: event.repo,
@@ -903,7 +907,7 @@ export function deliverGitHubPrEvent(event: GitHubPrEvent): DeliveryOutcome {
     }
   }
 
-  const mapped = deliverMappedPrEvent({
+  const mapped = await deliverMappedPrEvent({
     repo: event.repo,
     prNumber: event.prNumber,
     rowId: event.rowId,
@@ -933,14 +937,14 @@ export function deliverGitHubPrEvent(event: GitHubPrEvent): DeliveryOutcome {
   // one — so both follow the same path. `mentionsBot` covers first contact via
   // an event whose own text addresses the bot (a review @-mention) before any
   // mapping row exists.
-  if (event.mentionsBot || prMappingExists(getDb(), event.repo, event.prNumber)) {
+  if (event.mentionsBot || (await prMappingExists(getDb(), event.repo, event.prNumber))) {
     log.info('github-webhook: PR event addressed to bot or owned but unrouted — orchestrator fallback', {
       repo: event.repo,
       pr: event.prNumber,
       event: event.event,
       mentionsBot: Boolean(event.mentionsBot),
     });
-    return deliverToOrchestrator({
+    return await deliverToOrchestrator({
       repo: event.repo,
       issueNumber: event.prNumber,
       rowId: event.rowId,
