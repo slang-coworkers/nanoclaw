@@ -5717,7 +5717,7 @@ function renderAdminSessions() {
   const groupFilterSelect =
     groupOptions.length > 1
       ? `<span style="color:var(--text-muted);font-size:10px;margin-left:8px">Coworker:</span>` +
-        `<select data-sessions-group-filter style="font-size:10px;background:var(--bg-alt,#1a1a1a);color:inherit;border:1px solid var(--border);border-radius:4px;padding:1px 4px">` +
+        `<select data-sessions-group-filter style="font-size:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:1px 4px">` +
         `<option value="all"${sessionsView.groupFilter === 'all' ? ' selected' : ''}>All coworkers</option>` +
         groupOptions
           .map(
