@@ -80,8 +80,10 @@ These hold across every step below; the steps reference them by number rather th
 ### 1. Build the status table
 
 **Use `scripts/pull-universe.sh` (preferred).** It exhaustively enumerates all `gh-issue-*` sessions
-via `ncl --limit 10000`, fetches PR/comments/outbound for each chain via `gh`/`ncl`, filters out
-closed issues (skips expensive fetches), and pipes the result directly into `scan.py`:
+via `ncl --limit 10000`, fetches PR/comments/outbound for each chain via `gh`/`ncl`, stamps each
+session's live cost-cap status via `ncl cost-cap status` (so `scan.py` can tell a session that's
+merely idle apart from one deliberately `stopped` pending a human cost decision — see Step 2), filters
+out closed issues (skips expensive fetches), and pipes the result directly into `scan.py`:
 
 ```bash
 bash scripts/pull-universe.sh --state memory/supervisor-state.json \
@@ -117,8 +119,11 @@ still owe, not a handoff → `awaiting_us`, nudge the fixer (reference.md → *C
 fixer-owned carve-out; root cause of slang#12002). **Bounce limb (additive):** a fixer-owned, no-PR
 chain whose owning container is `stopped` with an error-class last outbound (`last_outbound_error_class`
 ∈ transient|unknown) has *bounced* — it will not self-recover, so it is `awaiting_us` even if the
-silence clock is still fresh (the #12097 shape). `scan.py` emits the decision as `action` (`nudge` iff
-`needs_nudge`, else `none`) plus an enum `non_nudge_reason` on non-nudge rows — you act on those
+silence clock is still fresh (the #12097 shape). **Cost-stopped (highest priority — checked before
+all of the above):** a session that hit its Tier-2 cost ceiling is `cost_stopped`, never `awaiting_us`
+or `silent`, regardless of who spoke last or how long it's been quiet — see Step 3 for what that
+becomes on the board (a factual notice, not a nudge). `scan.py` emits the decision as `action` (`nudge`
+iff `needs_nudge`, else `none`) plus an enum `non_nudge_reason` on non-nudge rows — you act on those
 fields in Step 3, you do not re-derive the call.
 
 ### 2b. CI check (PR-bearing chains)
@@ -172,6 +177,36 @@ that did not receive a nudge, and escalate via `ask_user_question`. This is the 
 makes "never suppress a nudge row" checkable instead of a request the LLM can rationalize around
 (PR #901's wording alone was violated — #12097). Never report a tick as clean while
 `sent_nudges < must_nudge`.
+
+**Cost-stopped chains — a factual notice, never a nudge.** A row with `state == 'cost_stopped'` has a
+session that hit its Tier-2 cost ceiling and is hard-blocked pending a human Continue/Stop decision on
+the dashboard's cost-approval card (`ncl cost-cap status --session <id>` reports `stopped`). It is
+deliberately never `needs_nudge` — nudging it accomplishes nothing, the container cannot process
+another turn until a human acts (`container/agent-runner/src/db/session-state.ts::CostCapStatus`). This
+is the **one exception to R6** ("closest-to-the-state authors; the supervisor enforces, never
+substitutes"): R6 assumes the owning coworker *can* act but hasn't yet, which is false here — the
+coworker is provably incapacitated, so the supervisor posts the notice itself instead of nudging a
+session that cannot respond. When a row carries `needs_cost_notice: true`, post **exactly one** short,
+factual, single-line comment on the chain's issue/PR — never phrased as a ping, nobody needs to reply:
+
+```bash
+gh issue comment <num> --repo <owner>/<repo> \
+  --body "_[Supervisor] This chain's session hit its cost ceiling and is paused pending a human cost decision (dashboard → Continue/Stop). No action needed here — it resumes automatically once decided._"
+# PR-bearing chain: comment on the PR instead (same body).
+gh pr comment <pr> --repo <owner>/<repo> --body "..."
+```
+
+`needs_cost_notice` is `scan.py`'s own dedup gate for this — **do not build a second one.** It is
+`true` only on the tick a chain enters (or changes within) `cost_stopped`, reusing the same
+`delta`/`lastState`-transition tracking already computed for the board's 🆕/🔼/• tags (R4's spirit:
+one clock, not two). A chain that stays `cost_stopped` tick-to-tick with nothing else changed carries
+`needs_cost_notice: false` — do **not** post again; the row still appears on the board (state
+`cost_stopped`, `non_nudge_reason: 'cost-stopped'`), just without a repeated comment. If a session
+later resumes (a human clicked Continue) and is re-stopped afterward, `needs_cost_notice` re-arms on
+its own — `state` necessarily passes through something other than `cost_stopped` in between, so no
+manual bookkeeping is needed. Never escalate a cost-stopped chain via `ask_user_question` (`escalate`
+is always `false` here) — the dashboard card already carries that decision to the human; duplicating
+it in chat is noise, not help.
 
 CI rebase nudge (from Step 2b — to the fixer, keyed on the chain's thread):
 

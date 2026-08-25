@@ -2108,6 +2108,9 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
     'CODEX_MODEL',
     'CODEX_MODEL_PROVIDER',
     'CODEX_REASONING_EFFORT',
+    'PI_MODEL',
+    'PI_PROVIDER',
+    'PI_THINKING_LEVEL',
   ]) {
     const value = process.env[key];
     if (value) env[key] = value;

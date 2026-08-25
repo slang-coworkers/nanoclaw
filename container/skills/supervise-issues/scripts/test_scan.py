@@ -473,6 +473,200 @@ class StoppedErroredBounce(unittest.TestCase):
         self.assertEqual(r["action"], "none")
 
 
+class CostStopped(unittest.TestCase):
+    """A session that hit its Tier-2 cost ceiling is hard-blocked pending a
+    human Continue/Stop decision (the dashboard's cost-approval card) —
+    `cost_status` on the session row, stamped by pull-universe.sh via `ncl
+    cost-cap status`. No nudge can un-stick this, so it must NEVER reach
+    needs_nudge=True from ANY of the three ball branches classify() would
+    otherwise take. Without this short-circuit, a cost-stopped chain reads as
+    an ordinary silent/awaiting_us chain once enough time passes — the exact
+    supervise-issues bug this pins."""
+
+    def test_cost_stopped_session_silent_ball_none_is_not_nudged(self):
+        # Mirrors test_silent_escalates_after_4h's shape (silent 5h, no
+        # comments) but the session is cost_status='stopped' — must classify
+        # as cost_stopped, not silent, and must NOT be nudged or escalated.
+        out = run_scan({
+            "state": {},
+            "sessions": [{"id": "s1", "thread_id": "gh-issue-o/r-cs1",
+                          "container_status": "running", "cost_status": "stopped"}],
+            "chains": {"gh-issue-o/r-cs1": {
+                "repo": "o/r", "issue": 1, "sessions": ["s1"],
+                # 5h stale by us -> would be 'silent' + escalate=True otherwise.
+                "our_last_outbound": "2026-06-26T07:00:00Z",
+                "comments": [],
+            }},
+        })
+        r = row_for(out, "gh-issue-o/r-cs1")
+        self.assertEqual(r["state"], "cost_stopped")
+        self.assertFalse(r["needs_nudge"], r)
+        self.assertEqual(r["action"], "none")
+        self.assertEqual(r["non_nudge_reason"], "cost-stopped")
+        self.assertFalse(r["escalate"], r)  # never escalated — dashboard owns this decision
+        self.assertEqual(out["summary"]["needs_nudge"], 0)
+        self.assertEqual(out["summary"]["escalate"], 0)
+        self.assertEqual(out["summary"]["cost_stopped"], 1)
+
+    def test_cost_stopped_overrides_ball_ours_immediate_nudge(self):
+        # Without the short-circuit, ball=='ours' (human spoke last,
+        # unanswered) nudges IMMEDIATELY regardless of staleness (SKILL.md §2
+        # [MUST]). A cost-stopped session must still not be nudged here.
+        out = run_scan({
+            "state": {},
+            "sessions": [{"id": "s1", "thread_id": "gh-issue-o/r-cs2",
+                          "container_status": "running", "cost_status": "stopped"}],
+            "chains": {"gh-issue-o/r-cs2": {
+                "repo": "o/r", "issue": 2, "sessions": ["s1"],
+                "our_last_outbound": "2026-06-20T00:00:00Z",
+                "comments": [
+                    {"author": "maintainer", "at": "2026-06-26T11:59:00Z", "is_bot": False},  # 1 min ago
+                ],
+            }},
+        })
+        r = row_for(out, "gh-issue-o/r-cs2")
+        self.assertEqual(r["ball"], "ours")
+        self.assertEqual(r["state"], "cost_stopped")
+        self.assertFalse(r["needs_nudge"], r)
+
+    def test_cost_stopped_overrides_fixer_owed_promise(self):
+        # Without the short-circuit this exact shape is we_owe_next_step's own
+        # carve-out (bot-last, fixer-owned, no PR, silent >= 60 min) ->
+        # awaiting_us + nudge (see NextStepOwnership.test_dark_fixer_no_pr_is_awaiting_us,
+        # same chain shape). A cost-stopped session on the chain must win.
+        out = run_scan({
+            "state": {},
+            "sessions": [{"id": "s1", "thread_id": "gh-issue-o/r-cs3",
+                          "container_status": "stopped", "group_folder": "slang-fixer",
+                          "cost_status": "stopped"}],
+            "chains": {"gh-issue-o/r-cs3": {
+                "repo": "o/r", "issue": 3, "sessions": ["s1"],
+                "our_last_outbound": "2026-06-21T12:00:00Z",  # 5 days stale
+                "pr": None, "disposition": None,
+                "comments": [
+                    {"author": "nv-slang-bot[bot]", "at": "2026-06-21T12:00:00Z", "is_bot": True},
+                ],
+            }},
+        })
+        r = row_for(out, "gh-issue-o/r-cs3")
+        self.assertEqual(r["ball"], "human")
+        self.assertEqual(r["state"], "cost_stopped")
+        self.assertFalse(r["needs_nudge"], r)
+
+    def test_only_literal_stopped_status_triggers(self):
+        # 'ok' | 'warn' | 'escalated' | 'unknown' | absent must NOT trigger —
+        # only the literal 'stopped' value means the session cannot act.
+        for status in ("ok", "warn", "escalated", "unknown", None):
+            sess = {"id": "s1", "thread_id": "gh-issue-o/r-cs4", "container_status": "running"}
+            if status is not None:
+                sess["cost_status"] = status
+            out = run_scan({
+                "state": {},
+                "sessions": [sess],
+                "chains": {"gh-issue-o/r-cs4": {
+                    "repo": "o/r", "issue": 4, "sessions": ["s1"],
+                    "our_last_outbound": "2026-06-26T11:50:00Z", "comments": [],
+                }},
+            })
+            r = row_for(out, "gh-issue-o/r-cs4")
+            self.assertNotEqual(r["state"], "cost_stopped", f"status={status!r} must not trigger cost_stopped")
+
+    def test_any_session_on_chain_stopped_is_enough(self):
+        # A chain can hold more than one session; ANY of them being
+        # cost-stopped blocks the whole chain (any_session_cost_stopped).
+        out = run_scan({
+            "state": {},
+            "sessions": [
+                {"id": "s1", "thread_id": "gh-issue-o/r-cs5", "container_status": "running", "cost_status": "ok"},
+                {"id": "s2", "thread_id": "gh-issue-o/r-cs5", "container_status": "running", "cost_status": "stopped"},
+            ],
+            "chains": {"gh-issue-o/r-cs5": {
+                "repo": "o/r", "issue": 5, "sessions": ["s1", "s2"],
+                "our_last_outbound": None, "comments": [],
+            }},
+        })
+        r = row_for(out, "gh-issue-o/r-cs5")
+        self.assertEqual(r["state"], "cost_stopped")
+
+    def test_non_cost_stopped_rows_always_carry_needs_cost_notice_false(self):
+        out = run_scan({
+            "state": {},
+            "sessions": [{"id": "s1", "thread_id": "gh-issue-o/r-cs8", "container_status": "running"}],
+            "chains": {"gh-issue-o/r-cs8": {
+                "repo": "o/r", "issue": 8, "sessions": ["s1"],
+                "our_last_outbound": "2026-06-26T11:55:00Z", "comments": [],
+            }},
+        })
+        r = row_for(out, "gh-issue-o/r-cs8")
+        self.assertIn("needs_cost_notice", r)
+        self.assertFalse(r["needs_cost_notice"])
+
+    def test_needs_cost_notice_true_on_first_tick_only(self):
+        # First tick: chain enters cost_stopped -> needs_cost_notice True (the
+        # trigger for the one-line factual GitHub comment). Second tick, the
+        # session is STILL stopped and nothing else changed -> needs_cost_notice
+        # False (the dedup gate) even though state is still cost_stopped.
+        payload1 = {
+            "state": {},
+            "sessions": [{"id": "s1", "thread_id": "gh-issue-o/r-cs6",
+                          "container_status": "running", "cost_status": "stopped"}],
+            "chains": {"gh-issue-o/r-cs6": {
+                "repo": "o/r", "issue": 6, "sessions": ["s1"],
+                "our_last_outbound": "2026-06-26T09:00:00Z", "comments": [],
+            }},
+        }
+        out1 = run_scan(payload1)
+        r1 = row_for(out1, "gh-issue-o/r-cs6")
+        self.assertEqual(r1["delta"], "new")
+        self.assertTrue(r1["needs_cost_notice"], r1)
+
+        # Tick 2 gets the state tick 1 produced; the chain data is identical
+        # (realistic: a cost-stopped container cannot produce new outbound).
+        out2 = run_scan({**payload1, "state": out1["state"]})
+        r2 = row_for(out2, "gh-issue-o/r-cs6")
+        self.assertEqual(r2["state"], "cost_stopped")
+        self.assertEqual(r2["delta"], "same")
+        self.assertFalse(r2["needs_cost_notice"], r2)
+
+    def test_needs_cost_notice_rearms_after_resume_and_re_stop(self):
+        # Tick 1: cost_stopped -> notice due. Tick 2: a human clicked Continue,
+        # the session resumed and answered (ball flips, cost_status != 'stopped')
+        # -> no longer cost_stopped, no notice. Tick 3: hits the ceiling again
+        # -> cost_stopped again, and needs_cost_notice must be True again (a
+        # NEW stop episode) — not permanently suppressed by tick 1's notice.
+        thread = "gh-issue-o/r-cs7"
+        sess_stopped = {"id": "s1", "thread_id": thread, "container_status": "running",
+                         "cost_status": "stopped"}
+        base_chain = {"repo": "o/r", "issue": 7, "sessions": ["s1"], "comments": []}
+
+        out1 = run_scan({
+            "state": {}, "sessions": [sess_stopped],
+            "chains": {thread: {**base_chain, "our_last_outbound": "2026-06-26T09:00:00Z"}},
+        })
+        self.assertTrue(row_for(out1, thread)["needs_cost_notice"])
+
+        # Resume: cost_status flips off 'stopped' and the session answers
+        # (fresher outbound), so the chain no longer reads cost_stopped.
+        sess_resumed = {"id": "s1", "thread_id": thread, "container_status": "running",
+                         "cost_status": "ok"}
+        out2 = run_scan({
+            "state": out1["state"], "sessions": [sess_resumed],
+            "chains": {thread: {**base_chain, "our_last_outbound": "2026-06-26T11:55:00Z"}},
+        })
+        r2 = row_for(out2, thread)
+        self.assertNotEqual(r2["state"], "cost_stopped")
+        self.assertFalse(r2["needs_cost_notice"])
+
+        # Re-stop later.
+        out3 = run_scan({
+            "state": out2["state"], "sessions": [sess_stopped],
+            "chains": {thread: {**base_chain, "our_last_outbound": "2026-06-26T11:55:00Z"}},
+        })
+        r3 = row_for(out3, thread)
+        self.assertEqual(r3["state"], "cost_stopped")
+        self.assertTrue(r3["needs_cost_notice"], r3)  # re-armed, not suppressed by tick 1
+
+
 class ClosedIssueArchival(unittest.TestCase):
     """We supervise OPEN issues only. A chain whose issue is CLOSED (pull-universe
     emits it as a minimal stub with issue_open:false) must be archived, never

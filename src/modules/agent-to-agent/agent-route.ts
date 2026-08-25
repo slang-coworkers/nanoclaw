@@ -799,7 +799,20 @@ export async function performAgentRoute(
   // expensive full-context replay that a wake triggers. Sibling guard to the L2
   // self-loop drop above; see modules/runaway/echo-drop.ts for the rationale
   // (a runaway "Ignored." echo loop was ~21% of a month's spend).
-  const echo = evaluateEchoDrop(targetSession.id, session.id, extractText(msg.content));
+  //
+  // Attachment presence overrides this unconditionally — evaluated first, before
+  // echo-drop ever runs on the text. `send_file` (mcp-tools/core.ts) writes an
+  // empty text body when the caller doesn't pass one, which is exactly
+  // echo-drop's no-op pattern; without this check, a file-only message (e.g. the
+  // slang-pr-review workflow's combined-review handoff, which sends no text)
+  // gets silently classified as a no-op and never wakes the recipient — the one
+  // artifact the target actually needed. A message carrying files is never a
+  // no-op regardless of how its text reads.
+  const { files: sourceFiles } = parseMessageContent(msg.content);
+  const echo =
+    sourceFiles.length > 0
+      ? { drop: false, reason: '' }
+      : evaluateEchoDrop(targetSession.id, session.id, extractText(msg.content));
 
   await writeSessionMessage(targetAgentGroupId, targetSession.id, {
     id: a2aMsgId,

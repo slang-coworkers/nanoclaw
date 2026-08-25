@@ -19,9 +19,21 @@ const DEFAULT_SETTINGS_JSON =
       preferences: {
         reasoningEffort: 'max',
       },
+      // OKF (`memory/`, injected by the agent-runner's SessionStart hook) is the
+      // only memory system. Claude Code's native auto-memory is off via BOTH
+      // switches: `autoMemoryEnabled` is settings-level, the env var runtime, and
+      // leaving either unset means "whatever the CLI defaults to" — not a promise
+      // that survives a CLI upgrade. Two systems writing memory into one context
+      // window is the collision this avoids; OKF also survives a provider switch
+      // and is budget-capped per file, neither of which the native store offers.
+      //
+      // NEW groups only. Existing groups keep their settings.json — they are
+      // flipped by `migrateClaudeMemorySettings`, which MUST run only after
+      // `/migrate-memory` has carried their native memories into OKF.
+      autoMemoryEnabled: false,
       env: {
         CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
-        CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
+        CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1',
       },
       // Strip Claude Code's native Workflow tool — the single largest tool
       // schema on every turn (~26KB) — because NanoClaw orchestrates its own

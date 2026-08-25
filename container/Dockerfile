@@ -185,6 +185,19 @@ COPY cli-tools.json install-cli-tools.sh /tmp/
 RUN --mount=type=cache,target=/root/.cache/pnpm \
     sh /tmp/install-cli-tools.sh /tmp/cli-tools.json
 
+# pi has no native MCP: NanoClaw's tools reach the pi provider via the
+# pi-mcp-adapter extension, referenced by ABSOLUTE PATH from settings.json
+# `extensions` (PI_MCP_ADAPTER_ENTRY, read by providers/pi.ts). Install it into
+# a fixed, flat node_modules (exact pin, no build scripts) so pi loads it
+# OFFLINE at runtime — no npm fetch on first spawn and no reliance on pi's
+# internal package-dir layout. Only needed when the `pi` provider is used.
+ARG PI_MCP_ADAPTER_VERSION=2.27.0
+ENV PI_MCP_ADAPTER_ENTRY=/opt/pi-ext/node_modules/pi-mcp-adapter/index.ts
+RUN mkdir -p /opt/pi-ext && cd /opt/pi-ext \
+    && printf '{"name":"pi-ext","private":true}\n' > package.json \
+    && npm install --no-audit --no-fund --ignore-scripts "pi-mcp-adapter@${PI_MCP_ADAPTER_VERSION}" \
+    && chmod -R a+rX /opt/pi-ext
+
 # Codex lifecycle hooks go in the MANAGED config layer. A hook in the user layer
 # (~/.codex/hooks.json) needs per-hook content-hash trust before it may fire and
 # is skipped SILENTLY without it — and our --rm containers can never accumulate

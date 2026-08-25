@@ -39,6 +39,7 @@ import {
 } from './config.js';
 import { getAdminAgentGroup } from './db/agent-groups.js';
 import { getDb } from './db/connection.js';
+import { recordGhThreadOrigin } from './db/gh-thread-origin.js';
 import { openInboundDb, insertMessage } from './mailbox/sqlite/session-db.js';
 import {
   createSession,
@@ -178,6 +179,13 @@ export type DeliveryOutcome =
  * `displayTitle`, when supplied with a fresh-mint, is stamped onto the new
  * session so the dashboard timeline label reads "<repo> #<num>: <title>"
  * rather than inheriting the first inbound message's text.
+ *
+ * `origin`, when supplied with a fresh-mint, records WHO filed the
+ * issue/PR into `gh_thread_origin` (src/db/gh-thread-origin.ts), keyed on
+ * `threadId`. Every coworker that later joins this chain (a2a-delegated
+ * triager/fixer/reviewer sessions) shares the same thread_id verbatim, so
+ * one write here is enough for all of them to resolve the author later —
+ * no propagation through session creation needed.
  */
 async function deliverToOrchestrator(args: {
   repo: string;
@@ -187,6 +195,7 @@ async function deliverToOrchestrator(args: {
   eventContent: string;
   mintPerThread?: boolean;
   displayTitle?: string;
+  origin?: { kind: 'issue' | 'pr'; author: string };
 }): Promise<DeliveryOutcome> {
   const group: AgentGroup | undefined = await getAdminAgentGroup();
   if (!group) {
@@ -215,6 +224,7 @@ async function deliverToAgentGroup(
     eventContent: string;
     mintPerThread?: boolean;
     displayTitle?: string;
+    origin?: { kind: 'issue' | 'pr'; author: string };
   },
 ): Promise<DeliveryOutcome> {
   let session: Session | undefined;
@@ -243,6 +253,21 @@ async function deliverToAgentGroup(
   // 80 chars.
   if (minted && args.displayTitle) {
     await updateSessionTitle(session.id, args.displayTitle, 'auto');
+  }
+
+  // Record who filed this issue/PR, once, at the same moment we mint the
+  // thread's first session — the only point this host code has the login in
+  // hand. Keyed on thread_id (not this session), so every coworker who later
+  // joins the same chain resolves it too. See recordGhThreadOrigin's doc
+  // comment for why this isn't folded into pr_session_mappings instead.
+  if (minted && args.origin && args.threadId) {
+    await recordGhThreadOrigin({
+      threadId: args.threadId,
+      repo: args.repo,
+      number: args.issueNumber,
+      kind: args.origin.kind,
+      author: args.origin.author,
+    });
   }
 
   const dbPath = inboundDbPath(group.id, session.id);
@@ -596,6 +621,7 @@ export async function deliverGitHubIssueOpened(event: GitHubIssueOpenedEvent): P
     displayTitle: event.title
       ? `${event.repo} #${event.issueNumber}: ${event.title}`
       : `${event.repo} #${event.issueNumber}`,
+    origin: { kind: 'issue', author: event.author },
   });
 }
 
@@ -703,6 +729,7 @@ export async function deliverGitHubPrReviewable(event: GitHubPrReviewableEvent):
     eventContent,
     mintPerThread: true,
     displayTitle: event.title ? `${event.repo} #${event.prNumber}: ${event.title}` : `${event.repo} #${event.prNumber}`,
+    origin: { kind: 'pr', author: event.author },
   });
 }
 

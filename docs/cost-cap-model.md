@@ -49,8 +49,16 @@ ncl cost-cap set --ceiling 300 --group slang-fixer  # per-group ceiling override
 ncl cost-cap set --cap 60 --group slang-fixer       # per-group Tier-1 cap override (requires --group)
 ncl cost-cap set --ceiling 0                         # explicitly disable the ceiling (beats the env var)
 ncl cost-cap clear [--group <folder>]               # remove an override → restore env/thresholds fallback
+ncl cost-cap status --session <session-id>          # ONE session's LIVE observed status (see below)
 ```
 
+- **`get`/`set`/`clear` are POLICY** (the configured ceiling/cap numbers); **`status` is RUNTIME
+  observed state** for one specific session — `'ok'` | `'warn'` | `'escalated'` | `'stopped'` | `'unknown'`
+  (no cost-cap row yet), read directly from that session's `outbound.db` (`session_state` table, key
+  `cost_cap` — the same row the dashboard's cost-approval card reads). Consumers that need to tell "the
+  session is idle" from "the session is `stopped` pending a human Continue/Stop decision" (e.g.
+  `/supervise-issues`'s `pull-universe.sh`, which stamps every `gh-issue-*` session with it) want
+  `status`, not `get`. Source: `src/cli/session-cost-cap.ts`.
 - **Resolution precedence.** Cap: **DB per-group `cap_usd`** → `NANOCLAW_COST_T2_USD` env → `cost-thresholds.json` per-group p90 → fleet p90 → `$100` default (the auto-sourced tail is floored at `$10`; the two explicit operator overrides — DB and env — bypass the floor). Ceiling: **DB per-group `ceiling_usd`** → **DB fleet `ceiling_usd`** → `NANOCLAW_COST_T2_CEILING_USD` env → `0` (no ceiling). A stored DB value wins over the env var, **including `0`** (an explicit "no ceiling").
 - **`--group <folder>`** is the group's workspace folder — the same key `cost-thresholds.json` uses (`perGroupP90Usd[folder]`), matching `resolveCostCapT2Usd` / `resolveCostCeilingT2Usd`.
 - **Elevated only.** `cost-cap` is not in `GROUP_SCOPE_RESOURCES`, so the CLI guard denies it for any container under `cli_scope: 'group'` or `'disabled'`; only the host operator socket and a `cli_scope: 'global'` group can run it. A fleet-wide cost knob is not an ordinary coworker's to turn.

@@ -62,15 +62,17 @@ its module docstring carries the full contract:
 | `now` | ISO-8601 (with `Z`) tick time |
 | `bot_logins` | optional; default `["nv-slang-bot[bot]", "nv-slang-bot"]` (App + user PAT — both are "us") |
 | `state` | prior `supervisor-state.json` (`{}` on first run) |
-| `sessions` | the `gh-issue-`-filtered `ncl sessions list` rows |
+| `sessions` | the `gh-issue-`-filtered `ncl sessions list` rows, each also stamped with `cost_status` (`'ok'`\|`'warn'`\|`'escalated'`\|`'stopped'`\|`'unknown'`) via `ncl cost-cap status --session <id>` |
 | `chains` | per `gh-issue-…` thread: `{repo, issue, sessions[], our_last_outbound, our_last_push, pr:{number,state,isDraft,fixes_issue}, comments:[{author,at,is_bot,kind}], pending_ask_user, disposition?}` |
 
 Output: `{rows, summary, state}`. Each row → `state` (`awaiting_us`/`awaiting_human`/`silent`/
-`pr_open`/…), `ball` (`ours`/`human`/`none`), `delta` (`new`/`updated`/`same`),
+`pr_open`/`cost_stopped`/…), `ball` (`ours`/`human`/`none`), `delta` (`new`/`updated`/`same`),
 `last_activity_by_us`, `needs_nudge` + `nudge_reason`, `escalate`, `github_artifact`,
-`mis_threaded`. Write `state` back to `supervisor-state.json`. The script decides *which* rows need
-a nudge and *why* — **you** still compose and thread-key each nudge (Step 3) and make every
-judgment call (substantive-comment decisions, escalation wording).
+`mis_threaded`, `needs_cost_notice`. Write `state` back to `supervisor-state.json`. The script decides
+*which* rows need a nudge and *why* — **you** still compose and thread-key each nudge (Step 3) and
+make every judgment call (substantive-comment decisions, escalation wording). `needs_cost_notice` is
+the one exception where the script also decides *when to post*, not just *whether* — see *Cost-stopped
+chains* below — because that dedup has to be exact, not judgment-called.
 
 ## Resolving a chain's real PR
 
@@ -125,6 +127,7 @@ gh pr view <pr> --repo <owner>/<repo> --json reviews,comments
 
 | State | Condition | Action |
 |---|---|---|
+| `cost_stopped` | any session on the chain has `cost_status == 'stopped'` — checked BEFORE every other rule below, regardless of ball direction or staleness | never nudge/escalate; post one factual notice on the tick it (re-)enters this state (Step 3) |
 | `dispatched` | < 5 min ago | fresh — leave alone |
 | `triaging`/`fixing`/`reviewing`/`pr_open` | < 60 min since `last_activity_by_us` | working — leave alone |
 | `awaiting_human` | pending `ask_user_question`, OR bot spoke last and we await a human — **except** the fixer-owned carve-out below | leave alone — blocked on operator/maintainer |
@@ -163,8 +166,29 @@ with the **host-side a2a redrive** (once that ships): the host re-drives bounced
 the session layer; the supervisor is the fallback for bounces that surface as issue chains. `scan.py`
 emits the per-row decision as `action` (`nudge` iff `needs_nudge`, else `none`) with an enum
 `non_nudge_reason` (`human-owned:<disp>` | `pr-open` | `running` | `fresh-dispatch` |
-`awaiting-human` | `terminal`); Step 3 acts on `action`, and `summary.must_nudge` is the
-fails-loudly reconciliation target.
+`awaiting-human` | `cost-stopped` | `terminal`); Step 3 acts on `action`, and `summary.must_nudge` is
+the fails-loudly reconciliation target.
+
+**Cost-stopped chains (highest priority — evaluated before the carve-out and the bounce limb).** A
+session that hit its Tier-2 cost ceiling is hard-blocked pending a human Continue/Stop decision on the
+dashboard's cost-approval card — it will not process another turn no matter who spoke last on GitHub
+or how long it's been quiet, so `scan.py::any_session_cost_stopped` short-circuits `classify()` before
+any of the ball-direction branches run. This is a **policy/runtime** stop, orthogonal to both existing
+liveness signals: `container_status` (from `ncl sessions list`) only tracks whether the container
+*process* exited — a cost-stopped session commonly still reads `running`, since the runner ends the
+in-flight turn and refuses to spend further without necessarily exiting — and
+`last_outbound_error_class` infers a *bounced handoff* from outbound text, a different failure mode
+entirely. Neither one would have caught this case, which is exactly why `cost_status` is its own field
+(`pull-universe.sh` stamps it per session via `ncl cost-cap status --session <id>`, sourced from the
+same `outbound.db` `session_state.cost_cap` row the dashboard's cost-approval card reads) rather than
+overloading either existing signal.
+
+The row's `needs_cost_notice` field is the dedup gate for the one-line comment Step 3 posts — `true`
+only on the tick the chain's `state` transitions into (or changes within) `cost_stopped`, reusing the
+same `delta`/`lastState` tracking `scan.py` already computes for the board's 🆕/🔼/• tags rather than
+adding a second clock. `escalate` is always `false` for a `cost_stopped` row (it's gated on
+`state == 'silent'`, which this never is) — the dashboard card already owns escalating this to a
+human; `ask_user_question` would just duplicate it.
 
 ## GitHub-comment existence test (Step 5)
 
@@ -503,7 +527,8 @@ dashboard view). A delegated supervisor that is not the orchestrator uses `to="p
 
 5-bullet summary that follows the inline table:
 
-- **Status:** {n} chains in flight, {nudged} nudged, {escalated} escalated; `worktree-vol: <N>GB free`
+- **Status:** {n} chains in flight, {nudged} nudged, {escalated} escalated, {cost_stopped} cost-stopped
+  (from `summary.cost_stopped`); `worktree-vol: <N>GB free`
 - **Link:** dashboard timeline filtered to `gh-issue-*` threads
 - **Verdict:** healthy / degraded / blocked
 - **Next-action:** wait for cron / await operator decisions / re-dispatch chain X

@@ -28,13 +28,21 @@ vi.mock('../../db/sessions.js', () => ({
   getSession: vi.fn(),
 }));
 
-import './cost-cap.js'; // side-effect: registers cost-cap-{get,set,clear}
+// `status`'s handler is a thin delegate to session-cost-cap.ts — mocked here so
+// the wiring test below doesn't need a real session/outbound.db; the reader's
+// own SQLite read/parse logic has its own tests in session-cost-cap.test.ts.
+const mockReadSessionCostCapStatus = vi.fn();
+vi.mock('../session-cost-cap.js', () => ({
+  readSessionCostCapStatus: (...a: unknown[]) => mockReadSessionCostCapStatus(...a),
+}));
+
+import './cost-cap.js'; // side-effect: registers cost-cap-{get,set,clear,status}
 import { commandGuard, lookup } from '../registry.js';
 import { guard, type GuardActor } from '../../guard/index.js';
 import type { CallerContext } from '../frame.js';
 
 const AGENT: GuardActor = { kind: 'agent', agentGroupId: 'ag-orchestrator', sessionId: 's' };
-const COMMANDS = ['cost-cap-set', 'cost-cap-get', 'cost-cap-clear'] as const;
+const COMMANDS = ['cost-cap-set', 'cost-cap-get', 'cost-cap-clear', 'cost-cap-status'] as const;
 
 describe('cost-cap scope gate (elevated only)', () => {
   beforeEach(() => mockGetContainerConfig.mockReset());
@@ -89,5 +97,47 @@ describe('cost-cap set — input validation (pre-DB)', () => {
   it('rejects an unknown flag', async () => {
     // Strict validation on the declared args rejects stray flags with usage.
     await expect(run({ celing: '150' })).rejects.toThrow(/unknown flag/);
+  });
+});
+
+describe('cost-cap status', () => {
+  const HOST: CallerContext = { caller: 'host' };
+  const run = async (raw: Record<string, unknown>) => {
+    const cmd = lookup('cost-cap-status');
+    if (!cmd) throw new Error('cost-cap-status not registered');
+    return cmd.handler(cmd.parseArgs(raw), HOST);
+  };
+
+  beforeEach(() => mockReadSessionCostCapStatus.mockReset());
+
+  it('requires --session', () => {
+    const cmd = lookup('cost-cap-status');
+    if (!cmd) throw new Error('cost-cap-status not registered');
+    expect(() => cmd.parseArgs({})).toThrow(/--session is required/);
+  });
+
+  it('rejects an unknown flag', () => {
+    const cmd = lookup('cost-cap-status');
+    if (!cmd) throw new Error('cost-cap-status not registered');
+    expect(() => cmd.parseArgs({ session: 's1', bogus: 'x' })).toThrow(/unknown flag/);
+  });
+
+  it('delegates to readSessionCostCapStatus with the given session id and returns its result verbatim', async () => {
+    mockReadSessionCostCapStatus.mockReturnValue({
+      session_id: 's1',
+      agent_group_id: 'ag-1',
+      status: 'stopped',
+      cap_usd: 10,
+      spent_usd: 10.2,
+    });
+    const result = await run({ session: 's1' });
+    expect(mockReadSessionCostCapStatus).toHaveBeenCalledWith('s1');
+    expect(result).toEqual({
+      session_id: 's1',
+      agent_group_id: 'ag-1',
+      status: 'stopped',
+      cap_usd: 10,
+      spent_usd: 10.2,
+    });
   });
 });
