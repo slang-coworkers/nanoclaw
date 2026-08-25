@@ -17,5 +17,9 @@
   {
     "name": "@openai/codex",
     "version": "0.146.0"
+  },
+  {
+    "name": "@earendil-works/pi-coding-agent",
+    "version": "0.84.2"
   }
 ]

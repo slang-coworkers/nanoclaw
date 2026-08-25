@@ -16,7 +16,7 @@ import path from 'path';
 // use a real behavior test, because Vitest isolates modules per file.)
 describe('container provider registration barrel', () => {
   const barrel = fs.readFileSync(path.join(import.meta.dir, 'index.ts'), 'utf8');
-  for (const provider of ['claude', 'codex', 'opencode']) {
+  for (const provider of ['claude', 'codex', 'opencode', 'pi']) {
     it(`barrel self-registers ./${provider}.js`, () => {
       expect(barrel).toMatch(new RegExp(`import\\s+'\\./${provider}\\.js'`));
     });
