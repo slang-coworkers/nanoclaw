@@ -105,7 +105,7 @@ ncl help
 | dropped-messages | list | Messages from unregistered senders (read-only) |
 | approvals | list, get | Pending approval requests (read-only) |
 | pr-mappings | list, remap | PR→session routing rows. Agents claim these via `report_pr_created` (first-claim-wins); `remap` is the approval-gated way to reassign one. |
-| cost-cap | get, set, clear | Runtime Tier-2 cost-cap policy (`cost_cap_policy` table): fleet-wide ceiling + optional per-group cap/ceiling overrides, read at each container spawn (env / `cost-thresholds.json` are fallbacks). **Elevated only** — reachable from the host operator or a `cli_scope=global` group, denied for `group`/`disabled`. See [docs/cost-cap-model.md](docs/cost-cap-model.md#runtime-configuration--ncl-cost-cap-elevated-only). |
+| cost-cap | get, set, clear, status | Runtime Tier-2 cost-cap policy (`cost_cap_policy` table): fleet-wide ceiling + optional per-group cap/ceiling overrides, read at each container spawn (env / `cost-thresholds.json` are fallbacks). `status --session <id>` reports one session's LIVE observed state (`ok`/`warn`/`escalated`/`stopped`/`unknown`) instead of policy, read from that session's outbound.db. **Elevated only** — reachable from the host operator or a `cli_scope=global` group, denied for `group`/`disabled`. See [docs/cost-cap-model.md](docs/cost-cap-model.md#runtime-configuration--ncl-cost-cap-elevated-only). |
 
 Key files: `src/cli/dispatch.ts` (dispatcher + approval handler), `src/cli/crud.ts` (generic CRUD registration), `src/cli/resources/` (per-resource definitions).
 

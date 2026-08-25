@@ -57,6 +57,55 @@ for s in data:
 json.dump(gh, sys.stdout)
 ' <<<"$ALL_SESSIONS")
 
+# --- 1b. Stamp each gh-issue session with its live cost-cap status (ncl,
+#         local — same cost class as the per-chain `ncl sessions messages`
+#         calls in Step 4b, not a GitHub round-trip). scan.py's classify()
+#         short-circuits a nudge for a session that's deliberately `stopped`
+#         pending a human cost decision (dashboard Continue/Stop), instead of
+#         reading the resulting long silence as ordinary staleness — see
+#         scan.py::any_session_cost_stopped. `cost_status` is 'unknown' when
+#         the session predates cost-cap or the `ncl cost-cap status` call
+#         itself fails; scan.py treats 'unknown' exactly like "no signal"
+#         (never cost_stopped). ---
+printf '%s' "$GH_SESSIONS" > "$TMPD/gh_sessions_precost.json"
+GH_SESSIONS=$(python3 - "$TMPD/gh_sessions_precost.json" <<'PY'
+import json
+import subprocess
+import sys
+
+with open(sys.argv[1]) as f:
+    sessions = json.load(f)
+
+
+def cost_status(session_id):
+    try:
+        r = subprocess.run(
+            ["ncl", "cost-cap", "status", "--session", session_id, "--json"],
+            capture_output=True, text=True, timeout=15)
+        if r.returncode != 0 or not r.stdout.strip():
+            return "unknown"
+        parsed = json.loads(r.stdout)
+        data = parsed.get("data") if isinstance(parsed, dict) else None
+        status = (data or {}).get("status")
+        return status if isinstance(status, str) and status else "unknown"
+    except Exception:
+        return "unknown"
+
+
+stopped = 0
+for s in sessions:
+    sid = s.get("id")
+    status = cost_status(sid) if sid else "unknown"
+    s["cost_status"] = status
+    if status == "stopped":
+        stopped += 1
+
+print(f"pull-universe: cost-cap status stamped for {len(sessions)} session(s), "
+      f"{stopped} cost-stopped", file=sys.stderr)
+json.dump(sessions, sys.stdout)
+PY
+)
+
 # --- 2. Group sessions by thread_id, extract repo + issue number ---
 THREADS=$(echo "$GH_SESSIONS" | python3 -c '
 import json, sys, re

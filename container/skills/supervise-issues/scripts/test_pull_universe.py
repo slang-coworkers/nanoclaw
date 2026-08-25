@@ -40,6 +40,21 @@ def load_gh_graphql():
     return mod
 
 
+def load_cost_status():
+    """Extract cost_status() from pull-universe.sh's Step 1b heredoc (the
+    per-session cost-cap stamping step) into a module with a controllable
+    `subprocess`, mirroring load_gh_graphql()'s extraction style."""
+    src = SCRIPT.read_text()
+    start = src.index("def cost_status(session_id):")
+    end = src.index("stopped = 0")
+    mod = types.ModuleType("pu_cost_status")
+    # json is a real import the function relies on.
+    import json as _json
+    mod.json = _json
+    exec(compile(src[start:end], "cost_status", "exec"), mod.__dict__)  # noqa: S102
+    return mod
+
+
 def load_classify_error_text():
     """Extract classify_error_text() (+ its signature-list module globals) from
     the Step-4b heredoc and compile it standalone."""
@@ -97,6 +112,72 @@ class GraphqlSalvage(unittest.TestCase):
         # data: null with only errors -> nothing to salvage.
         self._patch(FakeCompleted(1, '{"data": null, "errors": [{"message": "x"}]}'))
         self.assertIsNone(self.mod.gh_graphql("{ q }"))
+
+
+class CostStatusStamping(unittest.TestCase):
+    """Step 1b stamps `cost_status` onto every gh-issue session via `ncl
+    cost-cap status`, so scan.py can distinguish a session that's merely idle
+    from one deliberately `stopped` pending a human cost decision (see
+    scan.py::any_session_cost_stopped). The live ncl round-trip needs a
+    running container (covered by the skill's own smoke run); these tests pin
+    the pure parsing/fallback logic — every non-clean-success path must
+    degrade to 'unknown', never raise — plus the wiring order structurally."""
+
+    def setUp(self):
+        self.mod = load_cost_status()
+
+    def _patch(self, completed=None, raises=None):
+        if raises is not None:
+            def run(*_a, **_k):
+                raise raises
+            self.mod.subprocess = types.SimpleNamespace(run=run)
+        else:
+            self.mod.subprocess = types.SimpleNamespace(run=lambda *a, **k: completed)
+
+    def test_stopped_status_is_reported(self):
+        self._patch(FakeCompleted(0, '{"data": {"status": "stopped"}}'))
+        self.assertEqual(self.mod.cost_status("sess-1"), "stopped")
+
+    def test_ok_status_is_reported(self):
+        self._patch(FakeCompleted(0, '{"data": {"status": "ok"}}'))
+        self.assertEqual(self.mod.cost_status("sess-1"), "ok")
+
+    def test_nonzero_returncode_is_unknown(self):
+        self._patch(FakeCompleted(1, ""))
+        self.assertEqual(self.mod.cost_status("sess-1"), "unknown")
+
+    def test_empty_stdout_is_unknown(self):
+        self._patch(FakeCompleted(0, "   "))
+        self.assertEqual(self.mod.cost_status("sess-1"), "unknown")
+
+    def test_unparseable_json_is_unknown(self):
+        self._patch(FakeCompleted(0, "not json"))
+        self.assertEqual(self.mod.cost_status("sess-1"), "unknown")
+
+    def test_missing_status_field_is_unknown(self):
+        self._patch(FakeCompleted(0, '{"data": {}}'))
+        self.assertEqual(self.mod.cost_status("sess-1"), "unknown")
+
+    def test_missing_data_field_is_unknown(self):
+        self._patch(FakeCompleted(0, '{"ok": true}'))
+        self.assertEqual(self.mod.cost_status("sess-1"), "unknown")
+
+    def test_subprocess_exception_is_unknown(self):
+        # e.g. a subprocess.TimeoutExpired — must degrade, never crash the pull.
+        self._patch(raises=RuntimeError("boom"))
+        self.assertEqual(self.mod.cost_status("sess-1"), "unknown")
+
+    def test_step1b_runs_before_thread_grouping_and_feeds_final_payload(self):
+        # Structural assertion: Step 1b reassigns GH_SESSIONS with cost_status
+        # BEFORE Step 2 groups sessions into THREADS, and the SAME (now
+        # cost_status-enriched) variable is what Step 5 writes as the
+        # payload's "sessions" field — i.e. scan.py actually receives it.
+        src = SCRIPT.read_text()
+        step1b = src.index('s["cost_status"] = status')
+        step2 = src.index('THREADS=$(echo "$GH_SESSIONS"')
+        final_write = src.index('> "$TMPD/gh_sessions.json"')
+        self.assertLess(step1b, step2, "cost_status stamping must happen before Step 2 groups sessions")
+        self.assertLess(step2, final_write)
 
 
 class ErrorClassification(unittest.TestCase):

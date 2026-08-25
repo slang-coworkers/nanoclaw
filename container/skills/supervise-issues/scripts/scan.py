@@ -27,7 +27,11 @@ INPUT (stdin), a JSON object:
   "bot_logins": ["nv-slang-bot[bot]", "nv-slang-bot"],   # optional, sensible default
   "state": { ...prior supervisor-state.json... },        # last tick; {} on first run
   "sessions": [                              # ncl sessions list --json -> .data
-     {"id","thread_id","container_status","last_active","agent_group_id","group_folder"?}
+     {"id","thread_id","container_status","last_active","agent_group_id","group_folder"?,
+      "cost_status"?}                        # 'ok'|'warn'|'escalated'|'stopped'|'unknown';
+                                              # stamped by pull-universe.sh via `ncl cost-cap
+                                              # status --session <id>`. Absent/'unknown' means
+                                              # no signal — NOT treated as cost_stopped.
   ],
   "chains": {                                # per gh-issue-<owner>/<repo>-<num> thread, what the agent fetched
      "gh-issue-shader-slang/slang-11487": {
@@ -57,12 +61,24 @@ OUTPUT (stdout), a JSON object:
   "rows": [ {thread,repo,issue,pr,state,ball,delta,last_activity_by_us,
              needs_nudge,nudge_reason,action,non_nudge_reason,escalate,
              github_artifact,disposition,last_outbound_error_class,
-             stopped_session_count,mis_threaded} ],
+             stopped_session_count,mis_threaded,needs_cost_notice} ],
   # action = 'nudge' iff needs_nudge else 'none' (strict 1:1; no 'suppress').
   # non_nudge_reason = enum-like token on 'none' rows (human-owned:<disp> |
-  #   pr-open | running | fresh-dispatch | awaiting-human | terminal), else null.
+  #   pr-open | running | fresh-dispatch | awaiting-human | cost-stopped |
+  #   terminal), else null.
+  # state can be 'cost_stopped': a session on the chain hit its Tier-2 cost
+  #   ceiling and is hard-blocked pending a human Continue/Stop decision (the
+  #   dashboard's cost-approval card) — see any_session_cost_stopped. This
+  #   ALWAYS has needs_nudge=False (nudging a blocked container does nothing;
+  #   it cannot process another turn until a human acts). needs_cost_notice is
+  #   the separate, mechanically-enforced trigger for the one-line factual
+  #   GitHub comment: True only on the tick the chain enters (or changes
+  #   within) cost_stopped, False on every subsequent unchanged tick — dedup
+  #   reuses the same delta/lastState-transition tracking already computed for
+  #   the board's 🆕/🔼/• tags, so it re-arms correctly across a
+  #   resume-then-re-stop cycle with no extra bookkeeping.
   "summary": {"in_flight","new","updated","same","awaiting_us","silent",
-              "needs_nudge","must_nudge","escalate","closed"},
+              "needs_nudge","must_nudge","escalate","closed","cost_stopped"},
   "state": { ...next supervisor-state.json (merged, snapshots refreshed)... }
 }
 
@@ -134,7 +150,7 @@ def is_bot_author(comment, bot_logins):
     return comment.get("author") in bot_logins
 
 
-def latest(comments, predicate=lambda c: True):
+def latest(comments, predicate=lambda _c: True):
     """Most recent comment (by `at`) matching predicate, or None."""
     best = None
     best_ts = None
@@ -149,7 +165,7 @@ def latest(comments, predicate=lambda c: True):
     return best
 
 
-def compute_last_activity_by_us(now, chain, bot_logins):
+def compute_last_activity_by_us(chain, bot_logins):
     """max(our outbound, our push, our newest bot comment/review). ISO or None.
 
     SKILL.md §2 [MUST]: the silence clock is BY US — a human comment starts our
@@ -189,7 +205,10 @@ def compute_ball(chain, bot_logins):
     # Newest is a non-bot. Is there ANY bot activity strictly after it?
     newest_ts = parse_ts(newest.get("at"))
     newest_bot = latest(comments, lambda c: is_bot_author(c, bot_logins))
-    if newest_bot is not None:
+    # newest_ts can be None (the newest comment's `at` was missing/unparseable)
+    # even though `newest` itself is non-None — guard it explicitly, else a
+    # bot_ts-vs-None comparison below raises TypeError on malformed input.
+    if newest_bot is not None and newest_ts is not None:
         bot_ts = parse_ts(newest_bot.get("at"))
         if bot_ts is not None and bot_ts >= newest_ts:
             return "human"
@@ -235,6 +254,29 @@ def any_stopped_errored(chain, sessions_by_id):
     return stopped_session_count(chain, sessions_by_id) > 0 and (
         chain.get("last_outbound_error_class") in ("transient", "unknown")
     )
+
+
+def any_session_cost_stopped(chain, sessions_by_id):
+    """A session on this chain hit its Tier-2 cost ceiling and is hard-blocked
+    pending a human Continue/Stop decision (the dashboard's cost-approval card).
+
+    `cost_status` is stamped per session by pull-universe.sh via `ncl cost-cap
+    status` (container/agent-runner's persistCostCap() -> outbound.db
+    session_state['cost_cap'].status). This is a POLICY/RUNTIME stop, not a
+    liveness signal — orthogonal to `container_status` (which only tracks
+    whether the container PROCESS exited) and to `last_outbound_error_class`
+    (which infers a bounced handoff from outbound text). A cost-stopped
+    container can easily still read container_status=='running': the runner
+    ends the in-flight turn and refuses to spend further, it does not
+    necessarily exit. So neither existing signal catches this case — a chain
+    in this state will NOT self-recover from a nudge or from time passing; it
+    is unstuck only by a human clicking Continue (or Stop) on the dashboard.
+    """
+    for sid in chain.get("sessions", []):
+        s = sessions_by_id.get(sid)
+        if s and s.get("cost_status") == "stopped":
+            return True
+    return False
 
 
 # Dispositions where a HUMAN (maintainer, external contributor, reporter) genuinely
@@ -287,6 +329,7 @@ def compute_non_nudge_reason(chain, sessions_by_id, ball, state, needs_nudge):
     same "narrate-it-away" ambiguity that stranded #12097 in a prose field.
 
     Tokens:
+      cost-stopped        a session hit its cost ceiling; awaiting human decision
       human-owned:<disp>  human-owned disposition genuinely owns the next step
       pr-open             a PR/owed artifact exists; CI/Step-2b owns the nudge
       running             a live container acted within the working window
@@ -296,6 +339,8 @@ def compute_non_nudge_reason(chain, sessions_by_id, ball, state, needs_nudge):
     """
     if needs_nudge:
         return None
+    if state == "cost_stopped":
+        return "cost-stopped"
     disp = (chain.get("disposition") or "").lower()
     for tok in HUMAN_OWNED_DISPOSITION:
         if tok in disp:
@@ -314,10 +359,26 @@ def compute_non_nudge_reason(chain, sessions_by_id, ball, state, needs_nudge):
 def classify(now, chain, sessions_by_id, bot_logins):
     """Return (state, ball, last_activity_by_us, needs_nudge, nudge_reason)."""
     ball = compute_ball(chain, bot_logins)
-    last_by_us = compute_last_activity_by_us(now, chain, bot_logins)
+    last_by_us = compute_last_activity_by_us(chain, bot_logins)
     silent_age = age_seconds(now, last_by_us)  # None if we've never acted
     running = any_session_running(chain, sessions_by_id)
     pr = chain.get("pr")
+
+    # cost_stopped — a session on this chain hit its Tier-2 cost ceiling and is
+    # hard-blocked pending a human Continue/Stop decision. This MUST run before
+    # all three ball branches below (including 'ours'): no nudge can un-stick
+    # this regardless of who spoke last on GitHub — the container will not
+    # process another turn until a human acts on the dashboard. Left to fall
+    # through, a long-silent cost-stopped chain would eventually hit the
+    # ordinary silence-clock nudge paths (we_owe_next_step's SILENT_S fallback
+    # on the 'human' branch, or the silence-clock checks on the 'none' branch)
+    # exactly like a genuinely stuck chain — which is the bug this guards
+    # against. `escalate` (computed by the caller) is gated on state=='silent',
+    # so it is naturally False here too — a cost stop is not something the
+    # supervisor escalates via ask_user_question; the dashboard card already
+    # carries that decision to the human.
+    if any_session_cost_stopped(chain, sessions_by_id):
+        return ("cost_stopped", ball, last_by_us, False, "")
 
     # awaiting_us — ball is in our court, our session is not actively closing it.
     # STUCK regardless of how recent the human comment is (SKILL.md §2 [MUST]).
@@ -382,8 +443,13 @@ def github_artifact(chain):
     return chain.get("github_artifact_url")
 
 
-def mis_threaded(thread, chain):
-    """The thread_id names issue N; the PR body says it fixes M != N (reused session)."""
+def mis_threaded(chain):
+    """The thread_id names issue N; the PR body says it fixes M != N (reused session).
+
+    `chain["issue"]` is already N (pull-universe.sh parses it out of the
+    thread_id once when building the chain universe — see THREADS in that
+    script), so this doesn't need the thread_id string itself.
+    """
     pr = chain.get("pr")
     if not pr:
         return False
@@ -424,6 +490,9 @@ def run(payload):
         # needs_nudge by construction (action is 1:1 with needs_nudge) but is
         # emitted separately as the explicit reconciliation target.
         "must_nudge": 0,
+        # cost_stopped = chains currently in the cost_stopped state this tick
+        # (regardless of whether needs_cost_notice fired — see that field).
+        "cost_stopped": 0,
     }
 
     for thread in sorted(live_keys):
@@ -473,6 +542,18 @@ def run(payload):
         else:
             delta = "same"
 
+        # needs_cost_notice — the mechanically-enforced trigger for the ONE-LINE
+        # factual GitHub comment (never a nudge). True only when the chain is
+        # cost_stopped AND something changed since last tick (delta != 'same') —
+        # i.e. the FIRST tick of a given stop episode, or a resume that flips
+        # back to cost_stopped later (which necessarily passes through a
+        # different lastState in between, so delta is 'updated' again on
+        # re-stop). A chain that stays cost_stopped tick-to-tick with nothing
+        # else changed has delta=='same' here, so this stays False — no repeat
+        # comment. Reuses `delta`'s existing lastState-transition tracking
+        # rather than inventing a second dedup mechanism (same spirit as R4).
+        needs_cost_notice = state == "cost_stopped" and delta != "same"
+
         # Effective age escalates on the dispatch clock when we never acted
         # (last_by_us is None) — else a bounced-at-dispatch chain would nudge but
         # never escalate, since age_seconds(None) is None -> 0.
@@ -513,7 +594,8 @@ def run(payload):
             "disposition": chain.get("disposition") or prior.get("disposition"),
             "last_outbound_error_class": chain.get("last_outbound_error_class"),
             "stopped_session_count": stopped_session_count(chain, sessions_by_id),
-            "mis_threaded": mis_threaded(thread, chain),
+            "mis_threaded": mis_threaded(chain),
+            "needs_cost_notice": needs_cost_notice,
         })
 
         # Refresh the durable snapshot — preserve prior bookkeeping fields
@@ -536,6 +618,8 @@ def run(payload):
             counts["awaiting_us"] += 1
         if state == "silent":
             counts["silent"] += 1
+        if state == "cost_stopped":
+            counts["cost_stopped"] += 1
         if needs_nudge:
             counts["needs_nudge"] += 1
             counts["must_nudge"] += 1
