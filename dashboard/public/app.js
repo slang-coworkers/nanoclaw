@@ -5585,7 +5585,7 @@ function renderAdminTasks() {
 // Sessions tab view state: cost period window + sort. Cost is summed per
 // session from transcripts server-side (see /api/sessions); default view is
 // ranked by cost over 30d so the fat tail (few sessions, most spend) is on top.
-const sessionsView = { period: '30d', sort: 'cost', filter: 'all', unavailable: null };
+const sessionsView = { period: '30d', sort: 'cost', filter: 'all', groupFilter: 'all', unavailable: null };
 
 async function loadAdminSessions() {
   const el = document.getElementById('admin-sessions-content');
@@ -5674,6 +5674,18 @@ function renderGithubOriginCell(s) {
   return link + author;
 }
 
+// Distinct (group_folder, display name) pairs across all known sessions,
+// alphabetized by name — backs the Sessions tab coworker filter dropdown.
+// Pulled out as its own function (rather than inlined in renderAdminSessions)
+// because the dedup-by-folder + name-fallback-to-folder + sort behavior is
+// exactly the kind of small logic that's easy to get subtly wrong and cheap
+// to pin with a direct test.
+function sessionGroupOptions(sessions) {
+  return [
+    ...new Map((sessions || []).filter((s) => s.group_folder).map((s) => [s.group_folder, s.group_name || s.group_folder])).entries(),
+  ].sort((a, b) => a[1].localeCompare(b[1]));
+}
+
 function renderAdminSessions() {
   const el = document.getElementById('admin-sessions-content');
   const p = sessionsView.period;
@@ -5694,6 +5706,27 @@ function renderAdminSessions() {
     `<button class="admin-action-btn${sessionsView.filter === val ? ' success' : ''}" data-sessions-filter="${val}">${label}${
       count != null ? ` <span style="color:var(--text-muted)">${count}</span>` : ''
     }</button>`;
+  // Coworker (agent group) dropdown — from the FULL unfiltered set (like nStop
+  // above) so every group stays selectable regardless of which filter is
+  // currently active. Percentiles below are blended across every coworker by
+  // default, which mixes cheap chat-bot sessions with heavy compute coworkers
+  // into one number nobody can act on — picking a group here re-scopes BOTH
+  // the table and the p50/p90/etc pills to that one coworker's own
+  // distribution, which is the number that's actually meaningful.
+  const groupOptions = sessionGroupOptions(adminState.sessions);
+  const groupFilterSelect =
+    groupOptions.length > 1
+      ? `<span style="color:var(--text-muted);font-size:10px;margin-left:8px">Coworker:</span>` +
+        `<select data-sessions-group-filter style="font-size:10px;background:var(--bg-alt,#1a1a1a);color:inherit;border:1px solid var(--border);border-radius:4px;padding:1px 4px">` +
+        `<option value="all"${sessionsView.groupFilter === 'all' ? ' selected' : ''}>All coworkers</option>` +
+        groupOptions
+          .map(
+            ([folder, name]) =>
+              `<option value="${escAttr(folder)}"${sessionsView.groupFilter === folder ? ' selected' : ''}>${esc(name)}</option>`,
+          )
+          .join('') +
+        `</select>`
+      : '';
   const controls =
     `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">` +
     `<span style="color:var(--text-muted);font-size:10px">Cost window:</span>` +
@@ -5707,6 +5740,7 @@ function renderAdminSessions() {
     `<span style="color:var(--text-muted);font-size:10px;margin-left:8px">Show:</span>` +
     filterBtn('all', 'All') +
     filterBtn('stopped', '⚑ Stopped (needs decision)', nStop) +
+    groupFilterSelect +
     (costUnavailable
       ? `<span title="${escAttr(String(sessionsView.unavailable))}" style="color:#94A3B8;font-size:10px;margin-left:8px">cost: ccusage unavailable</span>`
       : '') +
@@ -5724,24 +5758,38 @@ function renderAdminSessions() {
   if (sessionsView.filter === 'stopped') {
     rows = rows.filter((s) => s.costStatus === 'stopped');
   }
+  // Coworker filter — narrows both the table AND the percentile pills below
+  // (pricedCosts is derived from `rows`, so this falls straight through).
+  const groupFilterName =
+    sessionsView.groupFilter !== 'all'
+      ? groupOptions.find(([folder]) => folder === sessionsView.groupFilter)?.[1]
+      : null;
+  if (sessionsView.groupFilter !== 'all') {
+    rows = rows.filter((s) => s.group_folder === sessionsView.groupFilter);
+  }
   if (rows.length === 0) {
-    el.innerHTML = controls + `<div class="admin-empty">No sessions match "${esc(sessionsView.filter)}"</div>`;
+    const reason = groupFilterName ? `coworker "${esc(groupFilterName)}"` : `"${esc(sessionsView.filter)}"`;
+    el.innerHTML = controls + `<div class="admin-empty">No sessions match ${reason}</div>`;
     return;
   }
   const totalCost = rows.reduce((s, r) => s + (r.cost || 0), 0);
   // Cost distribution across sessions with priced activity in the window. The
   // tail is heavy (a few sessions dominate spend), so percentiles say more than
   // the mean: p50 = the typical session, p90/p99/max = where the cost concentrates.
+  // Scoped to `rows`, so a coworker filter above narrows this too — fleet-wide,
+  // blending every coworker's cost profile into one distribution, is rarely a
+  // number anyone can act on; per-coworker is.
   const pricedCosts = rows
     .map((r) => r.cost || 0)
     .filter((c) => c > 0)
     .sort((a, b) => a - b);
   const pctl = (arr, q) => (arr.length ? arr[Math.min(arr.length - 1, Math.floor((q / 100) * (arr.length - 1)))] : 0);
+  const distScopeLabel = groupFilterName ? esc(groupFilterName) : 'all coworkers';
   const distPills =
     costUnavailable || pricedCosts.length === 0
       ? ''
       : `<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap;font-size:10px">` +
-        `<span style="color:var(--text-muted)">Cost per session (${pricedCosts.length} priced):</span>` +
+        `<span style="color:var(--text-muted)">Cost per session — ${distScopeLabel} (${pricedCosts.length} priced):</span>` +
         [
           ['p50', 50],
           ['p75', 75],
@@ -5806,6 +5854,20 @@ function renderAdminSessions() {
   html += '</table>';
   el.innerHTML = html;
 }
+
+// Sessions tab coworker filter — a native <select>, not a button row (could be
+// dozens of coworkers), so it needs its own delegated `change` listener (native
+// change events bubble, so this survives renderAdminSessions() replacing the
+// select's DOM node on every re-render — same delegation approach the
+// data-sessions-* click handlers use, just on a different event type).
+// Client-side only, like the cost-status filter: no re-fetch, just re-render.
+document.addEventListener('change', (e) => {
+  const groupSel = e.target.closest('[data-sessions-group-filter]');
+  if (groupSel) {
+    sessionsView.groupFilter = groupSel.value;
+    renderAdminSessions();
+  }
+});
 
 // --- Skills ---
 async function loadAdminSkills() {
