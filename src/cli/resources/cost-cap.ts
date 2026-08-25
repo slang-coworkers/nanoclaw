@@ -28,6 +28,7 @@ import {
   type CostCapPolicyRow,
 } from '../../db/cost-cap-policy.js';
 import { resolveCostCapT2Usd, resolveCostCeilingT2Usd } from '../../container-config.js';
+import { readSessionCostCapStatus, type SessionCostCapView } from '../session-cost-cap.js';
 
 /** Who is making the change, for the row's audit column. */
 function actorLabel(ctx: { caller: string; agentGroupId?: string } | undefined): string {
@@ -239,6 +240,31 @@ registerResource({
       formatHuman: (data) => {
         const d = data as { cleared: boolean; scope: string; note: string };
         return d.note;
+      },
+    },
+    status: {
+      access: 'open',
+      description:
+        "Report a session's LIVE cost-cap runtime status — read directly from that session's outbound.db " +
+        '(`session_state` table, key `cost_cap`), the row the runner writes as spend accrues. Distinct from ' +
+        '`get` (the CONFIGURED policy ceiling/cap): this is the OBSERVED state for one specific session — ' +
+        "'ok' | 'warn' | 'escalated' | 'stopped' (hard-blocked pending a human Continue/Stop decision on the " +
+        "dashboard), or 'unknown' when no cost-cap row exists yet (pre-cost-cap runner, or the session has " +
+        'not spawned / spent anything). Intended for scriptable callers (e.g. /supervise-issues) that need to ' +
+        "tell a session that's merely idle apart from one that's deliberately stopped.",
+      args: [{ name: 'session', type: 'string', description: 'Session ID.', required: true }],
+      examples: ['ncl cost-cap status --session <session-id>'],
+      handler: async (args) => readSessionCostCapStatus(String(args.session ?? '')),
+      formatHuman: (data) => {
+        const d = data as SessionCostCapView;
+        if (d.status === 'unknown') {
+          return `Session ${d.session_id}: cost-cap status unknown (no cost_cap row yet).`;
+        }
+        const parts: string[] = [`status=${d.status}`];
+        if (typeof d.spent_usd === 'number') parts.push(`spent=${usd(d.spent_usd)}`);
+        if (typeof d.cap_usd === 'number') parts.push(`cap=${usd(d.cap_usd)}`);
+        if (d.decision) parts.push(`decision=${d.decision}${d.decided_at ? ` at ${d.decided_at}` : ''}`);
+        return `Session ${d.session_id} (${d.agent_group_id}): ${parts.join(' ')}`;
       },
     },
   },
