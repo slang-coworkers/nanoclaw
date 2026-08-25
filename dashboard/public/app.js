@@ -5629,9 +5629,9 @@ function renderCostCapCell(s) {
   if (status === 'stopped') {
     const ceiling = typeof s.costCeiling === 'number' ? fmtUsd(s.costCeiling) : '?';
     cell =
-      `<span style="border:1px solid #94A3B8;border-radius:4px;padding:1px 6px;white-space:nowrap">` +
-      `<b style="color:#94A3B8">${spent}</b><span style="color:var(--text-muted)"> / ${ceiling} ceiling${perDay}</span>` +
-      `<span style="color:#94A3B8;font-size:9px"> stopped</span>${immortalMark}</span>`;
+      `<span style="border:1px solid #EF4444;background:rgba(239,68,68,0.12);border-radius:4px;padding:1px 6px;white-space:nowrap">` +
+      `<b style="color:#EF4444">${spent}</b><span style="color:var(--text-muted)"> / ${ceiling} ceiling${perDay}</span>` +
+      `<span style="color:#EF4444;font-size:9px"> stopped</span>${immortalMark}</span>`;
   } else {
     // p99-relative color, same 0.8 "warn" fraction the runner itself uses (now
     // applied to spend-vs-typical instead of spend-vs-cap — the mental model
@@ -7149,7 +7149,8 @@ function renderCwMessages() {
   // destroys the button mid-click and the click is silently dropped.
   if (cwState.loadingOlder) return;
   const wasAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-  const approvalHtml = (cwState.pendingApprovals || []).map(renderApprovalItem).join('');
+  // Pending approvals render in their own tab now (see renderCwApprovals) —
+  // no longer computed/joined here.
   // Hide scheduled-task fires (kind='task', e.g. the recurring /supervise-issues
   // tick) and other system rows by default — they repeat on every cron tick and
   // crowd the feed. The "⚙ system" toggle in the header brings them back.
@@ -7360,15 +7361,20 @@ function renderCwMessages() {
     systemHidden > 0 || cwState.showSystem
       ? `<div style="text-align:center;padding:4px"><button id="cw-system-toggle" class="admin-load-more" style="font-size:9px;opacity:0.7">${cwState.showSystem ? `⚙ hide system (${systemHidden})` : `⚙ show system (${systemHidden})`}</button></div>`
       : '';
-  if (!approvalHtml && !messageHtml) {
+  // Pending approvals now live in their own tab (see renderCwApprovals) rather
+  // than a banner appended to the chat feed — they used to dominate the
+  // viewport (bottom-anchored, so a handful of large cards buried real
+  // conversation).
+  updateApprovalsTabBadge();
+  // Keep the Approvals tab's own content live across the 3s poll too, not
+  // just its badge — otherwise a user with that tab open sees a stale card
+  // list until they switch away and back.
+  const approvalsViewEl = document.getElementById('cw-approvals-view');
+  if (approvalsViewEl && approvalsViewEl.style.display !== 'none') renderCwApprovals();
+  if (!messageHtml) {
     el.innerHTML = systemToggleHtml || '<div class="cw-empty">No messages yet. Send a message to start.</div>';
     return;
   }
-  const approvalCount = (cwState.pendingApprovals || []).length;
-  const bannerHtml =
-    approvalCount > 0
-      ? `<div class="approval-banner"><div class="approval-banner-label">⚠ Pending Actions (${approvalCount})</div>${renderEscalationStrip()}${approvalHtml}</div>`
-      : '';
   // "Load older" button at the top — only when the server says more rows
   // exist below the loaded window AND we have at least one row to anchor a
   // `before=<oldest_ts>` cursor against.
@@ -7376,7 +7382,7 @@ function renderCwMessages() {
     cwState.messagesHasMore && cwState.messages.length > 0
       ? `<button class="admin-load-more" id="cw-messages-more"${cwState.loadingOlder ? ' disabled' : ''}>${cwState.loadingOlder ? 'Loading…' : 'Load older messages'}</button>`
       : '';
-  el.innerHTML = loadMoreHtml + systemToggleHtml + messageHtml + bannerHtml;
+  el.innerHTML = loadMoreHtml + systemToggleHtml + messageHtml;
 
   if (!cwState._inflightApprovals) cwState._inflightApprovals = new Set();
   // Approval ids whose clamped reason the user expanded. Kept in state, not the
@@ -7572,6 +7578,100 @@ function renderCwMessages() {
       '<div class="cw-msg assistant"><div class="cw-msg-bubble" style="opacity:0.5"><span class="chat-typing"><span></span><span></span><span></span></span></div></div>';
   }
   if (wasAtBottom) el.scrollTop = el.scrollHeight;
+}
+
+// Keeps the Approvals tab's badge in sync with cwState.pendingApprovals —
+// called from renderCwMessages so it stays current even while a different
+// tab is active (the 3s poll that refreshes pendingApprovals always runs
+// through renderCwMessages, regardless of which view is visible).
+function updateApprovalsTabBadge() {
+  const badge = document.getElementById('cw-approvals-tab-badge');
+  if (!badge) return;
+  const count = (cwState.pendingApprovals || []).length;
+  if (count > 0) {
+    badge.textContent = String(count);
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// Pending-approvals tab — split out from the chat feed (was a bottom-anchored
+// "⚠ Pending Actions" banner that dominated the viewport once more than a
+// couple of cards were pending; see renderCwMessages). Reuses renderApprovalItem
+// and renderEscalationStrip exactly as the old banner did — only the container
+// and event delegation are new.
+function renderCwApprovals() {
+  const el = document.getElementById('cw-approvals-view');
+  if (!el) return;
+  const approvals = cwState.pendingApprovals || [];
+  const approvalHtml = approvals.map(renderApprovalItem).join('');
+  el.innerHTML =
+    approvals.length > 0
+      ? renderEscalationStrip() + approvalHtml
+      : '<div class="cw-empty">No pending approvals for this coworker.</div>';
+  if (!cwState._inflightApprovals) cwState._inflightApprovals = new Set();
+  if (!cwState.expandedReasons) cwState.expandedReasons = new Set();
+  if (el._approvalDelegateAttached) return;
+  el._approvalDelegateAttached = true;
+  el.addEventListener('click', async (e) => {
+    // ── "show more" / "show less" on a clamped approval reason ──
+    const reasonToggle = e.target.closest('.reason-more, .reason-less');
+    if (reasonToggle) {
+      e.preventDefault();
+      const rid = reasonToggle.dataset.rid;
+      if (reasonToggle.classList.contains('reason-less')) cwState.expandedReasons.delete(rid);
+      else cwState.expandedReasons.add(rid);
+      renderCwApprovals();
+      return;
+    }
+    // ── Approval buttons (Continue/Approve/Stop/Reject) ──
+    const approvalBtn = e.target.closest('.approval-btn');
+    if (approvalBtn) {
+      const qid = approvalBtn.dataset.qid;
+      const decision = approvalBtn.dataset.decision;
+      if (!qid || !decision) return;
+      if (cwState._inflightApprovals.has(qid)) return;
+      cwState._inflightApprovals.add(qid);
+      const card = approvalBtn.closest('.cw-msg');
+      const allBtns = card ? card.querySelectorAll('.approval-btn') : [approvalBtn];
+      allBtns.forEach((b) => {
+        b.disabled = true;
+      });
+      approvalBtn.textContent = 'Submitting…';
+      try {
+        const res = await fetch('/api/approvals/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ approvalId: qid, decision }),
+        });
+        if (res.ok) {
+          const btnRow = approvalBtn.closest('div');
+          if (btnRow) {
+            const color = decision === 'Approve' ? '#238636' : '#da3633';
+            const label = decision === 'Approve' ? 'Approved' : 'Rejected';
+            btnRow.innerHTML = `<span style="font-size:10px;color:${color};font-weight:600">${label}</span>`;
+          }
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          approvalBtn.textContent = errData.error || 'Error';
+          allBtns.forEach((b) => {
+            b.disabled = false;
+          });
+        }
+      } catch {
+        approvalBtn.textContent = 'Error';
+        allBtns.forEach((b) => {
+          b.disabled = false;
+        });
+      } finally {
+        setTimeout(() => {
+          cwState._inflightApprovals.delete(qid);
+          fetchCwMessages();
+        }, 1000);
+      }
+    }
+  });
 }
 
 /**
@@ -9245,12 +9345,19 @@ document.querySelectorAll('.cw-toggle-btn').forEach((btn) => {
     const chatEl = document.getElementById('cw-chat-messages');
     const inputEl = document.getElementById('cw-chat-input-area');
     const workEl = document.getElementById('cw-work-view');
+    const approvalsEl = document.getElementById('cw-approvals-view');
     chatEl.style.display = 'none';
     if (inputEl) inputEl.style.display = 'none';
     workEl.style.display = 'none';
+    if (approvalsEl) approvalsEl.style.display = 'none';
     if (view === 'work') {
       workEl.style.display = 'flex';
       renderCwWork();
+    } else if (view === 'approvals') {
+      if (approvalsEl) {
+        approvalsEl.style.display = 'flex';
+        renderCwApprovals();
+      }
     } else {
       chatEl.style.display = '';
       if (inputEl && cwState.selected) inputEl.style.display = 'flex';
