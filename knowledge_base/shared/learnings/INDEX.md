@@ -4260,6 +4260,9 @@
 - [slangi interpreter aborts on vector icomparable pa](ag-1780667166418-apezq5/1787614127545-slangi-interpreter-aborts-on-vector-icomparable-pa.md) — _ag-1780667166418-apezq5_
 - [gh auth status shows invalid token for the bot app](ag-1780667166418-apezq5/1787614393812-gh-auth-status-shows-invalid-token-for-the-bot-app.md) — _ag-1780667166418-apezq5_
 - [triage against stale checkout produced a phantom p](ag-1780667166418-apezq5/1787620127054-triage-against-stale-checkout-produced-a-phantom-p.md) — _ag-1780667166418-apezq5_
+- [github app token 403 on user is normal not a broke](ag-1780667166418-apezq5/1787633494370-github-app-token-403-on-user-is-normal-not-a-broke.md) — _ag-1780667166418-apezq5_
+- [don t apply the regression label from a code histo](ag-1780667166418-apezq5/1787635407452-don-t-apply-the-regression-label-from-a-code-histo.md) — _ag-1780667166418-apezq5_
+- [verify a suggested workaround compiles and preserv](ag-1780667166418-apezq5/1787636240819-verify-a-suggested-workaround-compiles-and-preserv.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -4456,6 +4459,9 @@
 - [slang build never run two ninja builds in the same](ag-1780667166439-vmjrwe/1787615532680-slang-build-never-run-two-ninja-builds-in-the-same.md) — _ag-1780667166439-vmjrwe_
 - [maintainer naming request overrides automated revi](ag-1780667166439-vmjrwe/1787619515509-maintainer-naming-request-overrides-automated-revi.md) — _ag-1780667166439-vmjrwe_
 - [gh token user scope can be dead while pr create pu](ag-1780667166439-vmjrwe/1787621377379-gh-token-user-scope-can-be-dead-while-pr-create-pu.md) — _ag-1780667166439-vmjrwe_
+- [filecheck check not is region scoped use a dedicat](ag-1780667166439-vmjrwe/1787629056398-filecheck-check-not-is-region-scoped-use-a-dedicat.md) — _ag-1780667166439-vmjrwe_
+- [prebuilt release binaries are a free runtime bisec](ag-1780667166439-vmjrwe/1787635116151-prebuilt-release-binaries-are-a-free-runtime-bisec.md) — _ag-1780667166439-vmjrwe_
+- [git checkout master file restores from master tip ](ag-1780667166439-vmjrwe/1787637340749-git-checkout-master-file-restores-from-master-tip-.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -4514,6 +4520,7 @@
 - [a perf only optimization must gate conservatively ](ag-1780667168475-a9tac8/1787595299942-a-perf-only-optimization-must-gate-conservatively-.md) — _ag-1780667168475-a9tac8_
 - [monitor grep for reviewer failure must not match s](ag-1780667168475-a9tac8/1787605976090-monitor-grep-for-reviewer-failure-must-not-match-s.md) — _ag-1780667168475-a9tac8_
 - [a patch scoped grep undercounts a repo wide idiom ](ag-1780667168475-a9tac8/1787608994784-a-patch-scoped-grep-undercounts-a-repo-wide-idiom-.md) — _ag-1780667168475-a9tac8_
+- [verify a pr fix on a build from the pr head with m](ag-1780667168475-a9tac8/1787626975022-verify-a-pr-fix-on-a-build-from-the-pr-head-with-m.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -4943,6 +4950,7 @@
 - [approver challenger miss devin flags a per op miss](ag-1783611156430-vvj8oi/1787621185192-approver-challenger-miss-devin-flags-a-per-op-miss.md) — _ag-1783611156430-vvj8oi_
 - [approver infra critique gate abstain fast path is ](ag-1783611156430-vvj8oi/1787621185331-approver-infra-critique-gate-abstain-fast-path-is-.md) — _ag-1783611156430-vvj8oi_
 - [approver confirmed safe join confirmed interim cud](ag-1783611156430-vvj8oi/1787623007634-approver-confirmed-safe-join-confirmed-interim-cud.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger calibration a defensible defer](ag-1783611156430-vvj8oi/1787628734415-approver-challenger-calibration-a-defensible-defer.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement a finding held by a re](ag-1783611156448-d49n0a/1786357056431-approver-human-disagreement-a-finding-held-by-a-re.md) — _ag-1783611156448-d49n0a_
 - [approver human agreement a merge can ship an unver](ag-1783611156448-d49n0a/1786361356886-approver-human-agreement-a-merge-can-ship-an-unver.md) — _ag-1783611156448-d49n0a_
 - [approver infra abstain record decision returns dec](ag-1783611156448-d49n0a/1786361652051-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156448-d49n0a_
