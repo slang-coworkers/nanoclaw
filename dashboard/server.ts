@@ -9506,13 +9506,67 @@ export async function handleRequest(
       try {
         sessions = db
           .prepare(
-            'SELECT s.id as session_id, s.agent_group_id, s.status, s.container_status, s.last_active, ag.name as group_name, ag.folder as group_folder FROM sessions s LEFT JOIN agent_groups ag ON s.agent_group_id = ag.id',
+            'SELECT s.id as session_id, s.agent_group_id, s.thread_id, s.status, s.container_status, s.last_active, ag.name as group_name, ag.folder as group_folder FROM sessions s LEFT JOIN agent_groups ag ON s.agent_group_id = ag.id',
           )
           .all();
       } catch {
         /* ignore */
       }
     }
+    // GitHub PR/issue association, when one exists — two independent, optional
+    // fields per row (many sessions, e.g. orchestrator loops or non-GitHub
+    // channels, have neither):
+    //   - repo/number/kind: prefer `pr_session_mappings` (session_id -> repo,
+    //     pr_number) — the authoritative "this PR's webhooks route here" claim
+    //     (src/modules/pr-mapping, nv-main). Falls back to parsing thread_id's
+    //     canonical `gh-issue-<repo>-<num>` / `gh-pr-<repo>-<num>` form
+    //     (src/webhook-github.ts) — every coworker on a GitHub chain shares
+    //     that thread_id verbatim (docs/thread-vs-session.md), so this also
+    //     covers triager/fixer/reviewer sessions and plain issue triage
+    //     (issues have no PR number, so no pr_session_mappings row).
+    //   - author: who filed the ORIGINATING issue/PR, from `gh_thread_origin`
+    //     (src/db/gh-thread-origin.ts, nv-main), keyed on the session's own
+    //     thread_id regardless of which source resolved repo/number above —
+    //     a fixer session working PR #500 that a triaged issue #480 spawned
+    //     shows author=whoever filed #480, which is the point ("who filed the
+    //     thing that spawned this session's work").
+    // Both tables are nv-main-owned and may not exist yet on an install that
+    // hasn't migrated (or in this branch's own isolated test DB, which has no
+    // pr-mapping module at all) — each query is independently try/catched so
+    // a lookup failure here degrades to "no badge for any row", never a
+    // broken /api/sessions response.
+    const prMapBySession = new Map<string, { repo: string; number: number }>();
+    if (db) {
+      try {
+        for (const m of db.prepare('SELECT repo, pr_number, session_id FROM pr_session_mappings').all() as Array<{
+          repo: string;
+          pr_number: number;
+          session_id: string;
+        }>) {
+          if (m.session_id) prMapBySession.set(m.session_id, { repo: m.repo, number: m.pr_number });
+        }
+      } catch {
+        /* pr_session_mappings not migrated yet — no PR badges from this source */
+      }
+    }
+    const ghOriginByThread = new Map<string, { author: string }>();
+    if (db) {
+      try {
+        for (const o of db.prepare('SELECT thread_id, author FROM gh_thread_origin').all() as Array<{
+          thread_id: string;
+          author: string;
+        }>) {
+          if (o.thread_id) ghOriginByThread.set(o.thread_id, { author: o.author });
+        }
+      } catch {
+        /* gh_thread_origin not migrated yet — no author badges */
+      }
+    }
+    // Matches the canonical thread_id shape webhook-github.ts mints:
+    // gh-issue-<owner>/<repo>-<num> / gh-pr-<owner>/<repo>-<num>, optionally
+    // followed by a documented `/<sub-task>` append-only suffix (which still
+    // names the same underlying issue/PR).
+    const GH_THREAD_RE = /^gh-(issue|pr)-(.+)-(\d+)(?:\/.+)?$/;
     // Cost column: join the per-session cost cache for the requested period
     // (default 30d). Every row gets `cost`/`tokens`/`costUnpriced`; a session
     // with no priced activity in the window is 0. `?sort=cost` ranks desc so
@@ -9591,6 +9645,31 @@ export async function handleRequest(
         } catch {
           /* fail-soft: no trace link for this row */
         }
+      }
+      // GitHub PR/issue badge — see the map-building comment above for the
+      // repo/number/author resolution order. No filesystem I/O and no
+      // per-row DB open (unlike costCap/traceUrl above): both maps were
+      // built once, outside this loop, so this is a plain in-memory lookup
+      // and doesn't need the s.cost>0 gate those use to stay cheap.
+      try {
+        const mapped = s.session_id ? prMapBySession.get(s.session_id) : undefined;
+        const threadMatch = typeof s.thread_id === 'string' ? GH_THREAD_RE.exec(s.thread_id) : null;
+        if (mapped) {
+          s.ghRepo = mapped.repo;
+          s.ghNumber = mapped.number;
+          s.ghKind = 'pr';
+        } else if (threadMatch) {
+          s.ghKind = threadMatch[1] === 'issue' ? 'issue' : 'pr';
+          s.ghRepo = threadMatch[2];
+          s.ghNumber = Number(threadMatch[3]);
+        }
+        if (s.ghNumber && s.ghRepo) {
+          s.ghUrl = `https://github.com/${s.ghRepo}/${s.ghKind === 'issue' ? 'issues' : 'pull'}/${s.ghNumber}`;
+        }
+        const origin = typeof s.thread_id === 'string' ? ghOriginByThread.get(s.thread_id) : undefined;
+        if (origin?.author) s.ghAuthor = origin.author;
+      } catch {
+        /* fail-soft: no GitHub badge for this row */
       }
     }
     if (url.searchParams.get('sort') === 'cost') {

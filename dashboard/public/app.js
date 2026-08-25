@@ -5654,6 +5654,26 @@ function renderCostCapCell(s) {
   return cell;
 }
 
+// GitHub PR/issue badge — which PR/issue this session is tied to (if any),
+// and who filed it (if known). Both independently optional: most sessions
+// (orchestrator loops, non-GitHub channels, ad-hoc chat) have neither, and
+// it's possible to know the PR/issue but not the filer. Dash/blank, same
+// pattern as renderCostCapCell / s.traceUrl. Contract with the host:
+// s.ghRepo / s.ghNumber / s.ghKind ('issue'|'pr') / s.ghUrl / s.ghAuthor.
+function renderGithubOriginCell(s) {
+  if (!s.ghNumber || !s.ghRepo) return '<span style="color:#64748B">—</span>';
+  const shortRepo = String(s.ghRepo).split('/').pop();
+  const label = `${shortRepo}#${s.ghNumber}`;
+  const kindLabel = s.ghKind === 'issue' ? 'issue' : 'PR';
+  const link = s.ghUrl
+    ? `<a href="${escAttr(s.ghUrl)}" target="_blank" rel="noopener" style="color:var(--accent)" title="${escAttr(s.ghRepo)} ${kindLabel} #${s.ghNumber}">${esc(label)}</a>`
+    : esc(label);
+  const author = s.ghAuthor
+    ? `<span style="color:var(--text-muted);font-size:9px"> · @${esc(s.ghAuthor)}</span>`
+    : '';
+  return link + author;
+}
+
 function renderAdminSessions() {
   const el = document.getElementById('admin-sessions-content');
   const p = sessionsView.period;
@@ -5740,7 +5760,7 @@ function renderAdminSessions() {
     `<div style="color:var(--text-muted);font-size:10px;margin-bottom:6px">${rows.length} sessions · ${costUnavailable ? 'n/a' : fmtUsd(totalCost)} over ${p}</div>` +
     distPills +
     `<table class="admin-table">
-    <tr><th>#</th><th>Coworker</th><th>Session ID</th><th style="text-align:right">Cost (${p})</th><th title="Color = spend vs this group's typical (p99). Grey 'stopped' = actually blocked at its cost ceiling.">Cost status</th><th style="text-align:right">Tokens</th><th>Last active</th><th>Actions</th></tr>`;
+    <tr><th>#</th><th>Coworker</th><th>Session ID</th><th title="The PR/issue this session's work is tied to, and who filed it — blank when the session has no GitHub association">PR/Issue</th><th style="text-align:right">Cost (${p})</th><th title="Color = spend vs this group's typical (p99). Grey 'stopped' = actually blocked at its cost ceiling.">Cost status</th><th style="text-align:right">Tokens</th><th>Last active</th><th>Actions</th></tr>`;
   let i = 0;
   for (const s of rows) {
     i++;
@@ -5762,10 +5782,12 @@ function renderAdminSessions() {
       ? '<span style="color:#94A3B8">n/a</span>'
       : `<span style="color:#10B981">${fmtUsd(s.cost || 0)}</span>${s.costUnpriced ? '<span title="includes usage from a model without a known price" style="color:#F59E0B"> *</span>' : ''}`;
     const costCapCell = renderCostCapCell(s);
+    const ghCell = renderGithubOriginCell(s);
     html += `<tr>
       <td style="color:var(--text-muted)">${i}</td>
       <td>${esc(s.group_name || s.group_folder || '-')}</td>
       <td style="font-size:9px;color:var(--text-muted)">${sidCell}</td>
+      <td style="font-size:10px;white-space:nowrap">${ghCell}</td>
       <td style="text-align:right">${costCell}</td>
       <td>${costCapCell}</td>
       <td style="text-align:right;color:var(--text-muted)">${fmtNum(s.costTokens || 0)}</td>
