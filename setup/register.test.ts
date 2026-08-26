@@ -54,7 +54,7 @@ describe('setup/register', () => {
       '--channel', 'dashboard',
       '--is-admin',
     ]);
-    const agent = getAgentGroupByFolder('main');
+    const agent = await getAgentGroupByFolder('main');
     expect(agent).toBeDefined();
     expect(agent!.is_admin).toBe(1);
     expect(agent!.coworker_type).toBe('main');
@@ -75,13 +75,13 @@ describe('setup/register', () => {
       '--channel', 'discord',
     ]);
 
-    const admin = getAgentGroupByFolder('main')!;
-    const child = getAgentGroupByFolder('slang-fixer')!;
+    const admin = (await getAgentGroupByFolder('main'))!;
+    const child = (await getAgentGroupByFolder('slang-fixer'))!;
     expect(admin).toBeDefined();
     expect(child).toBeDefined();
 
-    expect(getDestinationByTarget(admin.id, 'agent', child.id)).toBeDefined();
-    expect(getDestinationByTarget(child.id, 'agent', admin.id)).toBeDefined();
+    expect(await getDestinationByTarget(admin.id, 'agent', child.id)).toBeDefined();
+    expect(await getDestinationByTarget(child.id, 'agent', admin.id)).toBeDefined();
   });
 
   it('routing=internal skips messaging group creation and wiring', async () => {
@@ -100,15 +100,15 @@ describe('setup/register', () => {
       '--routing', 'internal',
     ]);
 
-    const child = getAgentGroupByFolder('internal-worker')!;
+    const child = (await getAgentGroupByFolder('internal-worker'))!;
     expect(child).toBeDefined();
     expect(child.routing).toBe('internal');
 
-    expect(getMessagingGroupByPlatform('discord', 'discord:discord-chan-2')).toBeUndefined();
+    expect(await getMessagingGroupByPlatform('discord', 'discord:discord-chan-2')).toBeUndefined();
 
-    const admin = getAgentGroupByFolder('main')!;
-    expect(getDestinationByTarget(admin.id, 'agent', child.id)).toBeDefined();
-    expect(getDestinationByTarget(child.id, 'agent', admin.id)).toBeDefined();
+    const admin = (await getAgentGroupByFolder('main'))!;
+    expect(await getDestinationByTarget(admin.id, 'agent', child.id)).toBeDefined();
+    expect(await getDestinationByTarget(child.id, 'agent', admin.id)).toBeDefined();
   });
 
   it('defaults dashboard channel session_mode to per-thread', async () => {
@@ -123,9 +123,9 @@ describe('setup/register', () => {
       '--channel', 'dashboard',
       '--is-admin',
     ]);
-    const mg = getMessagingGroupByPlatform('dashboard', 'dashboard:dashboard_main')!;
-    const agent = getAgentGroupByFolder('main')!;
-    const mga = getMessagingGroupAgentByPair(mg.id, agent.id)!;
+    const mg = (await getMessagingGroupByPlatform('dashboard', 'dashboard:dashboard_main'))!;
+    const agent = (await getAgentGroupByFolder('main'))!;
+    const mga = (await getMessagingGroupAgentByPair(mg.id, agent.id))!;
     expect(mga.session_mode).toBe('per-thread');
   });
 
@@ -145,9 +145,9 @@ describe('setup/register', () => {
       '--folder', 'discord-worker',
       '--channel', 'discord',
     ]);
-    const mg = getMessagingGroupByPlatform('discord', 'discord:discord-chan-sm')!;
-    const agent = getAgentGroupByFolder('discord-worker')!;
-    const mga = getMessagingGroupAgentByPair(mg.id, agent.id)!;
+    const mg = (await getMessagingGroupByPlatform('discord', 'discord:discord-chan-sm'))!;
+    const agent = (await getAgentGroupByFolder('discord-worker'))!;
+    const mga = (await getMessagingGroupAgentByPair(mg.id, agent.id))!;
     expect(mga.session_mode).toBe('shared');
   });
 
@@ -162,9 +162,9 @@ describe('setup/register', () => {
       '--is-admin',
       '--session-mode', 'shared',
     ]);
-    const dashMg = getMessagingGroupByPlatform('dashboard', 'dashboard:dashboard_main')!;
-    const dashAgent = getAgentGroupByFolder('main')!;
-    const dashMga = getMessagingGroupAgentByPair(dashMg.id, dashAgent.id)!;
+    const dashMg = (await getMessagingGroupByPlatform('dashboard', 'dashboard:dashboard_main'))!;
+    const dashAgent = (await getAgentGroupByFolder('main'))!;
+    const dashMga = (await getMessagingGroupAgentByPair(dashMg.id, dashAgent.id))!;
     expect(dashMga.session_mode).toBe('shared');
 
     await run([
@@ -174,9 +174,9 @@ describe('setup/register', () => {
       '--channel', 'discord',
       '--session-mode', 'per-thread',
     ]);
-    const dMg = getMessagingGroupByPlatform('discord', 'discord:discord-chan-explicit')!;
-    const dAgent = getAgentGroupByFolder('discord-explicit')!;
-    const dMga = getMessagingGroupAgentByPair(dMg.id, dAgent.id)!;
+    const dMg = (await getMessagingGroupByPlatform('discord', 'discord:discord-chan-explicit'))!;
+    const dAgent = (await getAgentGroupByFolder('discord-explicit'))!;
+    const dMga = (await getMessagingGroupAgentByPair(dMg.id, dAgent.id))!;
     expect(dMga.session_mode).toBe('per-thread');
   });
 
@@ -195,10 +195,10 @@ describe('setup/register', () => {
       '--channel', 'discord',
     ]);
 
-    const child = getAgentGroupByFolder('direct-worker')!;
-    const mg = getMessagingGroupByPlatform('discord', 'discord:discord-chan-3');
+    const child = (await getAgentGroupByFolder('direct-worker'))!;
+    const mg = await getMessagingGroupByPlatform('discord', 'discord:discord-chan-3');
     expect(child.routing).toBe('direct');
     expect(mg).toBeDefined();
-    expect(getMessagingGroupAgentByPair(mg!.id, child.id)).toBeDefined();
+    expect(await getMessagingGroupAgentByPair(mg!.id, child.id)).toBeDefined();
   });
 });

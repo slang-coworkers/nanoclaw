@@ -377,7 +377,7 @@ export async function run(args: string[]): Promise<void> {
     const admin = await getAdminAgentGroup();
     if (admin && admin.id !== agentGroup.id) {
       const now = new Date().toISOString();
-      const childName = allocateDestinationName(admin.id, agentGroup.name);
+      const childName = await allocateDestinationName(admin.id, agentGroup.name);
       if (!(await getDestinationByName(admin.id, childName))) {
         await createDestination({
           agent_group_id: admin.id,
@@ -388,7 +388,7 @@ export async function run(args: string[]): Promise<void> {
         });
         log.info('Added admin → agent destination', { admin: admin.id, localName: childName, agent: agentGroup.id });
       }
-      const adminName = allocateDestinationName(agentGroup.id, admin.name);
+      const adminName = await allocateDestinationName(agentGroup.id, admin.name);
       if (!(await getDestinationByName(agentGroup.id, adminName))) {
         await createDestination({
           agent_group_id: agentGroup.id,

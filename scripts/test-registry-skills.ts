@@ -15,6 +15,7 @@ import {
   parseDirectives,
   resolveChatCoreVersion,
   validate,
+  type Directive,
 } from './skill-directives.js';
 import { resolveRegistryRemote } from './update-skills.js';
 
@@ -150,7 +151,10 @@ async function testSkill(
 
   for (const branch of meta.branches) pinRegistryRef(root, branch, refs[branch]);
   const byLine = new Map(directives.map((directive) => [directive.line, directive]));
-  let current = directives[0];
+  // `byLine.get` returns undefined for a line with no directive, and the exec
+  // stub below already reads this through `current?.kind`. Widening the
+  // declared type keeps that honest rather than asserting the map always hits.
+  let current: Directive | undefined = directives[0];
 
   const result = await applySkill(meta.dir, root, {
     inputs: fixture.inputs ?? {},

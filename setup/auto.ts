@@ -1337,7 +1337,7 @@ async function chooseTemplateOperation(
 }
 
 async function askNewTemplateAgentName(
-  agents: readonly AgentGroup[],
+  agents: readonly Pick<AgentGroup, 'name'>[],
   initialValue?: string,
 ): Promise<string> {
   const answer = ensureAnswer(

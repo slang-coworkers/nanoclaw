@@ -17,7 +17,7 @@ import { join } from 'node:path';
 
 import * as p from '@clack/prompts';
 
-import { runChannelSkill, runChannelSkillWithPreStep } from './run-channel-skill.js';
+import { runChannelSkill, runChannelSkillWithPreStep, type WireArgs } from './run-channel-skill.js';
 import { registerChannelPreStep, registerCompanionSkills } from './companions.js';
 import { BACK_TO_CHANNEL_SELECTION } from '../lib/back-nav.js';
 
@@ -121,7 +121,7 @@ describe('runChannelSkillWithPreStep', () => {
 
     const cmds: string[] = [];
     const resolveInput = vi.fn(async () => undefined);
-    const wired: Array<Record<string, unknown>> = [];
+    const wired: WireArgs[] = [];
 
     await runChannelSkillWithPreStep('fixturechan', 'Bob Smith', {
       projectRoot: root,
@@ -174,7 +174,7 @@ describe('runChannelSkillWithPreStep', () => {
     process.chdir(root);
 
     const cmds: string[] = [];
-    const wired: Array<Record<string, unknown>> = [];
+    const wired: WireArgs[] = [];
 
     await runChannelSkillWithPreStep('fixtureplain', 'Bob Smith', {
       projectRoot: root,

@@ -26,12 +26,14 @@ const state = vi.hoisted(() => ({
   brokerListWorkspaces: vi.fn(async () => [
     { team_id: 'T0TEAM123', team_name: 'NanoCo', status: 'active', connected_as: 'U0OWNER12' },
   ]),
-  brokerProvision: vi.fn(async () => ({
-    appId: 'A0APP123',
-    appToken: 'xapp-test',
-    botToken: 'xoxb-test',
-    installUrl: '',
-  })),
+  brokerProvision: vi.fn(
+    async (): Promise<import('./slack-auto.js').ProvisionedApp> => ({
+      appId: 'A0APP123',
+      appToken: 'xapp-test',
+      botToken: 'xoxb-test',
+      installUrl: '',
+    }),
+  ),
 }));
 
 vi.mock('@clack/prompts', () => ({
