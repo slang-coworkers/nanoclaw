@@ -25,6 +25,7 @@ import {
   sqliteGetSessionRouting,
   sqliteGetState,
   sqliteGetUndeliveredMessages,
+  sqliteMarkBounced,
   sqliteMarkCompleted,
   sqliteMarkFailed,
   sqliteMarkProcessing,
@@ -129,6 +130,7 @@ export class SqliteAgentMailbox implements AgentMailbox {
     if (status === 'processing') sqliteMarkProcessing(ids);
     else if (status === 'completed') sqliteMarkCompleted(ids);
     else if (status === 'failed') ids.forEach(sqliteMarkFailed);
+    else if (status === 'bounced-transient' || status === 'bounced-unknown') sqliteMarkBounced(ids, status);
     else sqliteMarkScriptSkipped(ids.map((id) => ({ id, reason: 'error' })));
   }
 

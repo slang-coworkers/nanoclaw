@@ -374,7 +374,10 @@ describe('dispatchResultText <message> attribute parsing', () => {
 
   it('in_reply_to="X" overrides destRouting fallback', async () => {
     addDestination('peer');
-    const result = await dispatchResultText('<message to="peer" in_reply_to="parent-msg-42">hello</message>', sourceRouting);
+    const result = await dispatchResultText(
+      '<message to="peer" in_reply_to="parent-msg-42">hello</message>',
+      sourceRouting,
+    );
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     expect(out[0].in_reply_to).toBe('parent-msg-42');
@@ -707,20 +710,15 @@ describe('a2a transient bounce (Part a — do not ack a bounced handoff)', () =>
   };
 
   function ackStatus(id: string): string | undefined {
-    const row = getOutboundDb()
-      .prepare('SELECT status FROM processing_ack WHERE message_id = ?')
-      .get(id) as { status: string } | undefined;
+    const row = getOutboundDb().prepare('SELECT status FROM processing_ack WHERE message_id = ?').get(id) as
+      | { status: string }
+      | undefined;
     return row?.status;
   }
 
   it('marks a transient-auth a2a error bounced-transient, NOT completed', async () => {
     insertMessage('h1', 'chat', { text: '[Triage handoff] …' });
-    const result = await processQuery(
-      erroringQuery('Not logged in · Please run /login'),
-      a2aRouting,
-      ['h1'],
-      'mock',
-    );
+    const result = await processQuery(erroringQuery('Not logged in · Please run /login'), a2aRouting, ['h1'], 'mock');
     expect(ackStatus('h1')).toBe('bounced-transient');
     expect(result.bouncedIds).toContain('h1');
     // The trigger row is still visible as pending work (not consumed) …
@@ -809,15 +807,13 @@ describe('a2a transient bounce (Part a2 — THROWN error path, #12108)', () => {
     expect(classifyThrownBounce('agent', 'Error: API Error: Unable to connect to API (ECONNRESET)')).toBe(
       'bounced-transient',
     );
-    expect(
-      classifyThrownBounce('agent', 'Error: API Error: The socket connection was closed unexpectedly'),
-    ).toBe('bounced-transient');
+    expect(classifyThrownBounce('agent', 'Error: API Error: The socket connection was closed unexpectedly')).toBe(
+      'bounced-transient',
+    );
   });
 
   it('bounces a known auth transient (parity with the structured path) as transient', () => {
-    expect(classifyThrownBounce('agent', 'Error: Not logged in · Please run /login')).toBe(
-      'bounced-transient',
-    );
+    expect(classifyThrownBounce('agent', 'Error: Not logged in · Please run /login')).toBe('bounced-transient');
   });
 
   it('does NOT bounce a novel/unknown thrown error — may be a local post-delivery throw', () => {
@@ -835,9 +831,7 @@ describe('a2a transient bounce (Part a2 — THROWN error path, #12108)', () => {
   });
 
   it('does NOT bounce a transient thrown error on a NON-a2a channel', () => {
-    expect(
-      classifyThrownBounce('discord', 'Error: API Error: Connection closed mid-response.'),
-    ).toBeNull();
+    expect(classifyThrownBounce('discord', 'Error: API Error: Connection closed mid-response.')).toBeNull();
     expect(classifyThrownBounce('dashboard', 'Error: Not logged in · Please run /login')).toBeNull();
   });
 });
@@ -1413,7 +1407,10 @@ describe('dispatchResultText — chain-routing check (always on, not an overlay)
     // by the runtime, so the check must NOT demand it.
     addDestination('peer');
     seedQuotedInbound();
-    const result = await dispatchResultText('<message to="peer" in_reply_to="42">[Resolution] done</message>', sourceRouting);
+    const result = await dispatchResultText(
+      '<message to="peer" in_reply_to="42">[Resolution] done</message>',
+      sourceRouting,
+    );
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     // Persisted as the canonical id resolved from seq 42, never the raw seq.
@@ -1549,12 +1546,22 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     // test temp dir instead of /workspace/agent and /workspace/.claude
     process.env.CRITIQUE_GATE_OVERLAY_PATH = markerPath;
     process.env.CRITIQUE_GATE_STATE_PATH = statePath;
+    // These cases drive the gate through its MARKER-FILE mode. CRITIQUE_GATE_ACTIVE
+    // is authoritative over the marker when set (checkCritiqueGate in poll-loop.ts),
+    // so a value inherited from the surrounding agent container — which really does
+    // export CRITIQUE_GATE_ACTIVE=0 — would short-circuit the gate to "not blocked"
+    // and quietly turn every assertion here green-by-absence. Drop it for the
+    // duration of the describe and restore it after.
+    originalOverlayCheck = process.env.CRITIQUE_GATE_ACTIVE;
+    delete process.env.CRITIQUE_GATE_ACTIVE;
   });
 
   afterEach(() => {
     fs.rmSync(tmp, { recursive: true, force: true });
     delete process.env.CRITIQUE_GATE_OVERLAY_PATH;
     delete process.env.CRITIQUE_GATE_STATE_PATH;
+    if (originalOverlayCheck === undefined) delete process.env.CRITIQUE_GATE_ACTIVE;
+    else process.env.CRITIQUE_GATE_ACTIVE = originalOverlayCheck;
   });
 
   const sourceRouting = {
@@ -1566,7 +1573,10 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
 
   it('marker absent → [Resolution] passes through unchanged (R1: no opt-in, no gating)', async () => {
     addDestination('peer');
-    const result = await dispatchResultText('<message to="peer" in_reply_to="1">[Resolution] hello</message>', sourceRouting);
+    const result = await dispatchResultText(
+      '<message to="peer" in_reply_to="1">[Resolution] hello</message>',
+      sourceRouting,
+    );
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     expect(out).toHaveLength(1);
@@ -1737,7 +1747,7 @@ describe('error result with no <message> envelope', () => {
     const budgetText = 'Spending limit reached. Add your own key at https://example.com/keys';
     const { query, pushes } = makeResultQuery({ type: 'result', text: budgetText, isError: true });
 
-    await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
+    await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, 'prompt', undefined);
 
     const out = getUndeliveredMessages();
     expect(out).toHaveLength(1);
@@ -1757,7 +1767,7 @@ describe('error result with no <message> envelope', () => {
     // exchange-hook integration test).
     const { query, pushes } = makeResultQuery({ type: 'result', text: 'bare text, no envelope' });
 
-    await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
+    await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, 'prompt', undefined);
 
     const out = getUndeliveredMessages();
     expect(out).toHaveLength(1);
@@ -1771,7 +1781,7 @@ describe('error result with no <message> envelope', () => {
       text: '<message to="discord-test">half a message with no closing tag',
     });
 
-    await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
+    await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, 'prompt', undefined);
 
     expect(getUndeliveredMessages()).toHaveLength(0);
     expect(pushes).toHaveLength(1);
@@ -1794,9 +1804,9 @@ const TASK_ROUTING = {
 
 function taskLogRows(): Array<{ text: string }> {
   return (
-    getOutboundDb()
-      .prepare("SELECT content FROM messages_out WHERE kind = 'task_log' ORDER BY seq")
-      .all() as Array<{ content: string }>
+    getOutboundDb().prepare("SELECT content FROM messages_out WHERE kind = 'task_log' ORDER BY seq").all() as Array<{
+      content: string;
+    }>
   ).map((r) => JSON.parse(r.content) as { text: string });
 }
 
@@ -1808,7 +1818,7 @@ describe('task-run turn wiring (real processQuery)', () => {
     }
     const query: AgentQuery = { push: () => {}, end: () => {}, events: events(), abort: () => {} };
 
-    await processQuery(query, TASK_ROUTING, ['t1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
+    await processQuery(query, TASK_ROUTING, ['t1'], 'claude', undefined, 'prompt', undefined);
 
     const logs = taskLogRows();
     expect(logs).toHaveLength(1);
@@ -1865,7 +1875,7 @@ describe('task-run turn wiring (real processQuery)', () => {
       abort: () => {},
     };
 
-    await processQuery(query, TASK_ROUTING, ['t1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
+    await processQuery(query, TASK_ROUTING, ['t1'], 'claude', undefined, 'prompt', undefined);
 
     const nudges = pushes.filter((p) => p.includes('If and only if'));
     expect(nudges).toHaveLength(2);
@@ -1890,9 +1900,9 @@ describe('silent turn — a result that delivers nothing is never acked complete
   // the thread simply stopped.
 
   function ackStatus(id: string): string | undefined {
-    const row = getOutboundDb()
-      .prepare('SELECT status FROM processing_ack WHERE message_id = ?')
-      .get(id) as { status: string } | undefined;
+    const row = getOutboundDb().prepare('SELECT status FROM processing_ack WHERE message_id = ?').get(id) as
+      | { status: string }
+      | undefined;
     return row?.status;
   }
 
@@ -1933,7 +1943,7 @@ describe('silent turn — a result that delivers nothing is never acked complete
   it('nudges once, then acks FAILED (not completed) and delivers a notice', async () => {
     const { query, pushes } = makeSilentQuery(null);
 
-    const result = await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
+    const result = await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, 'prompt', undefined);
 
     // The batch is NOT consumed as a success.
     expect(ackStatus('m1')).not.toBe('completed');
@@ -1957,7 +1967,7 @@ describe('silent turn — a result that delivers nothing is never acked complete
     // gate) — the delivery path a real re-send would take.
     const { query, pushes } = makeSilentQuery({ type: 'result', text: 'here it is, sorry' });
 
-    const result = await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
+    const result = await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, 'prompt', undefined);
 
     expect(ackStatus('m1')).toBe('completed');
     expect(result.undeliveredIds ?? []).toHaveLength(0);
@@ -1971,7 +1981,7 @@ describe('silent turn — a result that delivers nothing is never acked complete
   it('nudges at most once — a second silent result finalizes instead of looping', async () => {
     const { query, pushes } = makeSilentQuery({ type: 'result', text: null });
 
-    const result = await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
+    const result = await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, 'prompt', undefined);
 
     expect(ackStatus('m1')).toBe('failed');
     expect(result.undeliveredIds).toEqual(['m1']);
@@ -2002,7 +2012,7 @@ describe('silent turn — a result that delivers nothing is never acked complete
       abort: () => {},
     };
 
-    const result = await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
+    const result = await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, 'prompt', undefined);
 
     expect(ackStatus('m1')).toBe('completed');
     expect(result.undeliveredIds ?? []).toHaveLength(0);
@@ -2013,7 +2023,7 @@ describe('silent turn — a result that delivers nothing is never acked complete
   it('does NOT fire for a task run (no chat message is the normal ending)', async () => {
     const { query, pushes } = makeSilentQuery(null);
 
-    const result = await processQuery(query, TASK_ROUTING, ['t1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
+    const result = await processQuery(query, TASK_ROUTING, ['t1'], 'claude', undefined, 'prompt', undefined);
 
     expect(ackStatus('t1')).toBe('completed');
     expect(result.undeliveredIds ?? []).toHaveLength(0);
@@ -2024,7 +2034,7 @@ describe('silent turn — a result that delivers nothing is never acked complete
   it('skips the re-send nudge when the empty turn is already flagged isError', async () => {
     const { query, pushes } = makeResultQuery({ type: 'result', text: '', isError: true });
 
-    const result = await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
+    const result = await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, 'prompt', undefined);
 
     expect(ackStatus('m1')).toBe('failed');
     expect(result.undeliveredIds).toEqual(['m1']);

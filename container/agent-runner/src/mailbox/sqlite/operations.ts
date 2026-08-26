@@ -78,6 +78,16 @@ export function sqliteMarkFailed(id: string): void {
   mark([id], 'failed');
 }
 
+/**
+ * a2a bounce statuses are distinct ack values the HOST redrive sweep matches on
+ * (see markBounced in ../../db/messages-in.ts). They must reach processing_ack
+ * verbatim — collapsing them into 'failed' or 'script-skip:error' makes the
+ * trigger row look consumed and permanently drops the un-actioned handoff.
+ */
+export function sqliteMarkBounced(ids: string[], status: 'bounced-transient' | 'bounced-unknown'): void {
+  mark(ids, status);
+}
+
 export function sqliteMarkScriptSkipped(skips: Array<{ id: string; reason: string }>): void {
   if (skips.length === 0) return;
   const db = getOutboundDb();
