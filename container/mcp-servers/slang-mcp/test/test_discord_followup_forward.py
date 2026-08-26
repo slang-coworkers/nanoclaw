@@ -17,13 +17,10 @@ DISCORD_POST_SUMMON setting.
 """
 
 import os
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from src.discord import feedback_collector as fc
 from src.discord.discord import _forward_followups_disabled
-
 
 # ── Ownership gate: daemon (feedback_collector) ─────────────────────────────
 

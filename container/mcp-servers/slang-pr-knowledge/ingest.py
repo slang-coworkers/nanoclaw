@@ -35,7 +35,7 @@ def gh_api(endpoint, method="GET", params=None):
         for k, v in params.items():
             cmd.extend(["-f", f"{k}={v}"])
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, check=False)
         if result.returncode != 0:
             print(f"  WARNING: gh api {endpoint} failed: {result.stderr.strip()}", file=sys.stderr)
             return None
@@ -162,7 +162,7 @@ def fetch_pr_list(full_repo, since=None, limit=None):
         cmd.extend(["--search", f"merged:>={since[:10]}"])
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, check=False)
         if result.returncode != 0:
             print(f"  ERROR listing PRs: {result.stderr.strip()}", file=sys.stderr)
             return []
@@ -336,7 +336,7 @@ def main():
     args = parser.parse_args()
 
     if not os.environ.get("GH_TOKEN") and not os.environ.get("GITHUB_TOKEN"):
-        result = subprocess.run(["gh", "auth", "status"], capture_output=True, text=True)
+        result = subprocess.run(["gh", "auth", "status"], capture_output=True, text=True, check=False)
         if result.returncode != 0:
             print("ERROR: gh CLI is not authenticated. Set GH_TOKEN or run: gh auth login", file=sys.stderr)
             sys.exit(1)

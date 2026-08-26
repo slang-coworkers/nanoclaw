@@ -22,13 +22,11 @@ The tests below pin the four properties the fix has to hold at once:
 """
 
 import json
-import os
-import time
 
 import pytest
 
-from src.discord import feedback_collector as fc
 from src.discord import discord as dmod
+from src.discord import feedback_collector as fc
 from src.discord import reply_capacity as rc
 from src.discord.reply_capacity import (
     EVENT_ACCEPTED,
@@ -38,7 +36,6 @@ from src.discord.reply_capacity import (
     apply_event,
     fold_rows,
 )
-
 
 # ── Fixtures: point both modules at a temp audit log ────────────────────────
 

@@ -19,6 +19,18 @@ from typing import Optional
 
 from mcp.server.fastmcp import FastMCP
 
+# `Optional[...]` rather than `str | None`, and FA100 suppressed per-signature
+# rather than fixed with `from __future__ import annotations`:
+#
+# ruff.toml pins target-version = py39, where `str | None` in an evaluated
+# annotation is a TypeError — and @mcp.tool() introspects these signatures AT
+# RUNTIME to build each tool's JSON schema, so the annotations are evaluated,
+# not merely inspected. `from __future__ import annotations` would make them
+# strings, which FastMCP is likely to resolve but that is not verifiable from
+# this repo (the `mcp` package is not a dependency here, so nothing in CI would
+# catch a regression). Leaving working runtime signatures alone is the safe call;
+# revisit when the floor moves off py39.
+
 DB_PATH = Path(__file__).parent / "pr-knowledge.db"
 
 mcp = FastMCP("slang-pr-knowledge")
@@ -56,7 +68,7 @@ def get_db():
 
 
 @mcp.tool()
-def search_prs(query: str, repo: Optional[str] = None, limit: int = 10) -> str:
+def search_prs(query: str, repo: Optional[str] = None, limit: int = 10) -> str:  # noqa: FA100
     """
     Full-text search across PR titles, descriptions, and review comments.
     Returns matching PRs ranked by relevance.
@@ -217,8 +229,8 @@ def get_pr(number: int, repo: str = "slang") -> str:
 
 
 @mcp.tool()
-def search_reviews(query: str, repo: Optional[str] = None,
-                   reviewer: Optional[str] = None, limit: int = 15) -> str:
+def search_reviews(query: str, repo: Optional[str] = None,  # noqa: FA100
+                   reviewer: Optional[str] = None, limit: int = 15) -> str:  # noqa: FA100
     """
     Search review comments specifically. Useful for finding reviewer feedback
     patterns.
@@ -317,7 +329,7 @@ def search_reviews(query: str, repo: Optional[str] = None,
 
 
 @mcp.tool()
-def search_files(file_path: str, repo: Optional[str] = None, limit: int = 20) -> str:
+def search_files(file_path: str, repo: Optional[str] = None, limit: int = 20) -> str:  # noqa: FA100
     """
     Find PRs that touched specific files. Useful for understanding change
     history of a file.
@@ -371,7 +383,7 @@ def search_files(file_path: str, repo: Optional[str] = None, limit: int = 20) ->
 
 
 @mcp.tool()
-def list_prs_by_author(author: str, repo: Optional[str] = None, limit: int = 30) -> str:
+def list_prs_by_author(author: str, repo: Optional[str] = None, limit: int = 30) -> str:  # noqa: FA100
     """
     List PRs by a specific author.
 
@@ -407,8 +419,8 @@ def list_prs_by_author(author: str, repo: Optional[str] = None, limit: int = 30)
 
 
 @mcp.tool()
-def get_review_patterns(reviewer: Optional[str] = None,
-                        keyword: Optional[str] = None, limit: int = 20) -> str:
+def get_review_patterns(reviewer: Optional[str] = None,  # noqa: FA100
+                        keyword: Optional[str] = None, limit: int = 20) -> str:  # noqa: FA100
     """
     Find common reviewer feedback patterns. Shows what reviewers frequently
     comment on.

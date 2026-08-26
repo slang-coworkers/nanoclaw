@@ -5,10 +5,13 @@ on:
     branches: [main, nv-main, nv-dashboard, nv-slang, nv-slangpy, nv-nanoclaw]
 
 jobs:
-  ci:
+  test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22, 24]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
       - name: Merge nv-* branches (test the composed state, not standalone)
@@ -19,14 +22,19 @@ jobs:
           git config user.email "ci@nanoclaw"
           BASE="${{ github.base_ref }}"
 
-          # nv-main is the canonical source for every owned infra file, so
-          # conflicts in that set are resolved to ITS content (not HEAD's).
-          # When BASE is a leaf, HEAD starts as the leaf and `--ours` would
-          # keep the leaf's stale package.json while the lockfile auto-merges
-          # nv-main's added deps — a spec/lock mismatch that breaks
-          # `pnpm install --frozen-lockfile`. Fetch nv-main up front so
-          # `git checkout origin/nv-main -- <f>` has the ref even when nv-main
-          # is the BASE (and thus skipped by the merge loop below).
+          # Canonical source for the owned infra set on conflict.
+          #   - PR to a LEAF (nv-dashboard/slang/...): HEAD is the leaf, whose
+          #     owned files are stale copies — take `origin/nv-main`. `--ours`
+          #     would keep the leaf's stale package.json while the lockfile
+          #     auto-merges nv-main's deps, breaking `pnpm install --frozen`.
+          #   - PR to nv-main: HEAD *is* the proposed nv-main. `origin/nv-main`
+          #     is the OLD base, so checking it out would silently REVERT the
+          #     PR's own change to any owned file that a leaf also touches (the
+          #     PR could never be validated). Take HEAD instead.
+          if [ "$BASE" = "nv-main" ]; then OWNED_SRC="HEAD"; else OWNED_SRC="origin/nv-main"; fi
+
+          # Fetch nv-main up front so `git checkout origin/nv-main -- <f>` has
+          # the ref even when nv-main is the BASE (skipped by the merge loop).
           git fetch origin nv-main || { echo "::error::failed to fetch nv-main"; exit 1; }
 
           # nv-main canonically owns the shared infra files (package.json,
@@ -42,35 +50,42 @@ jobs:
           # dropped an entire branch's content on a trivial package.json clash,
           # which hid the base-nanoclaw / validate:templates breakage for weeks.
           #
-          # OWNED = files git-owned by nv-main that are safe to take from the
-          # integration side on conflict. Mirrors .github/nv-path-guard/nv-main.txt:
-          # nv-main canonically owns host TS (src/**), agent-runner code, base
-          # spine/skills, and shared config. Overlay branches carry stale copies
-          # of these (they lag nv-main's lego columns etc.), so a conflict here is
-          # the sibling being behind — take nv-main's (integration) side. A genuine
-          # overlay-owned content conflict lands OUTSIDE these paths and still fails
-          # loudly. Keep in sync with nv-main.txt.
-          is_owned() {
-            case "$1" in
-              package.json|package-lock.json|pnpm-lock.yaml) return 0 ;;
-              tsconfig.json|vitest.config.ts|vitest.setup.ts) return 0 ;;
-              .github/*) return 0 ;;
-              src/*) return 0 ;;
-              scripts/*) return 0 ;;
-              setup/*) return 0 ;;
-              docs/*) return 0 ;;
-              container/agent-runner/*) return 0 ;;
-              container/hooks/*) return 0 ;;
-              container/config/*) return 0 ;;
-              container/spines/base/*) return 0 ;;
-              container/skills/spine-base/*) return 0 ;;
-              container/skills/base/*) return 0 ;;
-              .claude/skills/*) return 0 ;;
-              container/Dockerfile|container/build.sh|container/entrypoint.sh) return 0 ;;
-              CLAUDE.md|README.md|CONTRIBUTING.md|LICENSE|.gitignore) return 0 ;;
-              *) return 1 ;;
-            esac
+          # OWNED = files nv-main is canonical for on conflict. The SINGLE source
+          # of truth is nv-main's path-guard allowlist (.github/nv-path-guard/
+          # nv-main.txt), read from $OWNED_SRC — HEAD for a nv-main PR (whose own
+          # allowlist edit must apply to itself), origin/nv-main for a leaf PR.
+          # BOTH the allowlist and the MATCHER come from $OWNED_SRC, and the
+          # matcher is the one every other reader uses (check.py imports it;
+          # check-nv-owned-drift.sh shells out to it). This used to run
+          # `git -c core.excludesFile=<list> check-ignore` HERE, in the project
+          # repo, which also consults its .gitignore, .git/info/exclude and the
+          # global excludes — and this repo's .gitignore alone would hand nv-main
+          # ownership of groups/**, data/**, dist/**, repos/**, coworkers/*.yaml
+          # and forks.md. A conflict in any of those would then be auto-resolved
+          # toward nv-main instead of failing loudly, silently dropping an
+          # overlay's content: the exact regression this block exists to catch.
+          # Mirrors setup/merge-train.sh and setup.sh's compose_fork.
+          NV_OWNED_LIST=$(mktemp)
+          git show "$OWNED_SRC":.github/nv-path-guard/nv-main.txt > "$NV_OWNED_LIST" 2>/dev/null || true
+          NV_MATCHER=$(mktemp)
+          git show "$OWNED_SRC":.github/nv-path-guard/ownership.py > "$NV_MATCHER" 2>/dev/null || true
+          # NUL-delimited candidates in, NUL-delimited owned paths out, one call.
+          nv_owned() {
+            [ -s "$NV_OWNED_LIST" ] && [ -s "$NV_MATCHER" ] || return 1
+            python3 "$NV_MATCHER" -0 "$NV_OWNED_LIST"
           }
+          # Exact membership in a NUL set file; `grep -z` is GNU-only.
+          nv_set_has() {
+            local set_file="$1" want="$2" got
+            while IFS= read -r -d '' got; do
+              [ "$got" = "$want" ] && return 0
+            done < "$set_file"
+            return 1
+          }
+          if ! printf 'probe\0' | nv_owned >/dev/null 2>&1; then
+            echo "::error::cannot evaluate nv-main ownership from $OWNED_SRC"
+            exit 1
+          fi
 
           for branch in nv-main nv-dashboard nv-slang nv-slangpy nv-nanoclaw; do
             [ "$branch" = "$BASE" ] && continue
@@ -85,9 +100,11 @@ jobs:
             fi
 
             CONFLICTS=$(git diff --name-only --diff-filter=U)
+            CONFLICTS_OWNED=$(mktemp)
+            printf '%s\0' $CONFLICTS | nv_owned > "$CONFLICTS_OWNED" || : > "$CONFLICTS_OWNED"
             UNEXPECTED=""
             for f in $CONFLICTS; do
-              is_owned "$f" || UNEXPECTED="$UNEXPECTED $f"
+              nv_set_has "$CONFLICTS_OWNED" "$f" || UNEXPECTED="$UNEXPECTED $f"
             done
             if [ -n "$UNEXPECTED" ]; then
               echo "::error::$branch merge produced conflicts outside nv-main's owned set:"
@@ -96,63 +113,125 @@ jobs:
               exit 1
             fi
 
-            # All conflicts are owned infra (package.json / lockfiles /
-            # .github/**) — take nv-main's content. nv-main is canonical for
-            # the owned set, so resolve to `origin/nv-main` rather than `--ours`:
-            # `--ours` keeps whichever side HEAD happens to be (the leaf, when
-            # BASE is a leaf), which leaves package.json out of sync with the
-            # auto-merged lockfile. `origin/nv-main` keeps the pair consistent
-            # regardless of merge direction.
+            # All conflicts are owned infra — take the canonical version
+            # ($OWNED_SRC: origin/nv-main for leaf PRs, HEAD for nv-main PRs;
+            # see the comment where OWNED_SRC is set).
             for f in $CONFLICTS; do
-              echo "::notice::$branch: $f conflict — taking nv-main (canonical) version"
-              if git checkout origin/nv-main -- "$f" 2>/dev/null; then
+              echo "::notice::$branch: $f conflict — taking $OWNED_SRC (canonical) version"
+              # A delete/modify conflict (file removed on the canonical side,
+              # edited on the other) has no blob to check out — honor the
+              # deletion so the composed merge doesn't strand a half-resolved path.
+              if git checkout "$OWNED_SRC" -- "$f" 2>/dev/null; then
                 git add -- "$f"
               else
-                git rm -f -- "$f" >/dev/null  # nv-main deleted it - take the deletion
+                echo "::notice::$branch: $f absent on $OWNED_SRC — taking the deletion"
+                git rm -f -- "$f" >/dev/null 2>&1 || rm -f "$f"
+                git add -A -- "$f"
               fi
             done
-            # Keep dependency spec+lock paired: a resolved-to-nv-main package.json
-            # whose lockfile didn't conflict would stay at HEAD's version and break
-            # `pnpm install --frozen-lockfile`. Take nv-main's lockfile to match.
-            case " $CONFLICTS " in
-              *" package.json "*) git checkout origin/nv-main -- pnpm-lock.yaml 2>/dev/null && git add -- pnpm-lock.yaml || true ;;
-            esac
-            case " $CONFLICTS " in
-              *" container/agent-runner/package.json "*) git checkout origin/nv-main -- container/agent-runner/bun.lock 2>/dev/null && git add -- container/agent-runner/bun.lock || true ;;
-            esac
             git commit --no-edit
           done
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 20
+          node-version: ${{ matrix.node-version }}
           cache: pnpm
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.3.12
+
+      # Before the install, because the install is what the policy governs.
+      # The three-day quarantine sat inert for months — `minimumReleaseAge` was
+      # nested under a `pnpm:` key that pnpm ignores in silence — and nothing
+      # could tell the difference between enforced and decorative. This probes
+      # pnpm for the answer instead of reading the file and assuming.
+      - name: Assert the release-age policy is visible to pnpm
+        run: bash scripts/check-release-age-policy.sh
+
       - run: pnpm install --frozen-lockfile
+
+      # A green frozen install proves manifest and lockfile AGREE. It does not
+      # prove the deep specifiers our code resolves are reachable — and the two
+      # composition paths fail in opposite directions here:
+      #
+      #   ci.yml canonicalizes only CONFLICTED files, so a leaf's root-manifest
+      #   addition can auto-merge in while the conflicting lockfile is reset to
+      #   nv-main's — that is loud (ERR_PNPM_OUTDATED_LOCKFILE, PR #1136).
+      #
+      #   setup/merge-train.sh canonicalizes the ENTIRE owned set, so the same
+      #   addition is discarded outright. Install stays green, deploy stays
+      #   green, and the dashboard's cost panel reports "unavailable" forever.
+      #
+      # Only a resolution assertion catches the silent one.
+      - name: Assert runtime specifiers resolve in the composed tree
+        run: pnpm run check:runtime-deps
+
       - name: Install agent-runner deps (Bun)
         working-directory: container/agent-runner
         run: bun install --frozen-lockfile
 
       # scripts/check-nv-owned-drift.sh resolves nv-main ownership through
-      # .github/nv-path-guard/ownership.py — the same pathspec matcher the
-      # nv-path-guard workflow uses, so the two can never disagree about what
-      # nv-main owns. setup/nv-owned-drift.test.ts exercises it here.
-      #
-      # Copied VERBATIM from nv-main's ci.yml. `.github/**` is nv-main-owned,
-      # so this is not a leaf inventing its own CI: it is restoring the two
-      # steps this stale copy is missing. The composed-state merge pulls
-      # nv-main's drift test into the run, but GitHub resolves the workflow
-      # from the PR's merge commit — so without these steps here, the test
-      # arrives and its dependency never does, `ownership.py` exits 2
-      # ("pathspec absent"), and every drift case that needs the matcher fails
-      # on a branch that changed nothing near it. See team task #38.
-      - uses: actions/setup-python@v5
+      # .github/nv-path-guard/ownership.py — the same matcher the nv-path-guard
+      # workflow uses, so the two can never disagree about what nv-main owns.
+      # setup/nv-owned-drift.test.ts and setup/ownership-matcher.test.ts
+      # exercise it here. It needs python3 and git and nothing else: no install
+      # step, so a sibling PR running an older ci.yml (which cannot compose the
+      # workflow it is already executing) still has everything the composed
+      # tests require.
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.11'
-      - name: Install pathspec (path-guard matcher, used by the drift tests)
-        run: pip install pathspec
+
+      # The Python tail of this repo — the path-guard matcher, the KB
+      # observability producers, the task dumper, regression-quality, and the
+      # supervise-issues / learnings-wiki skill scripts — had no linter at all,
+      # while the TypeScript side has had `tsc` plus the ratcheted gate below
+      # for months. Several of these run on a production cron and decide whether
+      # the KB is reported healthy, so a silent break there does not fail a
+      # build; it just starts publishing a wrong number.
+      #
+      # The version is pinned EXACTLY, and config lives in ruff.toml, which does
+      # not override the rule selection. That combination is what makes the gate
+      # deterministic: a new ruff release cannot turn an unrelated PR red, and
+      # bumping the pin surfaces the new findings as a reviewed diff. Do not
+      # relax this to a range.
+      #
+      # Scoped to THIS branch's Python, not the composed tree's. The merge step
+      # at the top pulls every nv-* sibling in, and the siblings carry Python
+      # this branch does not have and may not touch: nv-slang's
+      # container/mcp-servers/** (deleted on nv-main) and the slang*-pr-approver
+      # skills (overlay-owned) are 75 findings that no nv-main PR can fix — the
+      # files are not even in its tree. A bare `ruff check .` fails every nv-main
+      # PR on a neighbour's code, which is the "a nv-main change breaks sibling
+      # CI" class from #1134 pointed the other way. Each branch answers for its
+      # own Python; a sibling that wants this gate gets it by picking up this
+      # ci.yml, already linting exactly its own files.
+      #
+      # HEAD_SHA is the PR's own tip, so the list cannot be widened by the merge.
+      # A branch behind nv-main simply will not lint files added since it forked
+      # — under-inclusive, never wrong-blaming. The -f test drops anything a
+      # sibling's deletion carried off, so the only way this step fails is a real
+      # lint error.
+      - name: Lint Python (ruff)
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check ruff==0.16.2
+          ruff --version
+
+          files=()
+          while IFS= read -r -d '' f; do
+            case "$f" in
+              *.py) if [ -f "$f" ]; then files+=("$f"); fi ;;
+            esac
+          done < <(git ls-tree -r --name-only -z "$HEAD_SHA")
+
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::notice::no Python on this branch — nothing to lint"
+            exit 0
+          fi
+          echo "linting ${#files[@]} file(s) from $HEAD_SHA"
+          ruff check --output-format=github -- "${files[@]}"
 
       - name: Build (needed for fetch-skills + tests)
         run: pnpm run build
@@ -184,6 +263,13 @@ jobs:
       - name: Typecheck host
         run: pnpm exec tsc --noEmit
 
+      # The step above only sees src/ — the project tsconfig is include:["src*"],
+      # so setup/ (98 files) and scripts/ (38) were never typechecked by anything.
+      # This widens the net and blocks NEW errors while carrying the pre-existing
+      # ones in scripts/typecheck-baseline.txt, which may only shrink.
+      - name: Typecheck gate (setup/ + scripts/, ratcheted)
+        run: node scripts/typecheck-gate.mjs
+
       - name: Typecheck container
         run: pnpm exec tsc -p container/agent-runner/tsconfig.json --noEmit
 
@@ -191,79 +277,58 @@ jobs:
         run: pnpm run validate:templates
 
       - name: Host tests
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: pnpm exec vitest run
 
       - name: Container tests
         working-directory: container/agent-runner
         run: bun test
 
-  # ── Python: slang-mcp ──────────────────────────────────────────────────────
-  #
-  # THIS is the copy that survives. #1163 added an identical job to nv-slang's
-  # ci.yml, where slang-mcp actually lives, and that copy works today only
-  # because GitHub takes a PR's workflow from its own merge ref. `.github/**` is
-  # nv-main's per .github/nv-path-guard/nv-main.txt, so setup.sh and
-  # merge-train.sh canonicalize nv-main's ci.yml over the leaf's on every
-  # deploy — and the day that happens, a ~90-test suite and its lint gate stop
-  # running with nothing going red to say so. An owned file that only exists on
-  # the leaf is a check with a deploy-shaped expiry date.
-  #
-  # slang-mcp is NOT on nv-main. This job checks out a single branch with no
-  # compose step, so here the directory is simply absent and every step no-ops.
-  # The guard keys on the directory, not on the branch name: the same file is
-  # then correct on nv-main and on nv-slang, stays correct if slang-mcp moves or
-  # is deleted, and needs no edit when a new leaf picks this workflow up.
-  #
-  # Kept byte-identical to nv-slang's copy on purpose. Canonicalization is then
-  # a no-op rather than a behaviour change, which is the only way the ownership
-  # caveat #1163 recorded actually closes — two copies that agree cannot drift.
-  #
-  # Non-integration only: test/conftest.py skips anything marked `integration`
-  # unless RUN_INTEGRATION_TESTS=true, so the default run needs no Discord or
-  # GitHub credentials and no network.
-  python:
+      # The learnings-wiki builder is Python embedded in a Markdown document, so no
+      # compiler or typechecker ever sees it and its suite ran nowhere. It guards the
+      # supersession lineage — the record that says a learning was deliberately retired —
+      # where a silent regression deletes knowledge rather than breaking a build.
+      - name: Container skill tests (Python)
+        run: python3 container/skills/learnings-wiki/test_learnings_wiki.py
+
+      # The costliest-session-digest tool is Python embedded in SKILL.md (the
+      # container writes it out at runtime), so nothing else executes it. Its
+      # pricing table must stay reconciled with dashboard/session-costs.ts; this
+      # suite extracts the tool FROM SKILL.md and asserts pricing/dedup/gate shape
+      # so a silent drift is caught rather than shipping a wrong cost figure.
+      - name: Costliest-session digest tests (Python)
+        run: python3 container/skills/costliest-session-digest/test_costliest_session.py
+
+      # The KB observability producers are Python too, and their suite ran NOWHERE:
+      # #1124 added 32 tests and CI never executed one of them, so the review's
+      # "32/32 passed" was a hand-run that nothing repeats. These two tools decide
+      # whether the KB is reported healthy; a silent regression here does not break a
+      # build, it just starts saying everything is fine.
+      - name: KB observability tests (Python)
+        run: python3 scripts/test_kb_observability.py
+
+      # The committed scheduled-task snapshot is the only record of what the live
+      # agents are standing-instructed to do, and its whole value is that `git diff`
+      # is a drift alarm. It is a PAIR — JSON plus Markdown mirror, stamped with a
+      # shared content hash — and the two can come apart with nothing to show for it:
+      # a crash between the sequential renames, which no in-process rollback can
+      # cover, or a hand-edit of a committed file. Either leaves a snapshot that
+      # still reads as authoritative.
+      #
+      # `--check` recomputes the hash and compares the pair. It returns before `ncl`
+      # is invoked, so it needs no live host, no DB and no network — which is what
+      # makes it runnable here rather than only on the box that dumps it. What it
+      # does NOT do is compare the snapshot against the live host; that is
+      # scripts/kb-doctor.py's job and it needs the host to do it.
+      - name: Scheduled-task snapshots agree with themselves
+        run: bash scripts/check-task-snapshots.sh
+
+  # Repository rules require exact `ci`; always run it so matrix failures remain blocking.
+  ci:
+    if: always()
+    needs: test
+    permissions: {}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      # Both outcomes announce themselves, in the annotations AND in the run
-      # summary. "Skipped everything" and "ran everything and it was clean" are
-      # both a green tick on the job, and if the log does not separate them then
-      # the day this stops covering slang-mcp looks exactly like the day it
-      # covered it fine. That is how a gate quietly becomes decoration.
-      - name: Is slang-mcp on this branch?
-        id: probe
-        run: |
-          if [ -f container/mcp-servers/slang-mcp/pyproject.toml ]; then
-            echo 'present=true' >> "$GITHUB_OUTPUT"
-            MSG='slang-mcp **present** — running `uv run pytest -q` and `uv run ruff check src/`'
-          else
-            echo 'present=false' >> "$GITHUB_OUTPUT"
-            MSG='slang-mcp **absent** on this branch — pytest and ruff **SKIPPED**, which is not the same as passed'
-          fi
-          echo "::notice title=slang-mcp gate::${MSG}"
-          echo "- ${MSG}" >> "$GITHUB_STEP_SUMMARY"
-
-      - uses: astral-sh/setup-uv@v5
-        if: steps.probe.outputs.present == 'true'
-        with:
-          version: '0.5.11'
-
-      - name: Install (locked)
-        if: steps.probe.outputs.present == 'true'
-        working-directory: container/mcp-servers/slang-mcp
-        run: uv sync --frozen
-
-      - name: pytest (non-integration)
-        if: steps.probe.outputs.present == 'true'
-        working-directory: container/mcp-servers/slang-mcp
-        run: uv run pytest -q
-
-      # Wired now that the 15 pre-existing errors are fixed (see the nv-slang
-      # PR). Config (E/F/I, line-length 120) lives in slang-mcp's pyproject.toml
-      # and ruff's version comes from its uv.lock, so this cannot drift with a
-      # new ruff release.
-      - name: ruff
-        if: steps.probe.outputs.present == 'true'
-        working-directory: container/mcp-servers/slang-mcp
-        run: uv run ruff check src/
+      - run: test "${{ needs.test.result }}" = success
