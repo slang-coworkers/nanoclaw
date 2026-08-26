@@ -9,6 +9,7 @@
  * on file and resumes cleanly if the user flips back.
  */
 import { getAgentMailbox } from '../mailbox/index.js';
+import { getInboundDb, getOutboundDb } from '../mailbox/sqlite/connection.js';
 
 const LEGACY_KEY = 'sdk_session_id';
 
@@ -161,9 +162,20 @@ export interface CostCapState {
   status: CostCapStatus;
   immortal: boolean;
   window: CostCapWindow;
-  /** Live Tier-2 hard ceiling (base + any approved raises). Adopted on respawn
-   *  so an approved raise survives a container restart, mirroring capUsd. */
-  ceilingUsd?: number;
+  /**
+   * Live Tier-2 hard ceiling (base + any approved raises). Adopted on respawn
+   * so an approved raise survives a container restart, mirroring capUsd.
+   *
+   * ALWAYS published, including `0` (disabled/unconfigured) — this is the
+   * "set ceiling v2" contract (NanoClaw #1): the dashboard's live per-session
+   * ceiling control needs to distinguish "no cost_cap row at all" (pre-cost-cap
+   * runner, cost tracking off) from "cost tracking is on but no ceiling is
+   * configured," and an omitted field can't tell those apart. Previously this
+   * was omitted whenever `costCeilingUsd <= 0`; every reader of this field
+   * already treats `undefined` and `0` identically (`> 0` / `<= 0` checks), so
+   * this widening is behavior-preserving for existing readers.
+   */
+  ceilingUsd: number;
   /** UTC day ("YYYY-MM-DD") the daily spend belongs to. Present only when window === 'daily'. */
   dayKey?: string;
   escalatedAt?: string;
@@ -200,4 +212,155 @@ export function getCostCap(): CostCapState | undefined {
 
 export function setCostCap(state: CostCapState): void {
   setValue(COST_CAP_KEY, JSON.stringify(state));
+}
+
+/**
+ * Runner-instance readiness handshake (NanoClaw #1, "set ceiling v2"). Published
+ * once at poll-loop startup, unconditionally (independent of whether cost
+ * tracking itself is enabled for this session) — the host needs to know
+ * definitively "this runner build understands the set-ceiling wire protocol"
+ * before it ever writes a control message, closing a TOCTOU gap: a stale
+ * live-state read from a PRIOR container instance of this same session must not
+ * be able to target a NEW instance that happens to share the session id.
+ *
+ * `runnerInstanceId` is the random nonce the host generated for THIS spawn
+ * (env `NANOCLAW_RUNNER_INSTANCE_ID`, see src/container-runner.ts) — the host
+ * compares it against the nonce it recorded for the currently-active container
+ * before accepting an adjustment, so a handshake left over from a prior spawn of
+ * the same session (the container died and respawned between the host's read
+ * and its check) is provably stale rather than silently accepted.
+ */
+export interface CostControlProtocolState {
+  version: number;
+  runnerInstanceId: string;
+  readyAt: string;
+}
+
+const COST_CONTROL_PROTOCOL_KEY = 'cost_control_protocol';
+
+export function getCostControlProtocol(): CostControlProtocolState | undefined {
+  const raw = getValue(COST_CONTROL_PROTOCOL_KEY);
+  if (raw === undefined) return undefined;
+  try {
+    return JSON.parse(raw) as CostControlProtocolState;
+  } catch {
+    return undefined;
+  }
+}
+
+export function setCostControlProtocol(state: CostControlProtocolState): void {
+  setValue(COST_CONTROL_PROTOCOL_KEY, JSON.stringify(state));
+}
+
+/** The shape of the `cost_ceiling_adjustment_result` receipt row (outbound
+ *  `kind:'system'`), the runner's confirmation of a set-ceiling control message.
+ *  Field-for-field mirror of the host's expectations — see
+ *  `src/modules/cost-ceiling-adjustment/index.ts` on the host side. */
+export interface CostCeilingAdjustmentReceipt {
+  action: 'cost_ceiling_adjustment_result';
+  protocolVersion: 2;
+  adjustmentId: string;
+  sessionId: string;
+  outcome: 'applied' | 'conflict' | 'rejected';
+  expectedEpochKey: string;
+  previousEpochKey?: string;
+  resultEpochKey?: string;
+  expectedCeilingCents: number;
+  previousCeilingCents?: number;
+  targetCeilingCents: number;
+  resultCeilingCents?: number;
+  spentUsd?: number;
+  status?: string;
+  reason?: string;
+}
+
+/**
+ * Commit a cost-ceiling-adjustment outcome ATOMICALLY: the new `cost_cap` state
+ * (only for `outcome:'applied'`, which is the only outcome that mutates live
+ * state), the receipt row the host reads back, and the inbound control
+ * message's `processing_ack` → 'completed' transition — ALL IN ONE outbound-DB
+ * transaction, all-or-nothing.
+ *
+ * This is the money-safety boundary for the whole feature: if the state upsert
+ * landed but the receipt didn't, the host would never learn the ceiling changed
+ * and might apply a second, redundant/conflicting adjustment. If the receipt
+ * landed but the processing_ack didn't, a restart would re-process the SAME
+ * inbound control message and could double-apply it. Committing all three
+ * together means a crash mid-write leaves ALL THREE absent — the inbound
+ * message stays (or reverts to, after `clearStaleProcessingAcks()`) unclaimed,
+ * so the exact same apply-or-reject logic runs again on the next attempt
+ * against then-current live state, rather than silently dropping the request
+ * or double-applying a partial write.
+ *
+ * Deliberately does NOT catch/swallow: on a thrown error the caller (poll-loop's
+ * set-ceiling handler) must NOT mark the inbound message complete by any other
+ * path — let it propagate so the message is retried/recovered on restart.
+ *
+ * IMPLEMENTATION NOTE: the mailbox seam's `MailboxOperations` interface has no
+ * cross-operation transaction primitive (by design — a non-SQLite mailbox
+ * backend might not have one). This is the sanctioned SQLite-only escape hatch
+ * (see docs/agent-mailbox-seam-migration.md: "keep the customization explicitly
+ * SQLite-only by importing the low-level opener") — it talks to the same
+ * `getOutboundDb()` singleton the SQLite mailbox implementation itself uses
+ * (`mailbox/sqlite/connection.ts` / `operations.ts`), replicating its exact
+ * `session_state` upsert, odd-seq `messages_out` insert, and `processing_ack`
+ * upsert SQL so this stays byte-compatible with the rest of the SQLite backend.
+ */
+export function commitCostCeilingAdjustmentOutcome(params: {
+  inboundMessageId: string;
+  receipt: CostCeilingAdjustmentReceipt;
+  /** Present only for `outcome:'applied'` — conflict/rejected mutate no live state. */
+  newCostCap?: CostCapState;
+}): void {
+  const outbound = getOutboundDb();
+  const inbound = getInboundDb();
+  const commit = outbound.transaction(() => {
+    if (params.newCostCap) {
+      outbound
+        .prepare('INSERT OR REPLACE INTO session_state (key, value, updated_at) VALUES (?, ?, ?)')
+        .run(COST_CAP_KEY, JSON.stringify(params.newCostCap), new Date().toISOString());
+    }
+
+    // Mirrors sqliteWriteMessageOut's odd-seq computation exactly (mailbox/
+    // sqlite/operations.ts) — deliberately not calling that function directly,
+    // since it opens its own BEGIN IMMEDIATE/COMMIT and nesting a second
+    // transaction inside this one is avoidable risk for no benefit.
+    const maxOut = (
+      outbound.prepare('SELECT COALESCE(MAX(seq), 0) AS value FROM messages_out').get() as { value: number }
+    ).value;
+    const maxIn = (
+      inbound.prepare('SELECT COALESCE(MAX(seq), 0) AS value FROM messages_in').get() as { value: number }
+    ).value;
+    const max = Math.max(maxOut, maxIn);
+    const nextSeq = max % 2 === 0 ? max + 1 : max + 2;
+    outbound
+      .prepare(
+        `INSERT INTO messages_out (id, seq, in_reply_to, timestamp, deliver_after, recurrence, kind, platform_id, channel_type, thread_id, content)
+       VALUES ($id, $seq, $in_reply_to, $timestamp, $deliver_after, $recurrence, $kind, $platform_id, $channel_type, $thread_id, $content)`,
+      )
+      .run({
+        $id: `cost-ceiling-adjustment-result:${params.receipt.adjustmentId}`,
+        $seq: nextSeq,
+        $timestamp: new Date().toISOString(),
+        $in_reply_to: null,
+        $deliver_after: null,
+        $recurrence: null,
+        $kind: 'system',
+        $platform_id: null,
+        $channel_type: null,
+        $thread_id: null,
+        $content: JSON.stringify(params.receipt),
+      });
+
+    // Raw INSERT OR REPLACE rather than the messages-in.ts markCompleted
+    // helper: that helper wraps itself in its OWN transaction, and nesting a
+    // second transaction inside this one is avoidable risk for no benefit —
+    // this is the exact same statement it runs, inlined.
+    outbound
+      .prepare(
+        "INSERT OR REPLACE INTO processing_ack (message_id, status, status_changed) VALUES ($id, 'completed', $ts)",
+      )
+      .run({ $id: params.inboundMessageId, $ts: new Date().toISOString() });
+  });
+  commit();
 }

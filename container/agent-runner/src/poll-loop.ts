@@ -32,9 +32,12 @@ import {
   setCurrentInReplyTo,
   getCostCap,
   setCostCap,
+  setCostControlProtocol,
+  commitCostCeilingAdjustmentOutcome,
   type CostCapState,
   type CostCapStatus,
   type CostCapWindow,
+  type CostCeilingAdjustmentReceipt,
 } from './db/session-state.js';
 import { getConfig } from './config.js';
 import { priceUsage } from './pricing.js';
@@ -156,6 +159,32 @@ let pendingCostNudge: string | undefined;
 /** Current UTC day as "YYYY-MM-DD" — the daily-window bucket key. */
 function utcDayKey(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Publish the runner-instance readiness handshake (NanoClaw #1, "set ceiling
+ * v2"): `{version, runnerInstanceId, readyAt}` under `session_state.
+ * cost_control_protocol`. Called once at loop startup, UNCONDITIONALLY —
+ * independent of `costEnabled` (which requires a Claude provider AND a
+ * configured cap). The host's readiness check needs to know "this runner build
+ * understands the set-ceiling wire protocol" before it ever writes a control
+ * message; whether cost tracking happens to be configured for this particular
+ * session is a separate question the host answers earlier in its own
+ * validation (a session with no live ceiling is rejected there regardless of
+ * what this handshake says).
+ *
+ * `runnerInstanceId` comes from `NANOCLAW_RUNNER_INSTANCE_ID`, the random nonce
+ * `src/container-runner.ts` generates fresh for every container spawn. Its
+ * whole purpose is to let the host distinguish THIS instance's handshake from
+ * one a prior instance of the same session id left behind — without a nonce
+ * there is nothing to compare against, so an empty/missing env var is treated
+ * as "nothing to publish" rather than publishing a handshake no host check
+ * could ever safely match.
+ */
+function publishRunnerReadiness(): void {
+  const runnerInstanceId = process.env.NANOCLAW_RUNNER_INSTANCE_ID || '';
+  if (!runnerInstanceId) return;
+  setCostControlProtocol({ version: 2, runnerInstanceId, readyAt: new Date().toISOString() });
 }
 
 /**
@@ -302,9 +331,12 @@ function persistCostCap(): void {
     status,
     immortal: costImmortal,
     window: costWindow,
-    // Live ceiling (base + any approved raises) — adopted on respawn so a raise
-    // survives a container restart, mirroring capUsd.
-    ...(costCeilingUsd > 0 ? { ceilingUsd: costCeilingUsd } : {}),
+    // Live ceiling (base + any approved raises). ALWAYS published — including 0
+    // (disabled/unconfigured) — so the dashboard's live per-session ceiling
+    // control (NanoClaw #1, "set ceiling v2") can distinguish "no cost_cap row
+    // at all" from "cost tracking is on but no ceiling is configured." Every
+    // existing reader already treats an omitted value and 0 identically.
+    ceilingUsd: costCeilingUsd,
     // Always publish the live budget generation so the host reads the same gen the
     // runner is fencing on (it stamps overrides with it via the escalation episode).
     budgetGen: costBudgetGen,
@@ -465,6 +497,34 @@ function emitCostEscalation(reason: 'cap' | 'ceiling'): void {
 }
 
 /**
+ * Server-enforced hard maximum for a `set_ceiling` target (NanoClaw #1, "set
+ * ceiling v2") — $1,000.00 in integer cents. Enforced HERE independently of the
+ * host's own identical check (`src/modules/cost-ceiling-adjustment/index.ts`):
+ * the wire contract is host-authoritative for VALIDATION, but the runner never
+ * trusts a control message's value bounds blindly — defense in depth against a
+ * bug or a compromised host.
+ */
+const MAX_CEILING_CENTS = 100_000;
+
+/**
+ * The union of every field either `cost_override` shape can carry — the legacy
+ * `decision:'continue'|'stop'` payload and the "set ceiling v2"
+ * `protocolVersion:2, operation:'set_ceiling'` payload. Parsed once as this
+ * shape so the dispatcher and both handlers share one type instead of each
+ * asserting a narrower, mutually-exclusive one.
+ */
+interface CostOverrideContent {
+  decision?: unknown;
+  epochKey?: unknown;
+  protocolVersion?: unknown;
+  operation?: unknown;
+  adjustmentId?: unknown;
+  expectedEpochKey?: unknown;
+  expectedCeilingCents?: unknown;
+  targetCeilingCents?: unknown;
+}
+
+/**
  * Apply a human cost-override decision (from a `cost_override` inbound row).
  * The Tier-2 ceiling is the only actionable decision now (Tier-1 'cap' crossings
  * are dashboard-observation only — the host never cards them, so a legitimate
@@ -474,16 +534,32 @@ function emitCostEscalation(reason: 'cap' | 'ceiling'): void {
  *     and resume, queuing a one-shot cost-sensitivity nudge for the next turn.
  *   - stop: quiesce (finish current turn, take no new work). Immortal groups
  *     never stop — the decision is recorded but status stays at 'escalated'.
+ *
+ * `{protocolVersion:2, operation:'set_ceiling'}` is a DISTINCT, newer operation
+ * (NanoClaw #1, "set ceiling v2" — the dashboard's live +/- ceiling control) —
+ * handled in its own path (`applySetCeilingOverride`) rather than folded into
+ * the legacy `decision:'continue'|'stop'` branch below. An earlier draft that
+ * overloaded `continue` for this was flagged in review as money-unsafe: the
+ * legacy path can only ADD a fixed allotment, so it structurally cannot express
+ * "lower to an exact value below current spend," and conflating the two
+ * decisions risked a stale/duplicate legacy override interacting with a live
+ * exact-value request in ways neither path was designed to fence against.
  */
 function applyCostOverride(msg: MessageInRow): void {
-  if (!costEnabled) return;
-  let parsed: { decision?: unknown; epochKey?: unknown };
+  let parsed: CostOverrideContent;
   try {
-    parsed = JSON.parse(msg.content) as { decision?: unknown; epochKey?: unknown };
+    parsed = JSON.parse(msg.content) as CostOverrideContent;
   } catch {
     log(`cost_override with unparseable content — ignoring (id=${msg.id})`);
     return;
   }
+
+  if (parsed.protocolVersion === 2 && parsed.operation === 'set_ceiling') {
+    applySetCeilingOverride(msg, parsed);
+    return;
+  }
+
+  if (!costEnabled) return;
   const decision = parsed.decision;
   const epochKey = parsed.epochKey;
   // EPOCH FENCE — the exactly-once GRANT guarantee. An override carries the budget
@@ -563,6 +639,203 @@ function applyCostOverride(msg: MessageInRow): void {
 }
 
 /**
+ * `{protocolVersion:2, operation:'set_ceiling'}` — the live, per-session, exact-
+ * value ceiling control (NanoClaw #1, "set ceiling v2"). Unlike the legacy
+ * continue/stop path, this ALWAYS sends a receipt back (`commitCostCeiling
+ * AdjustmentOutcome`) — the host's ledger row is stuck `enqueued` until it
+ * hears a definitive outcome, so silently dropping an unrecognized/invalid
+ * message here (as the legacy path does) would leave that row stranded.
+ *
+ * Runs regardless of `costEnabled`/`costImmortal` — those become REJECT
+ * outcomes (`cost_tracking_disabled` / `immortal`) with a receipt, not silent
+ * no-ops, so the host always reaches a terminal ledger state.
+ *
+ * Money-safety invariants this function must uphold (pinned by
+ * `poll-loop.setCeiling.test.ts`):
+ *   - Both `expectedEpochKey` AND `expectedCeilingCents` must match live state
+ *     exactly, or the request is refused as `conflict` — never partially applied.
+ *   - The target is applied VERBATIM against CURRENT live spend — never a
+ *     different/higher value, never a stale spend snapshot. A session that
+ *     stopped between the browser's read and this request's arrival (the
+ *     escalation itself never rotates the epoch) is accepted at the SAME
+ *     expected epoch/ceiling and resolved against its now-current spend: raise
+ *     above spend → resume; raise still at/below spend → stay stopped at
+ *     exactly the requested value.
+ *   - Every successful apply rotates `costBudgetGen`, whether it raises or
+ *     lowers — this is what makes a stale legacy card override (still carrying
+ *     the OLD epoch) refuse itself if it lands after this request already
+ *     resolved the epoch, and what makes a duplicate/redelivered copy of THIS
+ *     SAME request refuse itself on a second delivery.
+ *   - State + receipt + processing_ack are committed in ONE outbound-DB
+ *     transaction (`commitCostCeilingAdjustmentOutcome`) — never partially.
+ */
+function applySetCeilingOverride(msg: MessageInRow, parsed: CostOverrideContent): void {
+  const adjustmentId = typeof parsed.adjustmentId === 'string' && parsed.adjustmentId ? parsed.adjustmentId : undefined;
+  if (!adjustmentId) {
+    log(`set_ceiling control with missing/invalid adjustmentId — cannot address a receipt, ignoring (id=${msg.id})`);
+    return;
+  }
+
+  const sessionId = process.env.NANOCLAW_SESSION_ID || '';
+  const requestExpectedEpochKey =
+    typeof parsed.expectedEpochKey === 'string' ? parsed.expectedEpochKey : String(parsed.expectedEpochKey ?? '');
+  const requestExpectedCeilingCents = Number(parsed.expectedCeilingCents);
+  const requestTargetCeilingCents = Number(parsed.targetCeilingCents);
+
+  const commitOrThrow = (receipt: CostCeilingAdjustmentReceipt, newCostCap: CostCapState | undefined, logMsg: string): void => {
+    try {
+      commitCostCeilingAdjustmentOutcome({ inboundMessageId: msg.id, receipt, newCostCap });
+      log(logMsg);
+    } catch (err) {
+      // Do NOT swallow: the caller (applyCostOverride's callers in the poll
+      // loop) must not mark this inbound message complete by any other path
+      // when the atomic commit itself failed. Propagating lets it be retried
+      // on redelivery / recovered by clearStaleProcessingAcks() on restart,
+      // rather than silently losing the request.
+      log(`set_ceiling: atomic commit FAILED for adjustment ${adjustmentId} — NOT acking (id=${msg.id}): ${String(err)}`);
+      throw err;
+    }
+  };
+
+  const reject = (reason: 'immortal' | 'cost_tracking_disabled' | 'invalid_value'): void => {
+    const receipt: CostCeilingAdjustmentReceipt = {
+      action: 'cost_ceiling_adjustment_result',
+      protocolVersion: 2,
+      adjustmentId,
+      sessionId,
+      outcome: 'rejected',
+      expectedEpochKey: requestExpectedEpochKey,
+      expectedCeilingCents: Number.isFinite(requestExpectedCeilingCents) ? requestExpectedCeilingCents : 0,
+      targetCeilingCents: Number.isFinite(requestTargetCeilingCents) ? requestTargetCeilingCents : 0,
+      reason,
+      ...(costEnabled
+        ? {
+            resultEpochKey: String(costBudgetGen),
+            resultCeilingCents: Math.round(costCeilingUsd * 100),
+            spentUsd: Number(costSpentUsd.toFixed(4)),
+            status: computeCostStatus(),
+          }
+        : {}),
+    };
+    commitOrThrow(receipt, undefined, `set_ceiling REJECTED (${reason}) for adjustment ${adjustmentId} (id=${msg.id})`);
+  };
+
+  if (!costEnabled) return reject('cost_tracking_disabled');
+  if (costImmortal) return reject('immortal');
+
+  const validEpoch = requestExpectedEpochKey.length > 0;
+  const validExpectedCents = Number.isInteger(requestExpectedCeilingCents) && requestExpectedCeilingCents >= 0;
+  const validTargetCents =
+    Number.isInteger(requestTargetCeilingCents) && requestTargetCeilingCents >= 1 && requestTargetCeilingCents <= MAX_CEILING_CENTS;
+  if (!validEpoch || !validExpectedCents || !validTargetCents) return reject('invalid_value');
+
+  const liveCeilingCents = Math.round(costCeilingUsd * 100);
+  const epochMatches = requestExpectedEpochKey === String(costBudgetGen);
+  const ceilingMatches = requestExpectedCeilingCents === liveCeilingCents;
+
+  if (!epochMatches || !ceilingMatches) {
+    const reason = !epochMatches ? 'epoch_mismatch' : 'ceiling_mismatch';
+    const receipt: CostCeilingAdjustmentReceipt = {
+      action: 'cost_ceiling_adjustment_result',
+      protocolVersion: 2,
+      adjustmentId,
+      sessionId,
+      outcome: 'conflict',
+      expectedEpochKey: requestExpectedEpochKey,
+      expectedCeilingCents: requestExpectedCeilingCents,
+      targetCeilingCents: requestTargetCeilingCents,
+      reason,
+      resultEpochKey: String(costBudgetGen),
+      resultCeilingCents: liveCeilingCents,
+      spentUsd: Number(costSpentUsd.toFixed(4)),
+      status: computeCostStatus(),
+    };
+    commitOrThrow(
+      receipt,
+      undefined,
+      `set_ceiling CONFLICT (${reason}) for adjustment ${adjustmentId}: expected epoch=${requestExpectedEpochKey}/` +
+        `ceiling=${requestExpectedCeilingCents}¢, live epoch=${costBudgetGen}/ceiling=${liveCeilingCents}¢ (id=${msg.id})`,
+    );
+    return;
+  }
+
+  // MATCHED — apply against CURRENT live state. `wasStopped` is read BEFORE any
+  // mutation below so the resume-nudge decision reflects the state this request
+  // actually found, not the state it's about to create.
+  const previousEpochKey = String(costBudgetGen);
+  const previousCeilingCents = liveCeilingCents;
+  const wasStopped = computeCostStatus() === 'stopped';
+
+  costCeilingUsd = requestTargetCeilingCents / 100;
+  // Rotate on EVERY successful apply (raise or lower) — not just raises. This is
+  // what fences a still-in-flight legacy card override (stamped with the OLD
+  // epoch) and a redelivered copy of THIS SAME request after it already applied.
+  costBudgetGen++;
+  costEpisodeId = undefined;
+
+  if (costSpentUsd >= costCeilingUsd) {
+    // Stay or become stopped immediately — do not wait for the next
+    // recordTurnCost tick to notice (mirrors the in-turn hard-stop check).
+    costCeilingHardStop = true;
+    costStopRequested = true;
+  } else {
+    costCeilingHardStop = false;
+    costStopRequested = false;
+    // A bare raise on an already-healthy session must not fabricate a "you were
+    // just resumed" nudge — only queue it when this transition actually resumes
+    // a session that WAS stopped.
+    if (wasStopped) {
+      pendingCostNudge =
+        `Cost checkpoint: this session has spent $${costSpentUsd.toFixed(2)}. A human just approved ` +
+        `raising the cost ceiling to $${costCeilingUsd.toFixed(2)} so you can continue — this is not a ` +
+        `blank check. You're likely carrying a large accumulated context; be frugal from here: avoid ` +
+        `re-reading files or context you already have, summarize progress instead of re-deriving it, and ` +
+        `aim to finish or hand off the current task within the next few turns rather than continuing to ` +
+        `accumulate more context.`;
+    }
+  }
+
+  const status = computeCostStatus();
+  const newState: CostCapState = {
+    capUsd: costCapUsd,
+    spentUsd: costSpentUsd,
+    status,
+    immortal: costImmortal,
+    window: costWindow,
+    ceilingUsd: costCeilingUsd,
+    budgetGen: costBudgetGen,
+    ...(costWindow === 'daily' && costDayKey ? { dayKey: costDayKey } : {}),
+    ...(costEscalatedAt ? { escalatedAt: costEscalatedAt } : {}),
+    ...(costDecision ? { decision: costDecision } : {}),
+    ...(costDecidedAt ? { decidedAt: costDecidedAt } : {}),
+  };
+
+  const receipt: CostCeilingAdjustmentReceipt = {
+    action: 'cost_ceiling_adjustment_result',
+    protocolVersion: 2,
+    adjustmentId,
+    sessionId,
+    outcome: 'applied',
+    expectedEpochKey: requestExpectedEpochKey,
+    previousEpochKey,
+    resultEpochKey: String(costBudgetGen),
+    expectedCeilingCents: requestExpectedCeilingCents,
+    previousCeilingCents,
+    targetCeilingCents: requestTargetCeilingCents,
+    resultCeilingCents: Math.round(costCeilingUsd * 100),
+    spentUsd: Number(costSpentUsd.toFixed(4)),
+    status,
+  };
+
+  commitOrThrow(
+    receipt,
+    newState,
+    `set_ceiling APPLIED for adjustment ${adjustmentId}: ceiling $${(previousCeilingCents / 100).toFixed(2)} -> ` +
+      `$${costCeilingUsd.toFixed(2)}, spent=$${costSpentUsd.toFixed(2)}, status=${status} (id=${msg.id})`,
+  );
+}
+
+/**
  * Test-only seam for the per-session cost state machine (ADDITIVE — no runtime
  * path references this). The cost functions and their accumulator are
  * module-private singletons because the accounting happens inside processQuery's
@@ -579,6 +852,7 @@ export const __costCapTestHooks = {
   resetCostForNewSession,
   initCostTracking,
   emitCostEscalation,
+  publishRunnerReadiness,
   getState: () => ({
     costEnabled,
     costImmortal,
@@ -944,6 +1218,11 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   // Clear leftover 'processing' acks from a previous crashed container.
   // This lets the new container re-process those messages.
   clearStaleProcessingAcks();
+
+  // Runner-instance readiness handshake (NanoClaw #1, "set ceiling v2") —
+  // publish before anything else so the host's post-wake readiness poll finds
+  // it as soon as possible.
+  publishRunnerReadiness();
 
   // Cost cap (NanoClaw #1): load persisted spend so the cap survives respawns,
   // and publish the current cap state for the dashboard. Provider name gates
