@@ -59,6 +59,7 @@ import { GROUP_FOLDER_LABEL, labelValueLegal, specInvalid } from './drivers/type
 import type { ContainerSpec, MountSpec, SessionFailure, SessionSpec } from './drivers/types.js';
 import { getGatewayProvider, type GatewayContribution } from './gateway-providers/index.js';
 import { initGroupFilesystem } from './group-init.js';
+import { PERSONA_PREPEND_FILE, readGroupPersona } from './group-persona.js';
 import { getAgentMailbox } from './mailbox/index.js';
 import { stopTypingRefresh } from './modules/typing/index.js';
 import { log } from './log.js';
@@ -252,14 +253,63 @@ const wakePromises = new Map<string, Promise<boolean>>();
  * system-owned (regenerated from the manifest + .instructions.md on every
  * wake). User edits go in .instructions.md and are appended after the spine.
  */
+/**
+ * A group's standing instructions, converging on ONE file.
+ *
+ * `instructions.prepend.md` is canonical. It is what four writers already use
+ * (`group-init.ts`, `templates/create-agent.ts`, `templates/restamp.ts`,
+ * `scripts/init-first-agent.ts`), what upstream reads, and — the deciding
+ * reason — what every agent-facing doc tells the agent to edit:
+ * `container/CLAUDE.md`, the memory-system definition, `self-customize`,
+ * `okf-synthesis`. Its only reader used to be the project-doc composer this
+ * fork replaced with the spine, so an agent that followed its own instructions
+ * wrote to a file nothing composed, and a template-stamped group or the OWNER
+ * group from `init-first-agent` got no persona at all. Silently.
+ *
+ * `.instructions.md` was the fork's parallel surface. Rather than read both
+ * forever — two names for one concept is what caused this — migrate it once,
+ * on the spawn that finds it, and read only the canonical file afterwards.
+ * The rename is skipped when both exist: that means someone wrote the
+ * canonical file too, and clobbering it would lose the newer intent.
+ */
+export function readStandingInstructions(groupDir: string, instructionsPath: string): string | null {
+  const canonical = path.join(groupDir, PERSONA_PREPEND_FILE);
+  if (fs.existsSync(instructionsPath) && !fs.existsSync(canonical)) {
+    try {
+      fs.renameSync(instructionsPath, canonical);
+      log.info('Migrated .instructions.md to instructions.prepend.md', { dir: groupDir });
+    } catch (err) {
+      // Leave the legacy file alone and fall back to reading it directly — a
+      // failed rename must not cost the group its persona this spawn.
+      log.warn('Could not migrate .instructions.md; reading it in place', { dir: groupDir, err });
+      try {
+        return fs.readFileSync(instructionsPath, 'utf-8');
+      } catch {
+        return null;
+      }
+    }
+  }
+  return readGroupPersona(groupDir);
+}
+
 async function composeCoworkerClaudeMd(agentGroup: AgentGroup): Promise<void> {
   const groupDir = path.resolve(GROUPS_DIR, agentGroup.folder);
   const claudeMdPath = path.join(groupDir, 'CLAUDE.md');
   const instructionsPath = path.join(groupDir, '.instructions.md');
 
-  if (!agentGroup.coworker_type && !fs.existsSync(instructionsPath) && fs.existsSync(claudeMdPath)) {
-    fs.renameSync(claudeMdPath, instructionsPath);
-    log.info('Auto-migrated CLAUDE.md to .instructions.md', { folder: agentGroup.folder });
+  // A hand-written CLAUDE.md from before this fork composed the file becomes the
+  // group's standing instructions. Lands on the canonical name directly: writing
+  // `.instructions.md` here would recreate the legacy surface that
+  // `readStandingInstructions` migrates away from.
+  const personaPath = path.join(groupDir, PERSONA_PREPEND_FILE);
+  if (
+    !agentGroup.coworker_type &&
+    !fs.existsSync(instructionsPath) &&
+    !fs.existsSync(personaPath) &&
+    fs.existsSync(claudeMdPath)
+  ) {
+    fs.renameSync(claudeMdPath, personaPath);
+    log.info('Auto-migrated CLAUDE.md to instructions.prepend.md', { folder: agentGroup.folder });
   }
 
   if (!agentGroup.coworker_type) {
@@ -269,12 +319,7 @@ async function composeCoworkerClaudeMd(agentGroup: AgentGroup): Promise<void> {
     // project-specific knowledge. This goes through the same composer
     // pipeline as typed coworkers.
     try {
-      let extraInstructions: string | null = null;
-      try {
-        extraInstructions = fs.readFileSync(instructionsPath, 'utf-8');
-      } catch {
-        /* no instructions */
-      }
+      const extraInstructions = readStandingInstructions(groupDir, instructionsPath);
 
       const overlays = agentGroup.overlays ? JSON.parse(agentGroup.overlays) : undefined;
       const composeOpts = {
@@ -302,12 +347,7 @@ async function composeCoworkerClaudeMd(agentGroup: AgentGroup): Promise<void> {
   }
 
   try {
-    let extraInstructions: string | null = null;
-    try {
-      extraInstructions = fs.readFileSync(instructionsPath, 'utf-8');
-    } catch {
-      /* no explicit instructions */
-    }
+    const extraInstructions = readStandingInstructions(groupDir, instructionsPath);
 
     const overlays = agentGroup.overlays ? JSON.parse(agentGroup.overlays) : undefined;
     const composeOpts = {

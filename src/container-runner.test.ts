@@ -19,6 +19,7 @@ import {
   composeSessionSpec,
   parseMemoryMb,
   parsePidsLimit,
+  readStandingInstructions,
   resolveProviderName,
   syncSkillSymlinks,
   toMountSpecs,
@@ -581,5 +582,68 @@ describe('syncSkillSymlinks', () => {
       expect.stringContaining('Shared skill not symlinked'),
       expect.objectContaining({ skill: 'welcome' }),
     );
+  });
+});
+
+describe('readStandingInstructions', () => {
+  function tmpGroupDir(): string {
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'ncl-persona-'));
+  }
+
+  // The regression this whole helper exists for. `instructions.prepend.md` is
+  // written by group-init, template stamping, restamp and init-first-agent, and
+  // is the file every agent-facing doc tells the agent to edit — but its only
+  // reader was the project-doc composer this fork replaced with the spine. A
+  // template-stamped group and the OWNER group composed with no persona at all,
+  // and nothing went red.
+  it('reads instructions.prepend.md when no .instructions.md exists', () => {
+    const dir = tmpGroupDir();
+    fs.writeFileSync(path.join(dir, 'instructions.prepend.md'), 'you are terse\n');
+
+    expect(readStandingInstructions(dir, path.join(dir, '.instructions.md'))?.trim()).toBe('you are terse');
+  });
+
+  it('migrates a legacy .instructions.md onto the canonical name, once', () => {
+    const dir = tmpGroupDir();
+    const dotfile = path.join(dir, '.instructions.md');
+    const canonical = path.join(dir, 'instructions.prepend.md');
+    fs.writeFileSync(dotfile, 'legacy persona\n');
+
+    expect(readStandingInstructions(dir, dotfile)?.trim()).toBe('legacy persona');
+    // Converged: one file, and the legacy name is gone so it cannot drift.
+    expect(fs.existsSync(dotfile)).toBe(false);
+    expect(fs.readFileSync(canonical, 'utf-8').trim()).toBe('legacy persona');
+    // Idempotent — a second spawn is a plain read.
+    expect(readStandingInstructions(dir, dotfile)?.trim()).toBe('legacy persona');
+  });
+
+  it('does not clobber an existing canonical file when both are present', () => {
+    const dir = tmpGroupDir();
+    const dotfile = path.join(dir, '.instructions.md');
+    fs.writeFileSync(dotfile, 'stale legacy\n');
+    fs.writeFileSync(path.join(dir, 'instructions.prepend.md'), 'current persona\n');
+
+    // Both present means someone wrote the canonical file too; renaming over it
+    // would discard the newer intent.
+    expect(readStandingInstructions(dir, dotfile)?.trim()).toBe('current persona');
+    expect(fs.existsSync(dotfile)).toBe(true);
+  });
+
+  it('returns null when the group has neither', () => {
+    const dir = tmpGroupDir();
+
+    expect(readStandingInstructions(dir, path.join(dir, '.instructions.md'))).toBeNull();
+  });
+
+  it('does not follow a symlinked persona', () => {
+    const dir = tmpGroupDir();
+    const secret = path.join(dir, 'secret.md');
+    fs.writeFileSync(secret, 'not the persona\n');
+    fs.symlinkSync(secret, path.join(dir, 'instructions.prepend.md'));
+
+    // readGroupPersona opens O_NOFOLLOW: the persona is the one input an agent
+    // can author, so a symlink must not become an arbitrary-file read into the
+    // system prompt.
+    expect(readStandingInstructions(dir, path.join(dir, '.instructions.md'))).toBeNull();
   });
 });
