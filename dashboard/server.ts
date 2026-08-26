@@ -50,6 +50,16 @@ import { CANONICAL_DECISIONS, canonicalizeDecision } from '../src/modules/approv
 import { kbDoctorUnavailable, readKbDoctorArtifact, type KbDoctorView } from './kb-doctor-artifact.js';
 import { isoWeekStart, isoWeekStartFromMs, sessionIdMs, unitCostByWeek, UNIT_COST_GROUPS } from './unit-cost.js';
 import { priceUsage, normalizeModel, MODEL_PRICING, type SessionCostEntry, type TokenUsage } from './session-costs.js';
+import {
+  parseCostCapBlob,
+  buildCostCapEntry,
+  buildSessionCostFields,
+  mapEpisodeToLatestAdjustment,
+  validateCeilingRequest,
+  type SessionCostCapEntry,
+  type CostEpisodeLikeRow,
+  type LatestCostAdjustment,
+} from './session-cost-caps.js';
 
 /**
  * Check if `target` is inside (or equal to) `baseDir`.
@@ -1439,6 +1449,17 @@ bootstrapHookEvents();
 // Last message timestamp cache (group_folder -> ISO timestamp)
 const lastMessageTsCache = new Map<string, string>();
 
+// Live per-session cost-cap/ceiling state (dash-1 set-ceiling-v2), keyed by
+// session id. Fed by the scan worker's `costCaps` deltas when it's active, or
+// by this file's own main-thread fallback (pickLatestMessageTs below) when the
+// worker is unavailable — same dual-path shape as lastMessageTsCache/
+// activityDataCache above. /api/sessions joins this map for EVERY session,
+// independent of the `period` query param: that's what fixes "a session's live
+// ceiling disappears when you change the day-window filter" (the old code only
+// read cost_cap when the SELECTED PERIOD's priced cost was positive). See
+// session-cost-caps.ts for the entry shape and blob-parsing.
+const sessionCostCapsMap = new Map<string, SessionCostCapEntry>();
+
 // Fleet-scan timer handles at module scope so the scan worker (dash-perf round
 // 2) can stop them on handoff and restart them on fallback. When the worker is
 // active these are cleared and the corresponding caches are fed by worker deltas
@@ -1452,12 +1473,27 @@ let activityTimer: ReturnType<typeof setInterval> | undefined;
 // the file (cheap) and only re-open+query it when the mtime changed since the
 // last poll; an idle session costs one stat instead of a full sqlite open.
 // This is what makes a 1s poll cheaper than the old 3s full-open sweep.
-const msgTsFileCache = new Map<string, { mtimeMs: number; ts: string | null }>();
+// `costCapRaw` (outbound paths only) mirrors the scan worker's per-file cache —
+// see pickLatestMessageTs.
+const msgTsFileCache = new Map<string, { mtimeMs: number; ts: string | null; costCapRaw?: string | null }>();
+
+/** Apply one session's freshly-read (or cache-reused) cost_cap raw text to the
+ *  shared map. `raw === null` means "no cost_cap key on this build/session" —
+ *  removes any existing entry rather than leaving a stale one behind. */
+function applyMainThreadCostCap(sessionId: string, agentGroupId: string, raw: string | null, mtimeMs: number): void {
+  const entry = raw ? buildCostCapEntry(agentGroupId, parseCostCapBlob(raw), new Date(mtimeMs).toISOString()) : null;
+  if (entry) sessionCostCapsMap.set(sessionId, entry);
+  else sessionCostCapsMap.delete(sessionId);
+}
 
 function pickLatestMessageTs(
   current: string | null,
   dbPath: string,
   table: 'messages_in' | 'messages_out',
+  // Set only for the outbound call site: reading cost_cap only makes sense for
+  // outbound.db, and passing this drives applyMainThreadCostCap in the SAME
+  // open used for the message-timestamp read (don't open the DB twice).
+  costCapSink?: { sessionId: string; agentGroupId: string },
 ): string | null {
   let ts: string | null;
   try {
@@ -1465,12 +1501,30 @@ function pickLatestMessageTs(
     const cached = msgTsFileCache.get(dbPath);
     if (cached && cached.mtimeMs === mtimeMs) {
       ts = cached.ts; // unchanged since last poll — reuse, skip the open
+      if (costCapSink) {
+        applyMainThreadCostCap(costCapSink.sessionId, costCapSink.agentGroupId, cached.costCapRaw ?? null, mtimeMs);
+      }
     } else {
       const sdb = new Database(dbPath, { readonly: true });
       const row = sdb.prepare(`SELECT timestamp FROM ${table} ORDER BY timestamp DESC LIMIT 1`).get() as any;
+      let costCapRaw: string | null = null;
+      if (costCapSink) {
+        try {
+          const cols = sdb.prepare('PRAGMA table_info(session_state)').all() as Array<{ name: string }>;
+          if (cols.some((c) => c.name === 'value')) {
+            const capRow = sdb.prepare("SELECT value FROM session_state WHERE key = 'cost_cap'").get() as
+              | { value: string }
+              | undefined;
+            if (capRow?.value) costCapRaw = capRow.value;
+          }
+        } catch {
+          /* session_state absent/unreadable on this build — not fatal to the ts read */
+        }
+      }
       sdb.close();
       ts = (row?.timestamp as string | undefined) ?? null;
-      msgTsFileCache.set(dbPath, { mtimeMs, ts });
+      msgTsFileCache.set(dbPath, { mtimeMs, ts, costCapRaw });
+      if (costCapSink) applyMainThreadCostCap(costCapSink.sessionId, costCapSink.agentGroupId, costCapRaw, mtimeMs);
     }
   } catch {
     return current; // missing/unreadable → treat as no change
@@ -1483,6 +1537,7 @@ function pickLatestMessageTs(
 function refreshMessageTimestamps(): void {
   if (!db) return;
   const next = new Map<string, string>();
+  const liveSessionIds = new Set<string>();
   try {
     const groups = db.prepare('SELECT id, folder FROM agent_groups').all() as { id: string; folder: string }[];
     for (const group of groups) {
@@ -1490,13 +1545,26 @@ function refreshMessageTimestamps(): void {
       const sessions = db.prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all(group.id) as { id: string }[];
       const sessionsDir = join(getDataDir(), 'v2-sessions', group.id);
       for (const sess of sessions) {
+        liveSessionIds.add(sess.id);
         maxTs = pickLatestMessageTs(maxTs, join(sessionsDir, sess.id, 'inbound.db'), 'messages_in');
-        maxTs = pickLatestMessageTs(maxTs, join(sessionsDir, sess.id, 'outbound.db'), 'messages_out');
+        maxTs = pickLatestMessageTs(maxTs, join(sessionsDir, sess.id, 'outbound.db'), 'messages_out', {
+          sessionId: sess.id,
+          agentGroupId: group.id,
+        });
       }
       if (maxTs) next.set(group.folder, maxTs);
     }
     lastMessageTsCache.clear();
     for (const [folder, ts] of next.entries()) lastMessageTsCache.set(folder, ts);
+    // Tombstone cost-cap entries for sessions that no longer exist. Safe here
+    // because this loop is a COMPLETE enumeration of every live session on
+    // EVERY call (unlike the scan worker's hot/cold per-file cadence) — a
+    // session absent from this pass is genuinely gone, not just not-yet-due
+    // for a recheck. Mirrors the scan worker's own inventory-pruning (see
+    // refreshInventory in scan-worker.mjs).
+    for (const sessionId of sessionCostCapsMap.keys()) {
+      if (!liveSessionIds.has(sessionId)) sessionCostCapsMap.delete(sessionId);
+    }
   } catch {
     /* DB not ready */
   }
@@ -2022,70 +2090,19 @@ let sessionCostCache: SessionCostByPeriod = {
 // session_state under the single JSON key `cost_cap`. Shared contract with the
 // agent-runner (nv-dashboard):
 //   { capUsd, spentUsd, status:'ok'|'warn'|'escalated'|'stopped',
-//     immortal, window:'lifetime'|'daily', dayKey?, escalatedAt?, decision?, decidedAt? }
+//     immortal, window:'lifetime'|'daily', dayKey?, escalatedAt?, decision?, decidedAt?,
+//     ceilingUsd? }
 // `window` distinguishes a per-run (lifetime) cap from an immortal orchestrator's
 // per-DAY visibility bound (dayKey present only when window==='daily').
-// Read inline in /api/sessions; a short TTL keeps the escalation status
-// near-real-time for the override loop while avoiding an outbound.db open on
-// every keystroke of a fast poll.
-interface SessionCapState {
-  capUsd?: number;
-  spentUsd?: number;
-  status?: 'ok' | 'warn' | 'escalated' | 'stopped';
-  immortal?: boolean;
-  window?: 'lifetime' | 'daily';
-  dayKey?: string;
-  escalatedAt?: string;
-  decision?: 'continue' | 'stop';
-  decidedAt?: string;
-  /** Live Tier-2 ceiling (base + any approved raises) — the number a 'stopped'
-   *  row was actually blocked at, distinct from the (no-longer-carded) capUsd. */
-  ceilingUsd?: number;
-}
-const CAP_CACHE_TTL_MS = 5000;
-const sessionCapCache = new Map<string, { at: number; state: SessionCapState | null }>();
-
-/**
- * Read a session's `cost_cap` state from its outbound.db (readonly). Returns
- * null when the DB, the table, or the key is absent (graceful degradation:
- * pre-cost-cap runners simply show no cap). Mirrors the readonly-probe pattern
- * used elsewhere (server.ts ~7855). Short-TTL cached per (group, session).
- */
-function readSessionCapState(agentGroupId: string, sessionId: string): SessionCapState | null {
-  if (!agentGroupId || !sessionId) return null;
-  const cacheKey = `${agentGroupId}/${sessionId}`;
-  const cached = sessionCapCache.get(cacheKey);
-  const now = Date.now();
-  if (cached && now - cached.at < CAP_CACHE_TTL_MS) return cached.state;
-  let state: SessionCapState | null = null;
-  const outboundPath = join(getDataDir(), 'v2-sessions', agentGroupId, sessionId, 'outbound.db');
-  if (existsSync(outboundPath)) {
-    let odb: Database.Database | null = null;
-    try {
-      odb = new Database(outboundPath, { readonly: true });
-      const cols = odb.prepare('PRAGMA table_info(session_state)').all() as Array<{ name: string }>;
-      if (cols.some((c) => c.name === 'value')) {
-        const row = odb.prepare("SELECT value FROM session_state WHERE key = 'cost_cap'").get() as
-          | { value: string }
-          | undefined;
-        if (row?.value) {
-          const parsed = JSON.parse(row.value);
-          if (parsed && typeof parsed === 'object') state = parsed as SessionCapState;
-        }
-      }
-    } catch {
-      state = null;
-    } finally {
-      try {
-        odb?.close();
-      } catch {
-        /* ignore */
-      }
-    }
-  }
-  sessionCapCache.set(cacheKey, { at: now, state });
-  return state;
-}
+//
+// dash-1 set-ceiling-v2: this used to be read inline in /api/sessions, per row,
+// gated on `s.cost > 0` in the SELECTED period — which is exactly the bug that
+// hid a session's ceiling whenever it had no priced spend in the currently
+// selected day-window even though it was very much alive. It's now read by the
+// scan worker / main-thread fallback above (pickLatestMessageTs,
+// applyMainThreadCostCap) into the always-fresh `sessionCostCapsMap`, joined
+// for every session unconditionally — see the /api/sessions handler and
+// session-cost-caps.ts.
 
 // ---------- claude-trace directory index (Sessions-tab deep links) ----------
 // dash-perf round 2: /api/sessions previously ran a readdirSync + a statSync per
@@ -4736,6 +4753,7 @@ const perfCounters = {
   maxObservedWritableLength: 0,
   scanMsgTsPublishes: 0,
   scanActivityPublishes: 0,
+  scanCostCapsPublishes: 0,
   workerActive: false,
 };
 
@@ -4901,6 +4919,27 @@ function applyMsgTsDelta(changed: [string, string][], removed: string[]): void {
   perfCounters.scanMsgTsPublishes++;
 }
 
+/**
+ * Apply the worker's `costCaps` deltas to sessionCostCapsMap (dash-1
+ * set-ceiling-v2). `changed` entries carry the RAW `session_state.value` TEXT —
+ * parsing/interpretation happens here (buildCostCapEntry), not in the worker —
+ * matching applyMainThreadCostCap's division of labor so the worker path and
+ * the main-thread-fallback path can never disagree on what a given raw blob
+ * means.
+ */
+function applyCostCapsDelta(changed: [string, string, string, number][], removed: string[]): void {
+  for (const [sessionId, agentGroupId, raw, mtimeMs] of changed) {
+    if (typeof sessionId !== 'string' || typeof agentGroupId !== 'string' || typeof raw !== 'string') continue;
+    const entry = buildCostCapEntry(agentGroupId, parseCostCapBlob(raw), new Date(mtimeMs).toISOString());
+    if (entry) sessionCostCapsMap.set(sessionId, entry);
+    else sessionCostCapsMap.delete(sessionId);
+  }
+  for (const sessionId of removed) {
+    if (typeof sessionId === 'string') sessionCostCapsMap.delete(sessionId);
+  }
+  perfCounters.scanCostCapsPublishes++;
+}
+
 function restartMainThreadScans(): void {
   if (process.env.VITEST) return;
   if (!msgTsTimer) {
@@ -4935,6 +4974,9 @@ function restartMainThreadScans(): void {
 interface ScanHandoffHooks {
   applyMsgTs: (changed: [string, string][], removed: string[]) => void;
   applyActivity: (buckets: unknown[]) => void;
+  /** Optional so existing hook objects (e.g. tests written before dash-1
+   *  set-ceiling-v2) don't need updating just to keep compiling. */
+  applyCostCaps?: (changed: [string, string, string, number][], removed: string[]) => void;
   /** Handoff complete: the worker owns these scans, stop the main-thread timers. */
   onReady: () => void;
   onStats: (stats: Record<string, unknown>) => void;
@@ -4959,6 +5001,7 @@ function createScanHandoff(hooks: ScanHandoffHooks): {
   const applyFrame = (msg: any): void => {
     if (msg.kind === 'msgTs') hooks.applyMsgTs(msg.changed || [], msg.removed || []);
     else if (msg.kind === 'activity' && Array.isArray(msg.buckets)) hooks.applyActivity(msg.buckets);
+    else if (msg.kind === 'costCaps') hooks.applyCostCaps?.(msg.changed || [], msg.removed || []);
   };
 
   const handle = (msg: any): void => {
@@ -4984,6 +5027,7 @@ function createScanHandoff(hooks: ScanHandoffHooks): {
       }
       case 'msgTs':
       case 'activity':
+      case 'costCaps':
         if (!ready) {
           if (pending.length >= maxPreReady) droppedPreReady = true;
           else pending.push(msg);
@@ -5044,6 +5088,7 @@ function startScanWorker(): void {
       activityDataCache = buckets as ActivityBucket[];
       perfCounters.scanActivityPublishes++;
     },
+    applyCostCaps: (changed, removed) => applyCostCapsDelta(changed, removed),
     onReady: () => {
       perfCounters.workerActive = true;
       // Hand off: the worker now owns these scans, so stop the main-thread
@@ -5111,6 +5156,7 @@ export function resetTransientDashboardStateForTests(): void {
   hookEverSeen.clear();
   lastMessageTsCache.clear();
   msgTsFileCache.clear();
+  sessionCostCapsMap.clear();
   groupTaskCache.clear();
   perFileTaskCache.clear();
   runningContainers.clear();
@@ -5155,6 +5201,31 @@ export function resetTransientDashboardStateForTests(): void {
 /** Force-open the readonly DB handle for tests (avoids waiting on broadcast timer). */
 export function forceOpenDbForTests(): void {
   if (!db) db = openDb();
+}
+
+/**
+ * Force one pass of the main-thread fallback scan (msgTs + cost-cap mtime
+ * read) for tests. The scan worker is disabled under VITEST and the
+ * main-thread timer only self-schedules outside VITEST too (see
+ * msgTsTimer/refreshMessageTimestamps above), so nothing re-reads a session's
+ * outbound.db on its own during a test — this gives tests a synchronous
+ * "the fleet-scan tick just ran" hook, exactly like forceOpenDbForTests gives
+ * a synchronous "the DB handle is open" hook.
+ */
+export function refreshCostCapsForTests(): void {
+  refreshMessageTimestamps();
+}
+
+/**
+ * Peek at sessionCostCapsMap directly, bypassing /api/sessions' SQL join —
+ * needed to prove tombstoning actually REMOVES the map entry (shrinks memory)
+ * rather than merely observing that a deleted session's row no longer appears
+ * in /api/sessions, which would be true regardless of whether the map entry
+ * was ever cleaned up (the SQL join already excludes a deleted session's row
+ * on its own).
+ */
+export function getSessionCostCapForTests(sessionId: string): SessionCostCapEntry | undefined {
+  return sessionCostCapsMap.get(sessionId);
 }
 
 /** Reconciliation tick: force a rebuild + diff so DB/filesystem-backed changes
@@ -9567,6 +9638,41 @@ export async function handleRequest(
     // followed by a documented `/<sub-task>` append-only suffix (which still
     // names the same underlying issue/PR).
     const GH_THREAD_RE = /^gh-(issue|pr)-(.+)-(\d+)(?:\/.+)?$/;
+    // Latest cost-ceiling adjustment per session (dash-1 set-ceiling-v2), when
+    // the paired host+runner PR (separate branch — see docs/set-ceiling-v2 in
+    // this repo's PR history) has landed and migrated. `cost_escalation_episodes`
+    // rows with target_ceiling_usd set are 'set_ceiling' operations — that
+    // column is the table's own documented operation discriminator, so a plain
+    // continue/stop episode never matches this query. One query for the whole
+    // page (not per-row), same batching as prMapBySession/ghOriginByThread
+    // above. The table (or its set_ceiling columns) may not exist yet on a host
+    // that hasn't deployed the paired PR — fails soft to "no adjustment badge
+    // for any row", exactly like those maps do for their own not-yet-migrated
+    // tables.
+    const latestAdjustmentBySession = new Map<string, LatestCostAdjustment>();
+    if (db) {
+      try {
+        const cols = db.prepare('PRAGMA table_info(cost_escalation_episodes)').all() as Array<{ name: string }>;
+        if (cols.some((c) => c.name === 'target_ceiling_usd')) {
+          const rows = db
+            .prepare(
+              `SELECT episode_id, session_id, decision_state, effect_state, target_ceiling_usd, created_at
+                 FROM cost_escalation_episodes
+                WHERE target_ceiling_usd IS NOT NULL
+                ORDER BY created_at DESC`,
+            )
+            .all() as CostEpisodeLikeRow[];
+          for (const row of rows) {
+            // ORDER BY created_at DESC → the first row seen per session_id is the latest.
+            if (latestAdjustmentBySession.has(row.session_id)) continue;
+            const mapped = mapEpisodeToLatestAdjustment(row);
+            if (mapped) latestAdjustmentBySession.set(row.session_id, mapped);
+          }
+        }
+      } catch {
+        /* cost_escalation_episodes not migrated (or set_ceiling columns absent) yet — no adjustment badges */
+      }
+    }
     // Cost column: join the per-session cost cache for the requested period
     // (default 30d). Every row gets `cost`/`tokens`/`costUnpriced`; a session
     // with no priced activity in the window is 0. `?sort=cost` ranks desc so
@@ -9601,24 +9707,22 @@ export async function handleRequest(
         const p99 = (s.group_folder && perGroupP99.get(s.group_folder)) ?? fleetP99;
         if (p99 != null && p99 > 0) s.costP99 = p99;
       }
-      // Cost-cap state, published by the runner into outbound.db session_state.
-      // Absent (older runner / no accrual yet) → cap fields stay undefined and
-      // the UI renders no pill for the row. Read ONLY for sessions with priced
-      // activity (s.cost>0): each read opens a SQLite DB, and probing every one
-      // of ~3000 mostly-idle sessions is wasteful — the cap only matters where
-      // spend is accruing.
-      const cap = s.session_id && s.cost > 0 ? readSessionCapState(s.agent_group_id, s.session_id) : null;
-      if (cap) {
-        s.costCap = cap.capUsd;
-        s.costSpent = cap.spentUsd;
-        s.costStatus = cap.status;
-        s.costImmortal = cap.immortal;
-        s.costWindow = cap.window;
-        // The real number a 'stopped' row was blocked at (Tier-2 ceiling, possibly
-        // raised by an approved continue) — distinct from costCap (Tier-1, no
-        // longer carded, kept only as a legacy/back-compat numeric).
-        s.costCeiling = cap.ceilingUsd;
-      }
+      // Cost-cap/ceiling state, published by the runner into outbound.db
+      // session_state and mirrored into sessionCostCapsMap by the scan worker /
+      // main-thread fallback (see above). Joined for EVERY session — NOT gated
+      // on s.cost>0 — because this is requirement (a) of dash-1
+      // set-ceiling-v2: a session's live ceiling must stay visible regardless
+      // of which day-window (Today/7d/30d) the priced-cost column above is
+      // scoped to. This is an in-memory Map lookup, not a per-row DB open (the
+      // old s.cost>0 gate existed specifically to avoid opening ~3000 mostly-
+      // idle sessions' SQLite files per request — that cost is now paid once,
+      // continuously, in the background, not per-request), so it's cheap
+      // unconditionally. Absent (older runner / no accrual yet) → every field
+      // below stays undefined and JSON.stringify omits it, same degradation as
+      // before.
+      const capEntry = s.session_id ? sessionCostCapsMap.get(s.session_id) : undefined;
+      const latestAdjustment = s.session_id ? latestAdjustmentBySession.get(s.session_id) : undefined;
+      Object.assign(s, buildSessionCostFields(capEntry, latestAdjustment));
       // Session-precise trace deep-link. Sessions live under
       // data/v2-sessions/<agent_group_id>/… but traces live under
       // groups/<folder>/.claude-trace/session-<session_id>*.html, so map via the
@@ -13181,22 +13285,117 @@ export async function handleRequest(
         res.end(JSON.stringify({ error: message }));
         return;
       }
-      // Cost-cap state may change after the runner wakes; drop ONLY this
-      // session's short-TTL cache entry (keyed "<agentGroupId>/<sessionId>") so
-      // the next /api/sessions read reflects the decision sooner — without
-      // invalidating every other row's cached cap. Resolve the agent group id
-      // from the central DB (the override endpoint only carries sessionId).
-      try {
-        const sid = sessionId.trim();
-        const row = db?.prepare('SELECT agent_group_id FROM sessions WHERE id = ?').get(sid) as
-          | { agent_group_id?: string }
-          | undefined;
-        if (row?.agent_group_id) sessionCapCache.delete(`${row.agent_group_id}/${sid}`);
-      } catch {
-        /* best-effort cache invalidation — falls back to the 5s TTL */
-      }
+      // Cost-cap state may change after the runner wakes. Unlike the old
+      // request-scoped TTL cache (which needed an explicit invalidation here to
+      // avoid a stale read), sessionCostCapsMap is kept continuously fresh by
+      // the scan worker / main-thread fallback's mtime-gated poll (~1s for a
+      // recently-active file — see pickLatestMessageTs/scan-worker.mjs), so
+      // there's nothing to invalidate here: the next /api/sessions read picks
+      // up the change on its own once the runner actually writes it.
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true }));
+    } catch (e: any) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
+  // POST /api/sessions/:sessionId/cost-ceiling — live, exact-value per-session
+  // cost-ceiling control (dash-1 set-ceiling-v2). Distinct from
+  // /api/cost-override above (fixed-bump continue / stop only): this lets an
+  // admin set an EXACT target ceiling, in integer cents, guarded by an
+  // optimistic-concurrency precondition (expectedEpochKey/expectedCeilingCents)
+  // so a second admin's concurrent change — or the runner's own automatic
+  // state — can't be silently clobbered. Works whether the session is already
+  // stopped (raise it, with a visible target instead of the old hidden fixed
+  // bump) or still healthy (proactive raise or lower).
+  //
+  // Same bridge pattern as /api/cost-override: this dashboard process has no
+  // direct write path into a session's inbound.db, so it proxies to the host
+  // ingress with the Bearer secret and forwards the upstream status/body back
+  // to the browser — the HOST is the actual arbiter of accept / conflict /
+  // reject (202/200/400/404/409/422/426/503, see the PR description for the
+  // full fixed wire contract shared with the paired host+runner PR), this
+  // endpoint is a thin, faithful bridge. `targetCeilingCents` is bounds-checked
+  // here too (validateCeilingRequest) BEFORE anything is forwarded — belt and
+  // suspenders with the host's own independent enforcement, and it means a
+  // manipulated/bypassed browser request that skips the UI's own bound is
+  // still rejected without ever reaching the host.
+  const CEILING_PATH_RE = /^\/api\/sessions\/([^/]+)\/cost-ceiling$/;
+  const ceilingMatch = req.method === 'POST' ? CEILING_PATH_RE.exec(url.pathname) : null;
+  if (ceilingMatch) {
+    if (!requireAuth(req, res)) return;
+    const sessionId = safeDecode(ceilingMatch[1]);
+    const body = await readBody(req, res);
+    if (body === null) return;
+    if (!sessionId || !sessionId.trim()) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'invalid session id' }));
+      return;
+    }
+    try {
+      let parsedBody: unknown;
+      try {
+        parsedBody = JSON.parse(body);
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'invalid json' }));
+        return;
+      }
+      const validated = validateCeilingRequest(parsedBody);
+      if (!validated.ok) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: validated.error }));
+        return;
+      }
+      const { requestId, targetCeilingCents, expectedEpochKey, expectedCeilingCents } = validated.value;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const secret = getDashboardSecret();
+      if (secret) headers.Authorization = `Bearer ${secret}`;
+      try {
+        const upstream = await fetch(`${getDashboardIngressBaseUrl()}/api/dashboard/session-cost-ceiling`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            sessionId: sessionId.trim(),
+            requestId,
+            targetCeilingCents,
+            expectedEpochKey,
+            expectedCeilingCents,
+            protocolVersion: 2,
+          }),
+          signal: AbortSignal.timeout(5000),
+        });
+        const upstreamText = await upstream.text();
+        // Forward the upstream body through as-is (it's the source of truth for
+        // the browser's state machine — id/state/targetCeilingCents/etc. on
+        // success, a reason on 409/422/426), only filling in a generic `error`
+        // when the upstream didn't send JSON at all so the browser never has to
+        // guess at a non-ok response with an empty body.
+        let upstreamBody: Record<string, unknown> = {};
+        try {
+          const parsed = JSON.parse(upstreamText);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) upstreamBody = parsed;
+        } catch {
+          /* non-JSON upstream body */
+        }
+        if (!upstream.ok && typeof upstreamBody.error !== 'string') {
+          upstreamBody.error = upstreamText || `Dashboard host bridge request failed (${upstream.status})`;
+        }
+        res.writeHead(upstream.status, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(upstreamBody));
+      } catch (err) {
+        // The host itself is unreachable (not the same as the host replying
+        // 503 "runner couldn't be readied in time" — that case is handled by
+        // the upstream.ok branch above and forwarded verbatim); both surface as
+        // 503 to the browser, distinguished only by message text, matching how
+        // /api/cost-override already treats this failure mode.
+        const message =
+          err instanceof Error ? err.message : 'Dashboard host bridge unreachable. Ensure NanoClaw host is running.';
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: message }));
+      }
     } catch (e: any) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: e.message }));

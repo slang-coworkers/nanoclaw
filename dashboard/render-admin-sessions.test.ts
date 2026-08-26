@@ -53,6 +53,16 @@ interface FakeSession {
   last_active?: string;
   ghNumber?: number;
   ghRepo?: string;
+  // dash-1 set-ceiling-v2 fields (see session-cost-caps.ts buildSessionCostFields).
+  costStatus?: string;
+  costSpent?: number;
+  costCeiling?: number;
+  costCeilingCents?: number;
+  costImmortal?: boolean;
+  costWindow?: string;
+  costP99?: number;
+  costControlVersion?: number;
+  latestCostAdjustment?: { id: string; state: string; targetCeilingCents: number; requestedAt: string } | null;
 }
 
 interface FakeEl {
@@ -62,16 +72,25 @@ interface FakeEl {
 function buildRenderer(): {
   render: (adminState: { sessions: FakeSession[] }, sessionsView: Record<string, unknown>) => string;
 } {
-  // The four render-layer functions, all top-level declarations in app.js
-  // that call each other by plain identifier (hoisting makes declaration
-  // order irrelevant) — concatenated into one function body so they share
-  // a scope, same as they do in the browser.
+  // The render-layer functions, all top-level declarations in app.js that
+  // call each other by plain identifier (hoisting makes declaration order
+  // irrelevant) — concatenated into one function body so they share a scope,
+  // same as they do in the browser. renderCostCapCell now also calls
+  // renderCostCeilingControl (dash-1 set-ceiling-v2), which in turn reaches
+  // for the module-scope ceilingDrafts/ceilingPending state — declared fresh
+  // (empty) here rather than extracted, since these tests don't exercise any
+  // in-flight/drafted control state.
   const combined = [
+    'const ceilingDrafts = new Map(); const ceilingInFlight = new Map(); const ceilingPending = new Set();',
+    'const CEILING_MIN_CENTS = 1; const CEILING_MAX_CENTS = 100000; const CEILING_STEP_CENTS = 1000;',
     extractFn('esc'),
     extractFn('escAttr'),
     extractFn('fmtNum'),
     extractFn('fmtUsd'),
     extractFn('sessionGroupOptions'),
+    extractFn('centsToUsdInputStr'),
+    extractFn('clampCeilingCents'),
+    extractFn('renderCostCeilingControl'),
     extractFn('renderCostCapCell'),
     extractFn('renderGithubOriginCell'),
     extractFn('renderAdminSessions'),
@@ -192,5 +211,148 @@ describe('renderAdminSessions — coworker filter dropdown', () => {
     sessionsView.filter = 'stopped'; // no fixer session is stopped in the default fixture
     const html = render(adminState, sessionsView);
     expect(html).toContain('No sessions match coworker "Slang Fixer"');
+  });
+});
+
+// ── Live cost-ceiling control (dash-1 set-ceiling-v2) — one visually distinct
+// rendering per state, per the test list: healthy, stopped, immortal,
+// no-ceiling-configured, unsupported-runner-version (<2), pending-adjustment,
+// applied, conflict. ──
+describe('renderCostCapCell / renderCostCeilingControl — cost-ceiling states', () => {
+  const { render } = buildRenderer();
+
+  function renderOne(over: Partial<FakeSession>): string {
+    const adminState = {
+      sessions: [session({ session_id: 'sess-1', group_folder: 'ag-1', group_name: 'Coworker', ...over })],
+    };
+    const sessionsView = { period: '30d', sort: 'cost', filter: 'all', groupFilter: 'all', unavailable: null };
+    return render(adminState, sessionsView);
+  }
+
+  it('healthy, protocol v2: shows the live +/-/Apply stepper, enabled', () => {
+    const html = renderOne({ costStatus: 'ok', costSpent: 5, costCeiling: 150, costCeilingCents: 15000, costControlVersion: 2 });
+    expect(html).toContain('data-action="cost-ceiling-step"');
+    expect(html).toContain('data-action="cost-ceiling-apply"');
+    expect(html).toContain('/ $150.00 ceiling');
+    expect(html).not.toContain('not yet available');
+    // Apply is present and NOT disabled.
+    expect(html).toMatch(/data-action="cost-ceiling-apply"[^>]*>Apply</);
+  });
+
+  it('stopped: shows the red "stopped" pill with ceiling, the Continue button, AND the live stepper', () => {
+    const html = renderOne({ costStatus: 'stopped', costSpent: 150, costCeiling: 150, costCeilingCents: 15000, costControlVersion: 2 });
+    expect(html).toContain('stopped');
+    expect(html).toContain('data-action="cost-override"');
+    expect(html).toContain('data-decision="continue"');
+    expect(html).toContain('data-action="cost-ceiling-apply"');
+  });
+
+  it('immortal: no stepper control at all, regardless of protocol version', () => {
+    const html = renderOne({ costStatus: 'ok', costSpent: 5, costImmortal: true, costCeiling: 150, costCeilingCents: 15000, costControlVersion: 2 });
+    expect(html).toContain('∞');
+    expect(html).not.toContain('data-action="cost-ceiling-step"');
+    expect(html).not.toContain('data-action="cost-ceiling-apply"');
+    // Immortal never gets the Continue/Stop button either — pre-existing behavior, unaffected.
+    expect(html).not.toContain('data-action="cost-override"');
+  });
+
+  it('no ceiling configured yet: control renders, with an explicit note instead of a stepper seeded from nothing', () => {
+    const html = renderOne({ costStatus: 'ok', costSpent: 0, costControlVersion: 2 }); // costCeiling/costCeilingCents absent
+    expect(html).toContain('no ceiling set yet');
+    expect(html).toContain('data-action="cost-ceiling-apply"');
+  });
+
+  it('unsupported runner version (< protocol 2): "not yet available", no stepper — the rollout gate', () => {
+    const html = renderOne({ costStatus: 'ok', costSpent: 5, costCeiling: 150, costCeilingCents: 15000, costControlVersion: 1 });
+    expect(html).toContain('not yet available');
+    expect(html).not.toContain('data-action="cost-ceiling-apply"');
+    expect(html).not.toContain('data-action="cost-ceiling-step"');
+  });
+
+  it('unsupported runner version (absent costControlVersion): also "not yet available", not silently hidden', () => {
+    const html = renderOne({ costStatus: 'ok', costSpent: 5, costCeiling: 150, costCeilingCents: 15000 });
+    expect(html).toContain('not yet available');
+  });
+
+  it('pending-adjustment: stepper/Apply are disabled and read "Applying…"', () => {
+    const html = renderOne({
+      costStatus: 'ok',
+      costSpent: 5,
+      costCeiling: 150,
+      costCeilingCents: 15000,
+      costControlVersion: 2,
+      latestCostAdjustment: { id: 'cca-1', state: 'enqueued', targetCeilingCents: 17500, requestedAt: 't' },
+    });
+    expect(html).toContain('Applying…');
+    expect(html).toMatch(/data-action="cost-ceiling-apply"[^>]*disabled/);
+    expect(html).toMatch(/data-action="cost-ceiling-step"[^>]*disabled/);
+  });
+
+  it('applied: a distinct green "applied" tag, control re-enabled', () => {
+    const html = renderOne({
+      costStatus: 'ok',
+      costSpent: 175,
+      costCeiling: 175,
+      costCeilingCents: 17500,
+      costControlVersion: 2,
+      latestCostAdjustment: { id: 'cca-1', state: 'applied', targetCeilingCents: 17500, requestedAt: 't' },
+    });
+    expect(html).toContain('applied');
+    expect(html).not.toContain('Applying…');
+    expect(html).toMatch(/data-action="cost-ceiling-apply"[^>]*>Apply</); // not disabled, not stuck on "Applying…"
+  });
+
+  it('conflict: a distinct amber "conflict" tag, visually different from applied/pending', () => {
+    const html = renderOne({
+      costStatus: 'ok',
+      costSpent: 5,
+      costCeiling: 150,
+      costCeilingCents: 15000,
+      costControlVersion: 2,
+      latestCostAdjustment: { id: 'cca-1', state: 'conflict', targetCeilingCents: 17500, requestedAt: 't' },
+    });
+    expect(html).toContain('conflict');
+    expect(html).not.toContain('✓ applied');
+    expect(html).not.toContain('Applying…');
+  });
+
+  it('healthy, stopped, immortal, no-ceiling, unsupported-version, pending, applied, and conflict are all pairwise distinct', () => {
+    const variants = {
+      healthy: renderOne({ costStatus: 'ok', costSpent: 5, costCeiling: 150, costCeilingCents: 15000, costControlVersion: 2 }),
+      stopped: renderOne({ costStatus: 'stopped', costSpent: 150, costCeiling: 150, costCeilingCents: 15000, costControlVersion: 2 }),
+      immortal: renderOne({ costStatus: 'ok', costSpent: 5, costImmortal: true, costCeiling: 150, costCeilingCents: 15000, costControlVersion: 2 }),
+      noCeiling: renderOne({ costStatus: 'ok', costSpent: 0, costControlVersion: 2 }),
+      unsupported: renderOne({ costStatus: 'ok', costSpent: 5, costCeiling: 150, costCeilingCents: 15000, costControlVersion: 1 }),
+      pending: renderOne({
+        costStatus: 'ok',
+        costSpent: 5,
+        costCeiling: 150,
+        costCeilingCents: 15000,
+        costControlVersion: 2,
+        latestCostAdjustment: { id: 'cca-1', state: 'pending', targetCeilingCents: 17500, requestedAt: 't' },
+      }),
+      applied: renderOne({
+        costStatus: 'ok',
+        costSpent: 175,
+        costCeiling: 175,
+        costCeilingCents: 17500,
+        costControlVersion: 2,
+        latestCostAdjustment: { id: 'cca-1', state: 'applied', targetCeilingCents: 17500, requestedAt: 't' },
+      }),
+      conflict: renderOne({
+        costStatus: 'ok',
+        costSpent: 5,
+        costCeiling: 150,
+        costCeilingCents: 15000,
+        costControlVersion: 2,
+        latestCostAdjustment: { id: 'cca-1', state: 'conflict', targetCeilingCents: 17500, requestedAt: 't' },
+      }),
+    };
+    const entries = Object.entries(variants);
+    for (let i = 0; i < entries.length; i++) {
+      for (let j = i + 1; j < entries.length; j++) {
+        expect(entries[i][1], `${entries[i][0]} vs ${entries[j][0]} must render differently`).not.toBe(entries[j][1]);
+      }
+    }
   });
 });
