@@ -134,8 +134,6 @@ describe('agent groups', () => {
     createAgentGroup(ag());
     expect(() => createAgentGroup({ ...ag(), id: 'ag-dup' })).toThrow();
   });
-
-
 });
 
 // ── Messaging Groups ──
