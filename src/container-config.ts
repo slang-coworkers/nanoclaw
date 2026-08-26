@@ -476,13 +476,26 @@ export function parseSkillSelection(raw: string | undefined, groupName: string):
   return 'all';
 }
 
+/**
+ * The AUTHORITATIVE immortality check — the admin group (`is_admin`) or the
+ * orchestrator coworker type ('main'), read from central-DB fields only.
+ * Deliberately independent of anything a runner self-reports: a container
+ * that claims `immortal:true` in its own live state is not proof of
+ * anything — this is the check every host-side money-safety decision that
+ * depends on immortality (the cost-cap materialization below, and NanoClaw
+ * #1 "set ceiling v2"'s live-control submission gate in
+ * `src/modules/cost-ceiling-adjustment/index.ts`) must use instead of
+ * trusting the runner's own claim.
+ */
+export function isImmortalGroup(group: Pick<AgentGroup, 'is_admin' | 'coworker_type'>): boolean {
+  return group.is_admin === 1 || group.coworker_type === 'main';
+}
+
 /** Build a `ContainerConfig` from a DB row + agent group identity. */
 export async function configFromDb(row: ContainerConfigRow, group: AgentGroup): Promise<ContainerConfig> {
-  // NanoClaw #1 cost cap. Immortality is an authoritative host signal — the
-  // admin group (`is_admin`) or the orchestrator coworker type ('main'). The
-  // cap value (v2) auto-sources the fleet-wide p90 threshold and is emitted for
-  // ALL groups so every session carries a cap.
-  const immortal = group.is_admin === 1 || group.coworker_type === 'main';
+  // NanoClaw #1 cost cap. The cap value (v2) auto-sources the fleet-wide p90
+  // threshold and is emitted for ALL groups so every session carries a cap.
+  const immortal = isImmortalGroup(group);
   const costCapT2Usd = await resolveCostCapT2Usd(group.folder);
   const costCeilingT2Usd = await resolveCostCeilingT2Usd(group.folder);
   return {

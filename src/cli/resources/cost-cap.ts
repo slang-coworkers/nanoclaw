@@ -263,6 +263,7 @@ registerResource({
         const parts: string[] = [`status=${d.status}`];
         if (typeof d.spent_usd === 'number') parts.push(`spent=${usd(d.spent_usd)}`);
         if (typeof d.cap_usd === 'number') parts.push(`cap=${usd(d.cap_usd)}`);
+        if (typeof d.ceiling_usd === 'number' && d.ceiling_usd > 0) parts.push(`ceiling=${usd(d.ceiling_usd)}`);
         if (d.decision) parts.push(`decision=${d.decision}${d.decided_at ? ` at ${d.decided_at}` : ''}`);
         return `Session ${d.session_id} (${d.agent_group_id}): ${parts.join(' ')}`;
       },

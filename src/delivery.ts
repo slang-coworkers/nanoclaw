@@ -25,6 +25,7 @@ import { fanOutboundMessage } from './modules/cross-session-context/index.js';
 import { pickApprover, pickApprovalDelivery } from './modules/approvals/primitive.js';
 import { getEpisode as getCostEpisode } from './db/cost-escalation-episodes.js';
 import { ingestCostEscalation, requestCostDecisionCard } from './modules/cost-approval/index.js';
+import { ingestCostCeilingAdjustmentReceipt } from './modules/cost-ceiling-adjustment/index.js';
 import { log } from './log.js';
 import { normalizeOptions } from './channels/ask-question.js';
 import { clearOutbox, readOutboxFiles, withExistingMailboxSession } from './session-manager.js';
@@ -879,6 +880,33 @@ registerDeliveryAction(
     }
   },
   unguarded('cost_escalation is a host-initiated read-only notification — no privileged mutation'),
+);
+
+/**
+ * Live cost-ceiling-adjustment receipt (NanoClaw #1, "set ceiling v2"). The
+ * runner fires a kind:'system' outbound row
+ * `{action:'cost_ceiling_adjustment_result', adjustmentId, sessionId, outcome, ...}`
+ * in the SAME outbound-DB transaction that persists any live-state change it
+ * made — this host action is the counterpart that records the outcome in the
+ * central ledger (`cost_ceiling_adjustments`), validating every echoed field
+ * against the request the host itself created before accepting it as
+ * authoritative.
+ *
+ * Unguarded: this is a HOST-initiated receipt reporting the outcome of a
+ * request THIS host already validated and enqueued — it grants nothing new.
+ * The privileged surface is the submission endpoint
+ * (`POST /api/dashboard/session-cost-ceiling`, `src/modules/cost-ceiling-
+ * adjustment/index.ts`), not this handler, which only ever records a
+ * completion for a ledger row that already exists.
+ */
+registerDeliveryAction(
+  'cost_ceiling_adjustment_result',
+  async (content, session) => {
+    await ingestCostCeilingAdjustmentReceipt(content, session);
+  },
+  unguarded(
+    'cost_ceiling_adjustment_result is a host-initiated receipt for a request this host already authorized — no privileged mutation',
+  ),
 );
 
 export function stopDeliveryPolls(): void {

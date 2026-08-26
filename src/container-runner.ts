@@ -181,6 +181,23 @@ interface ActiveSessionRuntime {
   handle: SupervisedHandle;
   containerName: string;
   /**
+   * NanoClaw #1 "set ceiling v2" readiness-handshake nonce — the value this
+   * host stamped as `NANOCLAW_RUNNER_INSTANCE_ID` on THIS spawn, echoed back
+   * by the runner in `session_state.cost_control_protocol`. Comparing the two
+   * closes a TOCTOU gap: a stale handshake left behind by a PRIOR container
+   * instance of the same session id (died and respawned between a browser's
+   * read and the host's accept-or-reject decision) carries the OLD instance's
+   * nonce, not this one's, so it is provably stale rather than silently
+   * accepted. Undefined for an ADOPTED runtime (`adopted: true`): the host
+   * restarted and re-attached to an already-running container it did not
+   * itself spawn, so it has no verified nonce to compare against — by design,
+   * a live ceiling adjustment cannot be confirmed ready for an adopted
+   * session until that session next respawns with a fresh nonce (fail
+   * closed: never a false match, not a regression from before this feature
+   * existed).
+   */
+  instanceId?: string;
+  /**
    * When this host started tracking the runtime. Backs the sweep's ceiling
    * check when no heartbeat file exists yet (see `host-sweep.ts`): a container
    * that finishes its turn without ever reaching an SDK event never writes one,
@@ -200,6 +217,19 @@ interface ActiveSessionRuntime {
 }
 
 const activeContainers = new Map<string, ActiveSessionRuntime>();
+
+/**
+ * The runner-instance nonce for a session's CURRENTLY active container, if one
+ * is running AND was freshly spawned by this host process (see
+ * `ActiveSessionRuntime.instanceId`). Returns undefined both when no
+ * container is tracked as running for this session, and when the tracked
+ * container was adopted rather than spawned — either way the caller (the
+ * cost-ceiling-adjustment readiness check) must treat that as "nothing to
+ * match against yet," not as a match.
+ */
+export function getActiveContainerInstanceId(sessionId: string): string | undefined {
+  return activeContainers.get(sessionId)?.instanceId;
+}
 
 /** SHA-256 hash of CLAUDE.md at spawn time, keyed by session ID. */
 const spawnedClaudeMdHash = new Map<string, string>();
@@ -566,6 +596,10 @@ async function spawnContainer(session: Session): Promise<void> {
   const mcpPolicy = resolveMcpPolicy(agentGroup);
   const proxyToken = registerContainerToken(agentGroup.folder, mcpPolicy.externalTools);
 
+  // A fresh random nonce for THIS spawn (NanoClaw #1 "set ceiling v2" readiness
+  // handshake — see getActiveContainerInstanceId's doc comment above).
+  const instanceId = crypto.randomUUID();
+
   // Operator-visible, not a debug line. The policy is still correct — a
   // configuration fault never narrows a group, by design — but something the
   // resolver wanted to read was unreadable and somebody has to fix it.
@@ -611,6 +645,7 @@ async function spawnContainer(session: Session): Promise<void> {
     mailboxEnvironment,
     provider,
     agentIdentifier,
+    instanceId,
     mcpProxy: { proxyToken, policy: mcpPolicy },
   });
 
@@ -631,7 +666,7 @@ async function spawnContainer(session: Session): Promise<void> {
 
   const handle = await driver.prepare(spec);
 
-  const runtime = registerRuntime(session.id, handle, containerName, false);
+  const runtime = registerRuntime(session.id, handle, containerName, false, instanceId);
 
   // The per-group container log tee and the stderr tail both moved into the
   // driver: DockerHandle.start() runs `start --attach`, logs every stderr line
@@ -699,6 +734,7 @@ function registerRuntime(
   handle: SupervisedHandle,
   containerName: string,
   adopted: boolean,
+  instanceId?: string,
 ): ActiveSessionRuntime {
   let resolveFinished!: () => void;
   const finishedPromise = new Promise<void>((resolve) => {
@@ -707,6 +743,7 @@ function registerRuntime(
   const runtime: ActiveSessionRuntime = {
     handle,
     containerName,
+    instanceId,
     startedAtMs: Date.now(),
     adopted,
     exitCallbacks: [],
@@ -1735,6 +1772,14 @@ export interface ComposeSessionSpecInput {
   /** OneCLI agent identifier (the agent group id). */
   agentIdentifier?: string;
   /**
+   * NanoClaw #1 "set ceiling v2" readiness handshake nonce for THIS spawn —
+   * see `getActiveContainerInstanceId`'s doc comment. Always supplied by the
+   * one real caller (`spawnContainer`); there is no adoption path through
+   * `composeSessionSpec` (an adopted runtime re-attaches to an already-running
+   * container instead, so it never composes a fresh spec).
+   */
+  instanceId: string;
+  /**
    * MCP wiring for this spawn. The proxy token authorises the container to
    * reach host MCP servers; the policy decides which servers get handed over
    * at all (see `forkContainerEnv`).
@@ -1989,7 +2034,7 @@ function selectedSkillNames(containerConfig: import('./container-config.js').Con
  * gateway's) ride `contributedEnv` and override these on a key collision.
  */
 async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<string, string>> {
-  const { agentGroup, session, containerName, containerConfig, contribution, provider, mcpProxy } = input;
+  const { agentGroup, session, containerName, containerConfig, contribution, provider, mcpProxy, instanceId } = input;
   const env: Record<string, string> = {};
 
   // Only vars read by code we don't own. Everything NanoClaw-specific is in
@@ -2125,6 +2170,9 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
   // dashboard treats the empty string as "root session".
   env.NANOCLAW_SESSION_ID = session.id;
   env.NANOCLAW_SESSION_THREAD_ID = session.thread_id ?? '';
+  // NanoClaw #1 "set ceiling v2" readiness handshake nonce — see
+  // getActiveContainerInstanceId's doc comment in container-runner.ts.
+  env.NANOCLAW_RUNNER_INSTANCE_ID = instanceId;
   // Dashboard hook URL — exposed to in-container overlay scripts (buddy-
   // call.sh, dispatchResultText) so they can post overlay-emitted events
   // alongside the SDK's universal PostToolUse stream. Same URL shape the

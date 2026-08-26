@@ -51,6 +51,7 @@ import { COST_APPROVAL_CARD } from '../../config.js';
 import { deletePendingApproval, getPendingApprovalsByAction } from '../../db/sessions.js';
 import {
   bumpEffectAttempt,
+  COST_DECISION_ACTION,
   expireEpisode,
   getEpisode,
   getEpisodeByShortId,
@@ -68,6 +69,7 @@ import {
   type CostWindow,
   type ResolveResult,
 } from '../../db/cost-escalation-episodes.js';
+import { getCostCeilingAdjustmentBySessionEpoch } from '../../db/cost-ceiling-adjustments.js';
 import { log } from '../../log.js';
 import { routeCostOverrideToSession } from '../../router.js';
 import type { Session } from '../../types.js';
@@ -83,17 +85,18 @@ import {
   type ApprovalResolvedEvent,
 } from '../approvals/primitive.js';
 
-/** The approval action key the decision card is registered under. */
-const COST_DECISION_ACTION = 'cost_decision';
-
 /**
  * A short, unique handle for the episode's NOT-NULL UNIQUE `short_id` column (a stable
  * per-row id used for joins/traceability), collision-retried against the column.
+ *
+ * Async since `getEpisodeByShortId` is (central-DB accessors are all async post-port) —
+ * the loop must `await` each collision check, not just call it, or `if (!promise)` would
+ * always be false and every candidate would look "taken" without ever really checking.
  */
-function freshShortId(): string {
+async function freshShortId(): Promise<string> {
   for (let i = 0; i < 8; i++) {
     const candidate = `cst-${Math.random().toString(36).slice(2, 9)}`;
-    if (!getEpisodeByShortId(candidate)) return candidate;
+    if (!(await getEpisodeByShortId(candidate))) return candidate;
   }
   return `cst-${Math.random().toString(36).slice(2, 13)}`;
 }
@@ -142,12 +145,32 @@ export async function ingestCostEscalation(
   const ceiling = Number(p.ceilingUsd);
 
   const active = COST_APPROVAL_CARD;
+  // A live per-session cost-ceiling adjustment (the dashboard +/- control) may
+  // already own this EXACT (session, epoch) — either it already WON (applied, so
+  // the epoch this escalation is stamped with is stale the instant it's ingested)
+  // or it's still deciding (pending/enqueued). Either way, a fresh card for this
+  // epoch would be redundant at best and a stale double-decision surface at
+  // worst — this is precisely the "delayed cost_escalation after an adjustment
+  // already won" race the ledger's per-epoch uniqueness exists to close on the
+  // adjustment side; this is the mirror-image close on the escalation side. A
+  // `conflict`/`rejected` adjustment did NOT actually change anything for this
+  // epoch, so it does not suppress a genuine card. Looked up by the EXACT
+  // (session, epoch) pair — NOT "latest for the session" — because a newer
+  // adjustment can already exist for a LATER epoch (the runner rotates its
+  // generation on every applied adjustment) without that saying anything about
+  // whether THIS epoch was separately claimed earlier.
+  const competingAdjustment = await getCostCeilingAdjustmentBySessionEpoch(session.id, epochKey);
+  const adjustmentOwnsEpoch =
+    competingAdjustment != null &&
+    (competingAdjustment.state === 'applied' ||
+      competingAdjustment.state === 'pending' ||
+      competingAdjustment.state === 'enqueued');
   // The ONLY actionable episode: a non-immortal Tier-2 ceiling breach. The runner already
   // hard-stopped it, so this is a genuine "decide" — and it must NOT expire (an abandoned
   // decision would otherwise leave the session stopped forever with no human ever asked).
   // Everything else (a Tier-1 'cap' crossing; an immortal ceiling breach, which never
   // blocks) is observation-only, regardless of the flag — ingested for the record, no card.
-  const isCard = active && reason === 'ceiling' && !immortal;
+  const isCard = active && reason === 'ceiling' && !immortal && !adjustmentOwnsEpoch;
   const decisionState = isCard ? 'pending' : 'observed';
   const cardState = isCard ? 'undelivered' : 'observed';
   // No episode carries an expiry any more (the one card-worthy case must NOT auto-dismiss).
@@ -157,7 +180,7 @@ export async function ingestCostEscalation(
 
   const isNew = await ingestEpisode({
     episode_id: episodeId,
-    short_id: freshShortId(),
+    short_id: await freshShortId(),
     session_id: session.id,
     agent_group_id: session.agent_group_id,
     reason,

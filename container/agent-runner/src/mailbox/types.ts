@@ -77,6 +77,26 @@ export interface MailboxOperations {
   hasOutboundToThread(channelType: string, platformId: string, threadId: string): boolean;
   /** An identical un-threaded send already exists — the duplicate-delivery guard. */
   hasIdenticalSend(platformId: string, channelType: string, text: string): boolean;
+
+  /**
+   * Commit a cost-ceiling adjustment as ONE transaction: the new cap (when the
+   * outcome applied), the receipt message, and the inbound ack.
+   *
+   * A single op rather than three calls because atomicity is the point — a crash
+   * between "cap raised" and "ack written" would either re-apply the adjustment
+   * or lose the receipt, and money-safety state must not be able to tear. The
+   * driver owns the seq computation and the transaction boundary; callers cannot
+   * nest one incorrectly.
+   */
+  commitCostCeilingAdjustment(params: {
+    inboundMessageId: string;
+    /** `kind:'system'`, unrouted — the host reads it off the outbound watermark. */
+    receiptId: string;
+    receiptContent: string;
+    /** Serialized cap state; omitted when the outcome mutates no live state. */
+    costCapKey?: string;
+    costCapValue?: string;
+  }): void;
   getState(key: string): StateValue | undefined;
   setState(key: string, value: string): void;
   deleteState(key: string): void;
