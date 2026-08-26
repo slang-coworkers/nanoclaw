@@ -9,7 +9,6 @@
  * on file and resumes cleanly if the user flips back.
  */
 import { getAgentMailbox } from '../mailbox/index.js';
-import { getInboundDb, getOutboundDb } from '../mailbox/sqlite/connection.js';
 
 const LEGACY_KEY = 'sdk_session_id';
 
@@ -296,15 +295,12 @@ export interface CostCeilingAdjustmentReceipt {
  * set-ceiling handler) must NOT mark the inbound message complete by any other
  * path — let it propagate so the message is retried/recovered on restart.
  *
- * IMPLEMENTATION NOTE: the mailbox seam's `MailboxOperations` interface has no
- * cross-operation transaction primitive (by design — a non-SQLite mailbox
- * backend might not have one). This is the sanctioned SQLite-only escape hatch
- * (see docs/agent-mailbox-seam-migration.md: "keep the customization explicitly
- * SQLite-only by importing the low-level opener") — it talks to the same
- * `getOutboundDb()` singleton the SQLite mailbox implementation itself uses
- * (`mailbox/sqlite/connection.ts` / `operations.ts`), replicating its exact
- * `session_state` upsert, odd-seq `messages_out` insert, and `processing_ack`
- * upsert SQL so this stays byte-compatible with the rest of the SQLite backend.
+ * IMPLEMENTATION NOTE: the atomicity requirement is why this is ONE
+ * `commitCostCeilingAdjustment` mailbox operation rather than three composed
+ * calls (`setState` + `writeMessageOut` + `markMessages`). `MailboxOperations`
+ * has no cross-operation transaction primitive — deliberately, since a
+ * non-SQLite backend might not have one — so the all-or-nothing boundary has to
+ * live inside the driver, where the odd-seq computation already does.
  */
 export function commitCostCeilingAdjustmentOutcome(params: {
   inboundMessageId: string;
@@ -312,55 +308,14 @@ export function commitCostCeilingAdjustmentOutcome(params: {
   /** Present only for `outcome:'applied'` — conflict/rejected mutate no live state. */
   newCostCap?: CostCapState;
 }): void {
-  const outbound = getOutboundDb();
-  const inbound = getInboundDb();
-  const commit = outbound.transaction(() => {
-    if (params.newCostCap) {
-      outbound
-        .prepare('INSERT OR REPLACE INTO session_state (key, value, updated_at) VALUES (?, ?, ?)')
-        .run(COST_CAP_KEY, JSON.stringify(params.newCostCap), new Date().toISOString());
-    }
-
-    // Mirrors sqliteWriteMessageOut's odd-seq computation exactly (mailbox/
-    // sqlite/operations.ts) — deliberately not calling that function directly,
-    // since it opens its own BEGIN IMMEDIATE/COMMIT and nesting a second
-    // transaction inside this one is avoidable risk for no benefit.
-    const maxOut = (
-      outbound.prepare('SELECT COALESCE(MAX(seq), 0) AS value FROM messages_out').get() as { value: number }
-    ).value;
-    const maxIn = (
-      inbound.prepare('SELECT COALESCE(MAX(seq), 0) AS value FROM messages_in').get() as { value: number }
-    ).value;
-    const max = Math.max(maxOut, maxIn);
-    const nextSeq = max % 2 === 0 ? max + 1 : max + 2;
-    outbound
-      .prepare(
-        `INSERT INTO messages_out (id, seq, in_reply_to, timestamp, deliver_after, recurrence, kind, platform_id, channel_type, thread_id, content)
-       VALUES ($id, $seq, $in_reply_to, $timestamp, $deliver_after, $recurrence, $kind, $platform_id, $channel_type, $thread_id, $content)`,
-      )
-      .run({
-        $id: `cost-ceiling-adjustment-result:${params.receipt.adjustmentId}`,
-        $seq: nextSeq,
-        $timestamp: new Date().toISOString(),
-        $in_reply_to: null,
-        $deliver_after: null,
-        $recurrence: null,
-        $kind: 'system',
-        $platform_id: null,
-        $channel_type: null,
-        $thread_id: null,
-        $content: JSON.stringify(params.receipt),
-      });
-
-    // Raw INSERT OR REPLACE rather than the messages-in.ts markCompleted
-    // helper: that helper wraps itself in its OWN transaction, and nesting a
-    // second transaction inside this one is avoidable risk for no benefit —
-    // this is the exact same statement it runs, inlined.
-    outbound
-      .prepare(
-        "INSERT OR REPLACE INTO processing_ack (message_id, status, status_changed) VALUES ($id, 'completed', $ts)",
-      )
-      .run({ $id: params.inboundMessageId, $ts: new Date().toISOString() });
+  // One mailbox op, not three: cap + receipt + ack must land atomically, and the
+  // driver owns the transaction boundary and the odd-seq computation so a caller
+  // cannot nest one incorrectly. Direct SQLite here would also violate the
+  // SQL-containment ratchet in mailbox/registry.test.ts.
+  getAgentMailbox().operations.commitCostCeilingAdjustment({
+    inboundMessageId: params.inboundMessageId,
+    receiptId: `cost-ceiling-adjustment-result:${params.receipt.adjustmentId}`,
+    receiptContent: JSON.stringify(params.receipt),
+    ...(params.newCostCap ? { costCapKey: COST_CAP_KEY, costCapValue: JSON.stringify(params.newCostCap) } : {}),
   });
-  commit();
 }

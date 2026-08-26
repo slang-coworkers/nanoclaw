@@ -10,6 +10,7 @@ import {
   sqliteFindByName,
   sqliteFindByRouting,
   sqliteFindCliResponse,
+  sqliteCommitCostCeilingAdjustment,
   sqliteFindQuestionResponse,
   sqliteGetAllDestinations,
   sqliteGetMessageIn,
@@ -211,6 +212,10 @@ export class SqliteAgentMailbox implements AgentMailbox {
 
   hasIdenticalSend(platformId: string, channelType: string, text: string): boolean {
     return sqliteHasIdenticalSend(platformId, channelType, text);
+  }
+
+  commitCostCeilingAdjustment(params: Parameters<MailboxOperations['commitCostCeilingAdjustment']>[0]): void {
+    sqliteCommitCostCeilingAdjustment(params);
   }
 
   getState(key: string) {
