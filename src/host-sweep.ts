@@ -252,6 +252,17 @@ async function sweep(): Promise<void> {
     log.error('Cost-approval reconcile failed', { err });
   }
 
+  // Cost-ceiling-adjustment reconciler (NanoClaw #1, "set ceiling v2"): repairs
+  // half-done ledger rows (missing control-message insert, un-enqueued state,
+  // wake failures) with persisted capped backoff — never a fixed give-up
+  // count. Central-DB scan, once/tick.
+  try {
+    const { reconcileCostCeilingAdjustments } = await import('./modules/cost-ceiling-adjustment/index.js');
+    await reconcileCostCeilingAdjustments();
+  } catch (err) {
+    log.error('Cost-ceiling-adjustment reconcile failed', { err });
+  }
+
   setTimeout(() => void sweep(), SWEEP_INTERVAL_MS);
 }
 

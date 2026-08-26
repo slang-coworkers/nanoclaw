@@ -27,6 +27,17 @@ export type CostCardState = 'observed' | 'undelivered' | 'sending' | 'delivered'
  *  change to the episode contract; gates the S1→S2 flag rollout. */
 export const COST_EPISODE_PROTOCOL_VERSION = 1;
 
+/**
+ * The `pending_approvals.action` key the cost-decision card is registered under.
+ * Lives here (db layer) rather than in `src/modules/cost-approval/index.ts` (which
+ * still re-exports it for its own use) so `src/db/cost-ceiling-adjustments.ts` — a
+ * sibling db-layer module that also needs to reap a stale card — can import it
+ * without reaching up into the modules layer (which would invert the dependency
+ * direction and risk a circular import, since cost-approval/index.ts already
+ * imports from this file).
+ */
+export const COST_DECISION_ACTION = 'cost_decision';
+
 export interface CostEpisodeRow {
   episode_id: string;
   short_id: string;
@@ -248,6 +259,63 @@ export async function expireEpisode(
     { id: episodeId, now: nowIso, by: resolvedBy },
   );
   return { won: info.changes > 0, episode: await getEpisode(episodeId) };
+}
+
+/**
+ * Every episode for one exact (session, epoch) pair, in ANY state. Used by the
+ * cost-ceiling-adjustment ledger's creation transaction (`src/db/cost-ceiling-
+ * adjustments.ts`) to check whether a card already WON this precise epoch
+ * (`continued`/`stopped`) before a new adjustment is allowed to claim it — a card
+ * decision beating a request is money-safety, not a UX nicety (the card's
+ * `cost_override` may already be durably enqueued for the runner to apply).
+ */
+export async function getEpisodesForSessionEpoch(sessionId: string, epochKey: string): Promise<CostEpisodeRow[]> {
+  const d = await db();
+  if (!d) return [];
+  return d.all<CostEpisodeRow>(
+    `SELECT * FROM cost_escalation_episodes WHERE session_id = ? AND epoch_key = ?`,
+    sessionId,
+    epochKey,
+  );
+}
+
+/**
+ * Supersede every still-`pending` episode (ANY reason — cap or ceiling) for one
+ * exact (session, epoch) pair. Unlike `supersedeLiveCapEpisodes` (reason-
+ * restricted, called from the ceiling-episode ingest path), this is called from
+ * the cost-ceiling-adjustment ledger's creation transaction when a live-control
+ * request is about to claim an epoch that still has an undecided card sitting on
+ * it — so a delayed click on that card can never apply after the request already
+ * won (the CAS in `resolveCostEpisode` refuses a non-`pending` row on its own,
+ * this just makes the card's terminal state honest instead of leaving it
+ * dangling as `pending` forever). Returns the superseded rows so the caller can
+ * reap their now-stale `pending_approvals` cards.
+ */
+export async function supersedePendingEpisodesForEpoch(
+  sessionId: string,
+  epochKey: string,
+  resolvedBy: string,
+  nowIso = new Date().toISOString(),
+): Promise<CostEpisodeRow[]> {
+  const d = await db();
+  if (!d) return [];
+  const rows = await d.all<CostEpisodeRow>(
+    `SELECT * FROM cost_escalation_episodes
+      WHERE session_id = ? AND epoch_key = ? AND decision_state = 'pending'`,
+    sessionId,
+    epochKey,
+  );
+  if (rows.length === 0) return rows;
+  await d.run(
+    `UPDATE cost_escalation_episodes
+        SET decision_state = 'superseded', resolved_at = ?, resolved_by = ?
+      WHERE session_id = ? AND epoch_key = ? AND decision_state = 'pending'`,
+    nowIso,
+    resolvedBy,
+    sessionId,
+    epochKey,
+  );
+  return rows;
 }
 
 /**

@@ -197,6 +197,7 @@ function compose(
     mailboxEnvironment: { NANOCLAW_MAILBOX_BACKEND: 'sqlite' },
     contribution: (overrides.contribution ?? {}) as never,
     gateway: (overrides.gateway ?? {}) as never,
+    instanceId: 'test-instance-id',
   });
 }
 
@@ -210,6 +211,7 @@ function composeWithFolder(folder: string) {
     mailboxEnvironment: { NANOCLAW_MAILBOX_BACKEND: 'sqlite' },
     contribution: {} as never,
     gateway: {} as never,
+    instanceId: 'test-instance-id',
   });
 }
 

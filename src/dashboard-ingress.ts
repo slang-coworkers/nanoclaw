@@ -37,6 +37,11 @@ interface DashboardIngressOptions {
   onCredentialRejectFn?: (credentialId: string) => Promise<void>;
   /** Handle a cost-cap override decision from the dashboard (NanoClaw #1). */
   onCostOverrideFn?: (sessionId: string, decision: 'continue' | 'stop') => Promise<void>;
+  /** Handle a live, exact-value cost-ceiling adjustment request (NanoClaw #1,
+   *  "set ceiling v2"). Returns the HTTP status + body to write verbatim —
+   *  the host module is authoritative for every validation/status decision,
+   *  this ingress is just the transport. */
+  onSetCeilingFn?: (raw: unknown) => Promise<{ status: number; body: Record<string, unknown> }>;
 }
 
 function generateMessageId(): string {
@@ -123,6 +128,7 @@ export function startDashboardIngress(options: DashboardIngressOptions = {}): Da
   const onCredentialSubmitFn = options.onCredentialSubmitFn;
   const onCredentialRejectFn = options.onCredentialRejectFn;
   const onCostOverrideFn = options.onCostOverrideFn;
+  const onSetCeilingFn = options.onSetCeilingFn;
 
   const server = createServer(async (req, res) => {
     if (req.method !== 'POST') {
@@ -311,6 +317,40 @@ export function startDashboardIngress(options: DashboardIngressOptions = {}): Da
         const status = msg.startsWith('session not found') ? 404 : 500;
         log.error('Failed to route cost-override', { sessionId, decision, err });
         writeJson(res, status, { error: msg });
+      }
+      return;
+    }
+
+    // Live, exact-value cost-ceiling adjustment (NanoClaw #1, "set ceiling
+    // v2") — the dashboard's +/- control on a session's Tier-2 ceiling.
+    // SECURITY BOUNDARY: same as cost-override above (SSO at the network
+    // layer; DASHBOARD_SECRET adds the Bearer check). The host module
+    // (onSetCeilingFn) is authoritative for every validation/status decision —
+    // this ingress only transports the request body and status verbatim.
+    if (req.url === '/api/dashboard/session-cost-ceiling') {
+      const body = await readBody(req, res);
+      if (body === null) return;
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        writeJson(res, 400, { ok: false, error: 'invalid_json', message: 'invalid json' });
+        return;
+      }
+      if (!onSetCeilingFn) {
+        writeJson(res, 501, { ok: false, error: 'not_configured', message: 'set-ceiling handler not configured' });
+        return;
+      }
+      try {
+        const result = await onSetCeilingFn(parsed);
+        writeJson(res, result.status, result.body);
+      } catch (err) {
+        log.error('Failed to route session-cost-ceiling request', { err });
+        writeJson(res, 500, {
+          ok: false,
+          error: 'internal_error',
+          message: err instanceof Error ? err.message : String(err),
+        });
       }
       return;
     }
