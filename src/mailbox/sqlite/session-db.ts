@@ -153,6 +153,59 @@ export function insertMessage(db: Database.Database, message: InboundWrite, sequ
   });
 }
 
+/**
+ * Idempotent variant of `insertMessage` for a caller-chosen DETERMINISTIC id
+ * (`insertMessage` above always throws on an id collision — correct for its
+ * callers, which generate a fresh random id per call). `INSERT ... ON
+ * CONFLICT(id) DO NOTHING`, matching the same idempotent-insert pattern
+ * `upsertSessionRouting` (this file) and `writeOutboundDirect`
+ * (session-manager.ts) already use elsewhere in this codebase.
+ *
+ * Returns `{inserted: true}` for a first-ever insert, or `{inserted: false,
+ * existing}` when a row with this id already existed — the caller (NanoClaw #1
+ * "set ceiling v2": the host writing its deterministic
+ * `cost-ceiling-adjustment:<id>` control message) is responsible for verifying
+ * `existing.kind`/`existing.content` match byte-for-byte before treating a
+ * conflict as a safe idempotent retry; this function does not compare bodies
+ * itself; it only reports what is actually on file.
+ */
+export function insertMessageIfAbsent(
+  db: Database.Database,
+  message: InboundWrite,
+  sequence = nextEvenSeq(db),
+): { inserted: true } | { inserted: false; existing: { kind: string; content: string } } {
+  const record = createInboundRecord(
+    {
+      ...message,
+      timestamp: toIsoTimestamp(message.timestamp, 'timestamp'),
+      processAfter: message.processAfter == null ? null : toIsoTimestamp(message.processAfter, 'processAfter'),
+    },
+    sequence,
+  );
+  const info = db
+    .prepare(
+      `INSERT INTO messages_in (id, seq, kind, timestamp, status, platform_id, channel_type, thread_id, content, process_after, recurrence, series_id, trigger, source_session_id, on_wake)
+       VALUES (@id, @sequence, @kind, @timestamp, @status, @platformId, @channelType, @threadId, @content, @processAfter, @recurrence, @seriesId, @trigger, @sourceSessionId, @onWake)
+       ON CONFLICT(id) DO NOTHING`,
+    )
+    .run({
+      ...record,
+      trigger: record.trigger ? 1 : 0,
+      onWake: record.onWake ? 1 : 0,
+    });
+
+  if (info.changes > 0) return { inserted: true };
+
+  const existing = db.prepare('SELECT kind, content FROM messages_in WHERE id = ?').get(message.id) as
+    | { kind: string; content: string }
+    | undefined;
+  // The INSERT targeted this exact id and hit ON CONFLICT — the row MUST
+  // exist. A missing row here would mean it was deleted between the conflict
+  // and this read, which nothing in this codebase does to messages_in rows.
+  if (!existing) throw new Error(`insertMessageIfAbsent: conflicted on id=${message.id} but no row found on re-read`);
+  return { inserted: false, existing };
+}
+
 export function countDueMessages(db: Database.Database): number {
   return (
     db

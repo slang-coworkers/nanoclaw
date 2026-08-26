@@ -176,3 +176,99 @@ describe('dashboard ingress', () => {
     expect(routeInboundFn).not.toHaveBeenCalled();
   });
 });
+
+describe('dashboard ingress — session-cost-ceiling (NanoClaw #1, "set ceiling v2")', () => {
+  async function post(port: number, body: unknown) {
+    return fetch(`http://127.0.0.1:${port}/api/dashboard/session-cost-ceiling`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it('transports the request body to the handler verbatim and writes its status+body back', async () => {
+    const onSetCeilingFn = vi.fn().mockResolvedValue({
+      status: 202,
+      body: { ok: true, adjustmentId: 'cca-1', state: 'enqueued' },
+    });
+    const handle = startDashboardIngress({ host: '127.0.0.1', port: 0, onSetCeilingFn });
+    handles.push(handle);
+    await once(handle.server, 'listening');
+    const address = handle.server.address();
+    if (!address || typeof address === 'string') throw new Error('bind failed');
+
+    const requestBody = {
+      protocolVersion: 2,
+      requestId: 'cca-1',
+      sessionId: 'sess-1',
+      targetCeilingCents: 17500,
+      expectedEpochKey: '7',
+      expectedCeilingCents: 15000,
+    };
+    const res = await post(address.port, requestBody);
+
+    expect(res.status).toBe(202);
+    expect(await res.json()).toEqual({ ok: true, adjustmentId: 'cca-1', state: 'enqueued' });
+    expect(onSetCeilingFn).toHaveBeenCalledWith(requestBody);
+  });
+
+  it('propagates every status code the handler returns (400/404/409/422/426/503), not just 2xx', async () => {
+    const handle = startDashboardIngress({
+      host: '127.0.0.1',
+      port: 0,
+      onSetCeilingFn: vi.fn().mockResolvedValue({ status: 409, body: { ok: false, error: 'stale' } }),
+    });
+    handles.push(handle);
+    await once(handle.server, 'listening');
+    const address = handle.server.address();
+    if (!address || typeof address === 'string') throw new Error('bind failed');
+
+    const res = await post(address.port, { protocolVersion: 2 });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ ok: false, error: 'stale' });
+  });
+
+  it('returns 501 when no handler is configured', async () => {
+    const handle = startDashboardIngress({ host: '127.0.0.1', port: 0 });
+    handles.push(handle);
+    await once(handle.server, 'listening');
+    const address = handle.server.address();
+    if (!address || typeof address === 'string') throw new Error('bind failed');
+
+    const res = await post(address.port, { protocolVersion: 2 });
+    expect(res.status).toBe(501);
+  });
+
+  it('returns 400 on invalid JSON without ever calling the handler', async () => {
+    const onSetCeilingFn = vi.fn();
+    const handle = startDashboardIngress({ host: '127.0.0.1', port: 0, onSetCeilingFn });
+    handles.push(handle);
+    await once(handle.server, 'listening');
+    const address = handle.server.address();
+    if (!address || typeof address === 'string') throw new Error('bind failed');
+
+    const res = await fetch(`http://127.0.0.1:${address.port}/api/dashboard/session-cost-ceiling`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{not json',
+    });
+
+    expect(res.status).toBe(400);
+    expect(onSetCeilingFn).not.toHaveBeenCalled();
+  });
+
+  it('returns 500 (not a crash) when the handler throws', async () => {
+    const handle = startDashboardIngress({
+      host: '127.0.0.1',
+      port: 0,
+      onSetCeilingFn: vi.fn().mockRejectedValue(new Error('boom')),
+    });
+    handles.push(handle);
+    await once(handle.server, 'listening');
+    const address = handle.server.address();
+    if (!address || typeof address === 'string') throw new Error('bind failed');
+
+    const res = await post(address.port, { protocolVersion: 2 });
+    expect(res.status).toBe(500);
+  });
+});

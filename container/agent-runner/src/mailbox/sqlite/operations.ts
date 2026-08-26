@@ -195,6 +195,64 @@ export function sqliteHasIdenticalSend(platformId: string, channelType: string, 
   return row != null;
 }
 
+/**
+ * One transaction for a cost-ceiling adjustment: cap + receipt + ack.
+ *
+ * The seq computation mirrors `sqliteWriteMessageOut`, inlined deliberately
+ * rather than called: that function opens its own BEGIN IMMEDIATE/COMMIT, and
+ * nesting a second transaction inside this one is avoidable risk for no gain.
+ * Keeping both here means the odd-seq invariant (container writes odd, spanning
+ * both tables) is visible in one file if either changes.
+ */
+export function sqliteCommitCostCeilingAdjustment(params: {
+  inboundMessageId: string;
+  receiptId: string;
+  receiptContent: string;
+  costCapKey?: string;
+  costCapValue?: string;
+}): void {
+  const outbound = getOutboundDb();
+  const inbound = getInboundDb();
+  outbound.transaction(() => {
+    if (params.costCapKey !== undefined && params.costCapValue !== undefined) {
+      outbound
+        .prepare('INSERT OR REPLACE INTO session_state (key, value, updated_at) VALUES (?, ?, ?)')
+        .run(params.costCapKey, params.costCapValue, new Date().toISOString());
+    }
+
+    const maxOut = (
+      outbound.prepare('SELECT COALESCE(MAX(seq), 0) AS value FROM messages_out').get() as {
+        value: number;
+      }
+    ).value;
+    const maxIn = (
+      inbound.prepare('SELECT COALESCE(MAX(seq), 0) AS value FROM messages_in').get() as {
+        value: number;
+      }
+    ).value;
+    const max = Math.max(maxOut, maxIn);
+    const nextSeq = max % 2 === 0 ? max + 1 : max + 2;
+
+    outbound
+      .prepare(
+        `INSERT INTO messages_out (id, seq, in_reply_to, timestamp, deliver_after, recurrence, kind, platform_id, channel_type, thread_id, content)
+         VALUES ($id, $seq, NULL, $timestamp, NULL, NULL, 'system', NULL, NULL, NULL, $content)`,
+      )
+      .run({
+        $id: params.receiptId,
+        $seq: nextSeq,
+        $timestamp: new Date().toISOString(),
+        $content: params.receiptContent,
+      });
+
+    outbound
+      .prepare(
+        "INSERT OR REPLACE INTO processing_ack (message_id, status, status_changed) VALUES ($id, 'completed', $ts)",
+      )
+      .run({ $id: params.inboundMessageId, $ts: new Date().toISOString() });
+  })();
+}
+
 export function sqliteFindQuestionResponse(questionId: string): MessageInRow | undefined {
   const inbound = openInboundDb();
   try {

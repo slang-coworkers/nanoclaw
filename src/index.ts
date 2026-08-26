@@ -383,6 +383,10 @@ async function main(): Promise<void> {
         ...(latest ? { epochKey: latest.epoch_key } : {}),
       });
     },
+    onSetCeilingFn: async (raw: unknown) => {
+      const { submitCostCeilingAdjustment } = await import('./modules/cost-ceiling-adjustment/index.js');
+      return submitCostCeilingAdjustment(raw);
+    },
   });
 
   // 3c. GitHub webhook server (publicly exposed, HMAC-validated)
