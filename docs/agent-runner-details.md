@@ -748,7 +748,7 @@ The agent-runner receives configuration via:
 
 - **`container.json`:** The provider name, model, assistant name, MCP servers, and other NanoClaw config are read from `/workspace/agent/container.json` (materialized by the host from the `container_configs` table), not from environment variables. See `container/agent-runner/src/config.ts`.
 - **Environment variables:** provider-specific vars only (API keys, model overrides), `TZ`.
-- **Fixed mount paths:** The session folder is mounted at `/workspace` and contains host-written `inbound.db`, container-owned `outbound.db`, `outbox/`, and per-session agent state. The agent group folder is mounted at `/workspace/agent/`; the system prompt comes from `/workspace/agent/CLAUDE.md` (composed on every wake). Cross-group shared facts live at `/workspace/shared/` (read-write for Main, read-only for coworkers).
+- **Fixed mount paths:** The session folder is mounted at `/workspace` and contains host-written `inbound.db` (read-only), container-owned `outbound.db`, `outbox/`, and per-session agent state. The agent group folder is mounted at `/workspace/agent/`; the project document is a single composed file at `/workspace/agent/CLAUDE.md` (recomposed on every wake). Cross-group shared facts live at `/workspace/shared/` (read-write for Main, read-only for coworkers).
 
 The agent-runner reads config, creates the provider, and enters the poll loop. No stdin, no initial prompt — messages are already in the session DB.
 
@@ -773,7 +773,7 @@ The provider name comes from the `provider` key in `/workspace/agent/container.j
 
 - MCP servers are local processes or remote Streamable HTTP endpoints managed by the provider via `mcpServers`
 - The MCP server binary is shared across providers — same tools, same DB access
-- CLAUDE.md loading (global + per-group) — agent-runner reads and passes as `systemPrompt`
+- Project-document loading — the host composes `/workspace/agent/CLAUDE.md` and Claude Code loads it via the `project` setting source; the agent-runner contributes only the runtime addendum from `buildSystemPromptAddendum`
 - Additional directories discovery (`/workspace/extra/*`)
 - Logging via stderr (`[agent-runner] ...`)
 

@@ -23,7 +23,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 // Composing the group's instructions needs the central DB and is not what is
 // under test; every path it would write is created below instead.
 // This fork composes instructions via the lego spine (claude-composer), not
-// upstream's claude-md-compose, which it deleted.
+// upstream's project-doc-compose, whose predecessor it deleted.
 vi.mock('./claude-composer.js', () => ({ composeCoworkerSpine: vi.fn(() => ({ text: '', hash: '' })) }));
 vi.mock('./log.js', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), fatal: vi.fn() },
@@ -62,7 +62,6 @@ beforeAll(() => {
   // — it is part of the real buildMounts this case drives end-to-end, so the
   // file has to exist like container.json and CLAUDE.md below.
   fs.writeFileSync(path.join(claudeShared, 'settings.json'), '{}');
-  fs.mkdirSync(path.join(groupDir, '.claude-fragments'), { recursive: true });
   fs.mkdirSync(path.join(groupDir, 'plugins'), { recursive: true });
   fs.writeFileSync(path.join(groupDir, 'container.json'), '{}');
   fs.writeFileSync(path.join(groupDir, 'CLAUDE.md'), '# composed\n');
@@ -104,7 +103,6 @@ describe('buildMounts against the policy the drivers enforce', () => {
         '/workspace/agent/container.json',
         '/workspace/agent/plugins',
         '/workspace/agent/CLAUDE.md',
-        '/workspace/agent/.claude-fragments',
         '/home/node/.claude',
         '/app/src',
       ]),
@@ -168,7 +166,7 @@ describe('buildMounts against the policy the drivers enforce', () => {
     // agent executes; a writable mount of either is an escalation, so the class
     // itself has to be pinned, not just its pinning rule.
     const byPath = new Map(toMountSpecs(await composedMounts(), GROUP_ID).map((m) => [m.containerPath, m]));
-    for (const containerPath of ['/app/src', '/app/CLAUDE.md']) {
+    for (const containerPath of ['/app/src', '/app/skills']) {
       expect(byPath.get(containerPath)?.class, containerPath).toBe('install-surface');
       expect(byPath.get(containerPath)?.mode, containerPath).toBe('ro');
     }
