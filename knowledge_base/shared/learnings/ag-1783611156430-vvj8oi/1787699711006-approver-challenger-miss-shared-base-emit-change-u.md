@@ -1,0 +1,15 @@
+---
+author_agent_group: ag-1783611156430-vvj8oi
+author_session: sess-1787620210785-g2g8p8
+written_at: 2026-08-25T23:15:11.006Z
+---
+
+# [approver/challenger-miss] "Shared-base emit change untested on target X" is not an OPEN_GAP if X inherits the base and already has a valid emit path + existing test
+
+**Symptom.** On shader-slang/slang#12688 (generalize a nested-`static const` array fold from a WGSL-local override into the shared `CLikeSourceEmitter::shouldFoldInstIntoUseSites`), I abstained at R1 with reason OPEN_GAP: "the fold lives in the shared c-like base so GLSL inherits it, but the test covers only cuda/ptx/cpp/metal/hlsl — GLSL's folded nested-static-const emission is untested." At R2 (a cosmetic-only push that added no GLSL test) I had to reverse to WOULD_APPROVE because the gap was never real — I could and should have cleared it at R1.
+
+**Root cause of the over-abstain.** I treated "no test names target X" as "target X is an untested novel path." For a change to a *target-independent* predicate in a shared base, that inference is wrong when the inheriting target (a) does NOT override the changed method (so it gets the identical behavior, not a new one) AND (b) already has its own emit case for the affected op that is valid in the context the fold introduces. For GLSL here: `GLSLSourceEmitter : public CLikeSourceEmitter` does not override `shouldFoldInstIntoUseSites`, and it has a pre-existing `MakeArray`/`MakeArrayFromElement` case (slang-emit-glsl.cpp) emitting array-CONSTRUCTOR syntax `T[](...)` — usable in any expression context. So a folded inline nested GLSL array is valid by construction; the fold direction cannot regress it. And `tests/bugs/glsl-array-constructor-init.slang` already round-trips NESTED GLSL constructors through glslang — the path is CI-covered end-to-end.
+
+**How to catch it (challenger probe for shared-base emit changes).** When a review/your-own-gap says "shared-base change untested on target X", before recording OPEN_GAP, spend the read: (1) does X override the changed method? If yes, X may genuinely differ — keep the gap. If no, X inherits identical logic. (2) Does X already have an emit case for the affected op, and is that spelling valid in the new context the change introduces (expression-position, initializer-list, etc.)? (3) Is there a precedent target that already shipped this exact logic (here WGSL #11628) with a test, and/or an existing test exercising X's emit path for that op? If (1=no) + (2=yes) + (3=yes), the gap clears as "branch already covered elsewhere" — do NOT abstain. Uncertainty still abstains, but "no test with X's name in it" alone is not uncertainty about a shared, inherited, already-valid path.
+
+**Fix / transferable rule.** "Untested target" gaps on shared-base emitter changes must be evaluated against the inheritance + existing-emit-case + precedent-test triad, not against the new test's target list. A target that inherits the base unchanged and already has a valid, tested emit path for the op is covered — carrying an abstain on it forces a needless human look and a later reversal.

@@ -9,6 +9,13 @@ metadata:
 
 # #12403 — integer `dot` fallback: dynamic-index loop on GLSL + Metal + CUDA/C++
 
+✅✅ **CHAIN COMPLETE 2026-08-25 — TERMINAL.** Issue #12403 CLOSED (fixed by #12417, which unrolled
+both `dot` arms). Test-companion **PR #12548 MERGED 2026-08-25 14:08:50Z by `jvepsalainen-nv`**
+(merge commit `5faf399a7d…`, head `715dec4e0a`) — Main-verified on GitHub, not relayed. #12548 was
+reduced to test-only and contributed the GLSL/Metal/CUDA emitted-shape regression test that #12417's
+CUDA/CPP-only tests omitted. Fixer cleaned up `wt-slang-12403` (~6.1G freed), sentinel cleared,
+nothing unpushed. No further webhooks expected. Nothing owed anywhere.
+
 Opened 2026-08-06 16:59Z by `nv-slang-bot[bot]`, split out of **#12396** (the floating-point twin,
 opened by `tdavidovicNV`, a maintainer, with an explicit request for a small non-breaking PR).
 Label `cuda` — likely wrong/incomplete given the GLSL+Metal exposure.

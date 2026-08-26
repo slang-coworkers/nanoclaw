@@ -1,6 +1,6 @@
 ---
 name: project_12376_fossil_oob_relative_ptr
-description: "slang#12376 (opened 08-06 by jkwak-work, label bug): fossil deserialization follows 32-bit relative ptrs from the file with no bounds check → OOB read / info disclosure. ALREADY has an open PR: #12354 body says 'Fixes #12376'. RESUME: triager must NOT re-triage from scratch."
+description: "slang#12376 fossil OOB read. TERMINAL 08-26: maintainer jkwak-work closed it WNF + closed PR #12354 UNMERGED — the core-module-validation startup cost was disqualifying, not any analysis defect. Both triage escalations (the 🔴 kNullOffset bypass + the missing rejection test) were ACTIONED before the close (20-case negative test added, incl. the null-sentinel collision). Chain closed; a WNF is a triage win."
 metadata: 
   node_type: memory
   type: project
@@ -253,6 +253,46 @@ shell route, the MCP tool surface is the fallback — don't retry the denied com
 **RESUME (unchanged owner: `jkwak-work`):** his call on the `3717966165` bypass and on the (b) carrier.
 **CO-TRIGGER** = #12354 merges → auto-closes #12376 ⇒ re-read the merged diff, **check specifically
 whether the `kNullOffset` bypass shipped**, and refresh cmt 5199770804 in place.
+
+## 08-26 01:18Z — TERMINAL. Both **CLOSED, PR NOT MERGED. Maintainer closed #12376 as WNF** (won't-fix).
+
+`jkwak-work` (MEMBER) closed #12376 as WNF (cmt 5419250542, 01:18:16Z) and closed #12354 unmerged
+(01:18:58Z, `merged_at=null`). Stated reason: *"The following PR had the implementation but as
+suspected, it makes the slang-test run significantly slower and it is not usable."* ⇒ the close is on
+the **performance tradeoff the whole design rested on** — validating the 17MB core module on every
+`slangc` startup — not on any defect in the analysis. That cost was the design's known Achilles heel
+from day one (the ≈2 s/process figure was follow-up (a)); it turned out to be disqualifying, not just
+expensive.
+
+⭐⭐ **Both of the concerns triage escalated on 08-06 were ACTIONED before the close — the escalation
+worked even though the PR died.** I re-read the final PR body (updated 08-26, 15 comments vs 3 at
+triage time):
+- **The 🔴 `kNullOffset` bypass (thread `3717966165`) got a dedicated test.** The new file
+  `tools/slang-unit-test/unit-test-fossil-validation.cpp` (20 cases) explicitly lists *"the
+  null-sentinel collision"* among them. The exact finding triage confirmed constructible at every
+  offset now has a pinning negative test. ⇒ **the finding we ranked above the brief was real enough
+  to earn its own regression test.**
+- **The (b) "no rejection test, recorded nowhere durable" concern is fully resolved** — 20
+  negative-path cases (OOB roots, bad layout kinds, string/terminator, record/container bounds, zero
+  stride, truncation, cyclic-graph termination, a `fossilValidationBoundsTotalWork` cap against
+  quadratic blow-up). The very thing triage said would vanish at merge was instead built out.
+- The maintainer added a **"Reviewer Directives (maintained by agent)"** block and a **"What the walk
+  does and does not guarantee"** section conceding the readers navigate by *unchecked `cast<>`* at
+  static offsets (`slang-serialize-ir.cpp:780`, `slang-serialize-ast.cpp:2009`), so the walk proves
+  *reachability*, not *conformance* — the sharper point triage had made about the guard not running on
+  the real load paths, now stated in the PR's own words.
+
+⭐⭐⭐ **A WNF/close-unmerged is a WIN condition for a triage chain, not a loss.** Nothing triage
+produced was wrong; the maintainer's own performance judgment retired the whole approach. The correct
+disposition on our side: **no GitHub post** (maintainer closed his own issue+PR with a decisive reason,
+no question to answer, and a bot "acknowledged" would be the forbidden meta-ack), and an upstream report
+to the operator. Chain is terminal — the CO-TRIGGER (merge) can no longer fire.
+
+⚠️ Reusable: **a fix PR can be technically hardened to completion and still be correctly abandoned on a
+non-technical axis (startup cost).** Don't equate "review concerns all addressed" with "will merge" —
+the disqualifier here was orthogonal to every thread. See
+[[feedback_a_scope_brief_bounds_the_question_not_the_bug_class]] (the bypass belonged in the report even
+though it was out of scope — and it's exactly the finding that earned a test before the abandonment).
 
 Related: [[feedback_a_negative_control_must_vary_exactly_one_thing]], [[feedback_deference_drifts_to_whoever_corrected_you_last]],
 [[feedback_never_cite_a_peers_artifact_by_your_own_local_name]], [[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]].
