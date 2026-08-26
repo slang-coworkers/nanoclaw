@@ -15,7 +15,6 @@
     "typecheck": "tsc --noEmit",
     "typecheck:all": "node scripts/typecheck-gate.mjs",
     "check:runtime-deps": "node scripts/check-runtime-resolvable.mjs",
-    "check:runner-staleness": "tsx scripts/check-agent-runner-staleness.ts",
     "mailbox-model:generate": "cp src/mailbox/model.ts container/agent-runner/src/mailbox/model.generated.ts",
     "mailbox-model:check": "cmp src/mailbox/model.ts container/agent-runner/src/mailbox/model.generated.ts",
     "format": "prettier --write \"src/**/*.ts\"",

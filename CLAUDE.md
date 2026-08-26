@@ -72,7 +72,7 @@ For ad-hoc central queries from skills or scripts, use the in-tree wrapper rathe
 | `container/agent-runner/src/` | Agent-runner: poll loop, formatter, provider abstraction, MCP tools, destinations |
 | `container/skills/` | Container skills loaded inside agent containers: spine fragments + SKILL.md bodies + coworker-types.yaml |
 | `groups/<folder>/` | Per-agent-group filesystem (CLAUDE.md, skills, container config) |
-| `data/v2-sessions/<group-id>/agent-runner-src/` | **Per-group WRITABLE copy** of `container/agent-runner/src/`, bind-mounted at `/app/src`. Made once at group creation and never auto-refreshed, so a merged agent-runner fix is inert on existing groups until refreshed — see [Agent-runner staleness](#agent-runner-staleness) |
+| `container/agent-runner/src/` | The agent-runner source, bind-mounted **read-only** at `/app/src` for every group — see [Agent-runner source](#agent-runner-source-one-shared-read-only-mount) |
 | `scripts/init-first-agent.ts` | Bootstrap the first DM-wired agent (used by `/init-first-agent` skill) |
 | `scripts/skill-apply.ts` | Deterministic SKILL.md applier — executes `nc:` directive fences; declare/emit core, journaled + idempotent |
 | `scripts/skill-directives.ts` + `scripts/skill-policy.ts` | `nc:` grammar parser + lint; UI-free driver policy derived from document structure (gate confirm, URL offer) |
@@ -327,21 +327,28 @@ This project uses pnpm with `minimumReleaseAge: 4320` (3 days) in `pnpm-workspac
 The container buildkit caches the build context aggressively. `--no-cache` alone does NOT invalidate COPY steps — the builder's volume retains stale files. To force a truly clean rebuild, prune the builder then re-run `./container/build.sh`.
 
 
-## Agent-runner staleness
+## Agent-runner source: one shared read-only mount
 
-**Merging a fix under `container/agent-runner/src/**` does not deploy it to existing groups.**
+`src/container-runner.ts` bind-mounts `container/agent-runner/src` itself at
+`/app/src`, **read-only**, for every group. A merged fix under that tree is live
+for every group on its next container start — no refresh step, no per-group
+copies, nothing to go stale.
 
-`src/group-init.ts` copies that tree to `data/v2-sessions/<group-id>/agent-runner-src/` behind an `if (!fs.existsSync(...))` — once, when the group is created — and `src/container-runner.ts` bind-mounts the **copy** at `/app/src`, writable. Nothing refreshes it. A new group gets the current source; every pre-existing group keeps running whatever was current on the day it was created, and no check goes red.
+It used to be a per-group WRITABLE copy under
+`data/v2-sessions/<group-id>/agent-runner-src/`, made once at group creation and
+never refreshed, so every merged agent-runner fix was inert on existing groups
+until someone ran a refresh — silently, with no check going red. That is gone,
+and with it `check:runner-staleness` and its merge-train step.
 
-The copy is writable on purpose: `container/skills/self-customize/SKILL.md` routes source edits through a builder agent that writes to `/app/src`, and `/add-opencode` writes provider files straight into the overlay. So it cannot simply be re-copied — that would destroy both.
+Two consequences worth knowing:
 
-```bash
-pnpm run check:runner-staleness              # which groups run stale code, and which files
-pnpm run check:runner-staleness -- --refresh # copy across only the provably-safe files
-ncl groups restart --id <group-id>           # required: bun already loaded the old modules
-```
-
-The refresh writes only files that carry no local work — an older version git still has (`stale`), or a file the copy lacks entirely (`missing`). A file whose content git has never seen is somebody's edit (`modified`) and is reported, never overwritten. `setup/merge-train.sh` runs the refresh on every deploy. Implementation: `src/agent-runner-staleness.ts`.
+- **A source edit from inside a container no longer persists.** `/app/src` is
+  read-only, deliberately: it is the code the agent executes, so a writable mount
+  of it is a privilege escalation (`install-surface` is the mount class whose
+  policy rule pins `ro`; `src/mount-composition.test.ts` states the invariant).
+  Runner changes go through a normal PR.
+- **Pre-existing `agent-runner-src/` dirs are left on disk.** They are simply no
+  longer mounted. Nothing reads them, so a rollback needs no restore.
 
 ## Container Runtime (Bun)
 

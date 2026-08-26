@@ -323,15 +323,11 @@ export async function initGroupFilesystem(
     }
   } // end if (defaultSurfaces) — claude-shared skill/agent mirrors
 
-  // 3. data/v2-sessions/<id>/agent-runner-src/ — per-group source copy (provider-agnostic — all surfaces)
-  const groupRunnerDir = path.join(DATA_DIR, 'v2-sessions', group.id, 'agent-runner-src');
-  if (!fs.existsSync(groupRunnerDir)) {
-    const agentRunnerSrc = path.join(projectRoot, 'container', 'agent-runner', 'src');
-    if (fs.existsSync(agentRunnerSrc)) {
-      fs.cpSync(agentRunnerSrc, groupRunnerDir, { recursive: true });
-      initialized.push('agent-runner-src/');
-    }
-  }
+  // No per-group agent-runner copy. `container-runner.ts` bind-mounts
+  // `container/agent-runner/src` itself at /app/src, read-only, for every group.
+  // Existing `data/v2-sessions/<id>/agent-runner-src/` dirs are left in place
+  // (they are simply no longer mounted) so a rollback needs no restore, and
+  // deleting an agent's files is not this function's call to make.
 
   // 4. Codex provider: symlinks + disable overlays (hooks not supported)
   // Codex CLI doesn't execute settings.json hooks, so overlay enforcement

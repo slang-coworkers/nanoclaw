@@ -76,17 +76,15 @@ ncl groups restart --id <group-id>
 
 The DB columns `agent_groups.agent_provider` / `sessions.agent_provider` (session overrides group) drive host-side resolution; `resolveProviderName` falls back session → group → `container_configs.provider` → `'claude'`.
 
-### Existing groups (agent-runner-src staleness)
+### Existing groups
 
-`container-runner.ts` bind-mounts each group's **own writable copy** of the runner source (`data/v2-sessions/<group-id>/agent-runner-src`), copied once at group creation. Pre-existing groups therefore lack the pi provider files and will fail with **`Unknown provider: pi`** when switched. Refresh their copy (adds only the new pi files without clobbering local edits) and restart:
+`container-runner.ts` bind-mounts `container/agent-runner/src` itself at `/app/src`, read-only and shared by every group, so the pi provider files are present for all groups as soon as this skill has copied them into the checkout. There is no per-group copy to refresh.
+
+Groups do need a restart to pick them up — bun already has the old modules loaded:
 
 ```bash
-pnpm run check:runner-staleness            # show which groups are stale
-pnpm run check:runner-staleness -- --refresh
 ncl groups restart --id <group-id>
 ```
-
-New groups created after this change get the pi files automatically.
 
 ## Operational notes
 
