@@ -8,8 +8,8 @@ import type { Migration } from './index.js';
 export const migration914: Migration = {
   version: 914,
   name: 'hook-events',
-  up(db) {
-    db.exec(`
+  async up(db) {
+    await db.exec(`
       CREATE TABLE IF NOT EXISTS hook_events (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
         group_folder    TEXT NOT NULL,
@@ -26,7 +26,7 @@ export const migration914: Migration = {
         cwd             TEXT,
         extra           TEXT,
         timestamp       INTEGER NOT NULL,
-        created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+        created_at      TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE INDEX IF NOT EXISTS idx_he_group     ON hook_events(group_folder);

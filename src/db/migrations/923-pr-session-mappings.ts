@@ -1,12 +1,10 @@
-import type Database from 'better-sqlite3';
-
 import type { Migration } from './index.js';
 
 export const migration923: Migration = {
   version: 923,
   name: 'pr-session-mappings',
-  up(db: Database.Database) {
-    db.exec(`
+  async up(db) {
+    await db.exec(`
       CREATE TABLE IF NOT EXISTS pr_session_mappings (
         repo            TEXT NOT NULL,
         pr_number       INTEGER NOT NULL,

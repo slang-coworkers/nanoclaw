@@ -19,7 +19,8 @@ const TEST_DIR = '/tmp/nanoclaw-test-session-messages';
 
 import { initTestDb, closeDb, runMigrations, createAgentGroup } from '../db/index.js';
 import { createSession } from '../db/sessions.js';
-import { initSessionFolder, inboundDbPath, outboundDbPath } from '../session-manager.js';
+import { inboundDbPath, outboundDbPath } from '../mailbox/sqlite/paths.js';
+import { initSessionFolder } from '../session-manager.js';
 import { readSessionMessages } from './session-messages.js';
 
 const AG = 'ag-test';
@@ -70,15 +71,14 @@ function writeOutbound(rows: Array<{ seq: number; kind: string; timestamp: strin
 }
 
 describe('readSessionMessages', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true });
     fs.mkdirSync(TEST_DIR, { recursive: true });
-    initTestDb();
-    runMigrations(initTestDb());
+    await runMigrations(await initTestDb());
   });
 
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true });
   });
 

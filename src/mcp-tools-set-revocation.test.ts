@@ -78,14 +78,14 @@ function addSession(id: string, status: 'active' | 'closed', containerRunning: b
   if (containerRunning) running.add(id);
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true });
   fs.mkdirSync(TEST_DIR, { recursive: true });
   killed.length = 0;
   running.clear();
 
-  runMigrations(initTestDb());
-  createAgentGroup({ id: GID, name: 'Narrow', folder: 'narrow', agent_provider: null, created_at: now() });
+  await runMigrations(await initTestDb());
+  await createAgentGroup({ id: GID, name: 'Narrow', folder: 'narrow', agent_provider: null, created_at: now() });
   addSession('sess-root', 'active', true);
   addSession('sess-thread-a', 'active', true);
   addSession('sess-idle', 'active', false);

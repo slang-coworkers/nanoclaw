@@ -38,8 +38,8 @@ const { ensureContainerConfig, getContainerConfig, updateContainerConfigScalars 
   await import('./db/container-configs.js');
 const { materializeContainerJson } = await import('./container-config.js');
 
-function makeGroup(id: string, folder: string) {
-  createAgentGroup({
+async function makeGroup(id: string, folder: string) {
+  await createAgentGroup({
     id,
     name: folder,
     folder,
@@ -47,38 +47,38 @@ function makeGroup(id: string, folder: string) {
   });
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   if (fs.existsSync(TEST_GROUPS_DIR)) fs.rmSync(TEST_GROUPS_DIR, { recursive: true });
   fs.mkdirSync(TEST_GROUPS_DIR, { recursive: true });
-  const db = initTestDb();
-  runMigrations(db);
+  const db = await initTestDb();
+  await runMigrations(db);
 });
 
-afterEach(() => {
-  closeDb();
+afterEach(async () => {
+  await closeDb();
   if (fs.existsSync(TEST_GROUPS_DIR)) fs.rmSync(TEST_GROUPS_DIR, { recursive: true });
 });
 
 describe('container_configs bootstrap (regression: dashboard-created coworker first wake)', () => {
-  it('materializeContainerJson throws when the agent_group has no container_configs row', () => {
+  it('materializeContainerJson throws when the agent_group has no container_configs row', async () => {
     // The exact state the dashboard POST /api/coworkers handler leaves behind:
     // agent_groups row inserted, but no container_configs row. Without the
     // bootstrap call in spawnContainer, this is what every first-wake hits.
-    makeGroup('ag-bare', 'bare');
-    expect(() => materializeContainerJson('ag-bare')).toThrow(/Container config not found/);
+    await makeGroup('ag-bare', 'bare');
+    await expect(materializeContainerJson('ag-bare')).rejects.toThrow(/Container config not found/);
   });
 
-  it('ensureContainerConfig is sufficient on its own to unjam materializeContainerJson', () => {
+  it('ensureContainerConfig is sufficient on its own to unjam materializeContainerJson', async () => {
     // The contract spawnContainer now relies on: a single ensureContainerConfig
     // call (made via initGroupFilesystem at the top of spawnContainer) is
     // enough to take a freshly-created agent_group from "Container config not
     // found" to a successful spawn. If a future schema change breaks this
     // (e.g. by introducing a NOT NULL column without a default), this test
     // catches it before it ships.
-    makeGroup('ag-heal', 'heal');
-    ensureContainerConfig('ag-heal');
+    await makeGroup('ag-heal', 'heal');
+    await ensureContainerConfig('ag-heal');
 
-    const config = materializeContainerJson('ag-heal');
+    const config = await materializeContainerJson('ag-heal');
     expect(config.skills).toBe('all');
     expect(config.mcpServers).toEqual({});
     expect(config.packages).toEqual({ apt: [], npm: [] });
@@ -90,36 +90,36 @@ describe('container_configs bootstrap (regression: dashboard-created coworker fi
     expect(JSON.parse(onDisk).skills).toBe('all');
   });
 
-  it('ensureContainerConfig is idempotent (safe to call on every spawn)', () => {
+  it('ensureContainerConfig is idempotent (safe to call on every spawn)', async () => {
     // initGroupFilesystem runs on every wake. It must not duplicate the row,
     // throw on UNIQUE conflict, or stomp existing config when the row already
     // exists — otherwise self-mod (install_packages / add_mcp_server) edits
     // would be lost on the next spawn.
-    makeGroup('ag-idemp', 'idemp');
-    ensureContainerConfig('ag-idemp');
-    const first = getContainerConfig('ag-idemp');
+    await makeGroup('ag-idemp', 'idemp');
+    await ensureContainerConfig('ag-idemp');
+    const first = await getContainerConfig('ag-idemp');
 
     // Second call — should be a no-op, leaving the existing row untouched.
-    ensureContainerConfig('ag-idemp');
-    const second = getContainerConfig('ag-idemp');
+    await ensureContainerConfig('ag-idemp');
+    const second = await getContainerConfig('ag-idemp');
 
     expect(second).toBeDefined();
     expect(second!.updated_at).toBe(first!.updated_at);
-    expect(() => materializeContainerJson('ag-idemp')).not.toThrow();
+    await expect(materializeContainerJson('ag-idemp')).resolves.toBeDefined();
   });
 
-  it('ensureContainerConfig does not clobber values written between calls', () => {
+  it('ensureContainerConfig does not clobber values written between calls', async () => {
     // Stronger idempotency check: values written by self-mod tools (e.g.
     // install_packages → updateContainerConfigScalars) between two
     // ensureContainerConfig calls must survive. Catches a future regression
     // where someone "fixes" ensureContainerConfig to use INSERT OR REPLACE,
     // which would silently wipe self-mod state on every spawn.
-    makeGroup('ag-noclobber', 'noclobber');
-    ensureContainerConfig('ag-noclobber');
-    updateContainerConfigScalars('ag-noclobber', { provider: 'codex' });
-    expect(getContainerConfig('ag-noclobber')!.provider).toBe('codex');
+    await makeGroup('ag-noclobber', 'noclobber');
+    await ensureContainerConfig('ag-noclobber');
+    await updateContainerConfigScalars('ag-noclobber', { provider: 'codex' });
+    expect((await getContainerConfig('ag-noclobber'))!.provider).toBe('codex');
 
-    ensureContainerConfig('ag-noclobber');
-    expect(getContainerConfig('ag-noclobber')!.provider).toBe('codex');
+    await ensureContainerConfig('ag-noclobber');
+    expect((await getContainerConfig('ag-noclobber'))!.provider).toBe('codex');
   });
 });

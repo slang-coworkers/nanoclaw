@@ -1,11 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 
-import { initTestSessionDb, closeSessionDb, getInboundDb } from './db/connection.js';
-import {
-  buildSystemPromptAddendum,
-  getAllDestinations,
-  getDestinationsFingerprint,
-} from './destinations.js';
+import { closeSessionDb, getInboundDb, initTestSessionDb } from './mailbox/sqlite/connection.js';
+import { buildSystemPromptAddendum, getAllDestinations, getDestinationsFingerprint } from './destinations.js';
 
 beforeEach(() => {
   initTestSessionDb();

@@ -47,10 +47,15 @@ async function register(payload: Registration): Promise<{ status: number; body: 
 // `initTestDb()` REPLACES the singleton on every call, so helpers must read
 // through `getDb()` — calling it again mid-test silently discards the schema
 // and everything written so far.
-function read(repo: string, prNumber: number): { agent_group_id: string; owner_instance: string } | undefined {
-  return getDb()
-    .prepare('SELECT agent_group_id, owner_instance FROM pr_session_mappings WHERE repo = ? AND pr_number = ?')
-    .get(repo, prNumber) as { agent_group_id: string; owner_instance: string } | undefined;
+async function read(
+  repo: string,
+  prNumber: number,
+): Promise<{ agent_group_id: string; owner_instance: string } | undefined> {
+  return getDb().get<{ agent_group_id: string; owner_instance: string }>(
+    'SELECT agent_group_id, owner_instance FROM pr_session_mappings WHERE repo = ? AND pr_number = ?',
+    repo,
+    prNumber,
+  );
 }
 
 beforeAll(
@@ -69,28 +74,28 @@ beforeAll(
 
 afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
 
-beforeEach(() => {
-  runMigrations(initTestDb());
+beforeEach(async () => {
+  await runMigrations(await initTestDb());
 });
 
-afterEach(() => {
-  closeDb();
+afterEach(async () => {
+  await closeDb();
 });
 
 describe('a signed peer cannot take over a PR another claimant holds', () => {
   const HELD = { repo: 'shader-slang/slang', prNumber: 4242 };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Seeded with raw SQL (thread_id is NOT NULL until the store relaxes it),
     // not with the store helper, so this file compiles and
     // runs on the pre-fix tree — its failures there are "the endpoint clobbered
     // the row", not "a function you added does not exist".
-    getDb()
-      .prepare(
-        `INSERT INTO pr_session_mappings (repo, pr_number, agent_group_id, session_id, thread_id, created_at, owner_instance)
+    await getDb().run(
+      `INSERT INTO pr_session_mappings (repo, pr_number, agent_group_id, session_id, thread_id, created_at, owner_instance)
          VALUES (?, ?, 'ag-incumbent', 'sess-incumbent', 'thread-seed', datetime('now'), 'prod')`,
-      )
-      .run(HELD.repo, HELD.prNumber);
+      HELD.repo,
+      HELD.prNumber,
+    );
   });
 
   it('answers 409 and names the incumbent', async () => {
@@ -114,7 +119,7 @@ describe('a signed peer cannot take over a PR another claimant holds', () => {
       agent_group_id: 'ag-attacker',
       session_id: 'sess-attacker',
     });
-    expect(read(HELD.repo, HELD.prNumber)).toMatchObject({
+    expect(await read(HELD.repo, HELD.prNumber)).toMatchObject({
       agent_group_id: 'ag-incumbent',
       owner_instance: 'prod',
     });
@@ -144,7 +149,7 @@ describe('the legitimate peer path is unchanged', () => {
     });
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({ ok: true, outcome: 'claimed' });
-    expect(read('shader-slang/slang', 5001)).toMatchObject({ agent_group_id: 'ag-lego-fixer' });
+    expect(await read('shader-slang/slang', 5001)).toMatchObject({ agent_group_id: 'ag-lego-fixer' });
   });
 
   it('lets the holder re-register after its container restarts into a new session', async () => {
@@ -185,7 +190,7 @@ describe('a claim that says it is local must actually be local', () => {
     expect([403, 200]).toContain(r.status);
     if (r.status === 403) {
       expect(r.body.error).toMatch(/does not belong/);
-      expect(read('shader-slang/slang', 6001)).toBeUndefined();
+      expect(await read('shader-slang/slang', 6001)).toBeUndefined();
     }
   });
 });

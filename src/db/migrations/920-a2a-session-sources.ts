@@ -28,16 +28,13 @@ import type { Migration } from './index.js';
 export const migration920: Migration = {
   version: 920,
   name: 'a2a-session-sources',
-  up(db) {
-    const hasTable = (name: string) =>
-      (db.prepare("SELECT count(*) as c FROM sqlite_master WHERE type='table' AND name = ?").get(name) as { c: number })
-        .c > 0;
-    if (hasTable('a2a_session_sources')) return;
+  async up(db) {
+    if (await db.hasTable('a2a_session_sources')) return;
 
     // recipient_agent_group_id and recipient_thread_id are denormalised from
     // the `sessions` row for operability (inspector queries, log correlation,
     // debug UIs). source_* is the route-back hint — that's load-bearing.
-    db.exec(`
+    await db.exec(`
       CREATE TABLE a2a_session_sources (
         recipient_session_id    TEXT PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
         recipient_agent_group_id TEXT NOT NULL REFERENCES agent_groups(id) ON DELETE CASCADE,

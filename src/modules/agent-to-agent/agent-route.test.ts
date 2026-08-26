@@ -12,6 +12,11 @@ vi.mock('../../config.js', () => ({
   get DATA_DIR() {
     return path.join(_tempDir, 'data');
   },
+  // Read eagerly by defaultConfig() in db/connection.ts on every initDb call,
+  // even though initTestDb overrides the path with ':memory:'.
+  get CENTRAL_DB_PATH() {
+    return path.join(_tempDir, 'data', 'v2.db');
+  },
   ONECLI_URL: 'http://127.0.0.1:10254',
   ONECLI_API_KEY: '',
 }));
@@ -26,7 +31,9 @@ vi.mock('../../log.js', () => ({
 
 import { isSafeAttachmentName, ensureA2aWiring, routeAgentMessage, forwardAttachedFiles } from './agent-route.js';
 import { initTestDb, closeDb, getDb } from '../../db/connection.js';
-import { runMigrations } from '../../db/migrations/index.js';
+import type { DbDriver } from '../../db/driver.js';
+import { sqliteRaw } from '../../db/drivers/sqlite.js';
+import { runMigrations, type Migration } from '../../db/migrations/index.js';
 import { migration919 } from '../../db/migrations/919-a2a-session-mode-per-thread.js';
 import { migration920 } from '../../db/migrations/920-a2a-session-sources.js';
 import { createAgentGroup } from '../../db/agent-groups.js';
@@ -93,14 +100,28 @@ describe('isSafeAttachmentName', () => {
 const realCwd = process.cwd();
 const now = () => new Date().toISOString();
 
-function setupTempDb() {
+/**
+ * `Migration` is a union — a `SqliteOnlyMigration` takes a raw better-sqlite3
+ * handle, a `PortableMigration` takes the `DbDriver`. 919/920 are portable;
+ * this narrows on the discriminant rather than casting, so reclassifying
+ * either one to `sqliteOnly` fails loudly here instead of silently passing a
+ * driver where a raw handle is expected.
+ */
+function runPortableMigration(migration: Migration, db: DbDriver): Promise<void> {
+  if (migration.sqliteOnly) {
+    throw new Error(`${migration.name} is sqliteOnly — this test expects a portable migration`);
+  }
+  return Promise.resolve(migration.up(db));
+}
+
+async function setupTempDb(): Promise<string> {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-route-test-'));
   _tempDir = tempDir;
   fs.mkdirSync(path.join(tempDir, 'groups'), { recursive: true });
   fs.mkdirSync(path.join(tempDir, 'data', 'v2-sessions'), { recursive: true });
   process.chdir(tempDir);
-  const db = initTestDb();
-  runMigrations(db);
+  const db = await initTestDb();
+  await runMigrations(db);
   return tempDir;
 }
 
@@ -110,14 +131,14 @@ function setupTempDb() {
  * per-source isolation gives B two distinct recipient sessions even when
  * the threads match.
  */
-function setupTwoRootChains() {
+async function setupTwoRootChains(): Promise<void> {
   // Each chain uses its OWN B-group (ag-b1, ag-b2) so per-source-AG
   // synthetic mg routing gives distinct C sessions on the (source-ag,
   // thread) key. Sharing one ag-b between both chains would collapse
   // c1 and c2 into a single session (per-source isolation is keyed by
   // source agent_group, not source session).
   for (const id of ['ag-a1', 'ag-a2', 'ag-b1', 'ag-b2', 'ag-c']) {
-    createAgentGroup({
+    await createAgentGroup({
       id,
       name: id,
       folder: id,
@@ -129,28 +150,28 @@ function setupTwoRootChains() {
       created_at: now(),
     });
   }
-  createDestination({
+  await createDestination({
     agent_group_id: 'ag-a1',
     local_name: 'b',
     target_type: 'agent',
     target_id: 'ag-b1',
     created_at: now(),
   });
-  createDestination({
+  await createDestination({
     agent_group_id: 'ag-a2',
     local_name: 'b',
     target_type: 'agent',
     target_id: 'ag-b2',
     created_at: now(),
   });
-  createDestination({
+  await createDestination({
     agent_group_id: 'ag-b1',
     local_name: 'c',
     target_type: 'agent',
     target_id: 'ag-c',
     created_at: now(),
   });
-  createDestination({
+  await createDestination({
     agent_group_id: 'ag-b2',
     local_name: 'c',
     target_type: 'agent',
@@ -173,13 +194,13 @@ function setupTwoRootChains() {
       last_active: null,
       created_at: now(),
     };
-    createSession(s);
+    await createSession(s);
     initSessionFolder(ag, id);
   }
 }
 
-function seedPair(): { senderSession: Session } {
-  createAgentGroup({
+async function seedPair(): Promise<{ senderSession: Session }> {
+  await createAgentGroup({
     id: 'ag-sender',
     name: 'Sender',
     folder: 'sender',
@@ -190,7 +211,7 @@ function seedPair(): { senderSession: Session } {
     allowed_mcp_tools: null,
     created_at: now(),
   });
-  createAgentGroup({
+  await createAgentGroup({
     id: 'ag-recipient',
     name: 'Recipient',
     folder: 'recipient',
@@ -201,7 +222,7 @@ function seedPair(): { senderSession: Session } {
     allowed_mcp_tools: null,
     created_at: now(),
   });
-  createDestination({
+  await createDestination({
     agent_group_id: 'ag-sender',
     local_name: 'recipient',
     target_type: 'agent',
@@ -223,72 +244,73 @@ function seedPair(): { senderSession: Session } {
   // source_session_id can resolve when routeAgentMessage records the route,
   // and initialise the on-disk session folder so the reply-branch's
   // writeSessionMessage has a real inbound.db to append to.
-  createSession(senderSession);
+  await createSession(senderSession);
   initSessionFolder('ag-sender', senderSession.id);
   return { senderSession };
 }
 
 describe('ensureA2aWiring', () => {
   let tempDir: string;
-  beforeEach(() => {
-    tempDir = setupTempDb();
+  beforeEach(async () => {
+    tempDir = await setupTempDb();
   });
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     process.chdir(realCwd);
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('lazy-creates agent messaging_group and mga with session_mode=per-thread', () => {
-    seedPair();
-    const mgId = ensureA2aWiring('ag-recipient');
+  it('lazy-creates agent messaging_group and mga with session_mode=per-thread', async () => {
+    await seedPair();
+    const mgId = await ensureA2aWiring('ag-recipient');
     expect(mgId).toMatch(/^mg-a2a-/);
-    const mg = getMessagingGroupByPlatform('agent', 'agent:ag-recipient');
+    const mg = await getMessagingGroupByPlatform('agent', 'agent:ag-recipient');
     expect(mg).toBeDefined();
     expect(mg!.channel_type).toBe('agent');
-    const mgas = getMessagingGroupAgents(mg!.id);
+    const mgas = await getMessagingGroupAgents(mg!.id);
     expect(mgas).toHaveLength(1);
     expect(mgas[0].agent_group_id).toBe('ag-recipient');
     expect(mgas[0].session_mode).toBe('per-thread');
   });
 
-  it('is idempotent — second call returns the same mg id, no duplicate mga', () => {
-    seedPair();
-    const first = ensureA2aWiring('ag-recipient');
-    const second = ensureA2aWiring('ag-recipient');
+  it('is idempotent — second call returns the same mg id, no duplicate mga', async () => {
+    await seedPair();
+    const first = await ensureA2aWiring('ag-recipient');
+    const second = await ensureA2aWiring('ag-recipient');
     expect(second).toBe(first);
-    const mg = getMessagingGroupByPlatform('agent', 'agent:ag-recipient')!;
-    expect(getMessagingGroupAgents(mg.id)).toHaveLength(1);
+    const mg = (await getMessagingGroupByPlatform('agent', 'agent:ag-recipient'))!;
+    expect(await getMessagingGroupAgents(mg.id)).toHaveLength(1);
   });
 });
 
 describe('routeAgentMessage — thread_id routing', () => {
   let tempDir: string;
-  beforeEach(() => {
-    tempDir = setupTempDb();
+  beforeEach(async () => {
+    tempDir = await setupTempDb();
   });
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     process.chdir(realCwd);
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
   it('thread_id=null routes to per-source shared session (not agent-shared)', async () => {
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
     await routeAgentMessage(
       { id: 'out-1', platform_id: 'ag-recipient', thread_id: null, content: JSON.stringify({ text: 'hi' }) },
       senderSession,
     );
-    const rows = getDb()
-      .prepare('SELECT id, thread_id, messaging_group_id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string; thread_id: string | null; messaging_group_id: string | null }>;
+    const rows = await getDb().all<{ id: string; thread_id: string | null; messaging_group_id: string | null }>(
+      'SELECT id, thread_id, messaging_group_id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
     expect(rows).toHaveLength(1);
     expect(rows[0].thread_id).toBeNull();
     expect(rows[0].messaging_group_id).not.toBeNull();
   });
 
   it('two different thread_ids create two distinct recipient sessions', async () => {
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
     await routeAgentMessage(
       { id: 'out-a', platform_id: 'ag-recipient', thread_id: 'review-PR-A', content: JSON.stringify({ text: 'A' }) },
       senderSession,
@@ -297,9 +319,10 @@ describe('routeAgentMessage — thread_id routing', () => {
       { id: 'out-b', platform_id: 'ag-recipient', thread_id: 'review-PR-B', content: JSON.stringify({ text: 'B' }) },
       senderSession,
     );
-    const rows = getDb()
-      .prepare('SELECT id, thread_id FROM sessions WHERE agent_group_id = ? ORDER BY created_at')
-      .all('ag-recipient') as Array<{ id: string; thread_id: string | null }>;
+    const rows = await getDb().all<{ id: string; thread_id: string | null }>(
+      'SELECT id, thread_id FROM sessions WHERE agent_group_id = ? ORDER BY created_at',
+      'ag-recipient',
+    );
     const threaded = rows.filter((r) => r.thread_id !== null);
     expect(threaded).toHaveLength(2);
     expect(new Set(threaded.map((r) => r.thread_id))).toEqual(new Set(['review-PR-A', 'review-PR-B']));
@@ -307,7 +330,7 @@ describe('routeAgentMessage — thread_id routing', () => {
   });
 
   it('reusing a thread_id routes to the existing per-thread session', async () => {
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
     await routeAgentMessage(
       { id: 'out-1', platform_id: 'ag-recipient', thread_id: 'PR-A', content: JSON.stringify({ text: 'first' }) },
       senderSession,
@@ -316,28 +339,31 @@ describe('routeAgentMessage — thread_id routing', () => {
       { id: 'out-2', platform_id: 'ag-recipient', thread_id: 'PR-A', content: JSON.stringify({ text: 'follow-up' }) },
       senderSession,
     );
-    const threaded = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ? AND thread_id = ?')
-      .all('ag-recipient', 'PR-A') as Array<{ id: string }>;
+    const threaded = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ? AND thread_id = ?',
+      'ag-recipient',
+      'PR-A',
+    );
     expect(threaded).toHaveLength(1);
   });
 
   it('empty-string thread_id is treated as null (per-source shared)', async () => {
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
     await routeAgentMessage(
       { id: 'out-1', platform_id: 'ag-recipient', thread_id: '', content: JSON.stringify({ text: 'x' }) },
       senderSession,
     );
-    const rows = getDb()
-      .prepare('SELECT thread_id, messaging_group_id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ thread_id: string | null; messaging_group_id: string | null }>;
+    const rows = await getDb().all<{ thread_id: string | null; messaging_group_id: string | null }>(
+      'SELECT thread_id, messaging_group_id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
     expect(rows).toHaveLength(1);
     expect(rows[0].thread_id).toBeNull();
     expect(rows[0].messaging_group_id).not.toBeNull();
   });
 
   it('unthreaded + threaded deliveries to the same recipient live in two different sessions', async () => {
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
     await routeAgentMessage(
       { id: 'out-root', platform_id: 'ag-recipient', thread_id: null, content: JSON.stringify({ text: 'root' }) },
       senderSession,
@@ -346,9 +372,10 @@ describe('routeAgentMessage — thread_id routing', () => {
       { id: 'out-thread', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'threaded' }) },
       senderSession,
     );
-    const rows = getDb()
-      .prepare('SELECT thread_id FROM sessions WHERE agent_group_id = ? ORDER BY created_at')
-      .all('ag-recipient') as Array<{ thread_id: string | null }>;
+    const rows = await getDb().all<{ thread_id: string | null }>(
+      'SELECT thread_id FROM sessions WHERE agent_group_id = ? ORDER BY created_at',
+      'ag-recipient',
+    );
     expect(rows).toHaveLength(2);
     expect(rows.map((r) => r.thread_id).sort((a, b) => (a ?? '').localeCompare(b ?? ''))).toEqual([null, 'T1']);
   });
@@ -362,30 +389,31 @@ describe('routeAgentMessage — thread_id routing', () => {
 // =============================================================
 describe('routeAgentMessage — source-session envelope (round-trip)', () => {
   let tempDir: string;
-  beforeEach(() => {
-    tempDir = setupTempDb();
+  beforeEach(async () => {
+    tempDir = await setupTempDb();
   });
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     process.chdir(realCwd);
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
   it('records source mapping + synthetic mg platform_id is composite (source+recipient)', async () => {
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
     await routeAgentMessage(
       { id: 'out-1', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'hi' }) },
       senderSession,
     );
     // Composite mg platform_id so two sources with same thread_id don't merge.
-    const mg = getMessagingGroupByPlatform('agent', 'agent:ag-sender:ag-recipient');
+    const mg = await getMessagingGroupByPlatform('agent', 'agent:ag-sender:ag-recipient');
     expect(mg).toBeDefined();
-    const [recipientSess] = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
+    const [recipientSess] = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
     expect(recipientSess).toBeDefined();
 
-    const src = getSourceFor(recipientSess.id);
+    const src = await getSourceFor(recipientSess.id);
     expect(src).toBeDefined();
     expect(src!.source_session_id).toBe('sess-sender');
     expect(src!.source_agent_group_id).toBe('ag-sender');
@@ -393,22 +421,23 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
   });
 
   it('A→B→A: B replying (bare, platform_id=ag-sender) lands in sess-sender — no new session on A side', async () => {
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
 
     // Step 1 — A delegates to B on thread T1.
     await routeAgentMessage(
       { id: 'out-1', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'please review' }) },
       senderSession,
     );
-    const [recipientRow] = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
-    const recipientSession = getSession(recipientRow.id)!;
+    const [recipientRow] = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
+    const recipientSession = (await getSession(recipientRow.id))!;
 
     // Sanity: before reply, A has exactly one session (the seeded sender).
-    const aBefore = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-sender') as Array<{
+    const aBefore = await getDb().all<{
       id: string;
-    }>;
+    }>('SELECT id FROM sessions WHERE agent_group_id = ?', 'ag-sender');
     expect(aBefore).toHaveLength(1);
     expect(aBefore[0].id).toBe('sess-sender');
 
@@ -427,17 +456,17 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
 
     // Assertion: A still has exactly one session (no brand-new one created
     // by re-resolving via routeAgentMessage).
-    const aAfter = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-sender') as Array<{
+    const aAfter = await getDb().all<{
       id: string;
-    }>;
+    }>('SELECT id FROM sessions WHERE agent_group_id = ?', 'ag-sender');
     expect(aAfter).toHaveLength(1);
     expect(aAfter[0].id).toBe('sess-sender');
   });
 
   it('two distinct sources reach the same recipient with the same thread_id without merging', async () => {
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
     // Second source — another agent with a destination to ag-recipient.
-    createAgentGroup({
+    await createAgentGroup({
       id: 'ag-other',
       name: 'Other',
       folder: 'other',
@@ -448,7 +477,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       allowed_mcp_tools: null,
       created_at: now(),
     });
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-other',
       local_name: 'recipient',
       target_type: 'agent',
@@ -466,7 +495,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       last_active: null,
       created_at: now(),
     };
-    createSession(otherSession);
+    await createSession(otherSession);
 
     // Both pick the same thread_id — a real scenario when two operators
     // coincidentally reference 'review-PR-A'. Pre-fix, these collapsed
@@ -491,21 +520,23 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     );
 
     // Two distinct recipient sessions under two distinct synthetic mgs.
-    expect(getMessagingGroupByPlatform('agent', 'agent:ag-sender:ag-recipient')).toBeDefined();
-    expect(getMessagingGroupByPlatform('agent', 'agent:ag-other:ag-recipient')).toBeDefined();
-    const rows = getDb()
-      .prepare('SELECT id, thread_id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string; thread_id: string | null }>;
+    expect(await getMessagingGroupByPlatform('agent', 'agent:ag-sender:ag-recipient')).toBeDefined();
+    expect(await getMessagingGroupByPlatform('agent', 'agent:ag-other:ag-recipient')).toBeDefined();
+    const rows = await getDb().all<{ id: string; thread_id: string | null }>(
+      'SELECT id, thread_id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
     const threaded = rows.filter((r) => r.thread_id === 'review-PR-A');
     expect(threaded).toHaveLength(2);
     // Each session's source is the corresponding origin session.
-    const sources = new Set(threaded.map((r) => getSourceFor(r.id)?.source_session_id));
+    const sources = new Set<string | undefined>();
+    for (const r of threaded) sources.add((await getSourceFor(r.id))?.source_session_id);
     expect(sources).toEqual(new Set(['sess-sender', 'sess-other']));
   });
 
   it('two distinct sources on the same gh-issue thread COLLAPSE into one recipient session (per-message attribution preserved)', async () => {
-    const { senderSession } = seedPair();
-    createAgentGroup({
+    const { senderSession } = await seedPair();
+    await createAgentGroup({
       id: 'ag-other',
       name: 'Other',
       folder: 'other',
@@ -516,7 +547,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       allowed_mcp_tools: null,
       created_at: now(),
     });
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-other',
       local_name: 'recipient',
       target_type: 'agent',
@@ -534,7 +565,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       last_active: null,
       created_at: now(),
     };
-    createSession(otherSession);
+    await createSession(otherSession);
 
     // Both sources delegate to the recipient on the SAME canonical issue thread
     // (e.g. triager handoff + main follow-up on shader-slang/slang#9999). Unlike
@@ -550,9 +581,10 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       otherSession,
     );
 
-    const rows = getDb()
-      .prepare('SELECT id, thread_id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string; thread_id: string | null }>;
+    const rows = await getDb().all<{ id: string; thread_id: string | null }>(
+      'SELECT id, thread_id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
     const threaded = rows.filter((r) => r.thread_id === tid);
     expect(threaded).toHaveLength(1);
 
@@ -570,22 +602,23 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     recipientDb.close();
     expect(new Set(inbound.map((r) => r.source_session_id))).toEqual(new Set(['sess-sender', 'sess-other']));
     // And the reply-routing source map points at this one collapsed session.
-    expect(getMessagingGroupByPlatform('agent', 'agent:ag-sender:ag-recipient')).toBeDefined();
-    expect(getMessagingGroupByPlatform('agent', 'agent:ag-other:ag-recipient')).toBeDefined();
+    expect(await getMessagingGroupByPlatform('agent', 'agent:ag-sender:ag-recipient')).toBeDefined();
+    expect(await getMessagingGroupByPlatform('agent', 'agent:ag-other:ag-recipient')).toBeDefined();
     expect(recipientId).toBeTruthy();
   });
 
   it('writeSessionRouting on an a2a recipient emits platform_id=<source_ag>, not the synthetic mg', async () => {
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
     await routeAgentMessage(
       { id: 'out-1', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'hi' }) },
       senderSession,
     );
-    const [recipientRow] = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
+    const [recipientRow] = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
 
-    writeSessionRouting('ag-recipient', recipientRow.id);
+    await writeSessionRouting('ag-recipient', recipientRow.id);
 
     // Open the inbound.db directly and read back the session_routing row.
     const Database = (await import('better-sqlite3')).default;
@@ -605,15 +638,16 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
   });
 
   it('fail-closed: if the original source session is gone, the reply is DROPPED (no synthesised session)', async () => {
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
     await routeAgentMessage(
       { id: 'out-1', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'hi' }) },
       senderSession,
     );
-    const [recipientRow] = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
-    const recipientSession = getSession(recipientRow.id)!;
+    const [recipientRow] = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
+    const recipientSession = (await getSession(recipientRow.id))!;
 
     // Nuke the original source session with FK enforcement off so the
     // a2a_session_sources row survives — simulating either a race between
@@ -621,18 +655,19 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     // that left the hint behind. The fail-closed contract says: even with
     // a stale hint in the table, routeAgentMessage must refuse to
     // synthesise a brand-new session on the sender's side.
-    const db = getDb();
-    db.pragma('foreign_keys = OFF');
-    db.prepare('DELETE FROM sessions WHERE id = ?').run('sess-sender');
-    db.pragma('foreign_keys = ON');
+    const raw = sqliteRaw(getDb());
+    raw.pragma('foreign_keys = OFF');
+    raw.prepare('DELETE FROM sessions WHERE id = ?').run('sess-sender');
+    raw.pragma('foreign_keys = ON');
 
     // Confirm the adversarial state: sender has no session, but the hint row
     // still points at 'sess-sender'.
-    const senderSessionsBefore = db
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-sender') as Array<{ id: string }>;
+    const senderSessionsBefore = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-sender',
+    );
     expect(senderSessionsBefore).toHaveLength(0);
-    expect(getSourceFor(recipientSession.id)?.source_session_id).toBe('sess-sender');
+    expect((await getSourceFor(recipientSession.id))?.source_session_id).toBe('sess-sender');
 
     // B replies. No source. Reply MUST be dropped (no exception, no new
     // session synthesised on the sender side).
@@ -643,9 +678,10 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       ),
     ).resolves.toBeUndefined();
 
-    const senderSessionsAfter = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-sender') as Array<{ id: string }>;
+    const senderSessionsAfter = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-sender',
+    );
     expect(senderSessionsAfter).toHaveLength(0);
   });
 
@@ -658,7 +694,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     // routeAgentMessage's main-route path is the last line of defense and
     // must drop it before any new session, message, or source-mapping is
     // written.
-    createAgentGroup({
+    await createAgentGroup({
       id: 'ag-self',
       name: 'Self',
       folder: 'self',
@@ -670,13 +706,13 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       created_at: now(),
     });
 
-    // Pre-create the synthetic mg ensureA2aWiring(self,self) would create,
+    // Pre-create the synthetic mg (await ensureA2aWiring(self,self)) would create,
     // and bind the emitting session to it on threadId=T1. Per-thread
     // resolveSession lookup keys on (agent_group, mg, thread) — so this
     // session IS what resolveSession returns when routeAgentMessage tries
     // to deliver a self-targeted a2a from it. That's exactly the condition
     // L2 watches for.
-    const mgId = ensureA2aWiring('ag-self', 'ag-self');
+    const mgId = await ensureA2aWiring('ag-self', 'ag-self');
     const session: Session = {
       id: 'sess-self',
       agent_group_id: 'ag-self',
@@ -688,7 +724,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       last_active: null,
       created_at: now(),
     };
-    createSession(session);
+    await createSession(session);
     initSessionFolder('ag-self', session.id);
 
     await routeAgentMessage(
@@ -698,12 +734,12 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
 
     // L2 fired: no second session in ag-self, no source-mapping recorded
     // (recordSource is downstream of the L2 return).
-    const allSessions = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-self') as Array<{
+    const allSessions = await getDb().all<{
       id: string;
-    }>;
+    }>('SELECT id FROM sessions WHERE agent_group_id = ?', 'ag-self');
     expect(allSessions).toHaveLength(1);
     expect(allSessions[0].id).toBe(session.id);
-    expect(getSourceFor(session.id)).toBeUndefined();
+    expect(await getSourceFor(session.id)).toBeUndefined();
   });
 
   it('gh-thread self-send: collapse resolves to the emitter session → L2 drops it (no split, no self-inbox)', async () => {
@@ -712,7 +748,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     // self-targeted a2a from that session therefore resolves to the emitter
     // itself — L2 must drop it rather than deliver the agent's own outbound
     // back into its own inbox or mint a split.
-    createAgentGroup({
+    await createAgentGroup({
       id: 'ag-ghself',
       name: 'GhSelf',
       folder: 'ghself',
@@ -736,7 +772,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       last_active: null,
       created_at: now(),
     };
-    createSession(session);
+    await createSession(session);
     initSessionFolder('ag-ghself', session.id);
 
     await routeAgentMessage(
@@ -746,11 +782,11 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
 
     // No split minted, no self source-mapping, and the agent's own inbox did
     // not receive the self-targeted message.
-    const allSessions = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-ghself') as Array<{
+    const allSessions = await getDb().all<{
       id: string;
-    }>;
+    }>('SELECT id FROM sessions WHERE agent_group_id = ?', 'ag-ghself');
     expect(allSessions).toHaveLength(1);
-    expect(getSourceFor(session.id)).toBeUndefined();
+    expect(await getSourceFor(session.id)).toBeUndefined();
     const { openInboundDb } = await import('../../session-manager.js');
     const inbox = openInboundDb('ag-ghself', session.id);
     const selfRows = inbox.prepare("SELECT COUNT(*) AS n FROM messages_in WHERE channel_type = 'agent'").get() as {
@@ -766,8 +802,8 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     // names a specific inbound (in_reply_to) must still route home to THAT
     // inbound's source, proving routing is per-message, not per-session.
     const { openInboundDb } = await import('../../session-manager.js');
-    const { senderSession } = seedPair(); // ag-sender → ag-recipient
-    createAgentGroup({
+    const { senderSession } = await seedPair(); // ag-sender → ag-recipient
+    await createAgentGroup({
       id: 'ag-other',
       name: 'Other',
       folder: 'other',
@@ -778,7 +814,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       allowed_mcp_tools: null,
       created_at: now(),
     });
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-other',
       local_name: 'recipient',
       target_type: 'agent',
@@ -786,7 +822,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       created_at: now(),
     });
     // ag-recipient needs a destination back to ag-sender so its reply can route.
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-recipient',
       local_name: 'sender',
       target_type: 'agent',
@@ -804,7 +840,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       last_active: null,
       created_at: now(),
     };
-    createSession(otherSession);
+    await createSession(otherSession);
     initSessionFolder('ag-other', otherSession.id);
 
     const tid = 'gh-issue-r/repo-88';
@@ -818,11 +854,12 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     );
 
     // One collapsed recipient session holding both inbounds.
-    const recRows = getDb()
-      .prepare("SELECT id FROM sessions WHERE agent_group_id = 'ag-recipient' AND thread_id = ?")
-      .all(tid) as Array<{ id: string }>;
+    const recRows = await getDb().all<{ id: string }>(
+      "SELECT id FROM sessions WHERE agent_group_id = 'ag-recipient' AND thread_id = ?",
+      tid,
+    );
     expect(recRows).toHaveLength(1);
-    const recSession = getSession(recRows[0].id)!;
+    const recSession = (await getSession(recRows[0].id))!;
 
     // Find the inbound row from ag-sender (out-A became an a2a-* inbound with
     // source_session_id = sess-sender). Reply to THAT specific inbound.
@@ -869,7 +906,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     // the reply branch refuses to write the agent's reply back into its own
     // session (which would feed the model its own output as the next inbound
     // turn and re-open the engine self-loop PR #355 closed).
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
     // Seed a recipient session manually (no delegation, so no real source).
     const recipientSession: Session = {
       id: 'sess-recipient-self',
@@ -882,7 +919,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       last_active: null,
       created_at: now(),
     };
-    createSession(recipientSession);
+    await createSession(recipientSession);
     initSessionFolder('ag-recipient', recipientSession.id);
 
     // Inject the corrupt mapping directly: this session points at itself as the
@@ -890,15 +927,16 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     // so we insert straight into the table to simulate a row arriving via
     // migration / backfill / a future code path that bypasses recordSource —
     // exactly the corruption this defense-in-depth test exists to cover.
-    getDb()
-      .prepare(
-        `INSERT INTO a2a_session_sources
+    await getDb().run(
+      `INSERT INTO a2a_session_sources
            (recipient_session_id, recipient_agent_group_id, recipient_thread_id,
             source_session_id, source_agent_group_id, source_thread_id, created_at)
          VALUES (?, 'ag-recipient', 'T1', ?, 'ag-recipient', 'T1', ?)`,
-      )
-      .run(recipientSession.id, recipientSession.id, now());
-    expect(getSourceFor(recipientSession.id)?.source_session_id).toBe(recipientSession.id);
+      recipientSession.id,
+      recipientSession.id,
+      now(),
+    );
+    expect((await getSourceFor(recipientSession.id))?.source_session_id).toBe(recipientSession.id);
 
     // Recipient emits a "reply" addressed at its own agent group. Reply
     // detection fires (sourceHint exists, sourceAgentGroupId matches
@@ -911,13 +949,13 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     ).resolves.toBeUndefined();
 
     // Sanity: nothing about the sender session changed (it wasn't even involved).
-    expect(getSession(senderSession.id)).toBeDefined();
+    expect(await getSession(senderSession.id)).toBeDefined();
   });
 
   it('B delegating to a fresh third agent C is treated as a new delegation, not a reply', async () => {
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
     // Third agent C, with a destination from B.
-    createAgentGroup({
+    await createAgentGroup({
       id: 'ag-c',
       name: 'C',
       folder: 'c',
@@ -928,7 +966,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       allowed_mcp_tools: null,
       created_at: now(),
     });
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-recipient',
       local_name: 'c',
       target_type: 'agent',
@@ -941,10 +979,11 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       { id: 'out-1', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'hi' }) },
       senderSession,
     );
-    const [recipientRow] = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
-    const recipientSession = getSession(recipientRow.id)!;
+    const [recipientRow] = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
+    const recipientSession = (await getSession(recipientRow.id))!;
 
     // B delegates to C — platform_id=ag-c does NOT match sourceHint's
     // source_agent_group_id (=ag-sender), so this is a fresh delegation,
@@ -955,22 +994,22 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     );
 
     // C has a new session; A's sessions are unchanged (sess-sender only).
-    const cSessions = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-c') as Array<{
+    const cSessions = await getDb().all<{
       id: string;
-    }>;
+    }>('SELECT id FROM sessions WHERE agent_group_id = ?', 'ag-c');
     expect(cSessions).toHaveLength(1);
     // The synthetic mg for B→C is agent:ag-recipient:ag-c (composite).
-    expect(getMessagingGroupByPlatform('agent', 'agent:ag-recipient:ag-c')).toBeDefined();
+    expect(await getMessagingGroupByPlatform('agent', 'agent:ag-recipient:ag-c')).toBeDefined();
     // And C's source is B (not A).
-    const cSource = getSourceFor(cSessions[0].id);
+    const cSource = await getSourceFor(cSessions[0].id);
     expect(cSource!.source_session_id).toBe(recipientSession.id);
     expect(cSource!.source_agent_group_id).toBe('ag-recipient');
   });
 
   it('multi-hop default: child replies to its direct parent node, not the root ancestor', async () => {
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
 
-    createAgentGroup({
+    await createAgentGroup({
       id: 'ag-child',
       name: 'Child',
       folder: 'child',
@@ -981,7 +1020,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       allowed_mcp_tools: null,
       created_at: now(),
     });
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-recipient',
       local_name: 'child',
       target_type: 'agent',
@@ -994,20 +1033,21 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       { id: 'out-A-to-B', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'triage' }) },
       senderSession,
     );
-    const [recipientRow] = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
-    const recipientSession = getSession(recipientRow.id)!;
+    const [recipientRow] = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
+    const recipientSession = (await getSession(recipientRow.id))!;
 
     // Node B delegates the same thread to child C.
     await routeAgentMessage(
       { id: 'out-B-to-C', platform_id: 'ag-child', thread_id: 'T1', content: JSON.stringify({ text: 'fix' }) },
       recipientSession,
     );
-    const [childRow] = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-child') as Array<{
+    const [childRow] = await getDb().all<{
       id: string;
-    }>;
-    const childSession = getSession(childRow.id)!;
+    }>('SELECT id FROM sessions WHERE agent_group_id = ?', 'ag-child');
+    const childSession = (await getSession(childRow.id))!;
 
     // Child C's bare/default reply goes to its direct source B. It must not
     // skip B and land in root A just because A exists in the ancestry.
@@ -1039,9 +1079,9 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
   });
 
   it('multi-hop explicit ancestor: child can report to root without creating a sibling root thread', async () => {
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
 
-    createAgentGroup({
+    await createAgentGroup({
       id: 'ag-child',
       name: 'Child',
       folder: 'child',
@@ -1052,14 +1092,14 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       allowed_mcp_tools: null,
       created_at: now(),
     });
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-recipient',
       local_name: 'child',
       target_type: 'agent',
       target_id: 'ag-child',
       created_at: now(),
     });
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-child',
       local_name: 'root',
       target_type: 'agent',
@@ -1072,23 +1112,25 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       { id: 'out-A-to-B', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'triage' }) },
       senderSession,
     );
-    const [recipientRow] = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
-    const recipientSession = getSession(recipientRow.id)!;
+    const [recipientRow] = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
+    const recipientSession = (await getSession(recipientRow.id))!;
 
     await routeAgentMessage(
       { id: 'out-B-to-C', platform_id: 'ag-child', thread_id: 'T1', content: JSON.stringify({ text: 'fix' }) },
       recipientSession,
     );
-    const [childRow] = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-child') as Array<{
+    const [childRow] = await getDb().all<{
       id: string;
-    }>;
-    const childSession = getSession(childRow.id)!;
+    }>('SELECT id FROM sessions WHERE agent_group_id = ?', 'ag-child');
+    const childSession = (await getSession(childRow.id))!;
 
-    const senderSessionsBefore = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-sender') as Array<{ id: string }>;
+    const senderSessionsBefore = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-sender',
+    );
     expect(senderSessionsBefore).toHaveLength(1);
 
     // This is the desired anti-fragmentation behavior for q7xfmf-like cases:
@@ -1099,9 +1141,10 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       childSession,
     );
 
-    const senderSessionsAfter = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-sender') as Array<{ id: string }>;
+    const senderSessionsAfter = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-sender',
+    );
     expect(senderSessionsAfter).toHaveLength(1);
     expect(senderSessionsAfter[0].id).toBe(senderSession.id);
 
@@ -1121,9 +1164,9 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
   });
 
   it('multi-hop stale ancestor: child→root drops when the root session was deleted (no fresh root synthesised)', async () => {
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
 
-    createAgentGroup({
+    await createAgentGroup({
       id: 'ag-child',
       name: 'Child',
       folder: 'child',
@@ -1134,14 +1177,14 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       allowed_mcp_tools: null,
       created_at: now(),
     });
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-recipient',
       local_name: 'child',
       target_type: 'agent',
       target_id: 'ag-child',
       created_at: now(),
     });
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-child',
       local_name: 'root',
       target_type: 'agent',
@@ -1154,29 +1197,30 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       { id: 'out-A-to-B', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'triage' }) },
       senderSession,
     );
-    const [recipientRow] = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
-    const recipientSession = getSession(recipientRow.id)!;
+    const [recipientRow] = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
+    const recipientSession = (await getSession(recipientRow.id))!;
 
     await routeAgentMessage(
       { id: 'out-B-to-C', platform_id: 'ag-child', thread_id: 'T1', content: JSON.stringify({ text: 'fix' }) },
       recipientSession,
     );
-    const [childRow] = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-child') as Array<{
+    const [childRow] = await getDb().all<{
       id: string;
-    }>;
-    const childSession = getSession(childRow.id)!;
+    }>('SELECT id FROM sessions WHERE agent_group_id = ?', 'ag-child');
+    const childSession = (await getSession(childRow.id))!;
 
     // Adversarial state: nuke A's session but leave the chain intact in
     // a2a_session_sources so the walk reaches a row whose source_session_id
     // points at a deleted session. Fail-closed must drop, not synthesise.
-    const db = getDb();
-    db.pragma('foreign_keys = OFF');
-    db.prepare('DELETE FROM sessions WHERE id = ?').run('sess-sender');
-    db.pragma('foreign_keys = ON');
+    const raw = sqliteRaw(getDb());
+    raw.pragma('foreign_keys = OFF');
+    raw.prepare('DELETE FROM sessions WHERE id = ?').run('sess-sender');
+    raw.pragma('foreign_keys = ON');
 
-    expect(db.prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-sender')).toHaveLength(0);
+    expect(await getDb().all('SELECT id FROM sessions WHERE agent_group_id = ?', 'ag-sender')).toHaveLength(0);
 
     await expect(
       routeAgentMessage(
@@ -1190,44 +1234,42 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       ),
     ).resolves.toBeUndefined();
 
-    expect(db.prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-sender')).toHaveLength(0);
+    expect(await getDb().all('SELECT id FROM sessions WHERE agent_group_id = ?', 'ag-sender')).toHaveLength(0);
   });
 
   it('ancestor walk drops cleanly when the chain encodes a self-cycle', async () => {
     // Adversarial backfill: corrupt a2a_session_sources so the walk would
     // visit the emitting session itself. The bounded walk + visited-set
     // must terminate without delivering and without throwing.
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
     await routeAgentMessage(
       { id: 'out-A-to-B', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'first' }) },
       senderSession,
     );
-    const [recipientRow] = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
-    const recipientSession = getSession(recipientRow.id)!;
+    const [recipientRow] = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
+    const recipientSession = (await getSession(recipientRow.id))!;
 
     // Stamp a self-pointing source row over the recipient's existing one.
     // INSERT OR REPLACE matches the production upsert semantics.
-    getDb()
-      .prepare(
-        `INSERT OR REPLACE INTO a2a_session_sources
+    await getDb().run(
+      `INSERT OR REPLACE INTO a2a_session_sources
            (recipient_session_id, recipient_agent_group_id, recipient_thread_id,
             source_session_id, source_agent_group_id, source_thread_id, created_at)
          VALUES (?, ?, 'T1', ?, ?, 'T1', ?)`,
-      )
-      .run(
-        recipientSession.id,
-        recipientSession.agent_group_id,
-        recipientSession.id, // self-pointing
-        recipientSession.agent_group_id,
-        now(),
-      );
+      recipientSession.id,
+      recipientSession.agent_group_id,
+      recipientSession.id, // self-pointing
+      recipientSession.agent_group_id,
+      now(),
+    );
 
     // B writes to a third (unrelated) group. The ancestor walk should
     // detect the self-cycle and bail; main-route fresh delegation takes
     // over. No exception, no infinite loop, fresh peer session created.
-    createAgentGroup({
+    await createAgentGroup({
       id: 'ag-stranger',
       name: 'Stranger',
       folder: 'stranger',
@@ -1238,7 +1280,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       allowed_mcp_tools: null,
       created_at: now(),
     });
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-recipient',
       local_name: 'stranger',
       target_type: 'agent',
@@ -1258,9 +1300,10 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       ),
     ).resolves.toBeUndefined();
 
-    const strangerSessions = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-stranger') as Array<{ id: string }>;
+    const strangerSessions = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-stranger',
+    );
     expect(strangerSessions).toHaveLength(1);
   });
 
@@ -1271,9 +1314,9 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     // reply to the in_reply_to-resolved session, not to the lineage's
     // most-recent A session. Without the reorder, ancestor walk would
     // collapse the reply onto whichever A session lineage points at.
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
 
-    createAgentGroup({
+    await createAgentGroup({
       id: 'ag-child',
       name: 'Child',
       folder: 'child',
@@ -1284,7 +1327,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       allowed_mcp_tools: null,
       created_at: now(),
     });
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-recipient',
       local_name: 'child',
       target_type: 'agent',
@@ -1297,20 +1340,21 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       { id: 'out-A1', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'first' }) },
       senderSession,
     );
-    const [recipientRow] = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
-    const recipientSession = getSession(recipientRow.id)!;
+    const [recipientRow] = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
+    const recipientSession = (await getSession(recipientRow.id))!;
 
     // Second leg: B → C, establishing C in the lineage.
     await routeAgentMessage(
       { id: 'out-B-to-C', platform_id: 'ag-child', thread_id: 'T1', content: JSON.stringify({ text: 'fix' }) },
       recipientSession,
     );
-    const [childRow] = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-child') as Array<{
+    const [childRow] = await getDb().all<{
       id: string;
-    }>;
-    const childSession = getSession(childRow.id)!;
+    }>('SELECT id FROM sessions WHERE agent_group_id = ?', 'ag-child');
+    const childSession = (await getSession(childRow.id))!;
 
     // Read the inbound id of A→B in B's inbound DB; this is what C cannot
     // know about, but B can use as in_reply_to when it answers A.
@@ -1354,9 +1398,10 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     // No new sender-side session created — both ancestor walk and
     // in_reply_to converge on the same originator, but neither path
     // forks q7xfmf-style.
-    const senderSessions = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-sender') as Array<{ id: string }>;
+    const senderSessions = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-sender',
+    );
     expect(senderSessions).toHaveLength(1);
 
     // Sanity: childSession exists and didn't receive this reply
@@ -1370,9 +1415,9 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     // must not resurrect it by writing a fresh inbound + waking the
     // container. Mirrors resolveExplicitReplyTarget's status='active'
     // requirement.
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
 
-    createAgentGroup({
+    await createAgentGroup({
       id: 'ag-child',
       name: 'Child',
       folder: 'child',
@@ -1383,7 +1428,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       allowed_mcp_tools: null,
       created_at: now(),
     });
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-recipient',
       local_name: 'child',
       target_type: 'agent',
@@ -1395,23 +1440,24 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       { id: 'out-A-to-B', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'triage' }) },
       senderSession,
     );
-    const [recipientRow] = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
-    const recipientSession = getSession(recipientRow.id)!;
+    const [recipientRow] = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
+    const recipientSession = (await getSession(recipientRow.id))!;
 
     await routeAgentMessage(
       { id: 'out-B-to-C', platform_id: 'ag-child', thread_id: 'T1', content: JSON.stringify({ text: 'fix' }) },
       recipientSession,
     );
-    const [childRow] = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-child') as Array<{
+    const [childRow] = await getDb().all<{
       id: string;
-    }>;
-    const childSession = getSession(childRow.id)!;
+    }>('SELECT id FROM sessions WHERE agent_group_id = ?', 'ag-child');
+    const childSession = (await getSession(childRow.id))!;
 
     // Close the root session.
-    getDb().prepare("UPDATE sessions SET status = 'closed' WHERE id = ?").run('sess-sender');
-    expect(getSession('sess-sender')!.status).toBe('closed');
+    await getDb().run("UPDATE sessions SET status = 'closed' WHERE id = ?", 'sess-sender');
+    expect((await getSession('sess-sender'))!.status).toBe('closed');
 
     // Snapshot inbound count before, so we can assert no row was added.
     const { openInboundDb } = await import('../../session-manager.js');
@@ -1445,9 +1491,10 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     expect(after).toBe(before);
 
     // No new ancestor-side session should have been spawned either.
-    const senderSessions = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-sender') as Array<{ id: string }>;
+    const senderSessions = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-sender',
+    );
     expect(senderSessions).toHaveLength(1);
     expect(senderSessions[0].id).toBe('sess-sender');
   });
@@ -1458,9 +1505,9 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     // at the root; the chain itself proves it has reply privilege. This
     // test exists so future reviewers can see the design intent rather
     // than "fix" lineage to require destinations.
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
 
-    createAgentGroup({
+    await createAgentGroup({
       id: 'ag-child',
       name: 'Child',
       folder: 'child',
@@ -1471,7 +1518,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       allowed_mcp_tools: null,
       created_at: now(),
     });
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-recipient',
       local_name: 'child',
       target_type: 'agent',
@@ -1484,19 +1531,20 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       { id: 'out-A-to-B', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'triage' }) },
       senderSession,
     );
-    const [recipientRow] = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
-    const recipientSession = getSession(recipientRow.id)!;
+    const [recipientRow] = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
+    const recipientSession = (await getSession(recipientRow.id))!;
 
     await routeAgentMessage(
       { id: 'out-B-to-C', platform_id: 'ag-child', thread_id: 'T1', content: JSON.stringify({ text: 'fix' }) },
       recipientSession,
     );
-    const [childRow] = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-child') as Array<{
+    const [childRow] = await getDb().all<{
       id: string;
-    }>;
-    const childSession = getSession(childRow.id)!;
+    }>('SELECT id FROM sessions WHERE agent_group_id = ?', 'ag-child');
+    const childSession = (await getSession(childRow.id))!;
 
     // No destination from C → A — but lineage proves the chain. Should
     // succeed, not throw "unauthorized".
@@ -1514,17 +1562,18 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
 
     // Reply landed in the existing root session (same shape as the
     // multi-hop explicit ancestor test).
-    const senderSessions = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-sender') as Array<{ id: string }>;
+    const senderSessions = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-sender',
+    );
     expect(senderSessions).toHaveLength(1);
   });
 
   it('depth > 2: A → B → C → D — D can report to root A directly', async () => {
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
 
     for (const id of ['ag-c', 'ag-d']) {
-      createAgentGroup({
+      await createAgentGroup({
         id,
         name: id,
         folder: id,
@@ -1536,14 +1585,14 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
         created_at: now(),
       });
     }
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-recipient',
       local_name: 'c',
       target_type: 'agent',
       target_id: 'ag-c',
       created_at: now(),
     });
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-c',
       local_name: 'd',
       target_type: 'agent',
@@ -1556,29 +1605,27 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       { id: 'out-1', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 's1' }) },
       senderSession,
     );
-    const recipientSession = getSession(
-      (
-        getDb().prepare('SELECT id FROM sessions WHERE agent_group_id=?').all('ag-recipient') as Array<{ id: string }>
-      )[0].id,
-    )!;
+    const recipientSession = (await getSession(
+      (await getDb().all<{ id: string }>('SELECT id FROM sessions WHERE agent_group_id=?', 'ag-recipient'))[0].id,
+    ))!;
 
     // B → C
     await routeAgentMessage(
       { id: 'out-2', platform_id: 'ag-c', thread_id: 'T1', content: JSON.stringify({ text: 's2' }) },
       recipientSession,
     );
-    const cSession = getSession(
-      (getDb().prepare('SELECT id FROM sessions WHERE agent_group_id=?').all('ag-c') as Array<{ id: string }>)[0].id,
-    )!;
+    const cSession = (await getSession(
+      (await getDb().all<{ id: string }>('SELECT id FROM sessions WHERE agent_group_id=?', 'ag-c'))[0].id,
+    ))!;
 
     // C → D
     await routeAgentMessage(
       { id: 'out-3', platform_id: 'ag-d', thread_id: 'T1', content: JSON.stringify({ text: 's3' }) },
       cSession,
     );
-    const dSession = getSession(
-      (getDb().prepare('SELECT id FROM sessions WHERE agent_group_id=?').all('ag-d') as Array<{ id: string }>)[0].id,
-    )!;
+    const dSession = (await getSession(
+      (await getDb().all<{ id: string }>('SELECT id FROM sessions WHERE agent_group_id=?', 'ag-d'))[0].id,
+    ))!;
 
     // D → A: 3-hop ancestor walk should land in the original A session,
     // no new sender-side session synthesised.
@@ -1587,9 +1634,10 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       dSession,
     );
 
-    const senderSessions = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-sender') as Array<{ id: string }>;
+    const senderSessions = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-sender',
+    );
     expect(senderSessions).toHaveLength(1);
     expect(senderSessions[0].id).toBe('sess-sender');
 
@@ -1612,10 +1660,10 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     // recipient sessions per source. A reply from C-on-chain-1 to A1
     // must walk back to A1's session via the chain-1 lineage row, not
     // collide with A2.
-    setupTwoRootChains();
+    await setupTwoRootChains();
 
-    const a1 = getSession('sess-a1')!;
-    const a2 = getSession('sess-a2')!;
+    const a1 = (await getSession('sess-a1'))!;
+    const a2 = (await getSession('sess-a2'))!;
 
     await routeAgentMessage(
       { id: 'out-a1-b1', platform_id: 'ag-b1', thread_id: 'T1', content: JSON.stringify({ text: 'a1->b' }) },
@@ -1626,12 +1674,12 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       a2,
     );
 
-    const b1 = getSession(
-      (getDb().prepare('SELECT id FROM sessions WHERE agent_group_id=?').all('ag-b1') as Array<{ id: string }>)[0].id,
-    )!;
-    const b2 = getSession(
-      (getDb().prepare('SELECT id FROM sessions WHERE agent_group_id=?').all('ag-b2') as Array<{ id: string }>)[0].id,
-    )!;
+    const b1 = (await getSession(
+      (await getDb().all<{ id: string }>('SELECT id FROM sessions WHERE agent_group_id=?', 'ag-b1'))[0].id,
+    ))!;
+    const b2 = (await getSession(
+      (await getDb().all<{ id: string }>('SELECT id FROM sessions WHERE agent_group_id=?', 'ag-b2'))[0].id,
+    ))!;
 
     // Each B sends to C on the same thread. Two C sessions emerge.
     await routeAgentMessage(
@@ -1643,12 +1691,13 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       b2,
     );
 
-    const cSessions = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ? ORDER BY created_at')
-      .all('ag-c') as Array<{ id: string }>;
+    const cSessions = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ? ORDER BY created_at',
+      'ag-c',
+    );
     expect(cSessions).toHaveLength(2);
-    const c1 = getSession(cSessions[0].id)!;
-    const c2 = getSession(cSessions[1].id)!;
+    const c1 = (await getSession(cSessions[0].id))!;
+    const c2 = (await getSession(cSessions[1].id))!;
 
     // C-on-chain-1 reports up to A1. Must land in sess-a1 (not sess-a2).
     await routeAgentMessage(
@@ -1693,18 +1742,18 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     expect(JSON.parse(a2Reply!.content).text).toBe('c2->a2');
 
     // No fresh A1/A2 sessions synthesised.
-    expect(getDb().prepare('SELECT id FROM sessions WHERE agent_group_id=?').all('ag-a1')).toHaveLength(1);
-    expect(getDb().prepare('SELECT id FROM sessions WHERE agent_group_id=?').all('ag-a2')).toHaveLength(1);
+    expect(await getDb().all('SELECT id FROM sessions WHERE agent_group_id=?', 'ag-a1')).toHaveLength(1);
+    expect(await getDb().all('SELECT id FROM sessions WHERE agent_group_id=?', 'ag-a2')).toHaveLength(1);
   });
 
   it('unrelated peer same thread: descendant→peer with a reused thread_id stays fresh/lateral', async () => {
     // A→B→C plus a stranger D sharing thread_id 'T1'. C → D must NOT
     // walk to ancestor A just because thread_id matches; D is not in
     // C's lineage. Should create a fresh per-source D session.
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
 
     for (const id of ['ag-c', 'ag-d']) {
-      createAgentGroup({
+      await createAgentGroup({
         id,
         name: id,
         folder: id,
@@ -1716,14 +1765,14 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
         created_at: now(),
       });
     }
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-recipient',
       local_name: 'c',
       target_type: 'agent',
       target_id: 'ag-c',
       created_at: now(),
     });
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-c',
       local_name: 'd',
       target_type: 'agent',
@@ -1735,18 +1784,16 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       { id: 'out-1', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: '1' }) },
       senderSession,
     );
-    const recipientSession = getSession(
-      (
-        getDb().prepare('SELECT id FROM sessions WHERE agent_group_id=?').all('ag-recipient') as Array<{ id: string }>
-      )[0].id,
-    )!;
+    const recipientSession = (await getSession(
+      (await getDb().all<{ id: string }>('SELECT id FROM sessions WHERE agent_group_id=?', 'ag-recipient'))[0].id,
+    ))!;
     await routeAgentMessage(
       { id: 'out-2', platform_id: 'ag-c', thread_id: 'T1', content: JSON.stringify({ text: '2' }) },
       recipientSession,
     );
-    const cSession = getSession(
-      (getDb().prepare('SELECT id FROM sessions WHERE agent_group_id=?').all('ag-c') as Array<{ id: string }>)[0].id,
-    )!;
+    const cSession = (await getSession(
+      (await getDb().all<{ id: string }>('SELECT id FROM sessions WHERE agent_group_id=?', 'ag-c'))[0].id,
+    ))!;
 
     // C → D with thread_id=T1. D is not an ancestor → fresh session.
     await routeAgentMessage(
@@ -1754,14 +1801,14 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       cSession,
     );
 
-    const dSessions = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-d') as Array<{
+    const dSessions = await getDb().all<{
       id: string;
-    }>;
+    }>('SELECT id FROM sessions WHERE agent_group_id = ?', 'ag-d');
     expect(dSessions).toHaveLength(1);
 
     // A's session count unchanged — ancestor walk did NOT collapse the
     // lateral D message onto A.
-    expect(getDb().prepare('SELECT id FROM sessions WHERE agent_group_id=?').all('ag-sender')).toHaveLength(1);
+    expect(await getDb().all('SELECT id FROM sessions WHERE agent_group_id=?', 'ag-sender')).toHaveLength(1);
   });
 
   it('layer 1.5: explicit in_reply_to routes to the originating session even when a2a_session_sources mapping was overwritten', async () => {
@@ -1772,10 +1819,10 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     // A's session from B alone. Layer 1.5 reads `in_reply_to` and looks
     // up source_session_id in B's inbound DB — which still holds A's
     // session id stamped on the original delegation row.
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
 
     // Second source — a peer that also delegates to ag-recipient.
-    createAgentGroup({
+    await createAgentGroup({
       id: 'ag-other',
       name: 'Other',
       folder: 'other',
@@ -1786,7 +1833,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       allowed_mcp_tools: null,
       created_at: now(),
     });
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-other',
       local_name: 'recipient',
       target_type: 'agent',
@@ -1804,7 +1851,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       last_active: null,
       created_at: now(),
     };
-    createSession(otherSession);
+    await createSession(otherSession);
     initSessionFolder('ag-other', otherSession.id);
 
     // 1) A → B with thread T1 (records source for B's session = A).
@@ -1812,10 +1859,11 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       { id: 'out-A1', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'from A' }) },
       senderSession,
     );
-    const [recipientRow] = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
-    const recipientSession = getSession(recipientRow.id)!;
+    const [recipientRow] = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
+    const recipientSession = (await getSession(recipientRow.id))!;
 
     // 2) Other → same recipient on a DIFFERENT thread to land in a NEW
     // recipient session (so a2a_session_sources for THAT session = other).
@@ -1845,9 +1893,10 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     expect(aToBInboundRow).toBeDefined();
     expect(aToBInboundRow!.source_session_id).toBe('sess-sender');
 
-    const aSessionsBefore = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-sender') as Array<{ id: string }>;
+    const aSessionsBefore = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-sender',
+    );
     expect(aSessionsBefore).toHaveLength(1);
 
     await routeAgentMessage(
@@ -1862,9 +1911,10 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     );
 
     // A still has exactly one session (no fresh one created).
-    const aSessionsAfter = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-sender') as Array<{ id: string }>;
+    const aSessionsAfter = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-sender',
+    );
     expect(aSessionsAfter).toHaveLength(1);
     expect(aSessionsAfter[0].id).toBe('sess-sender');
 
@@ -1888,8 +1938,8 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     // a THIRD thread B. Layer 1 must NOT deliver into sC; it should fall through
     // to the stamped thread's own routing (fresh + auth).
     const { openInboundDb } = await import('../../session-manager.js');
-    seedPair(); // ag-sender, ag-recipient, ag-sender→ag-recipient destination
-    createDestination({
+    await seedPair(); // ag-sender, ag-recipient, ag-sender→ag-recipient destination
+    await createDestination({
       agent_group_id: 'ag-recipient',
       local_name: 'sender',
       target_type: 'agent',
@@ -1909,7 +1959,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       last_active: null,
       created_at: now(),
     };
-    createSession(sC);
+    await createSession(sC);
     initSessionFolder('ag-sender', sC.id);
 
     // sC dispatches to ag-recipient on thread "A" → mints rA (recipient session
@@ -1923,14 +1973,14 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       },
       sC,
     );
-    const rARow = getDb()
-      .prepare("SELECT id FROM sessions WHERE agent_group_id = 'ag-recipient' AND thread_id = 'A'")
-      .get() as { id: string };
-    const rA = getSession(rARow.id)!;
+    const rARow = (await getDb().get<{ id: string }>(
+      "SELECT id FROM sessions WHERE agent_group_id = 'ag-recipient' AND thread_id = 'A'",
+    ))!;
+    const rA = (await getSession(rARow.id))!;
 
     // Sever the lineage so sC is NOT rA's ancestor — isolates the guard from the
     // Layer-2 ancestor walk (which would otherwise legitimately re-deliver to sC).
-    getDb().prepare('DELETE FROM a2a_session_sources WHERE recipient_session_id = ?').run(rA.id);
+    await getDb().run('DELETE FROM a2a_session_sources WHERE recipient_session_id = ?', rA.id);
 
     const rAInbox = openInboundDb('ag-recipient', rA.id);
     const srcInbound = rAInbox
@@ -1962,9 +2012,9 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     expect(inC).toBe(0);
 
     // Fell through to a fresh per-thread session on the STAMPED thread B.
-    const bSessions = getDb()
-      .prepare("SELECT id FROM sessions WHERE agent_group_id = 'ag-sender' AND thread_id = 'B'")
-      .all();
+    const bSessions = await getDb().all(
+      "SELECT id FROM sessions WHERE agent_group_id = 'ag-sender' AND thread_id = 'B'",
+    );
     expect(bSessions).toHaveLength(1);
   });
 
@@ -1973,8 +2023,8 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     // thread. This is a legitimate reply; the guard must NOT fire and delivery
     // must land in sC.
     const { openInboundDb } = await import('../../session-manager.js');
-    seedPair();
-    createDestination({
+    await seedPair();
+    await createDestination({
       agent_group_id: 'ag-recipient',
       local_name: 'sender',
       target_type: 'agent',
@@ -1992,17 +2042,17 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       last_active: null,
       created_at: now(),
     };
-    createSession(sC);
+    await createSession(sC);
     initSessionFolder('ag-sender', sC.id);
     await routeAgentMessage(
       { id: 'out-C-to-A2', platform_id: 'ag-recipient', thread_id: 'A', content: JSON.stringify({ text: 'from C' }) },
       sC,
     );
-    const rARow = getDb()
-      .prepare("SELECT id FROM sessions WHERE agent_group_id = 'ag-recipient' AND thread_id = 'A'")
-      .get() as { id: string };
-    const rA = getSession(rARow.id)!;
-    getDb().prepare('DELETE FROM a2a_session_sources WHERE recipient_session_id = ?').run(rA.id);
+    const rARow = (await getDb().get<{ id: string }>(
+      "SELECT id FROM sessions WHERE agent_group_id = 'ag-recipient' AND thread_id = 'A'",
+    ))!;
+    const rA = (await getSession(rARow.id))!;
+    await getDb().run('DELETE FROM a2a_session_sources WHERE recipient_session_id = ?', rA.id);
     const rAInbox = openInboundDb('ag-recipient', rA.id);
     const srcInbound = rAInbox
       .prepare(
@@ -2036,7 +2086,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     // most-recently. A then re-dispatches on T-1 (no in_reply_to). The
     // unfiltered peer-affinity heuristic would route to B-on-T-2 (most
     // recent overall); the thread-filtered lookup must pin to B-on-T-1.
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
 
     // 1) A → B on thread T-1.
     await routeAgentMessage(
@@ -2048,10 +2098,11 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       },
       senderSession,
     );
-    const [bOnT1Row] = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
-    const bOnT1 = getSession(bOnT1Row.id)!;
+    const [bOnT1Row] = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
+    const bOnT1 = (await getSession(bOnT1Row.id))!;
 
     // 2) A → B on thread T-2 (creates a SECOND B session via per-thread routing).
     await routeAgentMessage(
@@ -2063,11 +2114,12 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       },
       senderSession,
     );
-    const bSessions = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ? ORDER BY created_at')
-      .all('ag-recipient') as Array<{ id: string }>;
+    const bSessions = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ? ORDER BY created_at',
+      'ag-recipient',
+    );
     expect(bSessions).toHaveLength(2);
-    const bOnT2 = getSession(bSessions.find((s) => s.id !== bOnT1.id)!.id)!;
+    const bOnT2 = (await getSession(bSessions.find((s) => s.id !== bOnT1.id)!.id))!;
 
     // 3) B-on-T-2 replies (so its reply is the MOST RECENT inbound from
     //    ag-recipient in A's inbound DB).
@@ -2096,9 +2148,10 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     );
 
     // The new dispatch should land in bOnT-1, NOT in bOnT-2 and NOT spawn a third session.
-    const bSessionsAfter = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
+    const bSessionsAfter = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
     expect(bSessionsAfter).toHaveLength(2);
 
     const { openInboundDb } = await import('../../session-manager.js');
@@ -2129,26 +2182,25 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     // thread); the heuristic is meant to be "answer whoever talked to me
     // last." Regression guard so the new threadId param doesn't change
     // the unthreaded path.
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
 
     // Two B sessions, on T-1 and T-2.
     await routeAgentMessage(
       { id: 'out-A-T1', platform_id: 'ag-recipient', thread_id: 'T-1', content: JSON.stringify({ text: 'd-T1' }) },
       senderSession,
     );
-    const bOnT1 = getSession(
-      (
-        getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-recipient') as Array<{ id: string }>
-      )[0].id,
-    )!;
+    const bOnT1 = (await getSession(
+      (await getDb().all<{ id: string }>('SELECT id FROM sessions WHERE agent_group_id = ?', 'ag-recipient'))[0].id,
+    ))!;
     await routeAgentMessage(
       { id: 'out-A-T2', platform_id: 'ag-recipient', thread_id: 'T-2', content: JSON.stringify({ text: 'd-T2' }) },
       senderSession,
     );
-    const bSessions = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ? ORDER BY created_at')
-      .all('ag-recipient') as Array<{ id: string }>;
-    const bOnT2 = getSession(bSessions.find((s) => s.id !== bOnT1.id)!.id)!;
+    const bSessions = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ? ORDER BY created_at',
+      'ag-recipient',
+    );
+    const bOnT2 = (await getSession(bSessions.find((s) => s.id !== bOnT1.id)!.id))!;
 
     // B-on-T-2 replies most-recently.
     await routeAgentMessage(
@@ -2165,7 +2217,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     );
 
     // No new B session created.
-    expect(getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-recipient')).toHaveLength(2);
+    expect(await getDb().all('SELECT id FROM sessions WHERE agent_group_id = ?', 'ag-recipient')).toHaveLength(2);
 
     // The unthreaded message landed in bOnT-2 (most-recent peer overall).
     const { openInboundDb } = await import('../../session-manager.js');
@@ -2181,18 +2233,17 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
 
 describe('migration 020', () => {
   let tempDir: string;
-  beforeEach(() => {
-    tempDir = setupTempDb();
+  beforeEach(async () => {
+    tempDir = await setupTempDb();
   });
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     process.chdir(realCwd);
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('creates a2a_session_sources table with expected columns + indexes', () => {
-    const db = getDb();
-    const cols = db.prepare('PRAGMA table_info(a2a_session_sources)').all() as Array<{ name: string }>;
+  it('creates a2a_session_sources table with expected columns + indexes', async () => {
+    const cols = await getDb().all<{ name: string }>('PRAGMA table_info(a2a_session_sources)');
     const names = new Set(cols.map((c) => c.name));
     expect(names).toEqual(
       new Set([
@@ -2205,36 +2256,36 @@ describe('migration 020', () => {
         'created_at',
       ]),
     );
-    const idx = db
-      .prepare("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name = 'a2a_session_sources'")
-      .all() as Array<{ name: string }>;
+    const idx = await getDb().all<{ name: string }>(
+      "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name = 'a2a_session_sources'",
+    );
     const idxNames = idx.map((i) => i.name);
     expect(idxNames).toContain('idx_a2a_src_session');
     expect(idxNames).toContain('idx_a2a_recipient_ag');
     expect(idxNames).toContain('idx_a2a_src_ag_recipient');
   });
 
-  it('is idempotent', () => {
+  it('is idempotent', async () => {
     const db = getDb();
-    expect(() => migration920.up(db)).not.toThrow();
-    expect(() => migration920.up(db)).not.toThrow();
+    await expect(runPortableMigration(migration920, db)).resolves.not.toThrow();
+    await expect(runPortableMigration(migration920, db)).resolves.not.toThrow();
   });
 });
 
 describe('migration 019', () => {
   let tempDir: string;
-  beforeEach(() => {
-    tempDir = setupTempDb();
+  beforeEach(async () => {
+    tempDir = await setupTempDb();
   });
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     process.chdir(realCwd);
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('upgrades pre-existing channel_type=agent wirings with session_mode=shared to per-thread', () => {
+  it('upgrades pre-existing channel_type=agent wirings with session_mode=shared to per-thread', async () => {
     const db = getDb();
-    createAgentGroup({
+    await createAgentGroup({
       id: 'ag-r',
       name: 'R',
       folder: 'r',
@@ -2245,7 +2296,7 @@ describe('migration 019', () => {
       allowed_mcp_tools: null,
       created_at: now(),
     });
-    createMessagingGroup({
+    await createMessagingGroup({
       id: 'mg-agent-old',
       channel_type: 'agent',
       platform_id: 'agent:ag-r',
@@ -2255,21 +2306,22 @@ describe('migration 019', () => {
       admin_user_id: null,
       created_at: now(),
     });
-    db.prepare(
+    await db.run(
       `INSERT INTO messaging_group_agents (id, messaging_group_id, agent_group_id, engage_mode, engage_pattern, sender_scope, ignored_message_policy, session_mode, priority, created_at)
        VALUES ('mga-old', 'mg-agent-old', 'ag-r', 'always', NULL, 'all', 'drop', 'shared', 0, ?)`,
-    ).run(now());
+      now(),
+    );
 
-    migration919.up(db);
-    const row = db.prepare("SELECT session_mode FROM messaging_group_agents WHERE id = 'mga-old'").get() as {
-      session_mode: string;
-    };
+    await runPortableMigration(migration919, db);
+    const row = (await db.get<{ session_mode: string }>(
+      "SELECT session_mode FROM messaging_group_agents WHERE id = 'mga-old'",
+    ))!;
     expect(row.session_mode).toBe('per-thread');
   });
 
-  it('does not touch dashboard/slack/telegram wirings', () => {
+  it('does not touch dashboard/slack/telegram wirings', async () => {
     const db = getDb();
-    createAgentGroup({
+    await createAgentGroup({
       id: 'ag-1',
       name: 'A',
       folder: 'a',
@@ -2282,7 +2334,7 @@ describe('migration 019', () => {
     });
     for (const channel of ['slack', 'telegram', 'whatsapp'] as const) {
       const mgId = `mg-${channel}`;
-      createMessagingGroup({
+      await createMessagingGroup({
         id: mgId,
         channel_type: channel,
         platform_id: `${channel}:x`,
@@ -2292,24 +2344,27 @@ describe('migration 019', () => {
         admin_user_id: null,
         created_at: now(),
       });
-      db.prepare(
+      await db.run(
         `INSERT INTO messaging_group_agents (id, messaging_group_id, agent_group_id, engage_mode, engage_pattern, sender_scope, ignored_message_policy, session_mode, priority, created_at)
          VALUES (?, ?, 'ag-1', 'always', NULL, 'all', 'drop', 'shared', 0, ?)`,
-      ).run(`mga-${channel}`, mgId, now());
+        `mga-${channel}`,
+        mgId,
+        now(),
+      );
     }
 
-    migration919.up(db);
-    const rows = db
-      .prepare("SELECT id, session_mode FROM messaging_group_agents WHERE id LIKE 'mga-%'")
-      .all() as Array<{ id: string; session_mode: string }>;
+    await runPortableMigration(migration919, db);
+    const rows = await db.all<{ id: string; session_mode: string }>(
+      "SELECT id, session_mode FROM messaging_group_agents WHERE id LIKE 'mga-%'",
+    );
     for (const r of rows) {
       expect(r.session_mode, `row ${r.id} should still be 'shared'`).toBe('shared');
     }
   });
 
-  it('is idempotent', () => {
+  it('is idempotent', async () => {
     const db = getDb();
-    createAgentGroup({
+    await createAgentGroup({
       id: 'ag-1',
       name: 'A',
       folder: 'a',
@@ -2320,7 +2375,7 @@ describe('migration 019', () => {
       allowed_mcp_tools: null,
       created_at: now(),
     });
-    createMessagingGroup({
+    await createMessagingGroup({
       id: 'mg-agent',
       channel_type: 'agent',
       platform_id: 'agent:foo',
@@ -2330,16 +2385,17 @@ describe('migration 019', () => {
       admin_user_id: null,
       created_at: now(),
     });
-    db.prepare(
+    await db.run(
       `INSERT INTO messaging_group_agents (id, messaging_group_id, agent_group_id, engage_mode, engage_pattern, sender_scope, ignored_message_policy, session_mode, priority, created_at)
        VALUES ('mga-1', 'mg-agent', 'ag-1', 'always', NULL, 'all', 'drop', 'per-thread', 0, ?)`,
-    ).run(now());
+      now(),
+    );
 
-    expect(() => migration919.up(db)).not.toThrow();
-    expect(() => migration919.up(db)).not.toThrow();
-    const row = db.prepare("SELECT session_mode FROM messaging_group_agents WHERE id = 'mga-1'").get() as {
-      session_mode: string;
-    };
+    await expect(runPortableMigration(migration919, db)).resolves.not.toThrow();
+    await expect(runPortableMigration(migration919, db)).resolves.not.toThrow();
+    const row = (await db.get<{ session_mode: string }>(
+      "SELECT session_mode FROM messaging_group_agents WHERE id = 'mga-1'",
+    ))!;
     expect(row.session_mode).toBe('per-thread');
   });
 });
@@ -2352,11 +2408,11 @@ describe('migration 019', () => {
 // =============================================================
 describe('routeAgentMessage — target_session_id (Layer 0 pin)', () => {
   let tempDir: string;
-  beforeEach(() => {
-    tempDir = setupTempDb();
+  beforeEach(async () => {
+    tempDir = await setupTempDb();
   });
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     process.chdir(realCwd);
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
@@ -2364,7 +2420,7 @@ describe('routeAgentMessage — target_session_id (Layer 0 pin)', () => {
   /** Create an extra recipient session belonging to ag-recipient — used as
    *  the pin target. Returned id matches the convention of the thread-based
    *  fresh-delegation path so we can assert "pin landed here, not a fresh". */
-  function seedPinnedSession(id: string, threadId: string | null = null): Session {
+  async function seedPinnedSession(id: string, threadId: string | null = null): Promise<Session> {
     const s: Session = {
       id,
       agent_group_id: 'ag-recipient',
@@ -2376,14 +2432,14 @@ describe('routeAgentMessage — target_session_id (Layer 0 pin)', () => {
       last_active: null,
       created_at: now(),
     };
-    createSession(s);
+    await createSession(s);
     initSessionFolder('ag-recipient', id);
     return s;
   }
 
   it('valid pin: delivery lands in the named session, no fresh session minted', async () => {
-    const { senderSession } = seedPair();
-    const pinned = seedPinnedSession('sess-pinned-ok');
+    const { senderSession } = await seedPair();
+    const pinned = await seedPinnedSession('sess-pinned-ok');
 
     await routeAgentMessage(
       {
@@ -2396,17 +2452,18 @@ describe('routeAgentMessage — target_session_id (Layer 0 pin)', () => {
       senderSession,
     );
 
-    const recipientSessions = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
+    const recipientSessions = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
     // Only the pre-seeded session exists — no fresh per-thread mint
     expect(recipientSessions.map((r) => r.id)).toEqual([pinned.id]);
   });
 
   it('pin to closed session: falls through, mints fresh per-thread session', async () => {
-    const { senderSession } = seedPair();
-    const closed = seedPinnedSession('sess-closed');
-    getDb().prepare('UPDATE sessions SET status = ? WHERE id = ?').run('closed', closed.id);
+    const { senderSession } = await seedPair();
+    const closed = await seedPinnedSession('sess-closed');
+    await getDb().run('UPDATE sessions SET status = ? WHERE id = ?', 'closed', closed.id);
 
     await routeAgentMessage(
       {
@@ -2419,15 +2476,18 @@ describe('routeAgentMessage — target_session_id (Layer 0 pin)', () => {
       senderSession,
     );
 
-    const fresh = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ? AND status = ? AND thread_id = ?')
-      .all('ag-recipient', 'active', 'fallback') as Array<{ id: string }>;
+    const fresh = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ? AND status = ? AND thread_id = ?',
+      'ag-recipient',
+      'active',
+      'fallback',
+    );
     expect(fresh).toHaveLength(1);
     expect(fresh[0].id).not.toBe(closed.id);
   });
 
   it('pin to wrong agent group: falls through (different group not honored)', async () => {
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
     // Make a session under sender's own group — not under recipient.
     const wrongGroup: Session = {
       id: 'sess-wrong-group',
@@ -2440,7 +2500,7 @@ describe('routeAgentMessage — target_session_id (Layer 0 pin)', () => {
       last_active: null,
       created_at: now(),
     };
-    createSession(wrongGroup);
+    await createSession(wrongGroup);
 
     await routeAgentMessage(
       {
@@ -2453,16 +2513,17 @@ describe('routeAgentMessage — target_session_id (Layer 0 pin)', () => {
       senderSession,
     );
 
-    const recipientSessions = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
+    const recipientSessions = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
     // Wrong-group pin ignored, fresh session minted under recipient
     expect(recipientSessions).toHaveLength(1);
     expect(recipientSessions[0].id).not.toBe(wrongGroup.id);
   });
 
   it('pin to non-existent session: falls through silently', async () => {
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
 
     await routeAgentMessage(
       {
@@ -2475,14 +2536,15 @@ describe('routeAgentMessage — target_session_id (Layer 0 pin)', () => {
       senderSession,
     );
 
-    const recipientSessions = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
+    const recipientSessions = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
     expect(recipientSessions).toHaveLength(1);
   });
 
   it('pin to self: rejected, falls through to fresh delegation', async () => {
-    const { senderSession } = seedPair();
+    const { senderSession } = await seedPair();
 
     await routeAgentMessage(
       {
@@ -2495,16 +2557,17 @@ describe('routeAgentMessage — target_session_id (Layer 0 pin)', () => {
       senderSession,
     );
 
-    const recipientSessions = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-recipient') as Array<{ id: string }>;
+    const recipientSessions = await getDb().all<{ id: string }>(
+      'SELECT id FROM sessions WHERE agent_group_id = ?',
+      'ag-recipient',
+    );
     expect(recipientSessions).toHaveLength(1);
     expect(recipientSessions[0].id).not.toBe(senderSession.id);
   });
 
   it('pin without destination row: still throws unauthorized (auth not bypassed)', async () => {
     // Build the recipient + sender groups without a destination row.
-    createAgentGroup({
+    await createAgentGroup({
       id: 'ag-no-dest',
       name: 'NoDest',
       folder: 'no-dest',
@@ -2515,7 +2578,7 @@ describe('routeAgentMessage — target_session_id (Layer 0 pin)', () => {
       allowed_mcp_tools: null,
       created_at: now(),
     });
-    createAgentGroup({
+    await createAgentGroup({
       id: 'ag-target-no-dest',
       name: 'TargetNoDest',
       folder: 'target-no-dest',
@@ -2537,7 +2600,7 @@ describe('routeAgentMessage — target_session_id (Layer 0 pin)', () => {
       last_active: null,
       created_at: now(),
     };
-    createSession(senderSession);
+    await createSession(senderSession);
     initSessionFolder('ag-no-dest', senderSession.id);
 
     const pinnedTarget: Session = {
@@ -2551,7 +2614,7 @@ describe('routeAgentMessage — target_session_id (Layer 0 pin)', () => {
       last_active: null,
       created_at: now(),
     };
-    createSession(pinnedTarget);
+    await createSession(pinnedTarget);
     initSessionFolder('ag-target-no-dest', pinnedTarget.id);
 
     await expect(
@@ -2572,9 +2635,9 @@ describe('routeAgentMessage — target_session_id (Layer 0 pin)', () => {
     // Set up: source has a prior inbound row whose source_session_id points
     // to a specific recipient session (the reply target). A pin to a
     // different session of the same recipient must NOT override the reply.
-    const { senderSession } = seedPair();
-    const replyTarget = seedPinnedSession('sess-reply-target');
-    const wrongPin = seedPinnedSession('sess-wrong-pin');
+    const { senderSession } = await seedPair();
+    const replyTarget = await seedPinnedSession('sess-reply-target');
+    const wrongPin = await seedPinnedSession('sess-wrong-pin');
 
     // Seed an a2a inbound row in the sender's inbound DB whose
     // source_session_id is the reply target — this is what
@@ -2627,11 +2690,11 @@ describe('routeAgentMessage — target_session_id (Layer 0 pin)', () => {
 // =============================================================
 describe('forwardAttachedFiles — file-forwarding security guard', () => {
   let tempDir: string;
-  beforeEach(() => {
-    tempDir = setupTempDb();
+  beforeEach(async () => {
+    tempDir = await setupTempDb();
   });
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     process.chdir(realCwd);
     fs.rmSync(tempDir, { recursive: true, force: true });
   });

@@ -1,8 +1,7 @@
 /**
  * NanoClaw Agent Runner v2
  *
- * Runs inside a container. All IO goes through the session DB.
- * No stdin, no stdout markers, no IPC files.
+ * Runs inside a container. All message IO goes through the registered mailbox.
  *
  * Config:
  *   - SESSION_INBOUND_DB_PATH:  path to host-owned inbound DB (default: /workspace/inbound.db)
@@ -15,8 +14,7 @@
  *
  * Mount structure:
  *   /workspace/
- *     inbound.db        ← host-owned session DB (container reads only)
- *     outbound.db       ← container-owned session DB
+ *     mailbox state     ← selected implementation
  *     .heartbeat        ← container touches for liveness detection
  *     outbox/           ← outbound files
  *     agent/            ← agent group folder (CLAUDE.md, skills, working files)
@@ -34,12 +32,17 @@ import { getTaskSeriesId } from './db/session-routing.js';
 import { ensureMemoryScaffold } from './memory/scaffold.js';
 import { MEMORY_SESSION_HOOK } from './memory/session-hook.js';
 import { parseMcpPolicy, serverHasAllowedTools } from './mcp-policy.js';
+// Module barrel — loads registration modules, including the singular mailbox slot.
+import './modules/index.js';
+import { getAgentMailbox, readMailboxContext } from './mailbox/index.js';
 // Providers barrel — each enabled provider self-registers on import.
 // Provider skills append imports to providers/index.ts.
 import './providers/index.js';
 import { createCodexConfigOverrides } from './providers/codex-app-server.js';
 import { createProvider, type ProviderName } from './providers/factory.js';
 import { parseAllowedMcpTools } from './providers/claude.js';
+import { resolvePluginServer } from './plugin-mcp.js';
+import type { McpServerConfig } from './providers/types.js';
 import { runPollLoop } from './poll-loop.js';
 
 function log(msg: string): void {
@@ -54,8 +57,10 @@ async function main(): Promise<void> {
   // stuck on the hardcoded fallback. Safe to call multiple times (memoized).
   const config = loadConfig();
 
-  const providerName = (process.env.AGENT_PROVIDER || 'claude').toLowerCase() as ProviderName;
-  const assistantName = process.env.NANOCLAW_ASSISTANT_NAME;
+  const providerName = (process.env.AGENT_PROVIDER || config.provider || 'claude').toLowerCase() as ProviderName;
+  const assistantName = process.env.NANOCLAW_ASSISTANT_NAME || config.assistantName || undefined;
+  const mailbox = getAgentMailbox();
+  await mailbox.start(await readMailboxContext());
 
   log(`Starting v2 agent-runner (provider: ${providerName})`);
 
@@ -102,7 +107,7 @@ async function main(): Promise<void> {
     codexArgs.push('-c', override);
   }
   codexArgs.push('mcp-server');
-  const mcpServers: Record<string, { command: string; args: string[]; env: Record<string, string>; envInherit?: string[] }> = {
+  const mcpServers: Record<string, McpServerConfig> = {
     nanoclaw: {
       command: 'bun',
       args: ['run', mcpServerPath],
@@ -198,16 +203,18 @@ async function main(): Promise<void> {
     }
   }
 
-  // Drop every server the policy allows no tool on. `nanoclaw` is exempt: it
-  // carries the mandatory message transport, so it is always wired and instead
-  // filters itself per-tool (see mcp-tools/server.ts). Everything else — the
-  // codex stdio child included — simply does not exist for this session.
-  for (const name of Object.keys(mcpServers)) {
-    if (name === 'nanoclaw') continue;
-    if (!serverHasAllowedTools(mcpPolicy, name)) {
-      delete mcpServers[name];
-      log(`MCP server "${name}" withheld — the explicit allow-list names no tool on it`);
-    }
+  // Additional MCP servers from container.json (per-instance subset). Runs
+  // alongside the NANOCLAW_MCP_SERVERS loop above, which is the only transport
+  // for type-level coworker-registry servers — neither replaces the other.
+  for (const [name, serverConfig] of Object.entries(config.mcpServers)) {
+    // Plugin-shipped servers get ${PLUGIN_ROOT}/${PLUGIN_DATA} expansion and
+    // the two injected env vars; everything else passes through untouched.
+    mcpServers[name] = resolvePluginServer(serverConfig);
+    log(
+      serverConfig.type === 'http'
+        ? `Additional MCP server: ${name} (HTTP)`
+        : `Additional MCP server: ${name} (${serverConfig.command})`,
+    );
   }
 
   // MCP proxy integration: add proxy-connected servers for allowed MCP tools
@@ -253,6 +260,18 @@ async function main(): Promise<void> {
     }
   }
 
+  // Drop every server the policy allows no tool on. `nanoclaw` is exempt: it
+  // carries the mandatory message transport, so it is always wired and instead
+  // filters itself per-tool (see mcp-tools/server.ts). Everything else — the
+  // codex stdio child included — simply does not exist for this session.
+  for (const name of Object.keys(mcpServers)) {
+    if (name === 'nanoclaw') continue;
+    if (!serverHasAllowedTools(mcpPolicy, name)) {
+      delete mcpServers[name];
+      log(`MCP server "${name}" withheld — the explicit allow-list names no tool on it`);
+    }
+  }
+
   const provider = createProvider(providerName, {
     assistantName,
     mcpServers,
@@ -269,12 +288,16 @@ async function main(): Promise<void> {
   ensureMemoryScaffold();
   provider.registerMemorySessionHook(MEMORY_SESSION_HOOK);
 
-  await runPollLoop({
-    provider,
-    providerName,
-    cwd: CWD,
-    systemContext: { instructions },
-  });
+  try {
+    await runPollLoop({
+      provider,
+      providerName,
+      cwd: CWD,
+      systemContext: { instructions },
+    });
+  } finally {
+    await mailbox.stop();
+  }
 }
 
 // Only auto-run when invoked as the entrypoint — not when imported (e.g. by

@@ -286,7 +286,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
         return;
       }
 
-      const outcome = deliverGitHubIssueOpened({
+      const outcome = await deliverGitHubIssueOpened({
         repo: repoFullName,
         issueNumber,
         issueUrl,
@@ -334,7 +334,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
           return;
         }
         const reviewableHead = (reviewablePr?.head as Record<string, unknown> | undefined) ?? {};
-        const outcome = deliverGitHubPrReviewable({
+        const outcome = await deliverGitHubPrReviewable({
           repo: repoFullName,
           prNumber: reviewablePrNumber,
           prUrl: typeof reviewablePr?.html_url === 'string' ? reviewablePr.html_url : '',
@@ -365,7 +365,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
         writeJson(res, 400, { error: 'malformed payload' });
         return;
       }
-      const outcome = deliverGitHubPrEvent({
+      const outcome = await deliverGitHubPrEvent({
         repo: repoFullName,
         prNumber,
         event: merged ? 'github.pr_merged' : 'github.pr_closed',
@@ -426,7 +426,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
         writeJson(res, 400, { error: 'malformed payload' });
         return;
       }
-      const outcome = deliverGitHubPrEvent({
+      const outcome = await deliverGitHubPrEvent({
         repo: repoFullName,
         prNumber,
         event: 'github.pr_review',
@@ -478,7 +478,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
         writeJson(res, 400, { error: 'malformed payload' });
         return;
       }
-      const outcome = deliverGitHubPrEvent({
+      const outcome = await deliverGitHubPrEvent({
         repo: repoFullName,
         prNumber,
         event: 'github.pr_review_thread',
@@ -530,7 +530,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
           });
           return;
         }
-        const parked = findParkedByHead(getDb(), repoFullName, headSha);
+        const parked = await findParkedByHead(getDb(), repoFullName, headSha);
         if (!parked) {
           writeJson(res, 200, { ok: true, skipped: true, reason: 'check_suite success but no PR parked at this head' });
           return;
@@ -553,8 +553,8 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
             return;
           }
         }
-        const outcome = releaseParkedReviewable(parked.rawEventJson);
-        deleteParked(getDb(), repoFullName, parked.prNumber);
+        const outcome = await releaseParkedReviewable(parked.rawEventJson);
+        await deleteParked(getDb(), repoFullName, parked.prNumber);
         writeJson(res, 200, { ok: true, outcome, released: { pr: parked.prNumber, head: headSha } });
         return;
       }
@@ -572,7 +572,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
         writeJson(res, 200, { ok: true, skipped: true, reason: 'check_suite has no associated PR' });
         return;
       }
-      const outcome = deliverGitHubPrEvent({
+      const outcome = await deliverGitHubPrEvent({
         repo: repoFullName,
         prNumber,
         event: 'github.ci_failed',
@@ -665,7 +665,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
     let isOwnedPr = false;
     if (isPr && repoFullName && issueNumber) {
       try {
-        isOwnedPr = prMappingExists(getDb(), repoFullName, issueNumber);
+        isOwnedPr = await prMappingExists(getDb(), repoFullName, issueNumber);
       } catch {
         /* DB unavailable — fall back to mention-gated (safe default) */
       }
@@ -673,7 +673,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
 
     let isParticipantIssue = false;
     if (!isPr && !willDevRouteToPeer && repoFullName && issueNumber) {
-      isParticipantIssue = issueSessionExists(repoFullName, issueNumber);
+      isParticipantIssue = await issueSessionExists(repoFullName, issueNumber);
     }
 
     if (!isPeerForward && !willDevRouteToPeer && !isOwnedPr && !isParticipantIssue && !mentionsBot) {
@@ -687,7 +687,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       return;
     }
 
-    const outcome = deliverGitHubMention({
+    const outcome = await deliverGitHubMention({
       repo: repoFullName,
       issueNumber,
       commentId,

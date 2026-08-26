@@ -8,6 +8,7 @@
  */
 import { log } from '../log.js';
 
+import { hasColumn } from './column-info.js';
 import { getDb, hasTable } from './connection.js';
 
 /**
@@ -66,15 +67,14 @@ export interface EscalationEvent {
 export type EventRecordResult = 'recorded' | 'duplicate' | 'unavailable' | 'failed';
 
 /** Does this DB carry migration 936's exactly-once key yet? */
-function hasDedupeKey(): boolean {
-  const cols = getDb().prepare(`PRAGMA table_info(critique_escalation_events)`).all() as Array<{ name: string }>;
-  return cols.some((c) => c.name === 'dedupe_key');
+function hasDedupeKey(): Promise<boolean> {
+  return hasColumn(getDb(), 'critique_escalation_events', 'dedupe_key');
 }
 
 /**
  * Bind values for one append. `dedupe_key` is added only when the column
- * exists: better-sqlite3 rejects a named parameter the statement does not
- * declare, so a host that has not run migration 936 must not be handed one.
+ * exists: the driver rejects a named parameter the statement does not declare,
+ * so a host that has not run migration 936 must not be handed one.
  */
 function buildEventParams(e: EscalationEvent, keyed: boolean): Record<string, unknown> {
   const { dedupe_key: dedupeKey, ...rest } = e;
@@ -95,28 +95,27 @@ function buildEventParams(e: EscalationEvent, keyed: boolean): Record<string, un
   return params;
 }
 
-export function recordEscalationEvent(e: EscalationEvent): EventRecordResult {
+export async function recordEscalationEvent(e: EscalationEvent): Promise<EventRecordResult> {
   try {
-    if (!hasTable(getDb(), 'critique_escalation_events')) return 'unavailable';
-    const keyed = hasDedupeKey();
+    if (!(await hasTable(getDb(), 'critique_escalation_events'))) return 'unavailable';
+    const keyed = await hasDedupeKey();
     // OR IGNORE + the partial unique index is what makes "exactly once"
     // structural. A check-then-insert would still double-record two sweeps
     // racing on the same journal line.
-    const info = getDb()
-      .prepare(
-        keyed
-          ? `INSERT OR IGNORE INTO critique_escalation_events
-               (session_id, agent_group_id, approval_id, event, class, reason, hit,
-                repo, pr_number, attempt, created_at, requested_at, dedupe_key)
-             VALUES (@session_id, @agent_group_id, @approval_id, @event, @class, @reason, @hit,
-                     @repo, @pr_number, @attempt, @created_at, @requested_at, @dedupe_key)`
-          : `INSERT INTO critique_escalation_events
-               (session_id, agent_group_id, approval_id, event, class, reason, hit,
-                repo, pr_number, attempt, created_at, requested_at)
-             VALUES (@session_id, @agent_group_id, @approval_id, @event, @class, @reason, @hit,
-                     @repo, @pr_number, @attempt, @created_at, @requested_at)`,
-      )
-      .run(buildEventParams(e, keyed));
+    const info = await getDb().run(
+      keyed
+        ? `INSERT OR IGNORE INTO critique_escalation_events
+             (session_id, agent_group_id, approval_id, event, class, reason, hit,
+              repo, pr_number, attempt, created_at, requested_at, dedupe_key)
+           VALUES (@session_id, @agent_group_id, @approval_id, @event, @class, @reason, @hit,
+                   @repo, @pr_number, @attempt, @created_at, @requested_at, @dedupe_key)`
+        : `INSERT INTO critique_escalation_events
+             (session_id, agent_group_id, approval_id, event, class, reason, hit,
+              repo, pr_number, attempt, created_at, requested_at)
+           VALUES (@session_id, @agent_group_id, @approval_id, @event, @class, @reason, @hit,
+                   @repo, @pr_number, @attempt, @created_at, @requested_at)`,
+      buildEventParams(e, keyed),
+    );
     return info.changes > 0 ? 'recorded' : 'duplicate';
     // eslint-disable-next-line no-catch-all/no-catch-all -- history must never block the gate
   } catch (err) {
@@ -138,22 +137,21 @@ export interface EscalationSummaryRow {
  * escalation metrics endpoint runs, and the one that previously required
  * grepping a 64 MB log and decoding epoch-ms out of approval ids.
  */
-export function summarizeEscalations(sinceIso: string): EscalationSummaryRow[] {
-  if (!hasTable(getDb(), 'critique_escalation_events')) return [];
-  return getDb()
-    .prepare(
-      `SELECT substr(e.created_at, 1, 10) AS day,
-              ag.name                     AS coworker,
-              e.event                     AS event,
-              e.class                     AS class,
-              COUNT(*)                    AS n
-         FROM critique_escalation_events e
-         LEFT JOIN agent_groups ag ON ag.id = e.agent_group_id
-        WHERE e.created_at >= ?
-        GROUP BY day, coworker, event, class
-        ORDER BY day DESC, coworker, event`,
-    )
-    .all(sinceIso) as EscalationSummaryRow[];
+export async function summarizeEscalations(sinceIso: string): Promise<EscalationSummaryRow[]> {
+  if (!(await hasTable(getDb(), 'critique_escalation_events'))) return [];
+  return getDb().all<EscalationSummaryRow>(
+    `SELECT substr(e.created_at, 1, 10) AS day,
+            ag.name                     AS coworker,
+            e.event                     AS event,
+            e.class                     AS class,
+            COUNT(*)                    AS n
+       FROM critique_escalation_events e
+       LEFT JOIN agent_groups ag ON ag.id = e.agent_group_id
+      WHERE e.created_at >= ?
+      GROUP BY day, coworker, event, class
+      ORDER BY day DESC, coworker, event`,
+    sinceIso,
+  );
 }
 
 /**
@@ -168,11 +166,12 @@ export function summarizeEscalations(sinceIso: string): EscalationSummaryRow[] {
  * informative: a `missing critique stages` escalation on an unmapped session
  * is an agent trying to create its first PR with no critique at all.
  */
-export function lookupPrForSession(sessionId: string): { repo: string; pr_number: number } | null {
-  if (!hasTable(getDb(), 'pr_session_mappings')) return null;
-  const row = getDb()
-    .prepare('SELECT repo, pr_number FROM pr_session_mappings WHERE session_id = ? ORDER BY created_at DESC LIMIT 1')
-    .get(sessionId) as { repo: string; pr_number: number } | undefined;
+export async function lookupPrForSession(sessionId: string): Promise<{ repo: string; pr_number: number } | null> {
+  if (!(await hasTable(getDb(), 'pr_session_mappings'))) return null;
+  const row = await getDb().get<{ repo: string; pr_number: number }>(
+    'SELECT repo, pr_number FROM pr_session_mappings WHERE session_id = ? ORDER BY created_at DESC LIMIT 1',
+    sessionId,
+  );
   return row ?? null;
 }
 
@@ -214,21 +213,20 @@ function normalizeGrant(row: Partial<BypassGrant>): BypassGrant {
   return { ...row, release_recorded_at: row.release_recorded_at ?? null } as BypassGrant;
 }
 
-export function createBypassGrant(g: {
+export async function createBypassGrant(g: {
   grant_id: string;
   session_id: string;
   requested_at: number | null;
   granted_at: string;
   expires_at: string;
   granted_by: string | null;
-}): void {
-  if (!hasTable(getDb(), 'critique_bypass_grants')) return;
-  getDb()
-    .prepare(
-      `INSERT INTO critique_bypass_grants (grant_id, session_id, requested_at, granted_at, expires_at, granted_by)
-       VALUES (@grant_id, @session_id, @requested_at, @granted_at, @expires_at, @granted_by)`,
-    )
-    .run(g);
+}): Promise<void> {
+  if (!(await hasTable(getDb(), 'critique_bypass_grants'))) return;
+  await getDb().run(
+    `INSERT INTO critique_bypass_grants (grant_id, session_id, requested_at, granted_at, expires_at, granted_by)
+     VALUES (@grant_id, @session_id, @requested_at, @granted_at, @expires_at, @granted_by)`,
+    g,
+  );
 }
 
 /**
@@ -240,11 +238,12 @@ export function createBypassGrant(g: {
  * Liveness (expiry, consumption, revocation) is evaluated by the caller so a
  * dead grant can still be distinguished from a grant that never existed.
  */
-export function getBypassGrant(grantId: string): BypassGrant | null {
-  if (!hasTable(getDb(), 'critique_bypass_grants')) return null;
-  const row = getDb().prepare('SELECT * FROM critique_bypass_grants WHERE grant_id = ?').get(grantId) as
-    | Partial<BypassGrant>
-    | undefined;
+export async function getBypassGrant(grantId: string): Promise<BypassGrant | null> {
+  if (!(await hasTable(getDb(), 'critique_bypass_grants'))) return null;
+  const row = await getDb().get<Partial<BypassGrant>>(
+    'SELECT * FROM critique_bypass_grants WHERE grant_id = ?',
+    grantId,
+  );
   return row ? normalizeGrant(row) : null;
 }
 
@@ -257,26 +256,28 @@ export function getBypassGrant(grantId: string): BypassGrant | null {
  * agent-runner ships as a per-group image copy). Without this fallback every
  * legitimate bypass during a skew window would be reported as a forgery.
  */
-export function getLatestSpendableGrant(sessionId: string, nowIso: string): BypassGrant | null {
-  if (!hasTable(getDb(), 'critique_bypass_grants')) return null;
-  const row = getDb()
-    .prepare(
-      `SELECT * FROM critique_bypass_grants
-        WHERE session_id = ? AND consumed_at IS NULL AND revoked_at IS NULL
-          AND datetime(expires_at) > datetime(?)
-        ORDER BY datetime(granted_at) DESC, rowid DESC
-        LIMIT 1`,
-    )
-    .get(sessionId, nowIso) as Partial<BypassGrant> | undefined;
+export async function getLatestSpendableGrant(sessionId: string, nowIso: string): Promise<BypassGrant | null> {
+  if (!(await hasTable(getDb(), 'critique_bypass_grants'))) return null;
+  const row = await getDb().get<Partial<BypassGrant>>(
+    `SELECT * FROM critique_bypass_grants
+      WHERE session_id = ? AND consumed_at IS NULL AND revoked_at IS NULL
+        AND datetime(expires_at) > datetime(?)
+      ORDER BY datetime(granted_at) DESC, rowid DESC
+      LIMIT 1`,
+    sessionId,
+    nowIso,
+  );
   return row ? normalizeGrant(row) : null;
 }
 
 /** The gate spent the grant; record it so it can never be honoured again. */
-export function markBypassGrantConsumed(grantId: string, consumedAtIso: string): void {
-  if (!hasTable(getDb(), 'critique_bypass_grants')) return;
-  getDb()
-    .prepare('UPDATE critique_bypass_grants SET consumed_at = ? WHERE grant_id = ? AND consumed_at IS NULL')
-    .run(consumedAtIso, grantId);
+export async function markBypassGrantConsumed(grantId: string, consumedAtIso: string): Promise<void> {
+  if (!(await hasTable(getDb(), 'critique_bypass_grants'))) return;
+  await getDb().run(
+    'UPDATE critique_bypass_grants SET consumed_at = ? WHERE grant_id = ? AND consumed_at IS NULL',
+    consumedAtIso,
+    grantId,
+  );
 }
 
 /**
@@ -288,15 +289,14 @@ export function markBypassGrantConsumed(grantId: string, consumedAtIso: string):
  * Silently a no-op on a host that has not run migration 936; the column is
  * additive and its absence only costs the extra retirement protection.
  */
-export function markBypassGrantReleaseRecorded(grantId: string, recordedAtIso: string): void {
-  if (!hasTable(getDb(), 'critique_bypass_grants')) return;
-  const cols = getDb().prepare(`PRAGMA table_info(critique_bypass_grants)`).all() as Array<{ name: string }>;
-  if (!cols.some((c) => c.name === 'release_recorded_at')) return;
-  getDb()
-    .prepare(
-      'UPDATE critique_bypass_grants SET release_recorded_at = ? WHERE grant_id = ? AND release_recorded_at IS NULL',
-    )
-    .run(recordedAtIso, grantId);
+export async function markBypassGrantReleaseRecorded(grantId: string, recordedAtIso: string): Promise<void> {
+  if (!(await hasTable(getDb(), 'critique_bypass_grants'))) return;
+  if (!(await hasColumn(getDb(), 'critique_bypass_grants', 'release_recorded_at'))) return;
+  await getDb().run(
+    'UPDATE critique_bypass_grants SET release_recorded_at = ? WHERE grant_id = ? AND release_recorded_at IS NULL',
+    recordedAtIso,
+    grantId,
+  );
 }
 
 /**
@@ -305,19 +305,18 @@ export function markBypassGrantReleaseRecorded(grantId: string, recordedAtIso: s
  * grant nobody knows about, which an agent could later claim by forging
  * matching file fields.
  */
-export function revokeBypassGrant(grantId: string, revokedAtIso: string, reason: string): void {
-  if (!hasTable(getDb(), 'critique_bypass_grants')) return;
-  getDb()
-    .prepare(
-      'UPDATE critique_bypass_grants SET revoked_at = ?, revoked_reason = ? WHERE grant_id = ? AND revoked_at IS NULL',
-    )
-    .run(revokedAtIso, reason, grantId);
+export async function revokeBypassGrant(grantId: string, revokedAtIso: string, reason: string): Promise<void> {
+  if (!(await hasTable(getDb(), 'critique_bypass_grants'))) return;
+  await getDb().run(
+    'UPDATE critique_bypass_grants SET revoked_at = ?, revoked_reason = ? WHERE grant_id = ? AND revoked_at IS NULL',
+    revokedAtIso,
+    reason,
+    grantId,
+  );
 }
 
 /** Every event for one session, oldest first — the per-escalation audit trail. */
-export function getEscalationEventsForSession(sessionId: string): unknown[] {
-  if (!hasTable(getDb(), 'critique_escalation_events')) return [];
-  return getDb()
-    .prepare('SELECT * FROM critique_escalation_events WHERE session_id = ? ORDER BY id ASC')
-    .all(sessionId);
+export async function getEscalationEventsForSession(sessionId: string): Promise<unknown[]> {
+  if (!(await hasTable(getDb(), 'critique_escalation_events'))) return [];
+  return getDb().all('SELECT * FROM critique_escalation_events WHERE session_id = ? ORDER BY id ASC', sessionId);
 }

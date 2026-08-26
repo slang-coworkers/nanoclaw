@@ -42,13 +42,12 @@ beforeAll(
     }),
 );
 
-beforeEach(() => {
-  initTestDb();
-  runMigrations(initTestDb());
+beforeEach(async () => {
+  await runMigrations(await initTestDb());
 });
 
-afterEach(() => {
-  closeDb();
+afterEach(async () => {
+  await closeDb();
 });
 
 describe('POST /internal/register-pr', () => {
@@ -86,8 +85,8 @@ describe('POST /internal/register-pr', () => {
   });
 
   it('writes the mapping on a valid signed body', async () => {
-    const db = initTestDb();
-    runMigrations(db);
+    const db = await initTestDb();
+    await runMigrations(db);
 
     const body = JSON.stringify({
       repo: 'shader-slang/slang',
@@ -100,11 +99,13 @@ describe('POST /internal/register-pr', () => {
     const r = await postRaw(serverUrl, { [REGISTER_SIGNATURE_HEADER]: signRegisterBody(SECRET, body) }, body);
     expect(r.status).toBe(200);
 
-    const row = db
-      .prepare('SELECT owner_instance, session_id FROM pr_session_mappings WHERE repo = ? AND pr_number = ?')
-      .get('shader-slang/slang', 555) as { owner_instance: string; session_id: string };
-    expect(row.owner_instance).toBe('lego');
-    expect(row.session_id).toBe('s-ext');
+    const row = await db.get<{ owner_instance: string; session_id: string }>(
+      'SELECT owner_instance, session_id FROM pr_session_mappings WHERE repo = ? AND pr_number = ?',
+      'shader-slang/slang',
+      555,
+    );
+    expect(row?.owner_instance).toBe('lego');
+    expect(row?.session_id).toBe('s-ext');
   });
 
   it('rejects payload over the 64 KB body limit', async () => {

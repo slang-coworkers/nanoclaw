@@ -21,7 +21,7 @@ export interface CapabilityCheck {
   reason: string;
 }
 
-export function isApprovalLedgerWriter(agentGroupId: string): CapabilityCheck {
+export async function isApprovalLedgerWriter(agentGroupId: string): Promise<CapabilityCheck> {
   const allowlist = approvalLedgerWriters();
   if (allowlist.length === 0) {
     log.error('approval-ledger: no ledger writers configured — record_decision denied for every group', {
@@ -38,7 +38,7 @@ export function isApprovalLedgerWriter(agentGroupId: string): CapabilityCheck {
     return { allowed: true, reason: `agent group ${agentGroupId} is a declared approval-ledger writer` };
   }
 
-  const folder = lookupFolder(agentGroupId);
+  const folder = await lookupFolder(agentGroupId);
   if (folder && allowlist.some((entry) => entry.toLowerCase() === folder.toLowerCase())) {
     return { allowed: true, reason: `agent group ${folder} is a declared approval-ledger writer` };
   }
@@ -53,9 +53,9 @@ export function isApprovalLedgerWriter(agentGroupId: string): CapabilityCheck {
   };
 }
 
-function lookupFolder(agentGroupId: string): string | null {
+async function lookupFolder(agentGroupId: string): Promise<string | null> {
   try {
-    return getAgentGroup(agentGroupId)?.folder ?? null;
+    return (await getAgentGroup(agentGroupId))?.folder ?? null;
   } catch (err) {
     log.warn('approval-ledger: agent-group lookup failed while resolving ledger-writer capability', {
       agentGroupId,

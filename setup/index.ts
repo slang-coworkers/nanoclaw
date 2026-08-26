@@ -23,6 +23,7 @@ const STEPS: Record<
   container: () => import('./container.js'),
   register: () => import('./register.js'),
   'pair-telegram': () => import('./pair-telegram.js'),
+  'pair-dial': () => import('./pair-dial.js'),
   'whatsapp-auth': () => import('./whatsapp-auth.js'),
   'signal-auth': () => import('./signal-auth.js'),
   mounts: () => import('./mounts.js'),
@@ -44,16 +45,12 @@ async function main(): Promise<void> {
   const stepIdx = args.indexOf('--step');
 
   if (stepIdx === -1 || !args[stepIdx + 1]) {
-    console.error(
-      `Usage: pnpm exec tsx setup/index.ts --step <${Object.keys(STEPS).join('|')}> [args...]`,
-    );
+    console.error(`Usage: pnpm exec tsx setup/index.ts --step <${Object.keys(STEPS).join('|')}> [args...]`);
     process.exit(1);
   }
 
   const stepName = args[stepIdx + 1];
-  const stepArgs = args.filter(
-    (a, i) => i !== stepIdx && i !== stepIdx + 1 && a !== '--',
-  );
+  const stepArgs = args.filter((a, i) => i !== stepIdx && i !== stepIdx + 1 && a !== '--');
 
   const loader = STEPS[stepName];
   if (!loader) {

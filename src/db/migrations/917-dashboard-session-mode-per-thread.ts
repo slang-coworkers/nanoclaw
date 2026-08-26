@@ -19,26 +19,21 @@ import type { Migration } from './index.js';
 export const migration917: Migration = {
   version: 917,
   name: 'dashboard-session-mode-per-thread',
-  up(db) {
-    // Guard: the columns and tables must exist. On a completely fresh
-    // install the earlier migrations have already created both.
-    const hasTable = (name: string) =>
-      (db.prepare("SELECT count(*) as c FROM sqlite_master WHERE type='table' AND name = ?").get(name) as { c: number })
-        .c > 0;
-    if (!hasTable('messaging_group_agents') || !hasTable('messaging_groups')) return;
+  async up(db) {
+    // Guard: the tables must exist. On a completely fresh install the earlier
+    // migrations have already created both. `db.hasTable` is the driver's own
+    // portable form of the old sqlite_master probe.
+    if (!(await db.hasTable('messaging_group_agents')) || !(await db.hasTable('messaging_groups'))) return;
 
-    const res = db
-      .prepare(
-        `UPDATE messaging_group_agents
-            SET session_mode = 'per-thread'
-          WHERE session_mode = 'shared'
-            AND messaging_group_id IN (
-              SELECT id FROM messaging_groups WHERE channel_type = 'dashboard'
-            )`,
-      )
-      .run();
-    if (res.changes > 0) {
-      // The caller logs at INFO level per-migration; no extra log here.
-    }
+    // The runner logs at INFO per-migration; the changed-row count is not
+    // interesting enough to log again.
+    await db.run(
+      `UPDATE messaging_group_agents
+          SET session_mode = 'per-thread'
+        WHERE session_mode = 'shared'
+          AND messaging_group_id IN (
+            SELECT id FROM messaging_groups WHERE channel_type = 'dashboard'
+          )`,
+    );
   },
 };

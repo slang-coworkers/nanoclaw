@@ -1,16 +1,12 @@
-import type Database from 'better-sqlite3';
-
+import { addColumnIfMissing } from './column-guard.js';
 import type { Migration } from './index.js';
 
 export const migration927: Migration = {
   version: 927,
   name: 'pr-mapping-owner-instance',
   dependsOn: ['pr-session-mappings'],
-  up(db: Database.Database) {
-    const cols = db.prepare('PRAGMA table_info(pr_session_mappings)').all() as Array<{ name: string }>;
-    if (!cols.some((c) => c.name === 'owner_instance')) {
-      db.exec(`ALTER TABLE pr_session_mappings ADD COLUMN owner_instance TEXT NOT NULL DEFAULT 'prod'`);
-    }
-    db.exec(`CREATE INDEX IF NOT EXISTS idx_pr_map_owner ON pr_session_mappings(owner_instance)`);
+  async up(db) {
+    await addColumnIfMissing(db, 'pr_session_mappings', "owner_instance TEXT NOT NULL DEFAULT 'prod'");
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_pr_map_owner ON pr_session_mappings(owner_instance)`);
   },
 };

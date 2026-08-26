@@ -1,5 +1,3 @@
-import type Database from 'better-sqlite3';
-
 import type { Migration } from './index.js';
 
 /**
@@ -26,14 +24,14 @@ import type { Migration } from './index.js';
  * have the real filer's login at the exact moment a thread is first minted.
  *
  * One row per thread; the author of a GitHub issue/PR is an immutable fact
- * once observed, so the write path is `INSERT OR IGNORE` — first-observed
- * wins and is never overwritten.
+ * once observed, so the write path inserts only when the thread has no row —
+ * first-observed wins and is never overwritten.
  */
 export const migration940: Migration = {
   version: 940,
   name: 'gh-thread-origin',
-  up(db: Database.Database) {
-    db.exec(`
+  async up(db) {
+    await db.exec(`
       CREATE TABLE IF NOT EXISTS gh_thread_origin (
         thread_id  TEXT PRIMARY KEY,
         repo       TEXT NOT NULL,

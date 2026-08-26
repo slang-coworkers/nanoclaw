@@ -86,11 +86,11 @@ registerResource({
       examples: ['ncl cost-cap get', 'ncl cost-cap get --group slang-fixer'],
       handler: async (args) => {
         const group = typeof args.group === 'string' && args.group.trim() ? args.group.trim() : undefined;
-        const fleetRow = getCostCapPolicy();
+        const fleetRow = await getCostCapPolicy();
         const envCeiling = Number(process.env.NANOCLAW_COST_T2_CEILING_USD);
         const envCeilingValue = Number.isFinite(envCeiling) && envCeiling > 0 ? envCeiling : null;
 
-        const effectiveFleetCeiling = resolveCostCeilingT2Usd();
+        const effectiveFleetCeiling = await resolveCostCeilingT2Usd();
         const fleetSource =
           fleetRow && typeof fleetRow.ceiling_usd === 'number' ? 'db' : envCeilingValue !== null ? 'env' : 'none';
 
@@ -101,18 +101,18 @@ registerResource({
             dbCeilingUsd: fleetRow?.ceiling_usd ?? null,
             envCeilingUsd: envCeilingValue,
           },
-          overrides: listCostCapPolicies().map(policyView),
+          overrides: (await listCostCapPolicies()).map(policyView),
         };
 
         if (!group) return base;
 
-        const row = getCostCapPolicy(group);
+        const row = await getCostCapPolicy(group);
         return {
           ...base,
           group: {
             group_folder: group,
-            effectiveCapUsd: resolveCostCapT2Usd(group),
-            effectiveCeilingUsd: resolveCostCeilingT2Usd(group),
+            effectiveCapUsd: await resolveCostCapT2Usd(group),
+            effectiveCeilingUsd: await resolveCostCeilingT2Usd(group),
             dbCapUsd: row?.cap_usd ?? null,
             dbCeilingUsd: row?.ceiling_usd ?? null,
           },
@@ -201,7 +201,7 @@ registerResource({
           }
         }
 
-        const row = setCostCapPolicy({ groupFolder: group, ceilingUsd, capUsd, updatedBy: actorLabel(ctx) });
+        const row = await setCostCapPolicy({ groupFolder: group, ceilingUsd, capUsd, updatedBy: actorLabel(ctx) });
         return {
           updated: policyView(row),
           note:
@@ -227,7 +227,7 @@ registerResource({
       examples: ['ncl cost-cap clear', 'ncl cost-cap clear --group slang-fixer'],
       handler: async (args) => {
         const group = typeof args.group === 'string' && args.group.trim() ? args.group.trim() : undefined;
-        const removed = clearCostCapPolicy(group);
+        const removed = await clearCostCapPolicy(group);
         const scope = group ?? 'fleet';
         return {
           cleared: removed,

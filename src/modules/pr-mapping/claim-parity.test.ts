@@ -68,17 +68,15 @@ function session(id: string, agentGroupId: string): never {
 async function reportPrCreated(sessionId: string, agentGroupId: string, prNumber = PR): Promise<void> {
   const handler = getDeliveryAction('map_pr_session');
   if (!handler) throw new Error('map_pr_session is not registered');
-  await handler(
-    { action: 'map_pr_session', repo: REPO, pr_number: prNumber },
-    session(sessionId, agentGroupId),
-    null as never,
-  );
+  await handler({ action: 'map_pr_session', repo: REPO, pr_number: prNumber }, session(sessionId, agentGroupId));
 }
 
-function holder(prNumber = PR): { agent_group_id: string; session_id: string } | undefined {
-  return getDb()
-    .prepare('SELECT agent_group_id, session_id FROM pr_session_mappings WHERE repo = ? AND pr_number = ?')
-    .get(REPO, prNumber) as { agent_group_id: string; session_id: string } | undefined;
+async function holder(prNumber = PR): Promise<{ agent_group_id: string; session_id: string } | undefined> {
+  return getDb().get<{ agent_group_id: string; session_id: string }>(
+    'SELECT agent_group_id, session_id FROM pr_session_mappings WHERE repo = ? AND pr_number = ?',
+    REPO,
+    prNumber,
+  );
 }
 
 beforeAll(
@@ -95,25 +93,25 @@ beforeAll(
 
 afterAll(() => new Promise<void>((resolve) => httpServer.close(() => resolve())));
 
-beforeEach(() => {
+beforeEach(async () => {
   notified.length = 0;
-  runMigrations(initTestDb());
+  await runMigrations(await initTestDb());
 });
 
-afterEach(() => {
-  closeDb();
+afterEach(async () => {
+  await closeDb();
 });
 
 describe('report_pr_created claims a PR for the calling session', () => {
   it('records the mapping when the PR is unclaimed', async () => {
     await reportPrCreated('sess-fixer', 'ag-fixer');
-    expect(holder()).toMatchObject({ agent_group_id: 'ag-fixer', session_id: 'sess-fixer' });
+    expect(await holder()).toMatchObject({ agent_group_id: 'ag-fixer', session_id: 'sess-fixer' });
   });
 
   it('lets the same group re-report from a new session after a restart', async () => {
     await reportPrCreated('sess-fixer-1', 'ag-fixer');
     await reportPrCreated('sess-fixer-2', 'ag-fixer');
-    expect(holder()).toMatchObject({ agent_group_id: 'ag-fixer', session_id: 'sess-fixer-2' });
+    expect(await holder()).toMatchObject({ agent_group_id: 'ag-fixer', session_id: 'sess-fixer-2' });
     expect(notified).toEqual([]);
   });
 });
@@ -126,7 +124,7 @@ describe('a different group cannot capture a PR it does not hold', () => {
 
   it('leaves the mapping with the incumbent', async () => {
     await reportPrCreated('sess-attacker', 'ag-attacker');
-    expect(holder()).toMatchObject({ agent_group_id: 'ag-fixer', session_id: 'sess-fixer' });
+    expect(await holder()).toMatchObject({ agent_group_id: 'ag-fixer', session_id: 'sess-fixer' });
   });
 
   it('tells the attacking agent instead of failing silently', async () => {
@@ -140,7 +138,7 @@ describe('a different group cannot capture a PR it does not hold', () => {
 
   it('does not claim an unrelated PR as a consolation prize', async () => {
     await reportPrCreated('sess-attacker', 'ag-attacker');
-    expect(holder(PR + 1)).toBeUndefined();
+    expect(await holder(PR + 1)).toBeUndefined();
   });
 });
 
@@ -157,12 +155,11 @@ describe('the MCP path and the HTTP path agree', () => {
     // HTTP path: same story, driven through the endpoint handler. Seeded with
     // raw SQL so this file needs no symbol the pre-fix tree lacks and its
     // failures there are behavioural.
-    getDb()
-      .prepare(
-        `INSERT INTO pr_session_mappings (repo, pr_number, agent_group_id, session_id, thread_id, created_at, owner_instance)
+    await getDb().run(
+      `INSERT INTO pr_session_mappings (repo, pr_number, agent_group_id, session_id, thread_id, created_at, owner_instance)
          VALUES (?, 8002, 'ag-fixer', 'sess-fixer', 'thread-seed', datetime('now'), 'prod')`,
-      )
-      .run(REPO);
+      REPO,
+    );
     const httpStatus = await registerOverHttp({
       repo: REPO,
       pr_number: 8002,
@@ -171,8 +168,8 @@ describe('the MCP path and the HTTP path agree', () => {
       session_id: 'sess-attacker',
     });
 
-    const afterMcp = holder(8001);
-    const afterHttp = holder(8002);
+    const afterMcp = await holder(8001);
+    const afterHttp = await holder(8002);
 
     expect(httpStatus).not.toBe(200);
     expect(afterMcp).toMatchObject({ agent_group_id: 'ag-fixer' });

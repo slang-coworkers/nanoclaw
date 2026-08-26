@@ -115,7 +115,7 @@ export async function handleRegisterPr(req: IncomingMessage, res: ServerResponse
   // PEER's ids — opaque here by design, which is what `owner_instance` is for
   // — so there is nothing to validate and validating would break the flow.
   if (ownerInstance === INSTANCE_SLUG) {
-    const local = getSession(sessionId);
+    const local = await getSession(sessionId);
     if (!local || local.agent_group_id !== agentGroupId) {
       log.error('register-pr: rejected a local claim whose session does not belong to the claimed group', {
         repo,
@@ -129,7 +129,7 @@ export async function handleRegisterPr(req: IncomingMessage, res: ServerResponse
     }
   }
 
-  const claim = claimPrMapping(getDb(), { repo, prNumber, ownerInstance, agentGroupId, sessionId, threadId });
+  const claim = await claimPrMapping(getDb(), { repo, prNumber, ownerInstance, agentGroupId, sessionId, threadId });
 
   if (claim.outcome === 'rejected') {
     // 409, not 200-with-a-lie: the peer has to be able to tell that its

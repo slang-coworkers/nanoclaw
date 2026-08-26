@@ -35,11 +35,11 @@ import { isApprovalLedgerWriter } from './capability.js';
 
 export const approvalLedgerRecordDecision = defineGuardedAction({
   action: 'approval_ledger.record_decision',
-  decide: (input: GuardInput) => {
+  decide: async (input: GuardInput) => {
     if (input.actor.kind !== 'agent') {
       return DENY('record_decision is a container-originated action');
     }
-    const check = isApprovalLedgerWriter(input.actor.agentGroupId);
+    const check = await isApprovalLedgerWriter(input.actor.agentGroupId);
     if (!check.allowed) return DENY(check.reason);
     return ALLOW(check.reason);
   },

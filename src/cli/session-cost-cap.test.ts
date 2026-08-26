@@ -18,7 +18,7 @@ vi.mock('../db/sessions.js', () => ({
 }));
 
 const mockOutboundDbPath = vi.fn();
-vi.mock('../session-manager.js', () => ({
+vi.mock('../mailbox/sqlite/paths.js', () => ({
   outboundDbPath: (...a: unknown[]) => mockOutboundDbPath(...a),
 }));
 
@@ -59,45 +59,45 @@ function seedCostCap(db: Database.Database, state: Record<string, unknown>): voi
 }
 
 describe('readSessionCostCapStatus', () => {
-  it('throws when called with an empty session id', () => {
-    expect(() => readSessionCostCapStatus('')).toThrow('--session is required');
+  it('throws when called with an empty session id', async () => {
+    await expect(readSessionCostCapStatus('')).rejects.toThrow('--session is required');
   });
 
-  it('throws when the session does not exist', () => {
-    mockGetSession.mockReturnValue(undefined);
-    expect(() => readSessionCostCapStatus('missing')).toThrow('session not found: missing');
+  it('throws when the session does not exist', async () => {
+    mockGetSession.mockResolvedValue(undefined);
+    await expect(readSessionCostCapStatus('missing')).rejects.toThrow('session not found: missing');
   });
 
-  it('returns status "unknown" when outbound.db does not exist on disk', () => {
-    mockGetSession.mockReturnValue(SESSION);
+  it('returns status "unknown" when outbound.db does not exist on disk', async () => {
+    mockGetSession.mockResolvedValue(SESSION);
     mockOutboundDbPath.mockReturnValue(dbPathFor('nope.db'));
-    expect(readSessionCostCapStatus('sess-1')).toEqual({
+    expect(await readSessionCostCapStatus('sess-1')).toEqual({
       session_id: 'sess-1',
       agent_group_id: 'ag-1',
       status: 'unknown',
     });
   });
 
-  it('returns status "unknown" when session_state table is absent (pre-cost-cap runner)', () => {
-    mockGetSession.mockReturnValue(SESSION);
+  it('returns status "unknown" when session_state table is absent (pre-cost-cap runner)', async () => {
+    mockGetSession.mockResolvedValue(SESSION);
     const dbPath = dbPathFor('out.db');
     const db = new Database(dbPath);
     db.exec(`CREATE TABLE unrelated (x TEXT);`);
     db.close();
     mockOutboundDbPath.mockReturnValue(dbPath);
-    expect(readSessionCostCapStatus('sess-1').status).toBe('unknown');
+    expect((await readSessionCostCapStatus('sess-1')).status).toBe('unknown');
   });
 
-  it('returns status "unknown" when no cost_cap row is present yet', () => {
-    mockGetSession.mockReturnValue(SESSION);
+  it('returns status "unknown" when no cost_cap row is present yet', async () => {
+    mockGetSession.mockResolvedValue(SESSION);
     const dbPath = dbPathFor('out.db');
     makeOutboundDb(dbPath).close();
     mockOutboundDbPath.mockReturnValue(dbPath);
-    expect(readSessionCostCapStatus('sess-1').status).toBe('unknown');
+    expect((await readSessionCostCapStatus('sess-1')).status).toBe('unknown');
   });
 
-  it('returns status "unknown" when the row is malformed JSON (never throws)', () => {
-    mockGetSession.mockReturnValue(SESSION);
+  it('returns status "unknown" when the row is malformed JSON (never throws)', async () => {
+    mockGetSession.mockResolvedValue(SESSION);
     const dbPath = dbPathFor('out.db');
     const db = makeOutboundDb(dbPath);
     db.prepare(`INSERT INTO session_state (key, value, updated_at) VALUES ('cost_cap', '{not json', ?)`).run(
@@ -105,37 +105,37 @@ describe('readSessionCostCapStatus', () => {
     );
     db.close();
     mockOutboundDbPath.mockReturnValue(dbPath);
-    expect(readSessionCostCapStatus('sess-1').status).toBe('unknown');
+    expect((await readSessionCostCapStatus('sess-1')).status).toBe('unknown');
   });
 
-  it('returns status "unknown" when the row has no recognizable status field', () => {
-    mockGetSession.mockReturnValue(SESSION);
+  it('returns status "unknown" when the row has no recognizable status field', async () => {
+    mockGetSession.mockResolvedValue(SESSION);
     const dbPath = dbPathFor('out.db');
     const db = makeOutboundDb(dbPath);
     seedCostCap(db, { capUsd: 10, spentUsd: 2 }); // no `status` key at all
     db.close();
     mockOutboundDbPath.mockReturnValue(dbPath);
-    expect(readSessionCostCapStatus('sess-1').status).toBe('unknown');
+    expect((await readSessionCostCapStatus('sess-1')).status).toBe('unknown');
   });
 
-  it('returns status "unknown" for a garbage status value (defensive against future drift)', () => {
-    mockGetSession.mockReturnValue(SESSION);
+  it('returns status "unknown" for a garbage status value (defensive against future drift)', async () => {
+    mockGetSession.mockResolvedValue(SESSION);
     const dbPath = dbPathFor('out.db');
     const db = makeOutboundDb(dbPath);
     seedCostCap(db, { status: 'not-a-real-status', capUsd: 10, spentUsd: 2 });
     db.close();
     mockOutboundDbPath.mockReturnValue(dbPath);
-    expect(readSessionCostCapStatus('sess-1').status).toBe('unknown');
+    expect((await readSessionCostCapStatus('sess-1')).status).toBe('unknown');
   });
 
-  it('reports a live "ok" status with spend/cap/window', () => {
-    mockGetSession.mockReturnValue(SESSION);
+  it('reports a live "ok" status with spend/cap/window', async () => {
+    mockGetSession.mockResolvedValue(SESSION);
     const dbPath = dbPathFor('out.db');
     const db = makeOutboundDb(dbPath);
     seedCostCap(db, { status: 'ok', capUsd: 10, spentUsd: 1.5, immortal: false, window: 'lifetime' });
     db.close();
     mockOutboundDbPath.mockReturnValue(dbPath);
-    expect(readSessionCostCapStatus('sess-1')).toEqual({
+    expect(await readSessionCostCapStatus('sess-1')).toEqual({
       session_id: 'sess-1',
       agent_group_id: 'ag-1',
       status: 'ok',
@@ -146,8 +146,8 @@ describe('readSessionCostCapStatus', () => {
     });
   });
 
-  it("reports 'stopped' — the case /supervise-issues cares about — with escalation timestamp", () => {
-    mockGetSession.mockReturnValue(SESSION);
+  it("reports 'stopped' — the case /supervise-issues cares about — with escalation timestamp", async () => {
+    mockGetSession.mockResolvedValue(SESSION);
     const dbPath = dbPathFor('out.db');
     const db = makeOutboundDb(dbPath);
     seedCostCap(db, {
@@ -160,14 +160,14 @@ describe('readSessionCostCapStatus', () => {
     });
     db.close();
     mockOutboundDbPath.mockReturnValue(dbPath);
-    const result = readSessionCostCapStatus('sess-1');
+    const result = await readSessionCostCapStatus('sess-1');
     expect(result.status).toBe('stopped');
     expect(result.escalated_at).toBe('2026-08-20T00:00:00.000Z');
     expect(result.decision).toBeUndefined();
   });
 
-  it('reports the human decision once a Continue/Stop was recorded', () => {
-    mockGetSession.mockReturnValue(SESSION);
+  it('reports the human decision once a Continue/Stop was recorded', async () => {
+    mockGetSession.mockResolvedValue(SESSION);
     const dbPath = dbPathFor('out.db');
     const db = makeOutboundDb(dbPath);
     seedCostCap(db, {
@@ -179,13 +179,13 @@ describe('readSessionCostCapStatus', () => {
     });
     db.close();
     mockOutboundDbPath.mockReturnValue(dbPath);
-    const result = readSessionCostCapStatus('sess-1');
+    const result = await readSessionCostCapStatus('sess-1');
     expect(result.decision).toBe('continue');
     expect(result.decided_at).toBe('2026-08-21T00:00:00.000Z');
   });
 
-  it('reports an immortal daily-window session (dayKey present, never stopped)', () => {
-    mockGetSession.mockReturnValue(SESSION);
+  it('reports an immortal daily-window session (dayKey present, never stopped)', async () => {
+    mockGetSession.mockResolvedValue(SESSION);
     const dbPath = dbPathFor('out.db');
     const db = makeOutboundDb(dbPath);
     seedCostCap(db, {
@@ -198,24 +198,24 @@ describe('readSessionCostCapStatus', () => {
     });
     db.close();
     mockOutboundDbPath.mockReturnValue(dbPath);
-    const result = readSessionCostCapStatus('sess-1');
+    const result = await readSessionCostCapStatus('sess-1');
     expect(result.status).toBe('escalated');
     expect(result.day_key).toBe('2026-08-24');
     expect(result.immortal).toBe(true);
   });
 
-  it('closes the database handle even when the row is malformed (no fd leak)', () => {
+  it('closes the database handle even when the row is malformed (no fd leak)', async () => {
     // Indirect check: opening+closing repeatedly against the same path must
     // never throw SQLITE_BUSY / EMFILE, which would happen if a prior call
     // left a handle open.
-    mockGetSession.mockReturnValue(SESSION);
+    mockGetSession.mockResolvedValue(SESSION);
     const dbPath = dbPathFor('out.db');
     const db = makeOutboundDb(dbPath);
     seedCostCap(db, { status: 'ok', capUsd: 1, spentUsd: 0 });
     db.close();
     mockOutboundDbPath.mockReturnValue(dbPath);
     for (let i = 0; i < 20; i++) {
-      expect(readSessionCostCapStatus('sess-1').status).toBe('ok');
+      expect((await readSessionCostCapStatus('sess-1')).status).toBe('ok');
     }
   });
 });

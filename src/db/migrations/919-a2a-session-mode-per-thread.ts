@@ -23,19 +23,16 @@ import type { Migration } from './index.js';
 export const migration919: Migration = {
   version: 919,
   name: 'a2a-session-mode-per-thread',
-  up(db) {
-    const hasTable = (name: string) =>
-      (db.prepare("SELECT count(*) as c FROM sqlite_master WHERE type='table' AND name = ?").get(name) as { c: number })
-        .c > 0;
-    if (!hasTable('messaging_group_agents') || !hasTable('messaging_groups')) return;
+  async up(db) {
+    if (!(await db.hasTable('messaging_group_agents')) || !(await db.hasTable('messaging_groups'))) return;
 
-    db.prepare(
+    await db.run(
       `UPDATE messaging_group_agents
           SET session_mode = 'per-thread'
         WHERE session_mode = 'shared'
           AND messaging_group_id IN (
             SELECT id FROM messaging_groups WHERE channel_type = 'agent'
           )`,
-    ).run();
+    );
   },
 };

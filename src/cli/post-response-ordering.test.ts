@@ -57,16 +57,16 @@ function now(): string {
   return new Date().toISOString();
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true });
   fs.mkdirSync(path.join(TEST_DIR, 'v2-sessions', GID, SID), { recursive: true });
   seenAtEffectTime = null;
   initSessionFolder(GID, SID);
   resetPostResponseEffectsForTests();
 
-  runMigrations(initTestDb());
-  createAgentGroup({ id: GID, name: 'Caller', folder: 'caller', agent_provider: null, created_at: now() });
-  createSession({
+  await runMigrations(await initTestDb());
+  await createAgentGroup({ id: GID, name: 'Caller', folder: 'caller', agent_provider: null, created_at: now() });
+  await createSession({
     id: SID,
     agent_group_id: GID,
     messaging_group_id: null,
@@ -94,7 +94,6 @@ describe('post-response effects run strictly after the response is durable', () 
     await handler(
       { action: 'cli_request', requestId: 'req-42', command: 'test-restarting-command', args: {} },
       session,
-      inDb,
     );
 
     expect(seenAtEffectTime).not.toBeNull();

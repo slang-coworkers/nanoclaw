@@ -1,5 +1,3 @@
-import type Database from 'better-sqlite3';
-
 import type { Migration } from './index.js';
 
 /**
@@ -31,8 +29,8 @@ import type { Migration } from './index.js';
 export const migration932: Migration = {
   version: 932,
   name: 'critique-escalation-events',
-  up(db: Database.Database) {
-    db.exec(`
+  async up(db) {
+    await db.exec(`
       CREATE TABLE IF NOT EXISTS critique_escalation_events (
         id             INTEGER PRIMARY KEY AUTOINCREMENT,
         session_id     TEXT NOT NULL,

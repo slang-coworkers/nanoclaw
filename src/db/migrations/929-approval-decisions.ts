@@ -1,5 +1,3 @@
-import type Database from 'better-sqlite3';
-
 import type { Migration } from './index.js';
 
 /**
@@ -25,8 +23,8 @@ import type { Migration } from './index.js';
 export const migration929: Migration = {
   version: 929,
   name: 'approval-decisions',
-  up(db: Database.Database) {
-    db.exec(`
+  async up(db) {
+    await db.exec(`
       CREATE TABLE IF NOT EXISTS approval_decisions (
         repo             TEXT NOT NULL,
         pr_number        INTEGER NOT NULL,

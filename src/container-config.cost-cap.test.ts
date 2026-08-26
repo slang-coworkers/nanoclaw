@@ -41,38 +41,38 @@ describe('resolveCostCapT2Usd', () => {
     else process.env.NANOCLAW_COST_T2_USD = savedEnv;
   });
 
-  it('floors a below-$10 per-group p90 at the $10 minimum', () => {
+  it('floors a below-$10 per-group p90 at the $10 minimum', async () => {
     stubThresholds({ perGroupP90Usd: { fixer: 2 }, p90Usd: 3 });
-    expect(resolveCostCapT2Usd('fixer')).toBe(10);
+    expect(await resolveCostCapT2Usd('fixer')).toBe(10);
   });
 
-  it('floors a below-$10 fleet p90 at the $10 minimum when the group has no own p90', () => {
+  it('floors a below-$10 fleet p90 at the $10 minimum when the group has no own p90', async () => {
     stubThresholds({ p90Usd: 4 });
-    expect(resolveCostCapT2Usd('brand-new-group')).toBe(10);
+    expect(await resolveCostCapT2Usd('brand-new-group')).toBe(10);
     // No group folder at all → same fleet fallback, same floor.
-    expect(resolveCostCapT2Usd()).toBe(10);
+    expect(await resolveCostCapT2Usd()).toBe(10);
   });
 
-  it('the $100 default is already ≥ floor — the floor never lowers a legit value', () => {
+  it('the $100 default is already ≥ floor — the floor never lowers a legit value', async () => {
     // Missing/corrupt thresholds file → fail-soft to the $100 default.
     stubThresholds(new Error('ENOENT: no such file'));
-    expect(resolveCostCapT2Usd('fixer')).toBe(100);
+    expect(await resolveCostCapT2Usd('fixer')).toBe(100);
   });
 
-  it('prefers the group’s own p90 over the fleet p90', () => {
+  it('prefers the group’s own p90 over the fleet p90', async () => {
     stubThresholds({ perGroupP90Usd: { fixer: 91 }, p90Usd: 30 });
-    expect(resolveCostCapT2Usd('fixer')).toBe(91); // per-group wins
-    expect(resolveCostCapT2Usd('other')).toBe(30); // not in the map → fleet fallback
+    expect(await resolveCostCapT2Usd('fixer')).toBe(91); // per-group wins
+    expect(await resolveCostCapT2Usd('other')).toBe(30); // not in the map → fleet fallback
   });
 
-  it('keeps an above-floor per-group p90 unchanged', () => {
+  it('keeps an above-floor per-group p90 unchanged', async () => {
     stubThresholds({ perGroupP90Usd: { reviewer: 12 } });
-    expect(resolveCostCapT2Usd('reviewer')).toBe(12);
+    expect(await resolveCostCapT2Usd('reviewer')).toBe(12);
   });
 
-  it('the NANOCLAW_COST_T2_USD override bypasses the floor and wins over thresholds', () => {
+  it('the NANOCLAW_COST_T2_USD override bypasses the floor and wins over thresholds', async () => {
     process.env.NANOCLAW_COST_T2_USD = '3'; // below the $10 floor
     stubThresholds({ perGroupP90Usd: { fixer: 91 }, p90Usd: 30 });
-    expect(resolveCostCapT2Usd('fixer')).toBe(3); // override wins outright, unfloored
+    expect(await resolveCostCapT2Usd('fixer')).toBe(3); // override wins outright, unfloored
   });
 });

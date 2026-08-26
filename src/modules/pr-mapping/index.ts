@@ -47,12 +47,12 @@ registerDeliveryAction(
     };
 
     if (PR_MAPPINGS_LOCAL) {
-      const claim = claimPrMapping(getDb(), write);
+      const claim = await claimPrMapping(getDb(), write);
       if (claim.outcome === 'rejected') {
         // Tell the agent, and stop. Silence here would leave it believing its
         // PR is wired for webhooks when the traffic goes somewhere else, and
         // it would keep waiting for review comments that never arrive.
-        notifyAgent(
+        await notifyAgent(
           session,
           `report_pr_created denied: ${repo}#${prNumber} is already registered to another agent group ` +
             `(${claim.prior.owner_instance}/${claim.prior.agent_group_id}). Webhooks for this PR will NOT ` +

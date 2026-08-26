@@ -37,15 +37,15 @@ function stubThresholds(obj: unknown): void {
 }
 
 describe('runtime cost-cap policy', () => {
-  beforeEach(() => {
-    runMigrations(initTestDb());
+  beforeEach(async () => {
+    await runMigrations(await initTestDb());
     delete process.env.NANOCLAW_COST_T2_USD;
     delete process.env.NANOCLAW_COST_T2_CEILING_USD;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.restoreAllMocks();
-    closeDb();
+    await closeDb();
     if (savedCap === undefined) delete process.env.NANOCLAW_COST_T2_USD;
     else process.env.NANOCLAW_COST_T2_USD = savedCap;
     if (savedCeiling === undefined) delete process.env.NANOCLAW_COST_T2_CEILING_USD;
@@ -53,94 +53,94 @@ describe('runtime cost-cap policy', () => {
   });
 
   describe('resolveCostCapT2Usd — DB per-group override precedence', () => {
-    it('a DB per-group cap wins over BOTH env and thresholds, unfloored', () => {
-      setCostCapPolicy({ groupFolder: 'slang-fixer', capUsd: 3 }); // below the $10 floor
+    it('a DB per-group cap wins over BOTH env and thresholds, unfloored', async () => {
+      await setCostCapPolicy({ groupFolder: 'slang-fixer', capUsd: 3 }); // below the $10 floor
       process.env.NANOCLAW_COST_T2_USD = '50';
       stubThresholds({ perGroupP90Usd: { 'slang-fixer': 91 }, p90Usd: 30 });
-      expect(resolveCostCapT2Usd('slang-fixer')).toBe(3);
+      expect(await resolveCostCapT2Usd('slang-fixer')).toBe(3);
     });
 
-    it('the DB override only applies to its own group; others fall through the chain', () => {
-      setCostCapPolicy({ groupFolder: 'slang-fixer', capUsd: 200 });
+    it('the DB override only applies to its own group; others fall through the chain', async () => {
+      await setCostCapPolicy({ groupFolder: 'slang-fixer', capUsd: 200 });
       stubThresholds({ perGroupP90Usd: { reviewer: 12 }, p90Usd: 30 });
-      expect(resolveCostCapT2Usd('slang-fixer')).toBe(200); // DB
-      expect(resolveCostCapT2Usd('reviewer')).toBe(12); // its own p90
-      expect(resolveCostCapT2Usd('brand-new')).toBe(30); // fleet p90
+      expect(await resolveCostCapT2Usd('slang-fixer')).toBe(200); // DB
+      expect(await resolveCostCapT2Usd('reviewer')).toBe(12); // its own p90
+      expect(await resolveCostCapT2Usd('brand-new')).toBe(30); // fleet p90
     });
 
-    it('with no DB cap the existing chain + $10 floor are preserved', () => {
+    it('with no DB cap the existing chain + $10 floor are preserved', async () => {
       stubThresholds({ perGroupP90Usd: { fixer: 2 }, p90Usd: 3 });
-      expect(resolveCostCapT2Usd('fixer')).toBe(10); // floored, unchanged from before
+      expect(await resolveCostCapT2Usd('fixer')).toBe(10); // floored, unchanged from before
     });
 
-    it('a DB cap set on another group does not leak to an unrelated group', () => {
-      setCostCapPolicy({ groupFolder: 'slang-fixer', capUsd: 500 });
+    it('a DB cap set on another group does not leak to an unrelated group', async () => {
+      await setCostCapPolicy({ groupFolder: 'slang-fixer', capUsd: 500 });
       stubThresholds(new Error('ENOENT')); // → $100 default
-      expect(resolveCostCapT2Usd('unrelated')).toBe(100);
+      expect(await resolveCostCapT2Usd('unrelated')).toBe(100);
     });
   });
 
   describe('resolveCostCeilingT2Usd — DB per-group → fleet → env → 0', () => {
-    it('a fleet DB ceiling wins over the env var', () => {
+    it('a fleet DB ceiling wins over the env var', async () => {
       process.env.NANOCLAW_COST_T2_CEILING_USD = '150';
-      expect(resolveCostCeilingT2Usd()).toBe(150); // env only
-      setCostCapPolicy({ ceilingUsd: 250 });
-      expect(resolveCostCeilingT2Usd()).toBe(250); // fleet DB beats env
+      expect(await resolveCostCeilingT2Usd()).toBe(150); // env only
+      await setCostCapPolicy({ ceilingUsd: 250 });
+      expect(await resolveCostCeilingT2Usd()).toBe(250); // fleet DB beats env
     });
 
-    it('a per-group DB ceiling wins over the fleet DB ceiling', () => {
-      setCostCapPolicy({ ceilingUsd: 250 }); // fleet
-      setCostCapPolicy({ groupFolder: 'slang-fixer', ceilingUsd: 400 });
-      expect(resolveCostCeilingT2Usd('slang-fixer')).toBe(400); // per-group
-      expect(resolveCostCeilingT2Usd('other')).toBe(250); // fleet fallback
+    it('a per-group DB ceiling wins over the fleet DB ceiling', async () => {
+      await setCostCapPolicy({ ceilingUsd: 250 }); // fleet
+      await setCostCapPolicy({ groupFolder: 'slang-fixer', ceilingUsd: 400 });
+      expect(await resolveCostCeilingT2Usd('slang-fixer')).toBe(400); // per-group
+      expect(await resolveCostCeilingT2Usd('other')).toBe(250); // fleet fallback
     });
 
-    it('a stored ceiling of 0 explicitly disables the ceiling, overriding the env var', () => {
+    it('a stored ceiling of 0 explicitly disables the ceiling, overriding the env var', async () => {
       process.env.NANOCLAW_COST_T2_CEILING_USD = '150';
-      setCostCapPolicy({ ceilingUsd: 0 });
-      expect(resolveCostCeilingT2Usd()).toBe(0);
+      await setCostCapPolicy({ ceilingUsd: 0 });
+      expect(await resolveCostCeilingT2Usd()).toBe(0);
     });
 
-    it('falls back to the env var, then 0, when no DB row is set', () => {
-      expect(resolveCostCeilingT2Usd()).toBe(0); // no env, no DB
+    it('falls back to the env var, then 0, when no DB row is set', async () => {
+      expect(await resolveCostCeilingT2Usd()).toBe(0); // no env, no DB
       process.env.NANOCLAW_COST_T2_CEILING_USD = '150';
-      expect(resolveCostCeilingT2Usd('any')).toBe(150);
+      expect(await resolveCostCeilingT2Usd('any')).toBe(150);
     });
   });
 
   describe('accessor semantics', () => {
-    it('set upserts, changing only the provided amount', () => {
-      setCostCapPolicy({ groupFolder: 'g', ceilingUsd: 100 });
-      setCostCapPolicy({ groupFolder: 'g', capUsd: 50 }); // leaves ceiling untouched
-      const row = getCostCapPolicy('g');
+    it('set upserts, changing only the provided amount', async () => {
+      await setCostCapPolicy({ groupFolder: 'g', ceilingUsd: 100 });
+      await setCostCapPolicy({ groupFolder: 'g', capUsd: 50 }); // leaves ceiling untouched
+      const row = await getCostCapPolicy('g');
       expect(row?.ceiling_usd).toBe(100);
       expect(row?.cap_usd).toBe(50);
     });
 
-    it('clear removes an override and restores the env fallback', () => {
+    it('clear removes an override and restores the env fallback', async () => {
       process.env.NANOCLAW_COST_T2_CEILING_USD = '150';
-      setCostCapPolicy({ ceilingUsd: 500 });
-      expect(resolveCostCeilingT2Usd()).toBe(500);
-      expect(clearCostCapPolicy()).toBe(true);
-      expect(getCostCapPolicy()).toBeUndefined();
-      expect(resolveCostCeilingT2Usd()).toBe(150); // back to env
-      expect(clearCostCapPolicy()).toBe(false); // nothing left to remove
+      await setCostCapPolicy({ ceilingUsd: 500 });
+      expect(await resolveCostCeilingT2Usd()).toBe(500);
+      expect(await clearCostCapPolicy()).toBe(true);
+      expect(await getCostCapPolicy()).toBeUndefined();
+      expect(await resolveCostCeilingT2Usd()).toBe(150); // back to env
+      expect(await clearCostCapPolicy()).toBe(false); // nothing left to remove
     });
 
-    it('lists the fleet row first, then group overrides', () => {
-      setCostCapPolicy({ groupFolder: 'zeta', capUsd: 10 });
-      setCostCapPolicy({ ceilingUsd: 200 }); // fleet
-      setCostCapPolicy({ groupFolder: 'alpha', capUsd: 20 });
-      const scopes = listCostCapPolicies().map((r) => r.group_folder);
+    it('lists the fleet row first, then group overrides', async () => {
+      await setCostCapPolicy({ groupFolder: 'zeta', capUsd: 10 });
+      await setCostCapPolicy({ ceilingUsd: 200 }); // fleet
+      await setCostCapPolicy({ groupFolder: 'alpha', capUsd: 20 });
+      const scopes = (await listCostCapPolicies()).map((r) => r.group_folder);
       expect(scopes[0]).toBe(''); // fleet first
       expect(scopes.slice(1)).toEqual(['alpha', 'zeta']); // then folders, sorted
     });
 
-    it('reads are fail-soft when the DB is closed', () => {
-      closeDb();
-      expect(getCostCapPolicy('x')).toBeUndefined();
-      expect(listCostCapPolicies()).toEqual([]);
-      expect(resolveCostCeilingT2Usd('x')).toBe(0); // resolver survives a missing DB
+    it('reads are fail-soft when the DB is closed', async () => {
+      await closeDb();
+      expect(await getCostCapPolicy('x')).toBeUndefined();
+      expect(await listCostCapPolicies()).toEqual([]);
+      expect(await resolveCostCeilingT2Usd('x')).toBe(0); // resolver survives a missing DB
     });
   });
 });

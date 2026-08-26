@@ -3,7 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { initTestSessionDb, closeSessionDb, getInboundDb, getOutboundDb } from './db/connection.js';
+import { initTestSessionDb, closeSessionDb, getInboundDb, getOutboundDb } from './mailbox/sqlite/connection.js';
 import { getPendingMessages, markCompleted } from './db/messages-in.js';
 import { getUndeliveredMessages, writeMessageOut } from './db/messages-out.js';
 import { formatMessages, extractRouting } from './formatter.js';
@@ -599,10 +599,13 @@ describe('mock provider', () => {
     }
 
     const typed = events.filter((e) => e.type !== 'activity');
-    expect(typed.length).toBeGreaterThanOrEqual(2);
+    expect(typed.length).toBeGreaterThanOrEqual(3);
     expect(typed[0].type).toBe('init');
-    expect(typed[1].type).toBe('result');
-    expect((typed[1] as { text: string }).text).toBe('Echo: Hello');
+    // The mock declares emitsMidTurnText, so the turn's text streams as a
+    // text event before the result repeats it.
+    expect(typed[1].type).toBe('text');
+    expect(typed[2].type).toBe('result');
+    expect((typed[2] as { text: string }).text).toBe('Echo: Hello');
   });
 
   it('should handle push() during active query', async () => {
@@ -657,7 +660,7 @@ describe('end-to-end with mock provider', () => {
 
     for await (const event of query.events) {
       if (event.type === 'result' && event.text) {
-        writeMessageOut({
+        await writeMessageOut({
           id: `out-${Date.now()}`,
           in_reply_to: routing.inReplyTo,
           kind: 'chat',
@@ -1776,23 +1779,6 @@ describe('error result with no <message> envelope', () => {
   });
 });
 
-describe('isCorruptionError', () => {
-  it('matches the Docker Desktop macOS torn-read symptom', () => {
-    expect(isCorruptionError('database disk image is malformed')).toBe(true);
-  });
-
-  it('matches wrapped SQLite corruption codes', () => {
-    expect(isCorruptionError('SqliteError: SQLITE_CORRUPT_VTAB: ...')).toBe(true);
-    expect(isCorruptionError('file is not a database')).toBe(true);
-  });
-
-  it('returns false for unrelated errors', () => {
-    expect(isCorruptionError('database is locked')).toBe(false);
-    expect(isCorruptionError('no such table: messages_in')).toBe(false);
-    expect(isCorruptionError('')).toBe(false);
-  });
-});
-
 // --- Task-run turn wiring: the REAL processQuery path (one-door) ---
 // These drive the actual call sites (autoAppendTaskLog at result-handling,
 // shouldNudgeTaskBlocks gating, and follow-up turn reset). Deleting the wiring
@@ -1848,9 +1834,20 @@ describe('task-run turn wiring (real processQuery)', () => {
       // separate, also-correct behavior covered by the 'new_session predicate'
       // suite.
       insertMessage('t2', 'task', { prompt: 'fire two', new_session: false });
-      const deadline = Date.now() + 5000;
+      // The poller ticks every ACTIVE_POLL_INTERVAL_MS (500ms), so this
+      // normally resolves in well under a second. The generous deadline is
+      // for slow shared CI runners — and it must stay well below the test's
+      // own timeout (set below), so exhaustion fails on the diagnostic throw
+      // rather than a mute test timeout.
+      const deadline = Date.now() + 15_000;
       while (!pushes.some((p) => p.includes('fire two')) && Date.now() < deadline) {
         await new Promise((r) => setTimeout(r, 50));
+      }
+      if (!pushes.some((p) => p.includes('fire two'))) {
+        throw new Error(
+          `follow-up poller never pushed the second task run within 15s; ` +
+            `pushes seen (${pushes.length}): ${JSON.stringify(pushes.map((p) => p.slice(0, 80)))}`,
+        );
       }
 
       // Turn 2 repeats the mistake. This receives a second independent nudge
@@ -1881,7 +1878,10 @@ describe('task-run turn wiring (real processQuery)', () => {
     expect(logs[1]).toContain('[undelivered → local-cli] fire two result');
     expect(logs).not.toContain('first delivery decision handled');
     expect(logs).not.toContain('second delivery decision handled');
-  });
+    // Explicit budget: the default 5s equalled the old inner deadline, so on
+    // slow runners the test died as a mute timeout instead of reaching the
+    // diagnostic throw above (observed consistently on CI-hosted runners).
+  }, 20_000);
 });
 
 describe('silent turn — a result that delivers nothing is never acked completed', () => {

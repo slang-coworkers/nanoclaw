@@ -46,8 +46,8 @@
  * naming both claimants, which is the difference between a hijack and an
  * incident someone can see.
  */
-import type Database from 'better-sqlite3';
-
+import { hasColumn } from '../../db/column-info.js';
+import type { DbDriver } from '../../db/driver.js';
 import { log } from '../../log.js';
 
 export interface PrMappingWrite {
@@ -66,35 +66,81 @@ export interface PrMappingExisting {
   thread_id: string | null;
 }
 
-/** Migrate the legacy NOT NULL thread_id schema in place if needed. */
-function ensureThreadIdNullable(db: Database.Database): void {
+/**
+ * Rolls a probe transaction back without reporting a failure to the caller.
+ * A dedicated class so the `catch` can tell "the probe finished" from a real
+ * database error and rethrow the latter.
+ */
+class ProbeRollback extends Error {}
+
+/**
+ * Every engine words a rejected NULL differently. Matched rather than parsed,
+ * the same way `migrations/column-guard.ts` matches "already exists" — the
+ * alternative is a dialect switch in a helper that exists to avoid one.
+ */
+const NOT_NULL_VIOLATION = /not[\s_-]?null|cannot be null/i;
+
+/**
+ * Portable stand-in for the `notnull` flag `PRAGMA table_info` used to report:
+ * offer the engine a NULL `thread_id` and see whether it refuses. The write
+ * happens inside a transaction this function always rolls back, so — exactly
+ * like the PRAGMA read it replaces — no probe row is ever visible to anyone.
+ *
+ * The column list names only what both schema generations share; a post-927
+ * `owner_instance` takes its DEFAULT. Any other failure (missing table, a
+ * primary-key collision with a real row) answers "not the legacy schema", so
+ * the recreate below stays reachable only from the case it was written for.
+ */
+async function threadIdRejectsNull(db: DbDriver): Promise<boolean> {
+  let refused = false;
   try {
-    const colInfo = db.prepare('PRAGMA table_info(pr_session_mappings)').all() as Array<{
-      name: string;
-      notnull: number;
-    }>;
-    const tidCol = colInfo.find((c) => c.name === 'thread_id');
-    const ownerCol = colInfo.find((c) => c.name === 'owner_instance');
-    if (!tidCol || tidCol.notnull !== 1) return;
-    db.exec('ALTER TABLE pr_session_mappings RENAME TO _pr_session_mappings_old');
+    await db.transaction(async () => {
+      try {
+        await db.run(
+          `INSERT INTO pr_session_mappings (repo, pr_number, agent_group_id, session_id, thread_id, created_at)
+           VALUES (?, 0, ?, ?, NULL, ?)`,
+          'nanoclaw/thread-id-null-probe',
+          'null-probe',
+          'null-probe',
+          new Date().toISOString(),
+        );
+      } catch (err) {
+        refused = NOT_NULL_VIOLATION.test(String(err));
+      }
+      throw new ProbeRollback('pr-mapping thread_id null probe');
+    });
+  } catch (err) {
+    if (!(err instanceof ProbeRollback)) throw err;
+  }
+  return refused;
+}
+
+/** Migrate the legacy NOT NULL thread_id schema in place if needed. */
+async function ensureThreadIdNullable(db: DbDriver): Promise<void> {
+  try {
+    if (!(await db.hasTable('pr_session_mappings'))) return;
+    if (!(await hasColumn(db, 'pr_session_mappings', 'thread_id'))) return;
+    if (!(await threadIdRejectsNull(db))) return;
+    const ownerCol = await hasColumn(db, 'pr_session_mappings', 'owner_instance');
+    await db.exec('ALTER TABLE pr_session_mappings RENAME TO _pr_session_mappings_old');
     if (ownerCol) {
-      db.exec(`CREATE TABLE pr_session_mappings (
+      await db.exec(`CREATE TABLE pr_session_mappings (
         repo TEXT NOT NULL, pr_number INTEGER NOT NULL, agent_group_id TEXT NOT NULL,
         session_id TEXT NOT NULL, thread_id TEXT, created_at TEXT NOT NULL,
         owner_instance TEXT NOT NULL DEFAULT 'prod',
         PRIMARY KEY (repo, pr_number)
       )`);
     } else {
-      db.exec(`CREATE TABLE pr_session_mappings (
+      await db.exec(`CREATE TABLE pr_session_mappings (
         repo TEXT NOT NULL, pr_number INTEGER NOT NULL, agent_group_id TEXT NOT NULL,
         session_id TEXT NOT NULL, thread_id TEXT, created_at TEXT NOT NULL,
         PRIMARY KEY (repo, pr_number)
       )`);
     }
-    db.exec('INSERT INTO pr_session_mappings SELECT * FROM _pr_session_mappings_old');
-    db.exec('DROP TABLE _pr_session_mappings_old');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_pr_map_lookup ON pr_session_mappings(repo, pr_number)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_pr_map_owner ON pr_session_mappings(owner_instance)');
+    await db.exec('INSERT INTO pr_session_mappings SELECT * FROM _pr_session_mappings_old');
+    await db.exec('DROP TABLE _pr_session_mappings_old');
+    await db.exec('CREATE INDEX IF NOT EXISTS idx_pr_map_lookup ON pr_session_mappings(repo, pr_number)');
+    await db.exec('CREATE INDEX IF NOT EXISTS idx_pr_map_owner ON pr_session_mappings(owner_instance)');
   } catch {
     /* already fixed or table doesn't exist */
   }
@@ -107,11 +153,13 @@ function ensureThreadIdNullable(db: Database.Database): void {
  * even without an @-mention (the mapping IS the ownership signal). Returns
  * false (never throws) if the table doesn't exist yet (pre-migration).
  */
-export function prMappingExists(db: Database.Database, repo: string, prNumber: number): boolean {
+export async function prMappingExists(db: DbDriver, repo: string, prNumber: number): Promise<boolean> {
   try {
-    const row = db.prepare('SELECT 1 FROM pr_session_mappings WHERE repo = ? AND pr_number = ?').get(repo, prNumber) as
-      | { 1: number }
-      | undefined;
+    const row = await db.get<{ present: number }>(
+      'SELECT 1 AS present FROM pr_session_mappings WHERE repo = ? AND pr_number = ?',
+      repo,
+      prNumber,
+    );
     return Boolean(row);
   } catch {
     return false;
@@ -142,20 +190,26 @@ function sameClaimant(prior: PrMappingExisting, w: PrMappingWrite): boolean {
   return prior.owner_instance === w.ownerInstance && prior.agent_group_id === w.agentGroupId;
 }
 
-function readExisting(db: Database.Database, repo: string, prNumber: number): PrMappingExisting | undefined {
-  return db
-    .prepare(
-      'SELECT owner_instance, agent_group_id, session_id, thread_id FROM pr_session_mappings WHERE repo = ? AND pr_number = ?',
-    )
-    .get(repo, prNumber) as PrMappingExisting | undefined;
+async function readExisting(db: DbDriver, repo: string, prNumber: number): Promise<PrMappingExisting | undefined> {
+  return db.get<PrMappingExisting>(
+    'SELECT owner_instance, agent_group_id, session_id, thread_id FROM pr_session_mappings WHERE repo = ? AND pr_number = ?',
+    repo,
+    prNumber,
+  );
 }
 
-function writeRow(db: Database.Database, w: PrMappingWrite): void {
-  db.prepare(
+async function writeRow(db: DbDriver, w: PrMappingWrite): Promise<void> {
+  await db.run(
     `INSERT OR REPLACE INTO pr_session_mappings
      (repo, pr_number, agent_group_id, session_id, thread_id, created_at, owner_instance)
      VALUES (?, ?, ?, ?, ?, datetime('now'), ?)`,
-  ).run(w.repo, w.prNumber, w.agentGroupId, w.sessionId, w.threadId, w.ownerInstance);
+    w.repo,
+    w.prNumber,
+    w.agentGroupId,
+    w.sessionId,
+    w.threadId,
+    w.ownerInstance,
+  );
 }
 
 /**
@@ -166,12 +220,20 @@ function writeRow(db: Database.Database, w: PrMappingWrite): void {
  * action and the cross-instance HTTP endpoint both — so there is no path that
  * gets the old unconditional behaviour.
  */
-export function claimPrMapping(db: Database.Database, w: PrMappingWrite): PrMappingClaim {
-  ensureThreadIdNullable(db);
+export async function claimPrMapping(db: DbDriver, w: PrMappingWrite): Promise<PrMappingClaim> {
+  await ensureThreadIdNullable(db);
 
-  const prior = readExisting(db, w.repo, w.prNumber);
+  // One transaction around read-then-write. Under the synchronous driver the
+  // two statements could not interleave; on the async boundary two concurrent
+  // claims would both read "unclaimed" and the second write would win, which is
+  // the last-writer-wins behaviour this module exists to refuse.
+  const prior = await db.transaction(async () => {
+    const existing = await readExisting(db, w.repo, w.prNumber);
+    if (!existing || sameClaimant(existing, w)) await writeRow(db, w);
+    return existing;
+  });
+
   if (!prior) {
-    writeRow(db, w);
     log.info('pr-mapping claimed', {
       repo: w.repo,
       pr: w.prNumber,
@@ -183,7 +245,6 @@ export function claimPrMapping(db: Database.Database, w: PrMappingWrite): PrMapp
   }
 
   if (sameClaimant(prior, w)) {
-    writeRow(db, w);
     if (prior.session_id !== w.sessionId) {
       log.info('pr-mapping refreshed to a new session of the same group', {
         repo: w.repo,
@@ -220,15 +281,18 @@ export function claimPrMapping(db: Database.Database, w: PrMappingWrite): PrMapp
  * a legitimate operation (fork pickup, reroute, a coworker handing a PR on) —
  * it just has to be a decision somebody made, not a field an agent can set.
  */
-export function overridePrMapping(
-  db: Database.Database,
+export async function overridePrMapping(
+  db: DbDriver,
   w: PrMappingWrite,
   reason: string,
-): { prior: PrMappingExisting | null } {
-  ensureThreadIdNullable(db);
+): Promise<{ prior: PrMappingExisting | null }> {
+  await ensureThreadIdNullable(db);
 
-  const prior = readExisting(db, w.repo, w.prNumber);
-  writeRow(db, w);
+  const prior = await db.transaction(async () => {
+    const existing = await readExisting(db, w.repo, w.prNumber);
+    await writeRow(db, w);
+    return existing;
+  });
   log.warn('pr-mapping REASSIGNED by operator action', {
     repo: w.repo,
     pr: w.prNumber,

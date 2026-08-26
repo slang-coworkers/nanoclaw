@@ -31,7 +31,7 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 
 import { getSession } from '../db/sessions.js';
-import { outboundDbPath } from '../session-manager.js';
+import { outboundDbPath } from '../mailbox/sqlite/paths.js';
 
 export type CostCapStatus = 'ok' | 'warn' | 'escalated' | 'stopped';
 
@@ -82,9 +82,9 @@ interface StoredCostCap {
  * caller (pull-universe.sh) never has to special-case "session predates
  * cost-cap" vs. a real error.
  */
-export function readSessionCostCapStatus(sessionId: string): SessionCostCapView {
+export async function readSessionCostCapStatus(sessionId: string): Promise<SessionCostCapView> {
   if (!sessionId) throw new Error('--session is required');
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) throw new Error(`session not found: ${sessionId}`);
 
   const base = { session_id: session.id, agent_group_id: session.agent_group_id };

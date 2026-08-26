@@ -1,5 +1,4 @@
-import type Database from 'better-sqlite3';
-
+import { addColumnIfMissing } from './column-guard.js';
 import type { Migration } from './index.js';
 
 /**
@@ -27,10 +26,8 @@ import type { Migration } from './index.js';
 export const migration931: Migration = {
   version: 931,
   name: 'approval-join-mode',
-  up(db: Database.Database) {
-    const cols = db.prepare(`PRAGMA table_info(approval_decisions)`).all() as Array<{ name: string }>;
-    if (!cols.length) return; // table not created yet — 929 owns it
-    if (cols.some((c) => c.name === 'join_mode')) return;
-    db.exec(`ALTER TABLE approval_decisions ADD COLUMN join_mode TEXT`);
+  async up(db) {
+    if (!(await db.hasTable('approval_decisions'))) return; // 929 owns the table
+    await addColumnIfMissing(db, 'approval_decisions', 'join_mode TEXT');
   },
 };

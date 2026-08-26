@@ -55,7 +55,9 @@ export function mcpServersToOpenCodeConfig(
       const mergedEnv = resolveEnvInherit(cfg, process.env, name);
       out[name] = {
         type: 'local',
-        command: [cfg.command, ...cfg.args],
+        // `args` is optional on McpServerConfig (a stdio server may take none);
+        // same guard cwd-shim.ts uses.
+        command: [cfg.command, ...(cfg.args ?? [])],
         ...(Object.keys(mergedEnv).length > 0 ? { environment: mergedEnv } : {}),
         enabled: true,
       };

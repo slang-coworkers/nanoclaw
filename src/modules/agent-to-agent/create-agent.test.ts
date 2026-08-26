@@ -18,10 +18,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PendingApproval, Session } from '../../types.js';
 
 // performCreateAgent writes .instructions.md directly under GROUPS_DIR/<folder>,
-// so point GROUPS_DIR at a temp dir (lazy getter — read at call time, after the
-// beforeEach sets _tmp). Mirrors the agent-route.test.ts config mock pattern.
+// and the folder-dedupe loop is disk-aware (A4), so both need GROUPS_DIR pointed
+// at a temp root. Lazy getters — read at call time, after the beforeEach sets
+// _tmp, which is per-run so concurrent files cannot collide on a fixed path.
+// Mirrors the agent-route.test.ts config mock pattern. The original module is
+// spread in first so every other config export keeps its real value.
 let _tmp = '';
-vi.mock('../../config.js', () => ({
+vi.mock('../../config.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../config.js')>()),
   get GROUPS_DIR() {
     return path.join(_tmp, 'groups');
   },
@@ -91,7 +95,6 @@ vi.mock('../../session-manager.js', () => ({
   readOutboxFiles: vi.fn().mockReturnValue([]),
   resolveSession: vi.fn(),
   sessionDir: vi.fn().mockReturnValue('/tmp/nowhere'),
-  inboundDbPath: vi.fn().mockReturnValue('/tmp/nowhere/inbound.db'),
 }));
 vi.mock('../../container-runner.js', () => ({
   wakeContainer: vi.fn().mockResolvedValue(undefined),
@@ -127,7 +130,7 @@ const SESSION = { id: 'sess-1', agent_group_id: 'ag-1' } as Session;
 async function runCreateAgent(content: Record<string, unknown>): Promise<void> {
   const wrapped = getDeliveryAction('create_agent');
   expect(wrapped).toBeDefined();
-  await wrapped!(content, SESSION, undefined as never);
+  await wrapped!(content, SESSION);
 }
 
 function liveGrant(approvalId: string, payload: Record<string, unknown>): PendingApproval {
@@ -245,6 +248,19 @@ describe('create_agent — guard-based authorization (wrapped delivery action)',
 
     expect(mockRequestApproval).not.toHaveBeenCalled();
     expect(mockCreateAgentGroup).not.toHaveBeenCalled();
+  });
+
+  it('skips deleted-group residue on disk when minting the folder (A4)', async () => {
+    // groups/scout exists on disk but no DB row claims it (the mocked
+    // getAgentGroupByFolder always returns undefined) — exactly the state
+    // `ncl groups delete` leaves behind. The dedupe loop must treat disk
+    // presence as taken and mint scout-2, never adopt the residue.
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'global' });
+    fs.mkdirSync(path.join(_tmp, 'groups', 'scout'), { recursive: true });
+    await runCreateAgent({ name: 'Scout', instructions: 'help' });
+
+    expect(mockCreateAgentGroup).toHaveBeenCalledTimes(1);
+    expect(mockCreateAgentGroup.mock.calls[0][0]).toMatchObject({ folder: 'scout-2' });
   });
 });
 

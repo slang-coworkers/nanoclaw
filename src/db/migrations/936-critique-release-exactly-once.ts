@@ -1,5 +1,4 @@
-import type Database from 'better-sqlite3';
-
+import { addColumnIfMissing } from './column-guard.js';
 import type { Migration } from './index.js';
 
 /**
@@ -41,21 +40,17 @@ export const migration936: Migration = {
   version: 936,
   name: 'critique-release-exactly-once',
   dependsOn: ['critique-escalation-events', 'critique-bypass-grants'],
-  up(db: Database.Database) {
-    const eventCols = db.prepare(`PRAGMA table_info(critique_escalation_events)`).all() as Array<{ name: string }>;
-    if (eventCols.length) {
-      if (!eventCols.some((c) => c.name === 'dedupe_key')) {
-        db.exec(`ALTER TABLE critique_escalation_events ADD COLUMN dedupe_key TEXT`);
-      }
+  async up(db) {
+    if (await db.hasTable('critique_escalation_events')) {
+      await addColumnIfMissing(db, 'critique_escalation_events', 'dedupe_key TEXT');
       // Partial: pre-existing rows (and every lifecycle event that has no
       // natural key) leave it NULL, and NULLs must not collide with each other.
-      db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_critique_esc_dedupe
+      await db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_critique_esc_dedupe
                  ON critique_escalation_events(dedupe_key) WHERE dedupe_key IS NOT NULL`);
     }
 
-    const grantCols = db.prepare(`PRAGMA table_info(critique_bypass_grants)`).all() as Array<{ name: string }>;
-    if (grantCols.length && !grantCols.some((c) => c.name === 'release_recorded_at')) {
-      db.exec(`ALTER TABLE critique_bypass_grants ADD COLUMN release_recorded_at TEXT`);
+    if (await db.hasTable('critique_bypass_grants')) {
+      await addColumnIfMissing(db, 'critique_bypass_grants', 'release_recorded_at TEXT');
     }
   },
 };

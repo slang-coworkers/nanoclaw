@@ -32,17 +32,15 @@ import {
   getMessagingGroupAgents,
   getMessagingGroupByPlatform,
 } from '../../db/messaging-groups.js';
-import { getInboundSourceSessionId, getMostRecentPeerSourceSessionId } from '../../db/session-db.js';
 import { getSession } from '../../db/sessions.js';
 import { wakeContainer } from '../../container-runner.js';
 import { log } from '../../log.js';
-import { openInboundDb, resolveSession, sessionDir, writeSessionMessage } from '../../session-manager.js';
+import { resolveSession, sessionDir, withExistingMailboxSession, writeSessionMessage } from '../../session-manager.js';
 import { GuardDenyError, guard } from '../../guard/index.js';
 import type { PendingApproval, Session } from '../../types.js';
 import { requestApproval } from '../approvals/index.js';
 import { evaluateEchoDrop, extractText } from '../runaway/echo-drop.js';
 import { A2A_MESSAGE_GATE_ACTION, a2aSend } from './guard.js';
-import { getMessagePolicy } from './db/agent-message-policies.js';
 
 /**
  * Ensure a per-(source, recipient) messaging_group exists with a per-thread
@@ -67,18 +65,18 @@ import { getMessagePolicy } from './db/agent-message-policies.js';
  * 019. This helper's own UPDATE catches any slipped-through `'shared'`
  * rows on the synthetic group too, so first threaded delivery self-heals.
  */
-export function ensureA2aWiring(
+export async function ensureA2aWiring(
   targetAgentGroupId: string,
   sourceAgentGroupId: string | null = null,
   now: string = new Date().toISOString(),
-): string {
+): Promise<string> {
   const platformId = sourceAgentGroupId
     ? `agent:${sourceAgentGroupId}:${targetAgentGroupId}`
     : `agent:${targetAgentGroupId}`;
-  let mg = getMessagingGroupByPlatform('agent', platformId);
+  let mg = await getMessagingGroupByPlatform('agent', platformId);
   if (!mg) {
     const mgId = `mg-a2a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    createMessagingGroup({
+    await createMessagingGroup({
       id: mgId,
       channel_type: 'agent',
       platform_id: platformId,
@@ -88,12 +86,12 @@ export function ensureA2aWiring(
       admin_user_id: null,
       created_at: now,
     });
-    mg = getMessagingGroupByPlatform('agent', platformId)!;
+    mg = (await getMessagingGroupByPlatform('agent', platformId))!;
   }
 
-  const existing = getMessagingGroupAgents(mg.id).find((a) => a.agent_group_id === targetAgentGroupId);
+  const existing = (await getMessagingGroupAgents(mg.id)).find((a) => a.agent_group_id === targetAgentGroupId);
   if (!existing) {
-    createMessagingGroupAgent({
+    await createMessagingGroupAgent({
       id: `mga-a2a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       messaging_group_id: mg.id,
       agent_group_id: targetAgentGroupId,
@@ -291,25 +289,20 @@ export interface RoutableAgentMessage {
  * target agent group — caller falls through to the fork's existing
  * reply-detection / fresh-delegation logic below.
  */
-function resolveExplicitReplyTarget(
+async function resolveExplicitReplyTarget(
   msg: RoutableAgentMessage,
   sourceSession: Session,
   targetAgentGroupId: string,
-): Session | null {
-  let srcDb;
-  try {
-    srcDb = openInboundDb(sourceSession.agent_group_id, sourceSession.id);
-  } catch {
-    // Source session's inbound DB may not exist yet (fresh source, never
-    // received an inbound). No prior a2a inbounds means no source_session_id
-    // to look up — fall through to existing reply-detection / fresh path.
-    return null;
-  }
-  let originSessionId: string | null = null;
-  let viaDirectInReplyTo = false;
-  try {
+): Promise<Session | null> {
+  // withExistingMailboxSession resolves undefined when the source session has
+  // no provisioned mailbox yet (fresh source, never received an inbound). No
+  // prior a2a inbounds means no source_session_id to look up — fall through to
+  // existing reply-detection / fresh path.
+  const resolved = await withExistingMailboxSession(sourceSession.agent_group_id, sourceSession.id, (srcDb) => {
+    let originSessionId: string | null = null;
+    let viaDirectInReplyTo = false;
     if (msg.in_reply_to) {
-      originSessionId = getInboundSourceSessionId(srcDb, msg.in_reply_to);
+      originSessionId = srcDb.getInboundSourceSessionId(msg.in_reply_to);
       if (originSessionId) viaDirectInReplyTo = true;
     }
     if (!originSessionId) {
@@ -321,13 +314,13 @@ function resolveExplicitReplyTarget(
       // on two distinct threads), the unfiltered heuristic mis-routes;
       // the thread-scoped lookup pins to the right peer session.
       const threadId = msg.thread_id?.trim() || null;
-      originSessionId = getMostRecentPeerSourceSessionId(srcDb, targetAgentGroupId, threadId);
+      originSessionId = srcDb.getMostRecentPeerSourceSessionId(targetAgentGroupId, threadId);
     }
-  } finally {
-    srcDb.close();
-  }
-  if (!originSessionId) return null;
-  const candidate = getSession(originSessionId);
+    return { originSessionId, viaDirectInReplyTo };
+  });
+  if (!resolved?.originSessionId) return null;
+  const { originSessionId, viaDirectInReplyTo } = resolved;
+  const candidate = await getSession(originSessionId);
   if (!candidate || candidate.agent_group_id !== targetAgentGroupId || candidate.status !== 'active') {
     return null;
   }
@@ -382,11 +375,11 @@ function resolveExplicitReplyTarget(
  * the pin path so a coworker without write access to the target group can't
  * shortcut to a session via this field.
  */
-function resolvePinnedTarget(
+async function resolvePinnedTarget(
   msg: RoutableAgentMessage,
   sourceSession: Session,
   targetAgentGroupId: string,
-): Session | null {
+): Promise<Session | null> {
   const pinned = msg.target_session_id?.trim() || null;
   if (!pinned) return null;
 
@@ -397,7 +390,7 @@ function resolvePinnedTarget(
     });
     return null;
   }
-  const candidate = getSession(pinned);
+  const candidate = await getSession(pinned);
   if (!candidate) {
     log.warn('a2a target_session_id: session not found, falling through', {
       msgId: msg.id,
@@ -448,7 +441,7 @@ async function deliverAncestorReply(
   session: Session,
   route: A2aSessionSource,
 ): Promise<void> {
-  const ancestorSession = getSession(route.source_session_id);
+  const ancestorSession = await getSession(route.source_session_id);
   if (!ancestorSession) {
     // Fail closed. The ancestor session the lineage points at is gone
     // (deleted, archived, reset). Synthesising a brand-new session would
@@ -505,7 +498,7 @@ async function deliverAncestorReply(
     ancestorSession.agent_group_id,
     ancestorSession.id,
   );
-  writeSessionMessage(ancestorSession.agent_group_id, ancestorSession.id, {
+  await writeSessionMessage(ancestorSession.agent_group_id, ancestorSession.id, {
     id: a2aReplyId,
     kind: 'chat',
     timestamp: new Date().toISOString(),
@@ -524,7 +517,7 @@ async function deliverAncestorReply(
     a2aMsgId: a2aReplyId,
     forwardedFileCount: countForwardedFiles(forwardedReplyContent),
   });
-  const freshAncestor = getSession(ancestorSession.id);
+  const freshAncestor = await getSession(ancestorSession.id);
   if (freshAncestor) await wakeContainer(freshAncestor);
 }
 
@@ -550,7 +543,7 @@ export async function routeAgentMessage(
   // Layer-0..3 routing). Because the guard has already authorized here, it is
   // called with enforceGate=false so its own (now-redundant) inline gate never
   // double-fires.
-  const decision = guard(a2aSend, {
+  const decision = await guard(a2aSend, {
     actor: { kind: 'agent', agentGroupId: session.agent_group_id, sessionId: session.id },
     resource: { from: session.agent_group_id, to: targetAgentGroupId },
     payload: { id: msg.id, platform_id: targetAgentGroupId, content: msg.content, in_reply_to: msg.in_reply_to ?? '' },
@@ -562,8 +555,8 @@ export async function routeAgentMessage(
   }
 
   if (decision.effect === 'hold') {
-    const sourceName = getAgentGroup(session.agent_group_id)?.name ?? session.agent_group_id;
-    const targetName = getAgentGroup(targetAgentGroupId)?.name ?? targetAgentGroupId;
+    const sourceName = (await getAgentGroup(session.agent_group_id))?.name ?? session.agent_group_id;
+    const targetName = (await getAgentGroup(targetAgentGroupId))?.name ?? targetAgentGroupId;
     await requestApproval({
       session,
       agentName: sourceName,
@@ -650,7 +643,7 @@ export async function performAgentRoute(
   // names a specific inbound, which is more semantic than a structural
   // session id; if both are set and they disagree, the inbound being
   // replied-to is the better signal of intent.
-  const pinnedTarget = resolvePinnedTarget(msg, session, targetAgentGroupId);
+  const pinnedTarget = await resolvePinnedTarget(msg, session, targetAgentGroupId);
 
   // Layer 1: explicit in_reply_to / peer-affinity wins.
   //
@@ -665,7 +658,7 @@ export async function performAgentRoute(
   //
   // resolveExplicitReplyTarget already filters to active sessions of the
   // target agent group, so a hit is always a valid delivery target.
-  const explicitTarget = resolveExplicitReplyTarget(msg, session, targetAgentGroupId);
+  const explicitTarget = await resolveExplicitReplyTarget(msg, session, targetAgentGroupId);
 
   // Layer 2: ancestor walk through a2a_session_sources.
   //
@@ -700,7 +693,7 @@ export async function performAgentRoute(
   // happens to be the ancestor session anyway, the result is the same;
   // if it's a different session, the pin is what the sender meant.
   if (!explicitTarget && !pinnedTarget) {
-    const ancestorRoute = findAncestorRoute(session.id, targetAgentGroupId);
+    const ancestorRoute = await findAncestorRoute(session.id, targetAgentGroupId);
     if (ancestorRoute) {
       await deliverAncestorReply(msg, session, ancestorRoute);
       return;
@@ -712,7 +705,7 @@ export async function performAgentRoute(
   // including the lineage allow (child→ancestor with no destination row). This
   // body is delivery-only; `enforceGate` is retained for signature/back-compat
   // but the gate no longer lives here. A defensive target-exists check stays.
-  if (!getAgentGroup(targetAgentGroupId)) {
+  if (!(await getAgentGroup(targetAgentGroupId))) {
     throw new Error(`target agent group ${targetAgentGroupId} not found for message ${msg.id}`);
   }
 
@@ -751,8 +744,8 @@ export async function performAgentRoute(
     //    own session, not a global agent-shared that collapses all sources).
     const explicitThread = msg.thread_id && msg.thread_id.trim() !== '' ? msg.thread_id : null;
     threadId = explicitThread || session.thread_id || null;
-    const a2aMgId = ensureA2aWiring(targetAgentGroupId, session.agent_group_id);
-    ({ session: targetSession } = resolveSession(
+    const a2aMgId = await ensureA2aWiring(targetAgentGroupId, session.agent_group_id);
+    ({ session: targetSession } = await resolveSession(
       targetAgentGroupId,
       a2aMgId,
       threadId,
@@ -782,7 +775,7 @@ export async function performAgentRoute(
     // home. Covers both per-thread and agent-shared paths — even shared
     // sessions benefit from the reply-detection branch above, so long as
     // only one source is active at a time against that recipient.
-    recordSource({
+    await recordSource({
       recipientSessionId: targetSession.id,
       recipientAgentGroupId: targetAgentGroupId,
       recipientThreadId: threadId,
@@ -821,7 +814,7 @@ export async function performAgentRoute(
       ? { drop: false, reason: '' }
       : evaluateEchoDrop(targetSession.id, session.id, extractText(msg.content));
 
-  writeSessionMessage(targetAgentGroupId, targetSession.id, {
+  await writeSessionMessage(targetAgentGroupId, targetSession.id, {
     id: a2aMsgId,
     kind: 'chat',
     timestamp: new Date().toISOString(),
@@ -832,7 +825,7 @@ export async function performAgentRoute(
     sourceSessionId: session.id,
     // Dropped echoes accumulate as context (trigger:0) but never wake. NOTE:
     // writeSessionMessage defaults trigger to 1, so this MUST be explicit.
-    trigger: echo.drop ? 0 : 1,
+    trigger: !echo.drop,
   });
   log.info('Agent message routed', {
     from: session.agent_group_id,
@@ -847,7 +840,7 @@ export async function performAgentRoute(
 
   if (echo.drop) {
     // Audit the drop (mirrors the no_agent_engaged drop path) and skip the wake.
-    recordDroppedMessage({
+    await recordDroppedMessage({
       channel_type: 'agent',
       platform_id: session.agent_group_id,
       user_id: null,
@@ -859,7 +852,7 @@ export async function performAgentRoute(
     return;
   }
 
-  const fresh = getSession(targetSession.id);
+  const fresh = await getSession(targetSession.id);
   if (fresh) await wakeContainer(fresh);
 }
 

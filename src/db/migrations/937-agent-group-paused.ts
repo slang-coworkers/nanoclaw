@@ -1,3 +1,4 @@
+import { addColumnIfMissing } from './column-guard.js';
 import type { Migration } from './index.js';
 
 /**
@@ -22,14 +23,7 @@ import type { Migration } from './index.js';
 export const migration937: Migration = {
   version: 937,
   name: 'agent-group-paused',
-  up(db) {
-    const hasCol = (
-      db.prepare("SELECT count(*) as c FROM pragma_table_info('agent_groups') WHERE name = 'paused'").get() as {
-        c: number;
-      }
-    ).c;
-    if (!hasCol) {
-      db.exec(`ALTER TABLE agent_groups ADD COLUMN paused INTEGER NOT NULL DEFAULT 0`);
-    }
+  async up(db) {
+    await addColumnIfMissing(db, 'agent_groups', 'paused INTEGER NOT NULL DEFAULT 0');
   },
 };

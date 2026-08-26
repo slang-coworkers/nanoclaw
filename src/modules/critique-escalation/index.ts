@@ -298,9 +298,13 @@ type RetirementDecision =
  * Revoked and expired grants retire without a release stamp, as before: they
  * were never spent, so there is no release to wait for.
  */
-function retirementDecision(session: Session, esc: EscalationFile, dirOverride?: string): RetirementDecision {
+async function retirementDecision(
+  session: Session,
+  esc: EscalationFile,
+  dirOverride?: string,
+): Promise<RetirementDecision> {
   if (esc.resolved === 'approved') {
-    const grant = esc.grant_id ? getBypassGrant(esc.grant_id) : null;
+    const grant = esc.grant_id ? await getBypassGrant(esc.grant_id) : null;
     if (grant) {
       if (grant.consumed_at === null) {
         const dead = grant.revoked_at !== null || Date.parse(grant.expires_at) <= Date.now();
@@ -325,7 +329,7 @@ function retirementDecision(session: Session, esc: EscalationFile, dirOverride?:
     // spend". This branch cannot tell a spent grant from an expired one, so it
     // keeps the pre-existing rule rather than guessing — every grant this host
     // issues carries an id, so only legacy files land here.
-    if (getLatestSpendableGrant(session.id, new Date().toISOString()) !== null) {
+    if ((await getLatestSpendableGrant(session.id, new Date().toISOString())) !== null) {
       return { kind: 'hold', why: 'awaiting-release-stamp' };
     }
     if (!esc.failed_open_at) {
@@ -351,8 +355,8 @@ function retirementDecision(session: Session, esc: EscalationFile, dirOverride?:
 }
 
 /** Common event fields so every row carries the same identity. */
-function eventBase(session: Session, esc: EscalationFile): Record<string, unknown> {
-  const pr = lookupPrForSession(session.id);
+async function eventBase(session: Session, esc: EscalationFile): Promise<Record<string, unknown>> {
+  const pr = await lookupPrForSession(session.id);
   return {
     session_id: session.id,
     agent_group_id: session.agent_group_id,
@@ -364,14 +368,14 @@ function eventBase(session: Session, esc: EscalationFile): Record<string, unknow
   };
 }
 
-function record(
+async function record(
   session: Session,
   esc: EscalationFile,
   event: EscalationEventKind,
   extra: Record<string, unknown> = {},
-): EventRecordResult {
+): Promise<EventRecordResult> {
   return recordEscalationEvent({
-    ...eventBase(session, esc),
+    ...(await eventBase(session, esc)),
     event,
     class: esc.class ?? null,
     ...extra,
@@ -426,7 +430,7 @@ function releaseJournalPath(session: Session, dirOverride?: string): string {
  * Runs before the escalation file is even read: a journal line can be the ONLY
  * evidence left, and every branch below returns early when there is no file.
  */
-function ingestReleaseJournal(session: Session, dirOverride?: string): void {
+async function ingestReleaseJournal(session: Session, dirOverride?: string): Promise<void> {
   const file = releaseJournalPath(session, dirOverride);
   let raw: string;
   try {
@@ -444,7 +448,9 @@ function ingestReleaseJournal(session: Session, dirOverride?: string): void {
       file,
     });
   }
-  const pr = lookupPrForSession(session.id);
+  const pr = await lookupPrForSession(session.id);
+  // Sequential on purpose: each iteration's dedupe-key insert must be visible
+  // to the next, and the release-recorded stamp must follow its own insert.
   for (const line of lines.slice(-MAX_RELEASE_JOURNAL_LINES)) {
     let entry: ReleaseJournalLine;
     try {
@@ -457,10 +463,10 @@ function ingestReleaseJournal(session: Session, dirOverride?: string): void {
       });
       continue;
     }
-    const grant = typeof entry.grant_id === 'string' && entry.grant_id ? getBypassGrant(entry.grant_id) : null;
+    const grant = typeof entry.grant_id === 'string' && entry.grant_id ? await getBypassGrant(entry.grant_id) : null;
     // Older gates carry no event id; `at`+`why` is the best stable key left.
     const eventId = entry.event_id ?? `${entry.at ?? ''}|${entry.why ?? ''}`;
-    const outcome = recordEscalationEvent({
+    const outcome = await recordEscalationEvent({
       session_id: session.id,
       agent_group_id: session.agent_group_id,
       event: 'failed_open',
@@ -475,7 +481,7 @@ function ingestReleaseJournal(session: Session, dirOverride?: string): void {
       dedupe_key: releaseKey(session.id, eventId),
     });
     reportReleaseRecord(session, outcome, { via: 'release-journal', eventId, grantId: entry.grant_id ?? null });
-    if (grant) markBypassGrantReleaseRecorded(grant.grant_id, new Date().toISOString());
+    if (grant) await markBypassGrantReleaseRecorded(grant.grant_id, new Date().toISOString());
     if (outcome === 'recorded') {
       log.error('Critique gate FAILED OPEN — release ingested from the container journal', {
         sessionId: session.id,
@@ -490,9 +496,9 @@ function ingestReleaseJournal(session: Session, dirOverride?: string): void {
 }
 
 /** The pending bypass card for this session, if one is outstanding. */
-function pendingCardFor(sessionId: string): { approval_id: string } | null {
+async function pendingCardFor(sessionId: string): Promise<{ approval_id: string } | null> {
   try {
-    const rows = getPendingApprovalsByAction(BYPASS_ACTION).filter(
+    const rows = (await getPendingApprovalsByAction(BYPASS_ACTION)).filter(
       (r) => r.session_id === sessionId && r.status === 'pending',
     );
     return rows.length ? { approval_id: rows[rows.length - 1].approval_id } : null;
@@ -552,13 +558,13 @@ export function isRequirementCleared(session: Session, esc: EscalationFile, dirO
  * 100% host-originated, so any divergence is unambiguous and false positives
  * are impossible by construction.
  */
-export function reconcileBypassState(session: Session, dirOverride?: string): void {
+export async function reconcileBypassState(session: Session, dirOverride?: string): Promise<void> {
   const state = readWorkflowState(session, dirOverride);
   const nowMs = Date.now();
   const nowIso = new Date().toISOString();
 
-  const divergence = (reason: string): void => {
-    recordEscalationEvent({
+  const divergence = async (reason: string): Promise<void> => {
+    await recordEscalationEvent({
       session_id: session.id,
       agent_group_id: session.agent_group_id,
       event: 'state_divergence',
@@ -585,12 +591,12 @@ export function reconcileBypassState(session: Session, dirOverride?: string): vo
     // unparseable, which fails toward flagging rather than excusing.
     const consumedAtRaw = Number(state.critique_gate_bypass_consumed_at);
     const consumedAtMs = Number.isFinite(consumedAtRaw) && consumedAtRaw > 0 ? consumedAtRaw * 1000 : nowMs;
-    const consumed = consumedGrantId ? getBypassGrant(consumedGrantId) : null;
+    const consumed = consumedGrantId ? await getBypassGrant(consumedGrantId) : null;
     if (consumedGrantId) {
       // Attributed. Either it names a grant we issued to this session, or it
       // doesn't — and "doesn't" is the forgery that actually succeeds.
       if (!consumed || consumed.session_id !== session.id) {
-        divergence(
+        await divergence(
           `a bypass was CONSUMED under grant ${consumedGrantId}, which this host never issued for this session`,
         );
       } else if (consumed.consumed_at) {
@@ -600,24 +606,24 @@ export function reconcileBypassState(session: Session, dirOverride?: string): vo
         // between sweeps. Silently ignoring it (the obvious "already recorded,
         // nothing to do" reading) would let a replay through with no event at
         // all, which is precisely the case one-shot exists to prevent.
-        divergence(
+        await divergence(
           `grant ${consumedGrantId} was CONSUMED AGAIN (already spent at ${consumed.consumed_at}) — replayed waiver`,
         );
       } else if (consumed.revoked_at) {
         // Existing-and-unspent is not the same as valid. A revoked grant is
         // dead; consuming it means the gate honoured local state the host had
         // already withdrawn.
-        divergence(
+        await divergence(
           `grant ${consumedGrantId} was CONSUMED although the host REVOKED it at ${consumed.revoked_at} (${consumed.revoked_reason ?? 'no reason recorded'})`,
         );
       } else if (Date.parse(consumed.expires_at) <= consumedAtMs) {
         // Consumed outside its validity interval. Checked against the stamped
         // consumption time, not "now", so a late sweep can't excuse it.
-        divergence(
+        await divergence(
           `grant ${consumedGrantId} was CONSUMED at ${new Date(consumedAtMs).toISOString()}, after it expired at ${consumed.expires_at}`,
         );
       } else {
-        markBypassGrantConsumed(consumed.grant_id, nowIso);
+        await markBypassGrantConsumed(consumed.grant_id, nowIso);
       }
     } else {
       // Unattributed. A gate older than this host does not write the grant id,
@@ -628,15 +634,15 @@ export function reconcileBypassState(session: Session, dirOverride?: string): vo
       // path, which would train us to ignore the signal. Attribute it to the
       // session's newest spendable grant instead, and only call it divergence
       // when the session has no grant to spend at all.
-      const fallback = getLatestSpendableGrant(session.id, nowIso);
+      const fallback = await getLatestSpendableGrant(session.id, nowIso);
       if (fallback) {
-        markBypassGrantConsumed(fallback.grant_id, nowIso);
+        await markBypassGrantConsumed(fallback.grant_id, nowIso);
         log.warn('Critique-gate bypass consumed without a grant id — attributed to the newest live grant', {
           sessionId: session.id,
           grantId: fallback.grant_id,
         });
       } else {
-        divergence('a bypass was CONSUMED with no grant id and no live grant exists for this session');
+        await divergence('a bypass was CONSUMED with no grant id and no live grant exists for this session');
       }
     }
     // Clear the stamp either way. Left in place it would be re-evaluated every
@@ -653,7 +659,7 @@ export function reconcileBypassState(session: Session, dirOverride?: string): vo
   if (state.critique_gate_bypass_approved !== true) return;
 
   const grantId = typeof state.critique_gate_bypass_grant_id === 'string' ? state.critique_gate_bypass_grant_id : null;
-  const grant = grantId ? getBypassGrant(grantId) : null;
+  const grant = grantId ? await getBypassGrant(grantId) : null;
   const live =
     grant !== null &&
     grant.session_id === session.id &&
@@ -669,7 +675,7 @@ export function reconcileBypassState(session: Session, dirOverride?: string): vo
       { critique_gate_bypass_approved: false, critique_gate_bypass_revoked_at: Math.floor(nowMs / 1000) },
       dirOverride,
     );
-    divergence(
+    await divergence(
       `bypass claimed under grant ${grantId ?? 'none'} with no live host grant (${
         grant === null ? 'unknown grant' : 'dead grant'
       }) — revoked`,
@@ -683,12 +689,17 @@ export function reconcileBypassState(session: Session, dirOverride?: string): vo
   const fileExpires = Number(state.critique_gate_bypass_expires_at);
   if (Number.isFinite(fileExpires) && fileExpires > grantExpiresEpoch) {
     patchWorkflowState(session, { critique_gate_bypass_expires_at: grantExpiresEpoch }, dirOverride);
-    divergence(`bypass expiry extended to ${fileExpires}, clamped to the granted ${grantExpiresEpoch}`);
+    await divergence(`bypass expiry extended to ${fileExpires}, clamped to the granted ${grantExpiresEpoch}`);
   }
 }
 
 /** Admin approved the bypass: a ONE-SHOT, TTL'd grant — not a standing open. */
-export function applyBypassApproval(session: Session, userId: string, dirOverride?: string, approvalId?: string): void {
+export async function applyBypassApproval(
+  session: Session,
+  userId: string,
+  dirOverride?: string,
+  approvalId?: string,
+): Promise<void> {
   const esc = readEscalation(session, dirOverride) ?? {};
   const grantedAtMs = Date.now();
   const expiresAtMs = grantedAtMs + BYPASS_TTL_SECS * 1000;
@@ -704,7 +715,7 @@ export function applyBypassApproval(session: Session, userId: string, dirOverrid
   // writes would see a flag with no grant behind it and revoke a legitimate
   // approval. The ledger is the host's own record and is not reachable from
   // any container; the file is only the gate's read path.
-  createBypassGrant({
+  await createBypassGrant({
     grant_id: grantId,
     session_id: session.id,
     requested_at: esc.requested_at ?? null,
@@ -733,7 +744,7 @@ export function applyBypassApproval(session: Session, userId: string, dirOverrid
     // The row is in but the session can't see it. Left alone that is an orphan
     // capability: a live grant nobody is using, which an agent could later
     // claim by forging matching file fields. Kill it, then let the caller fail.
-    revokeBypassGrant(grantId, new Date().toISOString(), 'workflow-state patch failed after grant insert');
+    await revokeBypassGrant(grantId, new Date().toISOString(), 'workflow-state patch failed after grant insert');
     log.error('Critique-gate bypass grant REVOKED — could not write it to the session', {
       sessionId: session.id,
       grantId,
@@ -745,7 +756,7 @@ export function applyBypassApproval(session: Session, userId: string, dirOverrid
   // can tell "answered" from "answered and spent" and only retire the file
   // once the container can no longer write into it (see isEscalationSpent).
   patchEscalationFile(session, { resolved: 'approved', resolved_by: userId, grant_id: grantId }, dirOverride);
-  record(session, esc, 'approved', { approval_id: esc.approval_id ?? null });
+  await record(session, esc, 'approved', { approval_id: esc.approval_id ?? null });
   log.warn('Critique-gate bypass APPROVED (one-shot)', {
     sessionId: session.id,
     approvedBy: userId,
@@ -754,7 +765,7 @@ export function applyBypassApproval(session: Session, userId: string, dirOverrid
 }
 
 /** Admin rejected the bypass: keep the gate closed, scoped to THIS request. */
-export function applyBypassRejection(session: Session, userId: string, dirOverride?: string): void {
+export async function applyBypassRejection(session: Session, userId: string, dirOverride?: string): Promise<void> {
   const esc = readEscalation(session, dirOverride) ?? {};
   patchWorkflowState(
     session,
@@ -768,23 +779,23 @@ export function applyBypassRejection(session: Session, userId: string, dirOverri
     dirOverride,
   );
   patchEscalationFile(session, { resolved: 'rejected', resolved_by: userId }, dirOverride);
-  record(session, esc, 'rejected', { approval_id: esc.approval_id ?? null });
+  await record(session, esc, 'rejected', { approval_id: esc.approval_id ?? null });
   log.warn('Critique-gate bypass REJECTED', { sessionId: session.id, rejectedBy: userId });
 }
 
 registerApprovalHandler(BYPASS_ACTION, async (ctx) => {
   // ctx.approval is the verified host-side row — the authoritative identity for
   // the grant, unlike anything read out of the session's own files.
-  applyBypassApproval(ctx.session, ctx.userId, undefined, ctx.approval?.approval_id);
-  ctx.notify(
+  await applyBypassApproval(ctx.session, ctx.userId, undefined, ctx.approval?.approval_id);
+  await ctx.notify(
     'Critique-gate bypass approved by an admin — resend your delivery. This grant is ONE-SHOT and expires: it covers this delivery only, and the critique requirement itself is still unmet. Prefer running /codex-critique.',
   );
 });
 
-registerApprovalResolvedHandler((event) => {
+registerApprovalResolvedHandler(async (event) => {
   if (event.approval.action !== BYPASS_ACTION || event.outcome !== 'reject') return;
-  applyBypassRejection(event.session, event.userId);
-  notifyAgent(
+  await applyBypassRejection(event.session, event.userId);
+  await notifyAgent(
     event.session,
     'Critique-gate bypass request was REJECTED by an admin. Satisfy the critique requirement (/codex-critique) or report the blocker to your parent — do not retry the delivery.',
   );
@@ -802,12 +813,12 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
   // A forged bypass can exist with no escalation file at all, and every branch
   // below returns early in that case, so anything gated behind them would
   // never run for exactly the sessions that matter most.
-  reconcileBypassState(session, dirOverride);
+  await reconcileBypassState(session, dirOverride);
 
   // Also unconditionally: a release whose escalation file was already retired
   // reaches the host only through the journal, and every branch below returns
   // early when there is no file to read.
-  ingestReleaseJournal(session, dirOverride);
+  await ingestReleaseJournal(session, dirOverride);
 
   const esc = readEscalation(session, dirOverride);
   if (!esc) return;
@@ -832,12 +843,12 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
   // guarantee, shared with the journal route.
   if (esc.failed_open_at && !esc.failed_open_recorded) {
     const eventId = esc.failed_open_event_id ?? esc.failed_open_at;
-    const outcome = record(session, esc, 'failed_open', { dedupe_key: releaseKey(session.id, eventId) });
+    const outcome = await record(session, esc, 'failed_open', { dedupe_key: releaseKey(session.id, eventId) });
     reportReleaseRecord(session, outcome, { via: 'escalation-file', eventId, grantId: esc.grant_id ?? null });
     patchEscalationFile(session, { failed_open_recorded: true }, dirOverride);
     // Discharge the consumed grant's obligation. This — not the file flag — is
     // what lets the retirement below finally let go of the file.
-    if (esc.grant_id) markBypassGrantReleaseRecorded(esc.grant_id, new Date().toISOString());
+    if (esc.grant_id) await markBypassGrantReleaseRecorded(esc.grant_id, new Date().toISOString());
     if (outcome === 'recorded') {
       log.error('Critique gate FAILED OPEN — delivery allowed with requirement unmet', {
         sessionId: session.id,
@@ -853,13 +864,13 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
   // escalation for this session — and never retire an outstanding release
   // obligation quietly.
   if (esc.resolved) {
-    const decision = retirementDecision(session, esc, dirOverride);
+    const decision = await retirementDecision(session, esc, dirOverride);
     if (decision.kind === 'orphaned') {
       // The gate spent a grant and no release ever reached us. Holding the
       // file any longer wedges the session shut; retiring it silently would
       // hide a delivery that may well have gone out with the requirement
       // unmet. Record it as the integrity event it is, then retire.
-      const outcome = record(session, esc, 'release_orphaned', {
+      const outcome = await record(session, esc, 'release_orphaned', {
         dedupe_key: `release_orphaned:${session.id}:${decision.grantId}`,
         reason: `bypass grant ${decision.grantId} was consumed at ${decision.consumedAt} and no release stamp arrived within ${decision.waitedSecs}s`,
       });
@@ -886,16 +897,16 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
 
   // ── 3. Requirement satisfied since we raised this? Retract and close out.
   if (isRequirementCleared(session, esc, dirOverride)) {
-    const card = pendingCardFor(session.id);
+    const card = await pendingCardFor(session.id);
     if (card) {
-      deletePendingApproval(card.approval_id);
+      await deletePendingApproval(card.approval_id);
       log.info('Critique-gate card auto-retracted — requirement satisfied', {
         sessionId: session.id,
         approvalId: card.approval_id,
       });
     }
     const outcome: EscalationEventKind = esc.forwarded_at ? 'expired' : 'self_healed';
-    record(session, esc, outcome, {
+    await record(session, esc, outcome, {
       approval_id: card?.approval_id ?? null,
       attempt: esc.self_heal_attempts ?? null,
     });
@@ -927,14 +938,14 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
       { class: cls, self_heal_at: new Date().toISOString(), self_heal_attempts: attempt },
       dirOverride,
     );
-    record(session, { ...esc, class: cls }, 'self_heal', { attempt });
-    notifyAgent(session, selfHealDirective({ cls, reason, hit, attempt, maxAttempts: MAX_SELF_HEAL_ATTEMPTS }));
+    await record(session, { ...esc, class: cls }, 'self_heal', { attempt });
+    await notifyAgent(session, selfHealDirective({ cls, reason, hit, attempt, maxAttempts: MAX_SELF_HEAL_ATTEMPTS }));
     log.info('Critique-gate self-heal nudge', { sessionId: session.id, cls, attempt, reason });
     return;
   }
 
   // ── 6. Human decision required: a failed critique, or self-heal exhausted.
-  const pr = lookupPrForSession(session.id);
+  const pr = await lookupPrForSession(session.id);
   const target = pr ? `${pr.repo}#${pr.pr_number}` : (session.thread_id ?? 'no PR mapped');
   const prUrl = pr ? `https://github.com/${pr.repo}/pull/${pr.pr_number}` : null;
   const exhausted = isSelfHealable(cls) && attempts >= MAX_SELF_HEAL_ATTEMPTS;
@@ -978,13 +989,13 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
     question,
   });
 
-  const card = pendingCardFor(session.id);
+  const card = await pendingCardFor(session.id);
   patchEscalationFile(
     session,
     { forwarded_at: new Date().toISOString(), class: cls, approval_id: card?.approval_id ?? null },
     dirOverride,
   );
-  record(session, { ...esc, class: cls }, 'carded', {
+  await record(session, { ...esc, class: cls }, 'carded', {
     approval_id: card?.approval_id ?? null,
     attempt: attempts || null,
   });

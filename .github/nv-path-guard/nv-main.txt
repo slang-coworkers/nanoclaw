@@ -79,6 +79,12 @@ LICENSE
 .env.example
 .prettierrc*
 .eslintrc*
+# ESLint's flat config. `.eslintrc*` above only matches the LEGACY filename;
+# eslint renamed the entry point to eslint.config.js and upstream's config
+# arrived under the new name, so the stale pattern matched nothing and the file
+# read as unowned. Same owner as the lint config it replaces — and it is
+# ratcheted by ci.yml, which .github/** already puts here.
+eslint.config.js
 .husky/**
 groups/main/CLAUDE.md
 
@@ -181,6 +187,11 @@ container/workflows/base/**
 # Upstream sync (ee7f8916): new infra absorbed onto nv-main.
 # Operational skill — carry agent memory across a provider switch.
 .claude/skills/migrate-memory/**
+# Operational skill — upgrade path for classic (pre-app-manifest) Slack installs.
+# Absorbed via the async-DB sync; same class as migrate-memory / migrate-from-v1
+# above (an instruction-only migration workflow, not a channel install), and
+# nothing overlay-specific in it. RECORDS ownership that is already true.
+.claude/skills/migrate-slack-agents/**
 # Container CLI-tools manifest + installer (pinned Node CLIs for the image).
 container/cli-tools.json
 container/cli-tools.test.ts

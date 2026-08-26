@@ -306,11 +306,9 @@ async function main() {
   const db = getDb();
 
   // ── Spine source: pr_session_mappings (durable PR↔instance↔thread) ──
-  let mappings = db
-    .prepare(
-      'SELECT repo, pr_number AS pr, owner_instance AS instance, thread_id FROM pr_session_mappings ORDER BY repo, pr_number',
-    )
-    .all() as Array<{ repo: string; pr: number; instance: string; thread_id: string | null }>;
+  let mappings = (await db.all(
+    'SELECT repo, pr_number AS pr, owner_instance AS instance, thread_id FROM pr_session_mappings ORDER BY repo, pr_number',
+  )) as Array<{ repo: string; pr: number; instance: string; thread_id: string | null }>;
   if (REPO_FILTER) mappings = mappings.filter((m) => m.repo === REPO_FILTER);
   mappings = mappings.filter((m) => orgAllowed(m.repo));
 
@@ -367,7 +365,7 @@ async function main() {
     // ledger yet" (expected) from "ledger present but unmigrated". Used as a
     // table-valued function rather than a bare PRAGMA so it is plainly a SELECT
     // and the table name is a bound parameter.
-    const columns = db.prepare('SELECT name FROM pragma_table_info(?)').all('approval_decisions') as Array<{
+    const columns = (await db.all('SELECT name FROM pragma_table_info(?)', 'approval_decisions')) as Array<{
       name: string;
     }>;
     if (columns.length === 0) {
@@ -380,14 +378,14 @@ async function main() {
             'decisions, including any never written through the guarded host path',
         );
       }
-      const stmt = db.prepare(
-        `SELECT repo, pr_number AS pr, decision, reason_code AS reason, human_verdict AS human,
+      const sql = `SELECT repo, pr_number AS pr, decision, reason_code AS reason, human_verdict AS human,
                 mode, decided_at AS decidedAt
          FROM approval_decisions
          ${provenanceFiltered ? 'WHERE provenance = ?' : ''}
-         ORDER BY datetime(decided_at) ASC, rowid ASC`,
-      );
-      const decisions = (provenanceFiltered ? stmt.all(TRUSTED_PROVENANCE) : stmt.all()) as Array<{
+         ORDER BY datetime(decided_at) ASC, rowid ASC`;
+      const decisions = (provenanceFiltered
+        ? await db.all(sql, TRUSTED_PROVENANCE)
+        : await db.all(sql)) as Array<{
         repo: string;
         pr: number;
         decision: string;
@@ -456,7 +454,7 @@ async function main() {
   // so humanVerdictOf falls back to nothing and returns null for those rows.
   const legacyWeeklyByPr = new Map<string, ApproverWeeklyInput>();
   try {
-    const cols = db.prepare('SELECT name FROM pragma_table_info(?)').all('approval_decisions_legacy') as Array<{
+    const cols = (await db.all('SELECT name FROM pragma_table_info(?)', 'approval_decisions_legacy')) as Array<{
       name: string;
     }>;
     legacyLedger.tableFound = cols.length > 0;
@@ -464,13 +462,11 @@ async function main() {
       // Full rows now (not DISTINCT keys): the legacy trend needs decision +
       // human_verdict + decided_at per PR. ASC by decided_at so the last (newest)
       // decision wins per PR, identical to the trusted read above.
-      const rows = db
-        .prepare(
-          `SELECT repo, pr_number AS pr, decision, human_verdict AS human, decided_at AS decidedAt
+      const rows = (await db.all(
+        `SELECT repo, pr_number AS pr, decision, human_verdict AS human, decided_at AS decidedAt
              FROM approval_decisions_legacy
             ORDER BY datetime(decided_at) ASC, rowid ASC`,
-        )
-        .all() as Array<{ repo: string; pr: number; decision: string; human: string | null; decidedAt: string }>;
+      )) as Array<{ repo: string; pr: number; decision: string; human: string | null; decidedAt: string }>;
       for (const r of rows) {
         if (!orgAllowed(r.repo)) continue;
         if (REPO_FILTER && r.repo !== REPO_FILTER) continue;
@@ -639,7 +635,7 @@ async function main() {
   let windowStart = SINCE_OVERRIDE ?? '2026-05-01T00:00:00Z';
   if (!SINCE_OVERRIDE) {
     try {
-      const r = db.prepare('SELECT MIN(created_at) AS m FROM pr_session_mappings').get() as { m: string | null };
+      const r = (await db.get('SELECT MIN(created_at) AS m FROM pr_session_mappings')) as { m: string | null };
       if (r?.m) windowStart = new Date(r.m.replace(' ', 'T') + 'Z').toISOString();
     } catch {
       /* keep fallback */
