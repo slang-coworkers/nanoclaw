@@ -30,7 +30,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 
-import { closeSessionDb, initTestSessionDb } from './db/connection.js';
+import { closeSessionDb, initTestSessionDb } from './mailbox/sqlite/connection.js';
 import { getUndeliveredMessages } from './db/messages-out.js';
 import { getCostCap, setCostCap } from './db/session-state.js';
 import { __setConfigForTest } from './config.js';

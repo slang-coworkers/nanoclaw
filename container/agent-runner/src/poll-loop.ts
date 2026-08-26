@@ -217,8 +217,7 @@ function initCostTracking(providerName: string): void {
     costEpisodeId = persistedIsToday ? persisted?.episodeId : undefined;
   } else {
     costCapUsd = persisted?.capUsd && persisted.capUsd > 0 ? persisted.capUsd : costAllotmentUsd;
-    costCeilingUsd =
-      persisted?.ceilingUsd && persisted.ceilingUsd > 0 ? persisted.ceilingUsd : costCeilingAllotmentUsd;
+    costCeilingUsd = persisted?.ceilingUsd && persisted.ceilingUsd > 0 ? persisted.ceilingUsd : costCeilingAllotmentUsd;
     costDayKey = undefined;
     costSpentUsd = persisted?.spentUsd && persisted.spentUsd > 0 ? persisted.spentUsd : 0;
     costEscalatedAt = persisted?.escalatedAt;
@@ -993,9 +992,7 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
       // dashboard button) OR an explicit /clear. A /clear clears the stop and
       // falls through to the normal command path below (which resets the window
       // + continuation). Everything else stays pending until the session resumes.
-      const hasClear = messages.some(
-        (m) => (m.kind === 'chat' || m.kind === 'chat-sdk') && isClearCommand(m),
-      );
+      const hasClear = messages.some((m) => (m.kind === 'chat' || m.kind === 'chat-sdk') && isClearCommand(m));
       if (!hasClear) {
         const controls = messages.filter((m) => m.kind === 'cost_override');
         if (controls.length === 0) {
@@ -1423,6 +1420,13 @@ export async function processQuery(
   // no text is only truly silent if this has not moved (see the silent-turn
   // branch); resampled after every result event.
   let turnWatermark = outboundWatermark();
+  // Has ANY turn on this query answered the batch yet? The silent-turn
+  // discriminator (`producedOutput`) is per-TURN, but its consequences —
+  // SILENT_TURN_NOTICE and markFailed(initialBatchIds) — are per-BATCH. A
+  // stream that delivers on turn 1 and then ends turn 2 empty (a trailing
+  // tool call, a follow-up push) would otherwise tell the user their message
+  // "was not answered" and ack the batch failed, after it had been answered.
+  let batchDelivered = false;
   // How many <message> blocks were delivered from 'text' events this turn
   // (chat runs, emitsMidTurnText providers only). A frame-local count, never
   // keyed by content: it feeds the result door's nudge decision ("did this
@@ -1783,8 +1787,10 @@ export async function processQuery(
           });
           archivePrompts.shift();
         } else if (event.text?.trim()) {
-          const { sent, hasUnwrapped, danglingOpen, gateRefusals, taskBlocks, resultBlocks } =
-            await dispatchResultText(event.text, routing, {
+          const { sent, hasUnwrapped, danglingOpen, gateRefusals, taskBlocks, resultBlocks } = await dispatchResultText(
+            event.text,
+            routing,
+            {
               midTurnSent,
               // For emitsMidTurnText providers the result door NEVER delivers
               // a <message> block: mid-turn streaming is the single content
@@ -1798,7 +1804,11 @@ export async function processQuery(
               // carries content, the wrap-nudge fires so the model re-sends
               // and the retry streams through the mid-turn door.
               turnDelivered: emitsMidTurnText ? midTurnSent > 0 || chatRowWrittenSince(turnStartSeq) : undefined,
-            });
+              // The isError branch below owns the error surface; keep the
+              // auto-route shortcut from writing a second, unsanitized copy.
+              isErrorResult: event.isError === true,
+            },
+          );
           const willRetryTaskBlocks = shouldNudgeTaskBlocks(routing.taskRun, taskBlocks, taskBlockNudged);
           // Gate refusals are sender feedback — push them back to the emitting
           // agent so it re-sends correctly (parity with the bash-hook gates).
@@ -1894,7 +1904,8 @@ export async function processQuery(
           // watermark while `sent` stays 0. Task runs legitimately end with no
           // chat message (they append to a run log) and are excluded.
           const producedOutput = outboundWatermark() > turnWatermark;
-          if (producedOutput || routing.taskRun) {
+          if (producedOutput) batchDelivered = true;
+          if (producedOutput || batchDelivered || routing.taskRun) {
             archivePrompts.shift();
           } else if (!silentTurnNudged && event.isError !== true) {
             // Recovery attempt #1, owned by the poll loop (not by an optional
@@ -1927,6 +1938,10 @@ export async function processQuery(
         // awaiting its re-send retry. This replaces the former unconditional
         // markCompleted at the top of the branch.
         if (!bounced && !silentTurnOpen && undeliveredIds.length === 0) markCompleted(initialBatchIds);
+        // A turn that delivered through the content door (not just the silent
+        // branch above, which only runs for empty results) also answers the
+        // batch — record it before the watermark is resampled.
+        if (outboundWatermark() > turnWatermark) batchDelivered = true;
         turnWatermark = outboundWatermark();
         // Turn boundary: reset the per-turn sent count after the result's
         // nudge decision has used it. A nudge retry re-counts via its own
@@ -2628,6 +2643,14 @@ export interface ResultDispatchOptions {
    * retry, never a direct result-door send.
    */
   turnDelivered?: boolean;
+  /**
+   * This result carried `isError`. The error surface is the result door's own
+   * job (`deliverErrorResult` in processQuery) and it sanitizes harness-tag
+   * artifacts on the way out, so the plain-text auto-route shortcut below must
+   * stand down for such a turn — otherwise BOTH doors write and the channel
+   * gets the notice twice, the auto-routed copy unsanitized.
+   */
+  isErrorResult?: boolean;
 }
 /**
  * `<internal>…</internal>` spans are explicitly not-for-delivery scratchpad.
@@ -3068,7 +3091,15 @@ export async function dispatchResultText(
   // result door does not send]" scratchpad note itself as chat. Unwrapped
   // final text from a streaming provider is a self-summary; the wrap-nudge
   // owns it. Non-streaming providers (codex, opencode) keep the shortcut.
-  if (!routing.taskRun && !options?.suppressDelivery && sent === 0 && blocked === 0 && scratchpad && !danglingOpen) {
+  if (
+    !routing.taskRun &&
+    !options?.suppressDelivery &&
+    !options?.isErrorResult &&
+    sent === 0 &&
+    blocked === 0 &&
+    scratchpad &&
+    !danglingOpen
+  ) {
     const internalChannel = routing.channelType === 'system';
     if (routing.channelType && routing.platformId && !internalChannel) {
       await writeMessageOut({

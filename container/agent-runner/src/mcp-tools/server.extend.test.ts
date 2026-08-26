@@ -214,6 +214,15 @@ describe('extendTool — fixture extension of create_agent (end to end)', () => 
     // What an installed feature module would run at import time instead of
     // editing agents.ts (fixture values — the real extension ships with the
     // feature payload, never on trunk).
+    // Snapshot the real schema BEFORE extending: create_agent's own parameter
+    // list is owned by agents.ts and grows as the tool gains features, so
+    // pinning a literal key list here asserts that inventory rather than the
+    // extension seam under test. The invariant is exactly "extendTool adds its
+    // key and touches nothing else".
+    const baseKeys = Object.keys(schemaProps(createAgent)).sort();
+    expect(baseKeys).toContain('name');
+    expect(baseKeys).not.toContain('purpose');
+
     extendTool('create_agent', {
       properties: {
         purpose: { type: 'string', description: 'One short public line saying what this agent is for.' },
@@ -223,7 +232,7 @@ describe('extendTool — fixture extension of create_agent (end to end)', () => 
     });
 
     const props = schemaProps(createAgent);
-    expect(Object.keys(props).sort()).toEqual(['instructions', 'name', 'purpose']);
+    expect(Object.keys(props).sort()).toEqual([...baseKeys, 'purpose'].sort());
     expect(createAgent.tool.description?.endsWith('The purpose line is shown publicly.')).toBe(true);
 
     await createAgent.handler({ name: 'Scout', purpose: 'Deep research' });

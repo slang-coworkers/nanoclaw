@@ -19,7 +19,25 @@ export function parseIsoTimestamp(value: unknown): IsoTimestamp {
   return value as IsoTimestamp;
 }
 
-export type ProcessingStatus = 'processing' | 'completed' | 'failed' | 'script-skip:error';
+/**
+ * The two `bounced-*` values are a fork addition, and they are the reason
+ * `markBounced` used to reach past this contract into raw SQLite.
+ *
+ * A transient provider fault (auth outage, gateway 5xx) produces no delivered
+ * output, so the a2a handoff was NOT actioned and must not be acked 'completed'.
+ * The host distinguishes the two: `redriveBouncedA2a` gives 'bounced-transient'
+ * (a recognized outage signature) a long retry budget and 'bounced-unknown' a
+ * short one, so a genuinely broken turn dead-letters fast instead of retrying
+ * for hours — see `src/host-sweep.ts`. Collapsing them into 'failed' would lose
+ * that distinction AND let syncProcessingAcks mark the trigger row done.
+ */
+export type ProcessingStatus =
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'script-skip:error'
+  | 'bounced-transient'
+  | 'bounced-unknown';
 export type TaskStatus = 'pending' | 'paused' | 'completed' | 'failed' | 'cancelled';
 export type InboundStatus = TaskStatus | 'processing';
 
