@@ -647,7 +647,13 @@ function ensureSrcDb(): void {
 function refreshRunningSessions(agentGroupId: string): void {
   try {
     ensureSrcDb();
-    refreshDestinationsForAgentGroup(agentGroupId);
+    // Fire-and-forget on purpose (every caller is a sync handler), but the
+    // rejection MUST be caught HERE: this helper became async with the central-DB
+    // refactor, so the surrounding try/catch no longer sees its failures — the
+    // rejection would escape unhandled and the projection would fail silently.
+    void refreshDestinationsForAgentGroup(agentGroupId).catch((err) => {
+      console.warn('[dashboard] failed to refresh destinations for', agentGroupId, err);
+    });
   } catch (err) {
     console.warn('[dashboard] failed to refresh destinations for', agentGroupId, err);
   }
