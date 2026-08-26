@@ -6,14 +6,20 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
+
+import aiohttp
 
 # Add dotenv import
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
 
-import aiohttp
 import discord
+
+if TYPE_CHECKING:
+    # Runtime import stays inside _get_discord_http_client(); this only makes
+    # the "httpx.AsyncClient" annotation below resolvable.
+    import httpx
 
 # Load environment variables from .env file
 load_dotenv()
@@ -141,7 +147,12 @@ def _read_thread_state(thread_id: str) -> dict:
     POST failed is refunded and does not count. Shape is unchanged, so the
     admission gates below read it exactly as before.
     """
-    state = {"resolved": False, "bot_reply_count": 0, "failed_reply_count": 0}
+    state = {
+        "resolved": False,
+        "bot_reply_count": 0,
+        "failed_reply_count": 0,
+        "unresolved_reply_count": 0,
+    }
     path = _feedback_path("thread_state.jsonl")
     if not os.path.exists(path):
         return state
@@ -171,6 +182,9 @@ def _read_thread_state(thread_id: str) -> dict:
     if cap is not None:
         state["bot_reply_count"] = cap.charged()
         state["failed_reply_count"] = cap.failed
+        # Charges held by reservations that never settled. They keep consuming
+        # quota — see reply_capacity.py — so they are reported, not reclaimed.
+        state["unresolved_reply_count"] = len(cap.unresolved_ids())
     return state
 
 
@@ -222,6 +236,7 @@ async def _get_discord_http_client():
     global _discord_http_client
     if _discord_http_client is None:
         import httpx
+
         from ..config import get_ssl_verify_config
 
         _discord_http_client = httpx.AsyncClient(
@@ -273,7 +288,9 @@ async def discord_rest_read_messages(channel_id: str, limit: int = 20) -> Dict[s
         return {"error": f"Discord REST request failed: {str(e)}"}
 
 
-async def _post_to_dashboard(content: str, thread_id: str | None = None) -> bool:
+async def _post_to_dashboard(
+    content: str, thread_id: str | None = None, reservation_id: str | None = None
+) -> bool:
     """Forward an event to the dashboard ingress to wake the target agent."""
     if not DASHBOARD_INGRESS_URL:
         return False
@@ -286,6 +303,12 @@ async def _post_to_dashboard(content: str, thread_id: str | None = None) -> bool
     # into the group's single thread_id=null catch-all session.
     if thread_id:
         body["thread_id"] = thread_id
+    # Sent so ingress CAN become idempotent and reconcilable later: with this id
+    # echoed back, a crash between "HTTP 200" and "reply_accepted" would be
+    # resolvable instead of merely visible. Ingress ignores it today; it costs
+    # nothing to send and it is the half of the fix that lives on this side.
+    if reservation_id:
+        body["reservation_id"] = reservation_id
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
@@ -377,7 +400,7 @@ class SummonView(discord.ui.View):
             f"\n"
             f"Use this exact phrasing — users see it on every first reply."
         )
-        posted = await _post_to_dashboard(prompt, thread_id=thread_id)
+        posted = await _post_to_dashboard(prompt, thread_id=thread_id, reservation_id=reservation)
         _settle_reply(thread_id, reservation, posted)
 
         if posted:
@@ -403,8 +426,17 @@ class SendMessageArgs(BaseModel):
 
     channel_id: str = Field(..., description="Discord channel ID (text channel, thread, or forum channel)")
     content: str = Field(..., description="Message content")
-    thread_name: Optional[str] = Field(None, description="For forum channels: creates a new thread/post with this title. Ignored for text channels and threads.")
-    add_feedback_buttons: bool = Field(False, description="If true, attach Resolved/Helpful/Not Helpful feedback buttons to the message")
+    thread_name: Optional[str] = Field(
+        None,
+        description=(
+            "For forum channels: creates a new thread/post with this title. "
+            "Ignored for text channels and threads."
+        ),
+    )
+    add_feedback_buttons: bool = Field(
+        False,
+        description="If true, attach Resolved/Helpful/Not Helpful feedback buttons to the message",
+    )
 
 
 class ReadMessagesArgs(BaseModel):
@@ -656,7 +688,7 @@ async def init_discord_client():
             f"{final_clause}"
         )
 
-        posted = await _post_to_dashboard(prompt, thread_id=thread_id)
+        posted = await _post_to_dashboard(prompt, thread_id=thread_id, reservation_id=reservation)
         _settle_reply(thread_id, reservation, posted)
         if posted:
             logger.info(
@@ -969,9 +1001,14 @@ def filter_message_data(message) -> dict:
     # Core message data that's always included
     guild_id = message.guild.id if message.guild else None
     channel_id = message.channel.id if message.channel else None
+    message_url = (
+        f"https://discord.com/channels/{guild_id}/{channel_id}/{message.id}"
+        if guild_id and channel_id
+        else None
+    )
     filtered = {
         "id": str(message.id),
-        "url": f"https://discord.com/channels/{guild_id}/{channel_id}/{message.id}" if guild_id and channel_id else None,
+        "url": message_url,
         "content": message.content,
         "timestamp": message.created_at.isoformat(),
         "author": {

@@ -48,3 +48,9 @@ AGENTS.md
 docs/maintainer-guide.md
 docs/drafts/
 forks.md
+
+# Python bytecode. Nothing in-tree is a Python package, but the repo carries
+# Python (the path-guard matcher, the MCP servers, skill scripts) and running any
+# of it leaves these behind — 8fa7f2c had to delete a batch that got committed.
+__pycache__/
+*.py[cod]

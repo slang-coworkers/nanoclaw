@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 import aiohttp
+
 import discord
 
 from .reply_capacity import (
@@ -95,6 +96,17 @@ class ThreadState:
     @property
     def failed_reply_count(self) -> int:
         return self.capacity.failed
+
+    @property
+    def unresolved_reply_count(self) -> int:
+        """Charges held by reservations that never settled and are past the TTL.
+
+        These consume quota and will keep consuming it until someone settles
+        them — their true outcome is unknown and age does not reveal it. Surfaced
+        so a thread that has gone quiet can be explained rather than guessed at.
+        Clear with `python -m src.discord.reply_capacity_admin`.
+        """
+        return len(self.capacity.unresolved_ids())
 
 
 thread_state: dict[str, ThreadState] = defaultdict(ThreadState)
@@ -188,7 +200,9 @@ def _load_thread_state() -> None:
 
 # ── Dashboard ingress POST ──────────────────────────────────────────────────
 
-async def _post_to_dashboard(content: str, thread_id: str | None = None) -> bool:
+async def _post_to_dashboard(
+    content: str, thread_id: str | None = None, reservation_id: str | None = None
+) -> bool:
     headers = {"Content-Type": "application/json"}
     if DASHBOARD_SECRET:
         headers["Authorization"] = f"Bearer {DASHBOARD_SECRET}"
@@ -198,6 +212,12 @@ async def _post_to_dashboard(content: str, thread_id: str | None = None) -> bool
     # into the group's single thread_id=null catch-all session.
     if thread_id:
         body["thread_id"] = thread_id
+    # Sent so ingress CAN become idempotent and reconcilable later: with this id
+    # echoed back, a crash between "HTTP 200" and "reply_accepted" would be
+    # resolvable instead of merely visible. Ingress ignores it today; it costs
+    # nothing to send and it is the half of the fix that lives on this side.
+    if reservation_id:
+        body["reservation_id"] = reservation_id
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
@@ -293,7 +313,7 @@ class SummonView(discord.ui.View):
             f"\n"
             f"Use this exact phrasing — users see it on every first reply."
         )
-        posted = await _post_to_dashboard(prompt, thread_id=thread_id)
+        posted = await _post_to_dashboard(prompt, thread_id=thread_id, reservation_id=reservation)
         _settle_reply(thread_id, reservation, posted)
 
         if posted:
@@ -564,7 +584,7 @@ async def main():
             f"{final_clause}"
         )
 
-        posted = await _post_to_dashboard(prompt, thread_id=thread_id)
+        posted = await _post_to_dashboard(prompt, thread_id=thread_id, reservation_id=reservation)
         _settle_reply(thread_id, reservation, posted)
         if posted:
             logger.info(
