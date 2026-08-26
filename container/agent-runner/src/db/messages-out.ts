@@ -141,7 +141,6 @@ export function hasOutboundToThread(channelType: string, platformId: string, thr
   return getAgentMailbox().operations.hasOutboundToThread(channelType, platformId, threadId);
 }
 
-
 /**
  * Highest outbound seq currently in `messages_out` (0 when empty).
  *
@@ -173,4 +172,3 @@ export function getUndeliveredMessages(): MessageOutRow[] {
 export function hasIdenticalSend(platformId: string, channelType: string, text: string): boolean {
   return getAgentMailbox().operations.hasIdenticalSend(platformId, channelType, text);
 }
-
