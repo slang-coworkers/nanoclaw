@@ -15,7 +15,6 @@ import json
 import sqlite3
 import sys
 from pathlib import Path
-from typing import Optional
 
 from mcp.server.fastmcp import FastMCP
 
@@ -56,7 +55,7 @@ def get_db():
 
 
 @mcp.tool()
-def search_prs(query: str, repo: Optional[str] = None, limit: int = 10) -> str:
+def search_prs(query: str, repo: str | None = None, limit: int = 10) -> str:
     """
     Full-text search across PR titles, descriptions, and review comments.
     Returns matching PRs ranked by relevance.
@@ -217,8 +216,8 @@ def get_pr(number: int, repo: str = "slang") -> str:
 
 
 @mcp.tool()
-def search_reviews(query: str, repo: Optional[str] = None,
-                   reviewer: Optional[str] = None, limit: int = 15) -> str:
+def search_reviews(query: str, repo: str | None = None,
+                   reviewer: str | None = None, limit: int = 15) -> str:
     """
     Search review comments specifically. Useful for finding reviewer feedback
     patterns.
@@ -317,7 +316,7 @@ def search_reviews(query: str, repo: Optional[str] = None,
 
 
 @mcp.tool()
-def search_files(file_path: str, repo: Optional[str] = None, limit: int = 20) -> str:
+def search_files(file_path: str, repo: str | None = None, limit: int = 20) -> str:
     """
     Find PRs that touched specific files. Useful for understanding change
     history of a file.
@@ -371,7 +370,7 @@ def search_files(file_path: str, repo: Optional[str] = None, limit: int = 20) ->
 
 
 @mcp.tool()
-def list_prs_by_author(author: str, repo: Optional[str] = None, limit: int = 30) -> str:
+def list_prs_by_author(author: str, repo: str | None = None, limit: int = 30) -> str:
     """
     List PRs by a specific author.
 
@@ -407,8 +406,8 @@ def list_prs_by_author(author: str, repo: Optional[str] = None, limit: int = 30)
 
 
 @mcp.tool()
-def get_review_patterns(reviewer: Optional[str] = None,
-                        keyword: Optional[str] = None, limit: int = 20) -> str:
+def get_review_patterns(reviewer: str | None = None,
+                        keyword: str | None = None, limit: int = 20) -> str:
     """
     Find common reviewer feedback patterns. Shows what reviewers frequently
     comment on.

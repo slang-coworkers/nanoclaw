@@ -11,8 +11,15 @@ from unittest.mock import patch
 
 import pytest
 
-from src.discord.discord import _read_only_blocked, create_channel, moderate_message, send_message
-from src.discord.discord import CreateChannelArgs, ModerateMessageArgs, SendMessageArgs
+from src.discord.discord import (
+    CreateChannelArgs,
+    ModerateMessageArgs,
+    SendMessageArgs,
+    _read_only_blocked,
+    create_channel,
+    moderate_message,
+    send_message,
+)
 
 
 def test_read_only_blocked_true_when_env_set():
