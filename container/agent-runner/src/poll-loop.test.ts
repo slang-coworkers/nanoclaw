@@ -300,8 +300,8 @@ describe('dispatchResultText auto-route gate', () => {
   // channel emits nothing. Same-session protection is exercised in the
   // host agent-route tests.
 
-  it('agent channel: plain text auto-routes back to source platformId', () => {
-    dispatchResultText('Verdict: approve_with_nits.', {
+  it('agent channel: plain text auto-routes back to source platformId', async () => {
+    await dispatchResultText('Verdict: approve_with_nits.', {
       platformId: 'ag-nanoclaw',
       channelType: 'agent',
       threadId: 'review-thread-1',
@@ -316,8 +316,8 @@ describe('dispatchResultText auto-route gate', () => {
     expect(JSON.parse(out[0].content).text).toBe('Verdict: approve_with_nits.');
   });
 
-  it('system channel: plain text is NOT auto-routed (scratchpad only)', () => {
-    dispatchResultText('Saved learning.', {
+  it('system channel: plain text is NOT auto-routed (scratchpad only)', async () => {
+    await dispatchResultText('Saved learning.', {
       platformId: null,
       channelType: 'system',
       threadId: null,
@@ -353,9 +353,9 @@ describe('dispatchResultText <message> attribute parsing', () => {
     inReplyTo: 'src-msg',
   };
 
-  it('bare <message to="X">…</message> still routes (backward compat)', () => {
+  it('bare <message to="X">…</message> still routes (backward compat)', async () => {
     addDestination('peer');
-    const result = dispatchResultText('<message to="peer">hello</message>', sourceRouting);
+    const result = await dispatchResultText('<message to="peer">hello</message>', sourceRouting);
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     expect(out).toHaveLength(1);
@@ -364,25 +364,25 @@ describe('dispatchResultText <message> attribute parsing', () => {
     expect(JSON.parse(out[0].content).text).toBe('hello');
   });
 
-  it('thread_id="X" overrides destRouting fallback', () => {
+  it('thread_id="X" overrides destRouting fallback', async () => {
     addDestination('peer');
-    const result = dispatchResultText('<message to="peer" thread_id="branch-A">hello</message>', sourceRouting);
+    const result = await dispatchResultText('<message to="peer" thread_id="branch-A">hello</message>', sourceRouting);
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     expect(out[0].thread_id).toBe('branch-A');
   });
 
-  it('in_reply_to="X" overrides destRouting fallback', () => {
+  it('in_reply_to="X" overrides destRouting fallback', async () => {
     addDestination('peer');
-    const result = dispatchResultText('<message to="peer" in_reply_to="parent-msg-42">hello</message>', sourceRouting);
+    const result = await dispatchResultText('<message to="peer" in_reply_to="parent-msg-42">hello</message>', sourceRouting);
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     expect(out[0].in_reply_to).toBe('parent-msg-42');
   });
 
-  it('thread_id + in_reply_to + body all work together', () => {
+  it('thread_id + in_reply_to + body all work together', async () => {
     addDestination('peer');
-    const result = dispatchResultText(
+    const result = await dispatchResultText(
       '<message to="peer" thread_id="thr-1" in_reply_to="m-7">payload</message>',
       sourceRouting,
     );
@@ -393,9 +393,9 @@ describe('dispatchResultText <message> attribute parsing', () => {
     expect(JSON.parse(out[0].content).text).toBe('payload');
   });
 
-  it('unknown attributes are tolerated and ignored', () => {
+  it('unknown attributes are tolerated and ignored', async () => {
     addDestination('peer');
-    const result = dispatchResultText(
+    const result = await dispatchResultText(
       '<message to="peer" thread_id="T" foo="bar" priority="high">body</message>',
       sourceRouting,
     );
@@ -405,10 +405,10 @@ describe('dispatchResultText <message> attribute parsing', () => {
     expect(JSON.parse(out[0].content).text).toBe('body');
   });
 
-  it('two <message> blocks with different thread_ids route independently', () => {
+  it('two <message> blocks with different thread_ids route independently', async () => {
     addDestination('peer-a');
     addDestination('peer-b');
-    const result = dispatchResultText(
+    const result = await dispatchResultText(
       '<message to="peer-a" thread_id="ta">A</message>\n<message to="peer-b" thread_id="tb">B</message>',
       sourceRouting,
     );
@@ -420,7 +420,7 @@ describe('dispatchResultText <message> attribute parsing', () => {
     expect(byDest['ag-peer-b'].thread_id).toBe('tb');
   });
 
-  it('dangling <message to="X"> with no closing tag refuses delivery (triggers nudge)', () => {
+  it('dangling <message to="X"> with no closing tag refuses delivery (triggers nudge)', async () => {
     // A May 2026 incident: slang-fixer emitted `<message to="slang-reviewer">[Review Resume]…`
     // but never wrote `</message>`. The MESSAGE_RE skipped the block, the
     // single-destination/auto-route fallback dumped the entire half-finished
@@ -428,7 +428,7 @@ describe('dispatchResultText <message> attribute parsing', () => {
     // (slang-reviewer) never saw it. The fix: treat dangling-open as
     // undelivered so the existing nudge fires and the agent re-sends.
     addDestination('peer');
-    const result = dispatchResultText(
+    const result = await dispatchResultText(
       '<message to="peer">half a message with no close tag and lots of body text',
       sourceRouting,
     );
@@ -438,27 +438,27 @@ describe('dispatchResultText <message> attribute parsing', () => {
     expect(getUndeliveredMessages()).toHaveLength(0);
   });
 
-  it('dangling open does NOT trip when block is properly closed', () => {
+  it('dangling open does NOT trip when block is properly closed', async () => {
     addDestination('peer');
-    const result = dispatchResultText('<message to="peer">complete block</message>', sourceRouting);
+    const result = await dispatchResultText('<message to="peer">complete block</message>', sourceRouting);
     expect(result.sent).toBe(1);
     expect(result.danglingOpen).toBeFalsy();
   });
 
-  it('dangling open with thread_id attribute still refuses', () => {
+  it('dangling open with thread_id attribute still refuses', async () => {
     addDestination('peer');
-    const result = dispatchResultText('<message to="peer" thread_id="T">unfinished', sourceRouting);
+    const result = await dispatchResultText('<message to="peer" thread_id="T">unfinished', sourceRouting);
     expect(result.sent).toBe(0);
     expect(result.danglingOpen).toBe(true);
   });
 
-  it('one closed + one dangling: closed dispatches; nudge does NOT fire (would double-deliver)', () => {
+  it('one closed + one dangling: closed dispatches; nudge does NOT fire (would double-deliver)', async () => {
     // If we nudged here, the agent would re-emit the full response and the
     // already-delivered first block would land twice. Better: log the
     // dangling tail, let the workflow's "close every chain" rule recover.
     addDestination('peer-a');
     addDestination('peer-b');
-    const result = dispatchResultText(
+    const result = await dispatchResultText(
       '<message to="peer-a">first</message>\n<message to="peer-b">second, never closed',
       sourceRouting,
     );
@@ -471,13 +471,13 @@ describe('dispatchResultText <message> attribute parsing', () => {
     expect(JSON.parse(out[0].content).text).toBe('first');
   });
 
-  it('unknown destination drops the block, preserves attribute parsing path', () => {
+  it('unknown destination drops the block, preserves attribute parsing path', async () => {
     // Unknown name → block goes to scratchpad. With agent-channel source
     // routing, the scratchpad-fallback then auto-routes the dropped text
     // back to the source. We verify the chain-attribute parser didn't
     // crash on the unknown name (regression: the old code didn't even
     // recognize the block as a <message> tag because of the regex bug).
-    const result = dispatchResultText('<message to="nonexistent" thread_id="T">body</message>', sourceRouting);
+    const result = await dispatchResultText('<message to="nonexistent" thread_id="T">body</message>', sourceRouting);
     // sent=1 from the scratchpad auto-route fallback (existing behavior),
     // not from a successful dispatch. The dropped block's body is in
     // the scratchpad payload routed back to source.
@@ -1373,17 +1373,17 @@ describe('dispatchResultText — chain-routing check (always on, not an overlay)
     inReplyTo: 'src-msg',
   };
 
-  it('non-marker message passes through unchanged (self-scoping on the marker)', () => {
+  it('non-marker message passes through unchanged (self-scoping on the marker)', async () => {
     addDestination('peer');
-    const result = dispatchResultText('<message to="peer">just a status update</message>', sourceRouting);
+    const result = await dispatchResultText('<message to="peer">just a status update</message>', sourceRouting);
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     expect(JSON.parse(out[0].content).text).toBe('just a status update');
   });
 
-  it('marked handoff without in_reply_to is refused to the SENDER, not delivered to the peer', () => {
+  it('marked handoff without in_reply_to is refused to the SENDER, not delivered to the peer', async () => {
     addDestination('peer');
-    const result = dispatchResultText('<message to="peer">[Resolution] done</message>', sourceRouting);
+    const result = await dispatchResultText('<message to="peer">[Resolution] done</message>', sourceRouting);
     // Nothing reaches the peer — the gated body is withheld.
     expect(result.sent).toBe(0);
     expect(getUndeliveredMessages()).toHaveLength(0);
@@ -1407,13 +1407,13 @@ describe('dispatchResultText — chain-routing check (always on, not an overlay)
       .run();
   }
 
-  it('marked handoff with in_reply_to alone passes (thread_id derived)', () => {
+  it('marked handoff with in_reply_to alone passes (thread_id derived)', async () => {
     // Canonical upstream report form from the workflows:
     // send_message(to="parent", in_reply_to=<id>, ...). thread_id is derived
     // by the runtime, so the check must NOT demand it.
     addDestination('peer');
     seedQuotedInbound();
-    const result = dispatchResultText('<message to="peer" in_reply_to="42">[Resolution] done</message>', sourceRouting);
+    const result = await dispatchResultText('<message to="peer" in_reply_to="42">[Resolution] done</message>', sourceRouting);
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     // Persisted as the canonical id resolved from seq 42, never the raw seq.
@@ -1421,10 +1421,10 @@ describe('dispatchResultText — chain-routing check (always on, not an overlay)
     expect(JSON.parse(out[0].content).text).toBe('[Resolution] done');
   });
 
-  it('marked handoff with thread_id and in_reply_to passes', () => {
+  it('marked handoff with thread_id and in_reply_to passes', async () => {
     addDestination('peer');
     seedQuotedInbound();
-    const result = dispatchResultText(
+    const result = await dispatchResultText(
       '<message to="peer" thread_id="t1" in_reply_to="42">[handoff] approved</message>',
       sourceRouting,
     );
@@ -1435,7 +1435,7 @@ describe('dispatchResultText — chain-routing check (always on, not an overlay)
     expect(JSON.parse(out[0].content).text).toBe('[handoff] approved');
   });
 
-  it('D2×D1 handoff: a seq-quoted cross-thread handoff persists the RESOLVED id with the stamped thread', () => {
+  it('D2×D1 handoff: a seq-quoted cross-thread handoff persists the RESOLVED id with the stamped thread', async () => {
     // The container half of the D1/D2 interaction. The agent quotes id="88" (a
     // seq — D2) on a handoff stamped for thread "B" while the quoted inbound
     // lives on thread "C". The fan-out must (D2) resolve the seq to the
@@ -1451,7 +1451,7 @@ describe('dispatchResultText — chain-routing check (always on, not an overlay)
          VALUES ('a2a-xthread-88', 88, 'chat', datetime('now'), 'pending', 'agent', 'C', '{}')`,
       )
       .run();
-    const result = dispatchResultText(
+    const result = await dispatchResultText(
       '<message to="peer" thread_id="B" in_reply_to="88">[handoff] cross-thread</message>',
       sourceRouting,
     );
@@ -1564,20 +1564,20 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     inReplyTo: 'src-msg',
   };
 
-  it('marker absent → [Resolution] passes through unchanged (R1: no opt-in, no gating)', () => {
+  it('marker absent → [Resolution] passes through unchanged (R1: no opt-in, no gating)', async () => {
     addDestination('peer');
-    const result = dispatchResultText('<message to="peer" in_reply_to="1">[Resolution] hello</message>', sourceRouting);
+    const result = await dispatchResultText('<message to="peer" in_reply_to="1">[Resolution] hello</message>', sourceRouting);
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     expect(out).toHaveLength(1);
     expect(JSON.parse(out[0].content).text).toBe('[Resolution] hello');
   });
 
-  it('marker present + critique_rounds=0 → [Resolution] refused to the SENDER, not delivered to the peer', () => {
+  it('marker present + critique_rounds=0 → [Resolution] refused to the SENDER, not delivered to the peer', async () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
     addDestination('peer');
-    const result = dispatchResultText(
+    const result = await dispatchResultText(
       '<message to="peer" in_reply_to="1">[Resolution] all done — please ship</message>',
       sourceRouting,
     );
@@ -1593,11 +1593,11 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     expect(refusal).not.toContain('please ship'); // original body NOT delivered
   });
 
-  it('marker present + critique_rounds=1 → original [Resolution] passes through (gate satisfied)', () => {
+  it('marker present + critique_rounds=1 → original [Resolution] passes through (gate satisfied)', async () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 1 }));
     addDestination('peer');
-    const result = dispatchResultText(
+    const result = await dispatchResultText(
       '<message to="peer" in_reply_to="1">[Resolution] shipped</message>',
       sourceRouting,
     );
@@ -1606,22 +1606,22 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     expect(JSON.parse(out[0].content).text).toBe('[Resolution] shipped');
   });
 
-  it('marker present + non-delivery body → passes through (only delivery markers are gated)', () => {
+  it('marker present + non-delivery body → passes through (only delivery markers are gated)', async () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
     addDestination('peer');
-    const result = dispatchResultText('<message to="peer">just a regular reply</message>', sourceRouting);
+    const result = await dispatchResultText('<message to="peer">just a regular reply</message>', sourceRouting);
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     expect(JSON.parse(out[0].content).text).toBe('just a regular reply');
   });
 
-  it('mixed batch: gated [Resolution] block is withheld + refused to sender, normal block still delivered', () => {
+  it('mixed batch: gated [Resolution] block is withheld + refused to sender, normal block still delivered', async () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
     addDestination('peer-a');
     addDestination('peer-b');
-    const result = dispatchResultText(
+    const result = await dispatchResultText(
       '<message to="peer-a" in_reply_to="1">[Resolution] blocked</message>\n<message to="peer-b">passes through</message>',
       sourceRouting,
     );
@@ -1636,11 +1636,11 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     expect(result.gateRefusals![0]).toContain('[critique-gate] REFUSED');
   });
 
-  it('gated block (with thread_id/in_reply_to overrides) delivers nothing to the peer', () => {
+  it('gated block (with thread_id/in_reply_to overrides) delivers nothing to the peer', async () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
     addDestination('peer');
-    const result = dispatchResultText(
+    const result = await dispatchResultText(
       '<message to="peer" thread_id="branch-A" in_reply_to="1">[Resolution] body</message>',
       sourceRouting,
     );
