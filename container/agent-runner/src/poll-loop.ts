@@ -1420,6 +1420,13 @@ export async function processQuery(
   // no text is only truly silent if this has not moved (see the silent-turn
   // branch); resampled after every result event.
   let turnWatermark = outboundWatermark();
+  // Has ANY turn on this query answered the batch yet? The silent-turn
+  // discriminator (`producedOutput`) is per-TURN, but its consequences —
+  // SILENT_TURN_NOTICE and markFailed(initialBatchIds) — are per-BATCH. A
+  // stream that delivers on turn 1 and then ends turn 2 empty (a trailing
+  // tool call, a follow-up push) would otherwise tell the user their message
+  // "was not answered" and ack the batch failed, after it had been answered.
+  let batchDelivered = false;
   // How many <message> blocks were delivered from 'text' events this turn
   // (chat runs, emitsMidTurnText providers only). A frame-local count, never
   // keyed by content: it feeds the result door's nudge decision ("did this
@@ -1897,7 +1904,8 @@ export async function processQuery(
           // watermark while `sent` stays 0. Task runs legitimately end with no
           // chat message (they append to a run log) and are excluded.
           const producedOutput = outboundWatermark() > turnWatermark;
-          if (producedOutput || routing.taskRun) {
+          if (producedOutput) batchDelivered = true;
+          if (producedOutput || batchDelivered || routing.taskRun) {
             archivePrompts.shift();
           } else if (!silentTurnNudged && event.isError !== true) {
             // Recovery attempt #1, owned by the poll loop (not by an optional
@@ -1930,6 +1938,10 @@ export async function processQuery(
         // awaiting its re-send retry. This replaces the former unconditional
         // markCompleted at the top of the branch.
         if (!bounced && !silentTurnOpen && undeliveredIds.length === 0) markCompleted(initialBatchIds);
+        // A turn that delivered through the content door (not just the silent
+        // branch above, which only runs for empty results) also answers the
+        // batch — record it before the watermark is resampled.
+        if (outboundWatermark() > turnWatermark) batchDelivered = true;
         turnWatermark = outboundWatermark();
         // Turn boundary: reset the per-turn sent count after the result's
         // nudge decision has used it. A nudge retry re-counts via its own
