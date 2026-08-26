@@ -17,8 +17,8 @@ import {
   validateEngageAgainstChannel,
 } from '../src/channels/channel-defaults.js';
 import { hasDeclaredChannelDefaults } from '../src/channels/channel-registry.js';
-import { CENTRAL_DB_PATH } from '../src/config.js';
-import { initDb } from '../src/db/connection.js';
+import { getDb, initDb } from '../src/db/connection.js';
+import type { DbDriver } from '../src/db/driver.js';
 import { runMigrations } from '../src/db/migrations/index.js';
 import { createAgentGroup, getAdminAgentGroup, getAgentGroupByFolder } from '../src/db/agent-groups.js';
 import { ensureContainerConfig } from '../src/db/container-configs.js';
@@ -229,9 +229,31 @@ export async function run(args: string[]): Promise<void> {
 
   log.info('Registering channel', { ...parsed });
 
-  // Init v2 central DB
-  fs.mkdirSync(path.join(projectRoot, 'data'), { recursive: true });
-  const db = await initDb(CENTRAL_DB_PATH);
+  // Init v2 central DB, under the CALL-TIME project root.
+  //
+  // Not `CENTRAL_DB_PATH`: that constant is resolved from `process.cwd()` when
+  // src/config.ts is first imported, so it pins whatever the cwd was at module
+  // load. Everything else in this function is relative to `projectRoot`, read at
+  // call time — so a caller that chdir'd after import wrote its groups/ and .env
+  // to one root and its central DB to another. The pre-async code derived this
+  // path from `projectRoot` for exactly that reason; keep it that way.
+  //
+  // The visible symptom was `pnpm test` writing into the operator's LIVE
+  // data/v2.db instead of the test's temp dir.
+  const dataDir = path.join(projectRoot, 'data');
+  fs.mkdirSync(dataDir, { recursive: true });
+
+  // Reuse an already-open handle rather than opening a second writer onto the
+  // same file — `initDb` THROWS on a second call (the async port added that
+  // guard), so a caller that registers twice in one process, or that already
+  // has the central DB open, previously died here. Same idiom and same reason as
+  // setup/registry-reconcile.ts.
+  let db: DbDriver;
+  try {
+    db = getDb();
+  } catch {
+    db = await initDb(path.join(dataDir, 'v2.db'));
+  }
   await runMigrations(db);
 
   // 1. Create or find agent group. The workspace is scaffolded at the first

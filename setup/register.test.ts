@@ -39,13 +39,42 @@ beforeEach(() => {
   process.chdir(tempDir);
 });
 
-afterEach(() => {
-  closeDb();
+afterEach(async () => {
+  await closeDb();
   process.chdir(realCwd);
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
 
 describe('setup/register', () => {
+  it('writes the central DB under the CALL-TIME cwd, not the load-time one', async () => {
+    // Names the invariant the tests below only catch as collateral damage.
+    //
+    // `register.ts` used to open `CENTRAL_DB_PATH`, a constant src/config.ts
+    // resolves from `process.cwd()` at MODULE LOAD — so once vitest imported
+    // config.js from the repo root, every `run()` in this file wrote to the
+    // REPO's data/v2.db regardless of the chdir above. That corrupted a real
+    // install's central DB on any `pnpm test`, and the tests below then failed
+    // on state leaked between them rather than on anything they assert.
+    //
+    // Asserted via mtime rather than existence: a dev checkout legitimately has
+    // a data/v2.db (a real install lives there), so `not.toExist` would pass in
+    // CI and fail locally for the wrong reason.
+    const liveDb = path.join(realCwd, 'data', 'v2.db');
+    const before = fs.existsSync(liveDb) ? fs.statSync(liveDb).mtimeMs : null;
+
+    await run([
+      '--platform-id', 'dashboard_main',
+      '--name', 'Dashboard Main',
+      '--folder', 'main',
+      '--channel', 'dashboard',
+      '--is-admin',
+    ]);
+
+    expect(fs.existsSync(path.join(tempDir, 'data', 'v2.db'))).toBe(true);
+    const after = fs.existsSync(liveDb) ? fs.statSync(liveDb).mtimeMs : null;
+    expect(after).toBe(before);
+  });
+
   it('defaults admin coworker_type to main', async () => {
     await run([
       '--platform-id', 'dashboard_main',
