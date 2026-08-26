@@ -39,6 +39,7 @@ import { getSession } from '../../db/sessions.js';
 import { wakeContainer } from '../../container-runner.js';
 import { groupFolderExistsOnDisk } from '../../group-folder.js';
 import { initGroupFilesystem } from '../../group-init.js';
+import { PERSONA_PREPEND_FILE } from '../../group-persona.js';
 import { isValidGroupFolder } from '../../group-folder.js';
 import { log } from '../../log.js';
 import { writeSessionMessage } from '../../session-manager.js';
@@ -333,13 +334,15 @@ async function performCreateAgent(
     }
   }
 
-  // Always write to .instructions.md — CLAUDE.md is system-composed from
-  // templates + .instructions.md on every container wake.
+  // Standing instructions go in instructions.prepend.md — CLAUDE.md is
+  // system-composed from the spine + this file on every container wake. Writing
+  // the legacy `.instructions.md` here would just make the child's first spawn
+  // migrate it (see readStandingInstructions in container-runner.ts).
   const parts: string[] = [];
   if (overlayContent) parts.push(overlayContent);
   if (instructions) parts.push(instructions);
   if (parts.length > 0) {
-    fs.writeFileSync(path.join(groupPath, '.instructions.md'), parts.join('\n\n'));
+    fs.writeFileSync(path.join(groupPath, PERSONA_PREPEND_FILE), parts.join('\n\n'));
   }
 
   // Insert bidirectional destination rows (= ACL grants).
