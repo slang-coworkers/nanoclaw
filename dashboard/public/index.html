@@ -1117,12 +1117,15 @@
         <span class="cw-status-badge" id="cw-chat-status"></span>
         <div class="cw-view-toggle" id="cw-view-toggle" style="display:none;margin-left:auto;align-items:center;gap:6px">
           <button class="cw-toggle-btn active" data-view="chat">Chat</button>
+          <button class="cw-toggle-btn" data-view="approvals" id="cw-approvals-tab-btn" title="Pending actions for this coworker">Approvals<span id="cw-approvals-tab-badge" style="display:none;margin-left:4px;background:#EF4444;color:#fff;border-radius:8px;padding:0 5px;font-size:0.625rem"></span></button>
           <button class="cw-toggle-btn" data-view="work" title="Shared files for this coworker; not scoped to a single thread/session">Shared Artifacts</button>
           <button class="cw-fs-btn" id="cw-fullscreen-btn" title="Toggle fullscreen chat">⤢</button>
         </div>
       </div>
       <div class="cw-chat-messages" id="cw-chat-messages">
         <div class="cw-empty">Select a coworker from the sidebar to start chatting.</div>
+      </div>
+      <div class="cw-approvals-view" id="cw-approvals-view" style="display:none;flex:1;flex-direction:column;overflow-y:auto;padding:8px 12px">
       </div>
       <div class="cw-shell-view" id="cw-shell-view" style="display:none;flex:1;flex-direction:column;padding:0;font-size:0.8125rem;overflow:hidden">
         <div id="cw-shell-status" style="padding:6px 12px;font-size:0.75rem;border-bottom:1px solid var(--border)"></div>
@@ -1382,6 +1385,13 @@
 
 
   <script src="sprites.js"></script>
+  <!-- state-sync.js is the shared live-state reconciliation protocol used by
+       BOTH app.js and mobile.js (and driven directly by state-delta.test.ts).
+       Classic script on purpose: mobile.js is not a module, so a plain global
+       is the only shape both pages can consume. It must load before the
+       module scripts below — module scripts are deferred, so this ordering
+       guarantees window.NanoclawStateSync exists when app.js runs. -->
+  <script src="state-sync.js"></script>
   <!-- session-slug.js is an ESM module that attaches window.sessionSlug /
        window.sessionLabel on load. app.js reads the window.* aliases so
        it doesn't need to import — keeps the lazy-load order simple. -->

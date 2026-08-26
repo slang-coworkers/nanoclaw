@@ -11,6 +11,11 @@ if (!PixelSprites) {
 }
 
 let state = { coworkers: [], tasks: [], taskRunLogs: [], registeredGroups: [], hookEvents: [], timestamp: 0 };
+// Live-state reconciliation (revision/epoch continuity, key-order proof, resync
+// barrier + replay buffer, snapshot generations) lives in the shared
+// `state-sync.js` module that `mobile.js` and `state-delta.test.ts` also drive,
+// so all three can never describe different protocols. Created below, once the
+// transport callbacks it needs are in scope.
 const nativeFetch = window.fetch.bind(window);
 const dashboardAuth = {
   checked: false,
@@ -192,7 +197,32 @@ let liveReconnectTimer = null;
 let liveReconnectAttempt = 0;
 let hiddenDisconnectTimer = null;
 let lastHookEventId = 0;
-let liveResyncPromise = null;
+// Resync transport state. The barrier/replay/epoch logic itself lives in
+// `liveSync` (state-sync.js); what stays here is the HTTP fetch that feeds it:
+// one in-flight request at a time (concurrent responses can land out of order)
+// plus bounded-backoff retry, because a failed resync that silently gave up
+// would strand the client at a revision the server has already moved past.
+let resyncInFlight = null;
+let resyncRetryTimer = null;
+let resyncAttempt = 0;
+if (!window.NanoclawStateSync) {
+  throw new Error('state-sync.js failed to load');
+}
+const liveSync = window.NanoclawStateSync.createStateSync({
+  getState: () => state,
+  applyState: (patch) => applyState(patch),
+  startResync: () => {
+    void resyncLiveData();
+  },
+  // Clear the HTTP transport's bookkeeping the moment a snapshot settles the
+  // resync, BEFORE buffered deltas replay (a replay may start a new resync).
+  onSettled: () => {
+    resyncAttempt = 0;
+    resyncInFlight = null;
+    clearResyncRetry();
+  },
+  reconnectLive: () => reconnectLiveChannel(),
+});
 let hoveredDesk = -1;
 let timelineFilter = null; // group folder filter for timeline
 let cachedMessages = []; // messages fetched from /api/messages
@@ -376,7 +406,21 @@ async function triggerFunnelRefresh(btn) {
   setTimeout(poll, 4000);
 }
 
+// Guards against CONCURRENT loadFunnel() runs duplicating the detail panels.
+//
+// loadFunnel clears #funnel-detail once, then appends a container per panel with
+// an `await` before each one. Two overlapping calls therefore interleave: the
+// second clears the pane the first is still filling, and both keep appending
+// after their awaits resolve. Observed on prod as "KB doctor" twice and "Unit
+// cost" three times in one view.
+//
+// Each run takes a ticket; after every await it checks whether a newer run has
+// started and, if so, stops touching the DOM.
+let funnelRenderSeq = 0;
+
 async function loadFunnel() {
+  const myGen = ++funnelRenderSeq;
+  const stale = () => myGen !== funnelRenderSeq;
   const board = document.getElementById('funnel-board');
   const detail = document.getElementById('funnel-detail');
   const stamp = document.getElementById('funnel-stamp');
@@ -386,11 +430,13 @@ async function loadFunnel() {
     const res = await fetch('/api/funnel');
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
-      if (board) board.innerHTML = `<span style="color:var(--text-muted)">No funnel snapshot yet. ${esc(j.hint || '')}</span>`;
+      if (board)
+        board.innerHTML = `<span style="color:var(--text-muted)">No funnel snapshot yet. ${esc(j.hint || '')}</span>`;
       if (detail) detail.innerHTML = '';
       return;
     }
     snap = await res.json();
+    if (stale()) return;
   } catch (e) {
     if (board) board.innerHTML = 'Failed to load funnel.';
     return;
@@ -398,7 +444,8 @@ async function loadFunnel() {
   if (stamp) stamp.textContent = snap.generatedAt ? `snapshot: ${formatTime(snap.generatedAt)}` : '';
   const b = snap.board || {};
   // Shared cell padding so columns don't collapse into "prodlegototalconv".
-  const TH = (label, left) => `<th style="text-align:${left ? 'left' : 'right'};padding:2px 12px;border-bottom:1px solid var(--border)">${label}</th>`;
+  const TH = (label, left) =>
+    `<th style="text-align:${left ? 'left' : 'right'};padding:2px 12px;border-bottom:1px solid var(--border)">${label}</th>`;
   const TD = (html, left, bold) =>
     `<td style="text-align:${left ? 'left' : 'right'};padding:2px 12px">${bold ? '<b>' + html + '</b>' : html}</td>`;
   const row = (label, cell, base) => {
@@ -418,11 +465,17 @@ async function loadFunnel() {
     board.innerHTML =
       partHtml +
       reviewCyclesHtml(snap.reviewCycles) +
-      funnelApproverPanel(snap.approverDecisions || [], snap.approverLedger);
+      funnelApproverPanel(
+        snap.approverDecisions || [],
+        snap.approverLedger,
+        snap.approverWeekly || [],
+        snap.approverWeeklyLegacy || [],
+      );
 
   // nv-slang-bot contribution table (separate snapshot: /api/bot-contributions).
   if (detail) {
-    detail.innerHTML = '<div style="color:var(--text-muted);font-size:11px;margin-top:16px">Loading bot contributions…</div>';
+    detail.innerHTML =
+      '<div style="color:var(--text-muted);font-size:11px;margin-top:16px">Loading bot contributions…</div>';
     try {
       const r = await fetch('/api/bot-contributions');
       if (r.ok) {
@@ -442,10 +495,12 @@ async function loadFunnel() {
     // the block above meant a bot-contributions network error or malformed body
     // jumped to that catch, skipped this fetch entirely and cleared the pane —
     // the two panels have no reason to fail together.
+    if (stale()) return;
     const rqBox = document.createElement('div');
     detail.appendChild(rqBox);
     try {
       const rq = await fetch('/api/regression-quality');
+      if (stale()) return;
       if (rq.ok) {
         rqBox.innerHTML = regressionQualityHtml(await rq.json());
       } else {
@@ -459,7 +514,277 @@ async function loadFunnel() {
       rqBox.innerHTML =
         '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Regression quality: failed to load.</div>';
     }
+
+    // KB health + doctor. Own container and own try/catch for the same reason
+    // regression quality has them: an unrelated panel's network error must not
+    // blank this one.
+    //
+    // This panel exists because the route did not. /api/kb-health has been
+    // serving a validated `doctor` block since #1121/#1169 — fail-closed, no
+    // false zeroes — and nothing rendered it, so the only way to read a drift
+    // report was curl. A check nobody can see is a check nobody acts on.
+    if (stale()) return;
+    const kbBox = document.createElement('div');
+    detail.appendChild(kbBox);
+    try {
+      const kb = await fetch('/api/kb-health');
+      if (stale()) return;
+      if (kb.ok) {
+        kbBox.innerHTML = kbDoctorHtml(await kb.json());
+      } else {
+        kbBox.innerHTML =
+          '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">KB doctor: route unavailable.</div>';
+      }
+    } catch (e) {
+      kbBox.innerHTML =
+        '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">KB doctor: failed to load.</div>';
+    }
+
+    // Unit cost. Own container + own try/catch, same reasoning as the two above.
+    if (stale()) return;
+    const ucBox = document.createElement('div');
+    detail.appendChild(ucBox);
+    try {
+      const uc = await fetch('/api/unit-cost?weeks=4');
+      if (stale()) return;
+      if (uc.ok) {
+        ucBox.innerHTML = unitCostHtml(await uc.json());
+      } else {
+        ucBox.innerHTML =
+          '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Unit cost: route unavailable.</div>';
+      }
+    } catch (e) {
+      ucBox.innerHTML =
+        '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Unit cost: failed to load.</div>';
+    }
+
+    // Review rounds — human CHANGES_REQUESTED rounds per PR, bot vs human, by
+    // merge week (/api/review-rounds, its own host cron). Own container + own
+    // try/catch, same reasoning as the panels above: an unrelated network error
+    // must not blank this one. Renders nothing when the snapshot is absent.
+    if (stale()) return;
+    const rrBox = document.createElement('div');
+    detail.appendChild(rrBox);
+    try {
+      const rr = await fetch('/api/review-rounds');
+      if (stale()) return;
+      if (rr.ok) {
+        rrBox.innerHTML = reviewRoundsHtml(await rr.json());
+      } else {
+        const jr = await rr.json().catch(() => ({}));
+        rrBox.innerHTML =
+          '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Review rounds: no snapshot yet. ' +
+          esc(jr.hint || '') +
+          '</div>';
+      }
+    } catch (e) {
+      rrBox.innerHTML =
+        '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Review rounds: failed to load.</div>';
+    }
   }
+}
+
+// Unit cost — triager+fixer+reviewer spend per PR opened, by ISO week.
+//
+// THE RULE THIS PANEL KEEPS: a number is only ever shown when it is a real
+// quotient. Three distinct states have to stay distinguishable, and collapsing
+// any of them into "$0" would invent a saving that did not happen:
+//
+//   no data for that week   -> "no data"     (outside coverage / group absent)
+//   spend but no PR opened  -> "no PR"       (real state; NOT free, NOT infinite)
+//   a genuine quotient      -> "$N"
+//
+// The denominator is shown next to every bar for the same reason the other
+// funnel panels show theirs: a cost-per-PR of $153 means something different
+// over 40 PRs than over 2.
+function unitCostHtml(uc) {
+  if (!uc) return '';
+  const money = (n) => '$' + Math.round(n).toLocaleString();
+  const head =
+    '<div style="margin-top:22px;font-size:12px;font-weight:600">Unit cost</div>' +
+    '<div style="color:var(--text-muted);font-size:11px;margin-bottom:8px">' +
+    'cost per PR opened, by week &middot; triager + fixer + reviewer &middot; prod</div>';
+
+  if (uc.unavailable) {
+    // Words, never a number. An unavailable metric that renders "$0" is worse
+    // than one that renders nothing.
+    return head + '<div style="color:var(--text-muted);font-size:11px">Unavailable — ' + esc(uc.unavailable) + '</div>';
+  }
+  const weeks = Array.isArray(uc.weeks) ? uc.weeks : [];
+  if (weeks.length === 0) {
+    return head + '<div style="color:var(--text-muted);font-size:11px">No weeks to show.</div>';
+  }
+
+  const priced = weeks.filter((w) => w.costPerPr != null);
+  const max = priced.length ? Math.max(...priced.map((w) => w.costPerPr)) : 0;
+  const bars = weeks
+    .map((w) => {
+      let label, width, dim;
+      if (!w.hasCost) {
+        label = 'no data';
+        width = 0;
+        dim = true;
+      } else if (w.costPerPr == null) {
+        label = 'no PR opened';
+        width = 0;
+        dim = true;
+      } else {
+        label = money(w.costPerPr);
+        width = max > 0 ? Math.round((w.costPerPr / max) * 100) : 0;
+        dim = false;
+      }
+      const denom = w.hasCost ? esc(String(w.prs)) + ' PR' + (w.prs === 1 ? '' : 's') : '&mdash;';
+      return (
+        '<div style="display:flex;align-items:center;gap:8px;margin:3px 0;font-size:11px">' +
+        '<div style="width:82px;color:var(--text-muted)">' +
+        esc(w.week) +
+        '</div>' +
+        '<div style="flex:1;background:var(--bg-alt,#22252a);height:14px;border-radius:3px;overflow:hidden">' +
+        '<div style="width:' +
+        width +
+        '%;height:100%;background:' +
+        (dim ? 'transparent' : 'var(--accent,#76b900)') +
+        '"></div></div>' +
+        '<div style="width:66px;text-align:right;' +
+        (dim ? 'color:var(--text-muted)' : 'font-weight:600') +
+        '">' +
+        esc(label) +
+        '</div>' +
+        '<div style="width:56px;text-align:right;color:var(--text-muted)">' +
+        denom +
+        '</div>' +
+        '</div>'
+      );
+    })
+    .join('');
+
+  // Trend only across weeks that actually have a quotient — comparing against a
+  // "no data" week would manufacture a delta out of missing coverage.
+  let trend = '';
+  if (priced.length >= 2) {
+    const first = priced[0].costPerPr;
+    const last = priced[priced.length - 1].costPerPr;
+    if (first > 0) {
+      const pct = Math.round(((last - first) / first) * 100);
+      trend =
+        '<div style="font-size:11px;margin-top:6px;color:var(--text-muted)">' +
+        (pct <= 0 ? '&minus;' : '+') +
+        Math.abs(pct) +
+        '% over ' +
+        priced.length +
+        ' priced week' +
+        (priced.length === 1 ? '' : 's') +
+        ' &middot; ' +
+        money(first) +
+        ' &rarr; ' +
+        money(last) +
+        '</div>';
+    }
+  }
+
+  let gaps = '';
+  if (Array.isArray(uc.groupsMissing) && uc.groupsMissing.length) {
+    // Named, not silently omitted: a missing group means the numerator is
+    // understated and the cost-per-PR reads better than it is.
+    gaps =
+      '<div style="font-size:11px;margin-top:4px;color:var(--warn,#d29922)">No cost data for: ' +
+      esc(uc.groupsMissing.join(', ')) +
+      ' — numerator is understated.</div>';
+  }
+
+  return head + bars + trend + gaps;
+}
+
+// KB doctor — the `doctor` block of /api/kb-health (scripts/kb-doctor.py writes
+// data/shared/.kb-doctor.json; the route validates it, see dashboard/
+// kb-doctor-artifact.ts).
+//
+// THE ONE RULE THIS PANEL EXISTS TO KEEP: unavailable is not zero, and unknown
+// is not clean. The whole point of #1121/#1169 was that a missing or malformed
+// artifact used to render as "0 drift" — indistinguishable from a healthy KB.
+// So an absent report says so in words, and a run that could not evaluate some
+// checks shows the unknown count next to the drift count rather than folding
+// them together.
+function kbDoctorHtml(kbh) {
+  const d = kbh && kbh.doctor;
+  if (!d) return '';
+
+  if (!d.available) {
+    // The route supplies a specific reason (missing file, bad schema, counts
+    // that disagree with their arrays). Show it: "no report" and "a report we
+    // could not trust" are different problems with different fixes.
+    return (
+      '<div style="margin-top:20px"><div style="font-weight:600;margin-bottom:4px">KB doctor</div>' +
+      '<div style="color:var(--text-muted);font-size:11px">No usable drift report' +
+      (d.reason ? ' — ' + esc(d.reason) : '') +
+      '. Runs daily at 05:50; <code>python3 scripts/kb-doctor.py</code> to produce one now.</div></div>'
+    );
+  }
+
+  const drift = Number(d.driftCount) || 0;
+  const unknown = Number(d.unknownCount) || 0;
+  const okColor = '#3fb950';
+  const warn = 'var(--warn,#c90)';
+  const bad = '#e5534b';
+
+  // Age. `stale` is decided by the route (it knows the cadence); we render it.
+  let freshness = '';
+  if (d.stale) {
+    freshness = ' · <b style="color:' + warn + '">stale</b>';
+  } else if (typeof d.ageHours === 'number') {
+    freshness = ' · ' + (d.ageHours < 1 ? 'just now' : Math.round(d.ageHours) + 'h ago');
+  } else {
+    freshness = ' · <span style="color:' + warn + '">age unknown</span>';
+  }
+
+  // An incomplete run cannot be read as a clean one.
+  const incomplete = d.complete === false ? ' · <b style="color:' + warn + '">incomplete run</b>' : '';
+
+  const pill = (label, n, color) =>
+    '<span style="display:inline-block;padding:1px 7px;margin-right:6px;border-radius:9px;' +
+    'background:var(--bg-alt,#2226);font-size:11px;color:' +
+    color +
+    '">' +
+    esc(label) +
+    ' ' +
+    n +
+    '</span>';
+
+  const pills =
+    pill('drift', drift, drift ? bad : okColor) +
+    // Unknown gets its own pill on purpose — it is neither pass nor fail, and
+    // hiding it inside "drift 0" is exactly the false clean this replaced.
+    pill('unknown', unknown, unknown ? warn : 'var(--text-muted)');
+
+  const items =
+    Array.isArray(d.drift) && d.drift.length
+      ? '<ul style="margin:6px 0 0 16px;padding:0;font-size:11px;color:var(--text-muted)">' +
+        d.drift.map((x) => '<li style="margin-bottom:3px">' + esc(String(x)) + '</li>').join('') +
+        '</ul>'
+      : '';
+
+  const unknowns =
+    Array.isArray(d.unknown) && d.unknown.length
+      ? '<ul style="margin:6px 0 0 16px;padding:0;font-size:11px;color:' +
+        warn +
+        '">' +
+        d.unknown.map((x) => '<li style="margin-bottom:3px">' + esc(String(x)) + '</li>').join('') +
+        '</ul>'
+      : '';
+
+  return (
+    '<div style="margin-top:20px">' +
+    '<div style="font-weight:600;margin-bottom:4px">KB doctor ' +
+    '<span style="font-weight:400;color:var(--text-muted)">— ' +
+    esc(d.status || 'unknown') +
+    freshness +
+    incomplete +
+    '</span></div>' +
+    pills +
+    items +
+    unknowns +
+    '</div>'
+  );
 }
 
 // PR-approver (Verity) shadow-mode decision ledger. Unlike the funnel row table
@@ -467,25 +792,28 @@ async function loadFunnel() {
 // this shows EVERY decision Verity recorded, including the human-authored PRs it
 // reviewed in shadow mode. `decisions` is snap.approverDecisions (newest first,
 // one row per PR). Counts by decision are shown as a header summary.
-function funnelApproverPanel(decisions, ledger) {
+function funnelApproverPanel(decisions, ledger, weekly, weeklyLegacy) {
   if (!Array.isArray(decisions)) decisions = [];
   // Approve = green, block = red, abstain = muted. Matches the funnel row cell
   // (funnelIssueTableHtml's approverColor); literal hex here since the palette
   // object is scoped to funnelFlowHtml.
+  // ABSTAIN_INFRA retired (task #14): folded into ABSTAIN_POLICY + an infra
+  // reason_code. Historical ABSTAIN_INFRA ledger rows still render — the row
+  // cell below falls through to var(--text-muted) for any unmapped decision.
   const decisionColor = {
     WOULD_APPROVE: '#3fb950',
     BLOCK: '#e5534b',
     ABSTAIN_POLICY: 'var(--text-muted)',
-    ABSTAIN_INFRA: 'var(--text-muted)',
   };
   // PR-state pill color (matches the funnel palette): merged=green, open=blue,
   // closed=grey.
   const stateColor = { merged: '#3fb950', open: '#1f6feb', closed: '#6e7681' };
   const by = {};
   for (const d of decisions) by[d.decision] = (by[d.decision] || 0) + 1;
-  const order = ['WOULD_APPROVE', 'BLOCK', 'ABSTAIN_POLICY', 'ABSTAIN_INFRA'];
-  // Always show all four categories (zeros included) so the panel reads as a
-  // stable scoreboard, not a list that hides empty states.
+  const order = ['WOULD_APPROVE', 'BLOCK', 'ABSTAIN_POLICY'];
+  // Show all current decision states (zeros included) so the panel reads as a
+  // stable scoreboard, not a list that hides empty states. Retired states
+  // (ABSTAIN_INFRA) are omitted from the scoreboard but still render per-row.
   const summary = order
     .map((k) => `<span style="color:${decisionColor[k]}">${k} ${by[k] || 0}</span>`)
     .join('<span style="color:var(--border)"> · </span>');
@@ -542,9 +870,10 @@ function funnelApproverPanel(decisions, ledger) {
   // expands on click. Native <details> (no `open`) = collapsed by default, no
   // JS wiring — matches the existing collapsible pattern used elsewhere in the
   // funnel (e.g. the "All N actionable issues" details).
-  const empty = decisions.length === 0
-    ? '<div style="font-size:11px;color:var(--text-muted);margin:4px 0 0 18px">No approver decisions recorded yet.</div>'
-    : `<table style="border-collapse:collapse;font-size:12px;width:100%;max-width:820px;margin-top:6px">
+  const empty =
+    decisions.length === 0
+      ? '<div style="font-size:11px;color:var(--text-muted);margin:4px 0 0 18px">No approver decisions recorded yet.</div>'
+      : `<table style="border-collapse:collapse;font-size:12px;width:100%;max-width:820px;margin-top:6px">
         <thead><tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase">
           <th style="text-align:left;padding:3px 10px 3px 0">PR</th>
           <th style="text-align:left;padding:3px 10px">Decision → Human</th>
@@ -556,6 +885,7 @@ function funnelApproverPanel(decisions, ledger) {
         <tbody>${rows}</tbody>
       </table>`;
   return `<div style="margin-top:20px">
+      ${funnelApproverWeeklySvg(weekly, weeklyLegacy)}
       <details>
         <summary style="cursor:pointer;list-style:revert">
           <span style="display:inline-flex;align-items:baseline;gap:10px;flex-wrap:wrap">
@@ -567,6 +897,269 @@ function funnelApproverPanel(decisions, ledger) {
         <div style="font-size:11px;color:var(--text-muted);margin:6px 0 4px">Every PR Verity decided — including human-authored PRs (not just the bot's own). Shadow decisions never post to GitHub.</div>
         ${empty}
       </details>
+    </div>`;
+}
+
+// Week-over-week agreement trend for the Verity panel: is agreement rising, are
+// abstains falling, and is the SAFETY-critical false-approve heading to zero —
+// the three signals for taking Verity out of shadow mode. Reads snap.approverWeekly
+// (produced by scripts/funnel.ts on nv-main; rides in the same funnel.json fetch).
+//
+// `weeklyLegacy` (snap.approverWeeklyLegacy) is the SAME weekly aggregation over
+// the pre-ledger rows migration 935 quarantined — unverified, pre-enforcement
+// decisions. It extends the trend back across the full history so the older weeks
+// are visible, but it is kept VISUALLY DISTINCT so it can never be mistaken for
+// trusted data: legacy weeks render with washed-out, hatched bars and a dashed
+// grey agreement line, behind a divider at the ledger cutover, and they are
+// excluded from the trend arrow and go-live footer (those stay verified-only).
+// Trusted weeks always win a week they share with legacy, so the extension can
+// only ADD older, legacy-only weeks — it never recolours a trusted one.
+//
+// Returns '' when BOTH series are absent/empty (older snapshot), so the panel
+// degrades gracefully; a snapshot with no legacy field renders exactly the old
+// verified-only chart. Style deliberately mirrors funnelWeeklyTrendSvg /
+// funnelWeeklyConversionSvg (same W/H, count-left / %-right dual axis, rolling-
+// point labels), so it reads as one family of charts.
+function funnelApproverWeeklySvg(weekly, weeklyLegacy) {
+  const verified = Array.isArray(weekly) ? weekly : [];
+  const legacy = Array.isArray(weeklyLegacy) ? weeklyLegacy : [];
+  if (verified.length === 0 && legacy.length === 0) return '';
+  const W = 560,
+    H = 156,
+    padL = 30,
+    padR = 34,
+    padT = 12,
+    padB = 30;
+  const innerW = W - padL - padR,
+    innerH = H - padT - padB;
+  const COL = {
+    agreedApprove: '#3fb950', // green  — Verity approved, human agreed
+    agreedBlock: '#39c5cf', // teal   — Verity blocked, human agreed
+    falseApprove: '#f85149', // RED    — Verity approved, human wanted changes (the danger)
+    falseBlock: '#d29922', // amber  — Verity blocked, human approved
+    abstain: '#484f58', // grey   — Verity abstained
+    agreeLine: '#56d364', // agreement % (want ↑)
+    falseLine: '#f85149', // false-approve count (want → 0)
+    legacyLine: '#8b949e', // muted grey — legacy (unverified) agreement %
+  };
+  const num = (v) => (typeof v === 'number' && isFinite(v) ? v : 0);
+  // Merge onto ONE week axis, sorted ascending. Verified rows overwrite legacy at
+  // a shared week (trusted wins), so `series` is the older legacy-only weeks
+  // followed by the trusted weeks — the extended history, never a relabelled
+  // trusted week. Each entry carries `isLegacy` so every mark can be styled by
+  // trust class.
+  const byWeek = new Map();
+  for (const w of legacy) if (w && w.weekStart) byWeek.set(w.weekStart, { w, isLegacy: true });
+  for (const w of verified) if (w && w.weekStart) byWeek.set(w.weekStart, { w, isLegacy: false });
+  const series = [...byWeek.values()].sort((a, b) =>
+    a.w.weekStart < b.w.weekStart ? -1 : a.w.weekStart > b.w.weekStart ? 1 : 0,
+  );
+  const n = series.length;
+  const hasLegacy = series.some((s) => s.isLegacy);
+  // Left axis = decision COUNTS; bars scale to the busiest week's total across
+  // BOTH series so verified and legacy weeks are directly comparable.
+  const maxTotal = Math.max(1, ...series.map((s) => num(s.w.total)));
+  const slot = innerW / n;
+  const barW = Math.max(5, Math.min(30, slot * 0.62));
+  const cx = (i) => padL + slot * (i + 0.5);
+  const baseY = padT + innerH;
+  const yCnt = (v) => padT + innerH - (num(v) / maxTotal) * innerH;
+  const yPct = (v) => padT + innerH - (num(v) / 100) * innerH; // v in 0..100
+  // Diagonal-hatch fill for legacy bars — the "unverified" marker. Defined once,
+  // only when there is legacy data to mark.
+  const defs = hasLegacy
+    ? `<defs><pattern id="verityLegacyHatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">` +
+      `<line x1="0" y1="0" x2="0" y2="5" stroke="var(--text-muted)" stroke-width="1" opacity="0.55"/></pattern></defs>`
+    : '';
+  // Left count-axis grid (0 / mid / max) + right %-axis labels (0 / 50 / 100).
+  const cntVals = [0, Math.round(maxTotal / 2), maxTotal];
+  const grid = cntVals
+    .map(
+      (v) =>
+        `<line x1="${padL}" y1="${yCnt(v).toFixed(1)}" x2="${W - padR}" y2="${yCnt(v).toFixed(1)}" stroke="var(--border)" stroke-width="1"/>` +
+        `<text x="${padL - 5}" y="${(yCnt(v) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--text-muted)">${v}</text>`,
+    )
+    .join('');
+  const pctAxis = [0, 50, 100]
+    .map(
+      (v) =>
+        `<text x="${W - padR + 5}" y="${(yPct(v) + 3).toFixed(1)}" text-anchor="start" font-size="9" fill="${COL.agreeLine}">${v}%</text>`,
+    )
+    .join('');
+  // Vertical divider at the ledger cutover — the first trusted week. Everything
+  // left of it is pre-enforcement (legacy) history. Only drawn when legacy weeks
+  // actually precede a verified one.
+  const boundaryIndex = series.findIndex((s) => !s.isLegacy);
+  const dividerX = boundaryIndex > 0 ? padL + slot * boundaryIndex : null;
+  const divider =
+    hasLegacy && dividerX != null
+      ? `<line x1="${dividerX.toFixed(1)}" y1="${padT}" x2="${dividerX.toFixed(1)}" y2="${baseY.toFixed(1)}" stroke="var(--text-muted)" stroke-width="1" stroke-dasharray="2 3" opacity="0.7"/>` +
+        `<text x="${dividerX.toFixed(1)}" y="${(padT + 7).toFixed(1)}" text-anchor="middle" font-size="8" fill="var(--text-muted)">ledger →</text>`
+      : '';
+  // Per-week stacked bar: agreed (green/teal) + false (red/amber) + abstain (grey),
+  // stacked from the baseline up. The bar's full height is total decisions, so
+  // any unfilled cap above the stack is the week's not-yet-verdicted PRs — the
+  // fill fraction doubles as a coverage read. Legacy weeks are washed out
+  // (low-opacity fills) and overlaid with the hatch pattern + a dashed track, so
+  // they read as unverified while still showing the decision-class colours.
+  const bars = series
+    .map(({ w, isLegacy }, i) => {
+      const x = (cx(i) - barW / 2).toFixed(1);
+      const topY = yCnt(w.total).toFixed(1);
+      const barH = baseY - yCnt(w.total);
+      const trackDash = isLegacy ? ' stroke-dasharray="2 2"' : '';
+      const track = `<rect x="${x}" y="${topY}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" fill="var(--bg-card)" stroke="var(--border)" stroke-width="0.5"${trackDash}/>`;
+      const segs = [
+        { n: num(w.agreedApprove), c: COL.agreedApprove, label: 'agreed-approve' },
+        { n: num(w.agreedBlock), c: COL.agreedBlock, label: 'agreed-block' },
+        { n: num(w.falseApprove), c: COL.falseApprove, label: 'FALSE-APPROVE' },
+        { n: num(w.falseBlock), c: COL.falseBlock, label: 'false-block' },
+        { n: num(w.abstain), c: COL.abstain, label: 'abstain' },
+      ];
+      const tag = isLegacy ? ' (legacy)' : '';
+      let acc = 0;
+      const rects = segs
+        .filter((s) => s.n > 0)
+        .map((s) => {
+          const y0 = baseY - (acc / maxTotal) * innerH;
+          const y1 = baseY - ((acc + s.n) / maxTotal) * innerH;
+          acc += s.n;
+          // The safety segment gets a bright outline so it never hides in a tall bar.
+          const stroke = s.c === COL.falseApprove ? ' stroke="#ffdcd7" stroke-width="0.75"' : '';
+          // Legacy fills are washed out so the hatch overlay reads as "unverified".
+          const op = isLegacy ? ' fill-opacity="0.4"' : '';
+          return `<rect x="${x}" y="${y1.toFixed(1)}" width="${barW.toFixed(1)}" height="${(y0 - y1).toFixed(1)}" fill="${s.c}"${op}${stroke}><title>${esc(w.weekStart)}${tag} · ${s.label}: ${s.n}</title></rect>`;
+        })
+        .join('');
+      const hatch =
+        isLegacy && barH > 0.5
+          ? `<rect x="${x}" y="${topY}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" fill="url(#verityLegacyHatch)" stroke="none" pointer-events="none"/>`
+          : '';
+      return track + rects + hatch;
+    })
+    .join('');
+  // Agreement % line (right axis, want ↑). Break the line where agreementPct is
+  // null (no human verdict) AND where the trust class changes, so a trusted (solid
+  // green) run and a legacy (dashed grey) run never join into one stroke.
+  const agreeRuns = [];
+  let cur = null;
+  series.forEach((s, i) => {
+    if (s.w.agreementPct == null) {
+      if (cur) {
+        agreeRuns.push(cur);
+        cur = null;
+      }
+      return;
+    }
+    const pt = `${cx(i).toFixed(1)},${yPct(s.w.agreementPct).toFixed(1)}`;
+    if (cur && cur.isLegacy === s.isLegacy) cur.pts.push(pt);
+    else {
+      if (cur) agreeRuns.push(cur);
+      cur = { isLegacy: s.isLegacy, pts: [pt] };
+    }
+  });
+  if (cur) agreeRuns.push(cur);
+  const agreeLines = agreeRuns
+    .map((r) =>
+      r.isLegacy
+        ? `<polyline points="${r.pts.join(' ')}" fill="none" stroke="${COL.legacyLine}" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.85"/>`
+        : `<polyline points="${r.pts.join(' ')}" fill="none" stroke="${COL.agreeLine}" stroke-width="2"/>`,
+    )
+    .join('');
+  const agreeDots = series
+    .map(({ w, isLegacy }, i) =>
+      w.agreementPct == null
+        ? ''
+        : `<circle cx="${cx(i).toFixed(1)}" cy="${yPct(w.agreementPct).toFixed(1)}" r="${isLegacy ? 2.5 : 3}" fill="${isLegacy ? COL.legacyLine : COL.agreeLine}"${isLegacy ? ' opacity="0.85"' : ''}><title>${esc(w.weekStart)}${isLegacy ? ' (legacy, unverified)' : ''}: ${w.agreementPct}% agreement (${num(w.agreedApprove) + num(w.agreedBlock)}/${num(w.withHumanVerdict)})</title></circle>`,
+    )
+    .join('');
+  // Value labels for the TRUSTED weeks only — legacy weeks carry their % in the
+  // dot tooltip, keeping the chart from crowding with unverified numbers.
+  const agreeLabels = series
+    .map(({ w, isLegacy }, i) => {
+      if (isLegacy || w.agreementPct == null) return '';
+      const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle';
+      return `<text x="${cx(i).toFixed(1)}" y="${(yPct(w.agreementPct) - 7).toFixed(1)}" text-anchor="${anchor}" font-size="10" font-weight="700" fill="${COL.agreeLine}">${Math.round(w.agreementPct)}%</text>`;
+    })
+    .join('');
+  // False-approve COUNT line (left/count axis, want → 0). Split by trust class:
+  // trusted runs are bright red, legacy runs are faded so the go-live signal is
+  // never confused with unverified history.
+  const falseRuns = [];
+  let fcur = null;
+  series.forEach((s, i) => {
+    const pt = `${cx(i).toFixed(1)},${yCnt(s.w.falseApprove).toFixed(1)}`;
+    if (fcur && fcur.isLegacy === s.isLegacy) fcur.pts.push(pt);
+    else {
+      if (fcur) falseRuns.push(fcur);
+      fcur = { isLegacy: s.isLegacy, pts: [pt] };
+    }
+  });
+  if (fcur) falseRuns.push(fcur);
+  const falseLine = falseRuns
+    .map(
+      (r) =>
+        `<polyline points="${r.pts.join(' ')}" fill="none" stroke="${COL.falseLine}" stroke-width="1.5" stroke-dasharray="4 2"${r.isLegacy ? ' opacity="0.4"' : ''}/>`,
+    )
+    .join('');
+  const falseDots = series
+    .map(
+      ({ w, isLegacy }, i) =>
+        `<circle cx="${cx(i).toFixed(1)}" cy="${yCnt(w.falseApprove).toFixed(1)}" r="${num(w.falseApprove) > 0 ? 3 : 2}" fill="${COL.falseLine}"${isLegacy ? ' opacity="0.4"' : ''}><title>${esc(w.weekStart)}${isLegacy ? ' (legacy, unverified)' : ''}: ${num(w.falseApprove)} false-approve</title></circle>`,
+    )
+    .join('');
+  const xlabels = series
+    .map(({ w }, i) =>
+      i % Math.ceil(n / 6 || 1) === 0
+        ? `<text x="${cx(i).toFixed(1)}" y="${H - 10}" text-anchor="middle" font-size="8" fill="var(--text-muted)">${esc((w.weekStart || '').slice(5))}</text>`
+        : '',
+    )
+    .join('');
+  // Trend hint: first→last agreement % over the TRUSTED weeks that have a verdict.
+  // Legacy weeks never move the go-live trend.
+  const withPct = verified.filter((w) => w.agreementPct != null);
+  let trend = '→ n/a',
+    trendColor = 'var(--text-muted)';
+  if (withPct.length >= 2) {
+    const delta = Math.round(withPct[withPct.length - 1].agreementPct - withPct[0].agreementPct);
+    trend = delta > 0 ? `▲ +${delta}pp agreement` : delta < 0 ? `▼ ${delta}pp agreement` : '→ flat';
+    trendColor = delta > 0 ? COL.agreeLine : delta < 0 ? '#f85149' : 'var(--text-muted)';
+  }
+  const totalFalse = verified.reduce((a, w) => a + num(w.falseApprove), 0);
+  const legacyWeeks = series.filter((s) => s.isLegacy).length;
+  const rangeStart = n ? esc(series[0].w.weekStart) : '';
+  return `<div style="margin:2px 0 10px">
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <span style="font-weight:600;font-size:13px">Weekly approver agreement</span>
+        <span style="font-size:10px;color:var(--text-muted)">
+          <span style="color:${COL.agreedApprove}">■</span> agreed-approve
+          <span style="color:${COL.agreedBlock}">■</span> agreed-block
+          <span style="color:${COL.falseApprove}">■</span> <b style="color:${COL.falseApprove}">false-approve</b>
+          <span style="color:${COL.falseBlock}">■</span> false-block
+          <span style="color:${COL.abstain}">■</span> abstain
+          &nbsp;·&nbsp; <span style="color:${COL.agreeLine}">●</span> agreement % (right)
+          &nbsp; <span style="color:${COL.falseLine}">╌</span> false-approve count${
+            hasLegacy
+              ? `\n          &nbsp;·&nbsp; <span style="color:var(--text-muted)">▨</span> <span style="color:${COL.legacyLine}">╌ legacy (unverified, pre-ledger)</span>`
+              : ''
+          }
+        </span>
+        <span style="margin-left:auto;font-size:12px;color:${trendColor}">${trend}</span>
+      </div>
+      <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;background:transparent">
+        ${defs}
+        ${grid}${pctAxis}
+        ${bars}
+        ${divider}
+        ${falseLine}${falseDots}
+        ${agreeLines}${agreeDots}${agreeLabels}
+        ${xlabels}
+      </svg>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Go-live signals: <b>agreement ↑</b> · <b>abstain ↓</b> · <b style="color:${COL.falseApprove}">false-approve → 0</b> (a false-approve is Verity waving through a PR a human wanted changed — the one error that must reach zero before Verity leaves shadow mode). ${totalFalse} false-approve${totalFalse === 1 ? '' : 's'} across the trusted window.${
+        hasLegacy
+          ? ` <span style="color:var(--text-muted)">Extended back to ${rangeStart} with ${legacyWeeks} pre-ledger week${legacyWeeks === 1 ? '' : 's'} (hatched bars · dashed grey line) — unverified pre-enforcement decisions shown for historical context only, excluded from the trend and go-live signals above.</span>`
+          : ''
+      }</div>
     </div>`;
 }
 
@@ -590,26 +1183,43 @@ function reviewCyclesHtml(rc) {
     // sit near zero — in the census that was 5 CHANGES_REQUESTED against 1,178
     // COMMENTED, which is exactly why it cannot be the headline on its own.
     const mean =
-      c.meanFeedbackRounds === null || c.meanFeedbackRounds === undefined
-        ? nd
-        : '<b>' + c.meanFeedbackRounds + '</b>';
+      c.meanFeedbackRounds === null || c.meanFeedbackRounds === undefined ? nd : '<b>' + c.meanFeedbackRounds + '</b>';
     const meanCr =
       c.meanChangesRequested === null || c.meanChangesRequested === undefined ? nd : String(c.meanChangesRequested);
     const hasCov = c.coveragePct !== null && c.coveragePct !== undefined;
     const cov = hasCov ? c.coveragePct + '%' : '—';
     const warn = hasCov && c.coveragePct < 50 ? ';color:var(--warn,#c90)' : '';
     return (
-      '<td style="text-align:right;padding:2px 12px">' + mean + '</td>' +
-      '<td style="text-align:right;padding:2px 12px;color:var(--text-muted)">' + meanCr + '</td>' +
-      '<td style="text-align:right;padding:2px 12px">' + (c.reviewedPrs || 0) + '</td>' +
-      '<td style="text-align:right;padding:2px 12px' + warn + '">' + cov + '</td>' +
-      '<td style="text-align:right;padding:2px 12px;color:var(--text-muted)">' + (c.unreviewedPrs || 0) + '</td>' +
-      '<td style="text-align:right;padding:2px 12px' + (c.unknownPrs ? ';color:var(--warn,#c90)' : ';color:var(--text-muted)') + '">' +
-        (c.unknownPrs || 0) + '</td>'
+      '<td style="text-align:right;padding:2px 12px">' +
+      mean +
+      '</td>' +
+      '<td style="text-align:right;padding:2px 12px;color:var(--text-muted)">' +
+      meanCr +
+      '</td>' +
+      '<td style="text-align:right;padding:2px 12px">' +
+      (c.reviewedPrs || 0) +
+      '</td>' +
+      '<td style="text-align:right;padding:2px 12px' +
+      warn +
+      '">' +
+      cov +
+      '</td>' +
+      '<td style="text-align:right;padding:2px 12px;color:var(--text-muted)">' +
+      (c.unreviewedPrs || 0) +
+      '</td>' +
+      '<td style="text-align:right;padding:2px 12px' +
+      (c.unknownPrs ? ';color:var(--warn,#c90)' : ';color:var(--text-muted)') +
+      '">' +
+      (c.unknownPrs || 0) +
+      '</td>'
     );
   };
   const th = (l, r) =>
-    '<th style="text-align:' + (r ? 'right' : 'left') + ';padding:2px 12px;border-bottom:1px solid var(--border)">' + l + '</th>';
+    '<th style="text-align:' +
+    (r ? 'right' : 'left') +
+    ';padding:2px 12px;border-bottom:1px solid var(--border)">' +
+    l +
+    '</th>';
   // The producer publishes its own definition; render it rather than hardcoding
   // a description that can drift away from the metric.
   const roundRule =
@@ -626,9 +1236,21 @@ function reviewCyclesHtml(rc) {
     '<div style="font-weight:600;margin-bottom:4px">Human review cost ' +
     '<span style="font-weight:400;color:var(--text-muted)">— Verity-decided merged PRs</span></div>' +
     '<table style="border-collapse:collapse;font-size:10px">' +
-    '<tr>' + th('author') + th('mean rounds', 1) + th('of which CR', 1) + th('reviewed', 1) + th('coverage', 1) + th('unreviewed', 1) + th('unknown', 1) + '</tr>' +
-    '<tr><td style="padding:2px 12px">bot</td>' + cell(rc.bot) + '</tr>' +
-    '<tr><td style="padding:2px 12px">human</td>' + cell(rc.human) + '</tr>' +
+    '<tr>' +
+    th('author') +
+    th('mean rounds', 1) +
+    th('of which CR', 1) +
+    th('reviewed', 1) +
+    th('coverage', 1) +
+    th('unreviewed', 1) +
+    th('unknown', 1) +
+    '</tr>' +
+    '<tr><td style="padding:2px 12px">bot</td>' +
+    cell(rc.bot) +
+    '</tr>' +
+    '<tr><td style="padding:2px 12px">human</td>' +
+    cell(rc.human) +
+    '</tr>' +
     '</table>' +
     '<div style="color:var(--text-muted);margin-top:4px;max-width:640px;line-height:1.45">' +
     roundRule +
@@ -666,19 +1288,38 @@ function regressionQualityHtml(rq) {
     '<div style="font-weight:600;margin-bottom:4px">Regression quality ' +
     '<span style="font-weight:400;color:var(--text-muted)">— ' +
     esc(rq.repo || '') +
-    ' · label "' + esc(rq.label || 'regression') + '"' + freshness + '</span></div>';
+    ' · label "' +
+    esc(rq.label || 'regression') +
+    '"' +
+    freshness +
+    '</span></div>';
 
   // COLLECTION FAILURE IS NOT A ZERO. Schema 2 fails closed: an incomplete run
   // emits NO metric keys at all and sets complete:false with a populated errors[].
   // Render the breakage — a number here would read as "quality improved" when in
   // fact nothing was measured, which is the defect this schema exists to stop.
   if (rq.complete === false) {
-    const errs = (rq.errors || []).slice(0, 4).map((e) => esc(String(e))).join('<br>');
+    // Each errors[] entry is a {what, detail} object (regression-quality.py's
+    // Collection.fail), not a string — String(e) on it renders "[object Object]".
+    // Format the object as "what: detail"; keep a String() fallback for any
+    // producer that still emits bare strings.
+    const errs = (rq.errors || [])
+      .slice(0, 4)
+      .map((e) => {
+        if (e && typeof e === 'object') {
+          const detail = e.detail == null ? '' : String(e.detail);
+          return e.what ? esc(e.what + ': ' + detail) : esc(detail || JSON.stringify(e));
+        }
+        return esc(String(e));
+      })
+      .join('<br>');
     return (
-      '<div style="margin-top:20px">' + title +
+      '<div style="margin-top:20px">' +
+      title +
       '<div style="padding:4px 8px;border-left:3px solid var(--warn,#c90);color:var(--text-muted);max-width:640px;line-height:1.45">' +
       '<b>Collection incomplete — no metric published.</b> This is NOT zero regressions; the run failed and ' +
-      'deliberately emitted no numbers.' + (errs ? '<br>' + errs : '') +
+      'deliberately emitted no numbers.' +
+      (errs ? '<br>' + errs : '') +
       '</div></div>'
     );
   }
@@ -702,32 +1343,56 @@ function regressionQualityHtml(rq) {
     .slice(-6);
 
   const th = (l, r) =>
-    '<th style="text-align:' + (r ? 'right' : 'left') + ';padding:2px 10px;border-bottom:1px solid var(--border)">' + l + '</th>';
+    '<th style="text-align:' +
+    (r ? 'right' : 'left') +
+    ';padding:2px 10px;border-bottom:1px solid var(--border)">' +
+    l +
+    '</th>';
   const td = (v, r) => '<td style="text-align:' + (r ? 'right' : 'left') + ';padding:2px 10px">' + v + '</td>';
   const num = (v) => (v === null || v === undefined ? '—' : v);
 
   const rows = months
-    .map((m) =>
-      '<tr>' + td(esc(m)) +
-      td(num(cohortBot[m]), 1) + td(num(rateBot[m]), 1) +
-      td(num(cohortHuman[m]), 1) + td(num(rateHuman[m]), 1) +
-      td('<span style="color:var(--text-muted)">' + num(cohortMixed[m]) + '</span>', 1) + '</tr>',
+    .map(
+      (m) =>
+        '<tr>' +
+        td(esc(m)) +
+        td(num(cohortBot[m]), 1) +
+        td(num(rateBot[m]), 1) +
+        td(num(cohortHuman[m]), 1) +
+        td(num(rateHuman[m]), 1) +
+        td('<span style="color:var(--text-muted)">' + num(cohortMixed[m]) + '</span>', 1) +
+        '</tr>',
     )
     .join('');
 
   const mixedTotal = Object.values(cohortMixed).reduce((a, b) => a + (b || 0), 0);
 
   return (
-    '<div style="margin-top:20px">' + title +
+    '<div style="margin-top:20px">' +
+    title +
     '<div style="margin-bottom:6px;padding:4px 8px;border-left:3px solid var(--warn,#c90);color:var(--text-muted);max-width:640px;line-height:1.45">' +
-    '<b>Attribution coverage ' + cov + '%</b> (' + attributed + '/' + rq.issues + '). ' +
+    '<b>Attribution coverage ' +
+    cov +
+    '%</b> (' +
+    attributed +
+    '/' +
+    rq.issues +
+    '). ' +
     'The rest cite no causal reference, so the split below is a <b>floor, not a total</b>.' +
     '</div>' +
     '<table style="border-collapse:collapse;font-size:10px">' +
-    '<tr>' + th('culprit merge month') + th('bot-caused', 1) + th('per 100 bot PRs', 1) +
-    th('human-caused', 1) + th('per 100 human PRs', 1) + th('mixed', 1) + '</tr>' + rows + '</table>' +
+    '<tr>' +
+    th('culprit merge month') +
+    th('bot-caused', 1) +
+    th('per 100 bot PRs', 1) +
+    th('human-caused', 1) +
+    th('per 100 human PRs', 1) +
+    th('mixed', 1) +
+    '</tr>' +
+    rows +
+    '</table>' +
     '<div style="color:var(--text-muted);margin-top:4px;max-width:640px;line-height:1.45">' +
-    'Cohorted by the <b>culprit PR\'s merge month</b>, so numerator and denominator describe the same ' +
+    "Cohorted by the <b>culprit PR's merge month</b>, so numerator and denominator describe the same " +
     'population. Rate, not count: bot merge volume rose sharply, so a raw count climbs even when quality ' +
     'is flat.' +
     (mixedTotal
@@ -739,29 +1404,43 @@ function regressionQualityHtml(rq) {
 
 // Table of nv-slang-bot's per-repo commits / additions / deletions, from the
 // /api/bot-contributions snapshot. Shown under the issue funnel.
+// Metric is MERGED PRs by the App bot (app/nv-slang-bot) since bc.since, plus
+// real code volume (commits/additions/deletions summed from each merged PR's
+// diff, and the first/last merge date as the active range). See
+// scripts/bot-contributions.ts for why PRs, not stats/contributors commits
+// (squash-merges collapse commit attribution → single digits).
 function botContributionsHtml(bc) {
   if (!bc || !Array.isArray(bc.repos)) return '';
-  const t = bc.totals || { commits: 0, additions: 0, deletions: 0 };
+  const t = bc.totals || {};
+  // Back-compat: pre-fix snapshots had only `commits`; new ones add mergedPRs/totalPRs.
+  const merged = (o) => Number((o.mergedPRs != null ? o.mergedPRs : o.commits) || 0);
+  const total = (o) => Number((o.totalPRs != null ? o.totalPRs : merged(o)) || 0);
+  const num = (v) => Number(v || 0);
   const rows = bc.repos
     .map(
       (r) => `<tr>
         <td style="padding:3px 10px 3px 0"><code>${esc(r.repo)}</code></td>
-        <td style="text-align:right;padding:3px 10px">${fmtNum(r.commits)}</td>
-        <td style="text-align:right;padding:3px 10px;color:#3fb950">+${fmtNum(r.additions)}</td>
-        <td style="text-align:right;padding:3px 10px;color:#f85149">−${fmtNum(r.deletions)}</td>
+        <td style="text-align:right;padding:3px 10px;font-weight:600">${fmtNum(merged(r))}</td>
+        <td style="text-align:right;padding:3px 10px;color:var(--text-muted)">${fmtNum(total(r))}</td>
+        <td style="text-align:right;padding:3px 10px">${fmtNum(num(r.commits))}</td>
+        <td style="text-align:right;padding:3px 10px;color:#3fb950">+${fmtNum(num(r.additions))}</td>
+        <td style="text-align:right;padding:3px 10px;color:#f85149">−${fmtNum(num(r.deletions))}</td>
         <td style="text-align:right;padding:3px 10px;color:var(--text-muted);font-size:10px">${r.firstWeek ? `${esc(r.firstWeek)} → ${esc(r.lastWeek)}` : r.error ? esc(r.error) : '—'}</td>
       </tr>`,
     )
     .join('');
+  const since = bc.since ? ` since ${esc(bc.since)}` : '';
   return `<div style="margin-top:20px">
       <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px">
         <span style="font-size:14px;font-weight:700">nv-slang-bot contributions</span>
-        <span style="font-size:10px;color:var(--text-muted)">${bc.generatedAt ? `snapshot: ${formatTime(bc.generatedAt)}` : ''}</span>
+        <span style="font-size:10px;color:var(--text-muted)">merged PRs${since}${bc.generatedAt ? ` · snapshot: ${formatTime(bc.generatedAt)}` : ''}</span>
         <button data-action="refresh-botc" class="admin-action-btn" style="margin-left:auto;font-size:10px;padding:1px 8px">Refresh</button>
       </div>
-      <table style="border-collapse:collapse;font-size:12px;width:100%;max-width:560px">
+      <table style="border-collapse:collapse;font-size:12px;width:100%;max-width:760px">
         <thead><tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase">
           <th style="text-align:left;padding:3px 10px 3px 0">Repo</th>
+          <th style="text-align:right;padding:3px 10px">Merged PRs</th>
+          <th style="text-align:right;padding:3px 10px">Total PRs</th>
           <th style="text-align:right;padding:3px 10px">Commits</th>
           <th style="text-align:right;padding:3px 10px">Additions</th>
           <th style="text-align:right;padding:3px 10px">Deletions</th>
@@ -770,9 +1449,11 @@ function botContributionsHtml(bc) {
         <tbody>${rows}
           <tr style="border-top:2px solid var(--border);font-weight:700">
             <td style="padding:4px 10px 4px 0">Total</td>
-            <td style="text-align:right;padding:4px 10px">${fmtNum(t.commits)}</td>
-            <td style="text-align:right;padding:4px 10px;color:#3fb950">+${fmtNum(t.additions)}</td>
-            <td style="text-align:right;padding:4px 10px;color:#f85149">−${fmtNum(t.deletions)}</td>
+            <td style="text-align:right;padding:4px 10px">${fmtNum(merged(t))}</td>
+            <td style="text-align:right;padding:4px 10px;color:var(--text-muted)">${fmtNum(total(t))}</td>
+            <td style="text-align:right;padding:4px 10px">${fmtNum(num(t.commits))}</td>
+            <td style="text-align:right;padding:4px 10px;color:#3fb950">+${fmtNum(num(t.additions))}</td>
+            <td style="text-align:right;padding:4px 10px;color:#f85149">−${fmtNum(num(t.deletions))}</td>
             <td></td>
           </tr>
         </tbody>
@@ -914,21 +1595,37 @@ function funnelFlowHtml(ip, funnelRows) {
 // Unified issue table: all actionable issues in one table with inst, issue, PR, state, CI, stage.
 function funnelIssueTableHtml(issues, rows, statusColors) {
   if (!issues || issues.length === 0) return '';
-  const actionable = issues.filter(i => i.bucket !== 'not_our_problem');
+  const actionable = issues.filter((i) => i.bucket !== 'not_our_problem');
   if (actionable.length === 0) return '';
   const rowByIssue = {};
   const rowByPr = {};
-  for (const r of (rows || [])) {
+  for (const r of rows || []) {
     if (r.issue) rowByIssue[`${r.repo}#${r.issue}`] = r;
     if (r.pr) rowByPr[`${r.repo}#${r.pr}`] = r;
   }
-  const bucketLabel = { bot_pr: '', triage_only: 'triage-only', never_engaged: 'never-engaged', resolved_elsewhere: 'resolved-elsewhere' };
-  const bucketColor = { bot_pr: null, triage_only: statusColors.triage, never_engaged: statusColors.never, resolved_elsewhere: statusColors.resolved };
+  const bucketLabel = {
+    bot_pr: '',
+    triage_only: 'triage-only',
+    never_engaged: 'never-engaged',
+    resolved_elsewhere: 'resolved-elsewhere',
+  };
+  const bucketColor = {
+    bot_pr: null,
+    triage_only: statusColors.triage,
+    never_engaged: statusColors.never,
+    resolved_elsewhere: statusColors.resolved,
+  };
   let html = `<details style="margin-top:14px"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--text)">All ${actionable.length} actionable issues</summary>`;
   // Verity (PR-approver) shadow-mode decision colors. Approve = green,
   // block = red, abstain = muted. Falls through to '' (blank cell) when no
   // approver ran for the PR.
-  const approverColor = { WOULD_APPROVE: statusColors.merged, BLOCK: '#e5534b', ABSTAIN_POLICY: 'var(--text-muted)', ABSTAIN_INFRA: 'var(--text-muted)' };
+  // ABSTAIN_INFRA retired (task #14). Unmapped decisions (incl. historical
+  // ABSTAIN_INFRA rows) fall through to var(--text-muted) below.
+  const approverColor = {
+    WOULD_APPROVE: statusColors.merged,
+    BLOCK: '#e5534b',
+    ABSTAIN_POLICY: 'var(--text-muted)',
+  };
   html += `<table class="admin-table" style="margin-top:4px;font-size:11px"><thead><tr><th>Inst</th><th>Issue</th><th>PR</th><th>State</th><th>CI</th><th>Stage</th><th>Note</th><th>Approver</th></tr></thead><tbody>`;
   for (const i of actionable) {
     const repo = (i.repo || '').split('/').pop();
@@ -938,21 +1635,224 @@ function funnelIssueTableHtml(issues, rows, statusColors) {
     const stageVal = i.stage || (r ? r.stage : '') || bucketLabel[i.bucket] || i.bucket;
     const prNum = r ? r.pr : i.prNumber;
     const prUrl = r ? r.prUrl : i.prUrl;
-    const prCell = prNum ? (prUrl ? `<a href="${esc(prUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">#${prNum}</a>` : `#${prNum}`) : '';
-    const stateCell = r ? (r.prState || '') : (i.bucket === 'bot_pr' && i.stage ? (i.stage === 'merged' ? 'merged' : i.stage === 'pr-closed' || i.stage === 'superseded' ? 'closed' : 'open') : '');
-    const ciCell = r ? (r.ciBucket || '') : '';
-    const noteCell = r ? (r.note || '') : (i.note || '');
-    const color = bucketColor[i.bucket] || (stageVal === 'merged' ? statusColors.merged : stageVal === 'shipped-draft' ? statusColors.shipped : stageVal === 'pr-ready' ? statusColors.ready : '');
+    const prCell = prNum
+      ? prUrl
+        ? `<a href="${esc(prUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">#${prNum}</a>`
+        : `#${prNum}`
+      : '';
+    const stateCell = r
+      ? r.prState || ''
+      : i.bucket === 'bot_pr' && i.stage
+        ? i.stage === 'merged'
+          ? 'merged'
+          : i.stage === 'pr-closed' || i.stage === 'superseded'
+            ? 'closed'
+            : 'open'
+        : '';
+    const ciCell = r ? r.ciBucket || '' : '';
+    const noteCell = r ? r.note || '' : i.note || '';
+    const color =
+      bucketColor[i.bucket] ||
+      (stageVal === 'merged'
+        ? statusColors.merged
+        : stageVal === 'shipped-draft'
+          ? statusColors.shipped
+          : stageVal === 'pr-ready'
+            ? statusColors.ready
+            : '');
     const style = color ? ` style="color:${color}"` : '';
     // Approver cell: Verity's decision, with the joined human outcome shown as
     // "DECISION → HUMAN" once the human review lands (accuracy at a glance).
     const appr = r ? r.approver : null;
     const apprText = appr ? (appr.human ? `${appr.decision} → ${appr.human}` : appr.decision) : '';
-    const apprStyle = appr && approverColor[appr.decision] ? ` style="color:${approverColor[appr.decision]}"` : ' style="color:var(--text-muted)"';
+    const apprStyle =
+      appr && approverColor[appr.decision]
+        ? ` style="color:${approverColor[appr.decision]}"`
+        : ' style="color:var(--text-muted)"';
     html += `<tr><td>${esc(inst)}</td><td>${esc(repo)} ${issueLink}</td><td>${prCell}</td><td>${esc(stateCell)}</td><td>${esc(ciCell)}</td><td${style}>${esc(stageVal)}</td><td style="color:var(--text-muted)">${esc(noteCell)}</td><td${apprStyle}>${esc(apprText)}</td></tr>`;
   }
   html += '</tbody></table></details>';
   return html;
+}
+
+// Review cycles — how much human review a PR drew before it merged, bot-authored
+// vs human-authored, plotted over the merge weeks. Reads the /api/review-rounds
+// snapshot (scripts/review-rounds.py). Two lines in the funnelWeeklyTrendSvg
+// visual idiom: avg human review CYCLES for bot PRs (amber) vs human PRs (blue).
+//
+// A CYCLE = one human-initiated inline review thread + one human conversation
+// comment (producer field `avgCycles`); this is the number that lines up with the
+// published "Avg human review cycles / PR" slide. We plot the slang-only series
+// (perRepo['shader-slang/slang']) when the snapshot carries it, because the slide
+// is scoped to that repo; otherwise the combined all-repo weekly. `avgCycles`
+// falls back to `avgSubmissions` then `avgRounds` so a pre-cycles (schema-1)
+// snapshot still renders. Degrades to '' when the snapshot is absent/empty;
+// renders the breakage note when the producer failed closed (complete:false).
+function reviewRoundsHtml(rr) {
+  if (!rr) return '';
+
+  let freshness = '';
+  if (rr.generatedAt) {
+    const ageH = (Date.now() - new Date(rr.generatedAt).getTime()) / 3600000;
+    const stale = ageH > 36;
+    const label = ageH < 1 ? 'just now' : ageH < 48 ? Math.round(ageH) + 'h ago' : Math.round(ageH / 24) + 'd ago';
+    freshness = ' · snapshot ' + (stale ? '<b style="color:var(--warn,#c90)">' + label + ' (stale)</b>' : label);
+  }
+
+  // COLLECTION FAILURE IS NOT A ZERO. The producer fails closed: an incomplete
+  // run emits no weekly metrics and sets complete:false with errors[]. Render the
+  // breakage — a flat line here would read as "review got easier" when nothing
+  // was measured.
+  if (rr.complete === false) {
+    const errs = (rr.errors || [])
+      .slice(0, 4)
+      .map((e) => esc(typeof e === 'string' ? e : (e && (e.what + ': ' + e.detail)) || String(e)))
+      .join('<br>');
+    return (
+      '<div style="margin-top:20px">' +
+      '<div style="font-weight:600;margin-bottom:4px">Human-review cycles per PR</div>' +
+      '<div style="padding:4px 8px;border-left:3px solid var(--warn,#c90);color:var(--text-muted);max-width:640px;line-height:1.45">' +
+      '<b>Collection incomplete — no metric published.</b> This is NOT zero review cycles; the run failed and ' +
+      'deliberately emitted no numbers.' +
+      (errs ? '<br>' + errs : '') +
+      '</div></div>'
+    );
+  }
+
+  // Prefer the slang-only view (matches the published slide's scope); fall back
+  // to the combined all-repo weekly for older snapshots that lack perRepo.
+  const SLANG = 'shader-slang/slang';
+  const slangView = (rr.perRepo || {})[SLANG];
+  const useSlang = slangView && Array.isArray(slangView.weekly) && slangView.weekly.length > 0;
+  const weekly = useSlang ? slangView.weekly : Array.isArray(rr.weekly) ? rr.weekly : [];
+  if (weekly.length === 0) return '';
+  const totals = useSlang ? slangView.totals || {} : rr.totals || {};
+  const scopeLabel = useSlang ? SLANG : 'all tracked repos';
+
+  const title =
+    '<div style="font-weight:600;margin-bottom:4px">Human-review cycles per PR ' +
+    '<span style="font-weight:400;color:var(--text-muted)">— bot vs human authored · ' +
+    esc(scopeLabel) +
+    (rr.since ? ' · since ' + esc(rr.since) : '') +
+    freshness +
+    '</span></div>';
+
+  const svg = reviewRoundsTrendSvg(weekly);
+
+  // Totals strip: overall bot vs human cycles, with the strict CHANGES_REQUESTED
+  // "rounds" number kept beside it as the secondary figure.
+  const bt = totals.botAuthored || {};
+  const ht = totals.humanAuthored || {};
+  const numOrDash = (v) => (v === null || v === undefined ? '—' : v);
+  const cyc = (o) => (typeof o.avgCycles === 'number' ? o.avgCycles : o.avgSubmissions);
+  const totalsLine =
+    bt.prs || ht.prs
+      ? '<div style="color:var(--text-muted);margin-top:4px;max-width:640px;line-height:1.45">' +
+        'Overall: <b style="color:#d29922">bot</b> ' +
+        numOrDash(cyc(bt)) +
+        ' cycles/PR (' +
+        (bt.prs || 0) +
+        ' PRs) vs <b style="color:#58a6ff">human</b> ' +
+        numOrDash(cyc(ht)) +
+        ' cycles/PR (' +
+        (ht.prs || 0) +
+        ' PRs). Strict CHANGES_REQUESTED rounds: bot ' +
+        numOrDash(bt.avgRounds) +
+        ' / human ' +
+        numOrDash(ht.avgRounds) +
+        '.</div>'
+      : '';
+
+  return (
+    '<div style="margin-top:20px">' +
+    title +
+    svg +
+    totalsLine +
+    '<div style="color:var(--text-muted);margin-top:4px;max-width:640px;line-height:1.45">' +
+    'A cycle = one human inline review thread or conversation comment (bot/CI reviewers and self-reviews excluded); ' +
+    'fewer cycles = cleaner PRs; is the bot converging to — or below — human? MERGED PRs only, by merge week.' +
+    '</div></div>'
+  );
+}
+
+// Two-line weekly trend for review cycles, in the funnelWeeklyTrendSvg idiom:
+// amber = avg cycles for bot-authored PRs, blue = human-authored. The plotted
+// value is `avgCycles` (falling back to avgSubmissions, then avgRounds, so an
+// older snapshot still renders). A week with no PRs in a class has a null average
+// and is simply skipped (the line bridges the gap) rather than plotted as a
+// spurious zero. Returns '' when nothing to plot.
+function reviewRoundsTrendSvg(weekly) {
+  if (!Array.isArray(weekly) || weekly.length === 0) return '';
+  const W = 520,
+    H = 140,
+    padL = 30,
+    padR = 10,
+    padT = 16,
+    padB = 26;
+  const innerW = W - padL - padR,
+    innerH = H - padT - padB;
+  const n = weekly.length;
+  const avg = (w, k) => {
+    const c = w[k];
+    if (!c) return null;
+    if (typeof c.avgCycles === 'number') return c.avgCycles;
+    if (typeof c.avgSubmissions === 'number') return c.avgSubmissions;
+    return typeof c.avgRounds === 'number' ? c.avgRounds : null;
+  };
+  const observed = [];
+  for (const w of weekly) {
+    const b = avg(w, 'botAuthored');
+    const h = avg(w, 'humanAuthored');
+    if (b !== null) observed.push(b);
+    if (h !== null) observed.push(h);
+  }
+  const maxY = Math.max(1, ...observed);
+  const x = (i) => padL + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+  const y = (v) => padT + innerH - (v / maxY) * innerH;
+  const gridVals = [0, maxY / 2, maxY];
+  const grid = gridVals
+    .map(
+      (v) =>
+        `<line x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W - padR}" y2="${y(v).toFixed(1)}" stroke="var(--border)" stroke-width="1"/>` +
+        `<text x="${padL - 5}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--text-muted)">${v % 1 === 0 ? v : v.toFixed(1)}</text>`,
+    )
+    .join('');
+  const series = (k, color) => {
+    const pts = [];
+    const dots = [];
+    weekly.forEach((w, i) => {
+      const v = avg(w, k);
+      if (v === null) return;
+      const c = w[k] || {};
+      pts.push(`${x(i).toFixed(1)},${y(v).toFixed(1)}`);
+      const comp =
+        typeof c.avgThreads === 'number' && typeof c.avgIssueComments === 'number'
+          ? `, ${c.avgThreads} threads + ${c.avgIssueComments} comments`
+          : '';
+      dots.push(
+        `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.6" fill="${color}"><title>${esc(w.week)} — ${k === 'botAuthored' ? 'bot' : 'human'}: ${v} cycles/PR (${c.prs || 0} PRs${comp})</title></circle>`,
+      );
+    });
+    const line = pts.length > 1 ? `<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2"/>` : '';
+    return line + dots.join('');
+  };
+  const xlabels = weekly
+    .map((w, i) =>
+      i % Math.ceil(n / 6 || 1) === 0
+        ? `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="8" fill="var(--text-muted)">${esc(String(w.week).slice(5))}</text>`
+        : '',
+    )
+    .join('');
+  return `<div style="margin:6px 0 2px;display:flex;align-items:baseline;gap:10px">
+      <span style="font-weight:600">Avg human review cycles / merged PR</span>
+      <span style="font-size:10px;color:var(--text-muted)"><span style="color:#d29922">●</span> bot &nbsp;<span style="color:#58a6ff">●</span> human</span>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;background:transparent">
+      ${grid}
+      ${series('botAuthored', '#d29922')}
+      ${series('humanAuthored', '#58a6ff')}
+      ${xlabels}
+    </svg>`;
 }
 
 // Inline-SVG line chart of the weekly WIN trend (issuePartition.weekly).
@@ -984,10 +1884,16 @@ function funnelWeeklyTrendSvg(weekly) {
     .join('');
   const rollPts = weekly.map((w, i) => `${x(i).toFixed(1)},${y(w.rollingWinRate || 0).toFixed(1)}`).join(' ');
   const rawDots = weekly
-    .map((w, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(w.winRate || 0).toFixed(1)}" r="2.5" fill="#8b949e"><title>${esc(w.week)}: ${Math.round((w.winRate || 0) * 100)}% (${w.merged}/${w.actionable})</title></circle>`)
+    .map(
+      (w, i) =>
+        `<circle cx="${x(i).toFixed(1)}" cy="${y(w.winRate || 0).toFixed(1)}" r="2.5" fill="#8b949e"><title>${esc(w.week)}: ${Math.round((w.winRate || 0) * 100)}% (${w.merged}/${w.actionable})</title></circle>`,
+    )
     .join('');
   const rollDots = weekly
-    .map((w, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(w.rollingWinRate || 0).toFixed(1)}" r="3" fill="#3fb950"><title>${esc(w.week)} rolling: ${Math.round((w.rollingWinRate || 0) * 100)}%</title></circle>`)
+    .map(
+      (w, i) =>
+        `<circle cx="${x(i).toFixed(1)}" cy="${y(w.rollingWinRate || 0).toFixed(1)}" r="3" fill="#3fb950"><title>${esc(w.week)} rolling: ${Math.round((w.rollingWinRate || 0) * 100)}%</title></circle>`,
+    )
     .join('');
   // Value labels on each rolling point (the win-rates are small, so the line
   // hugs the axis — the number must be spelled out). Placed just above each dot.
@@ -999,7 +1905,11 @@ function funnelWeeklyTrendSvg(weekly) {
     })
     .join('');
   const xlabels = weekly
-    .map((w, i) => (i % Math.ceil(n / 6 || 1) === 0 ? `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="8" fill="var(--text-muted)">${esc(w.week.slice(5))}</text>` : ''))
+    .map((w, i) =>
+      i % Math.ceil(n / 6 || 1) === 0
+        ? `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="8" fill="var(--text-muted)">${esc(w.week.slice(5))}</text>`
+        : '',
+    )
     .join('');
   // Direction hint: last rolling vs first rolling.
   const first = weekly[0].rollingWinRate || 0,
@@ -1105,7 +2015,11 @@ function funnelWeeklyConversionSvg(weekly) {
     })
     .join('');
   const xlabels = weekly
-    .map((w, i) => (i % Math.ceil(n / 6 || 1) === 0 ? `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="8" fill="var(--text-muted)">${esc(w.week.slice(5))}</text>` : ''))
+    .map((w, i) =>
+      i % Math.ceil(n / 6 || 1) === 0
+        ? `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="8" fill="var(--text-muted)">${esc(w.week.slice(5))}</text>`
+        : '',
+    )
     .join('');
   // Direction hint: last rolling conversion vs first.
   const first = roll[0] || 0,
@@ -1630,6 +2544,13 @@ function updateDetailHooks(cw) {
 }
 
 function applyState(nextState) {
+  // A full snapshot (/api/state, resync, initial live frame) carries the current
+  // server identity + revision; adopt both so subsequent deltas can be
+  // continuity-checked. Deltas route through applyDeltaPatch(), which puts the
+  // new revision INTO the patch — so `state.stateRev` is never stale and a
+  // caller that spreads `...state` back through applyState() (applyHookEvent)
+  // cannot roll the live revision backwards.
+  liveSync.observeSnapshotFields(nextState);
   const nextHookEvents = Object.prototype.hasOwnProperty.call(nextState, 'hookEvents')
     ? nextState.hookEvents
     : state.hookEvents;
@@ -1689,6 +2610,62 @@ function applyState(nextState) {
   }
 }
 
+// ---- Live-state reconciliation -------------------------------------------
+// The protocol itself (epoch/revision continuity, key-order proof, resync
+// barrier + bounded replay buffer, snapshot generations) is implemented once in
+// `public/state-sync.js`; `mobile.js` and `state-delta.test.ts` drive the same
+// code. What remains here is the transport: fetching a snapshot over HTTP and
+// reopening the live channel.
+
+// Adopt a full snapshot from the live stream. No generation token: an in-stream
+// snapshot is ordered against the deltas by construction, so it is always
+// authoritative and supersedes any HTTP resync still in flight.
+function adoptSnapshot(data) {
+  liveSync.adoptSnapshot(data);
+}
+
+function applyStateDelta(delta) {
+  liveSync.applyStateDelta(delta);
+}
+
+function clearResyncRetry() {
+  if (resyncRetryTimer) {
+    clearTimeout(resyncRetryTimer);
+    resyncRetryTimer = null;
+  }
+}
+
+function scheduleResyncRetry() {
+  if (resyncRetryTimer) return;
+  const delay = Math.min(30000, 1000 * 2 ** Math.min(resyncAttempt, 5));
+  resyncAttempt += 1;
+  resyncRetryTimer = setTimeout(() => {
+    resyncRetryTimer = null;
+    void resyncLiveData();
+  }, delay);
+}
+
+// Drop and reopen the live channel so the server pushes a fresh, ordered
+// in-stream snapshot. This is the recovery path when the replay buffer
+// overflowed: repeating HTTP snapshots there can never converge (every response
+// lands behind the frames we had to drop), whereas a reconnect re-bases us on
+// the stream itself. With no EventSource — or while hidden, where we must not
+// hold a stream open — fall back to the HTTP resync.
+function reconnectLiveChannel() {
+  if (liveSource) {
+    liveSource.close();
+    liveSource = null;
+  }
+  if (!('EventSource' in window) || document.hidden) {
+    void resyncLiveData();
+    return;
+  }
+  // Route overflow recovery through the SAME floored scheduler as onerror.
+  // Reconnecting immediately here (on every >200-delta overflow) is exactly the
+  // churn path the 5s floor exists to bound.
+  scheduleLiveReconnect();
+}
+
 function hookEventKey(event) {
   return event.id ? `id:${event.id}` : `${event.timestamp}|${event.group}|${event.event}|${event.tool_use_id || ''}`;
 }
@@ -1728,12 +2705,16 @@ async function loadRecentHookEvents() {
   }
 }
 
-async function pollState() {
+// Fetch a snapshot over HTTP for the resync identified by `generation`. The
+// token is what lets a delayed response be recognised as superseded: an
+// in-stream snapshot installed while this request was in flight bumps the
+// generation, and adopting an old-process response over it would rewind the UI
+// with no epoch/revision signal able to catch it.
+async function pollState(generation) {
   try {
     const res = await fetch('/api/state', { cache: 'no-store' });
     if (!res.ok) return false;
-    applyState(await res.json());
-    return true;
+    return liveSync.adoptSnapshot(await res.json(), generation);
   } catch {
     return false;
   }
@@ -1742,9 +2723,12 @@ async function pollState() {
 function startPolling() {
   if (pollTimer) return;
   setLiveStatus('Polling Fallback', 'var(--yellow)');
-  void Promise.all([pollState(), loadRecentHookEvents()]);
+  // Route through resyncLiveData() so a poll coalesces with any resync already
+  // in flight: two concurrent /api/state responses can land out of order, and
+  // the older one would overwrite the newer.
+  void resyncLiveData();
   pollTimer = setInterval(async () => {
-    const [stateOk] = await Promise.all([pollState(), loadRecentHookEvents()]);
+    const stateOk = await resyncLiveData();
     if (!stateOk) {
       setLiveStatus('Reconnecting...', 'var(--yellow)');
     }
@@ -1759,7 +2743,11 @@ function stopPolling() {
 
 function scheduleLiveReconnect() {
   if (liveReconnectTimer || document.hidden) return;
-  const baseDelay = Math.min(30000, 1000 * 2 ** Math.min(liveReconnectAttempt, 5));
+  // Floor at 5s (the server's SSE `retry:`): a client that re-blocks on every
+  // snapshot is closed on drain-recovery and reconnects via this path; without a
+  // floor (attempt resets to 0 on each open) it would churn every 1-2s, re-fetching
+  // a full snapshot each time. 5s bounds that to the server's own retry cadence.
+  const baseDelay = Math.max(5000, Math.min(30000, 1000 * 2 ** Math.min(liveReconnectAttempt, 5)));
   const delay = baseDelay + Math.floor(Math.random() * 1000);
   liveReconnectAttempt += 1;
   liveReconnectTimer = setTimeout(() => {
@@ -1768,12 +2756,34 @@ function scheduleLiveReconnect() {
   }, delay);
 }
 
-async function resyncLiveData() {
-  if (liveResyncPromise) return liveResyncPromise;
-  liveResyncPromise = Promise.all([pollState(), loadRecentHookEvents()]).finally(() => {
-    liveResyncPromise = null;
-  });
-  return liveResyncPromise;
+// Raise the barrier, fetch a full snapshot, and (on success, via
+// adoptSnapshot → finishResync) replay whatever arrived meanwhile. Single
+// in-flight request: concurrent triggers share one fetch, so an older response
+// can never overwrite a newer one. A FAILED resync leaves the barrier up and
+// retries with bounded backoff — silently giving up would strand the client at a
+// revision the server has already moved past, and no further delta could ever
+// chain onto it.
+function resyncLiveData() {
+  if (resyncInFlight) return resyncInFlight;
+  const generation = liveSync.beginResync();
+  clearResyncRetry();
+  const attempt = Promise.all([pollState(generation), loadRecentHookEvents()])
+    .then(([stateOk]) => {
+      if (!stateOk) {
+        // finishResync() didn't run (no snapshot adopted) — clear the in-flight
+        // slot ourselves and retry; the barrier stays up until one succeeds.
+        if (resyncInFlight === attempt) resyncInFlight = null;
+        scheduleResyncRetry();
+      }
+      return stateOk;
+    })
+    .catch(() => {
+      if (resyncInFlight === attempt) resyncInFlight = null;
+      scheduleResyncRetry();
+      return false;
+    });
+  resyncInFlight = attempt;
+  return attempt;
 }
 
 function connectLiveUpdates() {
@@ -1787,7 +2797,12 @@ function connectLiveUpdates() {
     liveReconnectTimer = null;
   }
   if (liveSource) liveSource.close();
-  const source = new EventSource(`/api/events?snapshot=0&after=${encodeURIComponent(lastHookEventId)}`);
+  // No `snapshot=0`: every connection (and every reconnection) starts from a
+  // full snapshot delivered ON THIS STREAM. Resuming from whatever state the
+  // page happened to hold is only sound if the revision space is continuous
+  // across the gap — it isn't when the server restarted, and an in-stream
+  // snapshot is ordered against the deltas by construction (an HTTP one is not).
+  const source = new EventSource(`/api/events?after=${encodeURIComponent(lastHookEventId)}`);
   liveSource = source;
   source.onopen = () => {
     if (liveSource !== source) return;
@@ -1800,7 +2815,9 @@ function connectLiveUpdates() {
     try {
       const msg = JSON.parse(e.data);
       if (msg.type === 'state') {
-        applyState(msg.data);
+        adoptSnapshot(msg.data);
+      } else if (msg.type === 'state-delta') {
+        applyStateDelta(msg);
       } else if (msg.type === 'hook-event') {
         applyHookEvent(msg.data, msg.coworker);
       } else if (msg.type === 'resync') {
@@ -2694,7 +3711,6 @@ document.getElementById('legend-toggle')?.addEventListener('click', () => {
   if (legend) legend.style.display = legend.style.display === 'none' ? 'block' : 'none';
 });
 
-
 document.getElementById('office-show-all')?.addEventListener('click', () => {
   officeShowAll = !officeShowAll;
   const btn = document.getElementById('office-show-all');
@@ -3539,7 +4555,11 @@ function tryRenderWebhookEnvelope(s) {
   const t = s.trimStart();
   if (!t.startsWith('{') || !t.includes('"event":"github.')) return null;
   let p;
-  try { p = JSON.parse(t); } catch { return null; }
+  try {
+    p = JSON.parse(t);
+  } catch {
+    return null;
+  }
   if (!p || typeof p !== 'object') return null;
   if (p.event === 'github.issue_opened') {
     const repo = p.repo || '';
@@ -4283,7 +5303,8 @@ document.addEventListener('click', async (e) => {
         const targets = data?.targets || [];
         if (!targets.length) {
           dispatchBadge.textContent = `→ ${dispatchBadge.dataset.dispatchTo} [pending]`;
-          dispatchBadge.title = 'Recipient session has not been minted yet — try again after the dispatch is processed.';
+          dispatchBadge.title =
+            'Recipient session has not been minted yet — try again after the dispatch is processed.';
           return;
         }
         const t = targets[0]; // v1 takes first; v2 will render a chooser if multiple
@@ -4561,13 +5582,182 @@ function renderAdminTasks() {
 }
 
 // --- Sessions ---
+// Sessions tab view state: cost period window + sort. Cost is summed per
+// session from transcripts server-side (see /api/sessions); default view is
+// ranked by cost over 30d so the fat tail (few sessions, most spend) is on top.
+const sessionsView = { period: '30d', sort: 'cost', filter: 'all', groupFilter: 'all', unavailable: null };
+
+// ---- Live cost-ceiling control (dash-1 set-ceiling-v2) --------------------
+// Client state for the +/-/typed-value/Apply stepper on the Sessions tab.
+// Kept separate from adminState.sessions (server truth, replaced wholesale on
+// every reload) because a draft is LOCAL and UNSENT until Apply.
+//   ceilingDrafts:   sessionId -> draft cents, not yet sent (client-only)
+//   ceilingInFlight: sessionId -> { requestId, targetCeilingCents,
+//                    expectedEpochKey, expectedCeilingCents } for the request
+//                    currently pinned to this session — reused across a retry
+//                    of the SAME action, replaced by a fresh id for a NEW one
+//                    (see the cost-ceiling-apply handler).
+//   ceilingPending:  sessionId with a request outstanding — disables the
+//                    control immediately on Apply, before the next poll/
+//                    reload confirms the outcome server-side.
+const ceilingDrafts = new Map();
+const ceilingInFlight = new Map();
+const ceilingPending = new Set();
+
+const CEILING_MIN_CENTS = 1;
+const CEILING_MAX_CENTS = 100000; // $1,000.00 — the fixed wire contract's bound. Enforced here for UX;
+// the host independently enforces the same bound, so this is not the safety boundary (see server.ts).
+const CEILING_STEP_CENTS = 1000; // $10.00 per +/- click
+const CEILING_POLL_INTERVAL_MS = 2000;
+const CEILING_POLL_MAX_ATTEMPTS = 30; // ~60s bound, then leave the row as-is for the next ordinary reload
+
+/** cents -> the string an <input> should display ("17500" -> "175.00"). Kept
+ *  as a plain decimal string, not fmtUsd (no "$", no "<$0.01" special case) —
+ *  this feeds an editable field, not a read-only label. */
+function centsToUsdInputStr(cents) {
+  if (typeof cents !== 'number' || !Number.isFinite(cents)) return '';
+  return (cents / 100).toFixed(2);
+}
+
+/**
+ * Typed dollar string -> exact integer cents, or null if it isn't a valid
+ * non-negative amount (at most 2 decimal places). Works in cents internally
+ * end to end (draft state, the outgoing request) specifically so repeated
+ * +/- clicks and parses never accumulate float drift the way repeatedly
+ * adding/subtracting on a float dollar amount would.
+ */
+function parseUsdInputToCents(str) {
+  if (typeof str !== 'string' && typeof str !== 'number') return null;
+  const cleaned = String(str).trim().replace(/^\$/, '');
+  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null;
+  const [dollars, fraction = ''] = cleaned.split('.');
+  const paddedFraction = (fraction + '00').slice(0, 2);
+  return Number(dollars) * 100 + Number(paddedFraction);
+}
+
+/** Clamp to the fixed wire contract's bound, defaulting to the floor for
+ *  anything non-numeric (never silently produce an out-of-range or NaN cents
+ *  value for the draft state to carry forward). */
+function clampCeilingCents(cents) {
+  if (typeof cents !== 'number' || !Number.isFinite(cents)) return CEILING_MIN_CENTS;
+  return Math.min(CEILING_MAX_CENTS, Math.max(CEILING_MIN_CENTS, Math.round(cents)));
+}
+
+/** The exact outgoing request body for POST /api/sessions/:id/cost-ceiling,
+ *  per the fixed wire contract — pulled into its own function so a test can
+ *  assert the wire shape directly without mocking fetch. */
+function buildCeilingRequestBody(requestId, targetCeilingCents, expectedEpochKey, expectedCeilingCents) {
+  return { requestId, targetCeilingCents, expectedEpochKey, expectedCeilingCents };
+}
+
+/** `cca-<uuid>`-style request id. crypto.randomUUID() needs a secure context
+ *  (HTTPS or localhost) and this dashboard may be reached over plain HTTP on
+ *  an internal network, so this falls back to a manual id — it only needs to
+ *  be unique enough for idempotency/correlation, never a security token. */
+function newCeilingRequestId() {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return `cca-${crypto.randomUUID()}`;
+  } catch {
+    /* fall through */
+  }
+  return `cca-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * Decide whether an Apply click reuses the requestId already pinned to a
+ * session (`priorInFlight`, from ceilingInFlight) or mints a fresh one.
+ * Reuse ONLY when retrying the EXACT same action (identical target/expected
+ * values) — this is what "reuse across any HTTP retry" means: a changed
+ * draft, or any action after a prior one reached a terminal outcome (which
+ * clears ceilingInFlight — see reconcileCeilingPendingState), is a NEW
+ * logical action and gets a new id. Reusing an id with DIFFERENT parameters
+ * than its original attempt is exactly the host's documented 400
+ * id-reuse-mismatch case, so getting this right here avoids ever sending one.
+ */
+function resolveCeilingRequestId(priorInFlight, targetCeilingCents, expectedEpochKey, expectedCeilingCents) {
+  const sameAction =
+    priorInFlight &&
+    priorInFlight.targetCeilingCents === targetCeilingCents &&
+    priorInFlight.expectedEpochKey === expectedEpochKey &&
+    priorInFlight.expectedCeilingCents === expectedCeilingCents;
+  return sameAction ? priorInFlight.requestId : newCeilingRequestId();
+}
+
+/**
+ * Live per-session cost-ceiling control (dash-1 set-ceiling-v2) — the
+ * stepper/Apply block rendered under the cost-status pill for every
+ * non-immortal session. Distinct rendering per state, per the fixed contract:
+ *   - immortal: no control at all (renderCostCapCell already shows read-only ∞)
+ *   - costControlVersion < 2 (or absent): "not yet available" — the runner
+ *     hasn't been upgraded (the paired host+runner PR's rollout gate)
+ *   - pending/enqueued (this browser's own in-flight request, OR another
+ *     admin/card's, as reported by latestCostAdjustment): disabled, "Applying…"
+ *   - applied / conflict / rejected: a small distinct tag alongside the control
+ *   - otherwise: the live +/- / typed-value / Apply stepper
+ */
+function renderCostCeilingControl(s) {
+  if (s.costImmortal) return '';
+  const sid = s.session_id;
+  if (!sid) return '';
+  const version = typeof s.costControlVersion === 'number' ? s.costControlVersion : 0;
+  if (version < 2) {
+    return (
+      `<div style="margin-top:3px;font-size:9px;color:var(--text-muted)" ` +
+      `title="This session's runner build doesn't support live ceiling control yet">` +
+      `ceiling control: not yet available (runner not upgraded)</div>`
+    );
+  }
+  const adj = s.latestCostAdjustment;
+  const pending = ceilingPending.has(sid) || (adj != null && (adj.state === 'pending' || adj.state === 'enqueued'));
+  const seedCents = ceilingDrafts.has(sid)
+    ? ceilingDrafts.get(sid)
+    : typeof s.costCeilingCents === 'number'
+      ? s.costCeilingCents
+      : CEILING_STEP_CENTS;
+  const draftCents = clampCeilingCents(seedCents);
+  ceilingDrafts.set(sid, draftCents); // normalize so a later +/-/Apply always reads a valid clamped value
+  const statusTag =
+    adj && adj.state === 'applied'
+      ? `<span style="color:#10B981;font-size:9px" title="Applied ${escAttr(adj.requestedAt || '')}"> ✓ applied</span>`
+      : adj && adj.state === 'conflict'
+        ? `<span style="color:#F59E0B;font-size:9px" title="Another request/card won this epoch first"> ⚠ conflict</span>`
+        : adj && adj.state === 'rejected'
+          ? `<span style="color:#EF4444;font-size:9px"> rejected</span>`
+          : '';
+  const noCeilingNote =
+    typeof s.costCeilingCents !== 'number'
+      ? `<span style="color:var(--text-muted);font-size:9px"> (no ceiling set yet)</span>`
+      : '';
+  const dis = pending ? ' disabled' : '';
+  const sidAttr = escAttr(sid);
+  return (
+    `<div style="margin-top:3px;display:flex;align-items:center;gap:3px;font-size:10px">` +
+    `<button class="admin-action-btn" data-action="cost-ceiling-step" data-session-id="${sidAttr}" data-delta="-${CEILING_STEP_CENTS}"${dis} title="-$10">−</button>` +
+    `<input type="text" inputmode="decimal" class="cost-ceiling-input" data-session-id="${sidAttr}" value="${escAttr(centsToUsdInputStr(draftCents))}"${dis} ` +
+    `style="width:56px;font-size:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:1px 3px;text-align:right">` +
+    `<button class="admin-action-btn" data-action="cost-ceiling-step" data-session-id="${sidAttr}" data-delta="${CEILING_STEP_CENTS}"${dis} title="+$10">+</button>` +
+    `<button class="admin-action-btn success" data-action="cost-ceiling-apply" data-session-id="${sidAttr}"${dis}>${pending ? 'Applying…' : 'Apply'}</button>` +
+    statusTag +
+    noCeilingNote +
+    `</div>`
+  );
+}
+
+async function fetchAndApplySessions() {
+  const res = await fetch(`/api/sessions?period=${sessionsView.period}&sort=${sessionsView.sort}`);
+  if (!res.ok) throw new Error('fetch failed');
+  const data = await res.json();
+  adminState.sessions = data.sessions || [];
+  sessionsView.unavailable = data.costUnavailable ?? null;
+  sessionsView.transcriptsBase = data.transcriptsBase || '';
+  reconcileCeilingPendingState(adminState.sessions);
+}
+
 async function loadAdminSessions() {
   const el = document.getElementById('admin-sessions-content');
   el.innerHTML = '<div class="admin-loading">Loading...</div>';
   try {
-    const res = await fetch('/api/sessions');
-    if (!res.ok) throw new Error('fetch failed');
-    adminState.sessions = await res.json();
+    await fetchAndApplySessions();
     adminState.loaded.add('sessions');
     renderAdminSessions();
   } catch {
@@ -4575,15 +5765,280 @@ async function loadAdminSessions() {
   }
 }
 
+// Silent refresh used by the cost-ceiling poll loop (and the apply handler's
+// terminal-response paths) — no "Loading..." flash, since this runs
+// repeatedly (every CEILING_POLL_INTERVAL_MS) while a request is pending and
+// would otherwise blank the whole table on every tick.
+async function refreshAdminSessionsQuietly() {
+  try {
+    await fetchAndApplySessions();
+    renderAdminSessions();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Clears ceilingPending/ceilingInFlight/ceilingDrafts for any session whose
+ * FRESH row shows ITS OWN in-flight request has reached a terminal state —
+ * regardless of which code path triggered the refresh (this browser's own
+ * poll loop, a period/sort change, a plain tab revisit). Matching on
+ * `adj.id === inFlight.requestId` (not just "any terminal state") matters: a
+ * DIFFERENT admin's terminal adjustment landing on this row must not be
+ * mistaken for the outcome of OUR OWN still-pending request.
+ */
+function reconcileCeilingPendingState(sessions) {
+  const byId = new Map((sessions || []).filter((s) => s.session_id).map((s) => [s.session_id, s]));
+  for (const sid of Array.from(ceilingPending)) {
+    const s = byId.get(sid);
+    const adj = s && s.latestCostAdjustment;
+    const inFlight = ceilingInFlight.get(sid);
+    if (
+      adj &&
+      inFlight &&
+      adj.id === inFlight.requestId &&
+      (adj.state === 'applied' || adj.state === 'conflict' || adj.state === 'rejected')
+    ) {
+      ceilingPending.delete(sid);
+      ceilingInFlight.delete(sid);
+      // Stop showing a local draft once the real outcome is known — render
+      // whatever the server now reports as the actual ceiling/status (a race
+      // could mean the applied value differs from what was locally displayed).
+      ceilingDrafts.delete(sid);
+    }
+  }
+}
+
+/** Poll /api/sessions until THIS session's pending adjustment reaches a
+ *  terminal state, per the "an HTTP 202/200 alone is not 'done'" requirement.
+ *  Gives up after CEILING_POLL_MAX_ATTEMPTS (~60s) rather than polling
+ *  forever — the row stays in its pending/disabled look until the next
+ *  ordinary reload picks up the true state. */
+async function pollCeilingUntilTerminal(sid) {
+  for (let attempt = 0; attempt < CEILING_POLL_MAX_ATTEMPTS; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, CEILING_POLL_INTERVAL_MS));
+    if (!ceilingPending.has(sid)) return; // already reconciled (e.g. by another refresh in the meantime)
+    await refreshAdminSessionsQuietly();
+    if (!ceilingPending.has(sid)) return; // reconcileCeilingPendingState just cleared it — terminal reached
+  }
+}
+
+// Per-session cost pill + manual override button. 'stopped' is the ONE real,
+// actionable state — the runner actually hard-stopped the session at its Tier-2
+// ceiling — so it always renders grey with the real ceiling number and a
+// Continue button (un-stops + resumes; cost_override 'continue' at the epoch-
+// fenced CAS). Every other row's COLOR is a p99-relative signal (this session's
+// spend vs its group's typical p99 spend, computeCostP99ByGroup server-side) —
+// informational only, never gates or stops anything; a Stop button lets an
+// operator manually kill a session that looks expensive even though it hasn't
+// hit its ceiling. Immortal (orchestrator/admin) never stops — no buttons, ever,
+// matching the runner's own "immortal is never quiesced" invariant. A
+// daily-window cap (immortal's per-DAY visibility bound) renders "/day". Shared
+// contract with the host: s.costStatus / s.costSpent / s.costCap / s.costCeiling
+// / s.costP99 / s.costImmortal / s.costWindow.
+//
+// dash-1 set-ceiling-v2: the live ceiling now renders for EVERY status, not
+// just 'stopped' — a healthy row used to show spend but not the number it was
+// actually bounded by. The live +/-/Apply stepper (renderCostCeilingControl)
+// is appended below the pill for every non-immortal session.
+function renderCostCapCell(s) {
+  const status = s.costStatus;
+  if (!status) return '<span style="color:#64748B">—</span>';
+  const spent = typeof s.costSpent === 'number' ? fmtUsd(s.costSpent) : '?';
+  const perDay = s.costWindow === 'daily' ? ' /day' : '';
+  const immortalMark = s.costImmortal
+    ? '<span title="immortal (orchestrator/admin) — never stopped" style="color:var(--text-muted)"> ∞</span>'
+    : '';
+  const ceiling = typeof s.costCeiling === 'number' ? fmtUsd(s.costCeiling) : null;
+  const ceilingSuffix = ceiling ? `<span style="color:var(--text-muted)"> / ${ceiling} ceiling${perDay}</span>` : perDay;
+  let cell;
+  if (status === 'stopped') {
+    cell =
+      `<span style="border:1px solid #EF4444;background:rgba(239,68,68,0.12);border-radius:4px;padding:1px 6px;white-space:nowrap">` +
+      `<b style="color:#EF4444">${spent}</b>${ceilingSuffix}` +
+      `<span style="color:#EF4444;font-size:9px"> stopped</span>${immortalMark}</span>`;
+  } else {
+    // p99-relative color, same 0.8 "warn" fraction the runner itself uses (now
+    // applied to spend-vs-typical instead of spend-vs-cap — the mental model
+    // carries over even though the underlying threshold changed).
+    const ratio =
+      typeof s.costP99 === 'number' && s.costP99 > 0 && typeof s.costSpent === 'number' ? s.costSpent / s.costP99 : null;
+    const color = ratio == null ? '#64748B' : ratio >= 1 ? '#EF4444' : ratio >= 0.8 ? '#F59E0B' : '#10B981';
+    cell =
+      `<span style="border:1px solid ${color};border-radius:4px;padding:1px 6px;white-space:nowrap">` +
+      `<b style="color:${color}">${spent}</b>${ceilingSuffix}${immortalMark}</span>`;
+  }
+  if (s.session_id && !s.costImmortal) {
+    const sid = escAttr(s.session_id);
+    const btn =
+      status === 'stopped'
+        ? `<button class="admin-action-btn success" data-action="cost-override" data-session-id="${sid}" data-decision="continue">Continue</button>`
+        : `<button class="admin-action-btn danger" data-action="cost-override" data-session-id="${sid}" data-decision="stop">Stop</button>`;
+    cell += `<span style="display:inline-flex;gap:4px;margin-left:6px">` + btn + `</span>`;
+  }
+  cell += renderCostCeilingControl(s);
+  return cell;
+}
+
+// GitHub PR/issue badge — which PR/issue this session is tied to (if any),
+// and who filed it (if known). Both independently optional: most sessions
+// (orchestrator loops, non-GitHub channels, ad-hoc chat) have neither, and
+// it's possible to know the PR/issue but not the filer. Dash/blank, same
+// pattern as renderCostCapCell / s.traceUrl. Contract with the host:
+// s.ghRepo / s.ghNumber / s.ghKind ('issue'|'pr') / s.ghUrl / s.ghAuthor.
+function renderGithubOriginCell(s) {
+  if (!s.ghNumber || !s.ghRepo) return '<span style="color:#64748B">—</span>';
+  const shortRepo = String(s.ghRepo).split('/').pop();
+  const label = `${shortRepo}#${s.ghNumber}`;
+  const kindLabel = s.ghKind === 'issue' ? 'issue' : 'PR';
+  const link = s.ghUrl
+    ? `<a href="${escAttr(s.ghUrl)}" target="_blank" rel="noopener" style="color:var(--accent)" title="${escAttr(s.ghRepo)} ${kindLabel} #${s.ghNumber}">${esc(label)}</a>`
+    : esc(label);
+  const author = s.ghAuthor
+    ? `<span style="color:var(--text-muted);font-size:9px"> · @${esc(s.ghAuthor)}</span>`
+    : '';
+  return link + author;
+}
+
+// Distinct (group_folder, display name) pairs across all known sessions,
+// alphabetized by name — backs the Sessions tab coworker filter dropdown.
+// Pulled out as its own function (rather than inlined in renderAdminSessions)
+// because the dedup-by-folder + name-fallback-to-folder + sort behavior is
+// exactly the kind of small logic that's easy to get subtly wrong and cheap
+// to pin with a direct test.
+function sessionGroupOptions(sessions) {
+  return [
+    ...new Map((sessions || []).filter((s) => s.group_folder).map((s) => [s.group_folder, s.group_name || s.group_folder])).entries(),
+  ].sort((a, b) => a[1].localeCompare(b[1]));
+}
+
 function renderAdminSessions() {
   const el = document.getElementById('admin-sessions-content');
+  const p = sessionsView.period;
+  const costUnavailable = sessionsView.unavailable != null;
+  const periodBtn = (val, label) =>
+    `<button class="admin-action-btn${p === val ? ' success' : ''}" data-sessions-period="${val}">${label}</button>`;
+  const sortBtn = (val, label) =>
+    `<button class="admin-action-btn${sessionsView.sort === val ? ' success' : ''}" data-sessions-sort="${val}">${label}</button>`;
+  // Stopped count for the filter chip — from the FULL unfiltered set so the
+  // chip's count is stable regardless of which filter is active. 'stopped' is
+  // the ONLY state a human still needs to act on (a ceiling hard-stop); a mere
+  // high-p99 color is informational, not a queue to work through, so there is
+  // no "escalated"/"needs decision" chip any more — collapsing that noisy
+  // distinction (nearly every session used to cross the old $10 Tier-1 cap) was
+  // the whole point of this redesign.
+  const nStop = adminState.sessions.filter((s) => s.costStatus === 'stopped').length;
+  const filterBtn = (val, label, count) =>
+    `<button class="admin-action-btn${sessionsView.filter === val ? ' success' : ''}" data-sessions-filter="${val}">${label}${
+      count != null ? ` <span style="color:var(--text-muted)">${count}</span>` : ''
+    }</button>`;
+  // Coworker (agent group) dropdown — from the FULL unfiltered set (like nStop
+  // above) so every group stays selectable regardless of which filter is
+  // currently active. Percentiles below are blended across every coworker by
+  // default, which mixes cheap chat-bot sessions with heavy compute coworkers
+  // into one number nobody can act on — picking a group here re-scopes BOTH
+  // the table and the p50/p90/etc pills to that one coworker's own
+  // distribution, which is the number that's actually meaningful.
+  const groupOptions = sessionGroupOptions(adminState.sessions);
+  const groupFilterSelect =
+    groupOptions.length > 1
+      ? `<span style="color:var(--text-muted);font-size:10px;margin-left:8px">Coworker:</span>` +
+        `<select data-sessions-group-filter style="font-size:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:1px 4px">` +
+        `<option value="all"${sessionsView.groupFilter === 'all' ? ' selected' : ''}>All coworkers</option>` +
+        groupOptions
+          .map(
+            ([folder, name]) =>
+              `<option value="${escAttr(folder)}"${sessionsView.groupFilter === folder ? ' selected' : ''}>${esc(name)}</option>`,
+          )
+          .join('') +
+        `</select>`
+      : '';
+  const controls =
+    `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">` +
+    `<span style="color:var(--text-muted);font-size:10px">Cost window:</span>` +
+    periodBtn('1d', 'Today') +
+    periodBtn('7d', '7d') +
+    periodBtn('30d', '30d') +
+    `<span style="color:var(--text-muted);font-size:10px;margin-left:8px">Sort:</span>` +
+    sortBtn('cost', 'Cost') +
+    sortBtn('recent', 'Recent') +
+    // Cost-status filter — jump straight to the sessions needing a decision.
+    `<span style="color:var(--text-muted);font-size:10px;margin-left:8px">Show:</span>` +
+    filterBtn('all', 'All') +
+    filterBtn('stopped', '⚑ Stopped (needs decision)', nStop) +
+    groupFilterSelect +
+    (costUnavailable
+      ? `<span title="${escAttr(String(sessionsView.unavailable))}" style="color:#94A3B8;font-size:10px;margin-left:8px">cost: ccusage unavailable</span>`
+      : '') +
+    `</div>`;
+
   if (adminState.sessions.length === 0) {
-    el.innerHTML = '<div class="admin-empty">No active sessions</div>';
+    el.innerHTML = controls + '<div class="admin-empty">No sessions</div>';
     return;
   }
-  let html = `<table class="admin-table">
-    <tr><th>Group Folder</th><th>Group Name</th><th>Session ID</th><th>Actions</th></tr>`;
-  for (const s of adminState.sessions) {
+  let rows = adminState.sessions;
+  if (sessionsView.sort === 'recent') {
+    rows = [...rows].sort((a, b) => String(b.last_active || '').localeCompare(String(a.last_active || '')));
+  }
+  // Client-side cost-status filter (the dropdown chips).
+  if (sessionsView.filter === 'stopped') {
+    rows = rows.filter((s) => s.costStatus === 'stopped');
+  }
+  // Coworker filter — narrows both the table AND the percentile pills below
+  // (pricedCosts is derived from `rows`, so this falls straight through).
+  const groupFilterName =
+    sessionsView.groupFilter !== 'all'
+      ? groupOptions.find(([folder]) => folder === sessionsView.groupFilter)?.[1]
+      : null;
+  if (sessionsView.groupFilter !== 'all') {
+    rows = rows.filter((s) => s.group_folder === sessionsView.groupFilter);
+  }
+  if (rows.length === 0) {
+    const reason = groupFilterName ? `coworker "${esc(groupFilterName)}"` : `"${esc(sessionsView.filter)}"`;
+    el.innerHTML = controls + `<div class="admin-empty">No sessions match ${reason}</div>`;
+    return;
+  }
+  const totalCost = rows.reduce((s, r) => s + (r.cost || 0), 0);
+  // Cost distribution across sessions with priced activity in the window. The
+  // tail is heavy (a few sessions dominate spend), so percentiles say more than
+  // the mean: p50 = the typical session, p90/p99/max = where the cost concentrates.
+  // Scoped to `rows`, so a coworker filter above narrows this too — fleet-wide,
+  // blending every coworker's cost profile into one distribution, is rarely a
+  // number anyone can act on; per-coworker is.
+  const pricedCosts = rows
+    .map((r) => r.cost || 0)
+    .filter((c) => c > 0)
+    .sort((a, b) => a - b);
+  const pctl = (arr, q) => (arr.length ? arr[Math.min(arr.length - 1, Math.floor((q / 100) * (arr.length - 1)))] : 0);
+  const distScopeLabel = groupFilterName ? esc(groupFilterName) : 'all coworkers';
+  const distPills =
+    costUnavailable || pricedCosts.length === 0
+      ? ''
+      : `<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap;font-size:10px">` +
+        `<span style="color:var(--text-muted)">Cost per session — ${distScopeLabel} (${pricedCosts.length} priced):</span>` +
+        [
+          ['p50', 50],
+          ['p75', 75],
+          ['p90', 90],
+          ['p99', 99],
+          ['max', 100],
+        ]
+          .map(
+            ([lbl, q]) =>
+              `<span style="border:1px solid var(--border);border-radius:4px;padding:1px 6px"><span style="color:var(--text-muted)">${lbl}</span> <b style="color:#10B981">${fmtUsd(pctl(pricedCosts, q))}</b></span>`,
+          )
+          .join('') +
+        `</div>`;
+  let html =
+    controls +
+    `<div style="color:var(--text-muted);font-size:10px;margin-bottom:6px">${rows.length} sessions · ${costUnavailable ? 'n/a' : fmtUsd(totalCost)} over ${p}</div>` +
+    distPills +
+    `<table class="admin-table">
+    <tr><th>#</th><th>Coworker</th><th>Session ID</th><th title="The PR/issue this session's work is tied to, and who filed it — blank when the session has no GitHub association">PR/Issue</th><th style="text-align:right">Cost (${p})</th><th title="Color = spend vs this group's typical (p99). Grey 'stopped' = actually blocked at its cost ceiling.">Cost status</th><th style="text-align:right">Tokens</th><th>Last active</th><th>Actions</th></tr>`;
+  let i = 0;
+  for (const s of rows) {
+    i++;
     const sid = s.session_id || '';
     const grp = s.group_folder || '';
     const nanoSess = sid ? lookupNanoSessById(sid) : null;
@@ -4598,16 +6053,48 @@ function renderAdminSessions() {
       const dest = tid ? 'thread panel' : direct ? 'a2a panel' : 'main chat';
       sidCell = `<span style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px" title="Open in Coworkers (${dest})" ${attrs}>${esc(sid)}</span>`;
     }
+    const costCell = costUnavailable
+      ? '<span style="color:#94A3B8">n/a</span>'
+      : `<span style="color:#10B981">${fmtUsd(s.cost || 0)}</span>${s.costUnpriced ? '<span title="includes usage from a model without a known price" style="color:#F59E0B"> *</span>' : ''}`;
+    const costCapCell = renderCostCapCell(s);
+    const ghCell = renderGithubOriginCell(s);
     html += `<tr>
-      <td>${esc(s.group_folder)}</td>
-      <td>${esc(s.group_name || '-')}</td>
+      <td style="color:var(--text-muted)">${i}</td>
+      <td>${esc(s.group_name || s.group_folder || '-')}</td>
       <td style="font-size:9px;color:var(--text-muted)">${sidCell}</td>
-      <td><button class="admin-action-btn danger" data-action="delete-session" data-folder="${esc(s.group_folder)}">Delete</button></td>
+      <td style="font-size:10px;white-space:nowrap">${ghCell}</td>
+      <td style="text-align:right">${costCell}</td>
+      <td>${costCapCell}</td>
+      <td style="text-align:right;color:var(--text-muted)">${fmtNum(s.costTokens || 0)}</td>
+      <td style="font-size:9px;color:var(--text-muted)">${esc(s.last_active || '-')}</td>
+      <td>${
+        sessionsView.transcriptsBase && sid && grp
+          ? `<a class="admin-action-btn" href="${escAttr(sessionsView.transcriptsBase)}/${encodeURIComponent(grp)}/${encodeURIComponent(sid)}/index.html" target="_blank" rel="noopener" title="Open rendered transcript">transcript</a> `
+          : ''
+      }${
+        s.traceUrl
+          ? `<a class="admin-action-btn" href="${escAttr(s.traceUrl)}" target="_blank" rel="noopener" title="Open session-precise claude-trace">trace</a> `
+          : ''
+      }<button class="admin-action-btn danger" data-action="delete-session" data-folder="${esc(s.group_folder)}">Delete</button></td>
     </tr>`;
   }
   html += '</table>';
   el.innerHTML = html;
 }
+
+// Sessions tab coworker filter — a native <select>, not a button row (could be
+// dozens of coworkers), so it needs its own delegated `change` listener (native
+// change events bubble, so this survives renderAdminSessions() replacing the
+// select's DOM node on every re-render — same delegation approach the
+// data-sessions-* click handlers use, just on a different event type).
+// Client-side only, like the cost-status filter: no re-fetch, just re-render.
+document.addEventListener('change', (e) => {
+  const groupSel = e.target.closest('[data-sessions-group-filter]');
+  if (groupSel) {
+    sessionsView.groupFilter = groupSel.value;
+    renderAdminSessions();
+  }
+});
 
 // --- Skills ---
 async function loadAdminSkills() {
@@ -4861,6 +6348,26 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
       }
     }
   }
+  // Sessions tab cost-window / sort toggles — re-fetch with the new params.
+  const sPeriod = e.target.closest('[data-sessions-period]');
+  if (sPeriod) {
+    sessionsView.period = sPeriod.dataset.sessionsPeriod;
+    loadAdminSessions();
+    return;
+  }
+  const sSort = e.target.closest('[data-sessions-sort]');
+  if (sSort) {
+    sessionsView.sort = sSort.dataset.sessionsSort;
+    loadAdminSessions();
+    return;
+  }
+  // Cost-status filter chip — client-side (no re-fetch), just re-render the table.
+  const sFilter = e.target.closest('[data-sessions-filter]');
+  if (sFilter) {
+    sessionsView.filter = sFilter.dataset.sessionsFilter;
+    renderAdminSessions();
+    return;
+  }
   const btn = e.target.closest('[data-action]');
   if (!btn) {
     // Load more messages
@@ -4923,6 +6430,169 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
       loadAdminSessions();
     } catch {
       btn.disabled = false;
+    }
+    return;
+  }
+
+  if (action === 'cost-override') {
+    const sessionId = btn.dataset.sessionId;
+    const decision = btn.dataset.decision;
+    if (!sessionId || (decision !== 'continue' && decision !== 'stop')) return;
+    const verb = decision === 'stop' ? 'Stop (quiesce)' : 'Continue (raise ceiling)';
+    if (!confirm(`${verb} session "${sessionId}"?`)) return;
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/cost-override', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, decision }),
+      });
+      if (!res.ok) {
+        let msg = 'Cost override failed';
+        try {
+          const j = await res.json();
+          msg = j.error || msg;
+        } catch {
+          /* non-JSON */
+        }
+        alert(msg);
+        btn.disabled = false;
+        return;
+      }
+      adminState.loaded.delete('sessions');
+      loadAdminSessions();
+    } catch {
+      btn.disabled = false;
+    }
+    return;
+  }
+
+  // +/- stepper for the live cost-ceiling control (dash-1 set-ceiling-v2).
+  // Client-side only — adjusts the LOCAL draft in $10 increments, nothing is
+  // sent until Apply.
+  if (action === 'cost-ceiling-step') {
+    const sid = btn.dataset.sessionId;
+    const delta = Number(btn.dataset.delta);
+    if (!sid || !Number.isFinite(delta)) return;
+    const s = adminState.sessions.find((x) => x.session_id === sid);
+    const current = ceilingDrafts.has(sid)
+      ? ceilingDrafts.get(sid)
+      : typeof s?.costCeilingCents === 'number'
+        ? s.costCeilingCents
+        : 0;
+    ceilingDrafts.set(sid, clampCeilingCents(current + delta));
+    renderAdminSessions();
+    return;
+  }
+
+  // Apply the live cost-ceiling control (dash-1 set-ceiling-v2): POST
+  // /api/sessions/:id/cost-ceiling with the fixed wire shape
+  // (requestId/targetCeilingCents/expectedEpochKey/expectedCeilingCents), then
+  // handle every distinct response the dashboard server can produce —
+  // 202 (accepted, poll for the real outcome), 200 (already-terminal retry),
+  // 400/404/409/422/426 (distinct terminal rejections), 503/network failure
+  // (retriable — the pinned requestId is kept so a re-click retries the SAME
+  // request rather than minting a new one).
+  if (action === 'cost-ceiling-apply') {
+    const sid = btn.dataset.sessionId;
+    const s = sid ? adminState.sessions.find((x) => x.session_id === sid) : null;
+    if (!sid || !s) return;
+    const input = document.querySelector(`input.cost-ceiling-input[data-session-id="${CSS.escape(sid)}"]`);
+    const typedCents = input ? parseUsdInputToCents(input.value) : null;
+    if (typedCents == null) {
+      alert(`Enter a valid ceiling amount between ${fmtUsd(CEILING_MIN_CENTS / 100)} and ${fmtUsd(CEILING_MAX_CENTS / 100)}.`);
+      return;
+    }
+    if (typedCents < CEILING_MIN_CENTS || typedCents > CEILING_MAX_CENTS) {
+      alert(`Ceiling must be between ${fmtUsd(CEILING_MIN_CENTS / 100)} and ${fmtUsd(CEILING_MAX_CENTS / 100)}.`);
+      return;
+    }
+    const targetCeilingCents = typedCents;
+    const expectedCeilingCents = typeof s.costCeilingCents === 'number' ? s.costCeilingCents : 0;
+    const expectedEpochKey = s.costEpochKey || '0';
+    const oldStr = typeof s.costCeiling === 'number' ? fmtUsd(s.costCeiling) : 'no ceiling set';
+    const newStr = fmtUsd(targetCeilingCents / 100);
+    const spentCents = typeof s.costSpent === 'number' ? Math.round(s.costSpent * 100) : 0;
+    let warning = '';
+    if (targetCeilingCents <= spentCents) {
+      warning = '\n\nThis will STOP the session immediately (target is at or below current spend).';
+    } else if (s.costStatus === 'stopped') {
+      warning = '\n\nThis will RESUME the session (it is currently stopped).';
+    }
+    const confirmMsg = `Set cost ceiling for session "${sid}" from ${oldStr} to ${newStr}? Current spend: ${fmtUsd(s.costSpent || 0)}.${warning}`;
+    if (!confirm(confirmMsg)) return;
+
+    const requestId = resolveCeilingRequestId(ceilingInFlight.get(sid), targetCeilingCents, expectedEpochKey, expectedCeilingCents);
+    ceilingInFlight.set(sid, { requestId, targetCeilingCents, expectedEpochKey, expectedCeilingCents });
+    ceilingPending.add(sid);
+    ceilingDrafts.set(sid, targetCeilingCents);
+    renderAdminSessions();
+
+    try {
+      const res = await fetch(`/api/sessions/${encodeURIComponent(sid)}/cost-ceiling`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildCeilingRequestBody(requestId, targetCeilingCents, expectedEpochKey, expectedCeilingCents)),
+      });
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        /* non-JSON body */
+      }
+      if (res.status === 202) {
+        // Accepted, not yet resolved — an HTTP 202 alone is not "done"; keep
+        // polling until latestCostAdjustment (from a real /api/sessions
+        // reload) reaches a terminal state.
+        pollCeilingUntilTerminal(sid);
+        return;
+      }
+      if (res.status === 200) {
+        // Retry of an already-terminal request — apply the same way a poll
+        // discovering it would, rather than re-polling for something already known.
+        ceilingPending.delete(sid);
+        ceilingInFlight.delete(sid);
+        ceilingDrafts.delete(sid);
+        await refreshAdminSessionsQuietly();
+        return;
+      }
+      if (res.status === 503) {
+        // Runner/host not ready, or unreachable at the HOST level (distinct
+        // from a local network failure below, but both are retriable) — keep
+        // the pinned requestId so the next Apply click retries the SAME request.
+        ceilingPending.delete(sid);
+        const detail = data && typeof data.error === 'string' ? data.error : 'runner not ready';
+        alert(`Could not apply the ceiling right now (${detail}). Try again shortly.`);
+        renderAdminSessions();
+        return;
+      }
+      // 400 / 404 / 409 / 422 / 426 — distinct, TERMINAL-for-this-request
+      // outcomes. Each gets its own message: a 409 (someone/something else
+      // already changed this) is not the same situation as a 422 (this
+      // session can never accept this) and must not look the same to the admin.
+      const statusMessages = {
+        400: 'Invalid request',
+        404: 'Session not found — it may have been deleted.',
+        409: 'Someone (or something) else already changed this ceiling. Refreshing…',
+        422: 'This session cannot accept a live ceiling right now (immortal, cost tracking unavailable, or no live ceiling configured).',
+        426: "This session's runner build doesn't support live ceiling control yet.",
+      };
+      const label = statusMessages[res.status] || `Request failed (${res.status})`;
+      const detail = data && typeof data.error === 'string' ? `: ${data.error}` : '';
+      alert(`${label}${detail}`);
+      ceilingPending.delete(sid);
+      ceilingInFlight.delete(sid);
+      // 409/422/426 specifically mean "your local view is stale" — discard
+      // the draft rather than leaving a now-meaningless number in the input.
+      if (res.status === 409 || res.status === 422 || res.status === 426) ceilingDrafts.delete(sid);
+      await refreshAdminSessionsQuietly();
+    } catch {
+      // Network-level failure (dashboard unreachable, timeout) — NOT
+      // terminal: keep the pinned requestId so the next Apply click on this
+      // row retries the SAME logical request rather than minting a new one.
+      ceilingPending.delete(sid);
+      alert('Could not reach the dashboard server. Check your connection and try again.');
+      renderAdminSessions();
     }
     return;
   }
@@ -5149,6 +6819,22 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
   }
 });
 
+// Live cost-ceiling control (dash-1 set-ceiling-v2): sync typed input straight
+// into the draft map WITHOUT re-rendering. Unlike the +/- buttons and Apply
+// (discrete clicks, safe to re-render), a full renderAdminSessions() on every
+// keystroke would replace the <input> DOM node and steal focus/cursor
+// position mid-type — the confirm dialog reads the input's live DOM value
+// directly at Apply time, so nothing here needs the draft map to drive a
+// re-render for correctness.
+document.getElementById('admin')?.addEventListener('input', (e) => {
+  const input = e.target.closest('input.cost-ceiling-input');
+  if (!input) return;
+  const sid = input.dataset.sessionId;
+  if (!sid) return;
+  const cents = parseUsdInputToCents(input.value);
+  if (cents != null) ceilingDrafts.set(sid, cents);
+});
+
 // ===================================================================
 
 /**
@@ -5280,16 +6966,17 @@ function renderCwSidebar() {
         ? ''
         : groupItems
             .map((cw) => {
-      const selected = cwState.selected === cw.folder ? ' selected' : '';
-      const label = cw.isMain ? `${cw.name} (main)` : cw.name;
-      const meta = cw.lastActivity ? timeAgo(cw.lastActivity) : '';
-      const updateDot = updateDotHtml(cw.isAutoUpdate);
-      const unread = hasUnread(cw.folder);
-      const approvalCount = cwState.approvalCountByFolder[cw.folder] || 0;
-      const statusTitle =
-        { idle: 'Idle', active: 'Active', working: 'Working', thinking: 'Thinking', error: 'Error' }[cw.status] ||
-        cw.status;
-      return `<div class="cw-item${selected}" data-folder="${esc(cw.folder)}">
+              const selected = cwState.selected === cw.folder ? ' selected' : '';
+              const label = cw.isMain ? `${cw.name} (main)` : cw.name;
+              const meta = cw.lastActivity ? timeAgo(cw.lastActivity) : '';
+              const updateDot = updateDotHtml(cw.isAutoUpdate);
+              const unread = hasUnread(cw.folder);
+              const approvalCount = cwState.approvalCountByFolder[cw.folder] || 0;
+              const statusTitle =
+                { idle: 'Idle', active: 'Active', working: 'Working', thinking: 'Thinking', error: 'Error' }[
+                  cw.status
+                ] || cw.status;
+              return `<div class="cw-item${selected}" data-folder="${esc(cw.folder)}">
       <div class="cw-dot ${cw.status}" title="${statusTitle}"></div>
       <div class="cw-item-info">
         <div class="cw-item-name">${esc(label)}${updateDot}</div>
@@ -5698,6 +7385,81 @@ function renderApprovalItem(item) {
     <div class="cw-msg-time">${formatTime(item.createdAt)} <span style="font-size:7px;color:#f59e0b;font-style:italic">critique gate</span></div>
   </div>`;
   }
+  if (item.action === 'stop_runaway_session') {
+    // A runaway's whole harm is spend, so lead with the two facts the approver
+    // needs: how much it has cost, and a door into the session. Both fall back
+    // gracefully — cost is null on cost-disabled groups, and the session link
+    // degrades to copyable text when the folder/id isn't resolvable.
+    const cost =
+      typeof item.spentUsd === 'number' && typeof item.capUsd === 'number'
+        ? `<div style="margin-top:4px;font-size:13px;font-weight:700;color:#f85149">$${item.spentUsd.toFixed(2)} of $${item.capUsd.toFixed(2)}</div>`
+        : '';
+    // The coworkers router is hash-based: #/cw/<folder>/s/<sessionId>. Built as
+    // a raw anchor (md() only linkifies http(s), so a markdown link to the hash
+    // route would render as literal text).
+    const sessionLink =
+      item.sessionId && item.coworkerFolder
+        ? `<a href="#/cw/${encodeURIComponent(item.coworkerFolder)}/s/${encodeURIComponent(item.sessionId)}">session ${esc(String(item.sessionId).slice(0, 16))}</a>`
+        : item.sessionId
+          ? `<code>${esc(item.sessionId)}</code>`
+          : '';
+    const detail = item.question
+      ? `<div style="margin-top:6px;font-size:10px;color:#8b949e">${clampedReason(item.question, item.approvalId)}</div>`
+      : '';
+    return `<div class="cw-msg assistant">
+    <div class="cw-msg-bubble" style="border-left:3px solid #f85149;padding-left:8px">
+      ${coworkerHeader}
+      <div style="font-weight:600">${esc(item.title || 'Possible runaway session')}</div>
+      ${cost}
+      ${sessionLink ? `<div style="margin-top:4px;font-size:10px">${sessionLink}</div>` : ''}
+      ${detail}
+      <div style="margin-top:8px">
+        <button class="approval-btn" data-qid="${esc(item.approvalId)}" data-decision="Approve" style="background:#238636;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;cursor:pointer;font-size:10px">Stop session</button>
+        <button class="approval-btn" data-qid="${esc(item.approvalId)}" data-decision="Reject" style="background:#da3633;color:#fff;border:none;border-radius:3px;padding:4px 14px;cursor:pointer;font-size:10px">Keep running</button>
+      </div>
+    </div>
+    <div class="cw-msg-time">${formatTime(item.createdAt)} <span style="font-size:7px;color:#f85149;font-style:italic">runaway</span></div>
+  </div>`;
+  }
+  if (item.action === 'cost_decision') {
+    // A Tier-2 ceiling breach: the runner already hard-stopped this session, so the
+    // approver must see WHAT they're deciding on — current spend vs the ceiling it hit,
+    // and a door into the session — before Approve (Continue: raise the ceiling by one
+    // allotment and resume) or Reject (Stop: stay stopped). Falling through to the
+    // generic branch rendered only a bare title. Mirrors the runaway card's cost+session
+    // treatment; the button labels carry the Continue/Stop meaning of Approve/Reject.
+    // (item.capUsd carries the CEILING value — same payload key the pre-redesign Tier-1
+    // card used, reused so the host needed no wire-format change; only this label did.)
+    const cost =
+      typeof item.spentUsd === 'number' && typeof item.capUsd === 'number'
+        ? `<div style="margin-top:4px;font-size:13px;font-weight:700;color:#f59e0b">$${item.spentUsd.toFixed(2)} spent of $${item.capUsd.toFixed(2)} ceiling</div>`
+        : '';
+    // Hash-based coworkers router: #/cw/<folder>/s/<sessionId>. Raw anchor (md() only
+    // linkifies http(s)); degrades to copyable text when the folder isn't resolvable.
+    const sessionLink =
+      item.sessionId && item.coworkerFolder
+        ? `<a href="#/cw/${encodeURIComponent(item.coworkerFolder)}/s/${encodeURIComponent(item.sessionId)}">session ${esc(String(item.sessionId).slice(0, 22))}</a>`
+        : item.sessionId
+          ? `<code>${esc(item.sessionId)}</code>`
+          : '';
+    const detail = item.question
+      ? `<div style="margin-top:6px;font-size:10px;color:#8b949e">${clampedReason(item.question, item.approvalId)}</div>`
+      : '';
+    return `<div class="cw-msg assistant">
+    <div class="cw-msg-bubble" style="border-left:3px solid #f59e0b;padding-left:8px">
+      ${coworkerHeader}
+      <div style="font-weight:600">${esc(item.title || 'Cost ceiling reached — session blocked')}</div>
+      ${cost}
+      ${sessionLink ? `<div style="margin-top:4px;font-size:10px">${sessionLink}</div>` : ''}
+      ${detail}
+      <div style="margin-top:8px">
+        <button class="approval-btn" data-qid="${esc(item.approvalId)}" data-decision="Approve" style="background:#238636;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;cursor:pointer;font-size:10px">Continue (raise ceiling)</button>
+        <button class="approval-btn" data-qid="${esc(item.approvalId)}" data-decision="Reject" style="background:#da3633;color:#fff;border:none;border-radius:3px;padding:4px 14px;cursor:pointer;font-size:10px">Stop</button>
+      </div>
+    </div>
+    <div class="cw-msg-time">${formatTime(item.createdAt)} <span style="font-size:7px;color:#f59e0b;font-style:italic">cost cap</span></div>
+  </div>`;
+  }
   if (item.action === 'install_packages') {
     desc = `**Install packages:** ${(item.packages || []).map((p) => esc(p)).join(', ')}${safeReason}`;
   } else if (item.action === 'request_rebuild') {
@@ -5844,7 +7606,8 @@ function renderCwMessages() {
   // destroys the button mid-click and the click is silently dropped.
   if (cwState.loadingOlder) return;
   const wasAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-  const approvalHtml = (cwState.pendingApprovals || []).map(renderApprovalItem).join('');
+  // Pending approvals render in their own tab now (see renderCwApprovals) —
+  // no longer computed/joined here.
   // Hide scheduled-task fires (kind='task', e.g. the recurring /supervise-issues
   // tick) and other system rows by default — they repeat on every cron tick and
   // crowd the feed. The "⚙ system" toggle in the header brings them back.
@@ -5939,8 +7702,7 @@ function renderCwMessages() {
       // an action envelope is `{"action":"…"}` (or `{"type":"cli_response"…}`)
       // with no text. Hide those; keep everything with real text.
       const isCliResponse = !isOutgoing && /^\s*\{\s*"type"\s*:\s*"cli_response"/.test(text);
-      const isActionEnvelope =
-        isOutgoing && /^\s*\{\s*"action"\s*:\s*"[a-z_]+"/.test(text) && !/"text"\s*:/.test(text);
+      const isActionEnvelope = isOutgoing && /^\s*\{\s*"action"\s*:\s*"[a-z_]+"/.test(text) && !/"text"\s*:/.test(text);
       if (isActionEnvelope || isCliResponse) return '';
       if (m.isRelay) {
         const relayLabel = m.recipientCoworkerName
@@ -6056,16 +7818,20 @@ function renderCwMessages() {
     systemHidden > 0 || cwState.showSystem
       ? `<div style="text-align:center;padding:4px"><button id="cw-system-toggle" class="admin-load-more" style="font-size:9px;opacity:0.7">${cwState.showSystem ? `⚙ hide system (${systemHidden})` : `⚙ show system (${systemHidden})`}</button></div>`
       : '';
-  if (!approvalHtml && !messageHtml) {
-    el.innerHTML =
-      systemToggleHtml || '<div class="cw-empty">No messages yet. Send a message to start.</div>';
+  // Pending approvals now live in their own tab (see renderCwApprovals) rather
+  // than a banner appended to the chat feed — they used to dominate the
+  // viewport (bottom-anchored, so a handful of large cards buried real
+  // conversation).
+  updateApprovalsTabBadge();
+  // Keep the Approvals tab's own content live across the 3s poll too, not
+  // just its badge — otherwise a user with that tab open sees a stale card
+  // list until they switch away and back.
+  const approvalsViewEl = document.getElementById('cw-approvals-view');
+  if (approvalsViewEl && approvalsViewEl.style.display !== 'none') renderCwApprovals();
+  if (!messageHtml) {
+    el.innerHTML = systemToggleHtml || '<div class="cw-empty">No messages yet. Send a message to start.</div>';
     return;
   }
-  const approvalCount = (cwState.pendingApprovals || []).length;
-  const bannerHtml =
-    approvalCount > 0
-      ? `<div class="approval-banner"><div class="approval-banner-label">⚠ Pending Actions (${approvalCount})</div>${renderEscalationStrip()}${approvalHtml}</div>`
-      : '';
   // "Load older" button at the top — only when the server says more rows
   // exist below the loaded window AND we have at least one row to anchor a
   // `before=<oldest_ts>` cursor against.
@@ -6073,7 +7839,7 @@ function renderCwMessages() {
     cwState.messagesHasMore && cwState.messages.length > 0
       ? `<button class="admin-load-more" id="cw-messages-more"${cwState.loadingOlder ? ' disabled' : ''}>${cwState.loadingOlder ? 'Loading…' : 'Load older messages'}</button>`
       : '';
-  el.innerHTML = loadMoreHtml + systemToggleHtml + messageHtml + bannerHtml;
+  el.innerHTML = loadMoreHtml + systemToggleHtml + messageHtml;
 
   if (!cwState._inflightApprovals) cwState._inflightApprovals = new Set();
   // Approval ids whose clamped reason the user expanded. Kept in state, not the
@@ -6269,6 +8035,100 @@ function renderCwMessages() {
       '<div class="cw-msg assistant"><div class="cw-msg-bubble" style="opacity:0.5"><span class="chat-typing"><span></span><span></span><span></span></span></div></div>';
   }
   if (wasAtBottom) el.scrollTop = el.scrollHeight;
+}
+
+// Keeps the Approvals tab's badge in sync with cwState.pendingApprovals —
+// called from renderCwMessages so it stays current even while a different
+// tab is active (the 3s poll that refreshes pendingApprovals always runs
+// through renderCwMessages, regardless of which view is visible).
+function updateApprovalsTabBadge() {
+  const badge = document.getElementById('cw-approvals-tab-badge');
+  if (!badge) return;
+  const count = (cwState.pendingApprovals || []).length;
+  if (count > 0) {
+    badge.textContent = String(count);
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// Pending-approvals tab — split out from the chat feed (was a bottom-anchored
+// "⚠ Pending Actions" banner that dominated the viewport once more than a
+// couple of cards were pending; see renderCwMessages). Reuses renderApprovalItem
+// and renderEscalationStrip exactly as the old banner did — only the container
+// and event delegation are new.
+function renderCwApprovals() {
+  const el = document.getElementById('cw-approvals-view');
+  if (!el) return;
+  const approvals = cwState.pendingApprovals || [];
+  const approvalHtml = approvals.map(renderApprovalItem).join('');
+  el.innerHTML =
+    approvals.length > 0
+      ? renderEscalationStrip() + approvalHtml
+      : '<div class="cw-empty">No pending approvals for this coworker.</div>';
+  if (!cwState._inflightApprovals) cwState._inflightApprovals = new Set();
+  if (!cwState.expandedReasons) cwState.expandedReasons = new Set();
+  if (el._approvalDelegateAttached) return;
+  el._approvalDelegateAttached = true;
+  el.addEventListener('click', async (e) => {
+    // ── "show more" / "show less" on a clamped approval reason ──
+    const reasonToggle = e.target.closest('.reason-more, .reason-less');
+    if (reasonToggle) {
+      e.preventDefault();
+      const rid = reasonToggle.dataset.rid;
+      if (reasonToggle.classList.contains('reason-less')) cwState.expandedReasons.delete(rid);
+      else cwState.expandedReasons.add(rid);
+      renderCwApprovals();
+      return;
+    }
+    // ── Approval buttons (Continue/Approve/Stop/Reject) ──
+    const approvalBtn = e.target.closest('.approval-btn');
+    if (approvalBtn) {
+      const qid = approvalBtn.dataset.qid;
+      const decision = approvalBtn.dataset.decision;
+      if (!qid || !decision) return;
+      if (cwState._inflightApprovals.has(qid)) return;
+      cwState._inflightApprovals.add(qid);
+      const card = approvalBtn.closest('.cw-msg');
+      const allBtns = card ? card.querySelectorAll('.approval-btn') : [approvalBtn];
+      allBtns.forEach((b) => {
+        b.disabled = true;
+      });
+      approvalBtn.textContent = 'Submitting…';
+      try {
+        const res = await fetch('/api/approvals/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ approvalId: qid, decision }),
+        });
+        if (res.ok) {
+          const btnRow = approvalBtn.closest('div');
+          if (btnRow) {
+            const color = decision === 'Approve' ? '#238636' : '#da3633';
+            const label = decision === 'Approve' ? 'Approved' : 'Rejected';
+            btnRow.innerHTML = `<span style="font-size:10px;color:${color};font-weight:600">${label}</span>`;
+          }
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          approvalBtn.textContent = errData.error || 'Error';
+          allBtns.forEach((b) => {
+            b.disabled = false;
+          });
+        }
+      } catch {
+        approvalBtn.textContent = 'Error';
+        allBtns.forEach((b) => {
+          b.disabled = false;
+        });
+      } finally {
+        setTimeout(() => {
+          cwState._inflightApprovals.delete(qid);
+          fetchCwMessages();
+        }, 1000);
+      }
+    }
+  });
 }
 
 /**
@@ -6799,7 +8659,9 @@ function renderCwThread() {
   const isA2aThread = !t.lane && (!!matchingNano?.a2a_peer || (t.sessionDirect && !t.threadId));
   // The thread_id this view is anchored to: in lane mode it's parentId; for a
   // session-direct open the carried-through tile thread; else parentId.
-  const anchorThreadId = t.lane ? t.parentId : t.threadId || (t.sessionDirect ? matchingNano?.thread_id || null : t.parentId);
+  const anchorThreadId = t.lane
+    ? t.parentId
+    : t.threadId || (t.sessionDirect ? matchingNano?.thread_id || null : t.parentId);
   // Offer the swim-lane on any thread spanning ≥2 coworkers (not just gh-*).
   // The server's lane=1 union is thread-agnostic; the only gate is presentational.
   // Count distinct coworkers (group_folder) with an active session on this exact
@@ -6810,9 +8672,7 @@ function renderCwThread() {
     typeof anchorThreadId === 'string' &&
     anchorThreadId.length > 0 &&
     new Set(
-      (cachedSessions || [])
-        .filter((s) => s.thread_id === anchorThreadId && s.group_folder)
-        .map((s) => s.group_folder),
+      (cachedSessions || []).filter((s) => s.thread_id === anchorThreadId && s.group_folder).map((s) => s.group_folder),
     ).size > 1;
   if (parentLabel) {
     const labelText = t.lane ? anchorThreadId : sessionLabelWithTitle(sessionIdForSlug, anchorThreadId || t.parentId);
@@ -6879,134 +8739,133 @@ function renderCwThread() {
   if (!msgsEl) return;
   const wasAtBottom = msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight < 60;
   const renderThreadMsg = (m) => {
-      // Seed rows (written by router.ts into inbound.db when a new per-thread
-      // session is minted) carry a `direction` inside their parsed content to
-      // override the table-based default. Without this override, an agent's
-      // own prior reply — stored in inbound.db for context — would render as
-      // "You" in the thread panel. See src/router.ts seed block.
-      const seededDirection =
-        m.parsedContent && (m.parsedContent.direction === 'outgoing' || m.parsedContent.direction === 'incoming')
-          ? m.parsedContent.direction
-          : null;
-      const effectiveDirection = seededDirection || m.direction;
-      const isOutgoing = effectiveDirection === 'outgoing';
-      const isFromCoworker = !isOutgoing && m.senderKind === 'coworker';
-      const cls = isFromCoworker ? 'coworker' : isOutgoing ? 'assistant' : 'user';
-      const time = m.timestamp ? formatTime(m.timestamp) : '';
-      const text = m.displayContent || m.content || '';
-      const renderAsMd = isOutgoing || isFromCoworker;
-      const webhookRendered = !renderAsMd ? tryRenderWebhookEnvelope(text) : null;
-      const body = text
-        ? webhookRendered || (renderAsMd ? md(text) : esc(text))
-        : '<span style="color:#9ca3af">(empty message)</span>';
-      // direction='outgoing' = agent reply; !outgoing = user or a2a sender.
-      const authorName = isOutgoing
-        ? esc(cwState.selected || 'agent')
-        : m.senderCoworkerName
-          ? `@${esc(m.senderCoworkerName)}`
-          : 'You';
-      const monogramSource = isOutgoing ? cwState.selected || 'A' : m.senderCoworkerName || 'You';
-      const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
-      // Hard-hide host↔container machine traffic in threads too: cli_request
-      // and any other bare system-action envelope (update_task, append_learning,
-      // create_agent, …) plus the cli_response reply. Action envelopes are
-      // `{"action":"…"}` with no "text" field; chat carries "text". See the
-      // main-feed path for rationale.
-      const isCliResponse = !isOutgoing && /^\s*\{\s*"type"\s*:\s*"cli_response"/.test(text);
-      const isActionEnvelope =
-        isOutgoing && /^\s*\{\s*"action"\s*:\s*"[a-z_]+"/.test(text) && !/"text"\s*:/.test(text);
-      if (isActionEnvelope || isCliResponse) return '';
-      if (m.isRelay) {
-        const relayLabel = m.recipientCoworkerName
-          ? `${authorName} → @${esc(m.recipientCoworkerName)}`
-          : `${authorName} · system action`;
-        const preview = (text || '').replace(/\s+/g, ' ').trim();
-        const short = preview.length > 80 ? preview.slice(0, 80) + '…' : preview;
-        const expanded = cwState._expandedRelays && cwState._expandedRelays.has(m.id);
-        return `<div class="cw-msg relay${expanded ? '' : ' collapsed'}" data-relay-id="${esc(m.id)}"><div class="cw-msg-avatar" style="opacity:0.4">${monogram}</div>
+    // Seed rows (written by router.ts into inbound.db when a new per-thread
+    // session is minted) carry a `direction` inside their parsed content to
+    // override the table-based default. Without this override, an agent's
+    // own prior reply — stored in inbound.db for context — would render as
+    // "You" in the thread panel. See src/router.ts seed block.
+    const seededDirection =
+      m.parsedContent && (m.parsedContent.direction === 'outgoing' || m.parsedContent.direction === 'incoming')
+        ? m.parsedContent.direction
+        : null;
+    const effectiveDirection = seededDirection || m.direction;
+    const isOutgoing = effectiveDirection === 'outgoing';
+    const isFromCoworker = !isOutgoing && m.senderKind === 'coworker';
+    const cls = isFromCoworker ? 'coworker' : isOutgoing ? 'assistant' : 'user';
+    const time = m.timestamp ? formatTime(m.timestamp) : '';
+    const text = m.displayContent || m.content || '';
+    const renderAsMd = isOutgoing || isFromCoworker;
+    const webhookRendered = !renderAsMd ? tryRenderWebhookEnvelope(text) : null;
+    const body = text
+      ? webhookRendered || (renderAsMd ? md(text) : esc(text))
+      : '<span style="color:#9ca3af">(empty message)</span>';
+    // direction='outgoing' = agent reply; !outgoing = user or a2a sender.
+    const authorName = isOutgoing
+      ? esc(cwState.selected || 'agent')
+      : m.senderCoworkerName
+        ? `@${esc(m.senderCoworkerName)}`
+        : 'You';
+    const monogramSource = isOutgoing ? cwState.selected || 'A' : m.senderCoworkerName || 'You';
+    const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
+    // Hard-hide host↔container machine traffic in threads too: cli_request
+    // and any other bare system-action envelope (update_task, append_learning,
+    // create_agent, …) plus the cli_response reply. Action envelopes are
+    // `{"action":"…"}` with no "text" field; chat carries "text". See the
+    // main-feed path for rationale.
+    const isCliResponse = !isOutgoing && /^\s*\{\s*"type"\s*:\s*"cli_response"/.test(text);
+    const isActionEnvelope = isOutgoing && /^\s*\{\s*"action"\s*:\s*"[a-z_]+"/.test(text) && !/"text"\s*:/.test(text);
+    if (isActionEnvelope || isCliResponse) return '';
+    if (m.isRelay) {
+      const relayLabel = m.recipientCoworkerName
+        ? `${authorName} → @${esc(m.recipientCoworkerName)}`
+        : `${authorName} · system action`;
+      const preview = (text || '').replace(/\s+/g, ' ').trim();
+      const short = preview.length > 80 ? preview.slice(0, 80) + '…' : preview;
+      const expanded = cwState._expandedRelays && cwState._expandedRelays.has(m.id);
+      return `<div class="cw-msg relay${expanded ? '' : ' collapsed'}" data-relay-id="${esc(m.id)}"><div class="cw-msg-avatar" style="opacity:0.4">${monogram}</div>
         <div class="cw-msg-header" onclick="var el=this.parentElement;el.classList.toggle('collapsed');var ev=new CustomEvent('relay-toggle',{detail:{id:el.dataset.relayId,open:!el.classList.contains('collapsed')}});document.dispatchEvent(ev)" style="cursor:pointer"><span class="cw-msg-author" style="opacity:0.5">${relayLabel}</span><span class="cw-msg-time">${time}</span><span style="font-size:8px;color:var(--text-dim);margin-left:6px">▸ toggle</span></div>
         <div class="cw-msg-bubble relay-preview" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(short)}</div>
         <div class="cw-msg-bubble relay-full" style="display:none;opacity:0.7">${body}</div></div>`;
-      }
-      // Overlay event: critique-gate REFUSED. Mirrors the main-view path
-      // above so threads also render with yellow border + collapsed by
-      // default. See the main-view block for the full rationale.
-      const isOverlayEvent = isOutgoing && /^\[critique-gate\] REFUSED/.test(text);
-      if (isOverlayEvent) {
-        const expanded = cwState._expandedRelays && cwState._expandedRelays.has(m.id);
-        const headerLabel = `⚠ critique-gate refused ${m.recipientCoworkerName ? '→ @' + esc(m.recipientCoworkerName) : ''}`;
-        return `<div class="cw-msg overlay-event${expanded ? '' : ' collapsed'}" data-relay-id="${esc(m.id)}">
+    }
+    // Overlay event: critique-gate REFUSED. Mirrors the main-view path
+    // above so threads also render with yellow border + collapsed by
+    // default. See the main-view block for the full rationale.
+    const isOverlayEvent = isOutgoing && /^\[critique-gate\] REFUSED/.test(text);
+    if (isOverlayEvent) {
+      const expanded = cwState._expandedRelays && cwState._expandedRelays.has(m.id);
+      const headerLabel = `⚠ critique-gate refused ${m.recipientCoworkerName ? '→ @' + esc(m.recipientCoworkerName) : ''}`;
+      return `<div class="cw-msg overlay-event${expanded ? '' : ' collapsed'}" data-relay-id="${esc(m.id)}">
         <div class="cw-msg-avatar" style="background:rgba(250,204,21,0.15);color:#ca8a04">⚠</div>
         <div class="cw-msg-header" onclick="var el=this.parentElement;el.classList.toggle('collapsed');var ev=new CustomEvent('relay-toggle',{detail:{id:el.dataset.relayId,open:!el.classList.contains('collapsed')}});document.dispatchEvent(ev)" style="cursor:pointer"><span class="cw-msg-author">${headerLabel}</span><span class="cw-msg-time">${time}</span><span style="font-size:8px;color:var(--text-dim);margin-left:6px">▸ toggle</span></div>
         <div class="cw-msg-bubble relay-preview" style="font-size:10px;color:var(--text-dim);font-style:italic">delivery marker without /codex-critique — click to expand</div>
         <div class="cw-msg-bubble relay-full" style="display:none">${body}</div></div>`;
-      }
-      if (m.cardType === 'card') {
-        return renderCardBubble(m, { cls, monogram, authorName, time, isOutgoing });
-      }
-      // Ask question card — render with option buttons if still pending.
-      // Mirrors the main-feed branch in renderCwMessages; the thread view
-      // fetches from the same /api/messages endpoint, so cardType/questionId/
-      // options/isPending are already populated. Without this branch the card
-      // fell through to plain text and the operator saw no buttons — leaving a
-      // timeout:0 ask_user_question wedged forever.
-      if (m.cardType === 'ask_question' && m.questionId && m.options && m.options.length > 0) {
-        const questionText = m.displayContent || m.content || '';
-        if (m.isPending) {
-          const btns = m.options
-            .map((opt) => {
-              const label = typeof opt === 'string' ? opt : opt.label || opt.value || String(opt);
-              const value = typeof opt === 'string' ? opt : opt.value || opt.label || String(opt);
-              return `<button class="question-btn" data-qid="${esc(m.questionId)}" data-option="${esc(value)}" style="background:#3B82F6;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;margin-top:4px;cursor:pointer;font-size:10px">${esc(label)}</button>`;
-            })
-            .join('');
-          return `<div class="cw-msg assistant">
+    }
+    if (m.cardType === 'card') {
+      return renderCardBubble(m, { cls, monogram, authorName, time, isOutgoing });
+    }
+    // Ask question card — render with option buttons if still pending.
+    // Mirrors the main-feed branch in renderCwMessages; the thread view
+    // fetches from the same /api/messages endpoint, so cardType/questionId/
+    // options/isPending are already populated. Without this branch the card
+    // fell through to plain text and the operator saw no buttons — leaving a
+    // timeout:0 ask_user_question wedged forever.
+    if (m.cardType === 'ask_question' && m.questionId && m.options && m.options.length > 0) {
+      const questionText = m.displayContent || m.content || '';
+      if (m.isPending) {
+        const btns = m.options
+          .map((opt) => {
+            const label = typeof opt === 'string' ? opt : opt.label || opt.value || String(opt);
+            const value = typeof opt === 'string' ? opt : opt.value || opt.label || String(opt);
+            return `<button class="question-btn" data-qid="${esc(m.questionId)}" data-option="${esc(value)}" style="background:#3B82F6;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;margin-top:4px;cursor:pointer;font-size:10px">${esc(label)}</button>`;
+          })
+          .join('');
+        return `<div class="cw-msg assistant">
           <div class="cw-msg-bubble" style="border-left:3px solid #3B82F6;padding-left:8px">
             ${md(questionText)}
             <div style="margin-top:8px">${btns}</div>
           </div>
           <div class="cw-msg-time">${time} <span style="font-size:7px;color:#3B82F6;font-style:italic">question</span></div>
         </div>`;
-        }
-        return `<div class="cw-msg assistant">
+      }
+      return `<div class="cw-msg assistant">
         <div class="cw-msg-bubble" style="border-left:3px solid #555;padding-left:8px;opacity:0.7">
           ${md(questionText)}
           <div style="margin-top:4px;font-size:9px;color:#666">(answered)</div>
         </div>
         <div class="cw-msg-time">${time} <span style="font-size:7px;color:#555;font-style:italic">question</span></div>
       </div>`;
+    }
+    const attachHtml = renderMessageAttachmentsHtml(m.attachments);
+    // Dispatch badge: when an outbound message contains <message to="X"
+    // thread_id="Y">, render a clickable "→ X" link that resolves the
+    // recipient session via /api/dispatch-targets and opens it. The badge
+    // stays inert (gray, no click) when the recipient session hasn't been
+    // minted yet — the host writes the inbound row only after the next
+    // wake of the recipient's group, so a fresh dispatch may show pending
+    // for a few seconds before becoming clickable.
+    let dispatchBadgeHtml = '';
+    if (isOutgoing && text) {
+      const m2 = /<message\s+to="([^"]+)"(?:\s+thread_id="([^"]+)")?[^>]*>/i.exec(text);
+      if (m2 && m2[2]) {
+        const fromSess = sessionIdForSlug || (matchingNano && matchingNano.nanoclaw_session_id) || '';
+        dispatchBadgeHtml = ` <button class="cw-dispatch-badge" data-dispatch-to="${escAttr(m2[1])}" data-dispatch-thread="${escAttr(m2[2])}" data-dispatch-from-session="${escAttr(fromSess)}" title="Open recipient session for thread ${escAttr(m2[2])}">→ ${esc(m2[1])} <span style="opacity:.6">[open]</span></button>`;
       }
-      const attachHtml = renderMessageAttachmentsHtml(m.attachments);
-      // Dispatch badge: when an outbound message contains <message to="X"
-      // thread_id="Y">, render a clickable "→ X" link that resolves the
-      // recipient session via /api/dispatch-targets and opens it. The badge
-      // stays inert (gray, no click) when the recipient session hasn't been
-      // minted yet — the host writes the inbound row only after the next
-      // wake of the recipient's group, so a fresh dispatch may show pending
-      // for a few seconds before becoming clickable.
-      let dispatchBadgeHtml = '';
-      if (isOutgoing && text) {
-        const m2 = /<message\s+to="([^"]+)"(?:\s+thread_id="([^"]+)")?[^>]*>/i.exec(text);
-        if (m2 && m2[2]) {
-          const fromSess = sessionIdForSlug || (matchingNano && matchingNano.nanoclaw_session_id) || '';
-          dispatchBadgeHtml = ` <button class="cw-dispatch-badge" data-dispatch-to="${escAttr(m2[1])}" data-dispatch-thread="${escAttr(m2[2])}" data-dispatch-from-session="${escAttr(fromSess)}" title="Open recipient session for thread ${escAttr(m2[2])}">→ ${esc(m2[1])} <span style="opacity:.6">[open]</span></button>`;
-        }
-      }
-      // Hover action toolbar — Copy + Link, mirroring the main feed
-      // (renderCwMessages). Reply is intentionally omitted: rows here are
-      // already inside the thread. Link reuses the same builder, which appends
-      // /m/<id> onto the current /t/ or /s/ thread base. The shared cw-copy-btn
-      // / cw-link-btn click handlers live on the main feed's delegate, so we
-      // attach a parallel delegate on msgsEl below.
-      const copyBtnHtml = text
-        ? `<button class="cw-msg-action-btn cw-copy-btn" data-copy-text="${escAttr(text)}" title="Copy message">⧉ Copy</button>`
-        : '';
-      const linkBtnHtml = m.id
-        ? `<button class="cw-msg-action-btn cw-link-btn" data-msg-id="${esc(m.id)}" title="Copy link to this message">🔗 Link</button>`
-        : '';
-      const actionsHtml =
-        copyBtnHtml || linkBtnHtml ? `<div class="cw-msg-actions">${copyBtnHtml}${linkBtnHtml}</div>` : '';
-      return `<div class="cw-msg ${cls}" data-msg-id="${esc(m.id || '')}"><div class="cw-msg-avatar">${monogram}</div>
+    }
+    // Hover action toolbar — Copy + Link, mirroring the main feed
+    // (renderCwMessages). Reply is intentionally omitted: rows here are
+    // already inside the thread. Link reuses the same builder, which appends
+    // /m/<id> onto the current /t/ or /s/ thread base. The shared cw-copy-btn
+    // / cw-link-btn click handlers live on the main feed's delegate, so we
+    // attach a parallel delegate on msgsEl below.
+    const copyBtnHtml = text
+      ? `<button class="cw-msg-action-btn cw-copy-btn" data-copy-text="${escAttr(text)}" title="Copy message">⧉ Copy</button>`
+      : '';
+    const linkBtnHtml = m.id
+      ? `<button class="cw-msg-action-btn cw-link-btn" data-msg-id="${esc(m.id)}" title="Copy link to this message">🔗 Link</button>`
+      : '';
+    const actionsHtml =
+      copyBtnHtml || linkBtnHtml ? `<div class="cw-msg-actions">${copyBtnHtml}${linkBtnHtml}</div>` : '';
+    return `<div class="cw-msg ${cls}" data-msg-id="${esc(m.id || '')}"><div class="cw-msg-avatar">${monogram}</div>
       ${actionsHtml}
       <div class="cw-msg-header"><span class="cw-msg-author">${authorName}</span><span class="cw-msg-time">${time}</span>${dispatchBadgeHtml}</div>
       <div class="cw-msg-bubble">${body}${attachHtml}</div></div>`;
@@ -7314,7 +9173,7 @@ async function ensureCwMessageLoaded(msgId, opts = {}) {
   // the same wait is cheap and harmless there.)
   for (let s = 0; s < 30; s++) {
     if (cwState.selected !== selectedAtStart) return;
-    const loaded = threadParent ? (cwState.thread?.messages || []) : cwState.messages;
+    const loaded = threadParent ? cwState.thread?.messages || [] : cwState.messages;
     const hasMore = threadParent ? cwState.thread?.hasMore : cwState.messagesHasMore;
     if ((loaded && loaded.length > 0) || hasMore) break;
     await sleep(100);
@@ -7410,7 +9269,9 @@ async function updateCwDetail() {
   document.getElementById('cw-detail-name').textContent = cw.name;
   document.getElementById('cw-detail-type').innerHTML = esc(cw.type) + ' ' + updateDotHtml(cw.isAutoUpdate, true);
   document.getElementById('cw-detail-trigger').textContent = cw.trigger?.replace(/\\b$/, '') || '-';
-  document.getElementById('cw-detail-jid').textContent = messagingGroupLabel({ platform_id: cw.jid || `dashboard:${cw.folder}` });
+  document.getElementById('cw-detail-jid').textContent = messagingGroupLabel({
+    platform_id: cw.jid || `dashboard:${cw.folder}`,
+  });
   document.getElementById('cw-detail-status').textContent = cw.status;
   document.getElementById('cw-detail-tasks').textContent = String(cw.taskCount);
 
@@ -7690,9 +9551,7 @@ async function showCreateModal() {
   }
   const groupOptions =
     '<option value="prod">prod (shared)</option>' +
-    groupUsers
-      .map((u) => `<option value="${esc(u.id)}">${esc(u.display_name || u.id)}</option>`)
-      .join('');
+    groupUsers.map((u) => `<option value="${esc(u.id)}">${esc(u.display_name || u.id)}</option>`).join('');
 
   const overlay = document.createElement('div');
   overlay.className = 'cw-modal-overlay';
@@ -7900,11 +9759,15 @@ function normalizePathRouteToHash() {
 
 // Hash-routing: restore state on load, reconcile on history navigation.
 normalizePathRouteToHash();
-window.addEventListener('hashchange', () => { if (!applyTabHash()) applyCwUrl(); });
+window.addEventListener('hashchange', () => {
+  if (!applyTabHash()) applyCwUrl();
+});
 // Apply initial URL after the coworker list has been populated. The first
 // applyState() call fills state.registeredGroups; this listener fires after
 // that the first time via a short deferral.
-setTimeout(() => { if (!applyTabHash()) applyCwUrl(); }, 500);
+setTimeout(() => {
+  if (!applyTabHash()) applyCwUrl();
+}, 500);
 
 // Memory editor is read-only (CLAUDE.md re-composed at container startup from coworkerType)
 
@@ -7939,12 +9802,19 @@ document.querySelectorAll('.cw-toggle-btn').forEach((btn) => {
     const chatEl = document.getElementById('cw-chat-messages');
     const inputEl = document.getElementById('cw-chat-input-area');
     const workEl = document.getElementById('cw-work-view');
+    const approvalsEl = document.getElementById('cw-approvals-view');
     chatEl.style.display = 'none';
     if (inputEl) inputEl.style.display = 'none';
     workEl.style.display = 'none';
+    if (approvalsEl) approvalsEl.style.display = 'none';
     if (view === 'work') {
       workEl.style.display = 'flex';
       renderCwWork();
+    } else if (view === 'approvals') {
+      if (approvalsEl) {
+        approvalsEl.style.display = 'flex';
+        renderCwApprovals();
+      }
     } else {
       chatEl.style.display = '';
       if (inputEl && cwState.selected) inputEl.style.display = 'flex';
@@ -8799,7 +10669,7 @@ async function bootstrapDashboardApp() {
     setLiveStatus('Locked', 'var(--yellow)');
     return;
   }
-  await Promise.all([pollState(), loadRecentHookEvents()]);
+  await resyncLiveData();
   connectLiveUpdates();
   animate();
 }
@@ -9219,7 +11089,9 @@ function contextCellHtml(cs) {
   const svgW = hist.length * (BW + GAP);
   const compTitle =
     `${cs.compactions} compaction${cs.compactions === 1 ? '' : 's'}` +
-    (cs.compactions ? ` (${cs.autoCompactions} auto / ${cs.manualCompactions} manual; avg ${fmtNum(cs.avgPreTokens)} tok at compaction)` : '') +
+    (cs.compactions
+      ? ` (${cs.autoCompactions} auto / ${cs.manualCompactions} manual; avg ${fmtNum(cs.avgPreTokens)} tok at compaction)`
+      : '') +
     ` across ${cs.sessions} session${cs.sessions === 1 ? '' : 's'}${cs.capped ? ' (capped)' : ''}`;
   const comp = cs.compactions
     ? `<span title="${esc(compTitle)}" style="color:${cs.compactions >= 5 ? '#f85149' : cs.compactions >= 1 ? '#d29922' : 'var(--text-muted)'}">⟳${cs.compactions}</span>`
@@ -9237,10 +11109,7 @@ function renderMetricsTokens(el, data) {
   // usual grid here would print a confident $0.00 that looks like a quiet week
   // rather than a metric that never ran.
   if (data.unavailable) {
-    el.innerHTML =
-      '<div class="admin-empty">Token metrics unavailable — ' +
-      esc(String(data.unavailable)) +
-      '</div>';
+    el.innerHTML = '<div class="admin-empty">Token metrics unavailable — ' + esc(String(data.unavailable)) + '</div>';
     return;
   }
   const days = data.daily || [];
@@ -9349,7 +11218,17 @@ function renderMetricsTokens(el, data) {
           cacheCreate += d.cacheCreationTokens || 0;
         }
         const models = [...new Set(cw.daily.flatMap((d) => d.modelsUsed || []))];
-        return { name: cw.groupName, cost, tokens, input, output, cacheRead, cacheCreate, models, contextStats: cw.contextStats || null };
+        return {
+          name: cw.groupName,
+          cost,
+          tokens,
+          input,
+          output,
+          cacheRead,
+          cacheCreate,
+          models,
+          contextStats: cw.contextStats || null,
+        };
       })
       .sort((a, b) => b.cost - a.cost);
 

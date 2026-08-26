@@ -1,3 +1,4 @@
+import { addColumnIfMissing } from './column-guard.js';
 import type { Migration } from './index.js';
 
 /**
@@ -16,20 +17,17 @@ import type { Migration } from './index.js';
  *   NULL     — unpinned (default).
  *   non-null — pinned at that ISO timestamp. Dashboard sorts pinned rows
  *              to the top of Other Sessions regardless of last-activity.
- *
- * Renumbered 22 -> 24 when upstream took 022/023. `name` is deliberately
- * unchanged: it is the applied identity in schema_version, so touching it would
- * re-run this on installs that already have the columns.
- *
- * Bare ALTERs, no PRAGMA probe: post-boundary migrations must be portable
- * (portability.test.ts bans PRAGMA), and the runner already applies each
- * migration exactly once per install by `name`.
  */
-export const migration024: Migration = {
-  version: 24,
+export const migration941: Migration = {
+  // Numbered 941, not 022: version 22 is nv-main's 022-messaging-group-detached,
+  // and 88c1bf5a reserved the 900+ range for fork migrations. `name` is
+  // deliberately UNCHANGED — it is this migration's permanent applied identity
+  // in `schema_version`, so a renumber must never touch it or every install
+  // would re-run this as a brand-new migration.
+  version: 941,
   name: 'session-hidden-pinned',
   async up(db) {
-    await db.exec('ALTER TABLE sessions ADD COLUMN hidden_at TEXT');
-    await db.exec('ALTER TABLE sessions ADD COLUMN pinned_at TEXT');
+    await addColumnIfMissing(db, 'sessions', 'hidden_at TEXT');
+    await addColumnIfMissing(db, 'sessions', 'pinned_at TEXT');
   },
 };

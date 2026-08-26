@@ -2,6 +2,10 @@
 // NanoClaw Mobile Dashboard
 
 let state = { coworkers: [], tasks: [], taskRunLogs: [], registeredGroups: [], hookEvents: [], timestamp: 0 };
+// Live-state reconciliation (revision/epoch continuity, key-order proof, resync
+// barrier + replay buffer, snapshot generations) lives in the shared
+// `state-sync.js` module that app.js and state-delta.test.ts also drive, so the
+// two clients and the tests can never describe different protocols.
 const nativeFetch = window.fetch.bind(window);
 
 // --- Auth ---
@@ -111,14 +115,116 @@ function setLiveStatus(text, color) {
 }
 
 function applyState(data) {
+  liveSync.observeSnapshotFields(data);
   state = { ...state, ...data };
-  lastHookEventId = Math.max(lastHookEventId, Number(data.lastHookEventId) || 0);
+  // Do NOT advance the hook-event replay cursor from a snapshot's lastHookEventId:
+  // a snapshot reports the server's LATEST id, but those events have not been
+  // delivered on this stream. Jumping the cursor to it would skip past any events
+  // an SSE-backpressure gap dropped (they'd become unrequestable on reconnect).
+  // Only actually-delivered `hook-event` frames advance it (applyHookEvent), which
+  // is exactly how app.js already behaves.
   renderCwList();
   if (cwState.selected) {
     updateChatHeader();
     renderDetail();
   }
   updateTabBadges();
+}
+
+// --- Live-state reconciliation ----------------------------------------------
+// The protocol (epoch/revision continuity, key-order proof, resync barrier +
+// bounded replay buffer, snapshot generations) is implemented once in
+// `state-sync.js`; app.js and state-delta.test.ts drive the same code. What
+// stays here is the transport: one in-flight HTTP snapshot fetch at a time
+// (concurrent responses can land out of order) with bounded-backoff retry.
+let resyncInFlight = null;
+let resyncRetryTimer = null;
+let resyncAttempt = 0;
+if (!window.NanoclawStateSync) {
+  throw new Error('state-sync.js failed to load');
+}
+const liveSync = window.NanoclawStateSync.createStateSync({
+  getState: () => state,
+  applyState: (patch) => applyState(patch),
+  startResync: () => {
+    void resyncLiveData();
+  },
+  onSettled: () => {
+    resyncAttempt = 0;
+    resyncInFlight = null;
+    clearResyncRetry();
+  },
+  reconnectLive: () => reconnectLiveChannel(),
+});
+
+function clearResyncRetry() {
+  if (resyncRetryTimer) {
+    clearTimeout(resyncRetryTimer);
+    resyncRetryTimer = null;
+  }
+}
+
+function scheduleResyncRetry() {
+  if (resyncRetryTimer) return;
+  const delay = Math.min(30000, 1000 * 2 ** Math.min(resyncAttempt, 5));
+  resyncAttempt += 1;
+  resyncRetryTimer = setTimeout(() => {
+    resyncRetryTimer = null;
+    void resyncLiveData();
+  }, delay);
+}
+
+// Adopt a full snapshot from the live stream (no generation token: an in-stream
+// snapshot is ordered against the deltas by construction and supersedes any HTTP
+// resync still in flight).
+function adoptSnapshot(data) {
+  liveSync.adoptSnapshot(data);
+}
+
+function applyStateDelta(delta) {
+  liveSync.applyStateDelta(delta);
+}
+
+// Drop and reopen the live channel so the server pushes a fresh, ordered
+// in-stream snapshot — the recovery path when the replay buffer overflowed
+// (repeating HTTP snapshots there can never converge).
+function reconnectLiveChannel() {
+  if (liveSource) {
+    liveSource.close();
+    liveSource = null;
+  }
+  if (!('EventSource' in window) || document.hidden) {
+    void resyncLiveData();
+    return;
+  }
+  // Route overflow recovery through the SAME floored scheduler as onerror.
+  // Reconnecting immediately here (on every >200-delta overflow) is exactly the
+  // churn path the 5s floor exists to bound.
+  scheduleLiveReconnect();
+}
+
+// Single in-flight snapshot fetch. Mobile used to fire pollState() from every
+// rejected delta and every `resync` marker, so several responses could be in
+// flight at once and an older one could land last and overwrite newer state.
+function resyncLiveData() {
+  if (resyncInFlight) return resyncInFlight;
+  const generation = liveSync.beginResync();
+  clearResyncRetry();
+  const attempt = pollState(generation)
+    .then((ok) => {
+      if (!ok) {
+        if (resyncInFlight === attempt) resyncInFlight = null;
+        scheduleResyncRetry();
+      }
+      return ok;
+    })
+    .catch(() => {
+      if (resyncInFlight === attempt) resyncInFlight = null;
+      scheduleResyncRetry();
+      return false;
+    });
+  resyncInFlight = attempt;
+  return attempt;
 }
 
 function applyHookEvent(event, coworkerPatch) {
@@ -129,21 +235,26 @@ function applyHookEvent(event, coworkerPatch) {
   applyState({ coworkers, lastHookEventId });
 }
 
-async function pollState() {
+// Fetch a snapshot over HTTP for the resync identified by `generation` — the
+// token that lets a delayed old-process response be recognised as superseded by
+// an in-stream snapshot installed while it was in flight.
+async function pollState(generation) {
   try {
     const res = await fetch('/api/state', { cache: 'no-store' });
     if (!res.ok) return false;
-    applyState(await res.json());
-    return true;
+    return liveSync.adoptSnapshot(await res.json(), generation);
   } catch { return false; }
 }
 
 function startPolling() {
   if (pollTimer) return;
   setLiveStatus('Polling', 'var(--yellow)');
-  pollState();
+  // Route through resyncLiveData() so polls coalesce with any resync already in
+  // flight — several concurrent /api/state responses can land out of order and
+  // the older one would overwrite the newer.
+  void resyncLiveData();
   pollTimer = setInterval(async () => {
-    const ok = await pollState();
+    const ok = await resyncLiveData();
     if (!ok) setLiveStatus('Reconnecting...', 'var(--yellow)');
   }, 10000);
 }
@@ -156,7 +267,11 @@ function stopPolling() {
 
 function scheduleLiveReconnect() {
   if (liveReconnectTimer || document.hidden) return;
-  const baseDelay = Math.min(30000, 1000 * 2 ** Math.min(liveReconnectAttempt, 5));
+  // Floor at 5s (the server's SSE `retry:`): a client that re-blocks on every
+  // snapshot is closed on drain-recovery and reconnects via this path; without a
+  // floor (attempt resets to 0 on each open) it would churn every 1-2s, re-fetching
+  // a full snapshot each time. 5s bounds that to the server's own retry cadence.
+  const baseDelay = Math.max(5000, Math.min(30000, 1000 * 2 ** Math.min(liveReconnectAttempt, 5)));
   const delay = baseDelay + Math.floor(Math.random() * 1000);
   liveReconnectAttempt += 1;
   liveReconnectTimer = setTimeout(() => {
@@ -173,7 +288,10 @@ function connectLiveUpdates() {
     liveReconnectTimer = null;
   }
   if (liveSource) liveSource.close();
-  const source = new EventSource(`/api/events?snapshot=0&after=${encodeURIComponent(lastHookEventId)}`);
+  // No `snapshot=0`: every (re)connection starts from a full snapshot delivered
+  // ON THIS STREAM, so it is ordered against the deltas by construction and
+  // survives a server restart (which resets the revision space).
+  const source = new EventSource(`/api/events?after=${encodeURIComponent(lastHookEventId)}`);
   liveSource = source;
   source.onopen = () => {
     if (liveSource !== source) return;
@@ -185,9 +303,10 @@ function connectLiveUpdates() {
     if (liveSource !== source) return;
     try {
       const msg = JSON.parse(e.data);
-      if (msg.type === 'state') applyState(msg.data);
+      if (msg.type === 'state') adoptSnapshot(msg.data);
+      else if (msg.type === 'state-delta') applyStateDelta(msg);
       else if (msg.type === 'hook-event') applyHookEvent(msg.data, msg.coworker);
-      else if (msg.type === 'resync') void pollState();
+      else if (msg.type === 'resync') void resyncLiveData();
     } catch {}
   };
   source.onerror = () => {
@@ -463,6 +582,15 @@ function renderApprovalCard(item) {
       ? `\n\n\`${esc(item.method)} ${esc(item.host)}${esc(item.path || '')}\``
       : '';
     desc = `**Credentials request**${endpoint}`;
+  } else if (item.action === 'stop_runaway_session') {
+    // Lead with cost (the whole harm of a runaway) then the session id as
+    // copyable text — mobile has no hash router to deep-link into, so the id
+    // itself is the door. Both fall back cleanly when absent.
+    const cost = typeof item.spentUsd === 'number' && typeof item.capUsd === 'number'
+      ? `\n\n**$${item.spentUsd.toFixed(2)} of $${item.capUsd.toFixed(2)}**`
+      : '';
+    const sess = item.sessionId ? `\n\nSession \`${esc(item.sessionId)}\`` : '';
+    desc = `**${esc(item.title || 'Possible runaway session')}**${cost}${sess}${safeReason}`;
   } else {
     desc = `**${esc(item.action)}**${safeReason}`;
   }
@@ -757,7 +885,7 @@ function updateTabBadges() {
 
 // --- Init ---
 (async function init() {
-  await pollState();
+  await resyncLiveData();
   connectLiveUpdates();
 })();
 
@@ -782,5 +910,5 @@ document.addEventListener('visibilitychange', () => {
 
   if (hiddenDisconnectTimer) clearTimeout(hiddenDisconnectTimer);
   hiddenDisconnectTimer = null;
-  void pollState().finally(() => connectLiveUpdates());
+  void resyncLiveData().finally(() => connectLiveUpdates());
 });

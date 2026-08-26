@@ -1,0 +1,17 @@
+{
+  "_comment": "VERBATIM output of scripts/kb-doctor.py (nv-main) run against a scratch repo, captured 2026-08-10. This is the producer/consumer contract fixture: if the producer's shape changes, the test that feeds this to readKbDoctorArtifact is what notices. Regenerate with: python3 scripts/kb-doctor.py --repo <scratch> --artifact <path>",
+  "schema": 1,
+  "generatedAt": "2026-08-10T07:19:08+00:00",
+  "repo": "/tmp/scratch/repo",
+  "status": "unknown",
+  "complete": false,
+  "exitCode": 2,
+  "counts": { "ok": 1, "drift": 0, "unknown": 3 },
+  "findings": [],
+  "drift": [],
+  "unknown": [
+    "group-skills: no .claude-shared copies found — no groups initialised, or the mirror path changed",
+    "tasks: no docs/scheduled-tasks.*.json snapshot to compare against",
+    "branch: cannot resolve HEAD in /tmp/scratch/repo: fatal: not a git repository"
+  ]
+}

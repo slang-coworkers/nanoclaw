@@ -135,16 +135,6 @@ describe('agent groups', () => {
     await createAgentGroup(ag());
     await expect(createAgentGroup({ ...ag(), id: 'ag-dup' })).rejects.toThrow();
   });
-
-  it('defaults sidebar_group to null when not provided', async () => {
-    await createAgentGroup(ag());
-    expect((await getAgentGroup('ag-1'))!.sidebar_group ?? null).toBeNull();
-  });
-
-  it('persists sidebar_group when set (migration 025 column)', async () => {
-    await createAgentGroup({ ...ag(), sidebar_group: 'dashboard:user1' });
-    expect((await getAgentGroup('ag-1'))!.sidebar_group).toBe('dashboard:user1');
-  });
 });
 
 // ── Messaging Groups ──

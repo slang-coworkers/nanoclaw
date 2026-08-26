@@ -13,7 +13,7 @@
  */
 
 import { createServer } from 'http';
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { createGzip, createGunzip } from 'zlib';
 import { pipeline } from 'stream/promises';
 import { exec, execFile, execSync } from 'child_process';
@@ -31,6 +31,7 @@ import {
   watchFile,
   unwatchFile,
   writeFileSync,
+  renameSync,
   unlinkSync,
   mkdirSync,
   rmSync,
@@ -40,11 +41,25 @@ import {
 import { join, resolve, relative, normalize, isAbsolute, extname, basename, dirname } from 'path';
 import Database from 'better-sqlite3';
 import { createRequire } from 'node:module';
+import { Worker } from 'node:worker_threads';
 
 import { initDb as initSrcDb } from '../src/db/connection.js';
 import { CONTAINER_RUNTIME_BIN } from '../src/container-runtime.js';
 import { refreshDestinationsForAgentGroup } from '../src/modules/agent-to-agent/write-destinations.js';
 import { CANONICAL_DECISIONS, canonicalizeDecision } from '../src/modules/approvals/decision.js';
+import { kbDoctorUnavailable, readKbDoctorArtifact, type KbDoctorView } from './kb-doctor-artifact.js';
+import { isoWeekStart, isoWeekStartFromMs, sessionIdMs, unitCostByWeek, UNIT_COST_GROUPS } from './unit-cost.js';
+import { priceUsage, normalizeModel, MODEL_PRICING, type SessionCostEntry, type TokenUsage } from './session-costs.js';
+import {
+  parseCostCapBlob,
+  buildCostCapEntry,
+  buildSessionCostFields,
+  mapEpisodeToLatestAdjustment,
+  validateCeilingRequest,
+  type SessionCostCapEntry,
+  type CostEpisodeLikeRow,
+  type LatestCostAdjustment,
+} from './session-cost-caps.js';
 
 /**
  * Check if `target` is inside (or equal to) `baseDir`.
@@ -632,7 +647,13 @@ function ensureSrcDb(): void {
 function refreshRunningSessions(agentGroupId: string): void {
   try {
     ensureSrcDb();
-    refreshDestinationsForAgentGroup(agentGroupId);
+    // Fire-and-forget on purpose (every caller is a sync handler), but the
+    // rejection MUST be caught HERE: this helper became async with the central-DB
+    // refactor, so the surrounding try/catch no longer sees its failures — the
+    // rejection would escape unhandled and the projection would fail silently.
+    void refreshDestinationsForAgentGroup(agentGroupId).catch((err) => {
+      console.warn('[dashboard] failed to refresh destinations for', agentGroupId, err);
+    });
   } catch (err) {
     console.warn('[dashboard] failed to refresh destinations for', agentGroupId, err);
   }
@@ -1434,18 +1455,51 @@ bootstrapHookEvents();
 // Last message timestamp cache (group_folder -> ISO timestamp)
 const lastMessageTsCache = new Map<string, string>();
 
+// Live per-session cost-cap/ceiling state (dash-1 set-ceiling-v2), keyed by
+// session id. Fed by the scan worker's `costCaps` deltas when it's active, or
+// by this file's own main-thread fallback (pickLatestMessageTs below) when the
+// worker is unavailable — same dual-path shape as lastMessageTsCache/
+// activityDataCache above. /api/sessions joins this map for EVERY session,
+// independent of the `period` query param: that's what fixes "a session's live
+// ceiling disappears when you change the day-window filter" (the old code only
+// read cost_cap when the SELECTED PERIOD's priced cost was positive). See
+// session-cost-caps.ts for the entry shape and blob-parsing.
+const sessionCostCapsMap = new Map<string, SessionCostCapEntry>();
+
+// Fleet-scan timer handles at module scope so the scan worker (dash-perf round
+// 2) can stop them on handoff and restart them on fallback. When the worker is
+// active these are cleared and the corresponding caches are fed by worker deltas
+// instead; under VITEST (no worker) the timers are the live path.
+let msgTsTimer: ReturnType<typeof setInterval> | undefined;
+let activityTimer: ReturnType<typeof setInterval> | undefined;
+
 // Per-file mtime gate for refreshMessageTimestamps: session DBs use
 // journal_mode=DELETE (writes land in the main .db file, so its mtime advances
 // on every commit — see container/agent-runner/src/db/connection.ts). We stat
 // the file (cheap) and only re-open+query it when the mtime changed since the
 // last poll; an idle session costs one stat instead of a full sqlite open.
 // This is what makes a 1s poll cheaper than the old 3s full-open sweep.
-const msgTsFileCache = new Map<string, { mtimeMs: number; ts: string | null }>();
+// `costCapRaw` (outbound paths only) mirrors the scan worker's per-file cache —
+// see pickLatestMessageTs.
+const msgTsFileCache = new Map<string, { mtimeMs: number; ts: string | null; costCapRaw?: string | null }>();
+
+/** Apply one session's freshly-read (or cache-reused) cost_cap raw text to the
+ *  shared map. `raw === null` means "no cost_cap key on this build/session" —
+ *  removes any existing entry rather than leaving a stale one behind. */
+function applyMainThreadCostCap(sessionId: string, agentGroupId: string, raw: string | null, mtimeMs: number): void {
+  const entry = raw ? buildCostCapEntry(agentGroupId, parseCostCapBlob(raw), new Date(mtimeMs).toISOString()) : null;
+  if (entry) sessionCostCapsMap.set(sessionId, entry);
+  else sessionCostCapsMap.delete(sessionId);
+}
 
 function pickLatestMessageTs(
   current: string | null,
   dbPath: string,
   table: 'messages_in' | 'messages_out',
+  // Set only for the outbound call site: reading cost_cap only makes sense for
+  // outbound.db, and passing this drives applyMainThreadCostCap in the SAME
+  // open used for the message-timestamp read (don't open the DB twice).
+  costCapSink?: { sessionId: string; agentGroupId: string },
 ): string | null {
   let ts: string | null;
   try {
@@ -1453,12 +1507,30 @@ function pickLatestMessageTs(
     const cached = msgTsFileCache.get(dbPath);
     if (cached && cached.mtimeMs === mtimeMs) {
       ts = cached.ts; // unchanged since last poll — reuse, skip the open
+      if (costCapSink) {
+        applyMainThreadCostCap(costCapSink.sessionId, costCapSink.agentGroupId, cached.costCapRaw ?? null, mtimeMs);
+      }
     } else {
       const sdb = new Database(dbPath, { readonly: true });
       const row = sdb.prepare(`SELECT timestamp FROM ${table} ORDER BY timestamp DESC LIMIT 1`).get() as any;
+      let costCapRaw: string | null = null;
+      if (costCapSink) {
+        try {
+          const cols = sdb.prepare('PRAGMA table_info(session_state)').all() as Array<{ name: string }>;
+          if (cols.some((c) => c.name === 'value')) {
+            const capRow = sdb.prepare("SELECT value FROM session_state WHERE key = 'cost_cap'").get() as
+              | { value: string }
+              | undefined;
+            if (capRow?.value) costCapRaw = capRow.value;
+          }
+        } catch {
+          /* session_state absent/unreadable on this build — not fatal to the ts read */
+        }
+      }
       sdb.close();
       ts = (row?.timestamp as string | undefined) ?? null;
-      msgTsFileCache.set(dbPath, { mtimeMs, ts });
+      msgTsFileCache.set(dbPath, { mtimeMs, ts, costCapRaw });
+      if (costCapSink) applyMainThreadCostCap(costCapSink.sessionId, costCapSink.agentGroupId, costCapRaw, mtimeMs);
     }
   } catch {
     return current; // missing/unreadable → treat as no change
@@ -1471,6 +1543,7 @@ function pickLatestMessageTs(
 function refreshMessageTimestamps(): void {
   if (!db) return;
   const next = new Map<string, string>();
+  const liveSessionIds = new Set<string>();
   try {
     const groups = db.prepare('SELECT id, folder FROM agent_groups').all() as { id: string; folder: string }[];
     for (const group of groups) {
@@ -1478,13 +1551,26 @@ function refreshMessageTimestamps(): void {
       const sessions = db.prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all(group.id) as { id: string }[];
       const sessionsDir = join(getDataDir(), 'v2-sessions', group.id);
       for (const sess of sessions) {
+        liveSessionIds.add(sess.id);
         maxTs = pickLatestMessageTs(maxTs, join(sessionsDir, sess.id, 'inbound.db'), 'messages_in');
-        maxTs = pickLatestMessageTs(maxTs, join(sessionsDir, sess.id, 'outbound.db'), 'messages_out');
+        maxTs = pickLatestMessageTs(maxTs, join(sessionsDir, sess.id, 'outbound.db'), 'messages_out', {
+          sessionId: sess.id,
+          agentGroupId: group.id,
+        });
       }
       if (maxTs) next.set(group.folder, maxTs);
     }
     lastMessageTsCache.clear();
     for (const [folder, ts] of next.entries()) lastMessageTsCache.set(folder, ts);
+    // Tombstone cost-cap entries for sessions that no longer exist. Safe here
+    // because this loop is a COMPLETE enumeration of every live session on
+    // EVERY call (unlike the scan worker's hot/cold per-file cadence) — a
+    // session absent from this pass is genuinely gone, not just not-yet-due
+    // for a recheck. Mirrors the scan worker's own inventory-pruning (see
+    // refreshInventory in scan-worker.mjs).
+    for (const sessionId of sessionCostCapsMap.keys()) {
+      if (!liveSessionIds.has(sessionId)) sessionCostCapsMap.delete(sessionId);
+    }
   } catch {
     /* DB not ready */
   }
@@ -1497,7 +1583,7 @@ refreshMessageTimestamps();
 // is now mtime-gated (pickLatestMessageTs), so an idle session is a cheap stat rather
 // than a sqlite open — 1s is both snappier than the old 3s and lighter on disk I/O.
 if (!process.env.VITEST) {
-  const msgTsTimer = setInterval(refreshMessageTimestamps, 1000);
+  msgTsTimer = setInterval(refreshMessageTimestamps, 1000);
   msgTsTimer.unref?.();
 }
 
@@ -1554,6 +1640,12 @@ function modelMaxContext(model: string): number {
   return 200000;
 }
 const contextWindowCache = new Map<string, ContextWindowInfo>();
+// dash-perf round 2: remember which (newest-file path, mtime) produced each
+// group's current contextWindowCache entry, so an idle group whose newest
+// transcript hasn't advanced is a single stat rather than a full file re-read +
+// reverse-scan every 10s. Only the group whose active transcript actually grew
+// pays the read.
+const ctxWindowFileCache = new Map<string, { path: string; mtimeMs: number }>();
 
 function refreshContextWindowCache(): void {
   if (!db) return;
@@ -1565,15 +1657,43 @@ function refreshContextWindowCache(): void {
       const jsonlFiles = collectClaudeJsonlFiles(claudeShared);
       if (jsonlFiles.length === 0) continue;
 
-      jsonlFiles.sort((a, b) => {
+      // Stat each candidate exactly once (the old comparator called statSync
+      // twice per comparison → O(F log F) stats every 10s per group), then pick
+      // the single newest file.
+      let newestPath = '';
+      let newestMtime = -1;
+      for (const f of jsonlFiles) {
+        let m: number;
         try {
-          return statSync(b).mtimeMs - statSync(a).mtimeMs;
+          m = statSync(f).mtimeMs;
         } catch {
-          return 0;
+          continue;
         }
-      });
+        if (m > newestMtime) {
+          newestMtime = m;
+          newestPath = f;
+        }
+      }
+      if (!newestPath) continue;
 
-      const content = readFileSync(jsonlFiles[0], 'utf-8');
+      // mtime-gate: skip the read+parse when the newest transcript is unchanged
+      // since we last parsed it for this group.
+      const gate = ctxWindowFileCache.get(group.folder);
+      if (gate && gate.path === newestPath && gate.mtimeMs === newestMtime) continue;
+
+      // Read FIRST, commit the gate only on success. Committing up front made a
+      // transient read failure permanent: the (path, mtime) would already be
+      // recorded as processed, so every later tick short-circuits on the
+      // unchanged file and the stale context reading sticks until the transcript
+      // happens to grow again.
+      let content: string;
+      try {
+        content = readFileSync(newestPath, 'utf-8');
+      } catch {
+        continue; // leave the previous gate in place → retried next tick
+      }
+      ctxWindowFileCache.set(group.folder, { path: newestPath, mtimeMs: newestMtime });
+
       const lines = content.split('\n');
       for (let i = lines.length - 1; i >= 0; i--) {
         if (!lines[i].trim()) continue;
@@ -1878,6 +1998,528 @@ function refreshContextStatsCache(): void {
     /* DB not ready */
   }
 }
+
+// ---------- Per-session cost (Sessions tab cost column) ----------
+//
+// ccusage is per-group-per-day, so a per-SESSION figure is summed from the raw
+// per-message `usage` in each transcript, priced by session-costs.ts (LiteLLM
+// rates, guarded against FALLBACK_PRICING drift). One transcript file under
+// `.claude-shared/projects/` is one SDK session (its basename is the SDK uuid),
+// mapped to the nanoclaw session id via sdk_session_routes so a row can link.
+//
+// Mirrors the context refresh: mtime-keyed per-file cache, 60s cycle, file cap.
+
+interface PerFileCost {
+  mtimeMs: number;
+  // YYYYMMDD -> { cost, tokens } for that day; summed per period at refresh.
+  days: Map<string, { cost: number; tokens: number }>;
+  unpriced: boolean; // saw usage from a model MODEL_PRICING doesn't know
+  hadSignal: boolean;
+  // Read + parse finished without throwing. A transient read failure leaves this
+  // false; persistPerFileCostCache skips such entries so a one-off error never
+  // freezes a file at $0 across restarts (in-memory only — not persisted).
+  ok: boolean;
+}
+const perFileCostCache = new Map<string, PerFileCost>();
+
+function scanFileCost(path: string, mtimeMs: number): PerFileCost {
+  const cached = perFileCostCache.get(path);
+  if (cached && cached.mtimeMs === mtimeMs) return cached;
+  const out: PerFileCost = { mtimeMs, days: new Map(), unpriced: false, hadSignal: false, ok: false };
+  // Dedupe by message id. A transcript replays the SAME assistant message on
+  // multiple rows when a session is resumed/rewound — each carries an identical
+  // `message.id` but a distinct top-level `uuid`. Counting every row double- to
+  // triple-counts cost (measured 1.7–2.2x on prod); ccusage dedupes by message
+  // id, so we do too, keeping this column reconciled with the group totals the
+  // Overview reads. requestId is null on Bedrock, so message.id alone is the key.
+  const seenMsgIds = new Set<string>();
+  try {
+    const content = readFileSync(path, 'utf-8');
+    for (const line of content.split('\n')) {
+      if (line.indexOf('"usage"') < 0) continue;
+      let r: {
+        type?: string;
+        timestamp?: string;
+        message?: { id?: string; usage?: TokenUsage; model?: string };
+      };
+      try {
+        r = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      const msg = r.message;
+      if (r.type !== 'assistant' || !msg?.usage) continue;
+      if (msg.id) {
+        if (seenMsgIds.has(msg.id)) continue;
+        seenMsgIds.add(msg.id);
+      }
+      const cost = priceUsage(msg.model, msg.usage);
+      const u = msg.usage;
+      const tokens =
+        (u.input_tokens || 0) +
+        (u.output_tokens || 0) +
+        (u.cache_creation_input_tokens || 0) +
+        (u.cache_read_input_tokens || 0);
+      out.hadSignal = true;
+      // Flag "unpriced" only when an unknown model actually billed tokens. Zero-usage
+      // synthetic rows (model "<synthetic>") carry no cost and must not raise the `*`.
+      if (cost === 0 && tokens > 0 && msg.model && !normalizeModel(msg.model)) out.unpriced = true;
+      const key = isoDayKey(r.timestamp) ?? MISSING_TS_KEY;
+      const d = out.days.get(key) || { cost: 0, tokens: 0 };
+      d.cost += cost;
+      d.tokens += tokens;
+      out.days.set(key, d);
+    }
+    // Full read + parse completed without throwing — this entry is durable and
+    // safe to persist. A read that throws (catch below) leaves ok=false so
+    // persistPerFileCostCache skips it, rather than freezing a transient failure
+    // as a $0 file across restarts.
+    out.ok = true;
+  } catch {
+    /* unreadable — treat as no signal (ok stays false: transient, don't persist) */
+  }
+  perFileCostCache.set(path, out);
+  return out;
+}
+
+// nanoclaw session id -> cost row, per period. Endpoint joins this onto the
+// /api/sessions rows; the ranked arrays back an optional sort=cost.
+type SessionCostByPeriod = Record<ContextPeriod, Map<string, SessionCostEntry>>;
+let sessionCostCache: SessionCostByPeriod = {
+  '1d': new Map(),
+  '7d': new Map(),
+  '30d': new Map(),
+  all: new Map(),
+};
+
+// Per-session cost-cap state, published by the runner into outbound.db
+// session_state under the single JSON key `cost_cap`. Shared contract with the
+// agent-runner (nv-dashboard):
+//   { capUsd, spentUsd, status:'ok'|'warn'|'escalated'|'stopped',
+//     immortal, window:'lifetime'|'daily', dayKey?, escalatedAt?, decision?, decidedAt?,
+//     ceilingUsd? }
+// `window` distinguishes a per-run (lifetime) cap from an immortal orchestrator's
+// per-DAY visibility bound (dayKey present only when window==='daily').
+//
+// dash-1 set-ceiling-v2: this used to be read inline in /api/sessions, per row,
+// gated on `s.cost > 0` in the SELECTED period — which is exactly the bug that
+// hid a session's ceiling whenever it had no priced spend in the currently
+// selected day-window even though it was very much alive. It's now read by the
+// scan worker / main-thread fallback above (pickLatestMessageTs,
+// applyMainThreadCostCap) into the always-fresh `sessionCostCapsMap`, joined
+// for every session unconditionally — see the /api/sessions handler and
+// session-cost-caps.ts.
+
+// ---------- claude-trace directory index (Sessions-tab deep links) ----------
+// dash-perf round 2: /api/sessions previously ran a readdirSync + a statSync per
+// matching file for EVERY priced session on every request — O(priced sessions ×
+// files in the group's trace dir) of synchronous filesystem work on the request
+// path, which starves stream flushing. Instead we cache the per-group trace-dir
+// listing (name + mtime) behind a short TTL: a warm request does ZERO trace
+// filesystem calls, and the per-row work is an in-memory prefix scan. The TTL
+// (not directory mtime alone) is the refresh trigger because appending to an
+// existing trace file doesn't bump the directory mtime.
+interface TraceDirListing {
+  scannedAt: number;
+  files: { name: string; mtimeMs: number }[];
+}
+const TRACE_DIR_TTL_MS = 45_000;
+// After a READ ERROR (as opposed to a confirmed-absent dir) we retry this soon
+// instead of holding the fallback listing for the full TTL.
+const TRACE_DIR_ERROR_RETRY_MS = 5_000;
+const traceDirCache = new Map<string, TraceDirListing>();
+
+/** Cached listing of `session-*.html` files (with mtimes) under a group's
+ *  `.claude-trace` dir. Rebuilt at most once per TTL per dir; warm calls touch
+ *  no filesystem. A confirmed-absent dir caches as empty; a transient read
+ *  ERROR keeps the previous listing (an empty cache entry would silently strip
+ *  the trace link from every priced session in the group for a full TTL). */
+function getTraceDirListing(traceDir: string): { name: string; mtimeMs: number }[] {
+  const now = Date.now();
+  const cached = traceDirCache.get(traceDir);
+  if (cached && now - cached.scannedAt < TRACE_DIR_TTL_MS) return cached.files;
+  const files: { name: string; mtimeMs: number }[] = [];
+  let names: string[];
+  try {
+    names = readdirSync(traceDir);
+  } catch (e: any) {
+    const absent = e && (e.code === 'ENOENT' || e.code === 'ENOTDIR');
+    if (absent) {
+      // Genuinely no trace dir → an empty listing is the correct answer.
+      traceDirCache.set(traceDir, { scannedAt: now, files });
+      return files;
+    }
+    // Transient (EMFILE/EACCES/EIO/…): serve the last good listing and retry soon.
+    const fallback = cached ? cached.files : files;
+    traceDirCache.set(traceDir, { scannedAt: now - TRACE_DIR_TTL_MS + TRACE_DIR_ERROR_RETRY_MS, files: fallback });
+    return fallback;
+  }
+  for (const f of names) {
+    if (!f.startsWith('session-') || !f.endsWith('.html')) continue;
+    let m = 0;
+    try {
+      m = statSync(join(traceDir, f)).mtimeMs;
+    } catch {
+      /* unreadable — treat as oldest */
+    }
+    files.push({ name: f, mtimeMs: m });
+  }
+  traceDirCache.set(traceDir, { scannedAt: now, files });
+  return files;
+}
+
+// Guard against overlapping cold scans: the uncapped 30d pass can exceed the 60s
+// tick interval on a cold cache, so a second tick must not stack on the first.
+let sessionCostScanning = false;
+function refreshSessionCostCache(): void {
+  if (!db || sessionCostScanning) return;
+  sessionCostScanning = true;
+  try {
+    const groups = db.prepare('SELECT id, folder, name FROM agent_groups').all() as {
+      id: string;
+      folder: string;
+      name: string;
+    }[];
+    // SDK uuid -> nanoclaw session id (for the link). Newest route wins.
+    const sdkToNano = new Map<string, string>();
+    try {
+      for (const r of db.prepare('SELECT sdk_session_id, nanoclaw_session_id FROM sdk_session_routes').all() as {
+        sdk_session_id: string;
+        nanoclaw_session_id: string;
+      }[]) {
+        if (r.sdk_session_id && r.nanoclaw_session_id) sdkToNano.set(r.sdk_session_id, r.nanoclaw_session_id);
+      }
+    } catch {
+      /* table may not exist on older installs — links just fall back to '' */
+    }
+
+    const cutoffs: Record<ContextPeriod, string> = {
+      '1d': ccusageSinceDate(0),
+      '7d': ccusageSinceDate(7),
+      '30d': ccusageSinceDate(30),
+      all: '',
+    };
+    const next: SessionCostByPeriod = { '1d': new Map(), '7d': new Map(), '30d': new Map(), all: new Map() };
+    const sessionsDir = join(getDataDir(), 'v2-sessions');
+    // Widest period this cache serves is 30d; only scan files touched within it
+    // (+1d slack). A file older than that has no rows in any served window.
+    const cutoffMs = Date.now() - 31 * 86400 * 1000;
+    const livePaths = new Set<string>();
+
+    for (const group of groups) {
+      const claudeShared = join(sessionsDir, group.id, '.claude-shared');
+      // Sessions only — `projects/<sdk-uuid>.jsonl`. collectClaudeJsonlFiles
+      // also returns `skills/…` transcripts, whose basename is not an SDK
+      // session id (so they'd never map to a nanoclaw session) and which are
+      // skill runs, not sessions. Excluding them keeps the tab to real sessions
+      // and matches the reconciliation (projects-only) against ccusage.
+      const files = collectClaudeJsonlFiles(claudeShared).filter((f) => f.includes('/projects/'));
+      if (files.length === 0) continue;
+      // Accurate over the whole 30d window: scan EVERY file touched in the last
+      // ~31d, no count cap. The old 400-file cap truncated the busiest groups
+      // (main/fixer/triager each have ~1000 files/30d), undercounting the 30d
+      // total ~2x. The per-file mtime cache keeps steady state cheap — only the
+      // cold scan reads them all.
+      const chosen = files
+        .map((f) => {
+          try {
+            return { f, m: statSync(f).mtimeMs };
+          } catch {
+            return { f, m: 0 };
+          }
+        })
+        .filter((x) => x.m >= cutoffMs);
+
+      for (const { f, m } of chosen) {
+        livePaths.add(f);
+        const fc = scanFileCost(f, m);
+        if (!fc.hadSignal) continue;
+        const sdkId = basename(f).replace(/\.jsonl$/, '');
+        const nanoId = sdkToNano.get(sdkId) || '';
+        for (const period of CONTEXT_PERIODS) {
+          const since = cutoffs[period];
+          let cost = 0;
+          let tokens = 0;
+          let inWindow = false;
+          for (const [key, d] of fc.days) {
+            if (period !== 'all' && !(key >= since)) continue;
+            inWindow = true;
+            cost += d.cost;
+            tokens += d.tokens;
+          }
+          if (!inWindow) continue;
+          // Merge onto the nanoclaw session (a session can span multiple SDK
+          // sub-sessions/files); unmapped files bucket under their SDK id so
+          // their cost is still counted, just without a working link.
+          const mapKey = nanoId || sdkId;
+          const bucket = next[period];
+          const prev = bucket.get(mapKey);
+          if (prev) {
+            prev.cost += cost;
+            prev.tokens += tokens;
+            prev.lastActiveMs = Math.max(prev.lastActiveMs, m);
+            prev.unpriced = prev.unpriced || fc.unpriced;
+          } else {
+            bucket.set(mapKey, {
+              sessionId: nanoId,
+              sdkSessionId: sdkId,
+              groupFolder: group.folder,
+              groupName: group.name,
+              cost,
+              tokens,
+              lastActiveMs: m,
+              unpriced: fc.unpriced,
+            });
+          }
+        }
+      }
+    }
+    sessionCostCache = next;
+    if (perFileCostCache.size > livePaths.size * 2 + 1000) {
+      for (const k of perFileCostCache.keys()) if (!livePaths.has(k)) perFileCostCache.delete(k);
+    }
+    writeCostThresholdFile(next);
+    // Snapshot the freshly-updated + pruned per-file cache so the next process
+    // start is warm (see loadPerFileCostCache). Fail-soft; advisory only.
+    persistPerFileCostCache();
+  } catch {
+    /* DB not ready */
+  } finally {
+    sessionCostScanning = false;
+  }
+}
+
+/**
+ * Publish `data/cost-thresholds.json` — the p90 of priced per-session cost over
+ * a trailing window — so the runner can seed each new per-run cost cap from the
+ * fleet's recent spend distribution. Shared contract (dashboard WRITES, host
+ * READS): { p90Usd, period, sampleSize, computedAt }.
+ *
+ * Prefer the 7d window (responsive to recent spend); fall back to 30d when 7d
+ * has no priced sessions yet. Percentile method matches the Sessions-tab pctl
+ * (sort asc; index = floor(0.9*(n-1))). Written atomically (tmp + rename) and
+ * fail-soft — the file is advisory, so any error just skips this cycle.
+ */
+function writeCostThresholdFile(byPeriod: SessionCostByPeriod): void {
+  try {
+    let period: ContextPeriod = '30d';
+    let entries: SessionCostEntry[] = [];
+    for (const p of ['7d', '30d'] as ContextPeriod[]) {
+      const priced = [...byPeriod[p].values()].filter((e) => e.cost > 0);
+      if (priced.length) {
+        period = p;
+        entries = priced;
+        break;
+      }
+    }
+    if (entries.length === 0) return;
+
+    // p90 of a cost array — sort asc, index = floor(0.9*(n-1)). Matches the
+    // Sessions-tab pctl and the host's resolveCostCapT2Usd read contract.
+    const p90Of = (arr: number[]): number => {
+      const s = [...arr].sort((a, b) => a - b);
+      return s[Math.min(s.length - 1, Math.floor(0.9 * (s.length - 1)))];
+    };
+
+    // Per-group p90 over each group's OWN priced sessions — the Tier-1 cap the
+    // host prefers over the fleet number. A fleet p90 is dragged down by the many
+    // cheap orchestrator/reviewer sessions (so it under-serves fixer) and can't
+    // over-cap a reviewer at once. Only groups with a real sample get an entry;
+    // the host falls back to the fleet p90 for smaller/newer groups.
+    const MIN_GROUP_SAMPLE = 10;
+    const byGroup = new Map<string, number[]>();
+    for (const e of entries) {
+      if (!e.groupFolder) continue;
+      (byGroup.get(e.groupFolder) ?? byGroup.set(e.groupFolder, []).get(e.groupFolder)!).push(e.cost);
+    }
+    const perGroupP90Usd: Record<string, number> = {};
+    for (const [folder, arr] of byGroup) {
+      if (arr.length >= MIN_GROUP_SAMPLE) perGroupP90Usd[folder] = p90Of(arr);
+    }
+
+    const payload =
+      JSON.stringify({
+        p90Usd: p90Of(entries.map((e) => e.cost)),
+        perGroupP90Usd,
+        period,
+        sampleSize: entries.length,
+        computedAt: new Date().toISOString(),
+      }) + '\n';
+    const outPath = join(getDataDir(), 'cost-thresholds.json');
+    const tmpPath = `${outPath}.tmp-${process.pid}-${Date.now()}`;
+    writeFileSync(tmpPath, payload);
+    renameSync(tmpPath, outPath);
+  } catch {
+    /* fail-soft: threshold file is advisory */
+  }
+}
+
+/**
+ * Per-group p99 of priced cost for a period-scoped cost map — the "is this
+ * session unusually expensive for ITS group" signal the Sessions-tab pill
+ * colors by (see renderCostCapCell in app.js). Purely visual/informational:
+ * unlike the runner's Tier-2 ceiling (which actually blocks new work), this
+ * never gates or stops anything — it's read fresh per `/api/sessions` request
+ * from the already-cached `sessionCostCache[period]`, no disk I/O, no shared
+ * contract with the runner (compare `writeCostThresholdFile` above, which
+ * publishes p90 for the runner's Tier-1 cap — a completely separate number
+ * for a completely separate purpose). Small groups (<MIN_GROUP_SAMPLE priced
+ * sessions) fall back to the fleet p99 rather than a noisy few-sample stat.
+ */
+function computeCostP99ByGroup(costByNano: Map<string, SessionCostEntry>): {
+  fleetP99: number | null;
+  perGroupP99: Map<string, number>;
+} {
+  const MIN_GROUP_SAMPLE = 10;
+  const priced = [...costByNano.values()].filter((e) => e.cost > 0);
+  if (priced.length === 0) return { fleetP99: null, perGroupP99: new Map() };
+
+  // Same percentile method as writeCostThresholdFile's p90Of: sort asc, index
+  // = floor(p*(n-1)).
+  const percentileOf = (arr: number[], p: number): number => {
+    const s = [...arr].sort((a, b) => a - b);
+    return s[Math.min(s.length - 1, Math.floor(p * (s.length - 1)))];
+  };
+
+  const byGroup = new Map<string, number[]>();
+  for (const e of priced) {
+    if (!e.groupFolder) continue;
+    (byGroup.get(e.groupFolder) ?? byGroup.set(e.groupFolder, []).get(e.groupFolder)!).push(e.cost);
+  }
+  const perGroupP99 = new Map<string, number>();
+  for (const [folder, arr] of byGroup) {
+    if (arr.length >= MIN_GROUP_SAMPLE) perGroupP99.set(folder, percentileOf(arr, 0.99));
+  }
+  return { fleetP99: percentileOf(priced.map((e) => e.cost), 0.99), perGroupP99 };
+}
+
+// ---------- Warm-start persistence for the per-file cost cache ----------
+//
+// A cold start otherwise re-parses EVERY per-session transcript (thousands of
+// files on a large install) before the Sessions cost column populates. The
+// in-memory `perFileCostCache` is lost on restart, so this snapshots it to disk
+// after each refresh and reloads it on startup. Because entries are mtime-keyed,
+// the next scan re-parses ONLY files whose mtime changed — a warm start.
+//
+// Fail-soft in every direction: a missing / corrupt / older-schema file falls
+// back to a full cold scan and NEVER throws. This never changes computed output —
+// a warm cache hit returns the same PerFileCost a fresh parse would (numbers
+// round-trip through JSON exactly, and day-key insertion order is preserved), so
+// percentile/threshold output is bit-identical to today; only cold-start latency
+// drops.
+//
+// Two invalidation keys, both mandatory on load:
+//   - COST_CACHE_VERSION    — bump on any PerFileCost SHAPE change.
+//   - COST_MATH_FINGERPRINT — a hash of the cost MATH (the pricing table plus the
+//     priceUsage / normalizeModel / scanFileCost bodies). An mtime keys a file's
+//     RAW content; it cannot see a pricing or parser edit that changes the
+//     COMPUTED cost of otherwise-unchanged files. Folding the math into the tag
+//     means such an edit invalidates the whole persisted cache (and its derived
+//     thresholds) instead of serving stale costs forever. Hashing MODEL_PRICING's
+//     data is required — priceUsage closes over the table, so its .toString()
+//     alone would miss a rate change.
+const COST_CACHE_VERSION = 1;
+const COST_MATH_FINGERPRINT = createHash('sha1')
+  .update(JSON.stringify(MODEL_PRICING))
+  .update('\0')
+  .update(priceUsage.toString())
+  .update('\0')
+  .update(normalizeModel.toString())
+  .update('\0')
+  .update(scanFileCost.toString())
+  .digest('hex')
+  .slice(0, 16);
+function costCachePath(): string {
+  return join(getDataDir(), 'dashboard-cost-cache.json');
+}
+
+// PerFileCost.days is a Map, which JSON can't serialize directly. Carry it as an
+// array of [dayKey, {cost, tokens}] pairs (preserving insertion order so summed
+// floats stay bit-identical) and rebuild the Map on load. `ok` is intentionally
+// NOT persisted: only ok entries are written, so a loaded entry is ok by
+// construction.
+interface PersistedPerFileCost {
+  mtimeMs: number;
+  days: Array<[string, { cost: number; tokens: number }]>;
+  unpriced: boolean;
+  hadSignal: boolean;
+}
+
+function loadPerFileCostCache(): void {
+  try {
+    const p = costCachePath();
+    if (!existsSync(p)) return;
+    const parsed = JSON.parse(readFileSync(p, 'utf-8')) as {
+      version?: number;
+      fingerprint?: string;
+      entries?: Array<[string, PersistedPerFileCost]>;
+    };
+    if (
+      !parsed ||
+      parsed.version !== COST_CACHE_VERSION ||
+      parsed.fingerprint !== COST_MATH_FINGERPRINT ||
+      !Array.isArray(parsed.entries)
+    )
+      return;
+    for (const entry of parsed.entries) {
+      if (!Array.isArray(entry) || entry.length !== 2) continue;
+      const [path, v] = entry;
+      if (typeof path !== 'string' || !v || typeof v.mtimeMs !== 'number' || !Array.isArray(v.days)) continue;
+      const days = new Map<string, { cost: number; tokens: number }>();
+      let malformed = false;
+      for (const dv of v.days) {
+        if (!Array.isArray(dv) || dv.length !== 2) {
+          malformed = true;
+          break;
+        }
+        const [k, ct] = dv;
+        if (typeof k !== 'string' || !ct || typeof ct.cost !== 'number' || typeof ct.tokens !== 'number') {
+          malformed = true;
+          break;
+        }
+        days.set(k, { cost: ct.cost, tokens: ct.tokens });
+      }
+      // A malformed day record means this entry can't be trusted as complete —
+      // skip it entirely so the next scan sees a cache MISS and cold-re-parses
+      // the file, rather than serving a silently-undercounted cost with a
+      // still-trusted mtime.
+      if (malformed) continue;
+      perFileCostCache.set(path, {
+        mtimeMs: v.mtimeMs,
+        days,
+        unpriced: v.unpriced === true,
+        hadSignal: v.hadSignal === true,
+        ok: true,
+      });
+    }
+  } catch {
+    /* fail-soft: a missing/corrupt/older cache just means a full cold scan */
+  }
+}
+
+function persistPerFileCostCache(): void {
+  try {
+    const entries: Array<[string, PersistedPerFileCost]> = [];
+    for (const [path, v] of perFileCostCache) {
+      // Skip transient/failed reads (ok=false): persisting an empty error entry
+      // would suppress that file's cost across every restart until its mtime
+      // changes. Only durable, successfully-parsed entries earn a warm slot.
+      if (!v.ok) continue;
+      entries.push([
+        path,
+        { mtimeMs: v.mtimeMs, days: [...v.days.entries()], unpriced: v.unpriced, hadSignal: v.hadSignal },
+      ]);
+    }
+    const payload = JSON.stringify({ version: COST_CACHE_VERSION, fingerprint: COST_MATH_FINGERPRINT, entries });
+    const outPath = costCachePath();
+    const tmpPath = `${outPath}.tmp-${process.pid}-${Date.now()}`;
+    writeFileSync(tmpPath, payload);
+    renameSync(tmpPath, outPath);
+  } catch {
+    /* fail-soft: the warm-start cache is advisory */
+  }
+}
+
 if (!process.env.VITEST) {
   // Defer the first (cold) scan a few seconds so it never blocks server startup —
   // it reads every transcript once (~seconds on a large install); after that the
@@ -1886,88 +2528,26 @@ if (!process.env.VITEST) {
   setTimeout(refreshContextStatsCache, 4000).unref?.();
   const ctxStatsTimer = setInterval(refreshContextStatsCache, 60000);
   ctxStatsTimer.unref?.();
+  // Per-session cost shares the same cadence. Offset the cold scan slightly so
+  // the two full-transcript passes don't land in the same tick on startup.
+  // Warm the per-file cache from disk first (before the first scan) so the cold
+  // scan re-parses only files whose mtime changed since the last snapshot.
+  loadPerFileCostCache();
+  setTimeout(refreshSessionCostCache, 6000).unref?.();
+  const sessCostTimer = setInterval(refreshSessionCostCache, 60000);
+  sessCostTimer.unref?.();
 }
 
-// ---------- Per-group token aggregation (JSONL scanning) ----------
-interface GroupTokenBucket {
-  requests: number;
-  inputTokens: number;
-  outputTokens: number;
-  cacheReadTokens: number;
-  cacheCreationTokens: number;
-  name: string;
-}
-let groupTokenCache: Record<string, GroupTokenBucket> = {};
-
-function refreshGroupTokens(): void {
-  const sessionsDir = join(getDataDir(), 'v2-sessions');
-  if (!existsSync(sessionsDir)) {
-    groupTokenCache = {};
-    return;
-  }
-
-  const nameMap = new Map<string, string>();
-  if (db) {
-    try {
-      const groups = db.prepare('SELECT id, name FROM agent_groups').all() as { id: string; name: string }[];
-      for (const g of groups) nameMap.set(g.id, g.name);
-    } catch {
-      /* ignore */
-    }
-  }
-
-  const byGroup: Record<string, GroupTokenBucket> = {};
-  let agDirs: string[];
-  try {
-    agDirs = readdirSync(sessionsDir).filter((d) => d.startsWith('ag-'));
-  } catch {
-    return;
-  }
-
-  for (const agDir of agDirs) {
-    const claudeShared = join(sessionsDir, agDir, '.claude-shared');
-    const jsonlFiles = collectClaudeJsonlFiles(claudeShared);
-
-    for (const file of jsonlFiles) {
-      let content: string;
-      try {
-        content = readFileSync(file, 'utf-8');
-      } catch {
-        continue;
-      }
-      for (const line of content.split('\n')) {
-        if (!line.trim()) continue;
-        try {
-          const r = JSON.parse(line);
-          if (r.type !== 'assistant' || !r.message?.usage) continue;
-          const u = r.message.usage;
-          if (!byGroup[agDir])
-            byGroup[agDir] = {
-              requests: 0,
-              inputTokens: 0,
-              outputTokens: 0,
-              cacheReadTokens: 0,
-              cacheCreationTokens: 0,
-              name: nameMap.get(agDir) || agDir,
-            };
-          byGroup[agDir].requests++;
-          byGroup[agDir].inputTokens += u.input_tokens || 0;
-          byGroup[agDir].outputTokens += u.output_tokens || 0;
-          byGroup[agDir].cacheReadTokens += u.cache_read_input_tokens || 0;
-          byGroup[agDir].cacheCreationTokens += u.cache_creation_input_tokens || 0;
-        } catch {
-          /* skip line */
-        }
-      }
-    }
-  }
-  groupTokenCache = byGroup;
-}
-refreshGroupTokens();
-if (!process.env.VITEST) {
-  const groupTokenTimer = setInterval(refreshGroupTokens, 30000);
-  groupTokenTimer.unref?.();
-}
+// ---------- Per-group token aggregation (removed — dash-perf round 2) ----------
+// The former `GroupTokenBucket` / `groupTokenCache` / `refreshGroupTokens()` +
+// 30s timer recursively discovered every JSONL transcript across the whole
+// fleet, read each file from byte zero, split every line, and JSON.parsed every
+// object — twice a minute — yet the resulting cache had NO reader anywhere in
+// the dashboard (it was only ever written and reset). It was the single largest
+// avoidable CPU sink on a large install, so it is deleted outright. If a future
+// panel needs per-group token totals, derive them from the already-parsed,
+// mtime-gated `perFileCostCache` (see refreshSessionCostCache) rather than
+// reintroducing a full-fleet whole-file re-parse on a timer.
 
 // ---------- Token metrics via ccusage (container data only) ----------
 interface CcusageDayEntry {
@@ -2118,10 +2698,34 @@ function normalizeCcusageEntry(raw: Record<string, unknown>): CcusageDayEntry {
   };
 }
 
-// Per-token pricing for models ccusage doesn't know about yet.
-// Used by scanSkillTranscriptCosts to compute cost from raw JSONL entries.
-const FALLBACK_PRICING: Record<string, { input: number; output: number; cacheCreate: number; cacheRead: number }> = {
-  'claude-sonnet-5': { input: 3e-6, output: 15e-6, cacheCreate: 3.75e-6, cacheRead: 3e-7 },
+// Per-token USD/token pricing for the skill-transcript scanner, which parses
+// raw JSONL and so cannot go through ccusage at all.
+//
+// THIS TABLE IS A DENYLIST IN DISGUISE. `scanSkillTranscriptCosts` does
+// `if (!FALLBACK_PRICING[model]) continue;` — a model missing here is not
+// merely unpriced, it is DROPPED, tokens and all. On slang-coworkers prod
+// 2026-08-11 the skill transcripts held 2,002 `claude-opus-5` entries against
+// 205 `claude-sonnet-5` ones, so the single-entry table was discarding ~90% of
+// the sampled records while reporting the remainder as if it were the total.
+//
+// Rates below are LiteLLM's (`model_prices_and_context_window.json`), the same
+// source ccusage prices against, so the two paths agree. Keeping them in sync
+// matters: the previous `claude-sonnet-5` row carried 3e-6/15e-6/3.75e-6/3e-7,
+// which is `claude-sonnet-4-6`'s price list verbatim — sonnet-5 actually bills
+// at 2e-6/1e-5/2.5e-6/2e-7, so every sonnet-5 skill transcript was marked up
+// 50%. A wrong rate is worse than a missing one: it renders with full
+// confidence and nothing about the output suggests it should be checked.
+//
+// When a new model ships, ADD IT HERE — otherwise its cost silently reads zero.
+export const FALLBACK_PRICING: Record<
+  string,
+  { input: number; output: number; cacheCreate: number; cacheRead: number }
+> = {
+  'claude-opus-5': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
+  'aws/anthropic/bedrock-claude-opus-5': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
+  'claude-opus-4-8': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
+  'claude-sonnet-5': { input: 2e-6, output: 10e-6, cacheCreate: 2.5e-6, cacheRead: 2e-7 },
+  'claude-sonnet-4-6': { input: 3e-6, output: 15e-6, cacheCreate: 3.75e-6, cacheRead: 3e-7 },
 };
 
 function scanSkillTranscriptCosts(claudeSharedDir: string, since?: string): CcusageDayEntry[] {
@@ -2146,7 +2750,9 @@ function scanSkillTranscriptCosts(claudeSharedDir: string, since?: string): Ccus
             if (entry.isDirectory()) walk(full, extractDirDate(entry.name) || dirDate);
             else if (entry.name.endsWith('.jsonl')) files.push({ path: full, dirDate });
           }
-        } catch { /* skip */ }
+        } catch {
+          /* skip */
+        }
       };
       walk(txDir, '');
     }
@@ -2155,14 +2761,25 @@ function scanSkillTranscriptCosts(claudeSharedDir: string, since?: string): Ccus
   }
   if (files.length === 0) return [];
 
-  const byDate: Record<string, Record<string, { input: number; output: number; cacheCreate: number; cacheRead: number }>> = {};
+  const byDate: Record<
+    string,
+    Record<string, { input: number; output: number; cacheCreate: number; cacheRead: number }>
+  > = {};
   for (const { path: filePath, dirDate } of files) {
     let content: string;
-    try { content = readFileSync(filePath, 'utf-8'); } catch { continue; }
+    try {
+      content = readFileSync(filePath, 'utf-8');
+    } catch {
+      continue;
+    }
     // Fall back to file mtime if no dir-based date available
     let fallbackDate = dirDate;
     if (!fallbackDate) {
-      try { fallbackDate = new Date(statSync(filePath).mtimeMs).toISOString().slice(0, 10); } catch { /* skip */ }
+      try {
+        fallbackDate = new Date(statSync(filePath).mtimeMs).toISOString().slice(0, 10);
+      } catch {
+        /* skip */
+      }
     }
     for (const line of content.split('\n')) {
       if (!line.trim()) continue;
@@ -2185,7 +2802,9 @@ function scanSkillTranscriptCosts(claudeSharedDir: string, since?: string): Ccus
         byDate[date][model].output += u.output_tokens || 0;
         byDate[date][model].cacheCreate += u.cache_creation_input_tokens || 0;
         byDate[date][model].cacheRead += u.cache_read_input_tokens || 0;
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     }
   }
 
@@ -2193,11 +2812,17 @@ function scanSkillTranscriptCosts(claudeSharedDir: string, since?: string): Ccus
   for (const [date, models] of Object.entries(byDate)) {
     const modelBreakdowns: CcusageDayEntry['modelBreakdowns'] = [];
     let totalCost = 0;
-    let totalInput = 0, totalOutput = 0, totalCC = 0, totalCR = 0;
+    let totalInput = 0,
+      totalOutput = 0,
+      totalCC = 0,
+      totalCR = 0;
     for (const [modelName, tokens] of Object.entries(models)) {
       const p = FALLBACK_PRICING[modelName];
-      const cost = tokens.input * p.input + tokens.output * p.output
-        + tokens.cacheCreate * p.cacheCreate + tokens.cacheRead * p.cacheRead;
+      const cost =
+        tokens.input * p.input +
+        tokens.output * p.output +
+        tokens.cacheCreate * p.cacheCreate +
+        tokens.cacheRead * p.cacheRead;
       modelBreakdowns.push({
         modelName,
         inputTokens: tokens.input,
@@ -2301,12 +2926,54 @@ function ccusageUnavailable(): string | null {
   return ccusageUnavailableReason;
 }
 
+/**
+ * The exact `ccusage` argv for the Claude cost query.
+ *
+ * Extracted so it can be asserted on. The defect this replaced lived ENTIRELY
+ * in the argument list — a single `--offline` — and no test of the response
+ * parser could have caught it, because ccusage's output was well-formed and
+ * self-consistent the whole time. It just priced the busiest model at zero.
+ */
+export function ccusageDailyArgs(since?: string): string[] {
+  const args = ['daily', '--json'];
+  if (since) args.push('--since', since);
+  return args;
+}
+
 function runCcusage(claudeConfigDir: string, since?: string): Promise<CcusageDayEntry[]> {
   return new Promise((resolve) => {
     // --breakdown and other legacy flags were removed in ccusage 19. Keep
     // the call to the lowest-common-denominator flags that still work.
-    const ccusageArgs = ['daily', '--json', '--offline'];
-    if (since) ccusageArgs.push('--since', since);
+    //
+    // NO --offline HERE, DELIBERATELY. `--offline` prices from the pricing
+    // snapshot bundled inside the pinned ccusage (20.0.19 — already the latest
+    // release, so there is no version bump that fixes this). That snapshot has
+    // no entry for `claude-opus-5` or `aws/anthropic/bedrock-claude-opus-5`,
+    // and ccusage's response to an unknown model is to emit cost 0 with the
+    // TOKENS INTACT rather than to error. Measured on slang-coworkers prod
+    // 2026-08-11, all 23 agent groups, since 2026-08-01:
+    //
+    //   claude-opus-5   in 41.0M  out 129.4M  cacheR 38.0B  ->  $0.00 offline
+    //                                                           $30,884.70 online
+    //
+    // opus-5 carries ~98% of the tokens on this box, so every cost number the
+    // dashboard rendered — the cost tiles, the daily chart, and cost-per-PR in
+    // the funnel — was the 2% tail: ~$603 shown against ~$31,511 actual, a 52x
+    // understatement. Nothing went red; an unpriced model and a genuinely free
+    // one are indistinguishable in ccusage's output.
+    //
+    // Online pricing resolves against LiteLLM's live DB, which has had opus-5
+    // all along, and leaves every already-correct model byte-identical (haiku
+    // 4-5, opus-4-8, sonnet-5 all unchanged) — the signature of a pure
+    // pricing-data gap rather than a computation bug. Cost measured at 0.476s
+    // vs 0.385s offline, so this is not a latency trade.
+    //
+    // If the network is unavailable ccusage falls back to the bundled snapshot
+    // silently (verified by blackholing the proxy: same $165.58 the offline run
+    // produced, no error, full 11 days of data). So this is fail-soft, never
+    // fail-blank — but a sustained outage would quietly reinstate the $0. This
+    // box has network.
+    const ccusageArgs = ccusageDailyArgs(since);
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
@@ -2321,9 +2988,21 @@ function runCcusage(claudeConfigDir: string, since?: string): Promise<CcusageDay
     const env: Record<string, string | undefined> = { ...process.env };
     if (claudeConfigDir) env.CLAUDE_CONFIG_DIR = claudeConfigDir;
     else delete env.CLAUDE_CONFIG_DIR;
-    if (!env.CCUSAGE_MODEL_ALIASES) env.CCUSAGE_MODEL_ALIASES = 'claude-sonnet-5=claude-sonnet-4-6';
-    else if (!env.CCUSAGE_MODEL_ALIASES.includes('claude-sonnet-5'))
-      env.CCUSAGE_MODEL_ALIASES += ',claude-sonnet-5=claude-sonnet-4-6';
+    // NO sonnet-5 ALIAS. This used to force `claude-sonnet-5=claude-sonnet-4-6`
+    // — the workaround for the same offline-snapshot gap that hid opus-5, added
+    // when sonnet-5 shipped and the bundled price list didn't know it yet.
+    //
+    // Against live LiteLLM pricing it is now both redundant and WRONG in two
+    // ways. Redundant: `claude-sonnet-5` resolves natively (verified on prod
+    // 2026-08-11 — the same $5.83 with the env var unset). Wrong: sonnet-4-6
+    // bills at 3e-6/1.5e-5 against sonnet-5's 2e-6/1e-5, so the alias marked
+    // sonnet-5 up 50%; and aliasing MERGES THE LABELS, folding sonnet-5's rows
+    // into sonnet-4-6 so the per-model breakdown could no longer tell the two
+    // apart. That is a bad trade for a panel whose whole job is attribution.
+    //
+    // Deliberately not replaced with an opus-5 alias for the same reason: an
+    // alias buys a plausible total at the cost of a truthful breakdown. Live
+    // pricing gives both.
     const cb = (err: any, stdout: string) => {
       clearTimeout(timer);
       if (timedOut || err) {
@@ -2871,7 +3550,7 @@ function refreshActivityData(): void {
     .sort((a, b) => a.hour.localeCompare(b.hour));
 }
 refreshActivityData();
-const activityTimer = setInterval(refreshActivityData, 30000);
+activityTimer = setInterval(refreshActivityData, 30000);
 activityTimer.unref?.();
 
 // ---------- Users data collection ----------
@@ -3808,13 +4487,15 @@ function getState(): DashboardState {
         }
       }
 
-      // Count scheduled tasks from session DBs
+      // Count scheduled tasks from the background-refreshed per-group snapshot.
+      // getGroupTaskSummary is a memo hit in steady state, so the 5s state
+      // broadcast no longer walks every session dir + opens every inbound.db;
+      // it falls back to a live (mtime-cached) scan only when the memo is cold.
       if (db) {
         try {
           const agRow2 = db.prepare('SELECT id FROM agent_groups WHERE folder = ?').get(folder) as any;
           if (agRow2) {
-            const { sessionIds } = collectSessionDbFiles(agRow2.id);
-            taskCount = extractScheduledTasks(agRow2.id, sessionIds).length;
+            taskCount = getGroupTaskSummary(agRow2.id).tasks.length;
           }
         } catch {
           /* ignore */
@@ -3992,43 +4673,471 @@ function computeAcceptKey(key: string): string {
 const wsClients = new Set<any>();
 const sseClients = new Set<import('http').ServerResponse>();
 
-let lastBroadcastJson: string | null = null;
-let stateCache:
-  | {
-      data: DashboardState;
-      json: string;
-      envelope: string;
-      dedupJson: string;
-      createdAt: number;
-    }
-  | undefined;
-let stateCacheDirty = true;
-const clientSkipCounts = new WeakMap<any, number>();
 const STATE_REFRESH_MS = 5_000;
 const BACKPRESSURE_THRESHOLD = 512 * 1024;
-const MAX_CONSECUTIVE_SKIPS = 5;
+// A client kept continuously blocked (never drains) past this bound is
+// disconnected — a slow reader must not pin memory forever. This replaces the
+// old "5 consecutive skipped frames" heuristic with a wall-clock bound, since a
+// blocked client now receives at most one small `resync` marker on drain rather
+// than a queue of full snapshots.
+const BLOCKED_MAX_MS = 60_000;
 
+// ---- Revisioned state + delta broadcast (dash-perf round 2) --------------
+// The live channel (WS + SSE) no longer fans out a full state snapshot every
+// 5s. Instead:
+//   • A client obtains a full snapshot from /api/state (initial load, resync)
+//     or the SSE `snapshot`/WS-connect frame — the legacy `type:'state'`
+//     envelope, now carrying a monotonic `stateRev`.
+//   • On each reconciliation pass we rebuild state, diff it against the last
+//     broadcast baseline, and push only the CHANGED keyed objects as a
+//     `state-delta` (coworker/registered-group upsert+remove + scalar fields)
+//     tagged with `{ baseRev, rev }`. An empty diff sends nothing.
+//   • A client that misses a delta (slow socket) sees the next delta's baseRev
+//     fail to match its local rev and refetches /api/state (self-healing). On
+//     drain a blocked client is nudged with a single `resync` marker.
+// This eliminates the periodic triple-serialization + full-state fan-out that
+// dominated idle CPU/bandwidth while keeping correctness: the client's merged
+// state always converges to exactly what a full snapshot would produce, and any
+// ambiguity resolves to a resync rather than a wrong count.
+interface StablePublishedState {
+  coworkers: CoworkerState[];
+  registeredGroups: any[];
+  maxConcurrentContainers: number;
+}
+interface KeyedChange<T> {
+  upsert: T[];
+  remove: string[];
+  /** Full key list of the NEW array, in server order — present ONLY when
+   *  `orderChanged` is true. The client rebuilds its array in exactly this
+   *  order: a keyed upsert/remove merge alone preserves the CLIENT's insertion
+   *  order, which silently diverges from the server's whenever the server
+   *  reorders without changing any item (index-positional UI like the
+   *  pixel-office desk assignment then renders the wrong layout).
+   *
+   *  Omitted on an unchanged order because it is O(fleet) bytes on EVERY delta —
+   *  a one-coworker status change shipped the whole fleet's key list twice, which
+   *  is most of the bandwidth win this delta protocol exists to deliver. When it
+   *  is absent, `orderChanged: false` is the server's explicit statement that the
+   *  membership AND order are untouched, which a client-side Map merge
+   *  reproduces exactly. A keyed change carrying NEITHER is a legacy/mixed
+   *  version frame and the client refuses it (fail closed). */
+  order?: string[];
+  /** True when `order` differs from the baseline's order. Ordering-only changes
+   *  produce no upserts/removes, so this is what keeps them from being dropped
+   *  as an "empty" delta — and its `false` is what licenses omitting `order`. */
+  orderChanged: boolean;
+}
+interface StateDelta {
+  coworkers: KeyedChange<CoworkerState>;
+  registeredGroups: KeyedChange<any>;
+  fields: Record<string, unknown>;
+}
+// Identity of THIS server process. Revisions are per-process counters, so a
+// restart resets them: without an epoch a client left at rev N by the old
+// process would happily accept `{baseRev:N, rev:N+1}` from the new process and
+// patch it onto a baseline the new process never had (e.g. a coworker deleted
+// during downtime would stay on screen forever, because the new server's
+// baseline has no row to remove). Clients compare (epoch, rev) and full-resync
+// on any epoch change.
+const STATE_EPOCH = randomUUID();
+let publishedRev = 0; // rev of `publishedStable`; 0 == nothing published yet
+let publishedStable: StablePublishedState | null = null; // diff baseline == what in-sync live clients hold
+let publishedData: DashboardState | null = null; // full data for /api/state, matching publishedRev
+let publishedAt = 0;
+let stateDirtyHint = true; // a mutating path asked for a prompt rebuild
+
+// Instrumentation (dash-perf acceptance gates) — exposed via /api/debug.
+const perfCounters = {
+  deltaFramesSent: 0,
+  deltaBytesSent: 0,
+  fullStateFramesSent: 0,
+  resyncsSent: 0,
+  emptyPublishes: 0,
+  changedPublishes: 0,
+  slowClientDrops: 0,
+  blockedClientEvents: 0,
+  maxObservedWritableLength: 0,
+  scanMsgTsPublishes: 0,
+  scanActivityPublishes: 0,
+  scanCostCapsPublishes: 0,
+  workerActive: false,
+};
+
+/** Ask the next publish to rebuild promptly rather than reuse the throttle window. */
 function invalidateStateCache(): void {
-  stateCacheDirty = true;
+  stateDirtyHint = true;
 }
 
-function getStateCache(): NonNullable<typeof stateCache> {
-  const now = Date.now();
-  if (!stateCache || stateCacheDirty || now - stateCache.createdAt >= STATE_REFRESH_MS) {
-    if (!db) db = openDb();
-    const data = getState();
-    const { timestamp: _timestamp, lastHookEventId: _lastHookEventId, ...stableData } = data;
-    stateCache = {
-      data,
-      json: JSON.stringify(data),
-      envelope: JSON.stringify({ type: 'state', data }),
-      dedupJson: JSON.stringify(stableData),
-      createdAt: now,
-    };
-    stateCacheDirty = false;
+function keyedDiff<T extends Record<string, unknown>>(
+  prev: T[],
+  next: T[],
+  keyOf: (x: T) => string,
+): KeyedChange<T> {
+  const prevByKey = new Map<string, string>();
+  for (const p of prev) prevByKey.set(keyOf(p), JSON.stringify(p));
+  const upsert: T[] = [];
+  const order: string[] = [];
+  const seen = new Set<string>();
+  for (const n of next) {
+    const k = keyOf(n);
+    seen.add(k);
+    order.push(k);
+    const pj = prevByKey.get(k);
+    if (pj === undefined || pj !== JSON.stringify(n)) upsert.push(n);
   }
-  return stateCache;
+  const remove: string[] = [];
+  for (const k of prevByKey.keys()) if (!seen.has(k)) remove.push(k);
+  const prevOrder = prev.map(keyOf);
+  const orderChanged = prevOrder.length !== order.length || prevOrder.some((k, i) => k !== order[i]);
+  // Ship `order` only when it actually changed — see KeyedChange.order.
+  return orderChanged ? { upsert, remove, order, orderChanged } : { upsert, remove, orderChanged };
 }
+
+function diffStable(prev: StablePublishedState, next: StablePublishedState): StateDelta {
+  const fields: Record<string, unknown> = {};
+  if (prev.maxConcurrentContainers !== next.maxConcurrentContainers) {
+    fields.maxConcurrentContainers = next.maxConcurrentContainers;
+  }
+  return {
+    coworkers: keyedDiff(prev.coworkers as any, next.coworkers as any, (c: any) => String(c.folder)),
+    registeredGroups: keyedDiff(prev.registeredGroups as any, next.registeredGroups as any, (g: any) => String(g.id)),
+    fields,
+  };
+}
+
+function isEmptyDelta(d: StateDelta): boolean {
+  return (
+    d.coworkers.upsert.length === 0 &&
+    d.coworkers.remove.length === 0 &&
+    !d.coworkers.orderChanged &&
+    d.registeredGroups.upsert.length === 0 &&
+    d.registeredGroups.remove.length === 0 &&
+    !d.registeredGroups.orderChanged &&
+    Object.keys(d.fields).length === 0
+  );
+}
+
+/** Test-only surface for the state-delta diff + scan-worker handoff (dash-perf round 2). */
+export const __dashPerfTestHooks = {
+  diffStable: (prev: StablePublishedState, next: StablePublishedState): StateDelta => diffStable(prev, next),
+  isEmptyDelta: (d: StateDelta): boolean => isEmptyDelta(d),
+  stateEpoch: (): string => STATE_EPOCH,
+  createScanHandoff: (hooks: ScanHandoffHooks) => createScanHandoff(hooks),
+};
+
+/**
+ * Rebuild state, diff it against the last broadcast baseline, broadcast a
+ * `state-delta` if the stable body changed, and return the current full data +
+ * its rev. Throttled: unless `force` or a dirty hint is set, a call within
+ * STATE_REFRESH_MS of the last build reuses the previous result so bursty
+ * /api/state polls don't each trigger a full rebuild. The reconciliation timer
+ * calls it with `force` so out-of-band (DB/filesystem-backed) changes — e.g. a
+ * container status the dashboard has no JS hook for — are still picked up.
+ */
+function publishState(force = false): { data: DashboardState; rev: number } {
+  const now = Date.now();
+  if (!force && !stateDirtyHint && publishedData && now - publishedAt < STATE_REFRESH_MS) {
+    return { data: publishedData, rev: publishedRev };
+  }
+  if (!db) db = openDb();
+  const data = getState();
+  const stable: StablePublishedState = {
+    coworkers: data.coworkers,
+    registeredGroups: data.registeredGroups,
+    maxConcurrentContainers: data.maxConcurrentContainers,
+  };
+  stateDirtyHint = false;
+  publishedAt = now;
+
+  if (publishedStable) {
+    const delta = diffStable(publishedStable, stable);
+    if (isEmptyDelta(delta)) {
+      perfCounters.emptyPublishes++;
+      publishedData = data; // refresh volatile fields (timestamp/lastHookEventId) without a rev bump
+      return { data, rev: publishedRev };
+    }
+    perfCounters.changedPublishes++;
+    const prevRev = publishedRev;
+    publishedRev += 1;
+    publishedStable = stable;
+    publishedData = data;
+    if (wsClients.size || sseClients.size) {
+      broadcastMessageJson(
+        JSON.stringify({
+          type: 'state-delta',
+          stateEpoch: STATE_EPOCH,
+          baseRev: prevRev,
+          rev: publishedRev,
+          ...delta,
+        }),
+      );
+    }
+    return { data, rev: publishedRev };
+  }
+
+  // First publish: establish the baseline at rev 1. No delta (no client has an
+  // older baseline to patch — new connections fetch full state at this rev).
+  publishedRev = 1;
+  publishedStable = stable;
+  publishedData = data;
+  return { data, rev: publishedRev };
+}
+
+/** Full-state envelope for the live channel's initial/resync frame (WS connect,
+ *  SSE snapshot). Carries the current rev so the client can base its deltas. */
+function fullStateEnvelope(): string {
+  const { data, rev } = publishState();
+  perfCounters.fullStateFramesSent++;
+  return JSON.stringify({ type: 'state', data: { ...data, stateEpoch: STATE_EPOCH, stateRev: rev } });
+}
+
+/** Full-state JSON for /api/state (raw body, no envelope) with the rev inlined. */
+function fullStateJson(): string {
+  const { data, rev } = publishState();
+  return JSON.stringify({ ...data, stateEpoch: STATE_EPOCH, stateRev: rev });
+}
+
+// ---- Session-DB scan worker (dash-perf round 2) --------------------------
+// A dedicated worker_threads worker owns the message-timestamp + activity fleet
+// scans (the ~6k stats/sec + thousands of SQLite opens/30s that used to run on
+// the event loop). It publishes immutable cache deltas; the main thread applies
+// them here and never opens a session DB for these scans. If the worker can't
+// start or dies, we fall back to the main-thread timers so behavior degrades to
+// pre-round-2, never breaks. Disabled under VITEST and via
+// DASHBOARD_DISABLE_SCAN_WORKER=1 (the escape hatch for the adversarial review).
+let scanWorker: Worker | null = null;
+let workerStats: Record<string, unknown> | null = null;
+
+function applyMsgTsDelta(changed: [string, string][], removed: string[]): void {
+  let any = false;
+  for (const [folder, ts] of changed) {
+    if (typeof folder === 'string' && typeof ts === 'string') {
+      lastMessageTsCache.set(folder, ts);
+      any = true;
+    }
+  }
+  for (const folder of removed) {
+    if (lastMessageTsCache.delete(folder)) any = true;
+  }
+  // lastMessageTs feeds coworker state → ask the next publish to pick it up so a
+  // new message surfaces as a state-delta.
+  if (any) invalidateStateCache();
+  perfCounters.scanMsgTsPublishes++;
+}
+
+/**
+ * Apply the worker's `costCaps` deltas to sessionCostCapsMap (dash-1
+ * set-ceiling-v2). `changed` entries carry the RAW `session_state.value` TEXT —
+ * parsing/interpretation happens here (buildCostCapEntry), not in the worker —
+ * matching applyMainThreadCostCap's division of labor so the worker path and
+ * the main-thread-fallback path can never disagree on what a given raw blob
+ * means.
+ */
+function applyCostCapsDelta(changed: [string, string, string, number][], removed: string[]): void {
+  for (const [sessionId, agentGroupId, raw, mtimeMs] of changed) {
+    if (typeof sessionId !== 'string' || typeof agentGroupId !== 'string' || typeof raw !== 'string') continue;
+    const entry = buildCostCapEntry(agentGroupId, parseCostCapBlob(raw), new Date(mtimeMs).toISOString());
+    if (entry) sessionCostCapsMap.set(sessionId, entry);
+    else sessionCostCapsMap.delete(sessionId);
+  }
+  for (const sessionId of removed) {
+    if (typeof sessionId === 'string') sessionCostCapsMap.delete(sessionId);
+  }
+  perfCounters.scanCostCapsPublishes++;
+}
+
+function restartMainThreadScans(): void {
+  if (process.env.VITEST) return;
+  if (!msgTsTimer) {
+    refreshMessageTimestamps();
+    msgTsTimer = setInterval(refreshMessageTimestamps, 1000);
+    msgTsTimer.unref?.();
+  }
+  if (!activityTimer) {
+    refreshActivityData();
+    activityTimer = setInterval(refreshActivityData, 30000);
+    activityTimer.unref?.();
+  }
+}
+
+/**
+ * Host half of the scan-worker handoff protocol.
+ *
+ * The worker publishes nothing until its warm-up pass has settled every session
+ * path, and posts `ready` immediately BEFORE its first data frame. This side
+ * still queues anything that arrives pre-`ready` instead of DISCARDING it — the
+ * bug that made round 1 wrong was structural, not cosmetic: MessagePort delivery
+ * is ordered, so a discarded frame is gone for good while the worker has already
+ * recorded it as published and will never resend it, leaving every group's
+ * lastMessageTs (unread badge, chat auto-refresh) stale indefinitely on an idle
+ * fleet. Queue-and-apply makes the handoff lossless from either side; the queue
+ * is bounded, and overflowing it asks the worker for a full republish rather
+ * than silently keeping a partial cache.
+ *
+ * Extracted (and exported via `__dashPerfTestHooks`) so the ordering can be
+ * tested without spawning a worker or a session fleet.
+ */
+interface ScanHandoffHooks {
+  applyMsgTs: (changed: [string, string][], removed: string[]) => void;
+  applyActivity: (buckets: unknown[]) => void;
+  /** Optional so existing hook objects (e.g. tests written before dash-1
+   *  set-ceiling-v2) don't need updating just to keep compiling. */
+  applyCostCaps?: (changed: [string, string, string, number][], removed: string[]) => void;
+  /** Handoff complete: the worker owns these scans, stop the main-thread timers. */
+  onReady: () => void;
+  onStats: (stats: Record<string, unknown>) => void;
+  /** The worker declared its cache unusable — revert to main-thread scans. */
+  onFatal: (message: string) => void;
+  /** Ask the worker to re-send its full state (our pre-ready queue overflowed). */
+  requestRepublish: () => void;
+  maxPreReadyFrames?: number;
+}
+
+function createScanHandoff(hooks: ScanHandoffHooks): {
+  handle: (msg: any) => void;
+  isReady: () => boolean;
+  stop: () => void;
+} {
+  const maxPreReady = hooks.maxPreReadyFrames ?? 64;
+  let ready = false;
+  let stopped = false;
+  let pending: any[] = [];
+  let droppedPreReady = false;
+
+  const applyFrame = (msg: any): void => {
+    if (msg.kind === 'msgTs') hooks.applyMsgTs(msg.changed || [], msg.removed || []);
+    else if (msg.kind === 'activity' && Array.isArray(msg.buckets)) hooks.applyActivity(msg.buckets);
+    else if (msg.kind === 'costCaps') hooks.applyCostCaps?.(msg.changed || [], msg.removed || []);
+  };
+
+  const handle = (msg: any): void => {
+    // After a fallback the main thread owns these scans again; a late frame from
+    // a dying worker must not write to the caches it is now rebuilding itself.
+    if (stopped) return;
+    if (!msg || typeof msg !== 'object') return;
+    switch (msg.kind) {
+      case 'ready': {
+        if (ready) break;
+        ready = true;
+        hooks.onReady();
+        // Apply in arrival order — the worker's frames are cumulative deltas
+        // against what it believes we hold, so order is load-bearing.
+        const queued = pending;
+        pending = [];
+        for (const frame of queued) applyFrame(frame);
+        if (droppedPreReady) {
+          droppedPreReady = false;
+          hooks.requestRepublish();
+        }
+        break;
+      }
+      case 'msgTs':
+      case 'activity':
+      case 'costCaps':
+        if (!ready) {
+          if (pending.length >= maxPreReady) droppedPreReady = true;
+          else pending.push(msg);
+          break;
+        }
+        applyFrame(msg);
+        break;
+      case 'stats':
+        hooks.onStats(msg);
+        break;
+      case 'error':
+        console.error('[dashboard] scan worker init error:', msg.message);
+        break;
+      case 'fatal':
+        hooks.onFatal(String(msg.message || 'unspecified'));
+        break;
+      default:
+        break;
+    }
+  };
+
+  return {
+    handle,
+    isReady: () => ready,
+    stop: () => {
+      stopped = true;
+      pending = [];
+    },
+  };
+}
+
+function startScanWorker(): void {
+  if (process.env.VITEST || process.env.DASHBOARD_DISABLE_SCAN_WORKER === '1') return;
+  let worker: Worker;
+  try {
+    worker = new Worker(new URL('./scan-worker.mjs', import.meta.url), {
+      workerData: { dataDir: getDataDir(), centralDbPath: getDbPath() },
+    });
+  } catch (e) {
+    console.error('[dashboard] scan worker failed to start; using main-thread scans', e);
+    return;
+  }
+  scanWorker = worker;
+  let stopHandoff: (() => void) | null = null;
+  const fallback = (reason: string): void => {
+    if (scanWorker !== worker) return; // already replaced
+    scanWorker = null;
+    perfCounters.workerActive = false;
+    // Stop applying worker frames BEFORE the main-thread scans resume, so the
+    // two can never both write the caches.
+    if (stopHandoff) stopHandoff();
+    console.error(`[dashboard] scan worker ${reason}; reverting to main-thread scans`);
+    restartMainThreadScans();
+  };
+  const handoff = createScanHandoff({
+    applyMsgTs: (changed, removed) => applyMsgTsDelta(changed, removed),
+    applyActivity: (buckets) => {
+      activityDataCache = buckets as ActivityBucket[];
+      perfCounters.scanActivityPublishes++;
+    },
+    applyCostCaps: (changed, removed) => applyCostCapsDelta(changed, removed),
+    onReady: () => {
+      perfCounters.workerActive = true;
+      // Hand off: the worker now owns these scans, so stop the main-thread
+      // timers to avoid duplicate work. The queued pre-ready frames are applied
+      // by the handoff immediately after this returns, so there is no window in
+      // which neither side owns the cache.
+      if (msgTsTimer) {
+        clearInterval(msgTsTimer);
+        msgTsTimer = undefined;
+      }
+      if (activityTimer) {
+        clearInterval(activityTimer);
+        activityTimer = undefined;
+      }
+    },
+    onStats: (stats) => {
+      workerStats = stats;
+    },
+    onFatal: (message) => {
+      fallback(`reported a fatal warm-up failure (${message})`);
+      void worker.terminate();
+    },
+    requestRepublish: () => {
+      try {
+        worker.postMessage('republish');
+      } catch (e) {
+        console.error('[dashboard] scan worker republish request failed', e);
+      }
+    },
+  });
+  stopHandoff = handoff.stop;
+  worker.on('message', (msg: any) => handoff.handle(msg));
+  worker.on('error', (e) => {
+    console.error('[dashboard] scan worker error', e);
+    fallback('errored');
+  });
+  worker.on('exit', (code) => {
+    if (code !== 0) fallback(`exited (code ${code})`);
+  });
+  worker.unref?.();
+}
+
+startScanWorker();
 
 function getLiveCoworkerPatch(event: HookEvent): Partial<CoworkerState> & { folder: string } {
   const hookState = liveHookState.get(event.group);
@@ -4053,15 +5162,20 @@ export function resetTransientDashboardStateForTests(): void {
   hookEverSeen.clear();
   lastMessageTsCache.clear();
   msgTsFileCache.clear();
+  sessionCostCapsMap.clear();
+  groupTaskCache.clear();
+  perFileTaskCache.clear();
   runningContainers.clear();
   _mcpAllTools = [];
   _typeColors = null;
   cachedTypes = null;
   wsClients.clear();
   sseClients.clear();
-  lastBroadcastJson = null;
-  stateCache = undefined;
-  stateCacheDirty = true;
+  publishedRev = 0;
+  publishedStable = null;
+  publishedData = null;
+  publishedAt = 0;
+  stateDirtyHint = true;
   try {
     db?.close();
   } catch {
@@ -4087,7 +5201,6 @@ export function resetTransientDashboardStateForTests(): void {
     all: { ...emptyCcusagePeriod },
     lastRefresh: 0,
   };
-  groupTokenCache = {};
   activityDataCache = null;
 }
 
@@ -4096,52 +5209,221 @@ export function forceOpenDbForTests(): void {
   if (!db) db = openDb();
 }
 
-function broadcastState(): void {
-  if (wsClients.size === 0 && sseClients.size === 0) return;
-  const cached = getStateCache();
-  if (cached.dedupJson === lastBroadcastJson) return;
-  lastBroadcastJson = cached.dedupJson;
-  broadcastMessageJson(cached.envelope);
+/**
+ * Force one pass of the main-thread fallback scan (msgTs + cost-cap mtime
+ * read) for tests. The scan worker is disabled under VITEST and the
+ * main-thread timer only self-schedules outside VITEST too (see
+ * msgTsTimer/refreshMessageTimestamps above), so nothing re-reads a session's
+ * outbound.db on its own during a test — this gives tests a synchronous
+ * "the fleet-scan tick just ran" hook, exactly like forceOpenDbForTests gives
+ * a synchronous "the DB handle is open" hook.
+ */
+export function refreshCostCapsForTests(): void {
+  refreshMessageTimestamps();
 }
 
-function removeSlowClient(client: any, clients: Set<any>): void {
-  const skipCount = (clientSkipCounts.get(client) ?? 0) + 1;
-  clientSkipCounts.set(client, skipCount);
-  if (skipCount < MAX_CONSECUTIVE_SKIPS) return;
+/**
+ * Peek at sessionCostCapsMap directly, bypassing /api/sessions' SQL join —
+ * needed to prove tombstoning actually REMOVES the map entry (shrinks memory)
+ * rather than merely observing that a deleted session's row no longer appears
+ * in /api/sessions, which would be true regardless of whether the map entry
+ * was ever cleaned up (the SQL join already excludes a deleted session's row
+ * on its own).
+ */
+export function getSessionCostCapForTests(sessionId: string): SessionCostCapEntry | undefined {
+  return sessionCostCapsMap.get(sessionId);
+}
+
+/** Reconciliation tick: force a rebuild + diff so DB/filesystem-backed changes
+ *  (e.g. a container status the dashboard has no JS hook for) are picked up, and
+ *  push a delta if anything changed. Skipped when no client is connected — the
+ *  next connection rebuilds a fresh baseline on demand via /api/state. */
+function broadcastState(): void {
+  if (wsClients.size === 0 && sseClients.size === 0) return;
+  publishState(true);
+}
+
+// Clients we skipped a frame for because their socket was blocked; each gets a
+// single `resync` marker once it drains (bounding the pending queue to one small
+// frame instead of a growing pile of snapshots). Wall-clock start of the current
+// blocked stretch, used to disconnect a reader that never drains.
+const staleClients = new WeakSet<any>();
+const clientBlockedSince = new WeakMap<any, number>();
+// One-shot disconnect timer armed the FIRST time a client blocks. Without it the
+// BLOCKED_MAX_MS bound was only evaluated when markStaleClient() happened to run
+// again, so a WS client blocked by the very last frame before the fleet went
+// idle (no heartbeat on the WS path) was never revisited and pinned its buffer
+// indefinitely.
+const clientBlockedTimer = new WeakMap<any, ReturnType<typeof setTimeout>>();
+
+function clearBlockedTimer(client: any): void {
+  const t = clientBlockedTimer.get(client);
+  if (t) {
+    clearTimeout(t);
+    clientBlockedTimer.delete(client);
+  }
+}
+
+/** Terminal drop for a client that never drained. res.end() is not a hard
+ *  disconnect when the peer never reads (the FIN sits behind the unflushed
+ *  buffer), so destroy the underlying socket in both cases. */
+function hardCloseClient(client: any, clients: Set<any>, isWs: boolean): void {
+  clients.delete(client);
+  clearBlockedTimer(client);
+  clientBlockedSince.delete(client);
+  staleClients.delete(client);
+  perfCounters.slowClientDrops++;
   try {
-    client.end();
+    if (isWs) {
+      client.destroy();
+    } else {
+      try {
+        client.end();
+      } catch {
+        /* ignore */
+      }
+      client.socket?.destroy?.();
+    }
   } catch {
     /* ignore */
   }
-  clients.delete(client);
+}
+
+/** True when the socket can't accept another frame right now. Both a raw WS
+ *  net.Socket and an SSE ServerResponse expose writableLength/writableNeedDrain. */
+function isClientBlocked(client: any): boolean {
+  const len = client.writableLength ?? 0;
+  if (len > perfCounters.maxObservedWritableLength) perfCounters.maxObservedWritableLength = len;
+  return client.writableNeedDrain === true || len > BACKPRESSURE_THRESHOLD;
+}
+
+/** Mark a blocked client stale and, once, arrange to nudge it with a `resync`
+ *  marker on drain. A client blocked continuously past BLOCKED_MAX_MS is
+ *  disconnected. `isWs` selects the frame encoding + the hard-close method. */
+function markStaleClient(client: any, clients: Set<any>, isWs: boolean): void {
+  const now = Date.now();
+  const since = clientBlockedSince.get(client);
+  if (since === undefined) {
+    clientBlockedSince.set(client, now);
+    perfCounters.blockedClientEvents++;
+    // Arm the bound now rather than relying on a later markStaleClient() call —
+    // there may never be one (idle fleet, and the WS path has no heartbeat).
+    const timer = setTimeout(() => {
+      clientBlockedTimer.delete(client);
+      if (!clients.has(client)) return;
+      if (!clientBlockedSince.has(client)) return; // drained in the meantime
+      hardCloseClient(client, clients, isWs);
+    }, BLOCKED_MAX_MS);
+    timer.unref?.();
+    clientBlockedTimer.set(client, timer);
+  } else if (now - since > BLOCKED_MAX_MS) {
+    hardCloseClient(client, clients, isWs);
+    return;
+  }
+  if (staleClients.has(client)) return;
+  staleClients.add(client);
+  const onDrain = (): void => {
+    staleClients.delete(client);
+    clientBlockedSince.delete(client);
+    clearBlockedTimer(client);
+    if (!clients.has(client)) return;
+    if (!isWs) {
+      // SSE recovery = RECONNECT, not an in-stream snapshot. A blocked SSE client
+      // skipped an arbitrary run of hook-event frames while stale; a full state
+      // snapshot restores coworker state but NOT those events, and the client's
+      // replay cursor (its last *delivered* event id) would then be advanced past
+      // the gap by the next live event — silently losing the skipped events.
+      // Ending the response makes the browser EventSource reconnect from that
+      // delivered id (?after= / Last-Event-ID), which replays the gap AND arrives
+      // with a fresh in-stream snapshot. The socket already drained, so end()
+      // closes cleanly — no need for the hard socket.destroy() of a slow drop.
+      clients.delete(client);
+      try {
+        client.end();
+      } catch {
+        /* ignore */
+      }
+      perfCounters.resyncsSent++;
+      return;
+    }
+    try {
+      // WS recovery: no per-frame event id or automatic reconnect to lean on, so
+      // recover IN-STREAM with a full snapshot rather than a `resync` marker that
+      // sends the client off to /api/state (an HTTP resync races the live delta
+      // stream). A same-stream snapshot is ordered by construction, so the client
+      // resumes from exactly this revision. publishState() first so any pending
+      // delta is flushed to everyone BEFORE this snapshot; the throttled second
+      // call inside fullStateEnvelope() cannot broadcast again.
+      publishState();
+      const json = fullStateEnvelope();
+      // Through sendToClient(), not a raw write(): a full snapshot is the LARGEST
+      // frame we ever send, so it is the one most likely to re-block the socket.
+      // A raw write that returns false left the client with no armed blocked-timer
+      // and no further state change to trigger one (WS has no heartbeat) — i.e.
+      // retained forever. sendToClient re-arms stale tracking, bounding lifetime.
+      sendToClient(client, clients, createWsFrame(Buffer.from(json)), true);
+      perfCounters.resyncsSent++;
+    } catch {
+      clients.delete(client);
+    }
+  };
+  try {
+    client.once('drain', onDrain);
+  } catch {
+    /* socket without an event emitter — best-effort */
+  }
+}
+
+/** Write to one client, honoring backpressure: skip (and schedule a drain
+ *  resync) if the socket is blocked or the write fills the buffer; never enqueue
+ *  another frame for a blocked client. */
+function sendToClient(client: any, clients: Set<any>, payload: string | Buffer, isWs: boolean): void {
+  if (isClientBlocked(client)) {
+    markStaleClient(client, clients, isWs);
+    return;
+  }
+  let ok = true;
+  try {
+    ok = client.write(payload);
+  } catch {
+    clients.delete(client);
+    clientBlockedSince.delete(client);
+    staleClients.delete(client);
+    clearBlockedTimer(client);
+    return;
+  }
+  if (ok) {
+    clientBlockedSince.delete(client);
+    clearBlockedTimer(client);
+  } else {
+    // The frame was buffered but the socket is now full — wait for drain before
+    // sending anything else, then resync.
+    markStaleClient(client, clients, isWs);
+  }
 }
 
 function broadcastMessageJson(json: string, eventId?: number): void {
-  const wsFrame = createWsFrame(Buffer.from(json));
-  for (const ws of wsClients) {
-    try {
-      if (ws.writableLength > BACKPRESSURE_THRESHOLD) {
-        removeSlowClient(ws, wsClients);
+  if (json.startsWith('{"type":"state-delta"')) {
+    perfCounters.deltaFramesSent++;
+    perfCounters.deltaBytesSent += json.length;
+  }
+  // Build the WS frame only when at least one WS client can take it.
+  if (wsClients.size) {
+    let wsFrame: Buffer | null = null;
+    for (const ws of wsClients) {
+      if (isClientBlocked(ws)) {
+        markStaleClient(ws, wsClients, true);
         continue;
       }
-      clientSkipCounts.set(ws, 0);
-      ws.write(wsFrame);
-    } catch {
-      wsClients.delete(ws);
+      if (!wsFrame) wsFrame = createWsFrame(Buffer.from(json));
+      sendToClient(ws, wsClients, wsFrame, true);
     }
   }
 
-  const ssePayload = `${eventId ? `id: ${eventId}\n` : ''}data: ${json}\n\n`;
-  for (const client of sseClients) {
-    try {
-      if (client.writableLength > BACKPRESSURE_THRESHOLD) {
-        removeSlowClient(client, sseClients);
-        continue;
-      }
-      clientSkipCounts.set(client, 0);
-      if (!client.write(ssePayload)) removeSlowClient(client, sseClients);
-    } catch {
-      sseClients.delete(client);
+  if (sseClients.size) {
+    const ssePayload = `${eventId ? `id: ${eventId}\n` : ''}data: ${json}\n\n`;
+    for (const client of sseClients) {
+      sendToClient(client, sseClients, ssePayload, false);
     }
   }
 }
@@ -4419,59 +5701,193 @@ function collectSessionDbFiles(agentGroupId: string): { files: Map<string, strin
   return { files, sessionIds };
 }
 
-/** Extract scheduled tasks from inbound.db for the manifest. */
-function extractScheduledTasks(
-  agentGroupId: string,
-  sessionIds: string[],
-): {
+/** One pending/paused scheduled task row, as surfaced to the dashboard. */
+interface ScheduledTaskRow {
   origId: string;
   sessionId: string;
   recurrence: string | null;
   processAfter: string | null;
   content: string;
   status: string;
-}[] {
-  const tasks: {
-    origId: string;
-    sessionId: string;
-    recurrence: string | null;
-    processAfter: string | null;
-    content: string;
-    status: string;
-  }[] = [];
-  for (const sessId of sessionIds) {
-    const dbPath = join(getDataDir(), 'v2-sessions', agentGroupId, sessId, 'inbound.db');
-    if (!existsSync(dbPath)) continue;
-    let sdb: Database | null = null;
+}
+
+// mtime-keyed cache of the pending/paused task rows in each session's inbound.db.
+// A scheduled task only changes when the host writes messages_in (create / pause
+// / resume / delete), which bumps the file's mtime; an idle session's inbound.db
+// is therefore a cheap stat rather than a sqlite open on every scan. Mirrors the
+// perFileCostCache / msgTsFileCache mtime-gating already used for the cost and
+// message-timestamp scans. Pruned in refreshGroupTaskCache once it outgrows the
+// live session set. Correctness is mtime-exact: a task mutation changes the file,
+// so the very next scan re-reads it (no stale window past the mutating write).
+const perFileTaskCache = new Map<string, { mtimeMs: number; tasks: ScheduledTaskRow[] }>();
+
+/** Read the pending/paused tasks from one session's inbound.db, mtime-gated:
+ *  reuse the cached rows when the file is unchanged since the last scan, so only
+ *  sessions whose task set actually moved pay a sqlite open. Tri-state: `ok:false`
+ *  means the DB open/query failed (transient lock / I/O). Callers building a
+ *  cached aggregate must NOT publish a `!ok` result, else a momentary lock gets
+ *  memoized as a group-wide undercount. A genuinely absent file is `ok:true` with
+ *  no tasks. Only clean reads are cached; a failed read is retried next scan. */
+function extractSessionTasks(dbPath: string, sessionId: string): { ok: boolean; tasks: ScheduledTaskRow[] } {
+  let mtimeMs: number;
+  try {
+    mtimeMs = statSync(dbPath).mtimeMs; // throws if the file doesn't exist
+  } catch {
+    perFileTaskCache.delete(dbPath);
+    return { ok: true, tasks: [] }; // no inbound.db → genuinely no tasks
+  }
+  const cached = perFileTaskCache.get(dbPath);
+  if (cached && cached.mtimeMs === mtimeMs) return { ok: true, tasks: cached.tasks };
+  let sdb: Database.Database | null = null;
+  try {
+    sdb = new Database(dbPath, { readonly: true });
+    sdb.pragma('busy_timeout = 3000');
+    const rows = sdb
+      .prepare(
+        "SELECT id, recurrence, process_after, content, status FROM messages_in WHERE kind = 'task' AND status IN ('pending', 'paused')",
+      )
+      .all() as any[];
+    const tasks: ScheduledTaskRow[] = rows.map((r) => ({
+      origId: r.id,
+      sessionId,
+      recurrence: r.recurrence || null,
+      processAfter: r.process_after || null,
+      content: r.content,
+      status: r.status,
+    }));
+    perFileTaskCache.set(dbPath, { mtimeMs, tasks }); // cache only on a clean read
+    return { ok: true, tasks };
+  } catch {
+    return { ok: false, tasks: [] }; // corrupt/locked — don't cache; next scan retries
+  } finally {
     try {
-      sdb = new Database(dbPath, { readonly: true });
-      sdb.pragma('busy_timeout = 3000');
-      const rows = sdb
-        .prepare(
-          "SELECT id, recurrence, process_after, content, status FROM messages_in WHERE kind = 'task' AND status IN ('pending', 'paused')",
-        )
-        .all() as any[];
-      for (const r of rows) {
-        tasks.push({
-          origId: r.id,
-          sessionId: sessId,
-          recurrence: r.recurrence || null,
-          processAfter: r.process_after || null,
-          content: r.content,
-          status: r.status,
-        });
-      }
+      sdb?.close();
     } catch {
-      /* DB may be corrupt or locked */
-    } finally {
-      try {
-        sdb?.close();
-      } catch {
-        /* */
-      }
+      /* */
     }
   }
-  return tasks;
+}
+
+/** Scan a group's sessions for scheduled tasks. Tri-state: `ok:false` if ANY
+ *  constituent session read failed, so the memo layer can decline to publish a
+ *  possibly-undercounted aggregate (a transient lock must not poison the memo). */
+function extractGroupTasks(agentGroupId: string, sessionIds: string[]): { ok: boolean; tasks: ScheduledTaskRow[] } {
+  const tasks: ScheduledTaskRow[] = [];
+  let ok = true;
+  for (const sessId of sessionIds) {
+    const dbPath = join(getDataDir(), 'v2-sessions', agentGroupId, sessId, 'inbound.db');
+    const r = extractSessionTasks(dbPath, sessId);
+    if (!r.ok) ok = false;
+    for (const t of r.tasks) tasks.push(t);
+  }
+  return { ok, tasks };
+}
+
+/** Fail-soft task list across a group's sessions (returns whatever read cleanly).
+ *  Used by /api/tasks and the import/export paths, which surface a live snapshot
+ *  and can tolerate a transient partial without poisoning the shared memo. */
+function extractScheduledTasks(agentGroupId: string, sessionIds: string[]): ScheduledTaskRow[] {
+  return extractGroupTasks(agentGroupId, sessionIds).tasks;
+}
+
+// Per-agent-group scheduled-task snapshot, refreshed on a background interval so
+// the hot paths (getState's 5s state broadcast, the /api/overview landing panel,
+// /api/tasks) serve counts/rows from memory instead of walking every session dir
+// and opening every inbound.db inline on the request/broadcast path. Mirrors
+// sessionCostCache / refreshSessionCostCache. The underlying scan is mtime-gated
+// (extractSessionTasks), so a steady-state refresh is a stat per session, not a
+// sqlite open. Readers fall back to a direct (still mtime-cached) scan when a
+// group is not yet in the snapshot, so a freshly-created group is never missed.
+interface GroupTaskSummary {
+  tasks: ScheduledTaskRow[];
+  active: number;
+  paused: number;
+  completed: number;
+  // When this group's summary was last (re)published — per-group, since the
+  // refresh publishes each group independently rather than swapping the whole
+  // map at the end, so readers observe a completed group's fresh count at once.
+  refreshedAt: number;
+}
+const groupTaskCache = new Map<string, GroupTaskSummary>();
+
+function summarizeGroupTasks(tasks: ScheduledTaskRow[]): GroupTaskSummary {
+  let active = 0;
+  let paused = 0;
+  let completed = 0;
+  for (const t of tasks) {
+    const st = t.status === 'pending' ? 'active' : t.status;
+    if (st === 'active') active++;
+    else if (st === 'paused') paused++;
+    else if (st === 'completed') completed++;
+  }
+  return { tasks, active, paused, completed, refreshedAt: Date.now() };
+}
+
+/** Snapshot of a group's scheduled tasks: memo hit when warm, else a live
+ *  (mtime-cached) scan. The memo is seeded only on a clean read: a partial (a
+ *  constituent DB read failed) is returned for this one response but not cached,
+ *  so the next reader/refresh retries instead of memoizing an undercount. */
+function getGroupTaskSummary(agentGroupId: string): GroupTaskSummary {
+  const cached = groupTaskCache.get(agentGroupId);
+  if (cached) return cached;
+  const { sessionIds } = collectSessionDbFiles(agentGroupId);
+  const scan = extractGroupTasks(agentGroupId, sessionIds);
+  const summary = summarizeGroupTasks(scan.tasks);
+  if (scan.ok) groupTaskCache.set(agentGroupId, summary);
+  return summary;
+}
+
+// Re-entrancy guard: the scan yields between groups (setImmediate), so a slow
+// fleet refresh can outlast the 15s interval; a second tick must not stack on
+// the first. Mirrors sessionCostScanning.
+let groupTaskRefreshing = false;
+
+/** Refresh the per-group task snapshot. Publishes each group independently the
+ *  moment its scan completes (with a per-group refreshedAt) rather than swapping
+ *  the whole map after the last group, so a slow scan can't push staleness toward
+ *  two intervals. Yields between groups so requests/SSE/WS keep flowing on a
+ *  several-thousand-session install. A group whose scan hit a transient read
+ *  error keeps its previous summary and is retried next cycle. Deleted groups are
+ *  pruned separately after the pass. */
+async function refreshGroupTaskCache(): Promise<void> {
+  if (groupTaskRefreshing) return;
+  groupTaskRefreshing = true;
+  try {
+    if (!db) db = openDb();
+    if (!db) return;
+    let groups: { id: string }[];
+    try {
+      groups = db.prepare('SELECT id FROM agent_groups').all() as { id: string }[];
+    } catch {
+      return; // DB not ready
+    }
+    const liveGroupIds = new Set<string>();
+    const livePaths = new Set<string>();
+    for (const g of groups) {
+      liveGroupIds.add(g.id);
+      const { sessionIds } = collectSessionDbFiles(g.id);
+      for (const sid of sessionIds) {
+        livePaths.add(join(getDataDir(), 'v2-sessions', g.id, sid, 'inbound.db'));
+      }
+      const scan = extractGroupTasks(g.id, sessionIds);
+      // Publish a clean read only; a partial retains the previous summary.
+      if (scan.ok) groupTaskCache.set(g.id, summarizeGroupTasks(scan.tasks));
+      // Yield so a large fleet scan doesn't monopolize the event loop; each
+      // published group is observable by readers immediately.
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+    // Prune summaries for groups that no longer exist (replaces the old
+    // whole-map swap, which is gone now that we publish per group).
+    for (const id of groupTaskCache.keys()) {
+      if (!liveGroupIds.has(id)) groupTaskCache.delete(id);
+    }
+    // Drop per-file cache entries for sessions that no longer exist.
+    if (perFileTaskCache.size > livePaths.size * 2 + 1000) {
+      for (const k of perFileTaskCache.keys()) if (!livePaths.has(k)) perFileTaskCache.delete(k);
+    }
+  } finally {
+    groupTaskRefreshing = false;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -5306,7 +6722,7 @@ export async function handleRequest(
   if (url.pathname === '/api/state') {
     if (!requireAuth(req, res)) return;
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(getStateCache().json);
+    res.end(fullStateJson());
     return;
   }
 
@@ -5357,7 +6773,12 @@ export async function handleRequest(
     const funnelPath = join(getProjectRoot(), 'reports', 'funnel.json');
     if (!existsSync(funnelPath)) {
       res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'no funnel snapshot', hint: 'run: pnpm exec tsx scripts/funnel.ts --out reports/funnel.json' }));
+      res.end(
+        JSON.stringify({
+          error: 'no funnel snapshot',
+          hint: 'run: pnpm exec tsx scripts/funnel.ts --out reports/funnel.json',
+        }),
+      );
       return;
     }
     try {
@@ -5415,6 +6836,34 @@ export async function handleRequest(
     if (!existsSync(p)) {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'no snapshot', hint: 'run: pnpm exec tsx scripts/bot-contributions.ts' }));
+      return;
+    }
+    try {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(JSON.parse(readFileSync(p, 'utf-8'))));
+    } catch {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'snapshot unreadable' }));
+    }
+    return;
+  }
+
+  // API: review-rounds snapshot — how many human CHANGES_REQUESTED rounds a PR
+  // drew before merging, bot-authored vs human-authored, by merge week. Written
+  // by scripts/review-rounds.py (host cron; see scripts/funnel-cron.sh). Served
+  // cached, never recomputed inline: it makes read-only GitHub GraphQL calls
+  // that have no business in the request path. Pass-through, exactly like
+  // /api/bot-contributions above — the producer already fails closed
+  // (complete:false + errors[] when its collection was incomplete), so this only
+  // reads and forwards.
+  if (url.pathname === '/api/review-rounds') {
+    if (!requireAuth(req, res)) return;
+    const p = join(getProjectRoot(), 'reports', 'review-rounds.json');
+    if (!existsSync(p)) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({ error: 'no snapshot', hint: 'run: python3 scripts/review-rounds.py --json reports/review-rounds.json' }),
+      );
       return;
     }
     try {
@@ -5495,57 +6944,20 @@ export async function handleRequest(
     // Note `complete: false` can coexist with `status: "drift"` — drift was found
     // AND something else could not run. `status` alone is worst-of and would hide
     // the second half, so both are surfaced.
-    const DOCTOR_STALE_HOURS = 36; // daily 05:45 cron; >36h means a run was missed
-    let doctor: {
-      available: boolean;
-      status: string | null;
-      complete: boolean | null;
-      generatedAt: string | null;
-      ageHours: number | null;
-      stale: boolean;
-      driftCount: number | null;
-      unknownCount: number | null;
-      drift: string[];
-      unknown: string[];
-      reason: string | null;
-    } = {
-      available: false,
-      status: null,
-      complete: null,
-      generatedAt: null,
-      ageHours: null,
-      stale: false,
-      driftCount: null,
-      unknownCount: null,
-      drift: [],
-      unknown: [],
-      reason: 'no drift report',
-    };
+    // Validated in full by dashboard/kb-doctor-artifact.ts. Checking only `schema`
+    // and trusting the rest let a malformed or self-contradictory report render as
+    // available, fresh and zero-drift — including `counts.drift: 0` beside a
+    // non-empty drift array, which is the precise false zero the structured artifact
+    // replaced. Anything we cannot fully understand is UNAVAILABLE with a reason.
+    let doctor: KbDoctorView;
     try {
-      const raw = JSON.parse(readFileSync(doctorPath, 'utf-8'));
-      if (raw?.schema !== 1) {
-        // An unrecognised schema is unavailable, never assumed clean.
-        doctor.reason = `unsupported kb-doctor schema: ${String(raw?.schema)}`;
-      } else {
-        const ageH = raw.generatedAt ? (Date.now() - new Date(raw.generatedAt).getTime()) / 3600000 : null;
-        doctor = {
-          available: true,
-          status: raw.status ?? null,
-          complete: raw.complete ?? null,
-          generatedAt: raw.generatedAt ?? null,
-          ageHours: ageH === null ? null : Math.round(ageH * 10) / 10,
-          stale: ageH !== null && ageH > DOCTOR_STALE_HOURS,
-          // Count comes from the producer's own tally. Deriving it by filtering
-          // report strings is what produced the original defect.
-          driftCount: raw.counts?.drift ?? null,
-          unknownCount: raw.counts?.unknown ?? null,
-          drift: Array.isArray(raw.drift) ? raw.drift : [],
-          unknown: Array.isArray(raw.unknown) ? raw.unknown : [],
-          reason: null,
-        };
-      }
-    } catch {
-      doctor.reason = 'no drift report';
+      doctor = readKbDoctorArtifact(JSON.parse(readFileSync(doctorPath, 'utf-8')));
+    } catch (err) {
+      doctor = kbDoctorUnavailable(
+        (err as NodeJS.ErrnoException)?.code === 'ENOENT'
+          ? 'no drift report'
+          : `kb-doctor report unreadable: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
     const drift = doctor.drift;
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -5601,11 +7013,23 @@ export async function handleRequest(
       'X-Accel-Buffering': 'no',
     });
     res.write('retry: 5000\n\n: connected\n\n');
-    sseClients.add(res);
 
-    if (url.searchParams.get('snapshot') !== '0') {
-      res.write(`data: ${getStateCache().envelope}\n\n`);
-    }
+    // Order matters: build the snapshot BEFORE joining the broadcast set.
+    // fullStateEnvelope() → publishState() can itself emit a `state-delta` to
+    // every registered client; if this connection were already registered it
+    // would receive that delta ahead of its own snapshot, i.e. a patch against a
+    // baseline it does not yet hold. Snapshot first, then join, so the client's
+    // frame order is snapshot → (only) deltas that post-date it.
+    //
+    // `?snapshot=0` remains for debug/external consumers, but the built-in
+    // clients no longer use it: a client that starts without a snapshot has no
+    // epoch/rev baseline, so its first delta can only be rejected.
+    const wantsSnapshot = url.searchParams.get('snapshot') !== '0';
+    const snapshotFrame = wantsSnapshot ? `data: ${fullStateEnvelope()}\n\n` : null;
+    sseClients.add(res);
+    // Every post-handshake write goes through sendToClient() so a blocked socket
+    // is tracked from its FIRST frame (see the WS upgrade handler).
+    if (snapshotFrame) sendToClient(res, sseClients, snapshotFrame, false);
 
     const cursorValue =
       url.searchParams.get('after') ||
@@ -5614,22 +7038,35 @@ export async function handleRequest(
     if (Number.isFinite(cursor) && cursor >= 0) {
       const firstBufferedId = hookEvents.find((event) => event.id !== undefined)?.id;
       if (firstBufferedId !== undefined && cursor < firstBufferedId - 1) {
-        res.write(`data: ${JSON.stringify({ type: 'resync' })}\n\n`);
+        sendToClient(res, sseClients, `data: ${JSON.stringify({ type: 'resync' })}\n\n`, false);
       } else {
         for (const event of hookEvents) {
           if (event.id === undefined || event.id <= cursor) continue;
           const payload = JSON.stringify({ type: 'hook-event', data: event });
-          res.write(`id: ${event.id}\ndata: ${payload}\n\n`);
+          sendToClient(res, sseClients, `id: ${event.id}\ndata: ${payload}\n\n`, false);
         }
       }
     }
 
+    // Capture the socket NOW: res.end() (SSE drain-recovery close) nulls
+    // res.socket, so reading res.socket inside removeClient after a clean close
+    // would skip the detach and leak a close/error handler per SSE request on the
+    // reused keep-alive socket. res.socket is stable for the life of the request.
+    const eventsSocket = res.socket;
     const removeClient = () => {
       sseClients.delete(res);
+      clearBlockedTimer(res);
+      clientBlockedSince.delete(res);
+      staleClients.delete(res);
+      // Detach the socket-level listeners: eventsSocket is reused across HTTP
+      // keep-alive requests, so leaving them attached would accumulate one
+      // close/error handler per SSE request on the same socket.
+      eventsSocket?.off?.('close', removeClient);
+      eventsSocket?.off?.('error', removeClient);
     };
     req.on('close', removeClient);
-    res.socket?.on('close', removeClient);
-    res.socket?.on('error', removeClient);
+    eventsSocket?.on('close', removeClient);
+    eventsSocket?.on('error', removeClient);
     return;
   }
 
@@ -7635,16 +9072,16 @@ export async function handleRequest(
         result.groups.total = (db.prepare('SELECT COUNT(*) as c FROM agent_groups').get() as any)?.c || 0;
         result.messages.total = (db.prepare('SELECT COUNT(*) as c FROM hook_events').get() as any)?.c || 0;
         result.sessions = (db.prepare('SELECT COUNT(*) as c FROM sessions').get() as any)?.c || 0;
+        // Task counts come from the background-refreshed per-group snapshot
+        // (getGroupTaskSummary), so this default landing panel no longer opens
+        // every session's inbound.db inline on each request — the O(N-sessions)
+        // synchronous DB-open storm that made the cold page load slow.
         const groups = db.prepare('SELECT id FROM agent_groups').all() as any[];
         for (const g of groups) {
-          const { sessionIds } = collectSessionDbFiles(g.id);
-          const tasks = extractScheduledTasks(g.id, sessionIds);
-          for (const t of tasks) {
-            const st = t.status === 'pending' ? 'active' : t.status;
-            if (st === 'active') result.tasks.active++;
-            else if (st === 'paused') result.tasks.paused++;
-            else if (st === 'completed') result.tasks.completed++;
-          }
+          const summary = getGroupTaskSummary(g.id);
+          result.tasks.active += summary.active;
+          result.tasks.paused += summary.paused;
+          result.tasks.completed += summary.completed;
         }
       } catch {
         /* ignore */
@@ -7716,6 +9153,126 @@ export async function handleRequest(
       'Cache-Control': 'no-store',
     });
     res.end(JSON.stringify({ dailyCosts, lastRefresh: ccusageCache.lastRefresh, unavailable: ccusageUnavailable() }));
+    return;
+  }
+
+  // API: unit cost — what one opened PR costs in triager+fixer+reviewer spend.
+  //
+  // The cost side is NOT recomputed here; it reads the same ccusageCache the
+  // rest of the cost UI reads, so the two can never disagree. Only the six
+  // coworker groups count, and only prod PRs form the denominator.
+  if (url.pathname === '/api/unit-cost') {
+    if (!requireAuth(req, res)) return;
+    const weeksWanted = Math.min(Math.max(Number(url.searchParams.get('weeks')) || 4, 1), 26);
+    const unavailable = ccusageUnavailable();
+    let payload: Record<string, unknown>;
+    if (unavailable) {
+      // Say why, and emit NO weeks — a caller must not be able to read this as
+      // "four weeks that each cost nothing".
+      payload = { weeks: [], groupsMatched: [], groupsMissing: UNIT_COST_GROUPS, unavailable, prSource: null };
+    } else {
+      // Denominator: prod PR→session mappings, intersected with the funnel's
+      // own row set so we count the same PRs the rest of the board counts.
+      const prWeeks = new Map<string, number>();
+      let mapped = 0;
+      let unparseableSessionIds = 0;
+      let notInFunnel = 0;
+      let funnelKeys: Set<string> | null = null;
+      try {
+        const raw = readFileSync(join(getProjectRoot(), 'reports', 'funnel.json'), 'utf8');
+        const rows = (JSON.parse(raw)?.rows ?? []) as Array<{ repo?: string; pr?: number; instance?: string }>;
+        funnelKeys = new Set(rows.filter((r) => r.instance === 'prod' && r.pr).map((r) => `${r.repo}#${r.pr}`));
+      } catch {
+        // Leave null — see the guard below. An unreadable funnel must not
+        // silently degrade to "no PRs", which would zero every denominator and
+        // render as null cost-per-PR across the board with no explanation.
+        funnelKeys = null;
+      }
+      // `db` is opened lazily (see the `if (!db) db = openDb()` further down);
+      // a route that only reads it can therefore run while it is still null and
+      // report "central DB unavailable" on a perfectly healthy box. Observed on
+      // prod the first time this route was hit.
+      if (!db) db = openDb();
+      if (!funnelKeys || !db) {
+        payload = {
+          weeks: [],
+          groupsMatched: [],
+          groupsMissing: UNIT_COST_GROUPS,
+          unavailable: !db
+            ? 'central DB unavailable'
+            : 'reports/funnel.json unreadable — cannot resolve the PR denominator',
+          prSource: null,
+        };
+      } else {
+        const maps = db
+          .prepare(
+            `SELECT repo, pr_number, session_id, created_at FROM pr_session_mappings WHERE owner_instance = 'prod'`,
+          )
+          .all() as Array<{ repo: string; pr_number: number; session_id: string; created_at: string }>;
+        const seen = new Set<string>();
+        for (const m of maps) {
+          const key = `${m.repo}#${m.pr_number}`;
+          if (!funnelKeys.has(key)) {
+            notInFunnel++;
+            continue;
+          }
+          if (seen.has(key)) continue; // one PR counts once, however many sessions touched it
+          // Prefer the epoch-ms in the session id: it is unambiguously UTC.
+          // created_at is stored naive ("YYYY-MM-DD HH:MM:SS") and new Date()
+          // reads that as LOCAL time, which can shift a row across a week
+          // boundary. Fall back to it only when the id shape is unrecognised.
+          const ms = sessionIdMs(m.session_id);
+          let week: string;
+          if (ms !== null) {
+            week = isoWeekStartFromMs(ms);
+          } else if (m.created_at) {
+            unparseableSessionIds++;
+            week = isoWeekStart(m.created_at.slice(0, 10));
+          } else {
+            unparseableSessionIds++;
+            continue;
+          }
+          seen.add(key);
+          mapped++;
+          prWeeks.set(week, (prWeeks.get(week) ?? 0) + 1);
+        }
+        // The ccusage cache keys byGroup on the agent-group DIRECTORY id, and
+        // its `groupName` falls back to that id when no display name resolves —
+        // on prod every entry is literally `ag-1776713211742-1w6l4e`. Matching
+        // the six coworkers by name against that never hits, which is how this
+        // route first shipped reporting "no cost data" on a box with 5194
+        // transcripts.
+        //
+        // Resolve id -> folder and match on FOLDER. For the six that count,
+        // folder equals name exactly; every decoy differs (`Slang Fixer` is
+        // folder `dashboard_slang-fixer`, `Slang-Reviewer` is
+        // `legacy_slang-reviewer`), so folder is the unambiguous key.
+        const folderById = new Map<string, string>();
+        for (const g of db.prepare('SELECT id, folder FROM agent_groups').all() as Array<{
+          id: string;
+          folder: string;
+        }>) {
+          folderById.set(g.id, g.folder);
+        }
+        const byGroupFoldered = (ccusageCache.all?.byGroup ?? []).map((g) => ({
+          groupName: folderById.get(g.groupId) ?? g.groupName,
+          daily: g.daily,
+        }));
+        const result = unitCostByWeek(byGroupFoldered, prWeeks, weeksWanted);
+        payload = {
+          ...result,
+          prSource: {
+            prodMappings: maps.length,
+            countedPrs: mapped,
+            droppedNotInFunnel: notInFunnel,
+            fellBackToCreatedAt: unparseableSessionIds,
+          },
+          lastRefresh: ccusageCache.lastRefresh,
+        };
+      }
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(payload));
     return;
   }
 
@@ -7816,6 +9373,11 @@ export async function handleRequest(
                 .run(newStatus, taskId);
               if (result.changes > 0) {
                 found = true;
+                // Reflect this task mutation immediately in the memoized snapshot
+                // that getState / /api/overview read, else the count lags up to
+                // one refresh interval. /api/tasks re-reads live (mtime-gated), so
+                // the write's mtime bump already makes its rows fresh.
+                groupTaskCache.delete(g.id);
                 break;
               }
             } catch {
@@ -7871,6 +9433,11 @@ export async function handleRequest(
               const result = sdb.prepare("DELETE FROM messages_in WHERE id = ? AND kind = 'task'").run(taskId);
               if (result.changes > 0) {
                 found = true;
+                // Reflect this task mutation immediately in the memoized snapshot
+                // that getState / /api/overview read, else the count lags up to
+                // one refresh interval. /api/tasks re-reads live (mtime-gated), so
+                // the write's mtime bump already makes its rows fresh.
+                groupTaskCache.delete(g.id);
                 break;
               }
             } catch {
@@ -8016,15 +9583,227 @@ export async function handleRequest(
       try {
         sessions = db
           .prepare(
-            'SELECT s.id as session_id, s.agent_group_id, s.status, s.container_status, s.last_active, ag.name as group_name, ag.folder as group_folder FROM sessions s LEFT JOIN agent_groups ag ON s.agent_group_id = ag.id',
+            'SELECT s.id as session_id, s.agent_group_id, s.thread_id, s.status, s.container_status, s.last_active, ag.name as group_name, ag.folder as group_folder FROM sessions s LEFT JOIN agent_groups ag ON s.agent_group_id = ag.id',
           )
           .all();
       } catch {
         /* ignore */
       }
     }
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(sessions));
+    // GitHub PR/issue association, when one exists — two independent, optional
+    // fields per row (many sessions, e.g. orchestrator loops or non-GitHub
+    // channels, have neither):
+    //   - repo/number/kind: prefer `pr_session_mappings` (session_id -> repo,
+    //     pr_number) — the authoritative "this PR's webhooks route here" claim
+    //     (src/modules/pr-mapping, nv-main). Falls back to parsing thread_id's
+    //     canonical `gh-issue-<repo>-<num>` / `gh-pr-<repo>-<num>` form
+    //     (src/webhook-github.ts) — every coworker on a GitHub chain shares
+    //     that thread_id verbatim (docs/thread-vs-session.md), so this also
+    //     covers triager/fixer/reviewer sessions and plain issue triage
+    //     (issues have no PR number, so no pr_session_mappings row).
+    //   - author: who filed the ORIGINATING issue/PR, from `gh_thread_origin`
+    //     (src/db/gh-thread-origin.ts, nv-main), keyed on the session's own
+    //     thread_id regardless of which source resolved repo/number above —
+    //     a fixer session working PR #500 that a triaged issue #480 spawned
+    //     shows author=whoever filed #480, which is the point ("who filed the
+    //     thing that spawned this session's work").
+    // Both tables are nv-main-owned and may not exist yet on an install that
+    // hasn't migrated (or in this branch's own isolated test DB, which has no
+    // pr-mapping module at all) — each query is independently try/catched so
+    // a lookup failure here degrades to "no badge for any row", never a
+    // broken /api/sessions response.
+    const prMapBySession = new Map<string, { repo: string; number: number }>();
+    if (db) {
+      try {
+        for (const m of db.prepare('SELECT repo, pr_number, session_id FROM pr_session_mappings').all() as Array<{
+          repo: string;
+          pr_number: number;
+          session_id: string;
+        }>) {
+          if (m.session_id) prMapBySession.set(m.session_id, { repo: m.repo, number: m.pr_number });
+        }
+      } catch {
+        /* pr_session_mappings not migrated yet — no PR badges from this source */
+      }
+    }
+    const ghOriginByThread = new Map<string, { author: string }>();
+    if (db) {
+      try {
+        for (const o of db.prepare('SELECT thread_id, author FROM gh_thread_origin').all() as Array<{
+          thread_id: string;
+          author: string;
+        }>) {
+          if (o.thread_id) ghOriginByThread.set(o.thread_id, { author: o.author });
+        }
+      } catch {
+        /* gh_thread_origin not migrated yet — no author badges */
+      }
+    }
+    // Matches the canonical thread_id shape webhook-github.ts mints:
+    // gh-issue-<owner>/<repo>-<num> / gh-pr-<owner>/<repo>-<num>, optionally
+    // followed by a documented `/<sub-task>` append-only suffix (which still
+    // names the same underlying issue/PR).
+    const GH_THREAD_RE = /^gh-(issue|pr)-(.+)-(\d+)(?:\/.+)?$/;
+    // Latest cost-ceiling adjustment per session (dash-1 set-ceiling-v2), when
+    // the paired host+runner PR (separate branch — see docs/set-ceiling-v2 in
+    // this repo's PR history) has landed and migrated. `cost_escalation_episodes`
+    // rows with target_ceiling_usd set are 'set_ceiling' operations — that
+    // column is the table's own documented operation discriminator, so a plain
+    // continue/stop episode never matches this query. One query for the whole
+    // page (not per-row), same batching as prMapBySession/ghOriginByThread
+    // above. The table (or its set_ceiling columns) may not exist yet on a host
+    // that hasn't deployed the paired PR — fails soft to "no adjustment badge
+    // for any row", exactly like those maps do for their own not-yet-migrated
+    // tables.
+    const latestAdjustmentBySession = new Map<string, LatestCostAdjustment>();
+    if (db) {
+      try {
+        const cols = db.prepare('PRAGMA table_info(cost_escalation_episodes)').all() as Array<{ name: string }>;
+        if (cols.some((c) => c.name === 'target_ceiling_usd')) {
+          const rows = db
+            .prepare(
+              `SELECT episode_id, session_id, decision_state, effect_state, target_ceiling_usd, created_at
+                 FROM cost_escalation_episodes
+                WHERE target_ceiling_usd IS NOT NULL
+                ORDER BY created_at DESC`,
+            )
+            .all() as CostEpisodeLikeRow[];
+          for (const row of rows) {
+            // ORDER BY created_at DESC → the first row seen per session_id is the latest.
+            if (latestAdjustmentBySession.has(row.session_id)) continue;
+            const mapped = mapEpisodeToLatestAdjustment(row);
+            if (mapped) latestAdjustmentBySession.set(row.session_id, mapped);
+          }
+        }
+      } catch {
+        /* cost_escalation_episodes not migrated (or set_ceiling columns absent) yet — no adjustment badges */
+      }
+    }
+    // Cost column: join the per-session cost cache for the requested period
+    // (default 30d). Every row gets `cost`/`tokens`/`costUnpriced`; a session
+    // with no priced activity in the window is 0. `?sort=cost` ranks desc so
+    // the fat tail (the few sessions that drive most spend) is at the top.
+    // `unavailable` (from the shared ccusage resolution) tells the UI to show
+    // "n/a" instead of a confident $0 when pricing is genuinely absent.
+    const periodParam = url.searchParams.get('period') || '30d';
+    const period: ContextPeriod = CONTEXT_PERIODS.includes(periodParam as ContextPeriod)
+      ? (periodParam as ContextPeriod)
+      : '30d';
+    const costByNano = sessionCostCache[period] || new Map<string, SessionCostEntry>();
+    // p99-relative color signal for the Sessions pill (see computeCostP99ByGroup) —
+    // scoped to the SAME period the request already selected, so it matches
+    // whatever window (Today/7d/30d) the user is looking at. Cheap: reuses the
+    // in-memory cache, no disk I/O, no dependency on the runner's cap tracking.
+    const { fleetP99, perGroupP99 } = computeCostP99ByGroup(costByNano);
+    // Base URL of the flat claude-trace archive (scripts/refresh-claude-trace-www.sh,
+    // served separately). When set, each priced row links to its session-precise
+    // trace file `<base>/<folder>__session-<id>*.html`. Resolved once outside the
+    // loop; empty on installs without the archive → no trace link rendered.
+    const traceBase = process.env.CLAUDE_TRACE_BASE_URL || readProjectEnvValue('CLAUDE_TRACE_BASE_URL') || '';
+    for (const s of sessions) {
+      const c = s.session_id ? costByNano.get(s.session_id) : undefined;
+      s.cost = c ? c.cost : 0;
+      s.costTokens = c ? c.tokens : 0;
+      s.costUnpriced = c ? c.unpriced : false;
+      // p99 threshold this row is judged against for pill color — the group's own
+      // (statistically meaningful sample) or the fleet's. Independent of the cap
+      // read below: a non-Claude-provider session (no cost_cap row at all) still
+      // gets a meaningful color from its raw priced spend.
+      if (s.cost > 0) {
+        const p99 = (s.group_folder && perGroupP99.get(s.group_folder)) ?? fleetP99;
+        if (p99 != null && p99 > 0) s.costP99 = p99;
+      }
+      // Cost-cap/ceiling state, published by the runner into outbound.db
+      // session_state and mirrored into sessionCostCapsMap by the scan worker /
+      // main-thread fallback (see above). Joined for EVERY session — NOT gated
+      // on s.cost>0 — because this is requirement (a) of dash-1
+      // set-ceiling-v2: a session's live ceiling must stay visible regardless
+      // of which day-window (Today/7d/30d) the priced-cost column above is
+      // scoped to. This is an in-memory Map lookup, not a per-row DB open (the
+      // old s.cost>0 gate existed specifically to avoid opening ~3000 mostly-
+      // idle sessions' SQLite files per request — that cost is now paid once,
+      // continuously, in the background, not per-request), so it's cheap
+      // unconditionally. Absent (older runner / no accrual yet) → every field
+      // below stays undefined and JSON.stringify omits it, same degradation as
+      // before.
+      const capEntry = s.session_id ? sessionCostCapsMap.get(s.session_id) : undefined;
+      const latestAdjustment = s.session_id ? latestAdjustmentBySession.get(s.session_id) : undefined;
+      Object.assign(s, buildSessionCostFields(capEntry, latestAdjustment));
+      // Session-precise trace deep-link. Sessions live under
+      // data/v2-sessions/<agent_group_id>/… but traces live under
+      // groups/<folder>/.claude-trace/session-<session_id>*.html, so map via the
+      // group folder (already joined as s.group_folder). Bounded + fail-soft;
+      // skip idle rows (s.cost<=0) to stay as cheap as the cap read above.
+      if (traceBase && s.cost > 0 && s.group_folder && s.session_id) {
+        try {
+          // Warm path: no filesystem calls — the group's trace-dir listing is
+          // cached (TTL) and reused across rows and requests. Same selection as
+          // before: newest `session-<id>*.html` by mtime.
+          const traceDir = join(getGroupsDir(), s.group_folder, '.claude-trace');
+          const listing = getTraceDirListing(traceDir);
+          const prefix = `session-${s.session_id}`;
+          let newest = '';
+          let newestMs = -1;
+          for (const f of listing) {
+            if (!f.name.startsWith(prefix)) continue;
+            if (f.mtimeMs >= newestMs) {
+              newestMs = f.mtimeMs;
+              newest = f.name;
+            }
+          }
+          if (newest) s.traceUrl = `${traceBase}/${s.group_folder}__${newest}`;
+        } catch {
+          /* fail-soft: no trace link for this row */
+        }
+      }
+      // GitHub PR/issue badge — see the map-building comment above for the
+      // repo/number/author resolution order. No filesystem I/O and no
+      // per-row DB open (unlike costCap/traceUrl above): both maps were
+      // built once, outside this loop, so this is a plain in-memory lookup
+      // and doesn't need the s.cost>0 gate those use to stay cheap.
+      try {
+        const mapped = s.session_id ? prMapBySession.get(s.session_id) : undefined;
+        const threadMatch = typeof s.thread_id === 'string' ? GH_THREAD_RE.exec(s.thread_id) : null;
+        if (mapped) {
+          s.ghRepo = mapped.repo;
+          s.ghNumber = mapped.number;
+          s.ghKind = 'pr';
+        } else if (threadMatch) {
+          s.ghKind = threadMatch[1] === 'issue' ? 'issue' : 'pr';
+          s.ghRepo = threadMatch[2];
+          s.ghNumber = Number(threadMatch[3]);
+        }
+        if (s.ghNumber && s.ghRepo) {
+          s.ghUrl = `https://github.com/${s.ghRepo}/${s.ghKind === 'issue' ? 'issues' : 'pull'}/${s.ghNumber}`;
+        }
+        const origin = typeof s.thread_id === 'string' ? ghOriginByThread.get(s.thread_id) : undefined;
+        if (origin?.author) s.ghAuthor = origin.author;
+      } catch {
+        /* fail-soft: no GitHub badge for this row */
+      }
+    }
+    if (url.searchParams.get('sort') === 'cost') {
+      sessions.sort((a, b) => (b.cost || 0) - (a.cost || 0));
+    }
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
+    });
+    res.end(
+      JSON.stringify({
+        sessions,
+        period,
+        costUnavailable: ccusageUnavailable(),
+        // Base URL of the per-session transcript archive (build-transcripts-archive.ts,
+        // served separately). When set, the Sessions tab links each row to
+        // `<base>/<group-folder>/<session-id>/index.html`. Install-specific, so it's
+        // env-configured (empty on installs without the archive → no link rendered).
+        transcriptsBase: process.env.TRANSCRIPTS_BASE_URL || readProjectEnvValue('TRANSCRIPTS_BASE_URL') || '',
+        // Base URL of the flat claude-trace archive; per-row deep-links are on
+        // s.traceUrl (resolved above). Exposed for parity with transcriptsBase.
+        traceBase,
+      }),
+    );
     return;
   }
 
@@ -8166,7 +9945,9 @@ export async function handleRequest(
           g.sessionCountA2a =
             (
               db
-                .prepare("SELECT COUNT(*) as c FROM sessions WHERE agent_group_id = ? AND messaging_group_id LIKE 'mg-a2a-%'")
+                .prepare(
+                  "SELECT COUNT(*) as c FROM sessions WHERE agent_group_id = ? AND messaging_group_id LIKE 'mg-a2a-%'",
+                )
                 .get(g.id) as any
             )?.c || 0;
           g.sessionCountReal = g.sessionCount - g.sessionCountA2a;
@@ -8990,6 +10771,7 @@ export async function handleRequest(
 
         // Optionally pause source tasks
         let pausedTasks = false;
+        let pausedChanges = 0;
         if (url.searchParams.get('pauseTasks') === 'true') {
           for (const sessId of sessionIds) {
             const dbPath = join(getDataDir(), 'v2-sessions', group.id, sessId, 'inbound.db');
@@ -8999,7 +10781,10 @@ export async function handleRequest(
               sdb = new Database(dbPath);
               sdb.pragma('journal_mode = DELETE');
               sdb.pragma('busy_timeout = 5000');
-              sdb.prepare("UPDATE messages_in SET status = 'paused' WHERE kind = 'task' AND status = 'pending'").run();
+              const info = sdb
+                .prepare("UPDATE messages_in SET status = 'paused' WHERE kind = 'task' AND status = 'pending'")
+                .run();
+              pausedChanges += info.changes;
               pausedTasks = true;
             } catch {
               /* best-effort */
@@ -9010,6 +10795,14 @@ export async function handleRequest(
                 /* */
               }
             }
+          }
+          // Any newly-paused row invalidates this group's memoized task snapshot
+          // so getState / /api/overview stop reporting the paused tasks as active
+          // until the next background refresh; the state cache is bumped too so
+          // live consumers repaint promptly.
+          if (pausedChanges > 0) {
+            groupTaskCache.delete(group.id);
+            invalidateStateCache();
           }
         }
 
@@ -10802,7 +12595,16 @@ export async function handleRequest(
       dbAvailable: !!db,
       rowCounts: {} as Record<string, number>,
       wsClients: wsClients.size,
+      sseClients: sseClients.size,
       hookEventsBuffered: hookEvents.length,
+      // dash-perf round 2 acceptance-gate instrumentation: delta-vs-full frame
+      // counts + bytes, backpressure activity, publish churn, and scan-worker
+      // health (files tracked, stats/opens per interval, last tick ms).
+      perf: {
+        stateRev: publishedRev,
+        ...perfCounters,
+        scanWorker: workerStats,
+      },
     };
     if (db) {
       try {
@@ -11365,6 +13167,7 @@ export async function handleRequest(
       }
 
       lastMessageTsCache.set(group, new Date().toISOString());
+      invalidateStateCache(); // reflect the just-sent message in the next publish
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true }));
     } catch (e: any) {
@@ -11427,6 +13230,178 @@ export async function handleRequest(
       }
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true }));
+    } catch (e: any) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
+  // POST /api/cost-override — a human decision on a per-session cost cap, sent
+  // WITHOUT an epoch (the pill's manual path, distinct from the epoch-fenced
+  // cost_decision approval card — see renderCostCapCell in app.js). The WRITE
+  // (into the session's inbound.db as a kind='cost_override' message + container
+  // wake) lives on the HOST; the dashboard is a separate process, so it proxies
+  // to the host ingress /api/dashboard/cost-override with the Bearer secret,
+  // exactly like send-to-session. Decisions: 'continue' on a session actually at
+  // its ceiling raises the ceiling by one allotment and resumes (the pill only
+  // offers this when costStatus==='stopped'); 'stop' quiesces a running,
+  // non-immortal session (a genuine manual kill switch — recorded-only for
+  // immortal, which never quiesces). This dashboard is SSO-protected (no
+  // DASHBOARD_SECRET by design), so the override intentionally does NOT
+  // fail-closed when the secret is unset.
+  if (req.method === 'POST' && url.pathname === '/api/cost-override') {
+    if (!requireAuth(req, res)) return;
+    const body = await readBody(req, res);
+    if (body === null) return;
+    try {
+      const { sessionId, decision } = JSON.parse(body);
+      if (typeof sessionId !== 'string' || !sessionId.trim() || (decision !== 'continue' && decision !== 'stop')) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end('{"error":"sessionId and decision (continue|stop) required"}');
+        return;
+      }
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const secret = getDashboardSecret();
+      if (secret) headers.Authorization = `Bearer ${secret}`;
+      try {
+        const upstream = await fetch(`${getDashboardIngressBaseUrl()}/api/dashboard/cost-override`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ session_id: sessionId.trim(), decision }),
+          signal: AbortSignal.timeout(5000),
+        });
+        const upstreamText = await upstream.text();
+        if (!upstream.ok) {
+          let error = upstreamText || 'Dashboard host bridge request failed';
+          try {
+            const parsed = JSON.parse(upstreamText);
+            error = parsed.error || error;
+          } catch {
+            /* text body */
+          }
+          res.writeHead(upstream.status, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error }));
+          return;
+        }
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Dashboard host bridge unreachable. Ensure NanoClaw host is running.';
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: message }));
+        return;
+      }
+      // Cost-cap state may change after the runner wakes. Unlike the old
+      // request-scoped TTL cache (which needed an explicit invalidation here to
+      // avoid a stale read), sessionCostCapsMap is kept continuously fresh by
+      // the scan worker / main-thread fallback's mtime-gated poll (~1s for a
+      // recently-active file — see pickLatestMessageTs/scan-worker.mjs), so
+      // there's nothing to invalidate here: the next /api/sessions read picks
+      // up the change on its own once the runner actually writes it.
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (e: any) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
+  // POST /api/sessions/:sessionId/cost-ceiling — live, exact-value per-session
+  // cost-ceiling control (dash-1 set-ceiling-v2). Distinct from
+  // /api/cost-override above (fixed-bump continue / stop only): this lets an
+  // admin set an EXACT target ceiling, in integer cents, guarded by an
+  // optimistic-concurrency precondition (expectedEpochKey/expectedCeilingCents)
+  // so a second admin's concurrent change — or the runner's own automatic
+  // state — can't be silently clobbered. Works whether the session is already
+  // stopped (raise it, with a visible target instead of the old hidden fixed
+  // bump) or still healthy (proactive raise or lower).
+  //
+  // Same bridge pattern as /api/cost-override: this dashboard process has no
+  // direct write path into a session's inbound.db, so it proxies to the host
+  // ingress with the Bearer secret and forwards the upstream status/body back
+  // to the browser — the HOST is the actual arbiter of accept / conflict /
+  // reject (202/200/400/404/409/422/426/503, see the PR description for the
+  // full fixed wire contract shared with the paired host+runner PR), this
+  // endpoint is a thin, faithful bridge. `targetCeilingCents` is bounds-checked
+  // here too (validateCeilingRequest) BEFORE anything is forwarded — belt and
+  // suspenders with the host's own independent enforcement, and it means a
+  // manipulated/bypassed browser request that skips the UI's own bound is
+  // still rejected without ever reaching the host.
+  const CEILING_PATH_RE = /^\/api\/sessions\/([^/]+)\/cost-ceiling$/;
+  const ceilingMatch = req.method === 'POST' ? CEILING_PATH_RE.exec(url.pathname) : null;
+  if (ceilingMatch) {
+    if (!requireAuth(req, res)) return;
+    const sessionId = safeDecode(ceilingMatch[1]);
+    const body = await readBody(req, res);
+    if (body === null) return;
+    if (!sessionId || !sessionId.trim()) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'invalid session id' }));
+      return;
+    }
+    try {
+      let parsedBody: unknown;
+      try {
+        parsedBody = JSON.parse(body);
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'invalid json' }));
+        return;
+      }
+      const validated = validateCeilingRequest(parsedBody);
+      if (!validated.ok) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: validated.error }));
+        return;
+      }
+      const { requestId, targetCeilingCents, expectedEpochKey, expectedCeilingCents } = validated.value;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const secret = getDashboardSecret();
+      if (secret) headers.Authorization = `Bearer ${secret}`;
+      try {
+        const upstream = await fetch(`${getDashboardIngressBaseUrl()}/api/dashboard/session-cost-ceiling`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            sessionId: sessionId.trim(),
+            requestId,
+            targetCeilingCents,
+            expectedEpochKey,
+            expectedCeilingCents,
+            protocolVersion: 2,
+          }),
+          signal: AbortSignal.timeout(5000),
+        });
+        const upstreamText = await upstream.text();
+        // Forward the upstream body through as-is (it's the source of truth for
+        // the browser's state machine — id/state/targetCeilingCents/etc. on
+        // success, a reason on 409/422/426), only filling in a generic `error`
+        // when the upstream didn't send JSON at all so the browser never has to
+        // guess at a non-ok response with an empty body.
+        let upstreamBody: Record<string, unknown> = {};
+        try {
+          const parsed = JSON.parse(upstreamText);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) upstreamBody = parsed;
+        } catch {
+          /* non-JSON upstream body */
+        }
+        if (!upstream.ok && typeof upstreamBody.error !== 'string') {
+          upstreamBody.error = upstreamText || `Dashboard host bridge request failed (${upstream.status})`;
+        }
+        res.writeHead(upstream.status, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(upstreamBody));
+      } catch (err) {
+        // The host itself is unreachable (not the same as the host replying
+        // 503 "runner couldn't be readied in time" — that case is handled by
+        // the upstream.ok branch above and forwarded verbatim); both surface as
+        // 503 to the browser, distinguished only by message text, matching how
+        // /api/cost-override already treats this failure mode.
+        const message =
+          err instanceof Error ? err.message : 'Dashboard host bridge unreachable. Ensure NanoClaw host is running.';
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: message }));
+      }
     } catch (e: any) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: e.message }));
@@ -11545,6 +13520,12 @@ export async function handleRequest(
               escalationClass: payload.class || null,
               denials: typeof payload.denials === 'number' ? payload.denials : null,
               selfHealAttempts: typeof payload.selfHealAttempts === 'number' ? payload.selfHealAttempts : null,
+              // Cost the runaway card carries so the approver sees "$spent of
+              // $cap" without opening the session. Absent on cost-disabled
+              // groups and every pre-enrichment row → null, and the card falls
+              // back to its old shape.
+              spentUsd: typeof payload.spentUsd === 'number' ? payload.spentUsd : null,
+              capUsd: typeof payload.capUsd === 'number' ? payload.capUsd : null,
             };
           });
         }
@@ -11842,9 +13823,17 @@ function createDashboardHttpServer(options: DashboardRequestOptions = {}): impor
         '\r\n',
     );
 
+    // Snapshot BEFORE joining the broadcast set — see the SSE handler: building
+    // the envelope can broadcast a delta, which an already-registered client
+    // would receive before its own baseline.
+    //
+    // Written through sendToClient() like every other post-upgrade frame: a raw
+    // socket.write() that returns false (a large snapshot to a slow reader)
+    // armed no blocked-timer, so an otherwise idle fleet produced no further
+    // frame to notice it with and the socket was pinned for good.
+    const snapshotFrame = createWsFrame(Buffer.from(fullStateEnvelope()));
     wsClients.add(socket);
-
-    socket.write(createWsFrame(Buffer.from(getStateCache().envelope)));
+    sendToClient(socket, wsClients, snapshotFrame, true);
 
     let buffer = head.length > 0 ? Buffer.from(head) : Buffer.alloc(0);
     socket.on('data', (data: Buffer) => {
@@ -11870,8 +13859,14 @@ function createDashboardHttpServer(options: DashboardRequestOptions = {}): impor
       }
     });
 
-    socket.on('close', () => wsClients.delete(socket));
-    socket.on('error', () => wsClients.delete(socket));
+    const dropWsClient = (): void => {
+      wsClients.delete(socket);
+      clearBlockedTimer(socket);
+      clientBlockedSince.delete(socket);
+      staleClients.delete(socket);
+    };
+    socket.on('close', dropWsClient);
+    socket.on('error', dropWsClient);
   });
 
   return server;
@@ -11886,6 +13881,7 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
   // routes below still serve, so endpoint tests are unaffected.
   let stopWatchingMcpToken: (() => void) | null = null;
   let mcpRefreshTimer: ReturnType<typeof setInterval> | undefined;
+  let groupTaskTimer: ReturnType<typeof setInterval> | undefined;
   if (!process.env.VITEST) {
     // Load MCP tool inventory eagerly and refresh when the auth proxy rotates the token.
     void refreshMcpTools();
@@ -11917,10 +13913,17 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
 
   const heartbeatTimer = setInterval(() => {
     for (const client of sseClients) {
+      if (isClientBlocked(client)) {
+        markStaleClient(client, sseClients, false);
+        continue;
+      }
       try {
-        if (!client.write(': keepalive\n\n')) removeSlowClient(client, sseClients);
+        if (!client.write(': keepalive\n\n')) markStaleClient(client, sseClients, false);
       } catch {
         sseClients.delete(client);
+        clearBlockedTimer(client);
+        clientBlockedSince.delete(client);
+        staleClients.delete(client);
       }
     }
   }, 20_000);
@@ -11989,6 +13992,7 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
   server.on('close', () => {
     stopWatchingMcpToken?.();
     clearInterval(mcpRefreshTimer);
+    clearInterval(groupTaskTimer);
     clearInterval(broadcastTimer);
     clearInterval(heartbeatTimer);
     clearInterval(expireTimer);
@@ -12010,6 +14014,23 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
     console.log(`  Tab 2: Timeline (all-time metrics)`);
     if (getDashboardSecret()) console.log(`  Auth: dashboard secret required for browser/admin access`);
     console.log();
+
+    // Prime the scheduled-task snapshot only AFTER the port is bound, so the
+    // fleet scan never delays the listener coming up / readiness probes on a
+    // cold restart. The scan yields between groups (refreshGroupTaskCache), so
+    // neither the prime nor the 15s refresh monopolizes the event loop. Skipped
+    // under VITEST — the test server uses the live (mtime-cached) fallback path.
+    if (!process.env.VITEST) {
+      void refreshGroupTaskCache().catch(() => {
+        /* non-fatal; the interval retries */
+      });
+      groupTaskTimer = setInterval(() => {
+        void refreshGroupTaskCache().catch(() => {
+          /* non-fatal; next tick retries */
+        });
+      }, 15000);
+      groupTaskTimer.unref?.();
+    }
   });
 
   return server;

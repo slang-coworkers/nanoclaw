@@ -3564,3 +3564,218 @@ describe('/api/messages session scoping + swim-lane', () => {
     expect('lanes' in data).toBe(false);
   });
 });
+
+describe('/api/kb-health — a malformed drift report never renders as zero', () => {
+  const sharedDir = path.join(DATA_DIR, 'shared');
+  const doctorPath = path.join(sharedDir, '.kb-doctor.json');
+
+  const writeDoctor = (body: string) => {
+    mkdirSync(sharedDir, { recursive: true });
+    writeFileSync(doctorPath, body);
+  };
+  const clearDoctor = () => rmSync(doctorPath, { force: true });
+
+  afterEach(() => clearDoctor());
+
+  it('missing report is unavailable with a reason, and driftCount is null not 0', async () => {
+    clearDoctor();
+    const data = await (await fetch(`${baseUrl}/api/kb-health`)).json();
+    expect(data.doctor.available).toBe(false);
+    expect(data.doctor.reason).toBe('no drift report');
+    // The distinction the whole panel turns on: unknown is not zero.
+    expect(data.driftCount).toBeNull();
+  });
+
+  it('a CORRUPT report is distinguished from an absent one', async () => {
+    // Both were reported as "no drift report", which conflates "the checker has not
+    // run" with "the checker's output is damaged" — different problems with different
+    // fixes, and the operator was told the milder one.
+    writeDoctor('{ this is not json');
+    const data = await (await fetch(`${baseUrl}/api/kb-health`)).json();
+    expect(data.doctor.available).toBe(false);
+    expect(data.doctor.reason).toMatch(/unreadable/);
+    expect(data.doctor.reason).not.toBe('no drift report');
+    expect(data.driftCount).toBeNull();
+  });
+
+  it('counts.drift:0 beside a non-empty drift array does NOT report zero drift', async () => {
+    // The end-to-end shape of the finding: schema 1, so the old route accepted it,
+    // took driftCount straight from the tally, and rendered a healthy panel over a
+    // report that had found something.
+    writeDoctor(
+      JSON.stringify({
+        schema: 1,
+        generatedAt: new Date().toISOString(),
+        status: 'drift',
+        complete: true,
+        counts: { ok: 0, drift: 0, unknown: 0 },
+        drift: ['tasks: a live definition differs from the snapshot'],
+        unknown: [],
+      }),
+    );
+    const data = await (await fetch(`${baseUrl}/api/kb-health`)).json();
+    expect(data.doctor.available).toBe(false);
+    expect(data.doctor.reason).toMatch(/counts disagree with their arrays/);
+    expect(data.driftCount).toBeNull();
+    expect(data.driftCount).not.toBe(0);
+  });
+
+  it('a well-formed report is still reported normally', async () => {
+    writeDoctor(
+      JSON.stringify({
+        schema: 1,
+        generatedAt: new Date().toISOString(),
+        status: 'drift',
+        complete: true,
+        counts: { ok: 1, drift: 1, unknown: 0 },
+        drift: ['tasks: one difference'],
+        unknown: [],
+      }),
+    );
+    const data = await (await fetch(`${baseUrl}/api/kb-health`)).json();
+    expect(data.doctor.available).toBe(true);
+    expect(data.driftCount).toBe(1);
+    expect(data.doctor.stale).toBe(false);
+  });
+});
+
+describe('/api/sessions — GitHub PR/issue badge', () => {
+  // pr_session_mappings and gh_thread_origin are nv-main-owned tables (see
+  // src/modules/pr-mapping/store.ts and src/db/gh-thread-origin.ts there) —
+  // this branch's own createDashboardTestDb() fixture doesn't create them
+  // (mirrors production: an install that hasn't migrated yet), so each test
+  // adds only the table(s) it needs directly.
+  function seedSessionRow(
+    db: Database.Database,
+    row: { id: string; agentGroupId: string; threadId: string | null },
+  ): void {
+    db.prepare(
+      'INSERT INTO agent_groups (id, name, folder, is_admin, routing, created_at) VALUES (?, ?, ?, 0, ?, ?) ON CONFLICT(id) DO NOTHING',
+    ).run(row.agentGroupId, row.agentGroupId, row.agentGroupId, 'direct', new Date().toISOString());
+    db.prepare('INSERT INTO sessions (id, agent_group_id, thread_id, status, created_at) VALUES (?, ?, ?, ?, ?)').run(
+      row.id,
+      row.agentGroupId,
+      row.threadId,
+      'active',
+      new Date().toISOString(),
+    );
+  }
+
+  it('leaves gh fields undefined for a session with no GitHub association', async () => {
+    const db = createDashboardTestDb();
+    seedSessionRow(db, { id: 'sess-plain', agentGroupId: 'ag-plain', threadId: null });
+    db.close();
+    forceOpenDbForTests();
+
+    const data = await (await fetch(`${baseUrl}/api/sessions`)).json();
+    const row = data.sessions.find((s: { session_id: string }) => s.session_id === 'sess-plain');
+    expect(row).toBeTruthy();
+    expect(row.ghNumber).toBeUndefined();
+    expect(row.ghAuthor).toBeUndefined();
+  });
+
+  it('resolves repo/number/kind from a gh-issue-<repo>-<num> thread_id when there is no PR mapping', async () => {
+    const db = createDashboardTestDb();
+    seedSessionRow(db, {
+      id: 'sess-triage',
+      agentGroupId: 'ag-orch',
+      threadId: 'gh-issue-shader-slang/slang-11487',
+    });
+    db.close();
+    forceOpenDbForTests();
+
+    const data = await (await fetch(`${baseUrl}/api/sessions`)).json();
+    const row = data.sessions.find((s: { session_id: string }) => s.session_id === 'sess-triage');
+    expect(row.ghRepo).toBe('shader-slang/slang');
+    expect(row.ghNumber).toBe(11487);
+    expect(row.ghKind).toBe('issue');
+    expect(row.ghUrl).toBe('https://github.com/shader-slang/slang/issues/11487');
+  });
+
+  it('prefers pr_session_mappings over the thread_id parse when both exist', async () => {
+    const db = createDashboardTestDb();
+    // Fixer session's own thread is the ORIGIN issue's thread (per
+    // docs/thread-vs-session.md), but it has claimed a DIFFERENT PR number
+    // via report_pr_created — the mapping wins for repo/number (it's the
+    // authoritative "this PR's webhooks route here" claim).
+    seedSessionRow(db, {
+      id: 'sess-fixer',
+      agentGroupId: 'ag-fixer',
+      threadId: 'gh-issue-shader-slang/slang-11487',
+    });
+    db.exec(`
+      CREATE TABLE pr_session_mappings (
+        repo TEXT NOT NULL, pr_number INTEGER NOT NULL, agent_group_id TEXT NOT NULL,
+        session_id TEXT NOT NULL, thread_id TEXT, created_at TEXT NOT NULL, owner_instance TEXT NOT NULL,
+        PRIMARY KEY (repo, pr_number)
+      );
+    `);
+    db.prepare(
+      `INSERT INTO pr_session_mappings (repo, pr_number, agent_group_id, session_id, thread_id, created_at, owner_instance)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run('shader-slang/slang', 11500, 'ag-fixer', 'sess-fixer', 'gh-issue-shader-slang/slang-11487', new Date().toISOString(), 'prod');
+    db.close();
+    forceOpenDbForTests();
+
+    const data = await (await fetch(`${baseUrl}/api/sessions`)).json();
+    const row = data.sessions.find((s: { session_id: string }) => s.session_id === 'sess-fixer');
+    expect(row.ghRepo).toBe('shader-slang/slang');
+    expect(row.ghNumber).toBe(11500); // the mapped PR, not the origin issue #11487
+    expect(row.ghKind).toBe('pr');
+  });
+
+  it('joins the author from gh_thread_origin by thread_id, independent of how repo/number were resolved', async () => {
+    const db = createDashboardTestDb();
+    // Same setup as the mapping-wins test above: session works PR #11500,
+    // but its thread_id is origin issue #11487.
+    seedSessionRow(db, {
+      id: 'sess-fixer2',
+      agentGroupId: 'ag-fixer2',
+      threadId: 'gh-issue-shader-slang/slang-11487',
+    });
+    db.exec(`
+      CREATE TABLE pr_session_mappings (
+        repo TEXT NOT NULL, pr_number INTEGER NOT NULL, agent_group_id TEXT NOT NULL,
+        session_id TEXT NOT NULL, thread_id TEXT, created_at TEXT NOT NULL, owner_instance TEXT NOT NULL,
+        PRIMARY KEY (repo, pr_number)
+      );
+      CREATE TABLE gh_thread_origin (
+        thread_id TEXT PRIMARY KEY, repo TEXT NOT NULL, number INTEGER NOT NULL,
+        kind TEXT NOT NULL, author TEXT NOT NULL, created_at TEXT NOT NULL
+      );
+    `);
+    db.prepare(
+      `INSERT INTO pr_session_mappings (repo, pr_number, agent_group_id, session_id, thread_id, created_at, owner_instance)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run('shader-slang/slang', 11500, 'ag-fixer2', 'sess-fixer2', 'gh-issue-shader-slang/slang-11487', new Date().toISOString(), 'prod');
+    db.prepare(
+      `INSERT INTO gh_thread_origin (thread_id, repo, number, kind, author, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run('gh-issue-shader-slang/slang-11487', 'shader-slang/slang', 11487, 'issue', 'the-original-filer', new Date().toISOString());
+    db.close();
+    forceOpenDbForTests();
+
+    const data = await (await fetch(`${baseUrl}/api/sessions`)).json();
+    const row = data.sessions.find((s: { session_id: string }) => s.session_id === 'sess-fixer2');
+    expect(row.ghNumber).toBe(11500); // still the PR the session is actually working
+    expect(row.ghAuthor).toBe('the-original-filer'); // but attributed to who filed the origin issue
+  });
+
+  it('degrades to no badge (not a broken response) when gh_thread_origin/pr_session_mappings do not exist', async () => {
+    // No CREATE TABLE for either — this branch's own DB, and any install that
+    // hasn't run the nv-main migration yet, looks exactly like this.
+    const db = createDashboardTestDb();
+    seedSessionRow(db, { id: 'sess-premigration', agentGroupId: 'ag-premigration', threadId: 'gh-pr-shader-slang/slang-1' });
+    db.close();
+    forceOpenDbForTests();
+
+    const res = await fetch(`${baseUrl}/api/sessions`);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    const row = data.sessions.find((s: { session_id: string }) => s.session_id === 'sess-premigration');
+    // thread_id parse still works (that part needs no new table) —
+    expect(row.ghNumber).toBe(1);
+    // — but there is no author, and the response as a whole did not break.
+    expect(row.ghAuthor).toBeUndefined();
+    expect(Array.isArray(data.sessions)).toBe(true);
+  });
+});

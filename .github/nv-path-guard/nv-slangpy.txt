@@ -1,0 +1,5 @@
+# nv-slangpy — SlangPy coworker overlay.
+
+container/skills/slangpy-*/**
+container/spines/slangpy/**
+container/workflows/slangpy-*/**
