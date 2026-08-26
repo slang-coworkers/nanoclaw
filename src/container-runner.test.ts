@@ -333,7 +333,15 @@ describe('composeSessionSpec', () => {
   it('splits PID 1 so a driver can preserve the image init', async () => {
     const agent = (await compose()).containers[0];
     expect(agent.command).toEqual(['bash', '-c']);
-    expect(agent.args).toEqual(['exec bun run /app/src/index.ts']);
+    // The invariant is the PID-1 SPLIT: a `bash -c` wrapper whose script ends by
+    // `exec`ing the runner, so bun replaces the shell and signals reach it
+    // directly. Not exact equality — this fork's agentEntrypointScript() emits a
+    // preamble first (a `git config url.insteadOf` and a ~/.codex/config.toml
+    // heredoc), which exact-matching upstream's single-line form would forbid.
+    expect(agent.args).toHaveLength(1);
+    const script = agent.args![0];
+    expect(script).toContain('exec bun run /app/src/index.ts');
+    expect(script.trimEnd().endsWith('exec bun run /app/src/index.ts')).toBe(true);
   });
 
   it('asks for a shared-private network and the standard posture', async () => {
