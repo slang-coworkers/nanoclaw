@@ -39,8 +39,8 @@ beforeEach(() => {
   process.chdir(tempDir);
 });
 
-afterEach(() => {
-  closeDb();
+afterEach(async () => {
+  await closeDb();
   process.chdir(realCwd);
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
