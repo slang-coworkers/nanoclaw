@@ -42,7 +42,12 @@ Exit codes (let the workflow branch):
 
 stdlib + gh only.
 """
-import argparse, json, os, re, subprocess, sys
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
 
 # Bot reviewers we trust to harvest, most-authoritative first. github-actions is
 # the production claude-code-action review; coderabbit is the secondary source
@@ -62,9 +67,9 @@ def gh_json(path, paginate=False):
     args = ["gh", "api", path]
     if paginate:
         args += ["--paginate", "--slurp"]
-    r = subprocess.run(args, capture_output=True, text=True)
+    r = subprocess.run(args, capture_output=True, text=True, check=False)
     if r.returncode != 0:
-        raise RuntimeError("gh api %s failed: %s" % (path, r.stderr[:200]))
+        raise RuntimeError(f"gh api {path} failed: {r.stderr[:200]}")
     out = json.loads(r.stdout)
     if paginate:  # --slurp wraps each page in a list; flatten
         merged = []
@@ -106,8 +111,10 @@ def pending_review_bot(repo, commit):
             ctx = s.get("context") or ""
             if s.get("state") == "pending" and PENDING_STATUS_RE.search(ctx):
                 return ctx
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001 - probe must not abort the other surface below
+        # NOT silent: a failed probe is not the same as "nothing pending", and
+        # returning None on it would read as a clean signal to the caller.
+        print(f"harvest: combined-status probe failed: {str(e)[:160]}", file=sys.stderr)
     # Check-runs (Claude/production-review's surface).
     try:
         cr = gh_json(f"repos/{repo}/commits/{commit}/check-runs")
@@ -115,8 +122,8 @@ def pending_review_bot(repo, commit):
             name = c.get("name") or ""
             if c.get("status") in ("queued", "in_progress") and PENDING_STATUS_RE.search(name):
                 return name
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001 - same reason as the probe above
+        print(f"harvest: check-runs probe failed: {str(e)[:160]}", file=sys.stderr)
     return None
 
 
@@ -125,7 +132,7 @@ def harvest(repo, pr, commit):
     exit 20, a fetch failure exit 21, a match exit 0, stale-only exit 10."""
     try:
         reviews = gh_json(f"repos/{repo}/pulls/{pr}/reviews", paginate=True)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - deliberate: any fetch failure must route to exit 21
         # A fetch failure is NOT "no review" — a real review (possibly
         # REQUEST_CHANGES) may exist behind the error. Distinct code 21 so the
         # workflow routes to ABSTAIN_POLICY:NO_REVIEW_SIGNAL instead of a clean Devin-only pass.
@@ -210,7 +217,8 @@ def main():
     out_dir = os.path.join(a.out, "review")
     os.makedirs(out_dir, exist_ok=True)
     dest = os.path.join(out_dir, "harvest.json")
-    json.dump(result, open(dest, "w"), indent=1)
+    with open(dest, "w", encoding="utf-8") as fh:
+        json.dump(result, fh, indent=1)
 
     if code == 0:
         print(f"harvested {result['login']} review @ {result['commit_id'][:12]} "
