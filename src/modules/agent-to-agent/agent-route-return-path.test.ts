@@ -13,13 +13,14 @@ import fs from 'fs';
 import path from 'path';
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 
-import { forwardAttachedFiles, routeAgentMessage } from './agent-route.js';
+import { ensureA2aWiring, forwardAttachedFiles, routeAgentMessage } from './agent-route.js';
 import { log } from '../../log.js';
 import { createDestination } from './db/agent-destinations.js';
+import { getDb } from '../../db/connection.js';
 import { initTestDb, closeDb, runMigrations, createAgentGroup } from '../../db/index.js';
 import { createSession, updateSession } from '../../db/sessions.js';
 import { inboundDbPath } from '../../mailbox/sqlite/paths.js';
-import { initSessionFolder, sessionDir, writeSessionMessage } from '../../session-manager.js';
+import { initSessionFolder, resolveSession, sessionDir, writeSessionMessage } from '../../session-manager.js';
 import type { Session } from '../../types.js';
 
 vi.mock('../../container-runner.js', () => ({
@@ -38,6 +39,29 @@ const TEST_DIR = '/tmp/nanoclaw-test-a2a-route';
 
 function now(): string {
   return new Date().toISOString();
+}
+
+/**
+ * The recipient session a FRESH a2a send lands in (Layer 3 of the fork's
+ * layered routing): `ensureA2aWiring(target, source)` mints a per-(source,
+ * target) messaging group, and the session is keyed on that mg plus the thread
+ * the sender inherits. Upstream delivered a fresh peer send into an arbitrary
+ * pre-existing session of the target, so its fixtures could assert against a
+ * hand-seeded `sess-B`; the fork mints one session per sender so two sources
+ * delegating into the same recipient never share context — which means a test
+ * has to ASK routing which session that is rather than assume one.
+ *
+ * Both calls are idempotent, so this returns the exact session
+ * `routeAgentMessage` delivered into whether called before or after it. Mirrors
+ * `deliveredSessionId` in message-gate.test.ts, but threads the sender's
+ * `thread_id` through because these fixtures use threaded A-side sessions
+ * (performAgentRoute inherits `session.thread_id` when the msg carries none).
+ */
+async function a2aTargetSession(targetAgentGroupId: string, sender: Session): Promise<Session> {
+  const threadId = sender.thread_id;
+  const mgId = await ensureA2aWiring(targetAgentGroupId, sender.agent_group_id);
+  const { session } = await resolveSession(targetAgentGroupId, mgId, threadId, threadId ? 'per-thread' : 'shared');
+  return session;
 }
 
 function readInbound(agentGroupId: string, sessionId: string) {
@@ -146,7 +170,10 @@ describe('routeAgentMessage return-path', () => {
       S1,
     );
 
-    const bRows = readInbound(B, SB.id);
+    // Not SB: a fresh send mints its own per-(source, thread) recipient session,
+    // so the pre-seeded sess-B never sees it (see a2aTargetSession).
+    const B1 = await a2aTargetSession(B, S1);
+    const bRows = readInbound(B, B1.id);
     expect(bRows).toHaveLength(1);
     expect(bRows[0].platform_id).toBe(A);
     expect(bRows[0].source_session_id).toBe(S1.id); // <- the return address
@@ -166,10 +193,14 @@ describe('routeAgentMessage return-path', () => {
 
     // Capture the synthetic id the host stamped on B's inbound — that's what
     // B's container would reference as `in_reply_to` when replying.
-    const bRows = readInbound(B, SB.id);
-    const yId = bRows[0].id;
+    const B1 = await a2aTargetSession(B, S1);
+    const bRows = readInbound(B, B1.id);
+    const yId = bRows[0]!.id;
 
-    // B replies to that message.
+    // The reply must be emitted BY the session that received the forward, not
+    // by the unrelated pre-seeded sess-B: resolveExplicitReplyTarget reads
+    // `source_session_id` out of the *sender's own* inbound DB, and only B1
+    // holds that row. Replying as sess-B would look like a fresh send.
     await routeAgentMessage(
       {
         id: 'msg-from-B',
@@ -177,7 +208,7 @@ describe('routeAgentMessage return-path', () => {
         content: JSON.stringify({ text: 'pong' }),
         in_reply_to: yId,
       },
-      SB,
+      B1,
     );
 
     const s1Rows = readInbound(A, S1.id);
@@ -190,7 +221,7 @@ describe('routeAgentMessage return-path', () => {
     expect(s2Rows).toHaveLength(0);
   });
 
-  it('fallback: a2a with no in_reply_to falls through to newest-session lookup', async () => {
+  it('fallback: a2a with no in_reply_to mints a per-source session, touching neither existing one', async () => {
     // No prior conversation. B initiates an a2a to A out of the blue.
     await routeAgentMessage(
       {
@@ -202,11 +233,23 @@ describe('routeAgentMessage return-path', () => {
       SB,
     );
 
-    // Newest session wins (current heuristic, preserved).
+    // Upstream's fallback was "newest active session of the target wins", so it
+    // expected S2. The fork has no such heuristic: with nothing in the sender's
+    // inbound DB to key peer-affinity on and no lineage row, Layer 3 mints a
+    // session for the (B→A) pair. That is the stronger property — an
+    // unsolicited peer cannot inject into a conversation it was never part of —
+    // so BOTH pre-existing sessions must stay empty.
     const s1Rows = readInbound(A, S1.id);
     const s2Rows = readInbound(A, S2.id);
     expect(s1Rows).toHaveLength(0);
-    expect(s2Rows).toHaveLength(1);
+    expect(s2Rows).toHaveLength(0);
+
+    const fresh = await a2aTargetSession(A, SB);
+    expect(fresh.id).not.toBe(S1.id);
+    expect(fresh.id).not.toBe(S2.id);
+    const freshRows = readInbound(A, fresh.id);
+    expect(freshRows).toHaveLength(1);
+    expect(JSON.parse(freshRows[0]!.content).text).toBe('unsolicited');
   });
 
   it('peer-affinity fallback: with no in_reply_to, routes to most recent peer-source session', async () => {
@@ -226,6 +269,11 @@ describe('routeAgentMessage return-path', () => {
     // through). The host should still route this to S1 because S1 is the
     // session most recently in conversation with B — not the chronologically
     // newest session of A.
+    //
+    // Emitted from the session that actually received the forward: peer-affinity
+    // scans the SENDER's inbound DB for the most recent a2a row from A, and only
+    // that session holds one.
+    const B1 = await a2aTargetSession(B, S1);
     await routeAgentMessage(
       {
         id: 'msg-from-B-followup',
@@ -233,39 +281,48 @@ describe('routeAgentMessage return-path', () => {
         content: JSON.stringify({ text: 'standing by' }),
         in_reply_to: null,
       },
-      SB,
+      B1,
     );
 
     const s1Rows = readInbound(A, S1.id);
     const s2Rows = readInbound(A, S2.id);
     // Affinity wins: reply to S1, not the newer S2.
     expect(s1Rows).toHaveLength(1);
-    expect(JSON.parse(s1Rows[0].content).text).toBe('standing by');
+    expect(JSON.parse(s1Rows[0]!.content).text).toBe('standing by');
     expect(s2Rows).toHaveLength(0);
   });
 
-  it('stale origin fallback: closed origin session falls through to newest active', async () => {
+  it('stale origin: closed origin session drops the reply rather than rerouting it', async () => {
     // A.S1 sends to B, establishing source_session_id = S1.id on B's inbound.
     await routeAgentMessage(
       { id: 'msg-fwd', platform_id: B, content: JSON.stringify({ text: 'hello' }), in_reply_to: null },
       S1,
     );
-    const bRows = readInbound(B, SB.id);
-    const inboundId = bRows[0].id;
+    const B1 = await a2aTargetSession(B, S1);
+    const bRows = readInbound(B, B1.id);
+    const inboundId = bRows[0]!.id;
 
     // Close S1 — simulates session cleanup or channel disconnect.
     await updateSession(S1.id, { status: 'closed' });
 
-    // B replies. origin points to S1 (closed), should fall through to S2.
+    // B replies. origin points to S1 (closed).
     await routeAgentMessage(
       { id: 'msg-reply-stale', platform_id: A, content: JSON.stringify({ text: 'reply' }), in_reply_to: inboundId },
-      SB,
+      B1,
     );
 
-    const s1Rows = readInbound(A, S1.id);
-    const s2Rows = readInbound(A, S2.id);
-    expect(s1Rows).toHaveLength(0);
-    expect(s2Rows).toHaveLength(1);
+    // Upstream fell through to "newest active session of A" (S2). The fork fails
+    // CLOSED instead: the explicit-reply resolver rejects the non-active origin,
+    // and the Layer-2 ancestor walk — which finds the same S1 via
+    // a2a_session_sources — refuses to write or wake a non-active ancestor
+    // (deliverAncestorReply's status guard). Resurrecting a conversation the
+    // operator ended, or dumping its reply into an unrelated live session, are
+    // both worse than dropping with an audit log. So NOTHING is delivered
+    // anywhere in A — a strictly tighter guarantee than upstream's reroute.
+    expect(readInbound(A, S1.id)).toHaveLength(0);
+    expect(readInbound(A, S2.id)).toHaveLength(0);
+    const aSessions = await getDb().all<{ id: string }>('SELECT id FROM sessions WHERE agent_group_id = ?', A);
+    expect(aSessions.map((s) => s.id).sort()).toEqual([S1.id, S2.id].sort());
   });
 
   it('cross-agent-group guard: origin session belonging to wrong agent group is rejected', async () => {
@@ -297,11 +354,15 @@ describe('routeAgentMessage return-path', () => {
       { id: 'msg-from-C', platform_id: B, content: JSON.stringify({ text: 'from C' }), in_reply_to: null },
       SC,
     );
-    const bRows = readInbound(B, SB.id);
+    // C's delegation minted its own B-side session (per-source isolation), which
+    // is the only place the C-originated row exists — and therefore the only
+    // session that can reference it as in_reply_to.
+    const BfromC = await a2aTargetSession(B, SC);
+    const bRows = readInbound(B, BfromC.id);
     const cInboundId = bRows.find((r) => r.platform_id === C)!.id;
 
     // B replies to A, but in_reply_to references the C-originated row.
-    // Guard rejects (SC belongs to C, not A) → falls through to newest of A.
+    // Guard rejects (SC belongs to C, not A) → the reply must NOT land in SC.
     await routeAgentMessage(
       {
         id: 'msg-reply-tamper',
@@ -309,16 +370,28 @@ describe('routeAgentMessage return-path', () => {
         content: JSON.stringify({ text: 'misdirected' }),
         in_reply_to: cInboundId,
       },
-      SB,
+      BfromC,
     );
 
-    const s1Rows = readInbound(A, S1.id);
-    const s2Rows = readInbound(A, S2.id);
-    expect(s1Rows).toHaveLength(0);
-    expect(s2Rows).toHaveLength(1);
+    // The guard held: the C-owned origin was rejected, so nothing was
+    // misdirected into C's session.
+    expect(readInbound(C, SC.id)).toHaveLength(0);
+
+    // Upstream then expected the fallthrough to land in A's newest session (S2).
+    // The fork has no newest-session heuristic — the rejected origin falls
+    // through to Layer 3, which mints a fresh (B→A) session. What still must
+    // hold, and is the point of the test, is that the tampered reference never
+    // steered delivery: neither pre-existing A session receives it.
+    expect(readInbound(A, S1.id)).toHaveLength(0);
+    expect(readInbound(A, S2.id)).toHaveLength(0);
+    const fresh = await a2aTargetSession(A, BfromC);
+    expect([S1.id, S2.id, SC.id]).not.toContain(fresh.id);
+    const freshRows = readInbound(A, fresh.id);
+    expect(freshRows).toHaveLength(1);
+    expect(JSON.parse(freshRows[0]!.content).text).toBe('misdirected');
   });
 
-  it('in_reply_to referencing a non-a2a row falls through to newest session', async () => {
+  it('in_reply_to referencing a non-a2a row resolves no origin and routes fresh', async () => {
     // Write a channel message into B's inbound (no source_session_id).
     await writeSessionMessage(B, SB.id, {
       id: 'channel-msg-1',
@@ -331,7 +404,11 @@ describe('routeAgentMessage return-path', () => {
     });
 
     // B replies to A with in_reply_to pointing to the channel message.
-    // source_session_id is null → peer-affinity finds nothing → newest of A.
+    // source_session_id is null → peer-affinity finds nothing either (SB has no
+    // prior a2a inbound from A), so no origin resolves. Upstream then picked A's
+    // newest session; the fork mints a per-source session instead. The invariant
+    // under test is unchanged: a channel row carries no return address, so it
+    // must not steer the reply into an unrelated A session.
     await routeAgentMessage(
       {
         id: 'msg-reply-channel',
@@ -342,10 +419,11 @@ describe('routeAgentMessage return-path', () => {
       SB,
     );
 
-    const s1Rows = readInbound(A, S1.id);
-    const s2Rows = readInbound(A, S2.id);
-    expect(s1Rows).toHaveLength(0);
-    expect(s2Rows).toHaveLength(1);
+    expect(readInbound(A, S1.id)).toHaveLength(0);
+    expect(readInbound(A, S2.id)).toHaveLength(0);
+    const fresh = await a2aTargetSession(A, SB);
+    expect([S1.id, S2.id]).not.toContain(fresh.id);
+    expect(readInbound(A, fresh.id)).toHaveLength(1);
   });
 
   it('self-message is allowed without a destination row', async () => {
@@ -355,15 +433,28 @@ describe('routeAgentMessage return-path', () => {
       S1,
     );
 
-    // Lands in S2 (newest active session of A via resolveSession fallback).
-    const s2Rows = readInbound(A, S2.id);
-    expect(s2Rows).toHaveLength(1);
-    expect(JSON.parse(s2Rows[0].content).text).toBe('self-note');
+    // Upstream landed this in S2 via a newest-session fallback. The fork routes
+    // A→A through the same per-source Layer-3 mint as any other pair, so the
+    // note lands in the (A→A) session — NOT back in the emitter S1, which the
+    // main-route self-target guard would have dropped. The authorization point
+    // stands: the guard's self-send ALLOW let it through with no destination row.
+    const selfSession = await a2aTargetSession(A, S1);
+    expect(selfSession.id).not.toBe(S1.id);
+    const selfRows = readInbound(A, selfSession.id);
+    expect(selfRows).toHaveLength(1);
+    expect(JSON.parse(selfRows[0]!.content).text).toBe('self-note');
   });
 
   it('BUG: no volume cap on a2a routing — unbounded ping-pong is allowed (#2063)', async () => {
     // Two agents can exchange unlimited messages with no rate limit or loop
     // detection. This test documents the gap — it should FAIL once #2063 lands.
+    //
+    // The B side of the exchange is the per-source session A.S1's pings land in,
+    // resolved up front so each pong is emitted by the session that actually
+    // holds the conversation (pongs then route home by peer-affinity). Texts are
+    // distinct per iteration so echo-drop's loop detector — which suppresses the
+    // *wake*, not the row — never fires and every message is genuinely routed.
+    const B1 = await a2aTargetSession(B, S1);
     const errors: string[] = [];
     for (let i = 0; i < 20; i++) {
       try {
@@ -373,7 +464,7 @@ describe('routeAgentMessage return-path', () => {
         );
         await routeAgentMessage(
           { id: `pong-${i}`, platform_id: A, content: JSON.stringify({ text: `pong ${i}` }), in_reply_to: null },
-          SB,
+          B1,
         );
       } catch (e) {
         errors.push((e as Error).message);
@@ -382,7 +473,7 @@ describe('routeAgentMessage return-path', () => {
     }
     // BUG: all 40 messages go through — no cap, no throttle.
     // Once loop prevention lands, this should throw or reject after a threshold.
-    const bRows = readInbound(B, SB.id);
+    const bRows = readInbound(B, B1.id);
     const s1Rows = readInbound(A, S1.id);
     const s2Rows = readInbound(A, S2.id);
     expect(errors).toHaveLength(0);
@@ -406,15 +497,18 @@ describe('routeAgentMessage return-path', () => {
       S1,
     );
 
-    const bRows = readInbound(B, SB.id);
+    // Bytes follow the message, so they land in the minted per-source session's
+    // inbox — not the pre-seeded sess-B's.
+    const B1 = await a2aTargetSession(B, S1);
+    const bRows = readInbound(B, B1.id);
     expect(bRows).toHaveLength(1);
-    const parsed = JSON.parse(bRows[0].content);
+    const parsed = JSON.parse(bRows[0]!.content);
     expect(parsed.attachments).toHaveLength(1);
     expect(parsed.attachments[0].name).toBe('report.pdf');
     expect(parsed.attachments[0].type).toBe('file');
 
     // Verify actual file bytes were copied to the target inbox.
-    const targetPath = path.join(sessionDir(B, SB.id), parsed.attachments[0].localPath);
+    const targetPath = path.join(sessionDir(B, B1.id), parsed.attachments[0].localPath);
     expect(fs.existsSync(targetPath)).toBe(true);
     expect(fs.readFileSync(targetPath, 'utf-8')).toBe('fake-pdf-bytes');
   });
@@ -437,9 +531,10 @@ describe('routeAgentMessage return-path', () => {
       S1,
     );
 
-    const bRows = readInbound(B, SB.id);
+    const B1 = await a2aTargetSession(B, S1);
+    const bRows = readInbound(B, B1.id);
     expect(bRows).toHaveLength(1);
-    const parsed = JSON.parse(bRows[0].content);
+    const parsed = JSON.parse(bRows[0]!.content);
     expect(parsed.attachments).toHaveLength(0);
   });
 
@@ -457,8 +552,13 @@ describe('routeAgentMessage return-path', () => {
     fs.mkdirSync(outboxDir, { recursive: true });
     fs.writeFileSync(path.join(outboxDir, 'pwn.txt'), 'attacker-bytes');
 
+    // Mint the recipient session BEFORE routing so the symlink can be planted at
+    // the inbox the forward will actually target. Idempotent, so the subsequent
+    // route resolves this same session rather than a second one.
+    const B1 = await a2aTargetSession(B, S1);
+
     // Target pre-places its whole `inbox` as a symlink pointing outside.
-    const targetInbox = path.join(sessionDir(B, SB.id), 'inbox');
+    const targetInbox = path.join(sessionDir(B, B1.id), 'inbox');
     fs.rmSync(targetInbox, { recursive: true, force: true });
     fs.symlinkSync(canaryDir, targetInbox);
 
@@ -473,9 +573,9 @@ describe('routeAgentMessage return-path', () => {
     );
 
     // Message still routes — just with no attachments.
-    const bRows = readInbound(B, SB.id);
+    const bRows = readInbound(B, B1.id);
     expect(bRows).toHaveLength(1);
-    expect(JSON.parse(bRows[0].content).attachments).toHaveLength(0);
+    expect(JSON.parse(bRows[0]!.content).attachments).toHaveLength(0);
 
     // Nothing was written through the symlink to the canary location.
     expect(fs.readdirSync(canaryDir)).toHaveLength(0);
@@ -558,12 +658,13 @@ describe('routeAgentMessage return-path', () => {
       S1,
     );
 
-    const bRows = readInbound(B, SB.id);
+    const B1 = await a2aTargetSession(B, S1);
+    const bRows = readInbound(B, B1.id);
     expect(bRows).toHaveLength(1);
-    const parsed = JSON.parse(bRows[0].content);
+    const parsed = JSON.parse(bRows[0]!.content);
     expect(parsed.attachments).toHaveLength(1);
     expect(parsed.attachments[0].name).toBe('ok.txt');
-    const targetPath = path.join(sessionDir(B, SB.id), parsed.attachments[0].localPath);
+    const targetPath = path.join(sessionDir(B, B1.id), parsed.attachments[0].localPath);
     expect(fs.existsSync(targetPath)).toBe(true);
     expect(fs.readFileSync(targetPath, 'utf-8')).toBe('legit-bytes');
   });

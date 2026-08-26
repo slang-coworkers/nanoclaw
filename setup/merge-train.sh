@@ -402,45 +402,17 @@ if [ "$merged_any" = "1" ] || [ "$RECONCILE_COMMITTED" = "1" ]; then
     rollback_and_fail
   fi
 
-  # A merge that lands new container/agent-runner/src/** does NOT reach the
-  # groups. src/group-init.ts copies that tree to
-  # data/v2-sessions/<id>/agent-runner-src/ behind an `if (!existsSync)` — once,
-  # at group creation — and container-runner.ts mounts the COPY at /app/src. So
-  # without this step the merge succeeds, the build succeeds, and every existing
-  # group keeps running the pre-merge code with nothing going red. That is how
-  # #1105 and the agent-runner half of #1110 were counted as closed while still
-  # broken in production.
+  # No agent-runner refresh step. /app/src is now ONE shared read-only bind of
+  # container/agent-runner/src (src/container-runner.ts), so a merge that lands
+  # new agent-runner code reaches every group on its next container start. The
+  # per-group copies this used to have to chase are gone, and with them the
+  # failure mode where a merge and a build both succeeded while every existing
+  # group kept running the pre-merge code (#1105, the agent-runner half of #1110).
   #
-  # --refresh writes only the files that provably carry no local work (an older
-  # version git still has, or a file missing entirely). Files a builder agent or
-  # an install skill wrote are reported and left alone — see
-  # scripts/check-agent-runner-staleness.ts.
-  #
-  # Everything above decides whether THIS TREE is deployable, and rolls back if
-  # not. This step is different in kind: the tree is already good, and the
-  # question is whether the GROUPS got it. A group that cannot be refreshed is a
-  # reason to look at that group, never a reason to undo a good merge — so it
-  # sits outside the rollback chain and exits non-zero on its own.
-  # rc 1 and rc 2 mean different things and must not share a message. rc 1 is a
-  # finding ABOUT THE GROUPS; rc 2 means the checker never looked at one. Lego's
-  # first real run exited 2 on a bare `--` and this printed "some groups still
-  # run stale agent-runner code" — a statement about groups nobody had examined.
-  pnpm run check:runner-staleness -- --refresh
-  STALE_RC=$?
-  if [ "$STALE_RC" -eq 1 ]; then
-    echo "merge-train: merged and built, but some groups still run stale agent-runner code." >&2
-    echo "The merge is KEPT — rolling it back would not un-stale them. Resolve the groups" >&2
-    echo "listed above, then restart them: ncl groups restart --id <group-id>" >&2
-    exit 1
-  elif [ "$STALE_RC" -ne 0 ]; then
-    echo "merge-train: the staleness check could not RUN (rc=$STALE_RC) — this says nothing" >&2
-    echo "about whether the groups are current, and must not be read as if it did." >&2
-    echo "The merge is KEPT (the tree built and validated). Fix the checker, then:" >&2
-    echo "  pnpm run check:runner-staleness -- --refresh" >&2
-    exit 1
-  fi
+  # Groups still need a restart to pick it up — bun has the old modules loaded —
+  # but that is the normal deploy restart, not a per-group repair.
 
-  echo "merge-train: done — merged, installed, verified, built, rebuilt CLAUDE.md, validated, refreshed runners"
+  echo "merge-train: done — merged, installed, verified, built, rebuilt CLAUDE.md, validated"
 else
   echo "merge-train: nothing to merge (all branches already present)"
 fi

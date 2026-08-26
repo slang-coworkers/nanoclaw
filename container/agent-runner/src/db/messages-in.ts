@@ -3,7 +3,6 @@
  */
 import { getConfig } from '../config.js';
 import { getAgentMailbox } from '../mailbox/index.js';
-import { getOutboundDb, openInboundDb } from '../mailbox/sqlite/connection.js';
 import type { InboundMessage } from '../mailbox/types.js';
 
 export interface MessageInRow {
@@ -151,21 +150,10 @@ export function markScriptSkipped(skips: Array<{ id: string; reason: string }>):
  * `status` is 'bounced-transient' (long retry budget) or 'bounced-unknown'
  * (short budget → fast dead-letter). Container startup deliberately does NOT
  * clear these (only 'processing'), so the host stays the sole re-arm authority.
- *
- * Direct SQLite: the mailbox `markMessages` op is typed to `ProcessingStatus`
- * ('processing' | 'completed' | 'failed' | 'script-skip:error') and maps
- * anything unrecognized to a script-skip, so a bounce cannot be expressed
- * through it without widening the shared model.
  */
 export function markBounced(ids: string[], status: 'bounced-transient' | 'bounced-unknown'): void {
   if (ids.length === 0) return;
-  const db = getOutboundDb();
-  const stmt = db.prepare(
-    'INSERT OR REPLACE INTO processing_ack (message_id, status, status_changed) VALUES ($id, $status, $ts)',
-  );
-  db.transaction(() => {
-    for (const id of ids) stmt.run({ $id: id, $status: status, $ts: new Date().toISOString() });
-  })();
+  getAgentMailbox().operations.markMessages(ids, status);
 }
 
 /** Mark a single message as failed — writes to processing_ack in outbound.db. */
@@ -181,19 +169,10 @@ export function getMessageIn(id: string): MessageInRow | undefined {
 /** Get a message by seq (the integer id surfaced to the agent in formatted
  *  messages, e.g. `<message id="120">`). Used by the `in_reply_to` arg on
  *  send_message/send_file so the agent can name an exact inbound row when
- *  the batch contains several.
- *
- *  Direct SQLite: no mailbox operation looks an inbound row up by seq
- *  (getMessageIdBySeq returns only an id string, and getRoutingBySeq only the
- *  routing triple). */
+ *  the batch contains several. */
 export function getMessageInBySeq(seq: number): MessageInRow | undefined {
-  if (!Number.isInteger(seq) || seq <= 0) return undefined;
-  const inbound = openInboundDb();
-  try {
-    return inbound.prepare('SELECT * FROM messages_in WHERE seq = ?').get(seq) as MessageInRow | undefined;
-  } finally {
-    inbound.close();
-  }
+  const message = getAgentMailbox().operations.getMessageInBySeq(seq);
+  return message && messageRow(message);
 }
 
 /**
@@ -203,23 +182,8 @@ export function getMessageInBySeq(seq: number): MessageInRow | undefined {
  * a2a runtime guard: a write to a peer-owned thread without explicit
  * in_reply_to indicates the agent is dropping context.
  */
-export function hasInboundFromThread(
-  channelType: string,
-  platformId: string,
-  threadId: string,
-): boolean {
-  const inbound = openInboundDb();
-  try {
-    const result = inbound
-      .prepare(
-        `SELECT COUNT(*) AS n FROM messages_in
-          WHERE channel_type = ? AND platform_id = ? AND thread_id = ?`,
-      )
-      .get(channelType, platformId, threadId) as { n: number } | undefined;
-    return (result?.n ?? 0) > 0;
-  } finally {
-    inbound.close();
-  }
+export function hasInboundFromThread(channelType: string, platformId: string, threadId: string): boolean {
+  return getAgentMailbox().operations.hasInboundFromThread(channelType, platformId, threadId);
 }
 
 /**
@@ -231,33 +195,15 @@ export function hasInboundFromThread(
  * peer-originated thread without specifying which inbound it's answering.
  * The "unresponded" filter prevents re-linking to inbounds the agent has
  * already replied to — those are no longer the active conversation.
- *
- * Implementation: 1-query inbound fetch + 1 prepared "is this responded"
- * stmt reused across the small candidate set. Avoids loading every
- * responded id into JS while staying compatible with the per-DB test-mode
- * connections (ATTACH doesn't work across `:memory:` DBs).
  */
 export function getUnrespondedInboundsFromThread(
   channelType: string,
   platformId: string,
   threadId: string,
 ): MessageInRow[] {
-  const inbound = openInboundDb();
-  try {
-    const inboundRows = inbound
-      .prepare(
-        `SELECT * FROM messages_in
-          WHERE channel_type = ? AND platform_id = ? AND thread_id = ?
-          ORDER BY seq DESC`,
-      )
-      .all(channelType, platformId, threadId) as MessageInRow[];
-    if (inboundRows.length === 0) return [];
-    const isResponded = getOutboundDb()
-      .prepare('SELECT 1 AS r FROM messages_out WHERE in_reply_to = ? LIMIT 1');
-    return inboundRows.filter((r) => !isResponded.get(r.id));
-  } finally {
-    inbound.close();
-  }
+  return getAgentMailbox()
+    .operations.getUnrespondedInboundsFromThread(channelType, platformId, threadId)
+    .map(messageRow);
 }
 
 /**

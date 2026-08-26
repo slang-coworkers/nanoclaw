@@ -1698,22 +1698,24 @@ export async function buildMounts(
     });
   }
 
-  // Per-group agent-runner source at /app/src (initialized once at group
-  // creation, persistent thereafter — agents can modify their runner).
+  // Shared agent-runner source — read-only, the same code for every group.
   //
-  // Deliberately NOT upstream's read-only mount of the shared install tree:
-  // this fork's self-customize skill routes source edits through a builder
-  // agent that WRITES to /app/src, and /add-opencode writes provider files
-  // straight into the overlay. A read-only install-surface mount here breaks
-  // both. The staleness cost is known and managed —
-  // `pnpm run check:runner-staleness` reports which groups run old code.
-  // Under `dataRoot/v2-sessions/<group>`, so 'group-state' and writable.
-  const groupRunnerDir = path.join(DATA_DIR, 'v2-sessions', agentGroup.id, 'agent-runner-src');
+  // Was a per-group WRITABLE copy under data/v2-sessions/<group>/agent-runner-src,
+  // so that self-customize could edit a runner in place. Two reasons that went:
+  //
+  //   1. Security. This is the code the agent executes; a writable mount of it is
+  //      a privilege escalation, which is why `install-surface` pins ro in the
+  //      mount policy (src/mount-composition.test.ts states the invariant).
+  //   2. Staleness. The copy was made once at group creation and never
+  //      refreshed, so every merged agent-runner fix was inert on existing
+  //      groups until someone ran a refresh — silently, with no check going red.
+  //      A single shared mount cannot be stale.
+  const agentRunnerSrc = path.join(process.cwd(), 'container', 'agent-runner', 'src');
   mounts.push({
-    hostPath: groupRunnerDir,
+    hostPath: agentRunnerSrc,
     containerPath: '/app/src',
-    readonly: false,
-    mountClass: 'group-state',
+    readonly: true,
+    mountClass: 'install-surface',
     scope,
   });
 

@@ -4,7 +4,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { getAgentMailbox } from '../mailbox/index.js';
-import { getOutboundDb } from '../mailbox/sqlite/connection.js';
 import type { OutboundMessage } from '../mailbox/types.js';
 
 export interface MessageOutRow {
@@ -138,18 +137,8 @@ export function getRoutingBySeq(
  * thread" from "I'm writing into a thread the peer owns" (the latter
  * should require in_reply_to to prove the link).
  */
-export function hasOutboundToThread(
-  channelType: string,
-  platformId: string,
-  threadId: string,
-): boolean {
-  const result = getOutboundDb()
-    .prepare(
-      `SELECT COUNT(*) AS n FROM messages_out
-        WHERE channel_type = ? AND platform_id = ? AND thread_id = ?`,
-    )
-    .get(channelType, platformId, threadId) as { n: number } | undefined;
-  return (result?.n ?? 0) > 0;
+export function hasOutboundToThread(channelType: string, platformId: string, threadId: string): boolean {
+  return getAgentMailbox().operations.hasOutboundToThread(channelType, platformId, threadId);
 }
 
 /**
@@ -164,10 +153,7 @@ export function hasOutboundToThread(
  * `messages_out`, so this only ever increases.
  */
 export function outboundWatermark(): number {
-  const row = getOutboundDb().prepare('SELECT COALESCE(MAX(seq), 0) AS m FROM messages_out').get() as {
-    m: number;
-  };
-  return row.m;
+  return getAgentMailbox().operations.outboundWatermark();
 }
 
 /** Get undelivered messages (for host polling — reads from outbound.db). */
@@ -184,14 +170,5 @@ export function getUndeliveredMessages(): MessageOutRow[] {
  * one-door task-delivery change as defense-in-depth.
  */
 export function hasIdenticalSend(platformId: string, channelType: string, text: string): boolean {
-  const row = getOutboundDb()
-    .prepare(
-      `SELECT 1 FROM messages_out
-        WHERE platform_id = $platform_id AND channel_type = $channel_type
-          AND (in_reply_to IS NULL OR in_reply_to = '')
-          AND json_extract(content, '$.text') = $text
-        LIMIT 1`,
-    )
-    .get({ $platform_id: platformId, $channel_type: channelType, $text: text });
-  return row != null;
+  return getAgentMailbox().operations.hasIdenticalSend(platformId, channelType, text);
 }

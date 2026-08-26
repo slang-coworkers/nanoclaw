@@ -129,9 +129,9 @@ beforeEach(async () => {
   process.chdir(path.join(TEST_ROOT, 'project'));
 });
 
-afterEach(() => {
+afterEach(async () => {
   process.chdir(originalCwd);
-  closeDb();
+  await closeDb();
   fs.rmSync(TEST_ROOT, { recursive: true, force: true });
 });
 

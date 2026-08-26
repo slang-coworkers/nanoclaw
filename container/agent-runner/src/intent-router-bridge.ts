@@ -24,6 +24,13 @@ function log(msg: string): void {
 }
 
 export async function classifyAndPrepend(prompt: string): Promise<string> {
+  // Never spawn the classifier from a test run. The suite exercises the poll
+  // loop inside a live agent container, where HOOK_PATH exists and the runtime
+  // OVERLAY_WORKFLOWS is set — so every loop-driven test made a real Haiku call
+  // (~1.8-2.0s) before its first query, blowing the 2s waitFor budgets and
+  // failing 22 tests that pass with the env unset. `bun test` sets
+  // NODE_ENV=test; nothing in the image or container-runner sets it otherwise.
+  if (process.env.NODE_ENV === 'test') return prompt;
   if (!existsSync(HOOK_PATH)) return prompt;
   if (!process.env.OVERLAY_WORKFLOWS) return prompt;
 
@@ -49,8 +56,12 @@ function runHook(prompt: string): Promise<string> {
       reject(new Error(`hook timed out after ${TIMEOUT_MS}ms`));
     }, TIMEOUT_MS);
 
-    child.stdout.on('data', (b) => { stdout += b.toString(); });
-    child.stderr.on('data', (b) => { stderr += b.toString(); });
+    child.stdout.on('data', (b) => {
+      stdout += b.toString();
+    });
+    child.stderr.on('data', (b) => {
+      stderr += b.toString();
+    });
 
     child.on('error', (err) => {
       if (timer) clearTimeout(timer);
