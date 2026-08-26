@@ -359,3 +359,20 @@ describe('channel + router integration', () => {
     expect((mockAdapter.delivered[0].content as { text: string }).text).toBe('Agent response');
   });
 });
+
+describe('optional channel adapters', () => {
+  // dashboard.ts lives on the nv-dashboard overlay, but its registration has to
+  // sit in the barrel, which nv-main owns and the composer canonicalizes. A
+  // static `import './dashboard.js';` is therefore broken on one side or the
+  // other: present and unresolvable on nv-main (barrel dies at module load, and
+  // tsc does not see it because a missing runtime import is not a type error),
+  // or absent and unregistered on the composed tree ("No adapter for channel
+  // type dashboard" at delivery). It has been both — #919 fixed the second by
+  // causing the first.
+  it('resolves the barrel when an optional adapter is not in this tree', async () => {
+    const reg = await import('./channel-registry.js');
+    await import('./index.js');
+
+    expect(reg.getRegisteredChannelNames()).toContain('cli');
+  });
+});
