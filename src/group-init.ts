@@ -5,7 +5,7 @@ import { resolveMirroredSkillScope } from './claude-composer.js';
 import { DATA_DIR, DEFAULT_AGENT_PROVIDER, GROUPS_DIR } from './config.js';
 import { getDb } from './db/connection.js';
 import { ensureContainerConfig } from './db/container-configs.js';
-import { stageGroupPersona } from './group-persona.js';
+import { PERSONA_PREPEND_FILE, stageGroupPersona } from './group-persona.js';
 import { log } from './log.js';
 import { providerProvidesAgentSurfaces } from './providers/provider-container-registry.js';
 import type { AgentGroup } from './types.js';
@@ -163,23 +163,24 @@ export async function initGroupFilesystem(
   // additive fragments) and typed coworkers (full spine). The host never
   // hand-writes the file here.
 
-  // Seed/instructions. The fork composes CLAUDE.md from templates +
-  // .instructions.md on every wake, so user instructions live in
-  // .instructions.md (the fork's surface). A creator may instead drop a
-  // provider-agnostic neutral `.seed.md`; consume it here (placement deferred
-  // to first spawn, where the DB-resolved provider is known). `opts.instructions`
+  // Seed/instructions. Standing instructions live in `instructions.prepend.md`,
+  // composed into CLAUDE.md on every wake. A creator may instead drop a
+  // provider-agnostic neutral `.seed.md`; consume it here (placement deferred to
+  // first spawn, where the DB-resolved provider is known). `opts.instructions`
   // wins if passed inline. For a surfaces-owning (non-default, e.g. codex)
   // provider, ALSO land the seed in the memory scaffold's conventional file so
-  // that agent reads it on its first turn (it doesn't compose .instructions.md).
+  // that agent reads it on its first turn (it composes no persona file).
   const neutralSeedFile = path.join(groupDir, '.seed.md');
   const seed =
     opts?.instructions ??
     (fs.existsSync(neutralSeedFile) ? fs.readFileSync(neutralSeedFile, 'utf-8').trimEnd() : undefined);
 
-  const instructionsFile = path.join(groupDir, '.instructions.md');
-  if (!fs.existsSync(instructionsFile) && seed) {
-    fs.writeFileSync(instructionsFile, seed + '\n');
-    initialized.push('.instructions.md');
+  // Canonical name, not the legacy `.instructions.md`: seeding the legacy file
+  // handed every fresh group a surface that the first spawn immediately
+  // migrated away. `stageGroupPersona` is no-clobber, so an existing persona
+  // (or a re-run) is never overwritten.
+  if (seed && stageGroupPersona(groupDir, seed)) {
+    initialized.push(PERSONA_PREPEND_FILE);
   }
 
   if (!defaultSurfaces && seed) {
@@ -195,10 +196,6 @@ export async function initGroupFilesystem(
   if (fs.existsSync(neutralSeedFile)) {
     fs.rmSync(neutralSeedFile);
     initialized.push('.seed.md consumed');
-  }
-
-  if (opts?.instructions && stageGroupPersona(groupDir, opts.instructions)) {
-    initialized.push('instructions.prepend.md');
   }
 
   // Ensure container_configs row exists in the DB. Idempotent — no-op if

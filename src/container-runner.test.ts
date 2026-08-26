@@ -135,6 +135,34 @@ describe('detectStaleContainers per-session compose guard (structural)', () => {
     expect(fnBody).toMatch(/try\s*{[\s\S]*composeCoworkerSpine\(/);
     expect(fnBody).toMatch(/catch \(err\) {[\s\S]*Skipping stale-check[\s\S]*continue;/);
   });
+
+  // Both hash sites must resolve the persona the SAME way spawn does. They used
+  // to read `.instructions.md` directly while spawn went through
+  // readStandingInstructions, which migrates that file to
+  // `instructions.prepend.md` and reads the canonical name. After the first
+  // spawn migrated it, the legacy path no longer existed: spawn composed WITH
+  // the persona, both hash sites composed WITHOUT it, and the digests could
+  // never agree — so every group with a persona looked permanently stale and
+  // got restarted on every 60s sweep.
+  //
+  // Structural, like the guard above: the divergence is in which reader is
+  // called, and driving the real functions needs a live activeContainers map.
+  it('records and compares the spawn hash through the same persona reader as spawn', () => {
+    const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
+    for (const fn of ['export async function recomposeAndUpdateHash', 'export async function detectStaleContainers']) {
+      const start = src.indexOf(fn);
+      expect(start, `${fn} not found`).toBeGreaterThan(-1);
+      const body = src.slice(start, src.indexOf('\n}', start));
+      // Naming the legacy path is fine — it is the migration SOURCE argument.
+      // Reading it straight off disk is the bug.
+      expect(body, `${fn} must not read the legacy persona path directly`).not.toMatch(
+        /readFileSync\([^)]*\.instructions\.md/,
+      );
+      expect(body, `${fn} must resolve the persona through the shared reader`).toMatch(
+        /readStandingInstructions\(|readGroupPersona\(/,
+      );
+    }
+  });
 });
 
 // Dropped with this merge, genuinely superseded rather than lost:
