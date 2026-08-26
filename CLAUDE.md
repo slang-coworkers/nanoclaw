@@ -148,7 +148,7 @@ The **Tier-2 cost cap** (`costCapT2Usd` / `costCeilingT2Usd`) is also materializ
 | `group` (default) | Agent can access `groups`, `sessions`, `destinations`, `members`, `tasks` only, scoped to its own agent group. `--id` and group args are auto-filled. Cross-group access rejected. `cli_scope` changes blocked. |
 | `global` | Unrestricted. Set automatically for owner agent groups via `init-first-agent`. |
 
-Key files: `src/db/container-configs.ts`, `src/container-config.ts`, `src/cli/dispatch.ts` (scope enforcement), `src/claude-composer/spine.ts` (instructions inclusion per scope).
+Key files: `src/db/container-configs.ts`, `src/container-config.ts`, `src/cli/dispatch.ts` (scope enforcement), `src/claude-composer/spine.ts` (spine instructions per scope — drops the ncl-only fragments at `disabled`).
 
 ## Container Restart
 

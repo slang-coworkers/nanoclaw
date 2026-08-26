@@ -17,8 +17,12 @@
  *     mailbox state     ← selected implementation
  *     .heartbeat        ← container touches for liveness detection
  *     outbox/           ← outbound files
- *     agent/            ← agent group folder (CLAUDE.md, skills, working files)
- *     .claude/          ← Claude SDK session data
+ *     agent/            ← agent group folder (CLAUDE.md, container.json, working files)
+ *       CLAUDE.md       ← composed project document (RO nested mount)
+ *       container.json  ← per-group config (RO nested mount)
+ *   /app/src/           ← shared agent-runner source (RO)
+ *   /app/skills/        ← shared skills (RO)
+ *   /home/node/.claude/ ← Claude SDK state + skill symlinks (RW)
  */
 
 import path from 'path';
@@ -70,6 +74,8 @@ async function main(): Promise<void> {
   // filesystem; Codex loads it in its own provider (codex.ts:composeBaseInstructions).
   // index.ts only provides this routing addendum — CLAUDE.md ownership lives in
   // the provider. Per-group memory lives in CLAUDE.local.md (auto-loaded).
+  // ensureMemoryScaffold() is NOT called here: this fork pairs it with
+  // registerMemorySessionHook() below, so scaffold and hook are one step.
   const taskId = getTaskSeriesId();
   const instructions = buildSystemPromptAddendum(
     config.assistantName || undefined,
@@ -193,7 +199,10 @@ async function main(): Promise<void> {
   // Merge additional MCP servers from host configuration
   if (process.env.NANOCLAW_MCP_SERVERS) {
     try {
-      const additional = JSON.parse(process.env.NANOCLAW_MCP_SERVERS) as Record<string, { command: string; args: string[]; env: Record<string, string> }>;
+      const additional = JSON.parse(process.env.NANOCLAW_MCP_SERVERS) as Record<
+        string,
+        { command: string; args: string[]; env: Record<string, string> }
+      >;
       for (const [name, config] of Object.entries(additional)) {
         mcpServers[name] = config;
         log(`Additional MCP server: ${name} (${config.command})`);
@@ -220,7 +229,9 @@ async function main(): Promise<void> {
   // MCP proxy integration: add proxy-connected servers for allowed MCP tools
   const allowedMcpTools = parseAllowedMcpTools(process.env as Record<string, string | undefined>);
   if (allowedMcpTools.length > 0 && process.env.MCP_PROXY_URL) {
-    log('Using legacy MCP proxy auto-discovery from allowed tool names; prefer explicit NANOCLAW_MCP_SERVERS provisioning for HTTP MCP servers.');
+    log(
+      'Using legacy MCP proxy auto-discovery from allowed tool names; prefer explicit NANOCLAW_MCP_SERVERS provisioning for HTTP MCP servers.',
+    );
     // Derive which MCP servers to connect based on allowed tool prefixes
     const neededServers = new Set<string>();
     for (const tool of allowedMcpTools) {

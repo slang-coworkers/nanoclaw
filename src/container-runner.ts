@@ -1124,17 +1124,18 @@ export async function buildMounts(
   // never a provider name. See provider-container-registry.
   const defaultSurfaces = !providerProvidesAgentSurfaces(provider);
 
+  const groupDir = path.resolve(GROUPS_DIR, agentGroup.folder);
   const claudeDir = path.join(DATA_DIR, 'v2-sessions', agentGroup.id, '.claude-shared');
   if (defaultSurfaces) {
     syncSkillSymlinks(claudeDir, containerConfig);
-    // No composeGroupClaudeMd here: this fork composes the project doc from the
-    // lego spine (composeCoworkerClaudeMd, called in spawnContainer), and
-    // upstream's claude-md-compose module is deleted on this branch.
+    // No project-doc composer here: this fork composes CLAUDE.md from the lego
+    // spine (composeCoworkerClaudeMd, called in spawnContainer). Upstream's
+    // composer is the same file this fork deleted (claude-md-compose.ts,
+    // renamed project-doc-compose.ts upstream) — two writers of one file.
   }
 
   const mounts: VolumeMount[] = [];
   const sessDir = sessionDir(agentGroup.id, session.id);
-  const groupDir = path.resolve(GROUPS_DIR, agentGroup.folder);
   const scope = agentGroup.id;
 
   // Convenience: drop a symlink at groups/<folder>/.workflow-state.json pointing
@@ -1595,13 +1596,10 @@ export async function buildMounts(
     scope,
   });
 
-  // Composer-managed CLAUDE.md artifacts — nested RO mounts. These are
-  // regenerated from the shared base + fragments on every spawn; any
-  // agent-side writes would be clobbered, so enforce read-only. Only
-  // CLAUDE.local.md (per-group memory) remains RW via the group-dir mount.
-  // `.claude-shared.md` is a symlink whose target (`/app/CLAUDE.md`) is
-  // already RO-mounted, so writes through it fail regardless — no need for
-  // a nested mount there.
+  // The composed CLAUDE.md — one nested RO mount on top of the RW group dir.
+  // The spine regenerates it every spawn, so an agent-side write would be
+  // clobbered; read-only makes that fail loudly instead. CLAUDE.local.md
+  // (per-group memory) stays RW via the group-dir mount.
   const composedClaudeMd = path.join(groupDir, 'CLAUDE.md');
   if (defaultSurfaces && fs.existsSync(composedClaudeMd)) {
     mounts.push({
@@ -1609,28 +1607,6 @@ export async function buildMounts(
       containerPath: '/workspace/agent/CLAUDE.md',
       readonly: true,
       mountClass: 'group-state',
-      scope,
-    });
-  }
-  const fragmentsDir = path.join(groupDir, '.claude-fragments');
-  if (defaultSurfaces && fs.existsSync(fragmentsDir)) {
-    mounts.push({
-      hostPath: fragmentsDir,
-      containerPath: '/workspace/agent/.claude-fragments',
-      readonly: true,
-      mountClass: 'group-state',
-      scope,
-    });
-  }
-
-  // Shared CLAUDE.md — a release surface, read-only.
-  const sharedClaudeMd = path.join(projectRoot, 'container', 'CLAUDE.md');
-  if (defaultSurfaces && fs.existsSync(sharedClaudeMd)) {
-    mounts.push({
-      hostPath: sharedClaudeMd,
-      containerPath: '/app/CLAUDE.md',
-      readonly: true,
-      mountClass: 'install-surface',
       scope,
     });
   }
@@ -2012,6 +1988,10 @@ export function parsePidsLimit(value: string): number | undefined {
  * Sync skill symlinks in .claude-shared/skills/ to match the container.json
  * selection. Each symlink points to a container path (/app/skills/<name>) so
  * it's dangling on the host but valid inside the container.
+ *
+ * Not the mechanism the composer stopped using: skill discovery is a directory
+ * scan that follows a link wherever it lands, and only `@` imports are gated on
+ * resolving inside the project directory.
  */
 export function syncSkillSymlinks(
   claudeDir: string,
