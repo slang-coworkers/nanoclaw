@@ -1,0 +1,8 @@
+# nv-nanoclaw — NanoClaw project skeleton overlay.
+# Carries ONLY the nanoclaw-specific skills, spine, and workflows.
+# Core infrastructure (src/, container/agent-runner/) lives on nv-main.
+
+container/skills/base-nanoclaw/**
+container/skills/nanoclaw-*/**
+container/spines/nanoclaw/**
+container/workflows/nanoclaw-*/**
