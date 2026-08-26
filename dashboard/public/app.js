@@ -5587,20 +5587,240 @@ function renderAdminTasks() {
 // ranked by cost over 30d so the fat tail (few sessions, most spend) is on top.
 const sessionsView = { period: '30d', sort: 'cost', filter: 'all', groupFilter: 'all', unavailable: null };
 
+// ---- Live cost-ceiling control (dash-1 set-ceiling-v2) --------------------
+// Client state for the +/-/typed-value/Apply stepper on the Sessions tab.
+// Kept separate from adminState.sessions (server truth, replaced wholesale on
+// every reload) because a draft is LOCAL and UNSENT until Apply.
+//   ceilingDrafts:   sessionId -> draft cents, not yet sent (client-only)
+//   ceilingInFlight: sessionId -> { requestId, targetCeilingCents,
+//                    expectedEpochKey, expectedCeilingCents } for the request
+//                    currently pinned to this session — reused across a retry
+//                    of the SAME action, replaced by a fresh id for a NEW one
+//                    (see the cost-ceiling-apply handler).
+//   ceilingPending:  sessionId with a request outstanding — disables the
+//                    control immediately on Apply, before the next poll/
+//                    reload confirms the outcome server-side.
+const ceilingDrafts = new Map();
+const ceilingInFlight = new Map();
+const ceilingPending = new Set();
+
+const CEILING_MIN_CENTS = 1;
+const CEILING_MAX_CENTS = 100000; // $1,000.00 — the fixed wire contract's bound. Enforced here for UX;
+// the host independently enforces the same bound, so this is not the safety boundary (see server.ts).
+const CEILING_STEP_CENTS = 1000; // $10.00 per +/- click
+const CEILING_POLL_INTERVAL_MS = 2000;
+const CEILING_POLL_MAX_ATTEMPTS = 30; // ~60s bound, then leave the row as-is for the next ordinary reload
+
+/** cents -> the string an <input> should display ("17500" -> "175.00"). Kept
+ *  as a plain decimal string, not fmtUsd (no "$", no "<$0.01" special case) —
+ *  this feeds an editable field, not a read-only label. */
+function centsToUsdInputStr(cents) {
+  if (typeof cents !== 'number' || !Number.isFinite(cents)) return '';
+  return (cents / 100).toFixed(2);
+}
+
+/**
+ * Typed dollar string -> exact integer cents, or null if it isn't a valid
+ * non-negative amount (at most 2 decimal places). Works in cents internally
+ * end to end (draft state, the outgoing request) specifically so repeated
+ * +/- clicks and parses never accumulate float drift the way repeatedly
+ * adding/subtracting on a float dollar amount would.
+ */
+function parseUsdInputToCents(str) {
+  if (typeof str !== 'string' && typeof str !== 'number') return null;
+  const cleaned = String(str).trim().replace(/^\$/, '');
+  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null;
+  const [dollars, fraction = ''] = cleaned.split('.');
+  const paddedFraction = (fraction + '00').slice(0, 2);
+  return Number(dollars) * 100 + Number(paddedFraction);
+}
+
+/** Clamp to the fixed wire contract's bound, defaulting to the floor for
+ *  anything non-numeric (never silently produce an out-of-range or NaN cents
+ *  value for the draft state to carry forward). */
+function clampCeilingCents(cents) {
+  if (typeof cents !== 'number' || !Number.isFinite(cents)) return CEILING_MIN_CENTS;
+  return Math.min(CEILING_MAX_CENTS, Math.max(CEILING_MIN_CENTS, Math.round(cents)));
+}
+
+/** The exact outgoing request body for POST /api/sessions/:id/cost-ceiling,
+ *  per the fixed wire contract — pulled into its own function so a test can
+ *  assert the wire shape directly without mocking fetch. */
+function buildCeilingRequestBody(requestId, targetCeilingCents, expectedEpochKey, expectedCeilingCents) {
+  return { requestId, targetCeilingCents, expectedEpochKey, expectedCeilingCents };
+}
+
+/** `cca-<uuid>`-style request id. crypto.randomUUID() needs a secure context
+ *  (HTTPS or localhost) and this dashboard may be reached over plain HTTP on
+ *  an internal network, so this falls back to a manual id — it only needs to
+ *  be unique enough for idempotency/correlation, never a security token. */
+function newCeilingRequestId() {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return `cca-${crypto.randomUUID()}`;
+  } catch {
+    /* fall through */
+  }
+  return `cca-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * Decide whether an Apply click reuses the requestId already pinned to a
+ * session (`priorInFlight`, from ceilingInFlight) or mints a fresh one.
+ * Reuse ONLY when retrying the EXACT same action (identical target/expected
+ * values) — this is what "reuse across any HTTP retry" means: a changed
+ * draft, or any action after a prior one reached a terminal outcome (which
+ * clears ceilingInFlight — see reconcileCeilingPendingState), is a NEW
+ * logical action and gets a new id. Reusing an id with DIFFERENT parameters
+ * than its original attempt is exactly the host's documented 400
+ * id-reuse-mismatch case, so getting this right here avoids ever sending one.
+ */
+function resolveCeilingRequestId(priorInFlight, targetCeilingCents, expectedEpochKey, expectedCeilingCents) {
+  const sameAction =
+    priorInFlight &&
+    priorInFlight.targetCeilingCents === targetCeilingCents &&
+    priorInFlight.expectedEpochKey === expectedEpochKey &&
+    priorInFlight.expectedCeilingCents === expectedCeilingCents;
+  return sameAction ? priorInFlight.requestId : newCeilingRequestId();
+}
+
+/**
+ * Live per-session cost-ceiling control (dash-1 set-ceiling-v2) — the
+ * stepper/Apply block rendered under the cost-status pill for every
+ * non-immortal session. Distinct rendering per state, per the fixed contract:
+ *   - immortal: no control at all (renderCostCapCell already shows read-only ∞)
+ *   - costControlVersion < 2 (or absent): "not yet available" — the runner
+ *     hasn't been upgraded (the paired host+runner PR's rollout gate)
+ *   - pending/enqueued (this browser's own in-flight request, OR another
+ *     admin/card's, as reported by latestCostAdjustment): disabled, "Applying…"
+ *   - applied / conflict / rejected: a small distinct tag alongside the control
+ *   - otherwise: the live +/- / typed-value / Apply stepper
+ */
+function renderCostCeilingControl(s) {
+  if (s.costImmortal) return '';
+  const sid = s.session_id;
+  if (!sid) return '';
+  const version = typeof s.costControlVersion === 'number' ? s.costControlVersion : 0;
+  if (version < 2) {
+    return (
+      `<div style="margin-top:3px;font-size:9px;color:var(--text-muted)" ` +
+      `title="This session's runner build doesn't support live ceiling control yet">` +
+      `ceiling control: not yet available (runner not upgraded)</div>`
+    );
+  }
+  const adj = s.latestCostAdjustment;
+  const pending = ceilingPending.has(sid) || (adj != null && (adj.state === 'pending' || adj.state === 'enqueued'));
+  const seedCents = ceilingDrafts.has(sid)
+    ? ceilingDrafts.get(sid)
+    : typeof s.costCeilingCents === 'number'
+      ? s.costCeilingCents
+      : CEILING_STEP_CENTS;
+  const draftCents = clampCeilingCents(seedCents);
+  ceilingDrafts.set(sid, draftCents); // normalize so a later +/-/Apply always reads a valid clamped value
+  const statusTag =
+    adj && adj.state === 'applied'
+      ? `<span style="color:#10B981;font-size:9px" title="Applied ${escAttr(adj.requestedAt || '')}"> ✓ applied</span>`
+      : adj && adj.state === 'conflict'
+        ? `<span style="color:#F59E0B;font-size:9px" title="Another request/card won this epoch first"> ⚠ conflict</span>`
+        : adj && adj.state === 'rejected'
+          ? `<span style="color:#EF4444;font-size:9px"> rejected</span>`
+          : '';
+  const noCeilingNote =
+    typeof s.costCeilingCents !== 'number'
+      ? `<span style="color:var(--text-muted);font-size:9px"> (no ceiling set yet)</span>`
+      : '';
+  const dis = pending ? ' disabled' : '';
+  const sidAttr = escAttr(sid);
+  return (
+    `<div style="margin-top:3px;display:flex;align-items:center;gap:3px;font-size:10px">` +
+    `<button class="admin-action-btn" data-action="cost-ceiling-step" data-session-id="${sidAttr}" data-delta="-${CEILING_STEP_CENTS}"${dis} title="-$10">−</button>` +
+    `<input type="text" inputmode="decimal" class="cost-ceiling-input" data-session-id="${sidAttr}" value="${escAttr(centsToUsdInputStr(draftCents))}"${dis} ` +
+    `style="width:56px;font-size:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:1px 3px;text-align:right">` +
+    `<button class="admin-action-btn" data-action="cost-ceiling-step" data-session-id="${sidAttr}" data-delta="${CEILING_STEP_CENTS}"${dis} title="+$10">+</button>` +
+    `<button class="admin-action-btn success" data-action="cost-ceiling-apply" data-session-id="${sidAttr}"${dis}>${pending ? 'Applying…' : 'Apply'}</button>` +
+    statusTag +
+    noCeilingNote +
+    `</div>`
+  );
+}
+
+async function fetchAndApplySessions() {
+  const res = await fetch(`/api/sessions?period=${sessionsView.period}&sort=${sessionsView.sort}`);
+  if (!res.ok) throw new Error('fetch failed');
+  const data = await res.json();
+  adminState.sessions = data.sessions || [];
+  sessionsView.unavailable = data.costUnavailable ?? null;
+  sessionsView.transcriptsBase = data.transcriptsBase || '';
+  reconcileCeilingPendingState(adminState.sessions);
+}
+
 async function loadAdminSessions() {
   const el = document.getElementById('admin-sessions-content');
   el.innerHTML = '<div class="admin-loading">Loading...</div>';
   try {
-    const res = await fetch(`/api/sessions?period=${sessionsView.period}&sort=${sessionsView.sort}`);
-    if (!res.ok) throw new Error('fetch failed');
-    const data = await res.json();
-    adminState.sessions = data.sessions || [];
-    sessionsView.unavailable = data.costUnavailable ?? null;
-    sessionsView.transcriptsBase = data.transcriptsBase || '';
+    await fetchAndApplySessions();
     adminState.loaded.add('sessions');
     renderAdminSessions();
   } catch {
     el.innerHTML = '<div class="admin-empty">Failed to load sessions</div>';
+  }
+}
+
+// Silent refresh used by the cost-ceiling poll loop (and the apply handler's
+// terminal-response paths) — no "Loading..." flash, since this runs
+// repeatedly (every CEILING_POLL_INTERVAL_MS) while a request is pending and
+// would otherwise blank the whole table on every tick.
+async function refreshAdminSessionsQuietly() {
+  try {
+    await fetchAndApplySessions();
+    renderAdminSessions();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Clears ceilingPending/ceilingInFlight/ceilingDrafts for any session whose
+ * FRESH row shows ITS OWN in-flight request has reached a terminal state —
+ * regardless of which code path triggered the refresh (this browser's own
+ * poll loop, a period/sort change, a plain tab revisit). Matching on
+ * `adj.id === inFlight.requestId` (not just "any terminal state") matters: a
+ * DIFFERENT admin's terminal adjustment landing on this row must not be
+ * mistaken for the outcome of OUR OWN still-pending request.
+ */
+function reconcileCeilingPendingState(sessions) {
+  const byId = new Map((sessions || []).filter((s) => s.session_id).map((s) => [s.session_id, s]));
+  for (const sid of Array.from(ceilingPending)) {
+    const s = byId.get(sid);
+    const adj = s && s.latestCostAdjustment;
+    const inFlight = ceilingInFlight.get(sid);
+    if (
+      adj &&
+      inFlight &&
+      adj.id === inFlight.requestId &&
+      (adj.state === 'applied' || adj.state === 'conflict' || adj.state === 'rejected')
+    ) {
+      ceilingPending.delete(sid);
+      ceilingInFlight.delete(sid);
+      // Stop showing a local draft once the real outcome is known — render
+      // whatever the server now reports as the actual ceiling/status (a race
+      // could mean the applied value differs from what was locally displayed).
+      ceilingDrafts.delete(sid);
+    }
+  }
+}
+
+/** Poll /api/sessions until THIS session's pending adjustment reaches a
+ *  terminal state, per the "an HTTP 202/200 alone is not 'done'" requirement.
+ *  Gives up after CEILING_POLL_MAX_ATTEMPTS (~60s) rather than polling
+ *  forever — the row stays in its pending/disabled look until the next
+ *  ordinary reload picks up the true state. */
+async function pollCeilingUntilTerminal(sid) {
+  for (let attempt = 0; attempt < CEILING_POLL_MAX_ATTEMPTS; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, CEILING_POLL_INTERVAL_MS));
+    if (!ceilingPending.has(sid)) return; // already reconciled (e.g. by another refresh in the meantime)
+    await refreshAdminSessionsQuietly();
+    if (!ceilingPending.has(sid)) return; // reconcileCeilingPendingState just cleared it — terminal reached
   }
 }
 
@@ -5617,6 +5837,11 @@ async function loadAdminSessions() {
 // daily-window cap (immortal's per-DAY visibility bound) renders "/day". Shared
 // contract with the host: s.costStatus / s.costSpent / s.costCap / s.costCeiling
 // / s.costP99 / s.costImmortal / s.costWindow.
+//
+// dash-1 set-ceiling-v2: the live ceiling now renders for EVERY status, not
+// just 'stopped' — a healthy row used to show spend but not the number it was
+// actually bounded by. The live +/-/Apply stepper (renderCostCeilingControl)
+// is appended below the pill for every non-immortal session.
 function renderCostCapCell(s) {
   const status = s.costStatus;
   if (!status) return '<span style="color:#64748B">—</span>';
@@ -5625,12 +5850,13 @@ function renderCostCapCell(s) {
   const immortalMark = s.costImmortal
     ? '<span title="immortal (orchestrator/admin) — never stopped" style="color:var(--text-muted)"> ∞</span>'
     : '';
+  const ceiling = typeof s.costCeiling === 'number' ? fmtUsd(s.costCeiling) : null;
+  const ceilingSuffix = ceiling ? `<span style="color:var(--text-muted)"> / ${ceiling} ceiling${perDay}</span>` : perDay;
   let cell;
   if (status === 'stopped') {
-    const ceiling = typeof s.costCeiling === 'number' ? fmtUsd(s.costCeiling) : '?';
     cell =
       `<span style="border:1px solid #EF4444;background:rgba(239,68,68,0.12);border-radius:4px;padding:1px 6px;white-space:nowrap">` +
-      `<b style="color:#EF4444">${spent}</b><span style="color:var(--text-muted)"> / ${ceiling} ceiling${perDay}</span>` +
+      `<b style="color:#EF4444">${spent}</b>${ceilingSuffix}` +
       `<span style="color:#EF4444;font-size:9px"> stopped</span>${immortalMark}</span>`;
   } else {
     // p99-relative color, same 0.8 "warn" fraction the runner itself uses (now
@@ -5641,7 +5867,7 @@ function renderCostCapCell(s) {
     const color = ratio == null ? '#64748B' : ratio >= 1 ? '#EF4444' : ratio >= 0.8 ? '#F59E0B' : '#10B981';
     cell =
       `<span style="border:1px solid ${color};border-radius:4px;padding:1px 6px;white-space:nowrap">` +
-      `<b style="color:${color}">${spent}</b>${perDay}${immortalMark}</span>`;
+      `<b style="color:${color}">${spent}</b>${ceilingSuffix}${immortalMark}</span>`;
   }
   if (s.session_id && !s.costImmortal) {
     const sid = escAttr(s.session_id);
@@ -5651,6 +5877,7 @@ function renderCostCapCell(s) {
         : `<button class="admin-action-btn danger" data-action="cost-override" data-session-id="${sid}" data-decision="stop">Stop</button>`;
     cell += `<span style="display:inline-flex;gap:4px;margin-left:6px">` + btn + `</span>`;
   }
+  cell += renderCostCeilingControl(s);
   return cell;
 }
 
@@ -6240,6 +6467,136 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
     return;
   }
 
+  // +/- stepper for the live cost-ceiling control (dash-1 set-ceiling-v2).
+  // Client-side only — adjusts the LOCAL draft in $10 increments, nothing is
+  // sent until Apply.
+  if (action === 'cost-ceiling-step') {
+    const sid = btn.dataset.sessionId;
+    const delta = Number(btn.dataset.delta);
+    if (!sid || !Number.isFinite(delta)) return;
+    const s = adminState.sessions.find((x) => x.session_id === sid);
+    const current = ceilingDrafts.has(sid)
+      ? ceilingDrafts.get(sid)
+      : typeof s?.costCeilingCents === 'number'
+        ? s.costCeilingCents
+        : 0;
+    ceilingDrafts.set(sid, clampCeilingCents(current + delta));
+    renderAdminSessions();
+    return;
+  }
+
+  // Apply the live cost-ceiling control (dash-1 set-ceiling-v2): POST
+  // /api/sessions/:id/cost-ceiling with the fixed wire shape
+  // (requestId/targetCeilingCents/expectedEpochKey/expectedCeilingCents), then
+  // handle every distinct response the dashboard server can produce —
+  // 202 (accepted, poll for the real outcome), 200 (already-terminal retry),
+  // 400/404/409/422/426 (distinct terminal rejections), 503/network failure
+  // (retriable — the pinned requestId is kept so a re-click retries the SAME
+  // request rather than minting a new one).
+  if (action === 'cost-ceiling-apply') {
+    const sid = btn.dataset.sessionId;
+    const s = sid ? adminState.sessions.find((x) => x.session_id === sid) : null;
+    if (!sid || !s) return;
+    const input = document.querySelector(`input.cost-ceiling-input[data-session-id="${CSS.escape(sid)}"]`);
+    const typedCents = input ? parseUsdInputToCents(input.value) : null;
+    if (typedCents == null) {
+      alert(`Enter a valid ceiling amount between ${fmtUsd(CEILING_MIN_CENTS / 100)} and ${fmtUsd(CEILING_MAX_CENTS / 100)}.`);
+      return;
+    }
+    if (typedCents < CEILING_MIN_CENTS || typedCents > CEILING_MAX_CENTS) {
+      alert(`Ceiling must be between ${fmtUsd(CEILING_MIN_CENTS / 100)} and ${fmtUsd(CEILING_MAX_CENTS / 100)}.`);
+      return;
+    }
+    const targetCeilingCents = typedCents;
+    const expectedCeilingCents = typeof s.costCeilingCents === 'number' ? s.costCeilingCents : 0;
+    const expectedEpochKey = s.costEpochKey || '0';
+    const oldStr = typeof s.costCeiling === 'number' ? fmtUsd(s.costCeiling) : 'no ceiling set';
+    const newStr = fmtUsd(targetCeilingCents / 100);
+    const spentCents = typeof s.costSpent === 'number' ? Math.round(s.costSpent * 100) : 0;
+    let warning = '';
+    if (targetCeilingCents <= spentCents) {
+      warning = '\n\nThis will STOP the session immediately (target is at or below current spend).';
+    } else if (s.costStatus === 'stopped') {
+      warning = '\n\nThis will RESUME the session (it is currently stopped).';
+    }
+    const confirmMsg = `Set cost ceiling for session "${sid}" from ${oldStr} to ${newStr}? Current spend: ${fmtUsd(s.costSpent || 0)}.${warning}`;
+    if (!confirm(confirmMsg)) return;
+
+    const requestId = resolveCeilingRequestId(ceilingInFlight.get(sid), targetCeilingCents, expectedEpochKey, expectedCeilingCents);
+    ceilingInFlight.set(sid, { requestId, targetCeilingCents, expectedEpochKey, expectedCeilingCents });
+    ceilingPending.add(sid);
+    ceilingDrafts.set(sid, targetCeilingCents);
+    renderAdminSessions();
+
+    try {
+      const res = await fetch(`/api/sessions/${encodeURIComponent(sid)}/cost-ceiling`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildCeilingRequestBody(requestId, targetCeilingCents, expectedEpochKey, expectedCeilingCents)),
+      });
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        /* non-JSON body */
+      }
+      if (res.status === 202) {
+        // Accepted, not yet resolved — an HTTP 202 alone is not "done"; keep
+        // polling until latestCostAdjustment (from a real /api/sessions
+        // reload) reaches a terminal state.
+        pollCeilingUntilTerminal(sid);
+        return;
+      }
+      if (res.status === 200) {
+        // Retry of an already-terminal request — apply the same way a poll
+        // discovering it would, rather than re-polling for something already known.
+        ceilingPending.delete(sid);
+        ceilingInFlight.delete(sid);
+        ceilingDrafts.delete(sid);
+        await refreshAdminSessionsQuietly();
+        return;
+      }
+      if (res.status === 503) {
+        // Runner/host not ready, or unreachable at the HOST level (distinct
+        // from a local network failure below, but both are retriable) — keep
+        // the pinned requestId so the next Apply click retries the SAME request.
+        ceilingPending.delete(sid);
+        const detail = data && typeof data.error === 'string' ? data.error : 'runner not ready';
+        alert(`Could not apply the ceiling right now (${detail}). Try again shortly.`);
+        renderAdminSessions();
+        return;
+      }
+      // 400 / 404 / 409 / 422 / 426 — distinct, TERMINAL-for-this-request
+      // outcomes. Each gets its own message: a 409 (someone/something else
+      // already changed this) is not the same situation as a 422 (this
+      // session can never accept this) and must not look the same to the admin.
+      const statusMessages = {
+        400: 'Invalid request',
+        404: 'Session not found — it may have been deleted.',
+        409: 'Someone (or something) else already changed this ceiling. Refreshing…',
+        422: 'This session cannot accept a live ceiling right now (immortal, cost tracking unavailable, or no live ceiling configured).',
+        426: "This session's runner build doesn't support live ceiling control yet.",
+      };
+      const label = statusMessages[res.status] || `Request failed (${res.status})`;
+      const detail = data && typeof data.error === 'string' ? `: ${data.error}` : '';
+      alert(`${label}${detail}`);
+      ceilingPending.delete(sid);
+      ceilingInFlight.delete(sid);
+      // 409/422/426 specifically mean "your local view is stale" — discard
+      // the draft rather than leaving a now-meaningless number in the input.
+      if (res.status === 409 || res.status === 422 || res.status === 426) ceilingDrafts.delete(sid);
+      await refreshAdminSessionsQuietly();
+    } catch {
+      // Network-level failure (dashboard unreachable, timeout) — NOT
+      // terminal: keep the pinned requestId so the next Apply click on this
+      // row retries the SAME logical request rather than minting a new one.
+      ceilingPending.delete(sid);
+      alert('Could not reach the dashboard server. Check your connection and try again.');
+      renderAdminSessions();
+    }
+    return;
+  }
+
   if (action === 'toggle-skill') {
     const name = btn.dataset.name;
     btn.disabled = true;
@@ -6460,6 +6817,22 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
     }
     return;
   }
+});
+
+// Live cost-ceiling control (dash-1 set-ceiling-v2): sync typed input straight
+// into the draft map WITHOUT re-rendering. Unlike the +/- buttons and Apply
+// (discrete clicks, safe to re-render), a full renderAdminSessions() on every
+// keystroke would replace the <input> DOM node and steal focus/cursor
+// position mid-type — the confirm dialog reads the input's live DOM value
+// directly at Apply time, so nothing here needs the draft map to drive a
+// re-render for correctness.
+document.getElementById('admin')?.addEventListener('input', (e) => {
+  const input = e.target.closest('input.cost-ceiling-input');
+  if (!input) return;
+  const sid = input.dataset.sessionId;
+  if (!sid) return;
+  const cents = parseUsdInputToCents(input.value);
+  if (cents != null) ceilingDrafts.set(sid, cents);
 });
 
 // ===================================================================

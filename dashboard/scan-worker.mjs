@@ -1,17 +1,29 @@
 /**
  * NanoClaw dashboard — session-DB scan worker (dash-perf round 2)
  *
- * Owns the two heaviest fleet scans that used to run on the dashboard's event
- * loop:
+ * Owns the heaviest fleet scans that used to run (or, for cost caps, would
+ * otherwise have to run) on the dashboard's event loop:
  *   1. Message timestamps — the newest message per agent group (drives the
  *      unread badge + coworker-chat auto-refresh).
  *   2. Activity buckets — the 24h hourly inbound/outbound message histogram.
+ *   3. Cost-cap state (dash-1 set-ceiling-v2) — the live `session_state.value`
+ *      blob (key `cost_cap`) each session's outbound.db carries, read in the
+ *      SAME open this worker already does for #1's outbound half. This is what
+ *      lets the Sessions tab show a session's live ceiling regardless of which
+ *      day-window (Today/7d/30d) is selected: that filter only ever scoped
+ *      *priced transcript cost*, never this live runner-published state, so
+ *      gating it on "priced cost in the selected window" (the old dashboard
+ *      behavior) hid the ceiling for any session with spend outside that
+ *      window. Interpretation of the raw blob (parsing, protocol-version /
+ *      epoch detection) happens host-side in session-cost-caps.ts — this
+ *      worker forwards the raw TEXT unmodified, same "mechanical mirror"
+ *      division of labor as every other field it publishes.
  *
- * Both are pure READ-ONLY passes over the per-session `inbound.db` / `outbound.db`
- * files. Running them here keeps ~6k stats/sec and (for activity) thousands of
- * SQLite opens off the main thread, so HTTP/SSE/WS/`drain` callbacks execute
- * promptly (the backpressure win). The main thread receives immutable cache
- * DELTAS only — it never opens a session DB for these.
+ * All three are pure READ-ONLY passes over the per-session `inbound.db` /
+ * `outbound.db` files. Running them here keeps ~6k stats/sec and (for activity)
+ * thousands of SQLite opens off the main thread, so HTTP/SSE/WS/`drain`
+ * callbacks execute promptly (the backpressure win). The main thread receives
+ * immutable cache DELTAS only — it never opens a session DB for these.
  *
  * Efficiency is not from "a worker" alone but from:
  *   • a shared inventory (one enumeration feeds both scans),
@@ -71,14 +83,17 @@ central.pragma('busy_timeout = 2000');
 
 const sessionsDir = join(dataDir, 'v2-sessions');
 
-/** Per-file scan state. `hours` maps 'YYYY-MM-DDTHH' → message count in that hour. */
-const files = new Map(); // dbPath -> { folder, direction, table, mtimeMs, ts, hours, nextCheckAt, lastChangedAt, missing }
+/** Per-file scan state. `hours` maps 'YYYY-MM-DDTHH' → message count in that hour.
+ *  `costCapRaw` (outbound files only) is the raw `session_state.value` TEXT for
+ *  key 'cost_cap', or null when absent — see refreshFile. */
+const files = new Map(); // dbPath -> { direction, table, mtimeMs, ts, hours, costCapRaw, nextCheckAt, lastChangedAt, missing }
 
-let inventory = []; // [{ folder, inbound, outbound }]
+let inventory = []; // [{ folder, inbound, outbound, sessionId, agentGroupId }]
 let inventoryAt = 0;
 let inventoryOk = false; // a central-DB enumeration has actually succeeded
 let publishedMsgTs = new Map(); // folder -> ts last sent to the host
 let publishedActivityJson = '';
+let publishedCostCaps = new Map(); // sessionId -> raw cost_cap JSON text last sent
 let lastActivityPublish = 0;
 let lastStatsPublish = 0;
 
@@ -125,7 +140,11 @@ function refreshInventory(now) {
       const outbound = join(base, 'outbound.db');
       livePaths.add(inbound);
       livePaths.add(outbound);
-      next.push({ folder, inbound, outbound });
+      // sessionId/agentGroupId (dash-1 set-ceiling-v2): cost caps are published
+      // keyed by session id, not by path or folder — a group can have many
+      // sessions, and unlike msgTs (one max-ts per folder) the cost ceiling is
+      // per-session state.
+      next.push({ folder, inbound, outbound, sessionId: s.id, agentGroupId: s.agent_group_id });
     }
     inventory = next;
     if (!inventoryOk) inventoryOkAt = now;
@@ -261,6 +280,12 @@ function refreshFile(path, direction, table, now, budget) {
   dbOpens++;
   let ts = null;
   const hours = new Map();
+  // Cost-cap live state (dash-1 set-ceiling-v2), outbound files only, in this
+  // SAME open — don't open the DB a second time just for this. `costCapRaw`
+  // stays null when the table/column don't exist yet (older runner) or the key
+  // is unset; a SEPARATE try/catch so that absence can never fail the
+  // message-timestamp/activity read this open primarily exists for.
+  let costCapRaw = null;
   let sdb = null;
   try {
     sdb = new Database(path, { readonly: true });
@@ -272,6 +297,18 @@ function refreshFile(path, direction, table, now, budget) {
     for (const r of rows) {
       const k = hourKey(r.timestamp);
       if (k) hours.set(k, (hours.get(k) || 0) + 1);
+    }
+    if (direction === 'outbound') {
+      try {
+        const cols = sdb.prepare('PRAGMA table_info(session_state)').all();
+        if (cols.some((c) => c.name === 'value')) {
+          const capRow = sdb.prepare("SELECT value FROM session_state WHERE key = 'cost_cap'").get();
+          if (capRow && typeof capRow.value === 'string') costCapRaw = capRow.value;
+        }
+      } catch {
+        // session_state missing/unreadable on this build — leave costCapRaw
+        // null, don't let it affect the ts/hours result above.
+      }
     }
   } catch {
     // Corrupt/locked read: don't cache a bogus empty result over a good one —
@@ -314,6 +351,7 @@ function refreshFile(path, direction, table, now, budget) {
     mtimeMs,
     ts,
     hours,
+    costCapRaw,
     nextCheckAt: now + HOT_INTERVAL_MS,
     lastChangedAt: now,
     missing: false,
@@ -374,6 +412,44 @@ function publishActivity(now) {
   if (json === publishedActivityJson) return;
   publishedActivityJson = json;
   parentPort.postMessage({ kind: 'activity', buckets });
+}
+
+/**
+ * Publish cost-cap deltas (dash-1 set-ceiling-v2), keyed by session id.
+ * Un-throttled (unlike publishActivity's 10s gate) and run every tick, same as
+ * publishMsgTs — a stop/continue/set_ceiling is exactly the kind of
+ * latency-sensitive change where "up to 10s stale" would undercut the "LIVE
+ * effect" this control promises, and per-session deltas are cheap to diff
+ * (string compare), not a histogram recompute.
+ *
+ * Tombstoning a deleted session falls out of this for free: refreshInventory
+ * rebuilds `inventory` fresh from the live `sessions` table every
+ * INVENTORY_MS and drops that session's `files` entries, so a deleted
+ * session's outbound state simply won't be found below on the next call and
+ * therefore won't appear in `current` — exactly the condition the diff below
+ * reports as `removed`.
+ */
+function publishCostCaps() {
+  const current = new Map(); // sessionId -> { agentGroupId, raw, mtimeMs }
+  for (const sess of inventory) {
+    if (!sess.sessionId) continue;
+    const st = files.get(sess.outbound);
+    if (!st || st.costCapRaw == null) continue;
+    current.set(sess.sessionId, { agentGroupId: sess.agentGroupId, raw: st.costCapRaw, mtimeMs: st.mtimeMs });
+  }
+  const changed = [];
+  for (const [sessionId, entry] of current) {
+    if (publishedCostCaps.get(sessionId) !== entry.raw) {
+      changed.push([sessionId, entry.agentGroupId, entry.raw, entry.mtimeMs]);
+    }
+  }
+  const removed = [];
+  for (const sessionId of publishedCostCaps.keys()) if (!current.has(sessionId)) removed.push(sessionId);
+  if (changed.length === 0 && removed.length === 0) return;
+  const nextPublished = new Map();
+  for (const [sessionId, entry] of current) nextPublished.set(sessionId, entry.raw);
+  publishedCostCaps = nextPublished;
+  parentPort.postMessage({ kind: 'costCaps', changed, removed });
 }
 
 function publishStats(now) {
@@ -455,6 +531,7 @@ function tick() {
     }
     publishMsgTs();
     publishActivity(start);
+    publishCostCaps();
   }
   lastTickMs = Date.now() - start;
   publishStats(start);
@@ -491,6 +568,7 @@ parentPort.on('message', (msg) => {
     publishedMsgTs = new Map();
     publishedActivityJson = '';
     lastActivityPublish = 0;
+    publishedCostCaps = new Map();
     return;
   }
   if (msg === 'stop') {

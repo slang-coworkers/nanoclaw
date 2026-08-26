@@ -497,6 +497,7 @@ describe('scan-worker handoff (codex round-2 residual A)', () => {
     const calls = {
       msgTs: [] as any[],
       activity: [] as any[],
+      costCaps: [] as any[],
       ready: 0,
       fatal: [] as string[],
       republish: 0,
@@ -504,6 +505,7 @@ describe('scan-worker handoff (codex round-2 residual A)', () => {
     const handoff = createScanHandoff({
       applyMsgTs: (changed: any, removed: any) => calls.msgTs.push({ changed, removed }),
       applyActivity: (buckets: any) => calls.activity.push(buckets),
+      applyCostCaps: (changed: any, removed: any) => calls.costCaps.push({ changed, removed }),
       onReady: () => {
         calls.ready += 1;
       },
@@ -587,5 +589,61 @@ describe('scan-worker handoff (codex round-2 residual A)', () => {
     spy.mockRestore();
     expect(calls.ready).toBe(0);
     expect(calls.msgTs).toHaveLength(0);
+  });
+
+  // dash-1 set-ceiling-v2: costCaps is a THIRD frame kind on the same
+  // handoff protocol as msgTs/activity — it must honor the identical
+  // queue-before-ready / apply-in-order / republish-on-overflow discipline,
+  // since it's carried over the same MessagePort with the same ordering
+  // guarantees and the same "host discarded a pre-ready frame the worker will
+  // never resend" failure mode this whole protocol exists to avoid.
+  describe('costCaps frames (dash-1 set-ceiling-v2)', () => {
+    it('applies costCaps frames that arrived before `ready` instead of discarding them', () => {
+      const { handoff, calls } = makeHandoff();
+      handoff.handle({ kind: 'costCaps', changed: [['sess-1', 'ag-1', '{"capUsd":10}', 1000]], removed: [] });
+      expect(calls.costCaps).toHaveLength(0); // main-thread fallback still owns the cache
+      handoff.handle({ kind: 'ready' });
+      expect(calls.costCaps).toEqual([{ changed: [['sess-1', 'ag-1', '{"capUsd":10}', 1000]], removed: [] }]);
+    });
+
+    it('applies costCaps frames directly once ready', () => {
+      const { handoff, calls } = makeHandoff();
+      handoff.handle({ kind: 'ready' });
+      handoff.handle({ kind: 'costCaps', changed: [['sess-1', 'ag-1', '{"capUsd":10}', 1000]], removed: [] });
+      expect(calls.costCaps).toHaveLength(1);
+    });
+
+    it('carries a removed session id through untouched (tombstone-on-delete)', () => {
+      const { handoff, calls } = makeHandoff();
+      handoff.handle({ kind: 'ready' });
+      handoff.handle({ kind: 'costCaps', changed: [], removed: ['sess-deleted'] });
+      expect(calls.costCaps).toEqual([{ changed: [], removed: ['sess-deleted'] }]);
+    });
+
+    it('shares the SAME pre-ready queue (and its overflow/republish behavior) as msgTs/activity', () => {
+      const { handoff, calls } = makeHandoff({ maxPreReadyFrames: 2 });
+      handoff.handle({ kind: 'msgTs', changed: [['g0', 't']], removed: [] });
+      handoff.handle({ kind: 'costCaps', changed: [['sess-1', 'ag-1', '{}', 1]], removed: [] });
+      handoff.handle({ kind: 'activity', buckets: [] });
+      handoff.handle({ kind: 'ready' });
+      // Only the first 2 (of 3) pre-ready frames survive the bounded queue —
+      // the same budget is shared across all three kinds, not one each.
+      expect(calls.msgTs.length + calls.costCaps.length + calls.activity.length).toBe(2);
+      expect(calls.republish).toBe(1);
+    });
+
+    it('does not throw when applyCostCaps is not provided (backward compatible with older hook objects)', () => {
+      const { handoff } = makeHandoff({ applyCostCaps: undefined });
+      handoff.handle({ kind: 'ready' });
+      expect(() => handoff.handle({ kind: 'costCaps', changed: [['sess-1', 'ag-1', '{}', 1]], removed: [] })).not.toThrow();
+    });
+
+    it('stops applying costCaps frames after a fallback, same as msgTs/activity', () => {
+      const { handoff, calls } = makeHandoff();
+      handoff.handle({ kind: 'ready' });
+      handoff.stop();
+      handoff.handle({ kind: 'costCaps', changed: [['sess-1', 'ag-1', '{}', 1]], removed: [] });
+      expect(calls.costCaps).toHaveLength(0);
+    });
   });
 });

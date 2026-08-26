@@ -38,6 +38,7 @@ html[data-dashboard-mode='readonly'] .cw-msg-action-btn,
 html[data-dashboard-mode='readonly'] .admin-action-btn,
 html[data-dashboard-mode='readonly'] .admin-save-btn,
 html[data-dashboard-mode='readonly'] .admin-refresh-btn,
+html[data-dashboard-mode='readonly'] .cost-ceiling-input,
 html[data-dashboard-mode='readonly'] #config-md-toggle-view {
   display: none !important;
 }
