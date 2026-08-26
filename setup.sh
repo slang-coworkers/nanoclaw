@@ -284,8 +284,11 @@ compose_fork() {
       if git checkout origin/nv-main -- "$f" 2>/dev/null; then
         git add -- "$f"
       else
-        git rm -f -- "$f" >/dev/null 2>&1 || rm -f "$f"
-        git add -A -- "$f"
+        # `git rm -f` stages the deletion itself, so add -A after it SUCCEEDS
+        # is fatal rather than redundant: the path is gone from worktree and
+        # index, git answers `pathspec did not match any files` and exits 128 —
+        # under this script's `set -e` that aborts the whole bootstrap.
+        git rm -f -- "$f" >/dev/null 2>&1 || { rm -f "$f"; git add -A -- "$f"; }
       fi
     done
     git commit --no-edit >>"$LOG_FILE" 2>&1
