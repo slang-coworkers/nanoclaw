@@ -14,7 +14,13 @@ import {
   sqliteGetAllDestinations,
   sqliteGetMessageIn,
   sqliteGetMessageIdBySeq,
+  sqliteGetMessageInBySeq,
   sqliteGetPendingMessages,
+  sqliteGetUnrespondedInboundsFromThread,
+  sqliteHasInboundFromThread,
+  sqliteHasIdenticalSend,
+  sqliteHasOutboundToThread,
+  sqliteOutboundWatermark,
   sqliteGetRoutingBySeq,
   sqliteGetSessionRouting,
   sqliteGetState,
@@ -178,6 +184,31 @@ export class SqliteAgentMailbox implements AgentMailbox {
 
   getUndeliveredMessages(): OutboundMessage[] {
     return sqliteGetUndeliveredMessages().map(outboundMessage);
+  }
+
+  getMessageInBySeq(sequence: number): InboundMessage | undefined {
+    const row = sqliteGetMessageInBySeq(sequence);
+    return row && inboundMessage(row);
+  }
+
+  hasInboundFromThread(channelType: string, platformId: string, threadId: string): boolean {
+    return sqliteHasInboundFromThread(channelType, platformId, threadId);
+  }
+
+  getUnrespondedInboundsFromThread(channelType: string, platformId: string, threadId: string): InboundMessage[] {
+    return sqliteGetUnrespondedInboundsFromThread(channelType, platformId, threadId).map(inboundMessage);
+  }
+
+  outboundWatermark(): number {
+    return sqliteOutboundWatermark();
+  }
+
+  hasOutboundToThread(channelType: string, platformId: string, threadId: string): boolean {
+    return sqliteHasOutboundToThread(channelType, platformId, threadId);
+  }
+
+  hasIdenticalSend(platformId: string, channelType: string, text: string): boolean {
+    return sqliteHasIdenticalSend(platformId, channelType, text);
   }
 
   getState(key: string) {
