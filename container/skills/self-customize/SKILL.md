@@ -26,7 +26,9 @@ For anything that requires editing source files (your own code, Dockerfile, etc.
 2. Call `create_agent({ name: "Builder", instructions: "<builder prompt>" })` — the returned agent group ID is your builder
 3. Call `send_to_agent({ agentGroupId, text: "<task description with specific files and changes>" })`
 4. The builder works in its own container, makes the changes, and reports back
-5. Review the builder's summary. If the changes look correct and tests pass, proceed. Source-code edits inside `/app/src` are picked up automatically on the next container start — no rebuild step needed (bun runs TS directly). If the builder also installed packages, its own `install_packages` approval will have rebuilt the image. Notify the orchestrator (see below). Only surface to the user if the builder reported failures or blockers.
+5. Review the builder's summary. If the changes look correct and tests pass, proceed. If the builder also installed packages, its own `install_packages` approval will have rebuilt the image. Notify the orchestrator (see below). Only surface to the user if the builder reported failures or blockers.
+
+> **`/app/src` is read-only.** It is a shared bind mount of the host's `container/agent-runner/src` — the code you are executing — so a writable mount would be a privilege escalation. A builder cannot edit the runner in place; a change there has to land as a normal PR on the host repo and reaches every group on its next container start. Everything under `/workspace/agent/` is still yours to write.
 
 ### Builder Agent Instructions (use as CLAUDE.md when creating)
 

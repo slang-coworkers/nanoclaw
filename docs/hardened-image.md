@@ -48,12 +48,11 @@ is involved.
 ## What it does not buy
 
 **It does not contain the agent.** `/app/skills` is a read-only bind mount from your own
-checkout at every spawn, and `/app/src` is a **writable** bind mount of this group's copy of
-the agent-runner source (`data/v2-sessions/<group>/agent-runner-src/`, taken once at group
-creation). The container starts with `--entrypoint bash`, bypassing the image's entrypoint.
-The code your agent runs is unsigned and reviewed by nobody but you — and, because that copy
-is not refreshed automatically, it is not necessarily even the code currently in your
-checkout. `pnpm run check:runner-staleness` reports the difference.
+checkout at every spawn, and `/app/src` is a **read-only** bind mount of the agent-runner
+source in that checkout (`container/agent-runner/src/`), shared by every group. The container
+starts with `--entrypoint bash`, bypassing the image's entrypoint. So the code your agent
+runs is whatever is in your checkout — unsigned and reviewed by nobody but you, which is the
+point of the caveat, but at least it is not silently a stale copy of it.
 
 Containment is runtime configuration you own. `NANOCLAW_EGRESS_LOCKDOWN=true`, the mount
 allowlist, and per-group resource limits all do more here than any image can.
