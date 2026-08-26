@@ -163,16 +163,20 @@ export async function createCostCeilingAdjustment(
             $expected_ceiling_cents, $target_ceiling_cents, 'pending', $inbound_message_id,
             $requested_at, $requested_by, 0)`,
         {
-          $adjustment_id: input.adjustment_id,
-          $protocol_version: input.protocol_version,
-          $session_id: input.session_id,
-          $agent_group_id: input.agent_group_id,
-          $expected_epoch_key: input.expected_epoch_key,
-          $expected_ceiling_cents: input.expected_ceiling_cents,
-          $target_ceiling_cents: input.target_ceiling_cents,
-          $inbound_message_id: input.inbound_message_id,
-          $requested_at: input.requested_at,
-          $requested_by: input.requested_by,
+          // better-sqlite3's named-parameter binding requires the OBJECT key to be
+          // the BARE name (no $/@/: sigil) even though the SQL text uses $-prefixed
+          // placeholders — unlike bun:sqlite on the runner side, which accepts the
+          // sigil in the object key too. Bare keys here, always.
+          adjustment_id: input.adjustment_id,
+          protocol_version: input.protocol_version,
+          session_id: input.session_id,
+          agent_group_id: input.agent_group_id,
+          expected_epoch_key: input.expected_epoch_key,
+          expected_ceiling_cents: input.expected_ceiling_cents,
+          target_ceiling_cents: input.target_ceiling_cents,
+          inbound_message_id: input.inbound_message_id,
+          requested_at: input.requested_at,
+          requested_by: input.requested_by,
         },
       );
 
@@ -336,14 +340,15 @@ export async function recordCostCeilingAdjustmentResult(
               result_cost_status = $result_cost_status, result_reason = $result_reason
         WHERE adjustment_id = $adjustment_id AND state IN ('pending','enqueued')`,
       {
-        $outcome: input.outcome,
-        $completed_at: input.completed_at,
-        $result_epoch_key: input.result_epoch_key,
-        $result_ceiling_cents: input.result_ceiling_cents,
-        $result_spent_usd: input.result_spent_usd,
-        $result_cost_status: input.result_cost_status,
-        $result_reason: input.result_reason,
-        $adjustment_id: input.adjustment_id,
+        // Bare keys — see the same note in createCostCeilingAdjustment above.
+        outcome: input.outcome,
+        completed_at: input.completed_at,
+        result_epoch_key: input.result_epoch_key,
+        result_ceiling_cents: input.result_ceiling_cents,
+        result_spent_usd: input.result_spent_usd,
+        result_cost_status: input.result_cost_status,
+        result_reason: input.result_reason,
+        adjustment_id: input.adjustment_id,
       },
     );
 

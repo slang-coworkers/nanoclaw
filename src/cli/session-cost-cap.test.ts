@@ -22,7 +22,7 @@ vi.mock('../mailbox/sqlite/paths.js', () => ({
   outboundDbPath: (...a: unknown[]) => mockOutboundDbPath(...a),
 }));
 
-import { readSessionCostCapStatus } from './session-cost-cap.js';
+import { readSessionCostCapStatus, readSessionCostControlProtocol } from './session-cost-cap.js';
 
 const SESSION = { id: 'sess-1', agent_group_id: 'ag-1' };
 
@@ -217,5 +217,107 @@ describe('readSessionCostCapStatus', () => {
     for (let i = 0; i < 20; i++) {
       expect((await readSessionCostCapStatus('sess-1')).status).toBe('ok');
     }
+  });
+
+  describe('the always-published ceiling/gen/episode fields (NanoClaw #1, "set ceiling v2")', () => {
+    it('exposes ceiling_usd (including 0), budget_gen, and episode_id when present', async () => {
+      mockGetSession.mockResolvedValue(SESSION);
+      const dbPath = dbPathFor('out.db');
+      const db = makeOutboundDb(dbPath);
+      seedCostCap(db, {
+        status: 'stopped',
+        capUsd: 10,
+        spentUsd: 55,
+        ceilingUsd: 50,
+        budgetGen: 7,
+        episodeId: 'esc-sess-1-ceiling-7',
+      });
+      db.close();
+      mockOutboundDbPath.mockReturnValue(dbPath);
+      const result = await readSessionCostCapStatus('sess-1');
+      expect(result.ceiling_usd).toBe(50);
+      expect(result.budget_gen).toBe(7);
+      expect(result.episode_id).toBe('esc-sess-1-ceiling-7');
+    });
+
+    it('reports ceiling_usd: 0 (not absent) for a disabled ceiling — the runner now always publishes it', async () => {
+      mockGetSession.mockResolvedValue(SESSION);
+      const dbPath = dbPathFor('out.db');
+      const db = makeOutboundDb(dbPath);
+      seedCostCap(db, { status: 'ok', capUsd: 10, spentUsd: 1, ceilingUsd: 0, budgetGen: 0 });
+      db.close();
+      mockOutboundDbPath.mockReturnValue(dbPath);
+      const result = await readSessionCostCapStatus('sess-1');
+      expect(result.ceiling_usd).toBe(0);
+      expect(result.budget_gen).toBe(0);
+    });
+
+    it('omits the new fields when a pre-feature row has none of them (backward compatible)', async () => {
+      mockGetSession.mockResolvedValue(SESSION);
+      const dbPath = dbPathFor('out.db');
+      const db = makeOutboundDb(dbPath);
+      seedCostCap(db, { status: 'ok', capUsd: 10, spentUsd: 1 });
+      db.close();
+      mockOutboundDbPath.mockReturnValue(dbPath);
+      const result = await readSessionCostCapStatus('sess-1');
+      expect(result.ceiling_usd).toBeUndefined();
+      expect(result.budget_gen).toBeUndefined();
+      expect(result.episode_id).toBeUndefined();
+    });
+  });
+});
+
+describe('readSessionCostControlProtocol — the runner-instance readiness handshake', () => {
+  function seedHandshake(db: Database.Database, state: Record<string, unknown>): void {
+    db.prepare(
+      `INSERT OR REPLACE INTO session_state (key, value, updated_at) VALUES ('cost_control_protocol', ?, ?)`,
+    ).run(JSON.stringify(state), new Date().toISOString());
+  }
+
+  it('throws when called with an empty session id', async () => {
+    await expect(readSessionCostControlProtocol('')).rejects.toThrow('sessionId is required');
+  });
+
+  it('throws when the session does not exist', async () => {
+    mockGetSession.mockResolvedValue(undefined);
+    await expect(readSessionCostControlProtocol('missing')).rejects.toThrow('session not found: missing');
+  });
+
+  it('returns undefined when outbound.db does not exist on disk', async () => {
+    mockGetSession.mockResolvedValue(SESSION);
+    mockOutboundDbPath.mockReturnValue(dbPathFor('nope.db'));
+    expect(await readSessionCostControlProtocol('sess-1')).toBeUndefined();
+  });
+
+  it('returns undefined when no handshake has been published yet', async () => {
+    mockGetSession.mockResolvedValue(SESSION);
+    const dbPath = dbPathFor('out.db');
+    makeOutboundDb(dbPath).close();
+    mockOutboundDbPath.mockReturnValue(dbPath);
+    expect(await readSessionCostControlProtocol('sess-1')).toBeUndefined();
+  });
+
+  it('returns undefined for a malformed/partial handshake row (never throws)', async () => {
+    mockGetSession.mockResolvedValue(SESSION);
+    const dbPath = dbPathFor('out.db');
+    const db = makeOutboundDb(dbPath);
+    seedHandshake(db, { version: 2 }); // missing runnerInstanceId/readyAt
+    db.close();
+    mockOutboundDbPath.mockReturnValue(dbPath);
+    expect(await readSessionCostControlProtocol('sess-1')).toBeUndefined();
+  });
+
+  it('reports the published handshake fields verbatim', async () => {
+    mockGetSession.mockResolvedValue(SESSION);
+    const dbPath = dbPathFor('out.db');
+    const db = makeOutboundDb(dbPath);
+    seedHandshake(db, { version: 2, runnerInstanceId: 'nonce-xyz', readyAt: '2026-08-24T00:00:00.000Z' });
+    db.close();
+    mockOutboundDbPath.mockReturnValue(dbPath);
+    expect(await readSessionCostControlProtocol('sess-1')).toEqual({
+      version: 2,
+      runner_instance_id: 'nonce-xyz',
+      ready_at: '2026-08-24T00:00:00.000Z',
+    });
   });
 });
