@@ -1,5 +1,4 @@
-import type Database from 'better-sqlite3';
-
+import { addColumnIfMissing } from './column-guard.js';
 import type { Migration } from './index.js';
 
 /**
@@ -19,13 +18,16 @@ import type { Migration } from './index.js';
  *   non-null — pinned at that ISO timestamp. Dashboard sorts pinned rows
  *              to the top of Other Sessions regardless of last-activity.
  */
-export const migration022: Migration = {
-  version: 22,
+export const migration941: Migration = {
+  // Numbered 941, not 022: version 22 is nv-main's 022-messaging-group-detached,
+  // and 88c1bf5a reserved the 900+ range for fork migrations. `name` is
+  // deliberately UNCHANGED — it is this migration's permanent applied identity
+  // in `schema_version`, so a renumber must never touch it or every install
+  // would re-run this as a brand-new migration.
+  version: 941,
   name: 'session-hidden-pinned',
-  up(db: Database.Database) {
-    const cols = db.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>;
-    const names = new Set(cols.map((c) => c.name));
-    if (!names.has('hidden_at')) db.exec('ALTER TABLE sessions ADD COLUMN hidden_at TEXT');
-    if (!names.has('pinned_at')) db.exec('ALTER TABLE sessions ADD COLUMN pinned_at TEXT');
+  async up(db) {
+    await addColumnIfMissing(db, 'sessions', 'hidden_at TEXT');
+    await addColumnIfMissing(db, 'sessions', 'pinned_at TEXT');
   },
 };

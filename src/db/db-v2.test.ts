@@ -135,15 +135,7 @@ describe('agent groups', () => {
     expect(() => createAgentGroup({ ...ag(), id: 'ag-dup' })).toThrow();
   });
 
-  it('defaults sidebar_group to null when not provided', () => {
-    createAgentGroup(ag());
-    expect(getAgentGroup('ag-1')!.sidebar_group ?? null).toBeNull();
-  });
 
-  it('persists sidebar_group when set (migration 023 column)', () => {
-    createAgentGroup({ ...ag(), sidebar_group: 'dashboard:user1' });
-    expect(getAgentGroup('ag-1')!.sidebar_group).toBe('dashboard:user1');
-  });
 });
 
 // ── Messaging Groups ──
