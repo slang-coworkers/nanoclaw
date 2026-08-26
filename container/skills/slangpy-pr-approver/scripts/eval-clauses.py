@@ -7,7 +7,7 @@ metadata + the changed paths at the pinned commit (read-only gh) and the
 policy file. The skill reads the output and maps it to a decision:
 
   any clause FAIL        -> ABSTAIN_POLICY (reason CLAUSE_FAIL:<name>)
-  any clause UNEVALUABLE -> ABSTAIN_INFRA  (reason CLAUSE_UNEVALUABLE:<name>)
+  any clause UNEVALUABLE -> ABSTAIN_POLICY (reason CLAUSE_UNEVALUABLE:<name>)
   all PASS               -> continue to the verdict parse (Step 2)
 
 Input: a workspace dir staged by /slangpy-pr-approve, containing
@@ -24,7 +24,12 @@ Output: <workspace>/clauses.json
 
 stdlib + gh only.
 """
-import argparse, json, os, re, subprocess, sys
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_POLICY = os.path.join(HERE, "APPROVAL_POLICY.json")
@@ -33,9 +38,9 @@ DEFAULT_POLICY = os.path.join(HERE, "APPROVAL_POLICY.json")
 def gh_json(path):
     """One read-only gh api call -> parsed JSON, or raise (caller marks the
     dependent clause unevaluable)."""
-    r = subprocess.run(["gh", "api", path], capture_output=True, text=True)
+    r = subprocess.run(["gh", "api", path], capture_output=True, text=True, check=False)
     if r.returncode != 0:
-        raise RuntimeError("gh api %s failed: %s" % (path, r.stderr[:200]))
+        raise RuntimeError(f"gh api {path} failed: {r.stderr[:200]}")
     return json.loads(r.stdout)
 
 
@@ -79,7 +84,8 @@ def _result_block(ws):
     p = os.path.join(ws, "review", "review-doc.md")
     if not os.path.exists(p):
         return None
-    text = open(p, encoding="utf-8", errors="replace").read()
+    with open(p, encoding="utf-8", errors="replace") as fh:
+        text = fh.read()
     blocks = []
     for m in re.finditer(r"```json\s*(.*?)```", text, re.DOTALL):
         raw = m.group(1).strip()
@@ -131,7 +137,7 @@ def evaluate(ws, policy):
     # unevaluable rather than guessing.
     try:
         meta = gh_json(f"repos/{repo}/pulls/{pr}")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - any failure must make the clause unevaluable, not guess
         meta = None
         meta_err = str(e)[:160]
 
@@ -193,7 +199,7 @@ def evaluate(ws, policy):
             else:  # pending / no statuses reported
                 clauses.append(clause("ci_green_on_sha", "unevaluable",
                                       f"combined status={state or 'none'} @ {sha[:12]}"))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - see above: unevaluable beats a guessed verdict
             clauses.append(clause("ci_green_on_sha", "unevaluable", f"status fetch: {str(e)[:160]}"))
 
     # Changed paths at the pinned commit — base_ref...commit_sha. Feeds 5 + 6.
@@ -203,7 +209,7 @@ def evaluate(ws, policy):
         try:
             cmp = gh_json(f"repos/{repo}/compare/{base_ref}...{sha}")
             files = cmp.get("files", [])
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - see above: unevaluable beats a guessed verdict
             files_err = str(e)[:160]
     else:
         files_err = "pr metadata unavailable (no base ref)"
@@ -286,14 +292,15 @@ def main():
 
     result = evaluate(ws, policy)
     out = os.path.join(ws, "clauses.json")
-    json.dump(result, open(out, "w"), indent=1)
+    with open(out, "w", encoding="utf-8") as fh:
+        json.dump(result, fh, indent=1)
     s = result["summary"]
     print(f"clauses -> {out}  (policy {result['policy_version']})")
     print(f"  pass={s['pass']}")
     if s["fail"]:
         print(f"  FAIL={s['fail']}  -> ABSTAIN_POLICY")
     if s["unevaluable"]:
-        print(f"  UNEVALUABLE={s['unevaluable']}  -> ABSTAIN_INFRA")
+        print(f"  UNEVALUABLE={s['unevaluable']}  -> ABSTAIN_POLICY (CLAUSE_UNEVALUABLE)")
 
 
 if __name__ == "__main__":
