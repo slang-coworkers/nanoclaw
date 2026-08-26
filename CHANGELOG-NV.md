@@ -6,15 +6,56 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 476 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 214 |
-| `nv-slang` | slang project spine, skills, workflows | 137 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 68 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 47 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 491 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 220 |
+| `nv-slang` | slang project spine, skills, workflows | 138 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 69 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 48 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-08-26
+
+### nv-main (11 PRs)
+- **#1296** `test: clear nv-main's known test failures (4 of 6 red files)`
+- **#1297** `refactor: one shared read-only /app/src, retiring the per-group runner copy`
+- **#1301** `fix: await closeDb() — an unawaited teardown leaked the DB into the next test`
+- **#1304** `fix(container-tests): unmask the container suite — 30 tests that never ran, and the ratchet they hid`
+- **#1305** `fix(mailbox): refuse to open the live session DBs from a test process`
+- **#1306** `Sync nv-main with upstream/main (28 commits, through f7376aa9)`
+- **#1307** `fix(compose): converge standing instructions on instructions.prepend.md`
+- **#1308** `test(mailbox): enumerate host outbound.db writers instead of naming five files`
+- **#1309** `fix(channels): make the dashboard barrel import optional, not branch-broken`
+- _+2 more: #1295, #1291_
+
+### nv-dashboard (2 PRs)
+- **#1293** `dashboard: live per-session cost-ceiling control (set-ceiling-v2)`
+- **#1294** `fix(dashboard): port the dashboard's DB migrations to the async central-DB API`
+
+### nv-slang (1 PRs)
+- **#1298** `ci(nv-slang): adopt nv-main's ci.yml — a stale workflow cannot compose its replacement`
+
+### nv-slangpy (1 PRs)
+- **#1299** `ci(nv-slangpy): adopt nv-main's ci.yml — a stale workflow cannot compose its replacement`
+
+### nv-nanoclaw (1 PRs)
+- **#1300** `ci(nv-nanoclaw): adopt nv-main's ci.yml — a stale workflow cannot compose its replacement`
+
+## 📅 2026-08-25
+
+### nv-main (4 PRs)
+- **#1279** `feat(supervise-issues): recognize cost-stopped sessions, skip the nudge`
+- **#1281** `fix(agent-route): attachment presence overrides echo-drop classification`
+- **#1284** `docs(claude-trace): document reverse-proxy.js's untraced patch gap`
+- **#1285** `Add pi (pi.dev) as a fourth agent provider`
+
+### nv-dashboard (4 PRs)
+- **#1278** `feat(dashboard): split pending approvals into their own tab`
+- **#1280** `dashboard: PR/issue badge + filer on the Sessions table`
+- **#1283** `dashboard: coworker filter dropdown on the Sessions tab`
+- **#1286** `fix(dashboard): Sessions coworker-filter dropdown unreadable in light mode`
 
 ## 📅 2026-08-24
 
