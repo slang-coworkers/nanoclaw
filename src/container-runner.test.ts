@@ -16,6 +16,7 @@ import { CONTAINER_CPU_LIMIT, CONTAINER_MEMORY_LIMIT } from './config.js';
 import type { ContainerConfig } from './container-config.js';
 import {
   armSessionLifecycle,
+  assertComposedDocUsable,
   composeSessionSpec,
   parseMemoryMb,
   parsePidsLimit,
@@ -610,6 +611,43 @@ describe('syncSkillSymlinks', () => {
       expect.stringContaining('Shared skill not symlinked'),
       expect.objectContaining({ skill: 'welcome' }),
     );
+  });
+});
+
+describe('assertComposedDocUsable — compose failure must not spawn an uninstructed agent', () => {
+  const group = { id: 'ag-x', folder: 'grp-x', name: 'X' } as never;
+
+  function tmpDir(): string {
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'ncl-compose-'));
+  }
+
+  // The regression: both compose paths logged a warning and let the spawn
+  // proceed, so a group whose composition threw ran with NO project document —
+  // no persona, no invariants, no chain-reporting rules — and nothing went red.
+  it('throws when composition failed and no document exists', () => {
+    const dir = tmpDir();
+    expect(() => assertComposedDocUsable(path.join(dir, 'CLAUDE.md'), group, new Error('boom'))).toThrow(
+      /no usable document exists/,
+    );
+  });
+
+  it('throws when the existing document is empty (present but useless)', () => {
+    const dir = tmpDir();
+    const p = path.join(dir, 'CLAUDE.md');
+    fs.writeFileSync(p, '');
+
+    expect(() => assertComposedDocUsable(p, group, new Error('boom'))).toThrow(/no usable document exists/);
+  });
+
+  // Stale beats absent: the group keeps its last good instructions rather than
+  // losing the session entirely while the cause is fixed.
+  it('tolerates the failure when a previous non-empty document survives', () => {
+    const dir = tmpDir();
+    const p = path.join(dir, 'CLAUDE.md');
+    fs.writeFileSync(p, '# previous good compose\n');
+
+    expect(() => assertComposedDocUsable(p, group, new Error('boom'))).not.toThrow();
+    expect(fs.readFileSync(p, 'utf-8')).toContain('previous good compose');
   });
 });
 
