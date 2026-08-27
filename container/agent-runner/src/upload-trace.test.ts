@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 
-import { initTestSessionDb, closeSessionDb, getInboundDb } from './db/connection.js';
+import { initTestSessionDb, closeSessionDb, getInboundDb } from './mailbox/sqlite/connection.js';
 import { getUndeliveredMessages } from './db/messages-out.js';
 import { getPendingMessages } from './db/messages-in.js';
 import type { MessageInRow } from './db/messages-in.js';
@@ -66,13 +66,20 @@ describe('poll loop — /upload-trace command', () => {
 });
 
 async function runPollLoopWithTimeout(provider: MockProvider, signal: AbortSignal, timeoutMs: number): Promise<void> {
-  return Promise.race([
-    runPollLoop({ provider, providerName: 'mock', cwd: '/tmp' }),
-    new Promise<void>((_, reject) => {
-      signal.addEventListener('abort', () => reject(new Error('aborted')));
-    }),
-    new Promise<void>((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),
-  ]);
+  const loop = runPollLoop({ provider, providerName: 'mock', cwd: '/tmp', signal, activePollIntervalMs: 10 });
+  loop.catch(() => {});
+
+  try {
+    await Promise.race([
+      loop,
+      new Promise<void>((_, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+      }),
+      new Promise<void>((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),
+    ]);
+  } finally {
+    if (signal.aborted) await loop.catch(() => {});
+  }
 }
 
 async function waitFor(condition: () => boolean, timeoutMs: number): Promise<void> {

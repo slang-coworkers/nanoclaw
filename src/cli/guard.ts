@@ -99,6 +99,18 @@ async function commandDecide(cmd: CommandDef, input: GuardInput) {
     }
   }
 
+  // Self-targeting is DENIED, never held. Checked AFTER the auto-filled args
+  // arrive (dispatch fills `--id` with the caller's own group under
+  // `cli_scope: 'group'`, so an omitted `--id` is a self-target) and BEFORE the
+  // approval hold, so no human is ever asked to approve an agent's change to
+  // its own privilege surface. A privilege change must come from a different
+  // principal — Main acting on a coworker, or a human operator.
+  if (cmd.denySelfTarget && args.id === actor.agentGroupId) {
+    return DENY(
+      `"${cmd.name}" cannot target the calling agent's own group. Ask the admin/Main group to make this change.`,
+    );
+  }
+
   if (cmd.access === 'approval') {
     return HOLD(`agent-initiated "${cmd.name}" requires admin approval`);
   }

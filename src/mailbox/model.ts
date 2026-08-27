@@ -19,11 +19,35 @@ export function parseIsoTimestamp(value: unknown): IsoTimestamp {
   return value as IsoTimestamp;
 }
 
-export type ProcessingStatus = 'processing' | 'completed' | 'failed' | 'script-skip:error';
+/**
+ * The two `bounced-*` values are a fork addition, and they are the reason
+ * `markBounced` used to reach past this contract into raw SQLite.
+ *
+ * A transient provider fault (auth outage, gateway 5xx) produces no delivered
+ * output, so the a2a handoff was NOT actioned and must not be acked 'completed'.
+ * The host distinguishes the two: `redriveBouncedA2a` gives 'bounced-transient'
+ * (a recognized outage signature) a long retry budget and 'bounced-unknown' a
+ * short one, so a genuinely broken turn dead-letters fast instead of retrying
+ * for hours — see `src/host-sweep.ts`. Collapsing them into 'failed' would lose
+ * that distinction AND let syncProcessingAcks mark the trigger row done.
+ */
+export type ProcessingStatus =
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'script-skip:error'
+  | 'bounced-transient'
+  | 'bounced-unknown';
 export type TaskStatus = 'pending' | 'paused' | 'completed' | 'failed' | 'cancelled';
 export type InboundStatus = TaskStatus | 'processing';
 
-const INBOUND_KINDS = ['chat', 'chat-sdk', 'task', 'webhook', 'system'] as const;
+// 'cost_override' is a fork control row: the cost-approval module writes one
+// (continue/stop, carrying the escalation epoch) via the router to raise a
+// session's Tier-2 cap mid-turn. It is never fed to the agent. Listed here
+// because `oneOf` THROWS on an unrecognized kind — omitting it turns every
+// override into a parser exception at the mailbox boundary, i.e. a cost cap
+// nobody can lift.
+const INBOUND_KINDS = ['chat', 'chat-sdk', 'task', 'webhook', 'system', 'cost_override'] as const;
 
 export type InboundKind = (typeof INBOUND_KINDS)[number];
 

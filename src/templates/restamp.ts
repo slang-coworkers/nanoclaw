@@ -62,8 +62,16 @@ export interface RestampResult {
  * stamping a fresh agent and updating the one already stamped. Reads only the
  * manifest (the full walk/caps/lint pass runs in the stamp it gates, not in
  * this probe).
+ *
+ * Generic over the row type, and constrained to the ONE field it reads, so a
+ * caller holding a narrower projection gets that projection back. `ncl groups
+ * list` returns five columns; typing this `AgentGroup` would have forced setup
+ * to claim the full 18-field row it never received.
  */
-export async function groupsCarryingPlugin(ref: string, groups?: readonly AgentGroup[]): Promise<AgentGroup[]> {
+export async function groupsCarryingPlugin<T extends Pick<AgentGroup, 'folder'> = AgentGroup>(
+  ref: string,
+  groups?: readonly T[],
+): Promise<T[]> {
   const dir = resolveLocalTemplate(ref);
   const manifestPath = path.join(dir, PLUGIN_MANIFEST_FILE);
   // The fast path reads ONLY a regular manifest file. Anything else — absent
@@ -74,7 +82,8 @@ export async function groupsCarryingPlugin(ref: string, groups?: readonly AgentG
     parseTemplate(dir);
   }
   const manifest = parsePluginManifest(JSON.parse(fs.readFileSync(manifestPath, 'utf-8')));
-  return (groups ?? (await getAllAgentGroups())).filter((g) =>
+  const rows = (groups ?? ((await getAllAgentGroups()) as unknown as readonly T[])) as readonly T[];
+  return rows.filter((g) =>
     fs.existsSync(path.join(resolveGroupFolderPath(g.folder), 'plugins', manifest.name, PLUGIN_MANIFEST_FILE)),
   );
 }

@@ -9,8 +9,8 @@
  */
 import { getAgentGroup } from '../../db/agent-groups.js';
 import { getMessagingGroup } from '../../db/messaging-groups.js';
-import { getSessionsByAgentGroup } from '../../db/sessions.js';
 import type { Destination } from '../../mailbox/index.js';
+import { getSessionsByAgentGroup } from '../../db/sessions.js';
 import { log } from '../../log.js';
 import { withMailboxSession } from '../../session-manager.js';
 import { getDestinations } from './db/agent-destinations.js';
@@ -60,6 +60,6 @@ export async function writeDestinations(agentGroupId: string, sessionId: string)
 export async function refreshDestinationsForAgentGroup(agentGroupId: string): Promise<void> {
   const sessions = (await getSessionsByAgentGroup(agentGroupId)).filter((s) => s.status === 'active');
   for (const s of sessions) {
-    writeDestinations(agentGroupId, s.id);
+    await writeDestinations(agentGroupId, s.id);
   }
 }

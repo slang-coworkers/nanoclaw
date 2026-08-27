@@ -51,6 +51,13 @@ export interface DockerDriverOptions extends MountPolicy {
   cli?: Cli;
   /** Docker network the session's containers attach to, resolved by the overlay. */
   networkArgsFor?: (spec: SessionSpec) => string[];
+  /**
+   * Host device passthrough (GPU). Driver-private for the same reason the
+   * network lane is: whether this host has an NVIDIA runtime is a property of
+   * the host, not of the session, so it never rides the spec. Injected at
+   * registration; absent in tests.
+   */
+  hostDeviceArgs?: () => string[];
 }
 
 /** Watch reconnection: bounded backoff, never give up (see `watchSessions`). */
@@ -141,6 +148,9 @@ export class DockerSessionDriver implements SessionDriver {
     args.push(...resourceArgs(spec));
     args.push(...hardeningArgs(spec));
     args.push(...userArgs(spec));
+    // Before the env lanes: a GPU-lane `-e NVIDIA_*` must lose to anything
+    // composition or a gateway set for the same key (Docker's last-wins rule).
+    args.push(...(this.opts.hostDeviceArgs?.() ?? []));
     // Composed env first, contributed env second: on a duplicate `-e` key
     // Docker's last flag wins, which realizes the contract rule that the
     // contributed lane overrides composed literals (see ContainerSpec).

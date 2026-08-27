@@ -39,8 +39,41 @@ export const createAgent: McpToolDefinition = {
     inputSchema: {
       type: 'object' as const,
       properties: {
-        name: { type: 'string', description: 'Human-readable name (also becomes your destination name for this agent)' },
-        instructions: { type: 'string', description: 'CLAUDE.md content for the new agent (personality, role, instructions)' },
+        name: {
+          type: 'string',
+          description: 'Human-readable name (also becomes your destination name for this agent)',
+        },
+        instructions: {
+          type: 'string',
+          description: 'CLAUDE.md content for the new agent (personality, role, instructions)',
+        },
+        coworkerType: {
+          type: 'string',
+          description:
+            'Coworker type key from the lego registry at container/{spines,skills}/*/coworker-types.yaml. Determines the composed spine, skill/workflow index, trait bindings, and derived MCP tool allowlist.',
+        },
+        allowedMcpTools: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'Explicit list of allowed MCP tools (e.g., ["mcp__deepwiki__ask_question"]). Overrides type defaults.',
+        },
+        instructionOverlay: {
+          type: 'string',
+          description:
+            'Name of an instruction overlay template (e.g., "code-reviewer", "terse-reporter"). Sets the communication style. See groups/templates/instructions/ for available overlays.',
+        },
+        agentProvider: {
+          type: 'string',
+          description:
+            'Agent provider for this coworker ("claude" or "codex"). Defaults to "claude" if not specified.',
+        },
+        overlays: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'Compose-time overlay names (e.g., ["critique-gate", "buddy-monitor"]). Overlays inject quality gates into workflows. Optional — defaults to none; operators can configure later via dashboard.',
+        },
         group: {
           type: 'string',
           description:
@@ -55,7 +88,7 @@ export const createAgent: McpToolDefinition = {
     if (!name) return err('name is required');
 
     const requestId = generateId();
-    writeMessageOut({
+    await writeMessageOut({
       id: requestId,
       kind: 'system',
       content: JSON.stringify({
@@ -63,6 +96,11 @@ export const createAgent: McpToolDefinition = {
         requestId,
         name,
         instructions: (args.instructions as string) || null,
+        coworkerType: (args.coworkerType as string) || null,
+        allowedMcpTools: (args.allowedMcpTools as string[]) || null,
+        instructionOverlay: (args.instructionOverlay as string) || null,
+        agentProvider: (args.agentProvider as string) || null,
+        overlays: (args.overlays as string[]) || null,
         group: (args.group as string) || null,
       }),
     });
@@ -72,4 +110,49 @@ export const createAgent: McpToolDefinition = {
   },
 };
 
-registerTools([createAgent]);
+export const wireAgents: McpToolDefinition = {
+  tool: {
+    name: 'wire_agents',
+    description:
+      'Create a bidirectional communication link between two agents in your destination list. After wiring, both agents can send messages to each other directly without going through you. Admin-only.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agent_a: {
+          type: 'string',
+          description: 'Destination name of first agent (from your destination list)',
+        },
+        agent_b: {
+          type: 'string',
+          description: 'Destination name of second agent (from your destination list)',
+        },
+      },
+      required: ['agent_a', 'agent_b'],
+    },
+  },
+  async handler(args) {
+    const agentA = args.agent_a as string;
+    const agentB = args.agent_b as string;
+    if (!agentA || !agentB) return err('agent_a and agent_b are required');
+    if (agentA === agentB) return err('Cannot wire an agent to itself');
+
+    const requestId = generateId();
+    writeMessageOut({
+      id: requestId,
+      kind: 'system',
+      content: JSON.stringify({
+        action: 'wire_agents',
+        requestId,
+        agentA,
+        agentB,
+      }),
+    });
+
+    log(`wire_agents: ${requestId} → "${agentA}" ↔ "${agentB}"`);
+    return ok(
+      `Wiring "${agentA}" ↔ "${agentB}". You will be notified when the link is ready.`,
+    );
+  },
+};
+
+registerTools([createAgent, wireAgents]);

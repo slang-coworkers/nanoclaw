@@ -215,7 +215,8 @@ export function wrapSqliteInbound(db: Database.Database, nextSequence = () => ne
     markDelivered: (messageOutId, platformMessageId) => markDelivered(db, messageOutId, platformMessageId),
     markDeliveryFailed: (messageOutId) => markDeliveryFailed(db, messageOutId),
     getInboundSourceSessionId: (messageId) => getInboundSourceSessionId(db, messageId),
-    getMostRecentPeerSourceSessionId: (peerAgentGroupId) => getMostRecentPeerSourceSessionId(db, peerAgentGroupId),
+    getMostRecentPeerSourceSessionId: (peerAgentGroupId, threadId) =>
+      getMostRecentPeerSourceSessionId(db, peerAgentGroupId, threadId),
     insertTask: async (task) => insertTaskRow(db, task, nextSequence()),
     cancelTask: (taskId) => (taskId === undefined ? cancelAllTasks(db) : cancelTask(db, taskId)),
     pauseTask: (taskId) => pauseTask(db, taskId),

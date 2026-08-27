@@ -15,3 +15,5 @@ import './dropped-messages.js';
 import './approvals.js';
 import './sessions.js';
 import './tasks.js';
+import './pr-mappings.js';
+import './cost-cap.js';

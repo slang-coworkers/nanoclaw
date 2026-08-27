@@ -15,13 +15,13 @@ import path from 'path';
 
 import Database from 'better-sqlite3';
 
-import { DATA_DIR } from '../../src/config.js';
+import { CENTRAL_DB_PATH, DATA_DIR } from '../../src/config.js';
 import { initDb, closeDb } from '../../src/db/connection.js';
 import { getAgentGroupByFolder } from '../../src/db/agent-groups.js';
 import { getMessagingGroupByPlatform } from '../../src/db/messaging-groups.js';
 import { runMigrations } from '../../src/db/migrations/index.js';
-import { insertTask } from '../../src/modules/scheduling/db.js';
-import { openInboundDb, resolveSession } from '../../src/session-manager.js';
+import '../../src/mailbox/compose.js';
+import { resolveTaskSession, withMailboxSession } from '../../src/session-manager.js';
 import { readEnvFile } from '../../src/env.js';
 import { buildDiscordResolver, type DiscordResolver } from './discord-resolver.js';
 import { parseJid, v2PlatformId } from './shared.js';
@@ -94,13 +94,13 @@ async function main(): Promise<void> {
   }
 
   // Init v2 central DB
-  const v2DbPath = path.join(DATA_DIR, 'v2.db');
+  const v2DbPath = CENTRAL_DB_PATH;
   if (!fs.existsSync(v2DbPath)) {
     console.error('v2.db not found — run db step first');
     process.exit(1);
   }
-  const v2Db = initDb(v2DbPath);
-  runMigrations(v2Db);
+  const v2Db = await initDb(v2DbPath);
+  await runMigrations(v2Db);
 
   let migrated = 0;
   let skipped = 0;
@@ -116,59 +116,76 @@ async function main(): Promise<void> {
 
   for (const t of activeTasks) {
     try {
-      const ag = getAgentGroupByFolder(t.group_folder);
-      if (!ag) { skipped++; continue; }
+      const ag = await getAgentGroupByFolder(t.group_folder);
+      if (!ag) {
+        skipped++;
+        continue;
+      }
 
       const parsed = parseJid(t.chat_jid);
-      if (!parsed) { skipped++; continue; }
+      if (!parsed) {
+        skipped++;
+        continue;
+      }
 
       let platformId: string;
       if (parsed.channel_type === 'discord') {
         const resolved = discordResolver?.resolve(parsed.id) ?? null;
-        if (!resolved) { skipped++; continue; }
+        if (!resolved) {
+          skipped++;
+          continue;
+        }
         platformId = resolved;
       } else {
         platformId = v2PlatformId(parsed.channel_type, t.chat_jid);
       }
-      const mg = getMessagingGroupByPlatform(parsed.channel_type, platformId);
-      if (!mg) { skipped++; continue; }
+      const mg = await getMessagingGroupByPlatform(parsed.channel_type, platformId);
+      if (!mg) {
+        skipped++;
+        continue;
+      }
 
       const scheduling = toCron(t);
-      if (!scheduling) { skipped++; continue; }
+      if (!scheduling) {
+        skipped++;
+        continue;
+      }
 
-      const { session } = resolveSession(ag.id, mg.id, null, 'shared');
-      const inboxDb = openInboundDb(ag.id, session.id);
-      try {
-        // Idempotence check
-        const existing = inboxDb
-          .prepare("SELECT id FROM messages_in WHERE id = ? AND kind = 'task'")
-          .get(t.id) as { id: string } | undefined;
-        if (existing) { skipped++; continue; }
-
-        insertTask(inboxDb, {
+      // v1 fired tasks into the chat's own shared session. v2 gives every task
+      // SERIES its own isolated system session (`resolveTaskSession`), and the
+      // sweep only looks for due `kind='task'` rows there — a row written into a
+      // chat session would simply never fire. The `mg` lookup above stays as the
+      // migration FILTER (skip tasks whose chat did not migrate); it no longer
+      // picks the session. Series id = the v1 task id, so the idempotence check
+      // below still recognises an already-migrated task on a re-run.
+      const { session } = await resolveTaskSession(ag.id, t.id);
+      const inserted = await withMailboxSession(ag.id, session.id, async (mailbox) => {
+        if (mailbox.getTask(t.id)) return false;
+        // platform_id / channel_type / thread_id are deliberately absent: v2
+        // task rows always carry NULL there (insertTask hardcodes it), because
+        // the task fires into its own system session rather than into a chat.
+        await mailbox.insertTask({
           id: t.id,
+          seriesId: t.id,
           processAfter: scheduling.processAfter,
           recurrence: scheduling.recurrence,
-          platformId,
-          channelType: parsed.channel_type,
-          threadId: null,
           content: JSON.stringify({
             prompt: t.prompt,
             script: t.script ?? null,
             migrated_from_v1: { original_id: t.id, context_mode: t.context_mode ?? null },
           }),
         });
-        migrated++;
-      } finally {
-        inboxDb.close();
-      }
+        return true;
+      });
+      if (inserted) migrated++;
+      else skipped++;
     } catch (err) {
       failed++;
       console.error(`TASK_ERROR:${t.id}:${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
-  closeDb();
+  await closeDb();
   console.log(`OK:active=${activeTasks.length},migrated=${migrated},skipped=${skipped},failed=${failed}`);
 }
 
