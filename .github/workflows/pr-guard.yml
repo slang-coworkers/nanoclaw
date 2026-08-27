@@ -72,8 +72,17 @@ jobs:
           # somebody else's debt gets disabled instead of fixed.
           RANGE="origin/${BASE}...HEAD"
 
+          # `container/claude-trace/**/dist` is vendored build output, not source:
+          # minified bundles and .map files legitimately carry long lines and no
+          # trailing newline. Enforcing style on them fails every PR that merely
+          # carries the vendor directory across (a nv-main pre-merge into a leaf
+          # sync branch adds the whole tree), which is somebody else's debt by
+          # the same argument that already excludes knowledge_base.
           echo "--- code paths (enforced) ---"
-          git diff --check "$RANGE" -- . ':(exclude)knowledge_base' > /tmp/code.txt 2>&1
+          git diff --check "$RANGE" -- . \
+            ':(exclude)knowledge_base' \
+            ':(exclude)container/claude-trace/dist' \
+            ':(exclude)container/claude-trace/frontend/dist' > /tmp/code.txt 2>&1
           CODE_RC=$?
           cat /tmp/code.txt
 
