@@ -461,3 +461,95 @@ describe('check.py — shares the matcher and fails closed', () => {
     });
   });
 });
+
+describe('check.py — sync-branch reconciliation exemption', () => {
+  /**
+   * Build a repo where `nv-slang` owns only `slang/**`, plus an `origin/nv-main`
+   * ref, and put `files` on the PR head. Returns check.py's result.
+   */
+  function runSync(
+    files: { path: string; head: string | null; nvMain: string | null },
+    headRef: string,
+  ): { status: number | null; out: string } {
+    return withTmp((dir) => {
+      const git = (...a: string[]) => spawnSync('git', ['-C', dir, ...a], { encoding: 'utf-8' });
+      spawnSync('git', ['init', '-q', '-b', 'nv-slang', dir]);
+      git('config', 'user.email', 't@t');
+      git('config', 'user.name', 'T');
+
+      const guard = path.join(dir, '.github', 'nv-path-guard');
+      fs.mkdirSync(guard, { recursive: true });
+      fs.copyFileSync(MATCHER, path.join(guard, 'ownership.py'));
+      fs.copyFileSync(CHECK, path.join(guard, 'check.py'));
+      fs.writeFileSync(path.join(guard, 'nv-slang.txt'), 'slang/**\n.github/**\n');
+      git('add', '-A');
+      git('commit', '-qm', 'base');
+
+      // nv-main carries its own copy; refs/remotes so `origin/nv-main` resolves.
+      const write = (p: string, body: string | null) => {
+        const abs = path.join(dir, p);
+        if (body === null) {
+          fs.rmSync(abs, { force: true });
+          return;
+        }
+        fs.mkdirSync(path.dirname(abs), { recursive: true });
+        fs.writeFileSync(abs, body);
+      };
+      write(files.path, files.nvMain);
+      git('add', '-A');
+      git('commit', '-qm', 'nv-main state');
+      const nvMainSha = git('rev-parse', 'HEAD').stdout.trim();
+      git('update-ref', 'refs/remotes/origin/nv-main', nvMainSha);
+
+      // Back to the branch point, then put the head's version in place.
+      git('checkout', '-q', 'nv-slang');
+      git('reset', '-q', '--hard', 'HEAD~1');
+      const baseSha = git('rev-parse', 'HEAD').stdout.trim();
+      git('update-ref', 'refs/remotes/origin/nv-slang', baseSha);
+      write(files.path, files.head);
+      git('add', '-A');
+      git('commit', '-qm', 'head state');
+      const headSha = git('rev-parse', 'HEAD').stdout.trim();
+
+      const r = spawnSync(PYTHON, [path.join(guard, 'check.py'), 'nv-slang', headSha], {
+        cwd: dir,
+        encoding: 'utf-8',
+        env: { ...process.env, HEAD_REF: headRef },
+      });
+      return { status: r.status, out: `${r.stdout ?? ''}${r.stderr ?? ''}` };
+    });
+  }
+
+  it('forgives an unowned file whose content matches nv-main exactly', () => {
+    const r = runSync(
+      { path: 'src/shared.ts', head: 'export const x = 1;\n', nvMain: 'export const x = 1;\n' },
+      'sync/upstream-nv-slang',
+    );
+    expect(r.status).toBe(0);
+    expect(r.out).toContain('reconciliation');
+  });
+
+  it('forgives an unowned file the leaf deleted because nv-main deleted it', () => {
+    const r = runSync({ path: 'src/gone.ts', head: null, nvMain: null }, 'sync/upstream-nv-slang');
+    expect(r.status).toBe(0);
+  });
+
+  // The case the guard exists for: importing nv-main's content is reconciliation,
+  // but authoring your own version of an unowned file is not.
+  it('still fails when the unowned file differs from nv-main', () => {
+    const r = runSync(
+      { path: 'src/shared.ts', head: 'export const x = 999;\n', nvMain: 'export const x = 1;\n' },
+      'sync/upstream-nv-slang',
+    );
+    expect(r.status).toBe(1);
+    expect(r.out).toContain('outside');
+  });
+
+  it('does not exempt a non-sync branch even when content matches nv-main', () => {
+    const r = runSync(
+      { path: 'src/shared.ts', head: 'export const x = 1;\n', nvMain: 'export const x = 1;\n' },
+      'feature/whatever',
+    );
+    expect(r.status).toBe(1);
+  });
+});
