@@ -49,7 +49,14 @@ import { refreshDestinationsForAgentGroup } from '../src/modules/agent-to-agent/
 import { CANONICAL_DECISIONS, canonicalizeDecision } from '../src/modules/approvals/decision.js';
 import { kbDoctorUnavailable, readKbDoctorArtifact, type KbDoctorView } from './kb-doctor-artifact.js';
 import { isoWeekStart, isoWeekStartFromMs, sessionIdMs, unitCostByWeek, UNIT_COST_GROUPS } from './unit-cost.js';
-import { priceUsage, normalizeModel, MODEL_PRICING, type SessionCostEntry, type TokenUsage } from './session-costs.js';
+import {
+  priceUsage,
+  normalizeModel,
+  MODEL_PRICING,
+  resolveSdkSessionId,
+  type SessionCostEntry,
+  type TokenUsage,
+} from './session-costs.js';
 import {
   parseCostCapBlob,
   buildCostCapEntry,
@@ -2234,7 +2241,7 @@ function refreshSessionCostCache(): void {
         livePaths.add(f);
         const fc = scanFileCost(f, m);
         if (!fc.hadSignal) continue;
-        const sdkId = basename(f).replace(/\.jsonl$/, '');
+        const sdkId = resolveSdkSessionId(f);
         const nanoId = sdkToNano.get(sdkId) || '';
         for (const period of CONTEXT_PERIODS) {
           const since = cutoffs[period];

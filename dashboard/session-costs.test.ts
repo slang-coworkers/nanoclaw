@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { FALLBACK_PRICING } from './server.js';
-import { MODEL_PRICING, normalizeModel, priceUsage, rankByCost, type SessionCostEntry } from './session-costs.js';
+import {
+  MODEL_PRICING,
+  normalizeModel,
+  priceUsage,
+  rankByCost,
+  resolveSdkSessionId,
+  type SessionCostEntry,
+} from './session-costs.js';
 
 describe('normalizeModel', () => {
   it('maps the wire variants seen in prod transcripts onto a base key', () => {
@@ -88,6 +95,30 @@ describe('MODEL_PRICING agrees with server FALLBACK_PRICING (no drift)', () => {
       expect(MODEL_PRICING[key], `${model} → ${key} missing from MODEL_PRICING`).toBeDefined();
       expect(MODEL_PRICING[key]).toEqual(rate);
     }
+  });
+});
+
+describe('resolveSdkSessionId', () => {
+  it('uses the file basename for a normal root session transcript', () => {
+    const p = '/data/v2-sessions/ag-1/.claude-shared/projects/-workspace-agent/28e13752-0539-4e03-b4ba-1e23871ba1cc.jsonl';
+    expect(resolveSdkSessionId(p)).toBe('28e13752-0539-4e03-b4ba-1e23871ba1cc');
+  });
+
+  it('attributes a subagent transcript to its PARENT session, not its own basename', () => {
+    // Task-tool subagent transcripts nest at <parent-sdk-id>/subagents/agent-*.jsonl
+    // and never get their own sdk_session_routes entry — routes only stamp
+    // top-level session hook lifecycles, never subagent spawns. Measured on
+    // prod: naive basename keying orphaned ~99% of what looked like
+    // "unattributed" cost, which was really real subagent spend.
+    const p =
+      '/data/v2-sessions/ag-1/.claude-shared/projects/-workspace-agent/9082dc8c-c1e3-4aae-9870-1a729763d813/subagents/agent-a2902b91b2bb8380e.jsonl';
+    expect(resolveSdkSessionId(p)).toBe('9082dc8c-c1e3-4aae-9870-1a729763d813');
+  });
+
+  it('a directory that merely contains "subagents" in its name is not treated as the marker', () => {
+    // Only an exact 'subagents' path segment should trigger parent-attribution.
+    const p = '/data/v2-sessions/ag-1/.claude-shared/projects/-workspace-agent/not-subagents-dir/28e13752.jsonl';
+    expect(resolveSdkSessionId(p)).toBe('28e13752');
   });
 });
 
