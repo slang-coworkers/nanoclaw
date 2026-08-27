@@ -693,6 +693,14 @@ function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void 
  * idempotent, respawn-safe, and cannot be blinded by a rotated file (a new file
  * charges from zero rather than having to climb past a global high-water mark).
  *
+ * KNOWN, ACCEPTED EDGE: calls are de-duplicated across files (a forked subagent
+ * rollout replays its parent's, see `codexEventKey`), so if the ORIGINAL file is
+ * later deleted while its fork survives, the fork stops losing the duplicate and
+ * charges those calls a second time. Nothing in nanoclaw or codex deletes a
+ * rollout, so this needs an operator with a broom; the alternative — not
+ * de-duplicating — is a measured 13.7%–19.2% over-count on every session that
+ * forks, which is routine.
+ *
  * MIGRATION: a session with no `codexLedger` at all has its existing codex
  * history absorbed once WITHOUT charging. Charging it would bill a live session
  * for spend it already made and hard-stop much of the fleet the moment this
