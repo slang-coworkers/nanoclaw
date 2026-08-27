@@ -1,0 +1,15 @@
+[Unit]
+Description=NanoClaw coworker metrics -> local InfluxDB
+After=influxdb.service
+
+[Service]
+Type=oneshot
+User=telegraf
+Group=telegraf
+EnvironmentFile=/etc/nanoclaw-metrics.env
+ExecStart=/usr/local/bin/nanoclaw-metrics-push.sh
+# read-only collector: no writes anywhere except its own state dir
+ProtectSystem=strict
+ReadWritePaths=/var/lib/telegraf /tmp
+PrivateTmp=false
+NoNewPrivileges=true

@@ -42,15 +42,13 @@ spawn. For the default (Claude) provider these are:
 | `/workspace` | `data/v2-sessions/<group>/<session>/` | RW | Session folder — `inbound.db`, `outbound.db`, `outbox/`, `.claude/` |
 | `/workspace/agent` | `groups/<folder>/` | RW | Agent working files, standing instructions, and shared memory tree |
 | `/workspace/agent/container.json` | group `container.json` | RO | Container config — readable, not writable |
-| `/workspace/agent/CLAUDE.md` | composed `CLAUDE.md` | RO | Regenerated every spawn; agent edits would be clobbered |
-| `/workspace/agent/.claude-fragments` | group `.claude-fragments/` | RO | Composer skill/MCP fragments |
-| `/app/CLAUDE.md` | `container/CLAUDE.md` | RO | Shared base doc imported by the composed entry point |
+| `/workspace/agent/CLAUDE.md` | composed `CLAUDE.md` | RO | The complete project document, every instruction source inlined; regenerated every spawn |
 | `/home/node/.claude` | `data/v2-sessions/<group>/.claude-shared/` | RW | Claude state, settings, skill symlinks |
-| `/app/src` | `container/agent-runner/src/` | RO | Shared agent-runner source (same for all groups) |
+| `/app/src` | `data/v2-sessions/<group>/agent-runner-src/` | **RW** | Per-group COPY of `container/agent-runner/src/`, taken once at group creation. Writable on purpose (`self-customize` routes source edits here), so it is agent-reachable state, not shared read-only source |
 | `/app/skills` | `container/skills/` | RO | Shared container skills |
 | `/workspace/extra/<name>` | allowlisted host dir | RO (RW only if allowed) | Operator-configured additional mounts |
 
-The config mounts (`container.json`, `CLAUDE.md`, `.claude-fragments`) are
+The config mounts (`container.json`, `CLAUDE.md`, `plugins/`) are
 **nested read-only mounts on top of the read-write group dir** — the agent can
 read its config but cannot modify it. The project root is **never mounted**: the
 container only ever sees the paths above plus any provider-contributed mounts
@@ -58,8 +56,10 @@ container only ever sees the paths above plus any provider-contributed mounts
 `package.json`) is not reachable.
 
 Shared memory content is read only by the provider's SessionStart hook inside
-the container. Host-side project-document composers emit pointers but never
-open `memory/index.md` or linked agent-controlled files. A memory symlink can
+the container. Host-side project-document composers inline the repository's own
+instruction sources, and read nothing the agent can author except
+`instructions.prepend.md` (opened with `O_NOFOLLOW`); they never open
+`memory/index.md` or linked agent-controlled files. A memory symlink can
 therefore reach only paths already visible inside that container, not arbitrary
 host files.
 
@@ -177,6 +177,16 @@ Lockdown is **off by default**; opt in with `NANOCLAW_EGRESS_LOCKDOWN=true`.
 
 ## Resource Limits
 
+| Capability | Main Group | Non-Main Group |
+|------------|------------|----------------|
+| Project root access | `/workspace/project` (ro) | None |
+| Store (SQLite DB) | `/workspace/project/store` (rw) | None |
+| Group folder | `/workspace/agent` (rw) | `/workspace/agent` (rw) |
+| Shared memory | `/workspace/shared` (rw) — Main is the only writer | `/workspace/shared` (ro) |
+| Additional mounts | Configurable | Read-only unless allowed |
+| Network access | Unrestricted | Unrestricted |
+| MCP tools | All | All |
+
 Per-container CPU and memory caps are **opt-in and unset by default** — a runaway
 agent is not throttled unless the operator configures a limit:
 
@@ -225,6 +235,14 @@ NanoClaw uses pnpm with two supply chain defenses configured in `pnpm-workspace.
 ### Minimum Release Age
 
 `minimumReleaseAge: 4320` (3 days). pnpm will refuse to resolve any package version published less than 3 days ago. This defends against typosquatting and compromised maintainer accounts — most malicious publishes are detected and pulled within 72 hours.
+
+**The key must stay top-level.** It previously sat nested under a `pnpm:` key, which pnpm 10.33.0 ignores *silently* — no warning of any kind — so the quarantine documented here was not actually running. `scripts/check-release-age-policy.sh` now probes pnpm in CI instead of trusting the file, and fails if the setting is ever moved somewhere pnpm does not read.
+
+**Two install paths, two places to configure.** `pnpm-workspace.yaml` governs the repository install. It does *not* govern the agent container's global CLI installs: `pnpm install -g` resolves config from `/root/.npmrc` and never reads the workspace file, so the packages that actually execute inside the agent were unprotected even after the key was fixed. `container/install-cli-tools.sh` writes the same floor into `/root/.npmrc` and proves at build time that pnpm honours it, failing the image build otherwise. CI checks the two numbers for drift.
+
+The enforcement is version-sensitive, which is why the probe exists rather than a comment: measured 2026-08-06, pnpm 10.33.0 (what the Dockerfile pins) honours `minimum-release-age` for global installs and pnpm 11.20.0 ignores it — the same regression that already applies to `only-built-dependencies[]=`. A pnpm bump past 10.x fails the image build instead of quietly reopening the hole.
+
+One consequence when bumping a pinned CLI: a version younger than three days now fails the image build with `ERR_PNPM_NO_MATURE_MATCHING_VERSION`. Check `pnpm view <pkg>@<version> time` and pin a version that has already matured rather than the newest tag.
 
 **Excluding a package from the release age gate** (`minimumReleaseAgeExclude`):
 

@@ -17,6 +17,7 @@
  * outcome. Policy rows can only tighten (hold), never allow: absence of a
  * row falls through to the structural checks.
  */
+import { isAncestorGroup } from '../../db/a2a-session-sources.js';
 import { getAgentGroup } from '../../db/agent-groups.js';
 import { getContainerConfig } from '../../db/container-configs.js';
 import { ALLOW, DENY, HOLD, defineGuardedAction } from '../../guard/index.js';
@@ -41,9 +42,9 @@ export const agentsCreate = defineGuardedAction({
       return false;
     }
   },
-  decide: (input) => {
+  decide: async (input) => {
     if (input.actor.kind !== 'agent') return DENY('create_agent is a container-originated action.');
-    const cliScope = getContainerConfig(input.actor.agentGroupId)?.cli_scope ?? 'group';
+    const cliScope = (await getContainerConfig(input.actor.agentGroupId))?.cli_scope ?? 'group';
     if (cliScope === 'global') {
       // Trusted owner agent group — an approval tap on every sub-agent spawn
       // would be needless friction.
@@ -67,22 +68,39 @@ export const a2aSend = defineGuardedAction({
       return false;
     }
   },
-  decide: (input) => {
+  decide: async (input) => {
     if (input.actor.kind !== 'agent') return DENY('agent-to-agent send requires an agent actor');
     const from = input.actor.agentGroupId;
     const to = input.resource?.to ?? '';
     const isSelf = to === from;
-    if (!isSelf && !hasDestination(from, 'agent', to)) {
+
+    // Authorization, in order:
+    //   1. self-send always allowed (system notes injected back into an
+    //      agent's own session);
+    //   2. LINEAGE — a child may reply upward to a genuine ancestor of its
+    //      session chain with NO destination row: the a2a delegation chain
+    //      itself proves reply privilege (isAncestorGroup walks
+    //      a2a_session_sources from the sender's session; the router's
+    //      findAncestorRoute shares that exact walk, so an allow here always
+    //      has a real ancestor session to deliver into). Non-ancestor targets
+    //      fall through — lineage never authorizes reaching an UNRELATED group;
+    //   3. otherwise a fresh peer-to-peer send requires an explicit
+    //      destination row (fail-closed).
+    const sessionId = input.actor.sessionId;
+    const isAncestorReply = !isSelf && sessionId != null && (await isAncestorGroup(sessionId, to));
+    if (!isSelf && !isAncestorReply && !(await hasDestination(from, 'agent', to))) {
       return DENY(`unauthorized agent-to-agent: ${from} has no destination for ${to}`);
     }
-    if (!getAgentGroup(to)) {
+    if (!(await getAgentGroup(to))) {
       return DENY(`target agent group ${to} not found for message ${String(input.payload.id)}`);
     }
     if (isSelf) return ALLOW('self-send');
-    const policy = getMessagePolicy(from, to);
+    // The per-edge message policy holds even an authorized send (lineage or
+    // destination) for admin approval when a policy row names an approver.
+    const policy = await getMessagePolicy(from, to);
     if (policy) {
       return HOLD(`a2a message policy ${from}→${to} holds for ${policy.approver}`, policy.approver);
     }
-    return ALLOW('destination grant exists');
+    return ALLOW(isAncestorReply ? 'lineage reply to ancestor' : 'destination grant exists');
   },
 });

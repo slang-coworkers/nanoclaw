@@ -1,0 +1,237 @@
+# nv-main — core NanoClaw infrastructure.
+# Owns everything that is NOT a project-specific overlay.
+#
+# This allowlist is intentionally broad — nv-main is where infrastructure,
+# agent-runner code, setup wizards, tests, and shared skills live.
+
+# Host-side TypeScript:
+src/**
+scripts/**
+setup/**
+
+# Agent-runner + container-side:
+container/agent-runner/**
+container/hooks/**
+container/Dockerfile
+container/build.sh
+container/pull.sh
+container/Dockerfile.derived
+container/build-derived.sh
+container/entrypoint.sh
+container/config/**
+
+# Shared container skills (NOT overlay-specific ones):
+.claude/skills/*.md
+.claude/skills/add-*/SKILL.md
+.claude/skills/debug/**
+.claude/skills/setup/**
+.claude/skills/customize/**
+.claude/skills/update-nanoclaw/**
+.claude/skills/agent-browser/**
+.claude/skills/self-customize/**
+.claude/skills/slack-formatting/**
+.claude/skills/welcome/**
+.claude/skills/show-transcript/**
+
+# Base infrastructure spine + skills (NOT project overlays):
+container/skills/spine-base/**
+container/spines/base/**
+
+# Upstream-originated skills (on main but not overlay-owned):
+container/skills/base/**
+container/skills/frontend-engineer/**
+container/skills/vercel-cli/**
+
+# Agent-runner mcp-tool instruction docs:
+container/agent-runner/src/mcp-tools/**.md
+
+# Top-level config / docs / tooling:
+package.json
+pnpm-lock.yaml
+# The install policy that governs pnpm-lock.yaml — same owner as the lockfile it
+# constrains. Missing until the F01 fix needed to edit them, which is itself the
+# argument for listing them: the supply-chain settings (minimumReleaseAge,
+# onlyBuiltDependencies, minReleaseAge) belong exactly where package.json and
+# pnpm-lock.yaml already live, and nowhere else can be canonical for them.
+pnpm-workspace.yaml
+.npmrc
+tsconfig.json
+# The typecheck-only view of the same tree. Separate from tsconfig.json because
+# that one is the BUILD config (rootDir ./src, outDir dist, declaration) and
+# cannot reach setup/ or scripts/ without breaking the build. Same owner as the
+# tsconfig it extends — nowhere else can be canonical for it.
+tsconfig.typecheck.json
+# The Python equivalent of tsconfig.typecheck.json: config for the ruff gate in
+# ci.yml, which lints the path-guard matcher, the KB observability producers and
+# the skill scripts. Same owner as the workflow that runs it — .github/** is
+# already nv-main's, and a lint config that could diverge from the job invoking
+# it is worse than no config.
+ruff.toml
+vitest.config.ts
+vitest.setup.ts
+.github/**
+docs/**
+CLAUDE.md
+README.md
+CONTRIBUTING.md
+LICENSE
+.gitignore
+.env.example
+.prettierrc*
+.eslintrc*
+# ESLint's flat config. `.eslintrc*` above only matches the LEGACY filename;
+# eslint renamed the entry point to eslint.config.js and upstream's config
+# arrived under the new name, so the stale pattern matched nothing and the file
+# read as unowned. Same owner as the lint config it replaces — and it is
+# ratcheted by ci.yml, which .github/** already puts here.
+eslint.config.js
+.husky/**
+groups/main/CLAUDE.md
+
+# Generic workflow templates (project-specific workflows live on project branches):
+container/workflows/plan/**
+container/workflows/implement/**
+
+# Generic critique/observer overlays (project-specific overlays live on project branches):
+container/overlays/buddy/**
+container/overlays/buddy-monitor/**
+container/overlays/critique-gate/**
+container/overlays/critique-overlay/**
+container/overlays/plan-gate/**
+
+# Removed in this PR (still allowlisted to permit the deletion through path-guard):
+container/workflows/triage-issue/**
+container/workflows/fix-issue/**
+container/workflows/discord-answer/**
+container/overlays/discord-answer-critique/**
+container/skills/github-webhook/**
+# chain-routing-gate overlay deleted — the routing check is now always-on, not
+# an overlay. Allowlisted so path-guard permits the deletion.
+container/overlays/chain-routing-gate/**
+
+# Operational skills (instruction-only workflows, not channel/provider installs):
+.claude/skills/init-first-agent/**
+.claude/skills/init-onecli/**
+.claude/skills/manage-channels/**
+.claude/skills/manage-mounts/**
+.claude/skills/migrate-from-v1/**
+.claude/skills/migrate-nanoclaw/**
+.claude/skills/update-skills/**
+.claude/skills/use-native-credential-proxy/**
+.claude/skills/convert-to-apple-container/**
+.claude/skills/x-integration/**
+.claude/skills/lego-system-tour/**
+.claude/skills/run-test/**
+.claude/skills/onboard-project/**
+
+# Channel install skills carry resources beyond SKILL.md (e.g. add-dashboard/resources/):
+.claude/skills/add-*/**
+
+# Top-level repo files:
+CHANGELOG.md
+CONTRIBUTORS.md
+README_ja.md
+README_zh.md
+RELEASING.md
+
+# Setup assets + launchers:
+assets/**
+bin/**
+migrate-v2*.sh
+nanoclaw.sh
+setup.sh
+uninstall.sh
+
+# Upstream-tracking utility + migration skills (absorbed via sync; not overlay-owned):
+.claude/skills/claw/**
+.claude/skills/migrate-from-openclaw/**
+
+# Repo tooling (action.yml + badge for repo-tokens):
+repo-tokens/**
+
+# Removed in this PR — Python bytecode that should never have been committed:
+container/mcp-servers/**
+
+# Removed in this PR — base-nanoclaw moves to nv-nanoclaw's territory:
+container/skills/base-nanoclaw/**
+container/skills/buddy/**
+container/skills/codex-critique/**
+
+# Periodic upstream-sync (May 28, 2026): paths added by upstream/main absorbed via Sync PR.
+container/skills/whatsapp-formatting/**
+
+# Supervisor skill — periodic in-flight issue chain monitor (#514).
+container/skills/supervise-issues/**
+
+# Learnings-wiki skill — synthesize shared learnings into a Karpathy wiki (#728).
+container/skills/learnings-wiki/**
+
+# OKF per-group memory synthesis skill — keep always-loaded memory bounded (#15).
+container/skills/okf-synthesis/**
+
+# Costliest-session digest skill — daily "costliest session + why" DM to the owner (Tier 5).
+container/skills/costliest-session-digest/**
+
+# Upstream-tracking shared skills — allowlisted so upstream-sync PRs can update
+# them on nv-main (same pattern as whatsapp-formatting above). DO NOT hand-edit
+# the prose of these on nv-*: they originate from origin/main/upstream and any
+# local divergence conflicts on every /update-nanoclaw sync.
+container/skills/agent-browser/**
+container/skills/self-customize/**
+container/skills/slack-formatting/**
+container/skills/welcome/**
+
+# NV-only generic workflow (not upstream):
+container/workflows/base/**
+
+# Upstream sync (ee7f8916): new infra absorbed onto nv-main.
+# Operational skill — carry agent memory across a provider switch.
+.claude/skills/migrate-memory/**
+# Operational skill — upgrade path for classic (pre-app-manifest) Slack installs.
+# Absorbed via the async-DB sync; same class as migrate-memory / migrate-from-v1
+# above (an instruction-only migration workflow, not a channel install), and
+# nothing overlay-specific in it. RECORDS ownership that is already true.
+.claude/skills/migrate-slack-agents/**
+# Container CLI-tools manifest + installer (pinned Node CLIs for the image).
+container/cli-tools.json
+container/cli-tools.test.ts
+container/install-cli-tools.sh
+# Codex lifecycle hooks, installed to /etc/codex/requirements.toml (the managed
+# config layer — the user layer leaves them untrusted and silently skipped).
+container/codex-hooks.toml
+# Patched claude-trace (NVIDIA/Bedrock interception) — prebuilt dist is vendored
+# on purpose so a deploy needs no build; see container/claude-trace/BUILD.md.
+# The guard test is a SIBLING of the directory, not inside it, so it needs its
+# own entry (same split as cli-tools.json / cli-tools.test.ts above).
+container/claude-trace/**
+container/claude-trace.test.ts
+# Top-level version manifest.
+versions.json
+
+# Upstream sync (8be5be93): new upstream root files + learn skill absorbed onto nv-main.
+AGENTS.md
+README_ko.md
+.agents/**
+.claude/skills/learn/**
+
+# Upstream sync (1ff1fd6bc, upstream PR #428 "add official Qodo skills"): the two
+# Qodo skills arrived from upstream with no overlay-specific content, and
+# nv-main's own CLAUDE.md already documents both — same shape as the absorbed
+# upstream skills above (claw, migrate-from-openclaw, migrate-memory, learn).
+# This RECORDS ownership that is already factually true; it does not widen it.
+.claude/skills/get-qodo-rules/**
+.claude/skills/qodo-pr-resolver/**
+
+# ops/ — the prod observability stack, added 2026-08-11 (#1187).
+#
+# The metrics collector and the Grafana dashboard JSON previously existed ONLY
+# on the prod box, at /usr/local/bin/ and /var/lib/grafana/dashboards/. Nothing
+# in git described them, which is how a collector defect that silently stopped
+# recording issuePartition.winRate went unnoticed from 2026-08-03 to 2026-08-11
+# while the dashboard kept rendering the stale final value as current.
+#
+# This is infra that configures the box, which is the same class as .github/**
+# and setup/** — nv-main owns it. It is deliberately NOT owned by nv-dashboard:
+# that branch owns the in-repo NanoClaw dashboard (dashboard/**, port 3737),
+# a different artifact from the Grafana board on 13000.
+ops/**

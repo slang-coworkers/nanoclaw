@@ -23,17 +23,18 @@ import { gateCommand } from './command-gate.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { recordDroppedMessage } from './db/dropped-messages.js';
 import {
-  createMessagingGroup,
+  createMessagingGroupIfAbsent,
   getMessagingGroupAgents,
   getMessagingGroupWithAgentCount,
 } from './db/messaging-groups.js';
 import { findSessionForAgent } from './db/sessions.js';
+import { backfillNewSession, fanInboundMessage } from './modules/cross-session-context/index.js';
 import { startTypingRefresh, stopTypingRefresh } from './modules/typing/index.js';
 import { log } from './log.js';
 import { resolveSession, writeSessionMessage, writeOutboundDirect } from './session-manager.js';
 import { wakeContainer } from './container-runner.js';
 import { getSession } from './db/sessions.js';
-import type { AgentGroup, MessagingGroup, MessagingGroupAgent } from './types.js';
+import type { AgentGroup, MessagingGroup, MessagingGroupAgent, Session } from './types.js';
 import type { InboundEvent } from './channels/adapter.js';
 
 function generateId(): string {
@@ -48,7 +49,7 @@ function generateId(): string {
  * carry enough info to identify a sender. Without the hook, every message
  * arrives at the gate with userId=null.
  */
-export type SenderResolverFn = (event: InboundEvent) => string | null;
+export type SenderResolverFn = (event: InboundEvent) => string | null | Promise<string | null>;
 
 let senderResolver: SenderResolverFn | null = null;
 
@@ -75,7 +76,7 @@ export type AccessGateFn = (
   userId: string | null,
   mg: MessagingGroup,
   agentGroupId: string,
-) => AccessGateResult;
+) => AccessGateResult | Promise<AccessGateResult>;
 
 let accessGate: AccessGateFn | null = null;
 
@@ -98,7 +99,7 @@ export type SenderScopeGateFn = (
   userId: string | null,
   mg: MessagingGroup,
   agent: MessagingGroupAgent,
-) => AccessGateResult;
+) => AccessGateResult | Promise<AccessGateResult>;
 
 let senderScopeGate: SenderScopeGateFn | null = null;
 
@@ -148,6 +149,57 @@ export function setChannelRequestGate(fn: ChannelRequestGateFn): void {
   channelRequestGate = fn;
 }
 
+/**
+ * Session-created hook. When an engaged (waking) message creates a
+ * brand-new session, registered hooks are notified after the triggering
+ * message is written to the session's inbound DB, with the resolved
+ * messaging group, thread id, session mode, and triggering message.
+ *
+ * Channel modules can use it for platform-specific conversation bootstrap
+ * (thread naming, retiring onboarding affordances) without the router
+ * carrying platform timing knowledge. The hook fires for every
+ * created+engaged session — is_group / session-mode filtering is the
+ * consumer's business.
+ *
+ * Fire-and-forget: hooks are try/caught (and async rejections logged), so
+ * a failing hook can never affect routing or the container wake. No-op
+ * when nothing is registered.
+ */
+export interface SessionCreatedEvent {
+  /** The just-created session. */
+  session: Session;
+  /** The messaging group the triggering message arrived on. */
+  mg: MessagingGroup;
+  /** Platform address of the triggering inbound event. */
+  platformId: string;
+  /** Resolved thread id after the wiring's thread policy (null = no thread). */
+  threadId: string | null;
+  /** Resolved session mode after the wiring's thread policy. */
+  sessionMode: MessagingGroupAgent['session_mode'];
+  /** The triggering inbound message as received from the adapter. */
+  message: { id: string; kind: string; content: string; timestamp: string };
+}
+
+export type SessionCreatedHook = (event: SessionCreatedEvent) => void | Promise<void>;
+
+const sessionCreatedHooks: SessionCreatedHook[] = [];
+
+export function registerSessionCreatedHook(hook: SessionCreatedHook): void {
+  sessionCreatedHooks.push(hook);
+}
+
+function dispatchSessionCreated(event: SessionCreatedEvent): void {
+  for (const hook of sessionCreatedHooks) {
+    try {
+      Promise.resolve(hook(event)).catch((err) =>
+        log.error('Session-created hook failed', { sessionId: event.session.id, err }),
+      );
+    } catch (err) {
+      log.error('Session-created hook threw', { sessionId: event.session.id, err });
+    }
+  }
+}
+
 function safeParseContent(raw: string): { text?: string; sender?: string; senderId?: string } {
   try {
     return JSON.parse(raw);
@@ -186,7 +238,7 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
   //    resolution, no log spam. Exact-on-instance: an unknown named
   //    instance falls through to auto-create rather than hijacking a
   //    sibling instance's row.
-  const found = getMessagingGroupWithAgentCount(
+  const found = await getMessagingGroupWithAgentCount(
     event.channelType,
     event.platformId,
     event.instance ?? event.channelType,
@@ -209,6 +261,7 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
       instance: event.instance ?? event.channelType,
       name: null,
       is_group: event.message.isGroup ? 1 : 0,
+      admin_user_id: null,
       // Policy from the receiving channel's declared defaults (DM vs group
       // context); undeclared adapters resolve through the behavior-faithful
       // fallback, which is 'request_approval' in both contexts — identical
@@ -221,13 +274,22 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
       denied_at: null,
       created_at: new Date().toISOString(),
     };
-    createMessagingGroup(mg);
-    log.info('Auto-created messaging group', {
-      id: mgId,
-      channelType: event.channelType,
-      platformId: event.platformId,
-    });
-    agentCount = 0;
+    const created = await createMessagingGroupIfAbsent(mg);
+    const resolved = await getMessagingGroupWithAgentCount(
+      event.channelType,
+      event.platformId,
+      event.instance ?? event.channelType,
+    );
+    if (!resolved) throw new Error('Messaging group disappeared after first-message insert');
+    mg = resolved.mg;
+    agentCount = resolved.agentCount;
+    if (created) {
+      log.info('Auto-created messaging group', {
+        id: mgId,
+        channelType: event.channelType,
+        platformId: event.platformId,
+      });
+    }
   } else {
     mg = found.mg;
     agentCount = found.agentCount;
@@ -246,7 +308,7 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
     }
 
     const parsed = safeParseContent(event.message.content);
-    recordDroppedMessage({
+    await recordDroppedMessage({
       channel_type: event.channelType,
       platform_id: event.platformId,
       user_id: null,
@@ -277,17 +339,17 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
   // 2. Sender resolution (permissions module upserts the users row as a
   //    side effect so later role/access lookups find a real record).
   //    Without the module, userId is null — downstream tolerates it.
-  const userId: string | null = senderResolver ? senderResolver(event) : null;
+  const userId: string | null = senderResolver ? await senderResolver(event) : null;
 
   // 3. Fetch wired agents in full (we already know the count is > 0; now
   //    we need their actual rows for fan-out).
-  const agents = getMessagingGroupAgents(mg.id);
+  const agents = await getMessagingGroupAgents(mg.id);
 
   // 4. Fan-out: evaluate each wired agent independently against engage_mode,
   //    sender_scope, and access gate. An agent that engages gets its own
   //    session and container wake. An agent that declines but has
   //    ignored_message_policy='accumulate' still gets the message stored in
-  //    its session (trigger=0) so the context is available when it does
+  //    its session without triggering a wake so the context is available when it does
   //    engage later. Drop policy = skip silently.
   //
   //    Subscribe (for mention-sticky wirings on threaded platforms) fires
@@ -311,7 +373,7 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
   let subscribed = false;
 
   for (const agent of agents) {
-    const agentGroup = getAgentGroup(agent.agent_group_id);
+    const agentGroup = await getAgentGroup(agent.agent_group_id);
     if (!agentGroup) continue;
 
     // Effective thread id for THIS wiring: the event-derived address is
@@ -329,10 +391,10 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
     );
     const effectiveThreadId = threadsEnabled ? event.threadId : null;
 
-    const engages = evaluateEngage(agent, messageText, isMention, mg, effectiveThreadId);
+    const engages = await evaluateEngage(agent, messageText, isMention, mg, effectiveThreadId);
 
-    const accessOk = engages && (!accessGate || accessGate(event, userId, mg, agent.agent_group_id).allowed);
-    const scopeOk = engages && (!senderScopeGate || senderScopeGate(event, userId, mg, agent).allowed);
+    const accessOk = engages && (!accessGate || (await accessGate(event, userId, mg, agent.agent_group_id)).allowed);
+    const scopeOk = engages && (!senderScopeGate || (await senderScopeGate(event, userId, mg, agent)).allowed);
 
     if (engages && accessOk && scopeOk) {
       await deliverToAgent(agent, agentGroup, mg, event, userId, threadsEnabled, effectiveThreadId, true);
@@ -381,7 +443,7 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
   }
 
   if (engagedCount + accumulatedCount === 0) {
-    recordDroppedMessage({
+    await recordDroppedMessage({
       channel_type: event.channelType,
       platform_id: event.platformId,
       user_id: userId,
@@ -391,6 +453,21 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
       agent_group_id: null,
     });
   }
+}
+
+/** Cache compiled engage regexes by pattern string to avoid re-creation on every message. */
+const engageRegexCache = new Map<string, RegExp | null>();
+
+function getOrCompileRegex(pattern: string): RegExp | null {
+  let re = engageRegexCache.get(pattern);
+  if (re !== undefined) return re;
+  try {
+    re = new RegExp(pattern, 'i');
+  } catch {
+    re = null;
+  }
+  engageRegexCache.set(pattern, re);
+  return re;
 }
 
 /**
@@ -413,23 +490,22 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
  *                      a thread has engaged us once, follow-ups arrive
  *                      with no mention and should still fire.
  */
-function evaluateEngage(
+async function evaluateEngage(
   agent: MessagingGroupAgent,
   text: string,
   isMention: boolean,
   mg: MessagingGroup,
   threadId: string | null,
-): boolean {
+): Promise<boolean> {
   switch (agent.engage_mode) {
+    case 'always':
+      return true;
     case 'pattern': {
       const pat = agent.engage_pattern ?? '.';
       if (pat === '.') return true;
-      try {
-        return new RegExp(pat).test(text);
-      } catch {
-        // Bad regex: fail open so admin sees the agent responding + can fix.
-        return true;
-      }
+      const re = getOrCompileRegex(pat);
+      // Bad regex (null): fail open so admin sees the agent responding + can fix.
+      return re ? re.test(text) : true;
     }
     case 'mention':
       return isMention;
@@ -438,10 +514,17 @@ function evaluateEngage(
       // Sticky follow-up: session already exists for this (agent, mg, thread)
       // — the thread was activated before, keep firing.
       if (mg.is_group === 0) return false; // DMs never use mention-sticky sensibly
-      const existing = findSessionForAgent(agent.agent_group_id, mg.id, threadId);
+      const existing = await findSessionForAgent(agent.agent_group_id, mg.id, threadId);
       return existing !== undefined;
     }
     default:
+      // Unrecognized engage_mode (e.g. stale data from a past CLI version,
+      // or a direct DB write — the column has no CHECK constraint). Fail
+      // closed but leave a trail so this doesn't look like a mystery drop.
+      log.warn('Unknown engage_mode — treating as no-engage. Check wiring configuration.', {
+        engage_mode: agent.engage_mode,
+        wiring_id: agent.id,
+      });
       return false;
   }
 }
@@ -467,7 +550,12 @@ async function deliverToAgent(
     effectiveSessionMode = 'per-thread';
   }
 
-  const { session, created } = resolveSession(agent.agent_group_id, mg.id, effectiveThreadId, effectiveSessionMode);
+  const { session, created } = await resolveSession(
+    agent.agent_group_id,
+    mg.id,
+    effectiveThreadId,
+    effectiveSessionMode,
+  );
 
   // The inbound row's (channel_type, platform_id, thread_id) is the address
   // the agent's reply will be delivered to. Normally it mirrors the source
@@ -485,13 +573,13 @@ async function deliverToAgent(
   // Filtered commands are dropped silently. Denied admin commands get a
   // permission-denied response written directly to messages_out.
   if (event.message.kind === 'chat' || event.message.kind === 'chat-sdk') {
-    const gate = gateCommand(event.message.content, userId, agent.agent_group_id);
+    const gate = await gateCommand(event.message.content, userId, agent.agent_group_id);
     if (gate.action === 'filter') {
       log.debug('Filtered command dropped by gate', { agentGroupId: agent.agent_group_id });
       return;
     }
     if (gate.action === 'deny') {
-      writeOutboundDirect(session.agent_group_id, session.id, {
+      await writeOutboundDirect(session.agent_group_id, session.id, {
         id: `deny-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         kind: 'chat',
         platformId: deliveryAddr.platformId,
@@ -504,16 +592,94 @@ async function deliverToAgent(
     }
   }
 
-  writeSessionMessage(session.agent_group_id, session.id, {
-    id: messageIdForAgent(event.message.id, agent.agent_group_id),
+  // Seed the new per-thread session with the parent message (if the caller
+  // supplied one). Only runs when `resolveSession` actually minted a fresh
+  // session AND we passed the command gate. Written with `trigger: 0` so it
+  // does NOT wake the container on its own — the user's real message (below)
+  // drives the wake and includes both rows as conversation context.
+  if (created && event.parentMessage) {
+    const pm = event.parentMessage;
+    await writeSessionMessage(session.agent_group_id, session.id, {
+      id: `seed-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: 'chat',
+      timestamp: pm.timestamp ?? event.message.timestamp,
+      platformId: deliveryAddr.platformId,
+      channelType: deliveryAddr.channelType,
+      threadId: deliveryAddr.threadId,
+      content: JSON.stringify({
+        text: pm.content,
+        sender: pm.sender ?? 'unknown',
+        senderId: pm.sender ?? 'unknown',
+        // Original direction from the parent's perspective. The row physically
+        // lives in inbound.db (so the agent can read it as context), but the
+        // dashboard's thread renderer reads this field to restore the correct
+        // author attribution — "outgoing" → show the coworker's own name,
+        // "incoming" → show "You" or @sender.
+        direction: pm.direction ?? 'outgoing',
+      }),
+      trigger: false,
+    });
+    log.info('Parent message seeded into new thread session', {
+      sessionId: session.id,
+      agentGroup: agent.agent_group_id,
+      parentDirection: pm.direction ?? 'unknown',
+      parentSender: pm.sender ?? 'unknown',
+    });
+  }
+
+  if (wake && created) {
+    // New-session backfill (cross-session context): a just-born session is
+    // seeded with its conversation's top-level timeline from sibling
+    // sessions BEFORE the triggering message is written, so replying to
+    // something said in another thread lands with that context in view.
+    await backfillNewSession(agentGroup, session, mg);
+  }
+
+  const messageId = messageIdForAgent(event.message.id, agent.agent_group_id);
+  await writeSessionMessage(session.agent_group_id, session.id, {
+    id: messageId,
     kind: event.message.kind,
     timestamp: event.message.timestamp,
     platformId: deliveryAddr.platformId,
     channelType: deliveryAddr.channelType,
     threadId: deliveryAddr.threadId,
     content: event.message.content,
-    trigger: wake ? 1 : 0,
+    trigger: wake,
   });
+
+  if (wake) {
+    // Cross-session context: fan the triggering message into sibling
+    // sessions of the SAME conversation as trigger=0 'session-echo' rows.
+    // Only the engaged branch fans — the accumulate branch above (trigger=0)
+    // never does, so ambient backlog is never copied twice. Never throws.
+    await fanInboundMessage({
+      session,
+      mg,
+      messageId,
+      kind: event.message.kind,
+      channelType: deliveryAddr.channelType,
+      content: event.message.content,
+      timestamp: event.message.timestamp,
+    });
+  }
+
+  if (wake && created) {
+    // A brand-new engaged session: notify registered modules with the
+    // resolved wiring context (fire-and-forget — see dispatchSessionCreated).
+    dispatchSessionCreated({
+      session,
+      mg,
+      platformId: event.platformId,
+      threadId: effectiveThreadId,
+      sessionMode: effectiveSessionMode,
+      message: {
+        id: event.message.id,
+        kind: event.message.kind,
+        content: event.message.content,
+        timestamp: event.message.timestamp,
+      },
+    });
+  }
 
   log.info('Message routed', {
     sessionId: session.id,
@@ -538,13 +704,16 @@ async function deliverToAgent(
       effectiveThreadId,
       mg.instance,
     );
-    const freshSession = getSession(session.id);
+    const freshSession = await getSession(session.id);
     if (freshSession) {
-      const woke = await wakeContainer(freshSession);
-      // wakeContainer never throws — it returns false on transient spawn
-      // failure (host-sweep retries). Stop the typing indicator we just
-      // started so it doesn't leak; the inbound row stays pending.
-      if (!woke) stopTypingRefresh(freshSession.id);
+      try {
+        await wakeContainer(freshSession);
+      } catch {
+        // wakeContainer rejects on transient spawn failure (host-sweep
+        // retries). Stop the typing indicator we just started so it
+        // doesn't leak; the inbound row stays pending.
+        stopTypingRefresh(freshSession.id);
+      }
     }
   }
 }
@@ -558,4 +727,135 @@ async function deliverToAgent(
 function messageIdForAgent(baseId: string | undefined, agentGroupId: string): string {
   const id = baseId && baseId.length > 0 ? baseId : generateId();
   return `${id}:${agentGroupId}`;
+}
+
+/**
+ * Bypass messaging-group routing: write a message directly into a known
+ * session's inbound.db and wake the container.
+ *
+ * Used by the dashboard "open a2a session" view, where the admin wants to
+ * interject in a peer-to-peer agent conversation. Normal routing
+ * (`routeInbound`) keys on (channel, platform, thread) and would either
+ * misroute the message into the coworker's main dashboard session OR
+ * create a new dashboard session — both wrong, because the admin is
+ * looking at a specific a2a session and expects their reply to land there.
+ *
+ * Caller is the dashboard ingress, gated by `DASHBOARD_SECRET`. No
+ * messaging_group lookup, no fan-out, no command-gate — admin-only.
+ */
+export async function routeInboundToSession(opts: {
+  sessionId: string;
+  content: string;
+  parentMessage?: InboundEvent['parentMessage'];
+}): Promise<void> {
+  const session = await getSession(opts.sessionId);
+  if (!session) throw new Error(`session not found: ${opts.sessionId}`);
+
+  const now = new Date().toISOString();
+
+  // Optional parent_message seed (matches the existing per-thread seed
+  // semantics in routeInbound). trigger:0 so it accumulates as context.
+  if (opts.parentMessage) {
+    const pm = opts.parentMessage;
+    await writeSessionMessage(session.agent_group_id, session.id, {
+      id: `seed-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: 'chat',
+      timestamp: pm.timestamp ?? now,
+      platformId: 'dashboard:admin',
+      channelType: 'dashboard',
+      threadId: session.thread_id ?? null,
+      content: JSON.stringify({
+        text: pm.content,
+        sender: pm.sender ?? 'unknown',
+        senderId: pm.sender ?? 'unknown',
+        direction: pm.direction ?? 'outgoing',
+      }),
+      trigger: false,
+    });
+  }
+
+  // The admin's own message — clearly attributed so the agent can
+  // distinguish it from the a2a peer's messages it has been receiving.
+  await writeSessionMessage(session.agent_group_id, session.id, {
+    id: generateId(),
+    kind: 'chat',
+    timestamp: now,
+    platformId: 'dashboard:admin',
+    channelType: 'dashboard',
+    threadId: session.thread_id ?? null,
+    content: JSON.stringify({
+      text: opts.content,
+      sender: 'dashboard-admin',
+      senderId: 'dashboard-admin',
+    }),
+    trigger: true,
+  });
+
+  log.info('Routed message direct to session', {
+    sessionId: session.id,
+    agentGroup: session.agent_group_id,
+    threadId: session.thread_id,
+  });
+
+  startTypingRefresh(session.id, session.agent_group_id, 'dashboard', 'dashboard:admin', session.thread_id ?? null);
+  const freshSession = await getSession(session.id);
+  if (freshSession) {
+    await wakeContainer(freshSession);
+  }
+}
+
+/**
+ * Route a human cost-cap override decision (NanoClaw #1) into a session.
+ *
+ * The dashboard admin picks Continue or Stop on an escalated session; this
+ * writes a `cost_override` control row into the session's inbound.db and wakes
+ * the container so the runner's next poll applies it. A direct analog of
+ * `routeInboundToSession` — no messaging-group lookup, no fan-out, no command
+ * gate. Caller (dashboard ingress) is `DASHBOARD_SECRET`-gated and must have
+ * already validated the decision.
+ */
+export async function routeCostOverrideToSession(opts: {
+  sessionId: string;
+  decision: 'continue' | 'stop';
+  /**
+   * The budget generation the escalation episode was stamped with (the
+   * cost-approval card path supplies it; the legacy dashboard pill omits it).
+   * When present it is echoed onto the `cost_override` as the runner's epoch
+   * fence — applyCostOverride refuses a decision whose epoch no longer matches
+   * the live generation (superseded / post-/clear / re-enqueued). When absent
+   * the runner applies unconditionally (back-compat with the pill).
+   */
+  epochKey?: string;
+}): Promise<void> {
+  if (opts.decision !== 'continue' && opts.decision !== 'stop') {
+    throw new Error(`invalid cost-override decision: ${String(opts.decision)}`);
+  }
+  const session = await getSession(opts.sessionId);
+  if (!session) throw new Error(`session not found: ${opts.sessionId}`);
+
+  await writeSessionMessage(session.agent_group_id, session.id, {
+    id: generateId(),
+    kind: 'cost_override',
+    timestamp: new Date().toISOString(),
+    platformId: 'dashboard:admin',
+    channelType: 'dashboard',
+    threadId: session.thread_id ?? null,
+    content: JSON.stringify({
+      decision: opts.decision,
+      ...(opts.epochKey != null ? { epochKey: opts.epochKey } : {}),
+    }),
+    trigger: true,
+  });
+
+  log.info('Routed cost-override to session', {
+    sessionId: session.id,
+    agentGroup: session.agent_group_id,
+    decision: opts.decision,
+    ...(opts.epochKey != null ? { epochKey: opts.epochKey } : {}),
+  });
+
+  const freshSession = await getSession(session.id);
+  if (freshSession) {
+    await wakeContainer(freshSession);
+  }
 }

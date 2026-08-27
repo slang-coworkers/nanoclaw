@@ -1,5 +1,31 @@
 {
   "sandbox": {
     "enabled": false
+  },
+  "permissions": {
+    "allow": [
+      "Bash(bash setup.sh*)",
+      "Bash(pnpm install*)",
+      "Bash(pnpm run build*)",
+      "Bash(pnpm exec tsx setup/*)",
+      "Bash(npm run*)",
+      "Bash(npx tsx*)",
+      "Bash(git remote*)",
+      "Bash(git fetch*)",
+      "Bash(git merge*)",
+      "Bash(git checkout*)",
+      "Bash(git add*)",
+      "Bash(curl -fsSL onecli.sh/*)",
+      "Bash(onecli*)",
+      "Bash(docker*)",
+      "Bash(systemctl --user*)",
+      "Bash(launchctl*)",
+      "Bash(./container/build.sh*)",
+      "Bash(bun install*)",
+      "Bash(uv sync*)",
+      "Bash(tail -f*)",
+      "Bash(grep -q*)",
+      "Bash(sed -i*)"
+    ]
   }
 }

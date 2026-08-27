@@ -177,6 +177,16 @@ register({
 });
 
 register({
+  name: 'self-target-cmd',
+  description: 'test command (privilege change, like groups mcp-tools set)',
+  resource: 'groups',
+  access: 'approval',
+  denySelfTarget: true,
+  parseArgs: (raw) => raw,
+  handler: async (args) => ({ echo: args }),
+});
+
+register({
   name: 'approval-context-command',
   description: 'approval command that records caller context',
   resource: 'groups',
@@ -248,6 +258,16 @@ register({
   handler: async (args) => ({ id: (args as Record<string, unknown>).id, agent_group_id: 'g1' }),
 });
 
+// The real `sessions-history` name — the same pre-handler check covers it.
+register({
+  name: 'sessions-history',
+  description: 'sessions history custom op',
+  resource: 'sessions',
+  access: 'open',
+  parseArgs: (raw) => raw,
+  handler: async (args) => [{ id: (args as Record<string, unknown>).id }],
+});
+
 // Echoes args back — used to assert dash-joined positional id resolution.
 register({
   name: 'groups-get',
@@ -309,6 +329,56 @@ describe('host-only commands (operator-only)', () => {
   it('passes the gate for a host (operator) caller', async () => {
     const resp = await dispatch({ id: '1', command: 'host-only-cmd', args: { x: 1 } }, { caller: 'host' });
     expect(resp.ok).toBe(true);
+  });
+});
+
+describe('self-targeting privilege changes (denySelfTarget)', () => {
+  // The invariant: an agent may never change its OWN group's privilege
+  // surface. It has to be a guard DENY, not a handler check, for two reasons —
+  // under `cli_scope: 'group'` the dispatcher auto-fills `--id` with the
+  // caller's own group, so an omitted `--id` IS a self-target; and an
+  // approval-gated command mints the card BEFORE the handler runs, so a
+  // handler-only check has a human approve a self-escalation and rejects it
+  // only afterwards.
+
+  it('denies a self-target BEFORE any approval card is created (auto-filled --id)', async () => {
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'group' });
+    mockGetSession.mockReturnValue({ id: 's1', agent_group_id: 'g1', messaging_group_id: 'mg1' });
+    mockGetAgentGroup.mockReturnValue({ id: 'g1', name: 'Group One' });
+
+    const resp = await dispatch({ id: '1', command: 'self-target-cmd', args: { tools: '[]' } }, agentCtx());
+
+    expect(resp.ok).toBe(false);
+    if (!resp.ok) {
+      expect(resp.error.code).toBe('forbidden');
+      expect(resp.error.code).not.toBe('approval-pending');
+      expect(resp.error.message).toContain('own group');
+    }
+    // The point of the finding: no human is asked to approve work that can
+    // never succeed.
+    expect(approvalState.requestApproval).not.toHaveBeenCalled();
+  });
+
+  it('denies an explicitly self-targeted --id at global scope too', async () => {
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'global' });
+
+    const resp = await dispatch({ id: '1', command: 'self-target-cmd', args: { id: 'g1' } }, agentCtx());
+
+    expect(resp.ok).toBe(false);
+    if (!resp.ok) expect(resp.error.code).toBe('forbidden');
+    expect(approvalState.requestApproval).not.toHaveBeenCalled();
+  });
+
+  it('still holds a cross-group request for approval (the legitimate path)', async () => {
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'global' });
+    mockGetSession.mockReturnValue({ id: 's1', agent_group_id: 'g1', messaging_group_id: 'mg1' });
+    mockGetAgentGroup.mockReturnValue({ id: 'g1', name: 'Group One' });
+
+    const resp = await dispatch({ id: '1', command: 'self-target-cmd', args: { id: 'g2' } }, agentCtx());
+
+    expect(resp.ok).toBe(false);
+    if (!resp.ok) expect(resp.error.code).toBe('approval-pending');
+    expect(approvalState.requestApproval).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -785,6 +855,19 @@ describe('CLI scope enforcement', () => {
     mockGetSession.mockReturnValue(undefined);
 
     const resp = await dispatch({ id: '1', command: 'sessions-get', args: { id: 's-nope' } }, agentCtx());
+
+    expect(resp.ok).toBe(false);
+    if (!resp.ok) {
+      expect(resp.error.code).toBe('handler-error');
+      expect(resp.error.message).toContain('session not found');
+    }
+  });
+
+  it('group: sessions-history gets the same "session not found" for a foreign session UUID', async () => {
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'group' });
+    mockGetSession.mockReturnValue({ id: 's-x', agent_group_id: 'other-group' });
+
+    const resp = await dispatch({ id: '1', command: 'sessions-history', args: { id: 's-x' } }, agentCtx());
 
     expect(resp.ok).toBe(false);
     if (!resp.ok) {

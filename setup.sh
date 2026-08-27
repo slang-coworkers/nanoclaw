@@ -58,7 +58,7 @@ check_node() {
     NODE_PATH_FOUND=$(command -v node)
     local major
     major=$(echo "$NODE_VERSION" | cut -d. -f1)
-    if [ "$major" -ge 20 ] 2>/dev/null; then
+    if [ "$major" -ge 22 ] 2>/dev/null; then
       NODE_OK="true"
     fi
     log "Node $NODE_VERSION at $NODE_PATH_FOUND (major=$major, ok=$NODE_OK)"
@@ -192,15 +192,35 @@ check_build_tools() {
 
 # Files nv-main is canonical for — safe to take from nv-main's side on conflict.
 # SINGLE source of truth: nv-main's path-guard allowlist
-# (.github/nv-path-guard/nv-main.txt), matched with git's OWN gitignore engine —
-# exactly the gitwildmatch syntax .github/nv-path-guard/check.py matches with — so
-# this can NEVER drift from path-guard and a missing entry (the class of bug a
-# hand-maintained list produced, e.g. setup.sh) is impossible. NV_OWNED_LIST is
-# populated by compose_fork once it has fetched origin/nv-main.
+# (.github/nv-path-guard/nv-main.txt), evaluated by nv-main's OWN matcher
+# (.github/nv-path-guard/ownership.py) — the same module CI's path-guard imports.
+# Both are extracted from origin/nv-main by compose_fork once it has fetched.
+#
+# This used to run `git -c core.excludesFile=<list> check-ignore` HERE, in the
+# project repo, which also consults this repo's .gitignore, .git/info/exclude and
+# the user's global excludes. This repo's .gitignore alone would then hand
+# nv-main ownership of groups/**, data/**, logs/**, coworkers/*.yaml, repos/**
+# and forks.md — so a conflict there would be "resolved" by overwriting the
+# user's own files with nv-main's. The shared matcher sees the allowlist only.
 NV_OWNED_LIST=""
-fork_is_owned() {
+NV_MATCHER=""
+
+# NUL-delimited candidates on stdin → NUL-delimited owned paths on stdout, one
+# call for the whole batch.
+nv_owned() {
   [ -n "$NV_OWNED_LIST" ] && [ -s "$NV_OWNED_LIST" ] || return 1
-  git -c core.excludesFile="$NV_OWNED_LIST" check-ignore --no-index -q -- "$1"
+  [ -n "$NV_MATCHER" ] && [ -s "$NV_MATCHER" ] || return 1
+  python3 "$NV_MATCHER" -0 "$NV_OWNED_LIST"
+}
+
+# Exact membership in a NUL-delimited set file. Not `grep -zxF`: `-z` is GNU-only
+# and means "decompress" in ugrep, which shadows grep on some developer PATHs.
+nv_set_has() {
+  local set_file="$1" want="$2" got
+  while IFS= read -r -d '' got; do
+    [ "$got" = "$want" ] && return 0
+  done < "$set_file"
+  return 1
 }
 
 compose_fork() {
@@ -219,10 +239,24 @@ compose_fork() {
     return 0
   fi
 
-  # Load nv-main's owned-file allowlist now that origin/nv-main is fetched, so
-  # fork_is_owned() can decide ownership from the single source of truth.
+  # Load nv-main's owned-file allowlist AND its matcher now that origin/nv-main
+  # is fetched, so ownership is decided from the single source of truth by the
+  # single implementation of it.
   NV_OWNED_LIST="$(mktemp)"
   git show origin/nv-main:.github/nv-path-guard/nv-main.txt > "$NV_OWNED_LIST" 2>/dev/null || true
+  NV_MATCHER="$(mktemp)"
+  git show origin/nv-main:.github/nv-path-guard/ownership.py > "$NV_MATCHER" 2>/dev/null || true
+
+  # Fail LOUD. Every answer below drives either "abort the compose" or "overwrite
+  # this file from nv-main". A matcher that cannot run would silently make both
+  # no-ops, composing a tree with the stale copies this exists to replace — the
+  # dependsOn/TS2353 and create-agent.ts/TS2740 class of break.
+  if ! printf 'probe\0' | nv_owned >/dev/null 2>&1; then
+    echo "setup.sh: cannot evaluate nv-main ownership — python3 is required to compose" >&2
+    echo "the coworker infrastructure (it runs nv-main's .github/nv-path-guard/ownership.py)." >&2
+    echo "Install python3 and re-run: bash setup.sh" >&2
+    exit 1
+  fi
 
   log "compose_fork: merging origin/nv-main into $(git rev-parse --abbrev-ref HEAD)"
   echo "Composing coworker infrastructure (merging nv-main)…"
@@ -232,10 +266,13 @@ compose_fork() {
 
   if ! git merge origin/nv-main --no-edit >>"$LOG_FILE" 2>&1; then
     conflicts="$(git diff --name-only --diff-filter=U)"
+    conflicts_owned="$(mktemp)"
+    printf '%s\0' $conflicts | nv_owned > "$conflicts_owned" || : > "$conflicts_owned"
     unexpected=""
     for f in $conflicts; do
-      fork_is_owned "$f" || unexpected="$unexpected $f"
+      nv_set_has "$conflicts_owned" "$f" || unexpected="$unexpected $f"
     done
+    rm -f "$conflicts_owned"
     if [ -n "$unexpected" ]; then
       git merge --abort
       echo "setup.sh: cannot auto-compose nv-main — conflicts outside nv-main's owned set:" >&2
@@ -247,8 +284,11 @@ compose_fork() {
       if git checkout origin/nv-main -- "$f" 2>/dev/null; then
         git add -- "$f"
       else
-        git rm -f -- "$f" >/dev/null 2>&1 || rm -f "$f"
-        git add -A -- "$f"
+        # `git rm -f` stages the deletion itself, so add -A after it SUCCEEDS
+        # is fatal rather than redundant: the path is gone from worktree and
+        # index, git answers `pathspec did not match any files` and exits 128 —
+        # under this script's `set -e` that aborts the whole bootstrap.
+        git rm -f -- "$f" >/dev/null 2>&1 || { rm -f "$f"; git add -A -- "$f"; }
       fi
     done
     git commit --no-edit >>"$LOG_FILE" 2>&1
@@ -261,12 +301,16 @@ compose_fork() {
   # (ERR_PNPM_OUTDATED_LOCKFILE). After the merge, overwrite every owned file that
   # EXISTS on nv-main and differs here to nv-main's version. nv-coworkers-NEW
   # owned files (absent on nv-main) are left untouched. See setup/compose-fork.test.ts.
-  while IFS= read -r f; do
+  # One matcher call for the whole diff, then walk the OWNED set directly instead
+  # of asking "is this owned?" per file. NUL-delimited end to end.
+  owned_diff="$(mktemp)"
+  git diff --name-only -z origin/nv-main HEAD | nv_owned > "$owned_diff" || : > "$owned_diff"
+  while IFS= read -r -d '' f; do
     [ -z "$f" ] && continue
-    fork_is_owned "$f" || continue
     git cat-file -e "origin/nv-main:$f" 2>/dev/null || continue
     git checkout origin/nv-main -- "$f"
-  done < <(git diff --name-only origin/nv-main HEAD)
+  done < "$owned_diff"
+  rm -f "$owned_diff"
   if ! git diff --cached --quiet 2>/dev/null; then
     git commit -q --amend --no-edit >>"$LOG_FILE" 2>&1
   fi
@@ -289,8 +333,15 @@ detect_platform
 check_node
 if [ "$NODE_OK" = "false" ]; then
   log "Node missing or too old — running setup/install-node.sh"
-  echo "Node not found — installing via setup/install-node.sh"
+  echo "Node 22+ not found — installing via setup/install-node.sh"
   if bash "$PROJECT_ROOT/setup/install-node.sh" 2>&1 | tee -a "$LOG_FILE"; then
+    if [ -x "$HOME/.local/bin/node" ]; then
+      export PATH="$HOME/.local/bin:$PATH"
+    elif [ "$PLATFORM" = "macos" ] && command -v brew >/dev/null 2>&1; then
+      if NODE22_PREFIX="$(brew --prefix node@22 2>/dev/null)"; then
+        export PATH="$NODE22_PREFIX/bin:$PATH"
+      fi
+    fi
     hash -r 2>/dev/null || true
     check_node
   else

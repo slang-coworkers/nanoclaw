@@ -16,6 +16,32 @@ describe('formatTransportError', () => {
     expect(out).not.toMatch(/systemctl --user restart nanoclaw\b(?!-v2)/);
   });
 
+  it('gives each platform its OWN finder', () => {
+    // A single shared `systemctl ... | grep -i claw` hint printed above both
+    // platform lines tells a macOS operator to run systemctl — recreating the
+    // confidently-wrong guidance this function exists to prevent. Each finder
+    // must sit under the platform it belongs to.
+    const out = formatTransportError(new Error('connect ENOENT /tmp/nanoclaw.sock'));
+    const lines = out.split('\n');
+    const macIdx = lines.findIndex((l) => l.includes('macOS:'));
+    const linuxIdx = lines.findIndex((l) => l.includes('Linux:'));
+    expect(macIdx).toBeGreaterThan(-1);
+    expect(linuxIdx).toBeGreaterThan(macIdx);
+
+    // The macOS finder is launchctl and lives in the macOS block.
+    const macBlock = lines.slice(macIdx, linuxIdx).join('\n');
+    expect(macBlock).toContain('launchctl list | grep -i claw');
+    expect(macBlock).not.toContain('systemctl');
+
+    // The Linux finder is systemctl and lives in the Linux block.
+    const linuxBlock = lines.slice(linuxIdx).join('\n');
+    expect(linuxBlock).toContain('systemctl --user list-units --all | grep -i claw');
+    expect(linuxBlock).not.toContain('launchctl');
+
+    // And no finder may appear before either platform line (the original bug).
+    expect(lines.slice(0, macIdx).join('\n')).not.toMatch(/systemctl|launchctl/);
+  });
+
   it('renders the same on ECONNREFUSED', () => {
     const out = formatTransportError(new Error('connect ECONNREFUSED'));
     expect(out).toContain(getLaunchdLabel());

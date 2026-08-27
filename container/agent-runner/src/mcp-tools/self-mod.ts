@@ -71,7 +71,7 @@ export const installPackages: McpToolDefinition = {
     if (invalidNpm) return err(`Invalid npm package name: "${invalidNpm}". No version specs or shell characters.`);
 
     const requestId = generateId();
-    writeMessageOut({
+    await writeMessageOut({
       id: requestId,
       kind: 'system',
       content: JSON.stringify({
@@ -114,6 +114,9 @@ const ENV_KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
  * Mirrors the host's parseMcpServerConfig (src/container-config.ts) — the
  * host re-validates on receipt, but this copy answers the agent instantly.
  * No shared modules across the host/container boundary; keep the two in sync.
+ * One deliberate gap: the host parses a cwd field, but no self-mod tool param
+ * exposes it (plugin stamping and raw approval payloads are its only
+ * carriers), so this copy has none.
  */
 function parseMcpServerInput(args: Record<string, unknown>): { config: ParsedMcpServer } | { error: string } {
   const command = typeof args.command === 'string' && args.command.trim() ? args.command : undefined;
@@ -193,7 +196,7 @@ export const addMcpServer: McpToolDefinition = {
     if ('error' in parsed) return err(parsed.error);
 
     const requestId = generateId();
-    writeMessageOut({
+    await writeMessageOut({
       id: requestId,
       kind: 'system',
       content: JSON.stringify({
@@ -208,4 +211,31 @@ export const addMcpServer: McpToolDefinition = {
   },
 };
 
-registerTools([installPackages, addMcpServer]);
+export const requestRestart: McpToolDefinition = {
+  tool: {
+    name: 'request_restart',
+    description:
+      'Request that your container be restarted with fresh instructions (CLAUDE.md). Use when told your instructions are stale, or when you need a clean session. No admin approval required.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        reason: { type: 'string', description: 'Why restart is needed' },
+      },
+    },
+  },
+  async handler(args) {
+    const requestId = generateId();
+    writeMessageOut({
+      id: requestId,
+      kind: 'system',
+      content: JSON.stringify({
+        action: 'request_restart',
+        reason: (args.reason as string) || 'agent requested restart',
+      }),
+    });
+    log(`request_restart: ${requestId}`);
+    return ok('Restart requested. Container will restart shortly with fresh instructions.');
+  },
+};
+
+registerTools([installPackages, addMcpServer, requestRestart]);
