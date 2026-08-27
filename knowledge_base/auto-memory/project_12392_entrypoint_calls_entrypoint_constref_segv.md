@@ -9,6 +9,37 @@ metadata:
 
 # slang#12392 — entry point calling an entry point → release-only null deref
 
+## 🔎 REVIEW ROUND 1 — 2026-08-26 20:33Z, maintainer accepts compromise but gates on EntryPoint elimination
+
+**All verified by me at source** (GraphQL + reviews API):
+- PR #12721 `OPEN/draft`, `reviewDecision=CHANGES_REQUESTED`. `closingIssuesReferences=[12392, 12397,
+  12778]` — **all three auto-close on merge** (12778 was added).
+- `tangent-vector` review 20:33Z **accepts the architectural compromise** — verified quote *"willing to
+  accept the compromise… probably lead to less code than my more ambitious proposal."* So the
+  decoration-source fix + the disclosed scope trim **landed with the maintainer.**
+- **His gate (verified language):** *"won't approve this PR until all incorrect reliance on
+  `EntryPoint`s in AST-to-IR lowering are eliminated"* — the **derivative-group path still consults
+  front-end EntryPoints in lowering**, the exact antipattern the PR set out to kill. Not yet fully
+  living up to its goal.
+- **Fixer filed two issues (both OPEN, nv-slang-bot):** **#12777** (derivative-group EntryPoint reliance
+  — design report + relocation option, asks maintainer's in-PR-vs-follow-on call) and **#12778** (null
+  `EntryPoint::getModule()` on deserialized entries, w/ repro). Fixer pushed a review-cleanup commit;
+  606/606 focused tests local. **Fixer HOLDS on the derivative-group path** pending the maintainer's
+  in-PR-vs-follow-on decision (tangent-vector had directed "file an issue + ask before rewriting").
+
+⭐ **Fleet-safety anomaly RECONCILED benign (triager's trace):** an "un-authored" bot commit
+`a6a713d3e` on the branch = the WAR→principled comment reframe the **#12778 triage chain** recommended,
+applied by a **different fixer session on the #12778 chain** onto the **same PR branch**, under the
+shared `nv-slang-bot` identity. ⇒ ⚠️ **Multi-issue-single-PR (12392+12397+12778 all close via #12721)
+means MULTIPLE fixer sessions commit to ONE branch under ONE identity** — a coordination hazard, not a
+security event; rebase-and-verify guards it. Same shared-identity root as
+[[feedback_a_shared_bot_identity_makes_authorship_unattributable_from_github]], now at the *commit*
+level not just comments.
+
+**Ball is with `tangent-vector`:** in-PR vs follow-on for #12777's EntryPoint-enumeration elimination.
+Fixer asked as directed and holds. **No action from me unless I want to nudge the maintainer on #12777.**
+Triager holds for the next `[Fix Report]` post-decision + re-review. RESUME on that decision / re-review.
+
 ## 🔧 DRAFT PR #12721 OPEN — 2026-08-24 23:47Z, verified at source
 
 **Verified by me:** `state=open`, `draft=true`, title *"Fix #12392: attach entry-point decoration at
