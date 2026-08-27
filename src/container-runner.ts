@@ -25,6 +25,7 @@ import {
   type CoworkerTypeEntry,
   type SkillMeta,
 } from './claude-composer.js';
+import { assertWithinDocSizeCap } from './claude-composer/doc-size-cap.js';
 import {
   CONTAINER_CPU_LIMIT,
   CONTAINER_IMAGE,
@@ -346,15 +347,24 @@ export async function renderComposedDocument(
 ): Promise<{ content: string; hash: string; opts: Awaited<ReturnType<typeof composeOptionsFor>> }> {
   const opts = await composeOptionsFor(agentGroup);
   const content = composeCoworkerSpine(opts);
+  // Here rather than at the write sites: this seam is the one place both spawn
+  // paths and both staleness paths pass through, so an oversized document can
+  // never reach `writeComposedDocument`, and the sweep sees the same refusal
+  // instead of hashing a document that spawn would reject.
+  assertWithinDocSizeCap(content, agentGroup.folder);
   return { content, hash: crypto.createHash('sha256').update(content).digest('hex'), opts };
 }
 
 export function assertComposedDocUsable(claudeMdPath: string, agentGroup: AgentGroup, err: unknown): void {
   let existing = 0;
   try {
-    existing = fs.statSync(claudeMdPath).size;
+    // Read, don't stat. `size > 0` accepted a file of pure whitespace as
+    // "usable", so a group could spawn on a document carrying no instructions at
+    // all while the log claimed a healthy fallback. Cheap: these documents are
+    // tens of KB, bounded by the size cap.
+    existing = fs.readFileSync(claudeMdPath, 'utf-8').trim().length;
   } catch {
-    /* absent — handled below */
+    /* absent or unreadable — handled below */
   }
 
   if (existing > 0) {
