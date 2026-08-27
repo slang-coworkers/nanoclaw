@@ -958,12 +958,8 @@ export async function recomposeAndUpdateHash(sessionId: string): Promise<void> {
   // NOT the file on disk (which may have @-import prefixes for flat types).
   try {
     const coworkerType = ag.coworker_type || 'default';
-    let extra: string | null = null;
-    try {
-      extra = fs.readFileSync(path.join(GROUPS_DIR, ag.folder, '.instructions.md'), 'utf-8');
-    } catch {
-      /* */
-    }
+    const groupDir = path.join(GROUPS_DIR, ag.folder);
+    const extra = readStandingInstructions(groupDir, path.join(groupDir, '.instructions.md'));
     const overlays = ag.overlays ? JSON.parse(ag.overlays) : undefined;
     const composed = composeCoworkerSpine({
       coworkerType,
@@ -994,12 +990,12 @@ export async function detectStaleContainers(): Promise<
     if (!ag) continue;
 
     const coworkerType = ag.coworker_type || 'default';
-    let extra: string | null = null;
-    try {
-      extra = fs.readFileSync(path.join(GROUPS_DIR, ag.folder, '.instructions.md'), 'utf-8');
-    } catch {
-      /* no instructions */
-    }
+    // Same reader as spawn. Reading `.instructions.md` here instead made every
+    // group with a persona look permanently stale: spawn migrates the legacy
+    // file to the canonical name and composes WITH the persona, so a direct
+    // legacy read composed WITHOUT it and the digests could never agree.
+    const groupDir = path.join(GROUPS_DIR, ag.folder);
+    const extra = readStandingInstructions(groupDir, path.join(groupDir, '.instructions.md'));
 
     // Compose the current spine to compare against the running container's
     // baseline. This can THROW when a coworker type references a skill/workflow/
@@ -1334,7 +1330,7 @@ export async function buildMounts(
     // Guard hook: block direct edits to CLAUDE.md — agents must edit .instructions.md instead.
     // CLAUDE.md is auto-composed from templates + .instructions.md on every container wake,
     // so direct edits are silently lost. This hook enforces the single source of truth.
-    const guardCmd = `INPUT=$(cat); FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty'); if echo "$FILE" | grep -q 'CLAUDE\\.md$'; then echo "CLAUDE.md is auto-generated from templates + .instructions.md on every container start. Your edits here will be overwritten. Edit .instructions.md instead — it lives in the same directory and its contents are appended to the composed CLAUDE.md." >&2; exit 2; fi; exit 0`;
+    const guardCmd = `INPUT=$(cat); FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty'); if echo "$FILE" | grep -q 'CLAUDE\\.md$'; then echo "CLAUDE.md is auto-generated from templates + instructions.prepend.md on every container start. Your edits here will be overwritten. Edit instructions.prepend.md instead — it lives in the same directory and its contents are appended to the composed CLAUDE.md." >&2; exit 2; fi; exit 0`;
     const guardHookConfig = {
       matcher: 'Edit|Write',
       hooks: [{ type: 'command', command: guardCmd, timeout: 5 }],
