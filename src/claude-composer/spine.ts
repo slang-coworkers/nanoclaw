@@ -200,6 +200,37 @@ function demoteHeadings(md: string, levels: number): string {
   return lines.join('\n');
 }
 
+/**
+ * Render per-server usage prose from `container.json` `mcpServers[].instructions`.
+ *
+ * An external MCP server ships its own tool descriptions, but those cannot say
+ * "in THIS install, use the staging endpoint" or "never call `delete_*` here".
+ * That install-specific prose is what this section carries, and it has to be in
+ * context BEFORE the agent reaches for the tool — a prohibition cannot be lazily
+ * loaded the way a SKILL.md body can.
+ *
+ * Server names are sorted so the section is deterministic: the composed document
+ * feeds a sha256 staleness comparison, and `Object.entries` order would otherwise
+ * make an unrelated config edit look like a content change.
+ *
+ * Bodies are normalized to `####` (one level below the `### <name>` sub-heading)
+ * so operator-authored headings nest instead of escaping the section wrapper.
+ * Blank or whitespace-only entries are skipped rather than emitting an empty
+ * heading.
+ */
+function renderMcpInstructions(mcpInstructions: Record<string, string> | undefined): string | undefined {
+  if (!mcpInstructions) return undefined;
+
+  const blocks: string[] = [];
+  for (const name of Object.keys(mcpInstructions).sort()) {
+    const body = mcpInstructions[name]?.trim();
+    if (!body) continue;
+    blocks.push(`### ${name}\n\n${normalizeFragment(body, 4)}`);
+  }
+
+  return blocks.length > 0 ? blocks.join('\n\n') : undefined;
+}
+
 // Normalize a fragment so its top heading sits at `targetMinLevel`. Computes
 // the offset from the fragment's own minimum heading level and applies a
 // uniform demote so internal hierarchy is preserved. Used at fragment-join
@@ -525,7 +556,12 @@ export function renderCoworkerSpine(
   projectRoot: string,
   coworkerType: string,
   extraInstructions: string | null | undefined,
-  opts: { disableOverlays?: boolean; overlays?: string[]; cliScope?: 'disabled' | 'group' | 'global' } = {},
+  opts: {
+    disableOverlays?: boolean;
+    overlays?: string[];
+    cliScope?: 'disabled' | 'group' | 'global';
+    mcpInstructions?: Record<string, string>;
+  } = {},
 ): string {
   // cliScope gates inclusion of the `ncl-*.md` tool-instruction fragments.
   //   'disabled' → strip every ncl-*.md from context (agent has no CLI access)
@@ -582,6 +618,11 @@ export function renderCoworkerSpine(
       const projectsBlock = emitDiscoveredProjectFragments(types, projectRoot);
       if (projectsBlock) bodies.push(projectsBlock);
     }
+    // Same section, same reason, on this path too: `main` is the only flat type,
+    // and an admin orchestrator with wired MCP servers needs their usage prose as
+    // much as a typed coworker does.
+    const flatMcp = renderMcpInstructions(opts.mcpInstructions);
+    if (flatMcp) bodies.push(`## MCP Servers\n\n${flatMcp}`);
     const extra = extraInstructions?.trim();
     if (extra) bodies.push(extra);
     // Section boundaries are H2 headings inside each fragment — no `---`
@@ -874,6 +915,15 @@ export function renderCoworkerSpine(
   }
   // Footer dropped — `container/spines/base/context/invocation.md` already
   // covers the "skills are slash commands / workflows are embedded" split.
+
+  // Per-server MCP guidance, after Skills because it is the same kind of thing
+  // (how to use a tool you have) and before Additional Instructions so the
+  // operator's persona still has the last word.
+  const mcpSection = renderMcpInstructions(opts.mcpInstructions);
+  if (mcpSection) {
+    parts.push('## MCP Servers');
+    parts.push(mcpSection);
+  }
 
   if (extraInstructions?.trim()) {
     parts.push('## Additional Instructions');
