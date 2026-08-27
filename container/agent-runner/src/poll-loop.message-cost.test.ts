@@ -396,25 +396,23 @@ describe('#1327 — codex MCP-tool spend folded into the cap', () => {
         type: 'turn_context',
         payload: { cwd: '/workspace/agent', model: 'gpt-5.6-sol' },
       }),
-      ...entries.map((e) =>
-        JSON.stringify({
+      ...entries.map((e) => {
+        const u = {
+          input_tokens: e.input,
+          cached_input_tokens: 0,
+          cache_write_input_tokens: 0,
+          output_tokens: e.output ?? 0,
+          reasoning_output_tokens: 0,
+          total_tokens: e.input + (e.output ?? 0),
+        };
+        // Prod shape carries both; the parser bills `last_token_usage` (this
+        // call) so a forked replay can be de-duplicated across files.
+        return JSON.stringify({
           timestamp: e.ts,
           type: 'event_msg',
-          payload: {
-            type: 'token_count',
-            info: {
-              total_token_usage: {
-                input_tokens: e.input,
-                cached_input_tokens: 0,
-                cache_write_input_tokens: 0,
-                output_tokens: e.output ?? 0,
-                reasoning_output_tokens: 0,
-                total_tokens: e.input + (e.output ?? 0),
-              },
-            },
-          },
-        }),
-      ),
+          payload: { type: 'token_count', info: { total_token_usage: u, last_token_usage: u } },
+        });
+      }),
     ];
     const p = path.join(dir, `rollout-${day}T10-00-00-${name}.jsonl`);
     fs.writeFileSync(p, lines.join('\n'));
@@ -447,18 +445,35 @@ describe('#1327 — codex MCP-tool spend folded into the cap', () => {
     H.foldCodexCost(); // idle — must be a no-op
     expect(H.getState().costSpentUsd).toBeCloseTo(5, 6);
 
+    // One more codex call in the same rollout: 2M input, $10.
+    const u = { input_tokens: 2_000_000, cached_input_tokens: 0, output_tokens: 0 };
     fs.appendFileSync(
       p,
       '\n' +
         JSON.stringify({
           timestamp: `${D_TODAY}T11:00:00.000Z`,
           type: 'event_msg',
-          payload: { type: 'token_count', info: { total_token_usage: { input_tokens: 3_000_000 } } },
+          payload: { type: 'token_count', info: { total_token_usage: u, last_token_usage: u } },
         }),
     );
     __resetCodexCostMemo();
     H.foldCodexCost();
-    expect(H.getState().costSpentUsd).toBeCloseTo(15, 6); // +$10, not +$15
+    // The file is now worth $15 and $5 was already charged — only $10 is new.
+    expect(H.getState().costSpentUsd).toBeCloseTo(15, 6);
+    H.foldCodexCost(); // idle again
+    expect(H.getState().costSpentUsd).toBeCloseTo(15, 6);
+  });
+
+  it('does not charge a forked subagent rollout for the parent calls it replays', () => {
+    // Measured on prod: a codex subagent thread spawn writes its own rollout
+    // that REPLAYS the parent's already-billed turns. Charging both over-counted
+    // 13.7% and 19.2% on the two of thirty sampled sessions that had forks.
+    const replayed = { ts: `${D_TODAY}T10:00:00.000Z`, input: 1_000_000 };
+    writeRollout(D_TODAY, 'aaa-parent', [replayed]);
+    writeRollout(D_TODAY, 'zzz-fork', [replayed, { ts: `${D_TODAY}T11:00:00.000Z`, input: 2_000_000 }]);
+    H.foldCodexCost();
+    // $5 (parent) + $10 (the fork's genuinely new call) — NOT $20.
+    expect(H.getState().costSpentUsd).toBeCloseTo(15, 6);
   });
 
   it('a NEW file charges immediately even after another file is deleted', () => {

@@ -9,6 +9,12 @@
  * cache-write at $0. The `real prod day` case below re-checks that against one
  * of those measured rows, so a rate edit on either side goes red — the same
  * anti-drift discipline `pricing.test.ts` applies to the Claude table.
+ *
+ * The cross-file de-duplication is the other measured invariant. A codex
+ * subagent thread spawn writes its own rollout that REPLAYS the parent's
+ * already-billed turns; charging both over-counted 13.7% and 19.2% on the two of
+ * thirty sampled prod sessions that had forked rollouts, while de-duplicating by
+ * the usage tuple reproduced ccusage EXACTLY on all thirty.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import fs from 'fs';
@@ -20,17 +26,22 @@ import {
   DEFAULT_CODEX_RATE,
   MISSING_DAY_KEY,
   __resetCodexCostMemo,
+  codexEventKey,
   ledgerKey,
   normalizeCodexModel,
   parseCodexRollout,
+  priceCodexEvent,
+  priceCodexFiles,
   scanCodexRollouts,
 } from './codex-cost.js';
 
-/** One `event_msg`/`token_count` row carrying a CUMULATIVE total, prod shape. */
+/** One `event_msg`/`token_count` row, prod shape: cumulative + this-call. */
 function tokenCount(
   ts: string,
-  totals: { input: number; cached?: number; cacheWrite?: number; output?: number },
+  call: { input: number; cached?: number; cacheWrite?: number; output?: number },
+  cumulative?: { input: number; cached?: number; output?: number },
 ): string {
+  const cum = cumulative ?? { input: call.input, cached: call.cached, output: call.output };
   return JSON.stringify({
     timestamp: ts,
     type: 'event_msg',
@@ -38,20 +49,20 @@ function tokenCount(
       type: 'token_count',
       info: {
         total_token_usage: {
-          input_tokens: totals.input,
-          cached_input_tokens: totals.cached ?? 0,
-          cache_write_input_tokens: totals.cacheWrite ?? 0,
-          output_tokens: totals.output ?? 0,
+          input_tokens: cum.input,
+          cached_input_tokens: cum.cached ?? 0,
+          cache_write_input_tokens: call.cacheWrite ?? 0,
+          output_tokens: cum.output ?? 0,
           reasoning_output_tokens: 0,
-          total_tokens: totals.input + (totals.output ?? 0),
+          total_tokens: cum.input + (cum.output ?? 0),
         },
         last_token_usage: {
-          input_tokens: 0,
-          cached_input_tokens: 0,
-          cache_write_input_tokens: 0,
-          output_tokens: 0,
+          input_tokens: call.input,
+          cached_input_tokens: call.cached ?? 0,
+          cache_write_input_tokens: call.cacheWrite ?? 0,
+          output_tokens: call.output ?? 0,
           reasoning_output_tokens: 0,
-          total_tokens: 0,
+          total_tokens: call.input + (call.output ?? 0),
         },
         model_context_window: 400000,
       },
@@ -75,13 +86,19 @@ function sessionMeta(ts: string): string {
   });
 }
 
+/** Parse + price one file in isolation. */
+function costOf(content: string): { byDay: Record<string, number>; totalUsd: number; unpriced: string[] } {
+  const { files, unpricedModels } = priceCodexFiles([parseCodexRollout(content, 'r1.jsonl')]);
+  return { byDay: files[0].byDay, totalUsd: files[0].totalUsd, unpriced: unpricedModels };
+}
+
 const D1 = '2026-08-18';
 const D2 = '2026-08-19';
 
 describe('codex rate table (anti-drift vs the ccusage-derived rates)', () => {
-  it('pins $5 / $0.50 / $30 per Mtok for every known model id', () => {
+  it('pins $5 / $30 / $0.50 per Mtok for every known model id', () => {
     for (const key of Object.keys(CODEX_MODEL_PRICING)) {
-      expect(CODEX_MODEL_PRICING[key]).toEqual({ input: 5e-6, cachedInput: 0.5e-6, output: 30e-6 });
+      expect(CODEX_MODEL_PRICING[key]).toEqual({ input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 });
     }
     expect(Object.keys(CODEX_MODEL_PRICING)).toContain('gpt-5.6-sol');
     expect(Object.keys(CODEX_MODEL_PRICING)).toContain('gpt-5.5');
@@ -108,7 +125,7 @@ describe('normalizeCodexModel', () => {
   });
 });
 
-describe('parseCodexRollout', () => {
+describe('parseCodexRollout + priceCodexFiles', () => {
   it('reproduces a REAL measured prod day to the cent', () => {
     // 2026-08-18 of session sess-1787093778289-z2m79j, as reported by
     // `ccusage codex daily --json --offline`: $9.004048.
@@ -117,47 +134,70 @@ describe('parseCodexRollout', () => {
       turnContext(`${D1}T01:00:01.000Z`, 'azure/openai/gpt-5.6-sol'),
       tokenCount(`${D1}T02:00:00.000Z`, { input: 9912023, cached: 9517666, cacheWrite: 388466, output: 75781 }),
     ].join('\n');
-    const { file } = parseCodexRollout(content, 'r1.jsonl');
-    expect(file.byDay[D1]).toBeCloseTo(9.004048, 6);
-    expect(file.totalUsd).toBeCloseTo(9.004048, 6);
+    const c = costOf(content);
+    expect(c.byDay[D1]).toBeCloseTo(9.004048, 6);
+    expect(c.totalUsd).toBeCloseTo(9.004048, 6);
   });
 
-  it('treats total_token_usage as cumulative — sums deltas, not readings', () => {
+  it('sums PER-CALL usage, not the cumulative reading', () => {
+    // Cumulative climbs 1M → 2M → 3M while each call bills 1M.
     const content = [
       turnContext(`${D1}T01:00:00.000Z`, 'gpt-5.6-sol'),
-      tokenCount(`${D1}T01:00:01.000Z`, { input: 1_000_000, output: 0 }),
-      tokenCount(`${D1}T01:00:02.000Z`, { input: 2_000_000, output: 0 }),
-      tokenCount(`${D1}T01:00:03.000Z`, { input: 3_000_000, output: 100_000 }),
+      tokenCount(`${D1}T01:00:01.000Z`, { input: 1_000_000 }, { input: 1_000_000 }),
+      tokenCount(`${D1}T01:00:02.000Z`, { input: 1_000_001 }, { input: 2_000_001 }),
+      tokenCount(`${D1}T01:00:03.000Z`, { input: 1_000_002, output: 100_000 }, { input: 3_000_003, output: 100_000 }),
     ].join('\n');
-    const { file } = parseCodexRollout(content, 'r1.jsonl');
-    // 3M non-cached input @ $5/M + 100k output @ $30/M = 15 + 3
-    expect(file.totalUsd).toBeCloseTo(18, 6);
+    // 3,000,003 input @ $5/M + 100k output @ $30/M
+    expect(costOf(content).totalUsd).toBeCloseTo(3.000003 * 5 + 3, 6);
+  });
+
+  it('does NOT charge a forked replay of the parent thread twice', () => {
+    // The measured over-count: a subagent spawn's rollout replays the parent's
+    // already-billed calls. The earlier-sorted file keeps them.
+    const call = { input: 1_000_000, output: 10_000 };
+    const parent = parseCodexRollout(
+      [turnContext(`${D1}T01:00:00Z`, 'gpt-5.6-sol'), tokenCount(`${D1}T01:00:01Z`, call)].join('\n'),
+      'a-parent.jsonl',
+    );
+    const fork = parseCodexRollout(
+      [
+        turnContext(`${D1}T02:00:00Z`, 'gpt-5.6-sol'),
+        tokenCount(`${D1}T02:00:01Z`, call), // replayed
+        tokenCount(`${D1}T02:00:02Z`, { input: 2_000_000 }), // genuinely new
+      ].join('\n'),
+      'b-fork.jsonl',
+    );
+    const { files } = priceCodexFiles([parent, fork]);
+    const oneCall = 1_000_000 * 5e-6 + 10_000 * 30e-6;
+    expect(files[0].totalUsd).toBeCloseTo(oneCall, 6); // parent keeps its call
+    expect(files[1].totalUsd).toBeCloseTo(10, 6); // fork charged only the new one
+    expect(files[0].totalUsd + files[1].totalUsd).toBeCloseTo(oneCall + 10, 6);
   });
 
   it('partitions by UTC day so a file straddling midnight is attributed correctly', () => {
     const content = [
       turnContext(`${D1}T23:00:00.000Z`, 'gpt-5.6-sol'),
       tokenCount(`${D1}T23:59:00.000Z`, { input: 1_000_000 }),
-      tokenCount(`${D2}T00:01:00.000Z`, { input: 3_000_000 }),
+      tokenCount(`${D2}T00:01:00.000Z`, { input: 2_000_000 }),
     ].join('\n');
-    const { file } = parseCodexRollout(content, 'r1.jsonl');
-    expect(file.byDay[D1]).toBeCloseTo(5, 6);
-    expect(file.byDay[D2]).toBeCloseTo(10, 6);
-    expect(file.totalUsd).toBeCloseTo(15, 6);
+    const c = costOf(content);
+    expect(c.byDay[D1]).toBeCloseTo(5, 6);
+    expect(c.byDay[D2]).toBeCloseTo(10, 6);
+    expect(c.totalUsd).toBeCloseTo(15, 6);
   });
 
-  it('prices each delta under the model in effect when a rollout switches model', () => {
+  it('prices each call under the model in effect when a rollout switches model', () => {
     const content = [
       turnContext(`${D1}T01:00:00.000Z`, 'gpt-5.6-sol'),
       tokenCount(`${D1}T01:00:01.000Z`, { input: 1_000_000 }),
       turnContext(`${D1}T01:00:02.000Z`, 'model-with-no-rate'),
       tokenCount(`${D1}T01:00:03.000Z`, { input: 2_000_000 }),
     ].join('\n');
-    const { file, unpriced } = parseCodexRollout(content, 'r1.jsonl');
+    const c = costOf(content);
     // both legs happen to price at the same rate (default == known), but the
     // UNKNOWN model must be reported so the table can be updated.
-    expect([...unpriced]).toEqual(['model-with-no-rate']);
-    expect(file.totalUsd).toBeCloseTo(10, 6);
+    expect(c.unpriced).toEqual(['model-with-no-rate']);
+    expect(c.totalUsd).toBeCloseTo(15, 6);
   });
 
   it('charges an unknown model at the default rate rather than $0', () => {
@@ -165,21 +205,28 @@ describe('parseCodexRollout', () => {
       turnContext(`${D1}T01:00:00.000Z`, 'gpt-9-unreleased'),
       tokenCount(`${D1}T01:00:01.000Z`, { input: 1_000_000 }),
     ].join('\n');
-    const { file, unpriced } = parseCodexRollout(content, 'r1.jsonl');
-    expect(file.totalUsd).toBeCloseTo(1_000_000 * DEFAULT_CODEX_RATE.input, 6);
-    expect(unpriced.has('gpt-9-unreleased')).toBe(true);
+    const c = costOf(content);
+    expect(c.totalUsd).toBeCloseTo(1_000_000 * DEFAULT_CODEX_RATE.input, 6);
+    expect(c.unpriced).toEqual(['gpt-9-unreleased']);
   });
 
-  it('never refunds when the cumulative counter goes backwards', () => {
+  it('prices cached input at the cache-read rate and ignores cache writes', () => {
+    // ccusage reports cacheCreationTokens: 0 for codex — writes are not billed.
     const content = [
       turnContext(`${D1}T01:00:00.000Z`, 'gpt-5.6-sol'),
-      tokenCount(`${D1}T01:00:01.000Z`, { input: 2_000_000 }),
-      tokenCount(`${D1}T01:00:02.000Z`, { input: 1_000_000 }), // reset / corrupt
-      tokenCount(`${D1}T01:00:03.000Z`, { input: 3_000_000 }),
+      tokenCount(`${D1}T01:00:01.000Z`, { input: 1_000_000, cached: 1_000_000, cacheWrite: 900_000 }),
     ].join('\n');
-    const { file } = parseCodexRollout(content, 'r1.jsonl');
-    // 2M charged, backwards step ignored, then +1M over the high-water mark.
-    expect(file.totalUsd).toBeCloseTo(15, 6);
+    expect(costOf(content).totalUsd).toBeCloseTo(0.5, 6);
+  });
+
+  it('skips all-zero rows so they cannot poison the dedup set', () => {
+    const content = [
+      turnContext(`${D1}T01:00:00.000Z`, 'gpt-5.6-sol'),
+      tokenCount(`${D1}T01:00:01.000Z`, { input: 0, output: 0 }),
+      tokenCount(`${D1}T01:00:02.000Z`, { input: 0, output: 0 }),
+      tokenCount(`${D1}T01:00:03.000Z`, { input: 1_000_000 }),
+    ].join('\n');
+    expect(costOf(content).totalUsd).toBeCloseTo(5, 6);
   });
 
   it('clamps cached above input and rejects negative / non-finite token values', () => {
@@ -189,7 +236,7 @@ describe('parseCodexRollout', () => {
       payload: {
         type: 'token_count',
         info: {
-          total_token_usage: {
+          last_token_usage: {
             input_tokens: 1_000_000,
             cached_input_tokens: 5_000_000, // > input
             output_tokens: -42,
@@ -198,12 +245,9 @@ describe('parseCodexRollout', () => {
         },
       },
     });
-    const { file } = parseCodexRollout(
-      [turnContext(`${D1}T01:00:00.000Z`, 'gpt-5.6-sol'), weird].join('\n'),
-      'r.jsonl',
-    );
+    const c = costOf([turnContext(`${D1}T01:00:00.000Z`, 'gpt-5.6-sol'), weird].join('\n'));
     // non-cached clamps to 0; cached 5M @ $0.50/M = $2.50; negative output → 0
-    expect(file.totalUsd).toBeCloseTo(2.5, 6);
+    expect(c.totalUsd).toBeCloseTo(2.5, 6);
   });
 
   it('skips malformed and irrelevant lines without throwing', () => {
@@ -215,17 +259,37 @@ describe('parseCodexRollout', () => {
       turnContext(`${D1}T01:00:00.000Z`, 'gpt-5.6-sol'),
       tokenCount(`${D1}T01:00:01.000Z`, { input: 1_000_000 }),
     ].join('\n');
-    const { file } = parseCodexRollout(content, 'r1.jsonl');
-    expect(file.totalUsd).toBeCloseTo(5, 6);
+    expect(costOf(content).totalUsd).toBeCloseTo(5, 6);
   });
 
   it('buckets a row with no usable timestamp under the missing-day key', () => {
     const noTs = JSON.stringify({
       type: 'event_msg',
-      payload: { type: 'token_count', info: { total_token_usage: { input_tokens: 1_000_000 } } },
+      payload: { type: 'token_count', info: { last_token_usage: { input_tokens: 1_000_000 } } },
     });
-    const { file } = parseCodexRollout([turnContext(`${D1}T01:00:00.000Z`, 'gpt-5.6-sol'), noTs].join('\n'), 'r.jsonl');
-    expect(file.byDay[MISSING_DAY_KEY]).toBeCloseTo(5, 6);
+    const c = costOf([turnContext(`${D1}T01:00:00.000Z`, 'gpt-5.6-sol'), noTs].join('\n'));
+    expect(c.byDay[MISSING_DAY_KEY]).toBeCloseTo(5, 6);
+  });
+});
+
+describe('codexEventKey / priceCodexEvent', () => {
+  it('keys on the NORMALIZED model plus the token tuple', () => {
+    const base = { day: D1, input: 1, cached: 2, output: 3 };
+    expect(codexEventKey({ ...base, rawModel: 'azure/openai/gpt-5.6-sol' })).toBe(
+      codexEventKey({ ...base, rawModel: 'gpt-5.6-sol' }),
+    );
+    expect(codexEventKey({ ...base, rawModel: 'gpt-5.5' })).not.toBe(
+      codexEventKey({ ...base, rawModel: 'gpt-5.6-sol' }),
+    );
+    expect(codexEventKey({ ...base, output: 4, rawModel: 'gpt-5.5' })).not.toBe(
+      codexEventKey({ ...base, rawModel: 'gpt-5.5' }),
+    );
+  });
+
+  it('prices one call as (input - cached)*in + cached*cacheRead + output*out', () => {
+    expect(
+      priceCodexEvent({ day: D1, rawModel: 'gpt-5.6-sol', input: 1_000_000, cached: 400_000, output: 100_000 }),
+    ).toBeCloseTo(600_000 * 5e-6 + 400_000 * 0.5e-6 + 100_000 * 30e-6, 9);
   });
 });
 
@@ -251,8 +315,10 @@ describe('scanCodexRollouts', () => {
     return p;
   }
 
-  it('returns nothing for a home with no sessions dir', () => {
-    expect(scanCodexRollouts(path.join(home, 'nope')).files).toEqual([]);
+  it('returns nothing for a home with no sessions dir, and reports no error for it', () => {
+    const scan = scanCodexRollouts(path.join(home, 'nope'));
+    expect(scan.files).toEqual([]);
+    expect(scan.errors).toBe(0); // a session that never called codex is not a failure
   });
 
   it('walks sessions/YYYY/MM/DD and sums across files, keyed relative to sessions/', () => {
@@ -268,6 +334,21 @@ describe('scanCodexRollouts', () => {
     expect(scan.files).toHaveLength(2);
     expect(scan.files.map((f) => f.totalUsd).reduce((a, b) => a + b, 0)).toBeCloseTo(15, 6);
     for (const f of scan.files) expect(f.key.startsWith('2026' + path.sep)).toBe(true);
+  });
+
+  it('de-duplicates across files, keeping the chronologically earlier one', () => {
+    const call = { input: 1_000_000 };
+    writeRollout(D1, 'zzz-later', [turnContext(`${D1}T02:00:00Z`, 'gpt-5.6-sol'), tokenCount(`${D1}T02:00:01Z`, call)]);
+    writeRollout(D1, 'aaa-earlier', [
+      turnContext(`${D1}T01:00:00Z`, 'gpt-5.6-sol'),
+      tokenCount(`${D1}T01:00:01Z`, call),
+    ]);
+    const scan = scanCodexRollouts(home);
+    expect(scan.files.map((f) => f.totalUsd).reduce((a, b) => a + b, 0)).toBeCloseTo(5, 6);
+    const earlier = scan.files.find((f) => f.key.includes('aaa-earlier'))!;
+    const later = scan.files.find((f) => f.key.includes('zzz-later'))!;
+    expect(earlier.totalUsd).toBeCloseTo(5, 6);
+    expect(later.totalUsd).toBe(0);
   });
 
   it('ignores files that are not rollout-*.jsonl', () => {
@@ -292,8 +373,20 @@ describe('scanCodexRollouts', () => {
       tokenCount(`${D1}T01:00:01Z`, { input: 1_000_000 }),
     ]);
     expect(scanCodexRollouts(home).files[0].totalUsd).toBeCloseTo(5, 6);
-    fs.appendFileSync(p, '\n' + tokenCount(`${D1}T01:00:02Z`, { input: 3_000_000 }));
+    fs.appendFileSync(p, '\n' + tokenCount(`${D1}T01:00:02Z`, { input: 2_000_000 }));
     expect(scanCodexRollouts(home).files[0].totalUsd).toBeCloseTo(15, 6);
+  });
+
+  it('counts an unreadable file as an error rather than silently dropping it', () => {
+    const p = writeRollout(D1, 'aaa', [
+      turnContext(`${D1}T01:00:00Z`, 'gpt-5.6-sol'),
+      tokenCount(`${D1}T01:00:01Z`, { input: 1_000_000 }),
+    ]);
+    fs.chmodSync(p, 0o000);
+    const scan = scanCodexRollouts(home);
+    fs.chmodSync(p, 0o644);
+    expect(scan.errors).toBe(1);
+    expect(scan.files).toEqual([]);
   });
 });
 

@@ -45,10 +45,10 @@ import path from 'path';
 export interface CodexRate {
   /** USD per non-cached input token. */
   input: number;
-  /** USD per cached (re-read) input token. */
-  cachedInput: number;
   /** USD per output token (reasoning tokens are already inside output_tokens). */
   output: number;
+  /** USD per cached (re-read) input token. */
+  cacheRead: number;
 }
 
 /**
@@ -56,17 +56,37 @@ export interface CodexRate {
  *
  * NOT zero, deliberately. Pricing an unrecognized model at $0 would let a model
  * rename buy unlimited unaccounted spend — the exact hole this module exists to
- * close. Both model ids observed in production carry these identical rates, so
- * this is the best available estimate rather than an arbitrary penalty. The
- * scan flags it (`unpricedModels`) and the caller logs it.
+ * close. Every codex model this fleet has run carries these identical rates, so
+ * it is the best available estimate rather than an arbitrary penalty. The scan
+ * flags the id (`unpricedModels`) and the caller logs it.
  */
-export const DEFAULT_CODEX_RATE: CodexRate = { input: 5e-6, cachedInput: 0.5e-6, output: 30e-6 };
+export const DEFAULT_CODEX_RATE: CodexRate = { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 };
 
-/** Keyed by BASE model id — `normalizeCodexModel` strips the provider prefix. */
+/**
+ * Keyed by BASE model id — `normalizeCodexModel` strips the provider prefix.
+ *
+ * `gpt-5.6-sol` and `gpt-5.5` are SOLVED: eight per-day rows from real prod
+ * sessions fit these three rates with zero residual against `ccusage codex`.
+ * The `-codex` siblings resolve to the same azure LiteLLM family and are listed
+ * so a routine model switch does not raise a spurious "unknown model" warning;
+ * numerically they are identical to `DEFAULT_CODEX_RATE`, so listing them
+ * changes no charge either way.
+ *
+ * Field names and keys mirror `dashboard/codex-costs.ts` (the host copy) — the
+ * two tables are duplicated, not shared, for the same reason `pricing.ts` is:
+ * the Dockerfile copies only `container/agent-runner/` into the image and
+ * `src/container-runner.ts` bind-mounts only `container/agent-runner/src` at
+ * `/app/src`, so nothing under `dashboard/` is resolvable inside the container.
+ * `codex-cost.test.ts` pins the rates on this side; the dashboard's suite pins
+ * them on that side and cross-checks the shared keys.
+ */
 export const CODEX_MODEL_PRICING: Record<string, CodexRate> = {
-  'gpt-5.6-sol': { input: 5e-6, cachedInput: 0.5e-6, output: 30e-6 },
-  'gpt-5.5': { input: 5e-6, cachedInput: 0.5e-6, output: 30e-6 },
-  'gpt-5.5-codex': { input: 5e-6, cachedInput: 0.5e-6, output: 30e-6 },
+  'gpt-5.6-sol': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
+  'gpt-5.5': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
+  'gpt-5.5-codex': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
+  'gpt-5.2-codex': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
+  'gpt-5.1-codex': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
+  'gpt-5-codex': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
 };
 
 /**
@@ -88,30 +108,42 @@ export function normalizeCodexModel(model: string | undefined): string {
   return CODEX_MODEL_PRICING[m] ? m : '';
 }
 
-/** Cumulative token counters as they appear in `info.total_token_usage`. */
-interface CodexTokenTotals {
+/** One billed model call, as reported by `info.last_token_usage`. */
+export interface CodexUsageEvent {
+  /** UTC day ("YYYY-MM-DD") the call was billed on. */
+  day: string;
+  /** The model id verbatim off the wire — kept for the unknown-model report. */
+  rawModel: string;
   input: number;
   cached: number;
   output: number;
 }
 
-const ZERO_TOTALS: CodexTokenTotals = { input: 0, cached: 0, output: 0 };
-
-/** Non-negative finite integer, or 0. Guards against corrupt/partial rows. */
+/** Non-negative finite number, or 0. Guards against corrupt/partial rows. */
 function num(v: unknown): number {
   return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0;
 }
 
-/** Dollar cost of a TOKEN DELTA under one model's rate. */
-function priceCodexDelta(model: string | undefined, d: CodexTokenTotals): { usd: number; unpriced: boolean } {
-  const key = normalizeCodexModel(model);
-  const rate = CODEX_MODEL_PRICING[key] ?? DEFAULT_CODEX_RATE;
+/** Dollar cost of ONE call under its model's rate. */
+export function priceCodexEvent(e: CodexUsageEvent): number {
+  const rate = CODEX_MODEL_PRICING[normalizeCodexModel(e.rawModel)] ?? DEFAULT_CODEX_RATE;
   // `input_tokens` is inclusive of `cached_input_tokens` (verified against
   // ccusage, which reports the non-cached remainder). Clamp: a corrupt row must
   // not produce a negative charge.
-  const nonCached = Math.max(0, d.input - d.cached);
-  const usd = nonCached * rate.input + d.cached * rate.cachedInput + d.output * rate.output;
-  return { usd, unpriced: key === '' && (d.input > 0 || d.output > 0) };
+  return Math.max(0, e.input - e.cached) * rate.input + e.cached * rate.cacheRead + e.output * rate.output;
+}
+
+/**
+ * Identity of one billed call, for cross-file de-duplication.
+ *
+ * A codex subagent thread spawn writes its OWN rollout file that REPLAYS the
+ * parent thread's already-billed turns, so the same call appears in two files.
+ * Measured on prod: charging both over-counts by 13.7% and 19.2% on the two of
+ * thirty sampled sessions that had forked rollouts. ccusage de-duplicates by the
+ * usage tuple, and doing the same reproduced its figure EXACTLY on all thirty.
+ */
+export function codexEventKey(e: CodexUsageEvent): string {
+  return `${normalizeCodexModel(e.rawModel)}|${e.input}|${e.cached}|${e.output}`;
 }
 
 /** One rollout file's spend, partitioned by the UTC day it was billed on. */
@@ -150,20 +182,20 @@ function dayKeyOf(ts: unknown): string {
 }
 
 /**
- * Parse one rollout file into per-UTC-day USD.
+ * Parse one rollout file into the list of calls it billed.
  *
- * Walks the file in order, tracking the model from the most recent preceding
- * `turn_context` — a rollout CAN switch models mid-file, and pricing one
- * cumulative total under a single model would then be wrong. Each `token_count`
- * entry's POSITIVE delta against the previous cumulative reading is priced under
- * the model in effect at that point and attributed to the entry's UTC day.
+ * Reads `info.last_token_usage` — the THIS-CALL figure — rather than differencing
+ * the cumulative `total_token_usage`. Both agree on an ordinary file, but a
+ * forked subagent rollout starts its cumulative counter at the parent's total,
+ * so differencing from zero charges the parent's whole history again. Per-call
+ * figures let the caller de-duplicate across files instead (`codexEventKey`).
+ *
+ * Tracks the model from the most recent preceding `turn_context`: a rollout CAN
+ * switch models mid-file, and pricing every call under one model would be wrong.
  */
-export function parseCodexRollout(content: string, key: string): { file: CodexFileCost; unpriced: Set<string> } {
-  const byDay: Record<string, number> = {};
-  const unpriced = new Set<string>();
-  let model: string | undefined;
-  let prev: CodexTokenTotals = ZERO_TOTALS;
-  let totalUsd = 0;
+export function parseCodexRollout(content: string, key: string): { key: string; events: CodexUsageEvent[] } {
+  const events: CodexUsageEvent[] = [];
+  let rawModel = '';
 
   for (const line of content.split('\n')) {
     if (!line) continue;
@@ -179,38 +211,58 @@ export function parseCodexRollout(content: string, key: string): { file: CodexFi
     if (!payload) continue;
     if (row.type === 'turn_context') {
       const m = payload.model;
-      if (typeof m === 'string' && m) model = m;
+      if (typeof m === 'string' && m) rawModel = m;
       continue;
     }
     if (payload.type !== 'token_count') continue;
-    const info = payload.info as { total_token_usage?: Record<string, unknown> } | undefined;
-    const t = info?.total_token_usage;
-    if (!t) continue;
-    const cur: CodexTokenTotals = {
-      input: num(t.input_tokens),
-      cached: num(t.cached_input_tokens),
-      output: num(t.output_tokens),
-    };
-    // Only POSITIVE deltas. A cumulative counter that goes backwards (a codex
-    // restart writing into the same file, a corrupt row) must never refund.
-    const delta: CodexTokenTotals = {
-      input: Math.max(0, cur.input - prev.input),
-      cached: Math.max(0, cur.cached - prev.cached),
-      output: Math.max(0, cur.output - prev.output),
-    };
-    prev = {
-      input: Math.max(prev.input, cur.input),
-      cached: Math.max(prev.cached, cur.cached),
-      output: Math.max(prev.output, cur.output),
-    };
-    const { usd, unpriced: isUnpriced } = priceCodexDelta(model, delta);
-    if (isUnpriced && model) unpriced.add(model);
-    if (usd <= 0) continue;
-    const day = dayKeyOf(row.timestamp) || MISSING_DAY_KEY;
-    byDay[day] = (byDay[day] ?? 0) + usd;
-    totalUsd += usd;
+    const info = payload.info as { last_token_usage?: Record<string, unknown> } | undefined;
+    const u = info?.last_token_usage;
+    if (!u) continue;
+    const input = num(u.input_tokens);
+    const cached = num(u.cached_input_tokens);
+    const output = num(u.output_tokens);
+    // An all-zero row is codex reporting "no call happened" (a cancelled turn,
+    // a bookkeeping tick). It also has a degenerate dedup key, so it must not
+    // enter the set and swallow the next genuinely-zero call.
+    if (input === 0 && output === 0) continue;
+    events.push({ day: dayKeyOf(row.timestamp) || MISSING_DAY_KEY, rawModel, input, cached, output });
   }
-  return { file: { key, byDay, totalUsd }, unpriced };
+  return { key, events };
+}
+
+/**
+ * Price parsed files into per-file, per-UTC-day USD, de-duplicating calls ACROSS
+ * files.
+ *
+ * `files` must be in a STABLE order (the scanner sorts by path, which is
+ * chronological because the rollout timestamp is in the filename). The first
+ * file to report a call keeps it, so the original thread is charged and its
+ * forked replay is not — and the assignment does not move between scans, which
+ * is what lets the caller hold a per-file watermark.
+ */
+export function priceCodexFiles(files: Array<{ key: string; events: CodexUsageEvent[] }>): {
+  files: CodexFileCost[];
+  unpricedModels: string[];
+} {
+  const seen = new Set<string>();
+  const unpricedModels = new Set<string>();
+  const out: CodexFileCost[] = [];
+  for (const f of files) {
+    const byDay: Record<string, number> = {};
+    let totalUsd = 0;
+    for (const e of f.events) {
+      const k = codexEventKey(e);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      if (e.rawModel && !normalizeCodexModel(e.rawModel)) unpricedModels.add(e.rawModel);
+      const usd = priceCodexEvent(e);
+      if (usd <= 0) continue;
+      byDay[e.day] = (byDay[e.day] ?? 0) + usd;
+      totalUsd += usd;
+    }
+    out.push({ key: f.key, byDay, totalUsd });
+  }
+  return { files: out, unpricedModels: [...unpricedModels] };
 }
 
 /**
@@ -228,9 +280,11 @@ export function codexHome(): string {
 interface MemoEntry {
   size: number;
   mtimeMs: number;
-  file: CodexFileCost;
-  unpriced: string[];
+  parsed: { key: string; events: CodexUsageEvent[] };
 }
+// Caches the PARSE (per file, deterministic), not the pricing — pricing depends
+// on what earlier files claimed, so it has to be redone for the whole session
+// on every scan. Parsing is the expensive half; the events lists are tiny.
 const memo = new Map<string, MemoEntry>();
 
 /** Test seam: drop the per-file memo so a fixture rewritten within one mtime tick re-parses. */
@@ -280,11 +334,12 @@ function listRollouts(sessionsDir: string): { paths: string[]; errors: number } 
  */
 export function scanCodexRollouts(home: string = codexHome()): CodexScan {
   const sessionsDir = path.join(home, 'sessions');
-  const files: CodexFileCost[] = [];
-  const unpricedModels = new Set<string>();
+  const parsed: Array<{ key: string; events: CodexUsageEvent[] }> = [];
   const listed = listRollouts(sessionsDir);
   let errors = listed.errors;
-  for (const p of listed.paths) {
+  // Sorted by path, which is chronological (`rollout-<ISO timestamp>-<uuid>`)
+  // — so a forked replay always loses its duplicate calls to the original.
+  for (const p of listed.paths.sort()) {
     const key = path.relative(sessionsDir, p);
     let st: fs.Stats;
     try {
@@ -295,8 +350,7 @@ export function scanCodexRollouts(home: string = codexHome()): CodexScan {
     }
     const hit = memo.get(p);
     if (hit && hit.size === st.size && hit.mtimeMs === st.mtimeMs) {
-      files.push(hit.file);
-      for (const m of hit.unpriced) unpricedModels.add(m);
+      parsed.push(hit.parsed);
       continue;
     }
     let content: string;
@@ -306,12 +360,12 @@ export function scanCodexRollouts(home: string = codexHome()): CodexScan {
       errors++;
       continue;
     }
-    const { file, unpriced } = parseCodexRollout(content, key);
-    memo.set(p, { size: st.size, mtimeMs: st.mtimeMs, file, unpriced: [...unpriced] });
-    files.push(file);
-    for (const m of unpriced) unpricedModels.add(m);
+    const entry = parseCodexRollout(content, key);
+    memo.set(p, { size: st.size, mtimeMs: st.mtimeMs, parsed: entry });
+    parsed.push(entry);
   }
-  return { files, unpricedModels: [...unpricedModels], errors };
+  const { files, unpricedModels } = priceCodexFiles(parsed);
+  return { files, unpricedModels, errors };
 }
 
 /**
