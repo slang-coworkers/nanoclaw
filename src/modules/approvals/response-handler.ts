@@ -32,6 +32,30 @@ import { ONECLI_ACTION, resolveOneCLIApproval } from './onecli-approvals.js';
 import { getApprovalHandler, notifyApprovalResolved, REJECT_WITH_REASON_VALUE } from './primitive.js';
 import { armReasonCapture } from './reason-capture.js';
 
+// fork override (nv): sentinels for responses originating from the local
+// dashboard or CLI rather than a messaging-platform user. They bypass the
+// role-based approver check because they're already gated by dashboard auth /
+// host-local access. Without this, dashboard-admin cannot authorize.
+const LOCAL_APPROVER_SENDERS = new Set(['dashboard-admin', 'cli-admin', 'system']);
+
+/**
+ * fork override (nv): AP03 — fire wakeContainer without blocking the caller.
+ * Approval acceptance is a fast DB transition; the subsequent wake can take
+ * seconds-to-tens-of-seconds (image pull, migration check, MCP discovery).
+ * Blocking the HTTP chain on it caused the dashboard's 5s AbortSignal to fire
+ * and return a 500 even though the approval had already been applied. Errors
+ * are logged (never swallowed); the approval is already settled in the DB.
+ */
+function fireAndForgetWake(session: Parameters<typeof wakeContainer>[0], approvalId: string): void {
+  void wakeContainer(session).catch((err) => {
+    log.warn('Post-approval wakeContainer failed — state is already settled', {
+      approvalId,
+      sessionId: session.id,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  });
+}
+
 export async function handleApprovalsResponse(payload: ResponsePayload): Promise<boolean> {
   const approval = await getPendingApproval(payload.questionId);
   if (!approval) return false;
@@ -84,7 +108,7 @@ async function handleRegisteredApproval(
   }
 
   // Plain Reject (or any other non-approve value) — instant fast path.
-  if (selectedOption !== 'approve') {
+  if (selectedOption.toLowerCase() !== 'approve') {
     await finalizeReject(approval, session, userId);
     return;
   }
@@ -97,8 +121,11 @@ async function handleRegisteredApproval(
       id: `appr-note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       kind: 'chat',
       timestamp: new Date().toISOString(),
-      platformId: session.agent_group_id,
-      channelType: 'agent',
+      // fork override (nv): channelType='system' / platformId=null so the
+      // formatter renders <system-notification> and the routing layer can never
+      // resolve self as an a2a destination.
+      platformId: null,
+      channelType: 'system',
       threadId: null,
       content: JSON.stringify({ text, sender: 'system', senderId: 'system' }),
     });
@@ -112,7 +139,7 @@ async function handleRegisteredApproval(
     await notify(`Your ${approval.action} was approved, but no handler is installed to apply it.`);
     await deletePendingApproval(approval.approval_id);
     await notifyApprovalResolved({ approval, session, outcome: 'approve', userId });
-    await wakeContainer(session);
+    fireAndForgetWake(session, approval.approval_id); // fork override (nv): AP03
     return;
   }
 
@@ -129,7 +156,7 @@ async function handleRegisteredApproval(
 
   await deletePendingApproval(approval.approval_id);
   await notifyApprovalResolved({ approval, session, outcome: 'approve', userId });
-  await wakeContainer(session);
+  fireAndForgetWake(session, approval.approval_id); // fork override (nv): AP03
 }
 
 function namespacedUserId(payload: ResponsePayload): string | null {
@@ -138,6 +165,10 @@ function namespacedUserId(payload: ResponsePayload): string | null {
 }
 
 async function isAuthorizedApprovalClick(approval: PendingApproval, payload: ResponsePayload): Promise<boolean> {
+  // fork override (nv): local dashboard/CLI senders are already gated by
+  // dashboard auth / host-local access — bypass the role-based approver check.
+  if (payload.userId && LOCAL_APPROVER_SENDERS.has(payload.userId)) return true;
+
   const userId = namespacedUserId(payload);
   if (!userId) return false;
 

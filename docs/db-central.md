@@ -333,7 +333,7 @@ CREATE TABLE container_configs (
 
 `timezone` overrides the install-global timezone for one agent group: host-side scheduling (cron interpretation, `--process-after`, run-log stamps) resolves it live via `resolveGroupTimezone` (`src/container-config.ts`); the container gets it as its `TZ` env on next respawn. Set via `ncl groups config update --timezone <IANA>` (`""` clears back to NULL) or `ncl groups create --timezone`.
 
-- **Readers:** `src/container-config.ts`, `src/container-runner.ts`, `src/cli/dispatch.ts` (scope enforcement), `src/project-doc-compose.ts`
+- **Readers:** `src/container-config.ts`, `src/container-runner.ts`, `src/cli/dispatch.ts` (scope enforcement), `src/claude-composer/spine.ts`
 - **Writers:** `src/db/container-configs.ts`, `src/modules/self-mod/apply.ts`, `src/backfill-container-configs.ts`
 
 ### 1.16 `pending_sender_approvals`
@@ -402,6 +402,23 @@ CREATE TABLE agent_message_policies (
 
 - Access layer: `src/modules/agent-to-agent/db/agent-message-policies.ts`
 - **Readers/writers:** `src/cli/resources/policies.ts`; approved messages create a row in `pending_approvals` (see §1.11) via the a2a send path.
+
+### 1.19 `cost_cap_policy`
+
+Runtime-configurable Tier-2 cost cap (see [cost-cap-model.md](cost-cap-model.md)) — the source of truth, set with `ncl cost-cap set`. One row per scope, keyed by `group_folder`: the empty string `''` is the fleet-wide row (its `ceiling_usd` is the fleet ceiling); a non-empty folder is a per-group override. NULL amounts mean "no DB override — fall through to the `cost-thresholds.json` p90 / defaults, and lastly the deprecated `NANOCLAW_COST_T2_*` env vars". A stored value wins over the env var, including `ceiling_usd = 0` ("explicitly no ceiling").
+
+```sql
+CREATE TABLE cost_cap_policy (
+  group_folder TEXT PRIMARY KEY,   -- '' = fleet-wide; else the group's workspace folder
+  ceiling_usd  REAL,               -- Tier-2 hard ceiling override (NULL = none; 0 = disabled)
+  cap_usd      REAL,               -- per-session cap override (per-group only)
+  updated_at   TEXT NOT NULL,
+  updated_by   TEXT                -- 'host' or the agent group id that set it
+);
+```
+
+- Access layer: `src/db/cost-cap-policy.ts` (reads are fail-soft — an uninitialized DB / missing table returns empty, so the resolvers keep the env fallback).
+- **Readers/writers:** `resolveCostCapT2Usd` / `resolveCostCeilingT2Usd` in `src/container-config.ts` read it at spawn; `src/cli/resources/cost-cap.ts` (`ncl cost-cap get/set/clear`, elevated-only) writes it.
 
 ---
 

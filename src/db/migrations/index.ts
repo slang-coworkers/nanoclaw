@@ -1,34 +1,24 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
+
 import type Database from 'better-sqlite3';
 
 import { log } from '../../log.js';
 import type { DbDriver } from '../driver.js';
 import { sqliteRaw } from '../drivers/sqlite.js';
-import { migration001 } from './001-initial.js';
-import { migration002 } from './002-chat-sdk-state.js';
-import { moduleAgentToAgentDestinations } from './module-agent-to-agent-destinations.js';
-import { migration017 } from './017-agent-message-policies.js';
-import { migration008 } from './008-dropped-messages.js';
-import { migration009 } from './009-drop-pending-credentials.js';
-import { migration010 } from './010-engage-modes.js';
-import { migration011 } from './011-pending-sender-approvals.js';
-import { migration012 } from './012-channel-registration.js';
-import { migration013 } from './013-approval-render-metadata.js';
-import { migration014 } from './014-container-configs.js';
-import { migration015 } from './015-cli-scope.js';
-import { migration016 } from './016-messaging-group-instance.js';
-import { moduleApprovalsPendingApprovals } from './module-approvals-pending-approvals.js';
-import { moduleApprovalsTitleOptions } from './module-approvals-title-options.js';
-import { migration018 } from './018-approvals-approver-user-id.js';
-import { migration019 } from './019-wiring-threads.js';
-import { migration020 } from './020-container-config-timezone.js';
-import { migration021 } from './021-approval-question.js';
-import { migration022 } from './022-messaging-group-detached.js';
-import { migration023 } from './023-approvals-instance.js';
 
 interface MigrationBase {
   version: number;
   /** Permanent applied identity. Never rename a migration after release. */
   name: string;
+  /**
+   * Names of migrations that MUST run before this one. The loader
+   * topologically sorts so declared dependencies always run first, even when
+   * `version` numbers would otherwise interleave (numeric migrations vs
+   * `module-*` files hand-picking version-number gaps).
+   */
+  dependsOn?: string[];
   /**
    * Run with foreign_keys=OFF. Required for table recreates (SQLite can't
    * drop a table-level UNIQUE without DROP+RENAME, and DROP fails FK
@@ -67,29 +57,90 @@ export type ModuleMigration = (Omit<PortableMigration, 'name'> | Omit<SqliteOnly
   name: ModuleMigrationName;
 };
 
-export const migrations: Migration[] = [
-  migration001,
-  migration002,
-  moduleApprovalsPendingApprovals,
-  moduleAgentToAgentDestinations,
-  migration017,
-  moduleApprovalsTitleOptions,
-  migration018,
-  migration008,
-  migration009,
-  migration010,
-  migration011,
-  migration012,
-  migration013,
-  migration014,
-  migration015,
-  migration016,
-  migration019,
-  migration020,
-  migration021,
-  migration022,
-  migration023,
-];
+// Migrations are discovered at module load from adjacent files named
+// `<version>-<slug>.{ts,js}` (e.g. `007-hook-events.ts`). This means a
+// project branch can add a migration by dropping a file in this directory
+// without editing any central registry — keeping the registry out of the
+// merge path when two project branches ship alongside one another.
+//
+// Each migration file must export exactly one value whose shape matches
+// the `Migration` interface. The export name is irrelevant — we pick it
+// by shape, so conventional names like `migration007` still work.
+function isMigration(value: unknown): value is Migration {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as Migration).version === 'number' &&
+    typeof (value as Migration).name === 'string' &&
+    typeof (value as Migration).up === 'function'
+  );
+}
+
+async function loadMigrations(): Promise<Migration[]> {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const files = fs
+    .readdirSync(here)
+    // A migration file is `<version>-<slug>.{ts,js}`. Exclude `.d.ts` type
+    // stubs and — critically — `.test.ts` / `.spec.ts` co-located test files:
+    // those match the version-slug shape but export test suites, not a
+    // Migration, and loading one throws "does not export a Migration-shaped
+    // value", which fails migration setup for EVERY suite that runs migrations.
+    .filter((f) => /^(\d+|module)-.*\.(js|ts)$/.test(f) && !f.endsWith('.d.ts') && !/\.(test|spec)\.(js|ts)$/.test(f))
+    .sort();
+
+  const out: Migration[] = [];
+  for (const file of files) {
+    const mod = await import(pathToFileURL(path.join(here, file)).href);
+    const found = Object.values(mod).find(isMigration);
+    if (!found) {
+      throw new Error(`Migration file ${file} does not export a Migration-shaped value`);
+    }
+    out.push(found);
+  }
+
+  const names = new Set(out.map((m) => m.name));
+  for (const m of out) {
+    for (const dep of m.dependsOn ?? []) {
+      if (!names.has(dep)) {
+        throw new Error(
+          `Migration '${m.name}' declares dependsOn '${dep}' but no migration with that name is registered`,
+        );
+      }
+    }
+  }
+
+  // Topological sort: primary key is dependsOn, tiebreaker is version.
+  // This is what actually makes the registry safe when numeric migrations
+  // and module-* migrations pick version numbers from overlapping ranges
+  // (numeric uses 1..n; module-* has historically picked 3/4/7 at random).
+  // With dependsOn, a migration's prerequisites are declared, not assumed.
+  const byName = new Map(out.map((m) => [m.name, m]));
+  const remaining = new Set(out.map((m) => m.name));
+  const sorted: Migration[] = [];
+  while (remaining.size > 0) {
+    const ready = [...remaining]
+      .map((n) => byName.get(n) as Migration)
+      .filter((m) => (m.dependsOn ?? []).every((d) => !remaining.has(d)))
+      .sort((a, b) => a.version - b.version);
+    if (ready.length === 0) {
+      throw new Error(`Migration dependency cycle among: ${[...remaining].join(', ')}`);
+    }
+    for (const m of ready) {
+      sorted.push(m);
+      remaining.delete(m.name);
+    }
+  }
+
+  const versions = sorted.map((m) => m.version);
+  const dupes = versions.filter((v, i) => versions.indexOf(v) !== i);
+  if (dupes.length > 0) {
+    throw new Error(`Duplicate migration versions: ${dupes.join(', ')}`);
+  }
+
+  return sorted;
+}
+
+export const migrations: Migration[] = await loadMigrations();
 
 /**
  * Migrations contributed by self-registering modules.

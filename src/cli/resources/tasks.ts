@@ -7,6 +7,7 @@ import {
   deleteSession,
   findTaskSessions,
   getActiveSessions,
+  getActiveSessionsForGroup,
   getSession,
   isTaskThread,
   taskThreadId,
@@ -91,11 +92,18 @@ async function selectedSessions(
 
   const group = groupArg(args, ctx);
   if (group) {
-    // One session per live task series — the loops below already fan out across them.
-    return (await findTaskSessions(group, includeClosed)).map((s) => ({
-      id: s.id,
-      agent_group_id: s.agent_group_id,
-    }));
+    // Every active session in the group — the loops below filter to kind='task'
+    // rows per inbound mailbox. Deliberately NOT findTaskSessions() alone: that only
+    // matches the isolated `system:tasks` threads, so a task parked in an ordinary
+    // session was invisible to every agent caller (and to host `--group`), which
+    // made `tasks list` answer "No tasks." while tasks were live and firing.
+    // findTaskSessions is unioned in for `includeClosed`: spent/cancelled task
+    // sessions are closed by the sweep but must stay reachable for hard-delete.
+    const scoped = new Map<string, ScopedSession>();
+    for (const s of [...(await getActiveSessionsForGroup(group)), ...(await findTaskSessions(group, includeClosed))]) {
+      scoped.set(s.id, { id: s.id, agent_group_id: s.agent_group_id });
+    }
+    return [...scoped.values()];
   }
 
   if (ctx.caller === 'agent') return [];

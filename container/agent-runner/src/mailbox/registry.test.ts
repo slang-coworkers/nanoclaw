@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -8,7 +8,26 @@ import { getAgentMailbox, readMailboxContext, registerAgentMailbox, resetAgentMa
 import { SqliteAgentMailbox } from './sqlite/index.js';
 import type { AgentMailbox } from './types.js';
 
-const composedFactory = resetAgentMailboxForTesting();
+// Captured in beforeAll, NOT at module scope.
+//
+// `resetAgentMailboxForTesting()` at module scope silently deletes this entire
+// file from `bun test`'s run — no error, no skip notice, the filename simply
+// never appears in the output. It ran 13 tests when named explicitly and 0 in
+// the full suite, so the SQL-containment ratchet below was failing invisibly and
+// `bun test` still summarized green-ish. Verified by controlled probe files in
+// this directory: import `./index.js` alone → discovered; add a module-scope
+// `resetAgentMailboxForTesting()` → dropped; move the same call into `beforeAll`
+// → discovered again.
+//
+// The mailbox is registered by `bunfig.toml`'s `preload`, so at module-evaluation
+// time this file is mutating a global the test harness is still wiring up.
+// Anything that reaches into the registry must wait for a lifecycle hook.
+let composedFactory: ReturnType<typeof resetAgentMailboxForTesting>;
+
+beforeAll(() => {
+  composedFactory = resetAgentMailboxForTesting();
+});
+
 const fakeMailbox = (): AgentMailbox => ({}) as AgentMailbox;
 
 beforeEach(() => {

@@ -12,6 +12,7 @@ import net from 'net';
 
 import { log } from '../log.js';
 import { dispatch } from './dispatch.js';
+import { drainPostResponseEffects } from './post-response.js';
 import type { CallerContext, RequestFrame, ResponseFrame } from './frame.js';
 import { DEFAULT_SOCKET_PATH } from './socket-client.js';
 
@@ -93,6 +94,9 @@ async function handleFrame(conn: net.Socket, line: string): Promise<void> {
   const ctx: CallerContext = { caller: 'host' };
   const res = await dispatch(req, ctx);
   write(conn, res);
+  // Effects a handler deferred until its answer was on the wire (container
+  // restarts, today). Runs after `write`, which is synchronous.
+  drainPostResponseEffects();
 }
 
 function write(conn: net.Socket, frame: ResponseFrame): void {

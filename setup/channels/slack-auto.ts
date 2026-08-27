@@ -373,7 +373,7 @@ async function provisionDirect(
     return await finishProvisioned(app, name, s, start, 'slack-provision');
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    s.stop("Couldn't create the Slack app.", 1);
+    s.error("Couldn't create the Slack app.");
     setupLog.step('slack-provision', 'failed', Date.now() - start, { ERROR: message });
     p.log.warn(`Slack said: ${message}. Walking through manual app creation instead.`);
     return undefined;
@@ -417,12 +417,12 @@ async function provisionViaBroker(
     // separate deployments. One re-authentication is the only move that can
     // change the answer; a second refusal is the operator's to resolve.
     if (!isCredentialRefusal(core, err)) {
-      s.stop("Couldn't reach the Slack service.", 1);
+      s.error("Couldn't reach the Slack service.");
       setupLog.step('slack-broker-workspaces', 'failed', Date.now() - start, { ERROR: message });
       p.log.warn(`The service said: ${message}. Walking through manual app creation instead.`);
       return undefined;
     }
-    s.stop("The Slack service didn't accept this install's credentials.", 1);
+    s.error("The Slack service didn't accept this install's credentials.");
     setupLog.step('slack-broker-workspaces', 'failed', Date.now() - start, { ERROR: message, REAUTH: 'offered' });
     const refreshed = await signInForBroker(core, { retry: true });
     if (!refreshed) {
@@ -436,7 +436,7 @@ async function provisionViaBroker(
       workspaces = (await core.brokerListWorkspaces(token)).filter((w) => w.status === 'active');
     } catch (retryErr) {
       const retryMessage = retryErr instanceof Error ? retryErr.message : String(retryErr);
-      s.stop("The Slack service didn't accept this install's credentials.", 1);
+      s.error("The Slack service didn't accept this install's credentials.");
       setupLog.step('slack-broker-workspaces', 'failed', Date.now() - start, {
         ERROR: retryMessage,
         REAUTH: 'exhausted',
@@ -504,7 +504,7 @@ async function provisionViaBroker(
     return inputs;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    s2.stop("Couldn't create the Slack app.", 1);
+    s2.error("Couldn't create the Slack app.");
     setupLog.step('slack-broker-provision', 'failed', Date.now() - start, { ERROR: message });
     p.log.warn(`The service said: ${message}. Walking through manual app creation instead.`);
     return undefined;
@@ -535,7 +535,7 @@ async function finishProvisioned(
     setupLog.step(step, 'success', Date.now() - start, { APP_ID: app.appId, AUTO_INSTALL: 'true' });
     return { connection: 'provisioned', bot_token: app.botToken, app_token: app.appToken };
   }
-  s.stop(`Created ${name}, but your workspace has to approve the install (${app.installError}).`, 1);
+  s.error(`Created ${name}, but your workspace has to approve the install (${app.installError}).`);
   setupLog.step(step, 'success', Date.now() - start, {
     APP_ID: app.appId,
     AUTO_INSTALL: 'false',
@@ -605,7 +605,7 @@ async function completeInstall(
     // The core rethrows only what polling cannot fix — a credential this
     // service will not accept, whatever the workspace does next.
     const message = err instanceof Error ? err.message : String(err);
-    s.stop("The Slack service didn't accept this install's credentials.", 1);
+    s.error("The Slack service didn't accept this install's credentials.");
     setupLog.step('slack-install-wait', 'failed', Date.now() - start, { ERROR: message });
     p.log.warn(`The service said: ${message}.`);
     return undefined;
@@ -615,7 +615,7 @@ async function completeInstall(
     setupLog.step('slack-install-wait', 'success', Date.now() - start, { APP_ID: app.appId });
     return installed.botToken;
   }
-  s.stop("The install hasn't been approved yet.", 1);
+  s.error("The install hasn't been approved yet.");
   setupLog.step('slack-install-wait', 'failed', Date.now() - start, { ERROR: 'timeout', APP_ID: app.appId });
   p.log.warn(
     `Approvals often take longer than this. ${name} is created and its app-level token is saved, so nothing needs ` +
@@ -672,7 +672,7 @@ async function connectWorkspace(
       // An auth failure is not transient — the install token is dead and no
       // amount of polling fixes it. Everything else: keep polling.
       if (err instanceof core.BrokerHttpError && (err.status === 401 || err.status === 403)) {
-        s.stop("The Slack service rejected this install's credentials.", 1);
+        s.error("The Slack service rejected this install's credentials.");
         setupLog.step('slack-broker-oauth', 'failed', Date.now() - start, { ERROR: err.message });
         p.log.warn(`${err.message}. Re-run nanoclaw login, then retry.`);
         return [];
@@ -694,7 +694,7 @@ async function connectWorkspace(
       return confirmed;
     }
   }
-  s.stop("Slack didn't confirm the connection in time.", 1);
+  s.error("Slack didn't confirm the connection in time.");
   setupLog.step('slack-broker-oauth', 'failed', Date.now() - start, { ERROR: 'timeout' });
   p.log.warn('Finish approving the connection in the browser, then retry.');
   return [];

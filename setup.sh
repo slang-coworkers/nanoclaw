@@ -176,6 +176,154 @@ check_build_tools() {
   log "Build tools: $HAS_BUILD_TOOLS"
 }
 
+# --- Fork composition (nv-* merge train) ---
+#
+# A stock nanoclaw clone has no nv-* branches on origin, so this is a NO-OP and
+# `bash setup.sh` behaves exactly like upstream. A fork clone (the nv-coworkers
+# checkout) gets nv-main merged in here — BEFORE install_deps, so the composed
+# package.json/pnpm-lock.yaml drive the frozen install. Optional project
+# overlays (nv-slang, …) are offered later by the wizard's project-integrations
+# step. This is step (b) of the clone → setup.sh(nv-main) → wizard(projects) flow.
+#
+# The nv-main merge is inlined here rather than delegated to
+# setup/merge-train.sh, because on a fresh nv-coworkers clone that script does
+# not exist yet (it arrives WITH nv-main). Keep fork_is_owned() in sync with the
+# is_owned() in setup/merge-train.sh and .github/workflows/ci.yml.
+
+# Files nv-main is canonical for — safe to take from nv-main's side on conflict.
+# SINGLE source of truth: nv-main's path-guard allowlist
+# (.github/nv-path-guard/nv-main.txt), evaluated by nv-main's OWN matcher
+# (.github/nv-path-guard/ownership.py) — the same module CI's path-guard imports.
+# Both are extracted from origin/nv-main by compose_fork once it has fetched.
+#
+# This used to run `git -c core.excludesFile=<list> check-ignore` HERE, in the
+# project repo, which also consults this repo's .gitignore, .git/info/exclude and
+# the user's global excludes. This repo's .gitignore alone would then hand
+# nv-main ownership of groups/**, data/**, logs/**, coworkers/*.yaml, repos/**
+# and forks.md — so a conflict there would be "resolved" by overwriting the
+# user's own files with nv-main's. The shared matcher sees the allowlist only.
+NV_OWNED_LIST=""
+NV_MATCHER=""
+
+# NUL-delimited candidates on stdin → NUL-delimited owned paths on stdout, one
+# call for the whole batch.
+nv_owned() {
+  [ -n "$NV_OWNED_LIST" ] && [ -s "$NV_OWNED_LIST" ] || return 1
+  [ -n "$NV_MATCHER" ] && [ -s "$NV_MATCHER" ] || return 1
+  python3 "$NV_MATCHER" -0 "$NV_OWNED_LIST"
+}
+
+# Exact membership in a NUL-delimited set file. Not `grep -zxF`: `-z` is GNU-only
+# and means "decompress" in ugrep, which shadows grep on some developer PATHs.
+nv_set_has() {
+  local set_file="$1" want="$2" got
+  while IFS= read -r -d '' got; do
+    [ "$got" = "$want" ] && return 0
+  done < "$set_file"
+  return 1
+}
+
+compose_fork() {
+  command -v git >/dev/null 2>&1 || return 0
+  cd "$PROJECT_ROOT" || return 0
+  git rev-parse --git-dir >/dev/null 2>&1 || return 0
+  # Fork detection: only a fork remote carries nv-main. Vanilla → return here.
+  git ls-remote --exit-code --heads origin nv-main >/dev/null 2>&1 || return 0
+
+  git fetch origin nv-main >>"$LOG_FILE" 2>&1 || {
+    log "compose_fork: could not fetch origin/nv-main — skipping"
+    return 0
+  }
+  if git merge-base --is-ancestor origin/nv-main HEAD 2>/dev/null; then
+    log "compose_fork: origin/nv-main already merged — skipping"
+    return 0
+  fi
+
+  # Load nv-main's owned-file allowlist AND its matcher now that origin/nv-main
+  # is fetched, so ownership is decided from the single source of truth by the
+  # single implementation of it.
+  NV_OWNED_LIST="$(mktemp)"
+  git show origin/nv-main:.github/nv-path-guard/nv-main.txt > "$NV_OWNED_LIST" 2>/dev/null || true
+  NV_MATCHER="$(mktemp)"
+  git show origin/nv-main:.github/nv-path-guard/ownership.py > "$NV_MATCHER" 2>/dev/null || true
+
+  # Fail LOUD. Every answer below drives either "abort the compose" or "overwrite
+  # this file from nv-main". A matcher that cannot run would silently make both
+  # no-ops, composing a tree with the stale copies this exists to replace — the
+  # dependsOn/TS2353 and create-agent.ts/TS2740 class of break.
+  if ! printf 'probe\0' | nv_owned >/dev/null 2>&1; then
+    echo "setup.sh: cannot evaluate nv-main ownership — python3 is required to compose" >&2
+    echo "the coworker infrastructure (it runs nv-main's .github/nv-path-guard/ownership.py)." >&2
+    echo "Install python3 and re-run: bash setup.sh" >&2
+    exit 1
+  fi
+
+  log "compose_fork: merging origin/nv-main into $(git rev-parse --abbrev-ref HEAD)"
+  echo "Composing coworker infrastructure (merging nv-main)…"
+  # A merge commit needs an identity; only set a fallback if none is configured.
+  git config user.name  >/dev/null 2>&1 || git config user.name  "nanoclaw-setup"
+  git config user.email >/dev/null 2>&1 || git config user.email "setup@nanoclaw.local"
+
+  if ! git merge origin/nv-main --no-edit >>"$LOG_FILE" 2>&1; then
+    conflicts="$(git diff --name-only --diff-filter=U)"
+    conflicts_owned="$(mktemp)"
+    printf '%s\0' $conflicts | nv_owned > "$conflicts_owned" || : > "$conflicts_owned"
+    unexpected=""
+    for f in $conflicts; do
+      nv_set_has "$conflicts_owned" "$f" || unexpected="$unexpected $f"
+    done
+    rm -f "$conflicts_owned"
+    if [ -n "$unexpected" ]; then
+      git merge --abort
+      echo "setup.sh: cannot auto-compose nv-main — conflicts outside nv-main's owned set:" >&2
+      printf '  %s\n' $unexpected >&2
+      echo "Resolve manually: git merge origin/nv-main   (see logs/bootstrap.log)" >&2
+      exit 1
+    fi
+    for f in $conflicts; do
+      if git checkout origin/nv-main -- "$f" 2>/dev/null; then
+        git add -- "$f"
+      else
+        # `git rm -f` stages the deletion itself, so add -A after it SUCCEEDS
+        # is fatal rather than redundant: the path is gone from worktree and
+        # index, git answers `pathspec did not match any files` and exits 128 —
+        # under this script's `set -e` that aborts the whole bootstrap.
+        git rm -f -- "$f" >/dev/null 2>&1 || { rm -f "$f"; git add -A -- "$f"; }
+      fi
+    done
+    git commit --no-edit >>"$LOG_FILE" 2>&1
+  fi
+
+  # The ENTIRE owned set is canonical to nv-main. nv-coworkers tracks upstream,
+  # not nv-main, so it carries stale copies of nv-main-owned files; a stale copy
+  # that AUTO-merges (doesn't conflict) is kept and then dangles against nv-main's
+  # evolved code, or desyncs package.json from the lockfile
+  # (ERR_PNPM_OUTDATED_LOCKFILE). After the merge, overwrite every owned file that
+  # EXISTS on nv-main and differs here to nv-main's version. nv-coworkers-NEW
+  # owned files (absent on nv-main) are left untouched. See setup/compose-fork.test.ts.
+  # One matcher call for the whole diff, then walk the OWNED set directly instead
+  # of asking "is this owned?" per file. NUL-delimited end to end.
+  owned_diff="$(mktemp)"
+  git diff --name-only -z origin/nv-main HEAD | nv_owned > "$owned_diff" || : > "$owned_diff"
+  while IFS= read -r -d '' f; do
+    [ -z "$f" ] && continue
+    git cat-file -e "origin/nv-main:$f" 2>/dev/null || continue
+    git checkout origin/nv-main -- "$f"
+  done < "$owned_diff"
+  rm -f "$owned_diff"
+  if ! git diff --cached --quiet 2>/dev/null; then
+    git commit -q --amend --no-edit >>"$LOG_FILE" 2>&1
+  fi
+
+  # The merge just rewrote setup.sh itself (nv-main is canonical for it). bash
+  # reads scripts incrementally, so continuing in this process could execute a
+  # mix of old and new bytes — re-exec the freshly merged copy. NANOCLAW_COMPOSED
+  # guards against re-entry (the re-run sees nv-main already merged anyway).
+  log "compose_fork: re-exec after merge"
+  export NANOCLAW_COMPOSED=1
+  exec bash "$PROJECT_ROOT/setup.sh" "$@"
+}
+
 # --- Main ---
 
 log "=== Bootstrap started ==="
@@ -200,6 +348,21 @@ if [ "$NODE_OK" = "false" ]; then
     log "install-node.sh failed"
   fi
 fi
+
+# Compose the fork (merge nv-main) BEFORE installing deps, so the frozen install
+# resolves the composed lockfile. No-op on a stock clone; on a fork clone this
+# may re-exec setup.sh once (guarded by NANOCLAW_COMPOSED).
+if [ "${NANOCLAW_COMPOSED:-}" != "1" ]; then
+  compose_fork "$@"
+fi
+
+# NANOCLAW_COMPOSE_ONLY lets tests exercise compose_fork against a synthetic repo
+# without the Node install/build tail. Never set in real setup.
+if [ -n "${NANOCLAW_COMPOSE_ONLY:-}" ]; then
+  log "compose-only: exiting after compose_fork"
+  exit 0
+fi
+
 install_deps
 check_build_tools
 

@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { runChannelSkill } from './run-channel-skill.js';
+import { runChannelSkill, type WireArgs } from './run-channel-skill.js';
 import { runSkill } from '../lib/skill-driver.js';
 import { fullyApplied } from '../../scripts/skill-apply.js';
 import { parseDirectives } from '../../scripts/skill-directives.js';
@@ -43,7 +43,7 @@ describe('runChannelSkill adapter (Option A)', () => {
       // the resolve run: conversations.open piped through jq → "slack:<channel>"
       if (c.includes('conversations.open')) return 'slack:D0SLACK\n';
     };
-    const wired: Array<Record<string, unknown>> = [];
+    const wired: WireArgs[] = [];
     let pickCleared = 0;
 
     await runChannelSkill('slack', 'Bob Smith', {
@@ -455,7 +455,7 @@ describe('runChannelSkill adapter (Option A)', () => {
       ].join('\n'),
     );
 
-    const wired: Array<Record<string, unknown>> = [];
+    const wired: WireArgs[] = [];
     let pickCleared = 0;
     await runChannelSkill(wireChannel, 'Dan Mill', {
       projectRoot: root,

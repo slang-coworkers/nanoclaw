@@ -46,6 +46,62 @@ describe('agent mailbox registry', () => {
     }
   });
 
+  // The one-writer-per-file rule is the invariant that makes the two-DB split
+  // safe: outbound.db has exactly one writer, the container. A host write is
+  // only sound while the container is provably gone.
+  //
+  // This is an ENUMERATION, not an allowlist of known-good files. The sibling
+  // containment check above names five files by hand, so it cannot see a NEW
+  // one — `reconcile-gh-sessions.ts` opens the canonical outbound.db writable
+  // with raw better-sqlite3 and was invisible to it. Walking the tree means a
+  // future writer has to come here and say why.
+  it('keeps every host outbound.db writer accounted for', () => {
+    const hostRoots = ['../../src', '../../setup', '../../scripts'];
+    const sqlFiles: string[] = [];
+    const walk = (dir: URL): void => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name === 'node_modules' || entry.name.endsWith('.test.ts')) continue;
+        const child = new URL(`${entry.name}${entry.isDirectory() ? '/' : ''}`, dir);
+        if (entry.isDirectory()) walk(child);
+        else if (entry.name.endsWith('.ts')) sqlFiles.push(child.pathname);
+      }
+    };
+    for (const root of hostRoots) walk(new URL(`${root}/`, import.meta.url));
+
+    // A writable outbound handle comes from exactly two shapes: the seam's
+    // `openOutboundDbWritable`/`openOutboundDbRw`, or a raw `new Database(...)`
+    // on a path built by an `outbound` helper.
+    const writers = sqlFiles.filter((file) => {
+      const source = fs.readFileSync(file, 'utf8');
+      const viaSeam = /openOutboundDb(Writable|Rw)\b/.test(source);
+      const viaRaw = /new Database\(\s*\w*[Oo]utbound\w*(Path)?\b/.test(source);
+      return viaSeam || viaRaw;
+    });
+
+    // Every entry needs a reason it cannot race the container. Add a file here
+    // ONLY with the gate that makes it safe named alongside it.
+    const sanctioned = new Set([
+      // Defines the openers.
+      'src/mailbox/sqlite/session-db.ts',
+      // Re-exports them; opens nothing itself.
+      'src/session-manager.ts',
+      // The registered driver — the host's sanctioned writer.
+      'src/mailbox/sqlite/index.ts',
+      // Bounced-a2a redrive, gated on !isContainerRunning (host-sweep.ts:326).
+      'src/host-sweep.ts',
+      // Startup session merge; aborts if any affected session is running/idle
+      // or has a -wal/-journal sidecar (reconcile-gh-sessions.ts:216-227).
+      'src/reconcile-gh-sessions.ts',
+    ]);
+
+    const unsanctioned = writers
+      .map((file) => file.replace(/^.*?\/(src|setup|scripts)\//, '$1/'))
+      .filter((file) => !sanctioned.has(file))
+      .sort();
+
+    expect(unsanctioned).toEqual([]);
+  });
+
   it('does not hide a missing composition behind a fallback', () => {
     expect(() => getAgentMailbox()).toThrow('No agent mailbox registered');
   });

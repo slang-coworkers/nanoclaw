@@ -177,7 +177,7 @@ describe('plugin ownership marker', () => {
 
   it('never ships the marker to the container config', async () => {
     const g = await stamp();
-    const config = configFromDb((await getContainerConfig(g.id))!, g);
+    const config = await configFromDb((await getContainerConfig(g.id))!, g);
     expect(config.mcpServers.hubspot).not.toHaveProperty('plugin');
     expect(config.mcpServers.hubspot).toHaveProperty('pluginRoot');
     expect(config.mcpServers.docs).toEqual({ type: 'http', url: 'https://mcp.example.com/mcp' });
@@ -186,13 +186,13 @@ describe('plugin ownership marker', () => {
 
 describe('restampAgentFromTemplate', () => {
   it('throws when the group does not carry the plugin', async () => {
-    const g: AgentGroup = {
+    const g = {
       id: 'ag-bare',
       name: 'Bare',
       folder: 'bare',
       agent_provider: null,
       created_at: new Date().toISOString(),
-    };
+    } as AgentGroup;
     await createAgentGroup(g);
     await ensureContainerConfig(g.id);
     await expect(restampAgentFromTemplate('sales/sdr', g.id, { apply: false })).rejects.toThrow(

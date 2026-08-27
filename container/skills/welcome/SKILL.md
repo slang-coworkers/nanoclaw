@@ -64,7 +64,7 @@ There are no special commands. Users just talk naturally — if they want someth
 
 ## Tone
 
-Warm, confident, inviting. Make the user feel like they just unlocked something powerful. Concise over verbose; this is a first impression. Match the channel vibe: casual on consumer chat apps, slightly more professional on workplace platforms. Lead with things the user can actually try right away.
+Warm, confident, inviting — make the user feel like they just unlocked something powerful. Concise over verbose; this is a first impression. Match the channel's vibe: casual for Telegram/Discord, slightly more professional for Slack/Teams/email. Lead with things the user can actually try right away.
 
 ## Example default wording
 

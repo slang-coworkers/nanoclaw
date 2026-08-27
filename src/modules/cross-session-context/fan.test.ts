@@ -18,7 +18,7 @@ import { createMessagingGroup } from '../../db/messaging-groups.js';
 import { createSession } from '../../db/sessions.js';
 import { createDestination } from '../agent-to-agent/db/agent-destinations.js';
 import { inboundDbPath } from '../../mailbox/sqlite/paths.js';
-import type { MessagingGroup, Session } from '../../types.js';
+import type { AgentGroup, MessagingGroup, Session } from '../../types.js';
 import {
   buildDeliveredEchoLabel,
   buildEchoLabel,
@@ -288,7 +288,24 @@ describe('fanInboundMessage', () => {
 });
 
 describe('fanOutboundMessage', () => {
-  const agentGroup = { id: AG, name: 'Pixel', folder: 'pixel', agent_provider: null, created_at: NOW };
+  // Fork AgentGroup columns spelled out at their row defaults (see
+  // container-overlay-hooks.test.ts's makeAgentGroup); fanOutboundMessage reads
+  // only id/folder, but the parameter is the full type.
+  const agentGroup: AgentGroup = {
+    id: AG,
+    name: 'Pixel',
+    folder: 'pixel',
+    is_admin: 0,
+    agent_provider: null,
+    container_config: null,
+    coworker_type: null,
+    allowed_mcp_tools: null,
+    overlays: null,
+    routing: 'direct',
+    disable_overlays: 0,
+    paused: 0,
+    created_at: NOW,
+  };
 
   it('fans a delivered DM reply into same-mg sibling threads ONLY, with the agent as sender', async () => {
     const written = await fanOutboundMessage(
