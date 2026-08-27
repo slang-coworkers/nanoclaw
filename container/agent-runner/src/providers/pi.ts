@@ -107,10 +107,10 @@ export class PiProvider implements AgentProvider {
     this.thinkingLevel = options.env?.PI_THINKING_LEVEL ?? options.effort;
   }
 
-  registerMemorySessionHook(): void {
-    // No-op: pi manages its own session transcript, and shared memory reaches
-    // the agent through the composed CLAUDE.md/instructions injected by the
-    // nanoclaw-context extension. Codex/OpenCode make this a no-op too.
+  registerMemorySessionHook(): boolean {
+    // The hook is a Claude Code mechanism with no pi equivalent; returning
+    // false makes the runner deliver memory through the system prompt instead.
+    return false;
   }
 
   isSessionInvalid(err: unknown): boolean {

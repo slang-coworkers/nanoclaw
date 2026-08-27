@@ -25,8 +25,10 @@ interface AgentProvider {
    *  through raw. When false, the poll-loop formats them like any chat message. */
   readonly supportsNativeSlashCommands: boolean;
 
-  /** Register shared memory through the provider's native session-start mechanism. */
-  registerMemorySessionHook(hook: MemorySessionHookRegistration): void;
+  /** Register shared memory through the provider's native session-start
+   *  mechanism. Returns whether the provider has one; false makes the runner
+   *  deliver memory through the system prompt instead. */
+  registerMemorySessionHook(hook: MemorySessionHookRegistration): boolean;
 
   /** Optional. Called after each completed exchange so providers whose harness
    *  keeps no on-disk transcript can persist it themselves. Claude (the SDK
@@ -67,7 +69,9 @@ interface QueryInput {
   cwd: string;
 
   /** System context to inject; the provider translates it into whatever its
-   *  SDK expects (preset append, full system prompt, per-turn injection). */
+   *  SDK expects (preset append, full system prompt, per-turn injection).
+   *  `instructions` already includes the memory section when the provider has
+   *  no session-start hook — providers read `instructions` and nothing else. */
   systemContext?: { instructions?: string };
 }
 

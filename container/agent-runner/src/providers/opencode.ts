@@ -206,9 +206,11 @@ export class OpenCodeProvider implements AgentProvider {
     this.options = options;
   }
 
-  // OpenCode manages its own session memory; the shared session-start hook is a
-  // Claude-native mechanism and does not apply here.
-  registerMemorySessionHook(_hook: MemorySessionHookRegistration): void {}
+  // The hook is a Claude Code mechanism with no OpenCode equivalent; returning
+  // false makes the runner deliver memory through the system prompt instead.
+  registerMemorySessionHook(_hook: MemorySessionHookRegistration): boolean {
+    return false;
+  }
 
   isSessionInvalid(err: unknown): boolean {
     const msg = err instanceof Error ? err.message : String(err);

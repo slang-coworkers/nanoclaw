@@ -41,15 +41,23 @@ creates it and its `index.md`.
 
 ## How memory reaches the agent
 
-Whenever the provider creates a fresh context window (at startup, after a
-clear, and after compaction), a session-start hook injects `index.md` and
-`system/definition.md` into the agent's context. Resuming an existing session
-injects nothing, because that context already has them.
+Every provider receives `index.md` and `system/definition.md`, through one of
+two doors. The runner offers the hook first and reads back whether the provider
+took it, so a provider is never left with neither door.
 
-The hook lives in the agent-runner and is registered with whatever provider
-the group runs, so every provider gets the same behavior. For Claude it is
-wired through the Agent SDK; other providers wire it through their own
-session-start mechanism.
+**Session-start hook** (Claude Code). Whenever the provider creates a fresh
+context window — at startup, after a clear, and after compaction — the hook
+injects both files. Resuming an existing session injects nothing, because that
+context already has them. This is the better door: the files are re-read for
+every new context window, so a memory edit is visible in the next one.
+
+**System prompt** (codex, OpenCode, pi). These harnesses expose no
+session-start mechanism, so `registerMemorySessionHook` returns false and the
+runner appends the same section to the system-prompt addendum instead. The copy
+is taken when the turn's query opens rather than per context window, and the
+section says so, so the agent does not over-trust its freshness. A provider
+that later grows a session-start mechanism returns true and stops paying for
+the duplicate.
 
 Only those two files are injected, and each is capped at 16k characters (a
 truncation notice tells the agent to slim the file). For anything deeper, the
@@ -71,11 +79,11 @@ over untouched (see [provider-migration.md](provider-migration.md)).
 
 ## What goes where
 
-| Kind of information | Home |
-|---------------------|------|
-| Durable facts, people, projects, decisions | `memory/` |
+| Kind of information                           | Home                                       |
+| --------------------------------------------- | ------------------------------------------ |
+| Durable facts, people, projects, decisions    | `memory/`                                  |
 | Role, persona, standing behavior instructions | `/workspace/agent/instructions.prepend.md` |
-| Past session transcripts | `conversations/` in the workspace |
+| Past session transcripts                      | `conversations/` in the workspace          |
 
 ## Migrating older memory
 
