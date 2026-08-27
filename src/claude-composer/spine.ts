@@ -9,6 +9,7 @@ import path from 'path';
 
 import { readCoworkerTypes, readSkillCatalog } from './registry.js';
 import { injectOverlays, resolveCoworkerManifest } from './resolve.js';
+import { RUNTIME_CONTRACT_SECTION, renderRuntimeContract } from './runtime-contract.js';
 import type { CoworkerManifest, CoworkerTypeEntry, SkillMeta } from './types.js';
 import { COMPOSED_DOC_MARKER } from '../group-persona.js';
 
@@ -555,6 +556,11 @@ export function renderCoworkerSpine(
     manifest.customizations = manifest.customizations.filter((c) => c.kind !== 'overlay');
   }
 
+  // Both render paths get the contract: `main` is `flat: true` and returns
+  // early, so computing it here is what keeps the admin orchestrator from being
+  // the one coworker without it.
+  const contract = renderRuntimeContract(projectRoot);
+
   if (manifest.flat) {
     // Flat mode: emit identity (body file) + context fragments (skill
     // contributions via `context:` in their coworker-types.yaml), verbatim,
@@ -565,7 +571,13 @@ export function renderCoworkerSpine(
     // install. This is pure discovery — no project is hardcoded anywhere.
     // Adding a new project (e.g. container/spines/nv-graphics/ with
     // `project: graphics` in its yaml) automatically shows up here.
-    const bodies = [manifest.identity, ...manifest.context].map((b) => b.trim()).filter(Boolean);
+    // Flat bodies carry their own headings, so the contract joins them as a peer
+    // `##` section rather than nesting under a wrapper. It goes AFTER the
+    // identity body, not before it: in flat mode the identity carries the
+    // document's `# Title` (`main-body.md:1`), so leading with an `##` section
+    // would emit a subsection above the H1.
+    const contractBody = contract ? [`## ${RUNTIME_CONTRACT_SECTION}\n\n${contract}`] : [];
+    const bodies = [manifest.identity, ...contractBody, ...manifest.context].map((b) => b.trim()).filter(Boolean);
     if (coworkerType === 'main') {
       const projectsBlock = emitDiscoveredProjectFragments(types, projectRoot);
       if (projectsBlock) bodies.push(projectsBlock);
@@ -580,6 +592,15 @@ export function renderCoworkerSpine(
 
   const parts: string[] = [];
   parts.push(`# ${manifest.title}`);
+
+  // Before Identity, matching the §4.3 ownership table and upstream's composer:
+  // the contract states environment facts (where attachments land, where memory
+  // lives) that hold for every coworker, so they precede this type's own
+  // material rather than trailing it.
+  if (contract) {
+    parts.push(`## ${RUNTIME_CONTRACT_SECTION}`);
+    parts.push(contract);
+  }
 
   // Fragments are normalized to start at h3 so they nest correctly under
   // their ## h2 wrapper regardless of how they were authored. Without this,
