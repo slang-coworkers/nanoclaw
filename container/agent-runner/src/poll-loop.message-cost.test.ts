@@ -296,13 +296,29 @@ describe('#1327 — completeness gating of the aggregate fallback', () => {
     expect(H.getState().costSpentUsd).toBeCloseTo(9, 8);
   });
 
-  it('charges a residual for an unpriced model rather than silently dropping it', () => {
-    H.recordMessageCost(messageUsage('m1'));
-    H.recordMessageCost(messageUsage('m2', { model: 'some-unreleased-model' }));
-    // The unknown model falls back to the CONFIGURED model, which prices fine —
-    // so this turn is fully accounted and no residual is owed.
-    expect(H.getState().turnUnpricedCount).toBe(0);
+  it('does NOT silently reprice a named-but-unknown model at the configured rate', () => {
+    // A real, named model the rate table doesn't know (e.g. a newly-released,
+    // possibly pricier one). It must NOT be quietly billed at the configured
+    // model's (often cheaper) rate and marked fully accounted — that hides a
+    // real model at the wrong price. It's counted unpriced so the end-of-turn
+    // aggregate residual (from the SDK's own totalCostUsd) settles it correctly.
+    H.recordMessageCost(messageUsage('m1')); // configured MODEL → priced
+    H.recordMessageCost(messageUsage('m2', { model: 'some-unreleased-model' })); // present but unpriced
+    expect(H.getState().turnUnpricedCount).toBe(1);
+    expect(H.getState().costSpentUsd).toBeCloseTo(ONE_RESPONSE_USD, 8); // only m1 charged per-message
+
+    // The degraded aggregate fallback settles the residual for m2.
+    H.recordTurnCost(usage(ONE_RESPONSE_USD * 2));
     expect(H.getState().costSpentUsd).toBeCloseTo(ONE_RESPONSE_USD * 2, 8);
+  });
+
+  it('still falls back to the configured model when the event reports NO model', () => {
+    // event.model absent (undefined) is different: the provider didn't say what
+    // served the message, so the configured model is the best guess — the safe
+    // pre-#1327 fallback, preserved.
+    H.recordMessageCost(messageUsage('m1', { model: undefined }));
+    expect(H.getState().turnUnpricedCount).toBe(0);
+    expect(H.getState().costSpentUsd).toBeCloseTo(ONE_RESPONSE_USD, 8);
   });
 
   it('counts a message as unpriced only when NEITHER model has a rate, then settles the residual', () => {

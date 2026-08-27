@@ -647,12 +647,20 @@ function recordMessageCost(event: Extract<ProviderEvent, { type: 'message_usage'
         }
       : {}),
   };
-  // Price by the model that actually served THIS message (fallback model, a
-  // subagent on a cheaper model, …). Falling back to the configured model is
-  // what the pre-#1327 code did for the whole turn, so it can only be an
-  // improvement, never a regression.
-  let delta = priceUsage(event.model, usage);
-  if (delta <= 0) delta = priceUsage(getConfig().model, usage);
+  // Price by the model that actually served THIS message. Two DISTINCT cases,
+  // deliberately not collapsed:
+  //   - event.model ABSENT: the provider didn't say which model served the
+  //     message, so the configured model is the best available guess. This is
+  //     the pre-#1327 behavior and a safe fallback.
+  //   - event.model PRESENT but unpriced: a real, named model the rate table
+  //     doesn't know (e.g. a newly-released, possibly pricier model). Repricing
+  //     it at the CONFIGURED model's rate would silently bill a new model at an
+  //     old (often cheaper) rate AND mark the turn fully accounted, so the
+  //     aggregate residual never corrects it. Instead count it unpriced and let
+  //     recordTurnCost settle the residual from the SDK's own totalCostUsd,
+  //     which reflects the true rate.
+  const reportedModel = event.model?.trim();
+  const delta = priceUsage(reportedModel || getConfig().model, usage);
   if (delta <= 0) {
     const tokens = event.inputTokens + event.outputTokens + event.cacheCreationInputTokens + event.cacheReadInputTokens;
     // Zero-token messages price to $0 legitimately; only a message that billed
@@ -1772,6 +1780,13 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   let isFirstPoll = true;
   while (true) {
     if (config.signal?.aborted) return;
+    // Roll the immortal daily window on the poll tick itself, BEFORE the
+    // empty-batch and accumulate-only `continue`s below — otherwise a session
+    // that goes idle across a UTC midnight keeps publishing yesterday's
+    // dayKey/spentUsd/codexUsd in its DB row until the next real message
+    // happens to drive an accrual. Independent of codex scan health (unlike
+    // the fold-path rollover), so a scan that throws can't strand the day.
+    if (maybeRollDailyWindow()) persistCostCap();
     // Skip system messages — they're responses for MCP tools (e.g., ask_user_question)
     const messages = getPendingMessages(isFirstPoll).filter((m) => m.kind !== 'system');
     isFirstPoll = false;
