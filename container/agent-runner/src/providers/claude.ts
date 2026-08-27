@@ -766,13 +766,21 @@ export class ClaudeProvider implements AgentProvider {
     }
     if (!reason) return null;
 
-    // Preserve a readable summary, then move the heavy .jsonl out of the
-    // resume path so the SDK starts a fresh session and the disk is reclaimed.
-    archiveTranscriptFile(transcriptPath, continuation, this.assistantName);
+    // Preserve a readable summary, then drop the heavy .jsonl out of the resume
+    // path so the SDK starts a fresh session. Delete it once archiving
+    // succeeded: renaming aside only hides the bytes, so a long-lived hub that
+    // repeatedly crosses the rotation threshold accumulates `.rotated-*` files
+    // without bound. Keep the raw file when archiving failed — unrecoverable
+    // history is worth the disk.
+    const archived = archiveTranscriptFile(transcriptPath, continuation, this.assistantName);
     try {
-      fs.renameSync(transcriptPath, `${transcriptPath}.rotated-${Date.now()}`);
+      if (archived) {
+        fs.rmSync(transcriptPath);
+      } else {
+        fs.renameSync(transcriptPath, `${transcriptPath}.rotated-${Date.now()}`);
+      }
     } catch (err) {
-      log(`Failed to move rotated transcript aside: ${err instanceof Error ? err.message : String(err)}`);
+      log(`Failed to reclaim rotated transcript: ${err instanceof Error ? err.message : String(err)}`);
     }
     return reason;
   }
