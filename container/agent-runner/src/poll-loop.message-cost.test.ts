@@ -569,6 +569,26 @@ describe('#1327 — codex MCP-tool spend folded into the cap', () => {
     expect(escalations('ceiling')).toHaveLength(1);
   });
 
+  it('a UTC-day rollover rescopes the published codex figure but NOT the ledger', () => {
+    seed({ costImmortal: true, costWindow: 'daily', costDayKey: D_TODAY });
+    writeRollout(D_TODAY, 'aaa', [{ ts: `${D_TODAY}T10:00:00.000Z`, input: 1_000_000 }]);
+    H.foldCodexCost();
+    expect(H.getState().codexUsdCharged).toBeCloseTo(5, 6);
+    const ledgerBefore = { ...H.getState().codexLedger };
+
+    // Backdate the day bucket to force a rollover on the next accrual.
+    H.setState({ costDayKey: '2000-01-01' });
+    H.recordMessageCost(messageUsage('m-after-rollover'));
+
+    const s = H.getState();
+    expect(s.costDayKey).toBe(D_TODAY);
+    expect(s.codexUsdCharged).toBe(0); // display figure is day-scoped
+    expect(s.codexLedger).toEqual(ledgerBefore); // watermarks are NOT — they fence double-charging
+    // …and the already-charged rollout is not charged a second time.
+    H.foldCodexCost();
+    expect(H.getState().codexUsdCharged).toBe(0);
+  });
+
   it('does nothing when cost tracking is off', () => {
     seed({ costEnabled: false });
     writeRollout(D_TODAY, 'aaa', [{ ts: `${D_TODAY}T10:00:00.000Z`, input: 1_000_000 }]);

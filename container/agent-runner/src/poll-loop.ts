@@ -482,6 +482,11 @@ function maybeRollDailyWindow(): void {
   // New day → back to the p90/day allotment; a prior day's 'continue' raise
   // does not carry over (the bound is per-day).
   costCapUsd = costAllotmentUsd;
+  // The published codex figure is day-scoped for a daily window, matching what
+  // initCostTracking does when it adopts a stale dayKey. Display only — the
+  // per-(file, day) ledger is what actually fences double-charging, and it is
+  // deliberately NOT reset here.
+  codexUsdCharged = 0;
 }
 
 /**
