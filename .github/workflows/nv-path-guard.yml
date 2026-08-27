@@ -36,4 +36,10 @@ jobs:
         env:
           BASE: ${{ github.base_ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: python3 .github/nv-path-guard/check.py "$BASE" "$HEAD_SHA"
+          HEAD_REF: ${{ github.head_ref }}
+        # nv-main must be local: the sync-branch exemption compares each unowned
+        # file's blob against it, and a missing ref would make every comparison
+        # answer "differs" and fail a legitimate sync PR.
+        run: |
+          git fetch --no-tags --quiet origin '+refs/heads/nv-main:refs/remotes/origin/nv-main' || true
+          python3 .github/nv-path-guard/check.py "$BASE" "$HEAD_SHA"
