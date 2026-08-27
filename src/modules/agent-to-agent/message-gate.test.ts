@@ -3,7 +3,7 @@ import fs from 'fs';
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 
 import './guard.js'; // register the a2a.send catalog entry (incl. the policy hold)
-import { routeAgentMessage } from './agent-route.js';
+import { ensureA2aWiring, routeAgentMessage } from './agent-route.js';
 import { createDestination, deleteDestination, deleteAllDestinationsTouching } from './db/agent-destinations.js';
 import { getMessagePolicy, removeMessagePolicy, setMessagePolicy } from './db/agent-message-policies.js';
 import { applyA2aMessageGate } from './message-gate.js';
@@ -12,8 +12,18 @@ import { getDb } from '../../db/connection.js';
 import { createPendingApproval, createSession, deletePendingApproval, getPendingApproval } from '../../db/sessions.js';
 import { requestApproval } from '../approvals/index.js';
 import { inboundDbPath } from '../../mailbox/sqlite/paths.js';
-import { initSessionFolder } from '../../session-manager.js';
+import { initSessionFolder, resolveSession } from '../../session-manager.js';
 import type { PendingApproval, Session } from '../../types.js';
+
+// The fork's layered routing delivers a fresh peer send into a per-source a2a
+// session (ensureA2aWiring(target, source) → resolveSession), NOT an arbitrary
+// pre-existing session of the target. Both calls are idempotent, so this
+// returns the exact session routeAgentMessage delivered into. (threadId null:
+// no msg.thread_id and the sender session's thread_id is null.)
+async function deliveredSessionId(target: string, source: string): Promise<string> {
+  const mgId = await ensureA2aWiring(target, source);
+  return (await resolveSession(target, mgId, null, 'shared')).session.id;
+}
 
 vi.mock('../../container-runner.js', () => ({
   wakeContainer: vi.fn().mockResolvedValue(undefined),
@@ -150,7 +160,7 @@ describe('agent message policies', () => {
       { id: 'm1', platform_id: B, content: JSON.stringify({ text: 'hi B' }), in_reply_to: null },
       SA,
     );
-    expect(readInbound(B, SB.id)).toHaveLength(1);
+    expect(readInbound(B, await deliveredSessionId(B, A))).toHaveLength(1);
     expect(requestApproval).not.toHaveBeenCalled();
   });
 
@@ -180,7 +190,7 @@ describe('agent message policies', () => {
       SA,
     );
     expect(requestApproval).not.toHaveBeenCalled();
-    expect(readInbound(A, SA.id)).toHaveLength(1);
+    expect(readInbound(A, await deliveredSessionId(A, A))).toHaveLength(1);
   });
 
   it('ghost policy (policy row, no destination row) still denies — deny beats the policy hold', async () => {
@@ -204,7 +214,7 @@ describe('agent message policies', () => {
     const notify = vi.fn();
     await applyA2aMessageGate({ session: SA, userId: 'telegram:dana', notify, payload, approval });
 
-    const bRows = readInbound(B, SB.id);
+    const bRows = readInbound(B, await deliveredSessionId(B, A));
     expect(bRows).toHaveLength(1);
     expect(JSON.parse(bRows[0].content).text).toBe('approved!');
     expect(notify).not.toHaveBeenCalled();

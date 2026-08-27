@@ -61,6 +61,17 @@ function deliveredTexts(): string[] {
   return getUndeliveredMessages().map((m) => (JSON.parse(m.content) as { text: string }).text);
 }
 
+// A turn that delivers nothing emits this durable user-facing notice
+// (SILENT_TURN_NOTICE in poll-loop.ts) so the thread reports the failure rather
+// than just stopping. It postdates the two <internal> cases below, which were
+// written when an empty turn produced no row at all and so spelled "the quoted
+// block was not delivered" as `toEqual([])`. Naming the notice keeps those
+// assertions exact — a leak of the withheld body still fails — where a bare
+// `toEqual([])` could no longer tell the two apart.
+const SILENT_TURN_NOTICE =
+  'The agent finished its turn without producing any output, so there is nothing to deliver. ' +
+  'Your message was not answered — please re-send it.';
+
 describe('mid-turn <internal> exclusion', () => {
   it('never delivers a block quoted inside an <internal> span', async () => {
     seedDest();
@@ -76,7 +87,9 @@ describe('mid-turn <internal> exclusion', () => {
 
     await processQuery(query, CHAT_ROUTING, ['m1'], 'claude', undefined, 'prompt', undefined, true);
 
-    expect(deliveredTexts()).toEqual([]);
+    // The quoted draft never reaches a destination; the turn therefore delivered
+    // nothing, and the silent-turn notice is the only row.
+    expect(deliveredTexts()).toEqual([SILENT_TURN_NOTICE]);
   });
 
   it('excludes internal spans that carry attributes, in any case', async () => {
@@ -93,7 +106,7 @@ describe('mid-turn <internal> exclusion', () => {
 
     await processQuery(query, CHAT_ROUTING, ['m1'], 'claude', undefined, 'prompt', undefined, true);
 
-    expect(deliveredTexts()).toEqual([]);
+    expect(deliveredTexts()).toEqual([SILENT_TURN_NOTICE]);
   });
 
   it('delivers a real block that shares its text segment with an internal draft', async () => {

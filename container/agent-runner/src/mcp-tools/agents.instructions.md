@@ -1,10 +1,12 @@
 ## Companion and collaborator agents (`create_agent`)
 
-`mcp__nanoclaw__create_agent({ name, instructions })` spins up a new long-lived agent and wires it as a destination — bidirectional, so you can send it tasks and it can message you back.
+`mcp__nanoclaw__create_agent({ name, coworkerType, instructions, overlays })` spins up a new long-lived agent and wires it as a destination — bidirectional, so you can send it tasks and it can message you back.
+
+**Always pass `coworkerType`.** It determines the agent's skills, MCP tool allowlist, and workflows. Omitting it falls back to `default` (base spine only) — rarely what you want. Ask the user which type to use when it isn't obvious from the task; available types are assembled from `container/{spines,skills}/*/coworker-types.yaml` files.
 
 ### How it works
 
-- Creates a new agent with its own container, workspace, and session. Your `instructions` string becomes its `instructions.prepend.md` — its standing role and personality.
+- Creates a new agent with its own container, workspace, and session. Your `instructions` string is written to the agent's `.instructions.md`, which the composer appends after its typed spine on every container wake — its starting role and domain-specific rules.
 - The agent's `name` becomes a destination on both sides: you address it via `send_message({ to: "<name>", ... })`, and its replies arrive as inbound messages with `from="<name>"`.
 - Each agent has its own persistent workspace under `groups/<folder>/` — memory, conversation history, and notes all survive across sessions. This is a full standalone agent, not a stateless sub-query.
 - **Fire-and-forget:** the call returns immediately without waiting for the agent to confirm it's ready. Messages you send will queue until it's up.
@@ -23,4 +25,8 @@ The right frame is: does this agent need its own memory and context that builds 
 
 ### Writing good `instructions`
 
-Cover: the agent's role, who it takes tasks from (you, by name), how it should report back (on completion only? with milestones for long work?), and any domain-specific rules. Don't restate NanoClaw base behavior — the shared base is already loaded on the agent's end.
+Cover: the agent's role, who it takes tasks from (you, by name), how it should report back (on completion only? with milestones for long work?), and any domain-specific rules. Don't restate NanoClaw base behavior or the coworker type's skills — the shared base and typed spine are already loaded on the agent's end.
+
+### PR creation callback
+
+When you create a GitHub PR as part of a delegated task, immediately call `report_pr_created(repo="owner/name", pr_number=N)`. This registers a mapping so that webhook events for the PR (review comments, CI results) route to your session — without it, webhooks create an orphan session keyed on the PR number instead of reaching you.

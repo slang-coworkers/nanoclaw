@@ -78,6 +78,16 @@ export function sqliteMarkFailed(id: string): void {
   mark([id], 'failed');
 }
 
+/**
+ * a2a bounce statuses are distinct ack values the HOST redrive sweep matches on
+ * (see markBounced in ../../db/messages-in.ts). They must reach processing_ack
+ * verbatim — collapsing them into 'failed' or 'script-skip:error' makes the
+ * trigger row look consumed and permanently drops the un-actioned handoff.
+ */
+export function sqliteMarkBounced(ids: string[], status: 'bounced-transient' | 'bounced-unknown'): void {
+  mark(ids, status);
+}
+
 export function sqliteMarkScriptSkipped(skips: Array<{ id: string; reason: string }>): void {
   if (skips.length === 0) return;
   const db = getOutboundDb();
@@ -98,6 +108,149 @@ export function sqliteGetMessageIn(id: string): MessageInRow | undefined {
   } finally {
     inbound.close();
   }
+}
+
+export function sqliteGetMessageInBySeq(sequence: number): MessageInRow | undefined {
+  // Guard lives here, not at the caller: seq is agent-supplied (the
+  // `<message id="120">` integer echoed back through in_reply_to), so a
+  // non-integer must never reach SQL.
+  if (!Number.isInteger(sequence) || sequence <= 0) return undefined;
+  const inbound = openInboundDb();
+  try {
+    return inbound.prepare('SELECT * FROM messages_in WHERE seq = ?').get(sequence) as MessageInRow | undefined;
+  } finally {
+    inbound.close();
+  }
+}
+
+export function sqliteHasInboundFromThread(channelType: string, platformId: string, threadId: string): boolean {
+  const inbound = openInboundDb();
+  try {
+    const result = inbound
+      .prepare(
+        `SELECT COUNT(*) AS n FROM messages_in
+          WHERE channel_type = ? AND platform_id = ? AND thread_id = ?`,
+      )
+      .get(channelType, platformId, threadId) as { n: number } | undefined;
+    return (result?.n ?? 0) > 0;
+  } finally {
+    inbound.close();
+  }
+}
+
+export function sqliteGetUnrespondedInboundsFromThread(
+  channelType: string,
+  platformId: string,
+  threadId: string,
+): MessageInRow[] {
+  // One inbound fetch plus a prepared "is this responded" statement reused over
+  // the small candidate set. Deliberately NOT a JOIN: inbound and outbound are
+  // separate DB files, and ATTACH does not work across the `:memory:`
+  // connections the tests use — a cross-DB query would pass in production and
+  // fail under test.
+  const inbound = openInboundDb();
+  try {
+    const rows = inbound
+      .prepare(
+        `SELECT * FROM messages_in
+          WHERE channel_type = ? AND platform_id = ? AND thread_id = ?
+          ORDER BY seq DESC`,
+      )
+      .all(channelType, platformId, threadId) as MessageInRow[];
+    if (rows.length === 0) return [];
+    const isResponded = getOutboundDb().prepare('SELECT 1 AS r FROM messages_out WHERE in_reply_to = ? LIMIT 1');
+    return rows.filter((row) => !isResponded.get(row.id));
+  } finally {
+    inbound.close();
+  }
+}
+
+export function sqliteOutboundWatermark(): number {
+  const row = getOutboundDb().prepare('SELECT COALESCE(MAX(seq), 0) AS m FROM messages_out').get() as
+    | { m: number }
+    | undefined;
+  return row?.m ?? 0;
+}
+
+export function sqliteHasOutboundToThread(channelType: string, platformId: string, threadId: string): boolean {
+  const result = getOutboundDb()
+    .prepare(
+      `SELECT COUNT(*) AS n FROM messages_out
+        WHERE channel_type = ? AND platform_id = ? AND thread_id = ?`,
+    )
+    .get(channelType, platformId, threadId) as { n: number } | undefined;
+  return (result?.n ?? 0) > 0;
+}
+
+export function sqliteHasIdenticalSend(platformId: string, channelType: string, text: string): boolean {
+  const row = getOutboundDb()
+    .prepare(
+      `SELECT 1 FROM messages_out
+        WHERE platform_id = $platform_id AND channel_type = $channel_type
+          AND (in_reply_to IS NULL OR in_reply_to = '')
+          AND json_extract(content, '$.text') = $text
+        LIMIT 1`,
+    )
+    .get({ $platform_id: platformId, $channel_type: channelType, $text: text });
+  return row != null;
+}
+
+/**
+ * One transaction for a cost-ceiling adjustment: cap + receipt + ack.
+ *
+ * The seq computation mirrors `sqliteWriteMessageOut`, inlined deliberately
+ * rather than called: that function opens its own BEGIN IMMEDIATE/COMMIT, and
+ * nesting a second transaction inside this one is avoidable risk for no gain.
+ * Keeping both here means the odd-seq invariant (container writes odd, spanning
+ * both tables) is visible in one file if either changes.
+ */
+export function sqliteCommitCostCeilingAdjustment(params: {
+  inboundMessageId: string;
+  receiptId: string;
+  receiptContent: string;
+  costCapKey?: string;
+  costCapValue?: string;
+}): void {
+  const outbound = getOutboundDb();
+  const inbound = getInboundDb();
+  outbound.transaction(() => {
+    if (params.costCapKey !== undefined && params.costCapValue !== undefined) {
+      outbound
+        .prepare('INSERT OR REPLACE INTO session_state (key, value, updated_at) VALUES (?, ?, ?)')
+        .run(params.costCapKey, params.costCapValue, new Date().toISOString());
+    }
+
+    const maxOut = (
+      outbound.prepare('SELECT COALESCE(MAX(seq), 0) AS value FROM messages_out').get() as {
+        value: number;
+      }
+    ).value;
+    const maxIn = (
+      inbound.prepare('SELECT COALESCE(MAX(seq), 0) AS value FROM messages_in').get() as {
+        value: number;
+      }
+    ).value;
+    const max = Math.max(maxOut, maxIn);
+    const nextSeq = max % 2 === 0 ? max + 1 : max + 2;
+
+    outbound
+      .prepare(
+        `INSERT INTO messages_out (id, seq, in_reply_to, timestamp, deliver_after, recurrence, kind, platform_id, channel_type, thread_id, content)
+         VALUES ($id, $seq, NULL, $timestamp, NULL, NULL, 'system', NULL, NULL, NULL, $content)`,
+      )
+      .run({
+        $id: params.receiptId,
+        $seq: nextSeq,
+        $timestamp: new Date().toISOString(),
+        $content: params.receiptContent,
+      });
+
+    outbound
+      .prepare(
+        "INSERT OR REPLACE INTO processing_ack (message_id, status, status_changed) VALUES ($id, 'completed', $ts)",
+      )
+      .run({ $id: params.inboundMessageId, $ts: new Date().toISOString() });
+  })();
 }
 
 export function sqliteFindQuestionResponse(questionId: string): MessageInRow | undefined {

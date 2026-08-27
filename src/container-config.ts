@@ -11,8 +11,9 @@
 import fs from 'fs';
 import path from 'path';
 
-import { GROUPS_DIR, TIMEZONE } from './config.js';
+import { DATA_DIR, GROUPS_DIR, TIMEZONE } from './config.js';
 import { getContainerConfig } from './db/container-configs.js';
+import { getCostCapPolicy } from './db/cost-cap-policy.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { isValidTimezone } from './timezone.js';
 import { log } from './log.js';
@@ -252,6 +253,129 @@ export interface ContainerConfig {
   timezone?: string;
   /** Session isolation tier for the group's containers; absent = the composer's default ('container'). */
   runtimeTier?: 'container' | 'vm';
+  /**
+   * Immortality (NanoClaw #1 cost cap): orchestrator / admin groups escalate
+   * for cost-cap visibility only and are never quiesced. Derived from an
+   * authoritative host field so a renamed orchestrator keeps its exemption.
+   */
+  immortal?: boolean;
+  /**
+   * Per-session soft cost cap (USD) — Tier 1. Precedence: a per-group DB override
+   * (`ncl cost-cap set --cap … --group <folder>`) → env `NANOCLAW_COST_T2_USD` →
+   * the group's OWN 7-day p90 in `data/cost-thresholds.json` `perGroupP90Usd[folder]`
+   * → fleet `p90Usd` → a conservative $100 default. Materialized for ALL groups.
+   * See `resolveCostCapT2Usd`.
+   */
+  costCapT2Usd?: number;
+  /**
+   * Tier-2 hard ceiling (USD). A non-immortal session that reaches it hard-stops;
+   * immortal groups re-escalate for visibility only (never blocked). Precedence: a
+   * per-group DB override → the fleet DB ceiling (both set via `ncl cost-cap set`)
+   * → env `NANOCLAW_COST_T2_CEILING_USD`; 0/absent = no ceiling. See
+   * `resolveCostCeilingT2Usd`.
+   */
+  costCeilingT2Usd?: number;
+}
+
+/**
+ * Conservative fallback per-session cost cap (USD) when neither the env
+ * override nor the dashboard's computed p90 threshold is available.
+ */
+const DEFAULT_COST_CAP_T2_USD = 100;
+
+/**
+ * Absolute floor for the auto-sourced cap (USD). A brand-new agent group (or one
+ * with no priced sessions in the window) has no per-group and possibly no fleet
+ * p90 — without a floor its cap could resolve to ~$0 and escalate on the first
+ * turn. The floor guarantees every group escalates somewhere sane. Not applied to
+ * an explicit NANOCLAW_COST_T2_USD operator override (that wins outright).
+ */
+const MIN_COST_CAP_T2_USD = 10;
+
+/**
+ * Resolve the per-session cost cap (USD) materialized into every group's
+ * container.json (NanoClaw #1 cost cap v2).
+ *
+ * Precedence:
+ *   0. cost_cap_policy DB per-group `cap_usd` — the operator override set at
+ *      runtime via `ncl cost-cap set --cap … --group <folder>`. Highest priority,
+ *      wins outright and unfloored (same class as the env override).
+ *   1. NANOCLAW_COST_T2_USD env — explicit operator override, wins outright.
+ *   2. data/cost-thresholds.json `perGroupP90Usd[folder]` — the group's OWN p90.
+ *      A fleet number under-serves expensive groups (fixer p90 ~$91) and
+ *      over-caps cheap ones (reviewer ~$12), so per-group wins when present.
+ *   3. data/cost-thresholds.json `p90Usd` — fleet p90 fallback (group too new to
+ *      have its own priced sample yet).
+ *   4. DEFAULT_COST_CAP_T2_USD ($100) — conservative fallback.
+ *
+ * The auto-sourced tail (2–4) is floored at MIN_COST_CAP_T2_USD; the two explicit
+ * operator overrides (0, 1) bypass the floor.
+ *
+ * Fail-soft: an uninitialized DB, a missing table, or a missing/unreadable/
+ * malformed/non-positive thresholds file falls through to the next source rather
+ * than throwing or disabling the cap.
+ */
+export async function resolveCostCapT2Usd(groupFolder?: string): Promise<number> {
+  // 0. Runtime DB per-group override — an explicit operator decision; wins
+  //    outright and unfloored, exactly like the env override below.
+  if (groupFolder) {
+    const dbCap = (await getCostCapPolicy(groupFolder))?.cap_usd;
+    if (typeof dbCap === 'number' && Number.isFinite(dbCap) && dbCap > 0) return dbCap;
+  }
+
+  const env = Number(process.env.NANOCLAW_COST_T2_USD);
+  if (Number.isFinite(env) && env > 0) return env;
+
+  let cap = DEFAULT_COST_CAP_T2_USD;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'cost-thresholds.json'), 'utf8')) as {
+      p90Usd?: unknown;
+      perGroupP90Usd?: Record<string, unknown>;
+    };
+    const g =
+      groupFolder && parsed.perGroupP90Usd && typeof parsed.perGroupP90Usd === 'object'
+        ? Number(parsed.perGroupP90Usd[groupFolder])
+        : NaN;
+    if (Number.isFinite(g) && g > 0) {
+      cap = g;
+    } else {
+      const p90 = Number(parsed.p90Usd);
+      if (Number.isFinite(p90) && p90 > 0) cap = p90;
+    }
+  } catch {
+    // Fail-soft — missing/corrupt thresholds file falls through to the default.
+  }
+  // Floor the auto-sourced value so a new/zero-p90 group never caps near $0.
+  return Math.max(MIN_COST_CAP_T2_USD, cap);
+}
+
+/**
+ * Resolve the Tier-2 hard ceiling (USD) materialized into every container.json.
+ *
+ * Precedence:
+ *   0. cost_cap_policy DB per-group `ceiling_usd` (`ncl cost-cap set --ceiling …
+ *      --group <folder>`) — a per-group override, when present.
+ *   1. cost_cap_policy DB fleet `ceiling_usd` (`ncl cost-cap set --ceiling …`) —
+ *      the runtime operator ceiling.
+ *   2. NANOCLAW_COST_T2_CEILING_USD env — the back-compat fallback.
+ *   3. 0 — no ceiling (opt-in: an install with none keeps escalate-only behavior).
+ *
+ * A stored DB value wins over the env var, INCLUDING 0 (an explicit "no ceiling"
+ * that overrides an env-configured ceiling). NULL/absent in the DB falls through.
+ * `ncl cost-cap clear` removes a DB row to restore the env fallback. DB reads are
+ * fail-soft (uninitialized DB / missing table → skip).
+ */
+export async function resolveCostCeilingT2Usd(groupFolder?: string): Promise<number> {
+  if (groupFolder) {
+    const g = (await getCostCapPolicy(groupFolder))?.ceiling_usd;
+    if (typeof g === 'number' && Number.isFinite(g) && g >= 0) return g;
+  }
+  const fleet = (await getCostCapPolicy())?.ceiling_usd;
+  if (typeof fleet === 'number' && Number.isFinite(fleet) && fleet >= 0) return fleet;
+
+  const env = Number(process.env.NANOCLAW_COST_T2_CEILING_USD);
+  if (Number.isFinite(env) && env > 0) return env;
+  return 0;
 }
 
 /**
@@ -352,8 +476,28 @@ export function parseSkillSelection(raw: string | undefined, groupName: string):
   return 'all';
 }
 
+/**
+ * The AUTHORITATIVE immortality check — the admin group (`is_admin`) or the
+ * orchestrator coworker type ('main'), read from central-DB fields only.
+ * Deliberately independent of anything a runner self-reports: a container
+ * that claims `immortal:true` in its own live state is not proof of
+ * anything — this is the check every host-side money-safety decision that
+ * depends on immortality (the cost-cap materialization below, and NanoClaw
+ * #1 "set ceiling v2"'s live-control submission gate in
+ * `src/modules/cost-ceiling-adjustment/index.ts`) must use instead of
+ * trusting the runner's own claim.
+ */
+export function isImmortalGroup(group: Pick<AgentGroup, 'is_admin' | 'coworker_type'>): boolean {
+  return group.is_admin === 1 || group.coworker_type === 'main';
+}
+
 /** Build a `ContainerConfig` from a DB row + agent group identity. */
-export function configFromDb(row: ContainerConfigRow, group: AgentGroup): ContainerConfig {
+export async function configFromDb(row: ContainerConfigRow, group: AgentGroup): Promise<ContainerConfig> {
+  // NanoClaw #1 cost cap. The cap value (v2) auto-sources the fleet-wide p90
+  // threshold and is emitted for ALL groups so every session carries a cap.
+  const immortal = isImmortalGroup(group);
+  const costCapT2Usd = await resolveCostCapT2Usd(group.folder);
+  const costCeilingT2Usd = await resolveCostCeilingT2Usd(group.folder);
   return {
     mcpServers: sanitizeStoredMcpServers(JSON.parse(row.mcp_servers), group.name),
     packages: {
@@ -372,6 +516,9 @@ export function configFromDb(row: ContainerConfigRow, group: AgentGroup): Contai
     effort: row.effort ?? undefined,
     timezone: row.timezone && isValidTimezone(row.timezone) ? row.timezone : undefined,
     runtimeTier: parseRuntimeTier(row.runtime_tier, group.name),
+    immortal,
+    costCapT2Usd,
+    costCeilingT2Usd,
   };
 }
 
@@ -387,7 +534,7 @@ export async function materializeContainerJson(agentGroupId: string): Promise<Co
   const row = await getContainerConfig(agentGroupId);
   if (!row) throw new Error(`Container config not found for agent group: ${agentGroupId}`);
 
-  const config = configFromDb(row, group);
+  const config = await configFromDb(row, group);
 
   const p = path.join(GROUPS_DIR, group.folder, 'container.json');
   const dir = path.dirname(p);

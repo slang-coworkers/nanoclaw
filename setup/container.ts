@@ -155,7 +155,7 @@ function imageDigest(image: string, expectRepo?: string): string {
 
 /**
  * What the image must satisfy for a spawn to work, mirroring what
- * `buildContainerArgs` produces: `--entrypoint bash`, an arbitrary uid on
+ * the session spec and its Docker realization produce: `--entrypoint bash`, an arbitrary uid on
  * macOS, HOME forced to /home/node. The caller pre-creates /workspace/group in
  * the scratch mount the way the host owns a real session dir, so this asserts
  * the image can use it, not that the daemon can conjure it.
@@ -236,17 +236,15 @@ export async function run(args: string[]): Promise<void> {
       }
 
       log.info('Re-executing container step under `sg docker`');
-      const res = spawnSync(
-        'sg',
-        ['docker', '-c', 'pnpm exec tsx setup/index.ts --step container'],
-        { cwd: projectRoot, stdio: 'inherit' },
-      );
+      const res = spawnSync('sg', ['docker', '-c', 'pnpm exec tsx setup/index.ts --step container'], {
+        cwd: projectRoot,
+        stdio: 'inherit',
+      });
       process.exit(res.status ?? 1);
     }
 
     if (status !== 'ok') {
-      const error =
-        status === 'no-permission' ? 'docker_group_not_active' : 'runtime_not_available';
+      const error = status === 'no-permission' ? 'docker_group_not_active' : 'runtime_not_available';
       emitStatus('SETUP_CONTAINER', {
         RUNTIME: runtime,
         IMAGE: image,
@@ -263,16 +261,27 @@ export async function run(args: string[]): Promise<void> {
   const buildCmd = 'docker build';
   const runCmd = 'docker';
 
-  // Build-args from .env. Only INSTALL_CJK_FONTS is passed through today.
+  // Build-args from .env: INSTALL_CJK_FONTS and ENABLE_GPU are passed through.
   // Keeps /setup and ./container/build.sh in sync — both read the same source.
+  // Without this, ENABLE_GPU=1 in .env is silently dropped on setup/update-
+  // driven rebuilds (only ./container/build.sh honored it), so the GPU image
+  // layers (CUDA/Vulkan loader + GLVND) never get built and the NVIDIA driver
+  // injected at runtime has no loader to dispatch through.
   const buildArgs: string[] = [];
   try {
     const fs = await import('fs');
     const envPath = path.join(projectRoot, '.env');
     if (fs.existsSync(envPath)) {
-      const match = fs.readFileSync(envPath, 'utf-8').match(/^INSTALL_CJK_FONTS=(.+)$/m);
-      const val = match?.[1].trim().replace(/^["']|["']$/g, '').toLowerCase();
-      if (val === 'true') buildArgs.push('--build-arg INSTALL_CJK_FONTS=true');
+      const env = fs.readFileSync(envPath, 'utf-8');
+      const normalize = (pattern: RegExp): string | undefined =>
+        env
+          .match(pattern)?.[1]
+          .trim()
+          .replace(/^["']|["']$/g, '')
+          .toLowerCase();
+      if (normalize(/^INSTALL_CJK_FONTS=(.+)$/m) === 'true') buildArgs.push('--build-arg INSTALL_CJK_FONTS=true');
+      const gpu = normalize(/^ENABLE_GPU=(.+)$/m);
+      if (gpu === '1' || gpu === 'true') buildArgs.push('--build-arg ENABLE_GPU=1');
     }
   } catch {
     // .env is optional; absence is normal on a fresh checkout
@@ -282,10 +291,7 @@ export async function run(args: string[]): Promise<void> {
   // `image`, so everything past this point is identical either way. The other
   // rebuild paths refuse when this is set, because `docker build -t <slug>:latest`
   // would replace the pinned image in place with nothing downstream able to tell.
-  const source =
-    readSetting(projectRoot, 'NANOCLAW_HARDENED_IMAGE')?.toLowerCase() === 'true'
-      ? 'pull'
-      : 'build';
+  const source = readSetting(projectRoot, 'NANOCLAW_HARDENED_IMAGE')?.toLowerCase() === 'true' ? 'pull' : 'build';
 
   // Build — stdio inherit so the parent setup runner can tail docker's
   // per-step output and render it in a rolling window. Previously we used
@@ -306,7 +312,10 @@ export async function run(args: string[]): Promise<void> {
       // The pinned ref names the repository we pulled from; pass it so the
       // reported digest is that repository's and not some other one the same
       // bytes also live in.
-      digest = imageDigest(image, readSetting(projectRoot, 'NANOCLAW_AGENT_IMAGE_REF')?.split('@')[0] ?? pinnedRepo(projectRoot));
+      digest = imageDigest(
+        image,
+        readSetting(projectRoot, 'NANOCLAW_AGENT_IMAGE_REF')?.split('@')[0] ?? pinnedRepo(projectRoot),
+      );
       log.info('Container image acquired', { image, digest });
 
       // Retagging the slug tag does nothing for an agent group pinned to its
@@ -317,7 +326,7 @@ export async function run(args: string[]): Promise<void> {
       // reconcile can't stop an install that already has its image.
       try {
         const { reconcileDerivedImages } = await import('./registry-reconcile.js');
-        const reconciled = reconcileDerivedImages();
+        const reconciled = await reconcileDerivedImages();
         log.info('Derived agent-group images reconciled', {
           cleared: reconciled.cleared.length,
           removed: reconciled.removed.length,
@@ -340,13 +349,7 @@ export async function run(args: string[]): Promise<void> {
     log.info('Building container', { runtime, buildArgs });
     const buildRes = spawnSync(
       buildCmd.split(' ')[0],
-      [
-        ...buildCmd.split(' ').slice(1),
-        ...buildArgs.flatMap((a) => a.split(' ')),
-        '-t',
-        image,
-        '.',
-      ],
+      [...buildCmd.split(' ').slice(1), ...buildArgs.flatMap((a) => a.split(' ')), '-t', image, '.'],
       {
         cwd: path.join(projectRoot, 'container'),
         stdio: 'inherit',

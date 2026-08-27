@@ -764,6 +764,11 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
       const tid = threadId ?? platformId;
       const content = message.content as Record<string, unknown>;
 
+      if (content.operation === 'reaction' && content.messageId && content.emoji) {
+        await adapter.addReaction(tid, content.messageId as string, content.emoji as string);
+        return;
+      }
+
       if (content.operation === 'edit' && content.messageId) {
         const terminalCard = content.terminalCard as Partial<TerminalApprovalCard> | undefined;
         if (
@@ -782,11 +787,6 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
             markdown: transformText((content.text as string) || (content.markdown as string) || ''),
           });
         }
-        return;
-      }
-
-      if (content.operation === 'reaction' && content.messageId && content.emoji) {
-        await adapter.addReaction(tid, content.messageId as string, content.emoji as string);
         return;
       }
 

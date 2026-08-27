@@ -27,6 +27,35 @@ let _outbound: Database | null = null;
 let _testMode = false;
 
 /**
+ * Refuse to touch the live session DBs from a test process.
+ *
+ * `bun test` runs INSIDE an agent container, where /workspace/outbound.db is a
+ * real, writable, mounted session DB. `_testMode` only ever gated
+ * `openInboundDb`, and the inbound singleton at least opens read-only — but
+ * `getOutboundDb` opened production for WRITING with no guard at all. Any test
+ * that reached it before `initTestSessionDb()`, or after a `closeSessionDb()`
+ * teardown nulled the singletons, wrote its fixtures into a live session.
+ *
+ * That is not hypothetical. `integration.test.ts` seeds a `discord` /
+ * `chan-1` destination; those rows reached a production session DB and the
+ * orchestrator then tried to redeliver a message to a destination that exists
+ * nowhere in the install, once every couple of minutes for hours.
+ *
+ * Fail closed and loudly: a test that wants session DBs must call
+ * `initTestSessionDb()`. Silently opening production is never the safer
+ * default, and the host-side twin of this bug (register.ts writing the live
+ * data/v2.db) proves the pattern repeats when the guard is per-call-site
+ * instead of at the boundary.
+ */
+function assertNotProductionUnderTest(which: string): void {
+  if (process.env.NODE_ENV !== 'test' || _testMode) return;
+  throw new Error(
+    `Refusing to open the live ${which} from a test process. ` +
+      `Call initTestSessionDb() first — see mailbox/sqlite/connection.ts.`,
+  );
+}
+
+/**
  * Avoid all cached db reads; open inbound.db read-only with mmap and page cache disabled.
  *
  * Use this (not getInboundDb) for readers that need to see host-written rows
@@ -51,6 +80,7 @@ export function openInboundDb(): Database {
       close: () => {},
     } as unknown as Database;
   }
+  assertNotProductionUnderTest('inbound.db');
   const db = new Database(DEFAULT_INBOUND_PATH, { readonly: true });
   db.exec('PRAGMA busy_timeout = 5000');
   db.exec('PRAGMA mmap_size = 0');
@@ -65,6 +95,7 @@ export function openInboundDb(): Database {
  */
 export function getInboundDb(): Database {
   if (!_inbound) {
+    assertNotProductionUnderTest('inbound.db');
     _inbound = new Database(DEFAULT_INBOUND_PATH, { readonly: true });
     _inbound.exec('PRAGMA busy_timeout = 5000');
     _inbound.exec('PRAGMA mmap_size = 0');
@@ -75,6 +106,7 @@ export function getInboundDb(): Database {
 /** Outbound DB — container owns this file (sole writer). */
 export function getOutboundDb(): Database {
   if (!_outbound) {
+    assertNotProductionUnderTest('outbound.db');
     _outbound = new Database(DEFAULT_OUTBOUND_PATH);
     _outbound.exec('PRAGMA journal_mode = DELETE');
     _outbound.exec('PRAGMA busy_timeout = 5000');

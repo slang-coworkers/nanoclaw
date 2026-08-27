@@ -43,6 +43,7 @@ import { initChannelAdapters, registerChannelAdapter, teardownChannelAdapters } 
 import { routeInbound } from './router.js';
 import { log } from './log.js';
 import type { ChannelAdapter, ChannelDefaults } from './channels/adapter.js';
+import type { EngageMode } from './types.js';
 
 const TEST_DIR = '/tmp/nanoclaw-test-unknown-engage-mode';
 
@@ -104,7 +105,12 @@ async function seedUnknownEngageModeWiring(): Promise<void> {
     id: 'mga-1',
     messaging_group_id: 'mg-1',
     agent_group_id: 'ag-1',
-    engage_mode: 'always' as unknown as 'pattern',
+    // A value no EngageMode arm handles. 'always' was the original choice, but
+    // this fork's EngageMode INCLUDES 'always' and router.ts returns true for it,
+    // so the default: warn branch under test was unreachable. The point of this
+    // suite is stale/hand-written DB data (the column has no CHECK constraint),
+    // which is exactly what an invented value models.
+    engage_mode: 'sometimes-maybe' as unknown as EngageMode,
     engage_pattern: null,
     sender_scope: 'all',
     ignored_message_policy: 'drop',
@@ -157,7 +163,7 @@ describe('evaluateEngage with an unrecognized engage_mode', () => {
 
     expect(log.warn).toHaveBeenCalledWith(
       expect.stringContaining('Unknown engage_mode'),
-      expect.objectContaining({ engage_mode: 'always', wiring_id: 'mga-1' }),
+      expect.objectContaining({ engage_mode: 'sometimes-maybe', wiring_id: 'mga-1' }),
     );
   });
 });
