@@ -292,6 +292,47 @@ export function readStandingInstructions(groupDir: string, instructionsPath: str
   return readGroupPersona(groupDir);
 }
 
+/**
+ * Decide whether a failed composition may still spawn.
+ *
+ * Both compose paths used to swallow every error as a `log.warn` and let the
+ * spawn continue. A group whose composition threw then ran with NO project
+ * document at all — no persona, no invariants, no chain-reporting rules — and
+ * nothing went red. That is the worst outcome available: an agent that looks
+ * healthy while operating without its instructions.
+ *
+ * Stale beats absent, so a pre-existing non-empty document is tolerated (loudly)
+ * — the group keeps the last good instructions until the cause is fixed. With no
+ * usable document there is nothing to degrade to, and spawning cannot be made
+ * safe, so this throws and the caller aborts the spawn.
+ */
+export function assertComposedDocUsable(claudeMdPath: string, agentGroup: AgentGroup, err: unknown): void {
+  let existing = 0;
+  try {
+    existing = fs.statSync(claudeMdPath).size;
+  } catch {
+    /* absent — handled below */
+  }
+
+  if (existing > 0) {
+    log.error('CLAUDE.md composition failed; spawning on the previous document', {
+      folder: agentGroup.folder,
+      bytes: existing,
+      err,
+    });
+    return;
+  }
+
+  log.error('CLAUDE.md composition failed and no usable document exists — refusing to spawn', {
+    folder: agentGroup.folder,
+    path: claudeMdPath,
+    err,
+  });
+  throw new Error(
+    `CLAUDE.md composition failed for '${agentGroup.folder}' and no usable document exists: ${String(err)}`,
+  );
+}
+
 async function composeCoworkerClaudeMd(agentGroup: AgentGroup): Promise<void> {
   const groupDir = path.resolve(GROUPS_DIR, agentGroup.folder);
   const claudeMdPath = path.join(groupDir, 'CLAUDE.md');
@@ -341,7 +382,7 @@ async function composeCoworkerClaudeMd(agentGroup: AgentGroup): Promise<void> {
       materializeCritiqueDeliveryMarkers('default', readCoworkerTypes(process.cwd()), appliedOverlays, groupDir);
       log.debug('CLAUDE.md composed for untyped coworker via default type', { folder: agentGroup.folder });
     } catch (err) {
-      log.warn('Failed to compose CLAUDE.md for untyped coworker', { folder: agentGroup.folder, err });
+      assertComposedDocUsable(claudeMdPath, agentGroup, err);
     }
     return;
   }
@@ -377,7 +418,7 @@ async function composeCoworkerClaudeMd(agentGroup: AgentGroup): Promise<void> {
     );
     log.debug('CLAUDE.md composed from lego spine', { folder: agentGroup.folder });
   } catch (err) {
-    log.warn('Failed to compose CLAUDE.md from lego spine', { folder: agentGroup.folder, err });
+    assertComposedDocUsable(claudeMdPath, agentGroup, err);
   }
 }
 
