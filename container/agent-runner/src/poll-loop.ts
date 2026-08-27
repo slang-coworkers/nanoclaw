@@ -2282,12 +2282,14 @@ function notifyExchangeComplete(
 /**
  * Write the exchange to `conversations/` — the folder `container/CLAUDE.md`
  * promises every agent, regardless of provider. Done here rather than behind
- * `onExchangeComplete` because that hook is optional and no provider implements
- * it, so archiving through it would stay dead for all five.
+ * `onExchangeComplete` because that hook is optional and no registered provider
+ * implements it, so archiving through it would stay dead for all of them.
  *
- * Only `completed` exchanges: an `error`/`undelivered` result is text the user
- * never received, so archiving it would let the agent "recall" something that
- * never happened. Task runs are skipped — they already get `tasks/<id>.md`.
+ * Only `completed` exchanges, so the archive holds the conversation the agent
+ * should recall rather than every attempt at it. This is NOT because error text
+ * went undelivered — `deliverErrorResult` above sends some of it — so the
+ * archive is deliberately a partial record, not a full transcript. Task runs are
+ * skipped: they already get `tasks/<id>.md`.
  */
 function archiveExchange(exchange: ProviderExchange, routing?: RoutingContext): void {
   if (exchange.status !== 'completed') return;
