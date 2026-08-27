@@ -293,6 +293,7 @@ async function main(): Promise<void> {
         id: agId,
         name: args.agentName,
         folder,
+        is_admin: 1,
         agent_provider: null,
         created_at: now,
       });
@@ -355,7 +356,11 @@ async function main(): Promise<void> {
   });
 
   // 3. DM messaging group.
-  const platformId = namespacedPlatformId(args.channel, args.platformId);
+  // Dashboard server uses dashboard:<folder> as the canonical platform_id for
+  // each agent group, so we must register with that same value — otherwise the
+  // dashboard's inbound messages (sent with dashboard:<folder>) miss the lookup.
+  const rawPlatformId = args.channel === 'dashboard' ? `dashboard:${folder}` : args.platformId;
+  const platformId = namespacedPlatformId(args.channel, rawPlatformId);
   let dmMg = await getMessagingGroupByPlatform(args.channel, platformId, args.instance);
   if (!dmMg) {
     const mgId = generateId('mg');

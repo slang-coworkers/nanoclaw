@@ -6,11 +6,44 @@ import { getDb, hasTable } from './connection.js';
 export const TASKS_SYSTEM_THREAD_ID = 'system:tasks';
 
 export async function createSession(session: Session): Promise<void> {
+  // Migration 021 guarantees display_title / title_source / title_updated_at
+  // exist — runMigrations() runs at host startup before any createSession
+  // call. No defensive column probe here; trust the migration.
   await getDb().run(
-    `INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id, agent_provider, status, container_status, last_active, created_at)
-       VALUES (@id, @agent_group_id, @messaging_group_id, @thread_id, @agent_provider, @status, @container_status, @last_active, @created_at)`,
-    session,
+    `INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id,
+                             display_title, title_source, title_updated_at,
+                             agent_provider, status, container_status, last_active, created_at)
+       VALUES (@id, @agent_group_id, @messaging_group_id, @thread_id,
+               @display_title, @title_source, @title_updated_at,
+               @agent_provider, @status, @container_status, @last_active, @created_at)`,
+    { display_title: null, title_source: null, title_updated_at: null, ...session },
   );
+}
+
+/**
+ * Update the session's display title. `source='manual'` marks it
+ * operator-set so the heuristic titler won't re-derive on top of it.
+ * Returns true if a row was updated (i.e. the session still exists).
+ */
+export async function updateSessionTitle(
+  sessionId: string,
+  displayTitle: string,
+  source: 'auto' | 'heuristic' | 'manual',
+  now: string = new Date().toISOString(),
+): Promise<boolean> {
+  // Never overwrite a manual title unless the new write is also manual.
+  const clause =
+    source === 'manual'
+      ? 'WHERE id = ?'
+      : "WHERE id = ? AND (display_title IS NULL OR COALESCE(title_source, '') != 'manual')";
+  const res = await getDb().run(
+    `UPDATE sessions SET display_title = ?, title_source = ?, title_updated_at = ? ${clause}`,
+    displayTitle,
+    source,
+    now,
+    sessionId,
+  );
+  return res.changes > 0;
 }
 
 export async function getSession(id: string): Promise<Session | undefined> {
@@ -57,6 +90,39 @@ export async function findSessionForAgent(
     agentGroupId,
     messagingGroupId,
   );
+}
+
+/** Find an active session for an agent + thread, ignoring messaging group. */
+export async function findSessionByAgentThread(agentGroupId: string, threadId: string): Promise<Session | undefined> {
+  return getDb().get<Session>(
+    // created_at ASC picks the earliest (canonical) session for a thread; id ASC
+    // is a deterministic tie-break so a created_at collision can't make the
+    // canonical choice nondeterministic (the gh-issue/pr collapse in
+    // resolveSession depends on a stable winner).
+    "SELECT * FROM sessions WHERE agent_group_id = ? AND thread_id = ? AND status = 'active' ORDER BY created_at ASC, id ASC LIMIT 1",
+    agentGroupId,
+    threadId,
+  );
+}
+
+/**
+ * Does any active session exist for this issue's chain, keyed on its canonical
+ * `gh-issue-<repo>-<num>` thread_id (any agent group)? Used by the webhook
+ * comment gate to recognize "this issue is ours" — a follow-up comment on an
+ * issue we're already driving is processed even without an @-mention (the live
+ * chain IS the ownership signal, mirroring isOwnedPr/prMappingExists for PRs).
+ * Returns false (never throws) if the sessions table is unavailable.
+ */
+export async function issueSessionExists(repo: string, issueNumber: number): Promise<boolean> {
+  try {
+    const row = await getDb().get(
+      "SELECT 1 FROM sessions WHERE thread_id = ? AND status = 'active' LIMIT 1",
+      `gh-issue-${repo}-${issueNumber}`,
+    );
+    return Boolean(row);
+  } catch {
+    return false;
+  }
 }
 
 /** Find an active session scoped to an agent group (ignoring messaging group). */
@@ -112,6 +178,25 @@ export async function findTaskSessions(agentGroupId: string, includeClosed = fal
     agentGroupId,
     TASKS_SYSTEM_THREAD_ID,
     `${TASKS_SYSTEM_THREAD_ID}:%`,
+  );
+}
+
+/**
+ * All active sessions for a group, whatever their thread shape.
+ *
+ * Task rows are `messages_in` rows with `kind='task'`, so the only reliable way
+ * to find a group's tasks is to scan its sessions' inbound DBs — which is what
+ * the global (no `--group`) CLI path already does via `getActiveSessions`.
+ * `findTaskSessions` is narrower: it only matches the isolated `system:tasks`
+ * sessions the scheduler creates today, so it silently misses legacy task rows
+ * parked in ordinary sessions (thread_id NULL / a messaging_group_id set).
+ * Group-scoped lookups use this instead so they stay consistent with the
+ * global path rather than reporting "no tasks" for tasks that plainly exist.
+ */
+export async function getActiveSessionsForGroup(agentGroupId: string): Promise<Session[]> {
+  return getDb().all<Session>(
+    "SELECT * FROM sessions WHERE agent_group_id = ? AND status = 'active' ORDER BY created_at DESC",
+    agentGroupId,
   );
 }
 
@@ -245,6 +330,21 @@ export async function transitionPendingApprovalStatus(
     expected,
   );
   return result.changes > 0;
+}
+
+export async function updatePendingApprovalDelivery(
+  approvalId: string,
+  updates: Pick<PendingApproval, 'channel_type' | 'platform_id' | 'platform_message_id'>,
+): Promise<void> {
+  await getDb().run(
+    `UPDATE pending_approvals
+       SET channel_type = ?, platform_id = ?, platform_message_id = ?
+       WHERE approval_id = ?`,
+    updates.channel_type,
+    updates.platform_id,
+    updates.platform_message_id,
+    approvalId,
+  );
 }
 
 /**

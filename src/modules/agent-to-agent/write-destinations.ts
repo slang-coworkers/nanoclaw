@@ -10,6 +10,7 @@
 import { getAgentGroup } from '../../db/agent-groups.js';
 import { getMessagingGroup } from '../../db/messaging-groups.js';
 import type { Destination } from '../../mailbox/index.js';
+import { getSessionsByAgentGroup } from '../../db/sessions.js';
 import { log } from '../../log.js';
 import { withMailboxSession } from '../../session-manager.js';
 import { getDestinations } from './db/agent-destinations.js';
@@ -48,4 +49,17 @@ export async function writeDestinations(agentGroupId: string, sessionId: string)
     db.replaceDestinations(resolved);
   });
   log.debug('Destination map written', { sessionId, count: resolved.length });
+}
+
+/**
+ * Refresh the `inbound.db::destinations` projection for every active session
+ * of `agentGroupId`. Use this after mutating `agent_destinations` from a
+ * context that has no caller session in scope (e.g. dashboard HTTP handlers).
+ * See the invariant in `db/agent-destinations.ts`.
+ */
+export async function refreshDestinationsForAgentGroup(agentGroupId: string): Promise<void> {
+  const sessions = (await getSessionsByAgentGroup(agentGroupId)).filter((s) => s.status === 'active');
+  for (const s of sessions) {
+    await writeDestinations(agentGroupId, s.id);
+  }
 }

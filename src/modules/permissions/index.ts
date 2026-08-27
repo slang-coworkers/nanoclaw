@@ -292,7 +292,7 @@ async function handleSenderApprovalResponse(payload: ResponsePayload): Promise<b
     return true; // claim the response so it's not unclaimed-logged, but do nothing
   }
   const approverId = clickerId;
-  const approved = payload.value === 'approve';
+  const approved = payload.value.toLowerCase() === 'approve';
 
   if (approved) {
     await addMember({

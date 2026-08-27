@@ -1,22 +1,46 @@
-import { findByName, getAllDestinations, type DestinationEntry } from './destinations.js';
+import fs from 'fs';
+import path from 'path';
+
+import {
+  buildSystemPromptAddendum,
+  findByName,
+  getAllDestinations,
+  getDestinationsFingerprint,
+  type DestinationEntry,
+} from './destinations.js';
 import {
   getPendingMessages,
   markProcessing,
   markCompleted,
+  markBounced,
+  markFailed,
   markScriptSkipped,
+  getMessageInBySeq,
   type MessageInRow,
 } from './db/messages-in.js';
-import { getUndeliveredMessages, writeMessageOut } from './db/messages-out.js';
+import { classifyTurnError } from './transient-error.js';
+import { getUndeliveredMessages, hasIdenticalSend, outboundWatermark, writeMessageOut } from './db/messages-out.js';
 import { clearStaleProcessingAcks } from './db/container-state.js';
 import { touchHeartbeat } from './heartbeat.js';
 import { getAgentMailbox } from './mailbox/index.js';
 import {
   clearContinuation,
+  getContinuationAgeMs,
   clearCurrentInReplyTo,
   migrateLegacyContinuation,
   setContinuation,
   setCurrentInReplyTo,
+  getCostCap,
+  setCostCap,
+  setCostControlProtocol,
+  commitCostCeilingAdjustmentOutcome,
+  type CostCapState,
+  type CostCapStatus,
+  type CostCapWindow,
+  type CostCeilingAdjustmentReceipt,
 } from './db/session-state.js';
+import { getConfig } from './config.js';
+import { priceUsage } from './pricing.js';
 import {
   formatMessages,
   extractRouting,
@@ -27,22 +51,1093 @@ import {
   stripInternalTags,
   type RoutingContext,
 } from './formatter.js';
+import { classifyAndPrepend } from './intent-router-bridge.js';
 import { stripHarnessTagArtifacts } from './harness-tag-strip.js';
 import { isUploadTraceCommand, uploadTrace } from './upload-trace.js';
 import type { AgentProvider, AgentQuery, ProviderEvent, ProviderExchange } from './providers/types.js';
 
 const POLL_INTERVAL_MS = 1000;
 const ACTIVE_POLL_INTERVAL_MS = 500;
+// End stream after this many ms with no SDK events.
+// Set NANOCLAW_IDLE_END_MS in the container env to override per-agent-group.
+const IDLE_END_MS = process.env.NANOCLAW_IDLE_END_MS
+  ? Math.max(60_000, parseInt(process.env.NANOCLAW_IDLE_END_MS, 10))
+  : 1_200_000;
 
-/** Consecutive driver-classified failures before a fresh runner is required. */
+/**
+ * Number of consecutive driver-classified read failures after which the
+ * follow-up poll gives up and exits the process. At ACTIVE_POLL_INTERVAL_MS
+ * = 500ms this is roughly 5 seconds — long enough to dodge a transient torn
+ * read during a host write, short enough to recover quickly from a poisoned
+ * page cache (host-sweep then respawns with a fresh mount).
+ */
 const MAILBOX_FAILURE_STREAK_EXIT = 10;
+
+// ── Per-session cost cap (NanoClaw #1, v2 two-window) ─────────────────────────
+//
+// Live per-session cost accounting + a soft escalation when spend crosses the
+// cap. TWO WINDOWS, chosen by immortality:
+//
+//   - NON-IMMORTAL → 'lifetime': spend accrues across turns AND container
+//     respawns; reset only on a new_session batch or /clear. Escalates once per
+//     run (a new_session re-arms it).
+//   - IMMORTAL (orchestrator/admin) → 'daily': spend accrues per UTC day; a new
+//     day resets the counter and re-arms escalation. Immortal groups escalate
+//     for visibility only and are NEVER quiesced — the DM itself is the bound.
+//
+// State is persisted to outbound.db `session_state` under the single `cost_cap`
+// JSON key (the shared contract the dashboard reads) so spend survives respawns.
+//
+// FIX #4: only the Claude provider emits 'usage' events. costEnabled therefore
+// requires providerName === 'claude'; other providers accrue nothing and would
+// otherwise paint a false-green $0, so we leave the cap disabled (no row → the
+// dashboard shows "—").
+//
+// Module-level because the accounting happens inside `processQuery`'s event
+// loop (a free function) while init/override live in `runPollLoop`; one
+// container == one session, so a singleton is correct.
+const WARN_FRACTION = 0.8;
+
+let costEnabled = false;
+let costImmortal = false;
+// 'lifetime' for non-immortal, 'daily' for immortal.
+let costWindow: CostCapWindow = 'lifetime';
+// UTC day ("YYYY-MM-DD") the daily spend belongs to. Only meaningful for the
+// daily window; undefined for lifetime.
+let costDayKey: string | undefined;
+// One "allotment" — the base cap and the amount a 'continue' override adds.
+let costAllotmentUsd = 0;
+// Effective cap: allotment plus any raises from 'continue' overrides.
+let costCapUsd = 0;
+let costSpentUsd = 0;
+let costEscalatedAt: string | undefined;
+let costDecision: 'continue' | 'stop' | undefined;
+let costDecidedAt: string | undefined;
+// Quiesce marker: a 'stop' override was applied — take no NEW work. Never set
+// for immortal groups.
+let costStopRequested = false;
+// Tier-2 hard ceiling (USD; 0 = disabled). A NON-immortal session that reaches
+// it hard-stops (quiesce, no more work); an immortal one is never blocked — the
+// ceiling only re-escalates for visibility. This is the LIVE ceiling — the base
+// value plus any raises from an approved ceiling-continue (mirrors costCapUsd).
+let costCeilingUsd = 0;
+// The base ceiling from config — the fixed amount each ceiling-continue adds.
+// Set once in initCostTracking; never mutated (mirrors costAllotmentUsd).
+let costCeilingAllotmentUsd = 0;
+// One-shot dedup for the immortal ceiling re-escalation (in-memory: a respawn
+// re-alerting a still-over-ceiling immortal session is acceptable and rare).
+let costCeilingEscalated = false;
+// Set true when a non-immortal session crosses the ceiling mid-turn. The event
+// loop reads it right after recordTurnCost and ends the IN-FLIGHT stream, so the
+// hard stop is "no more tokens" (not merely "no new messages next poll"). Reset
+// only on a genuine session reset (resetCostForNewSession) — a 'continue' cannot
+// clear it, mirroring the absolute ceiling.
+let costCeilingHardStop = false;
+
+// Monotonic BUDGET GENERATION — the exactly-once GRANT fence for the cost-approval
+// card. Rotated on EVERY event that changes the budget epoch: /clear or new_session
+// (resetCostForNewSession), a daily rollover (recordTurnCost / respawn across a UTC
+// day), and each applied Continue (re-arm). An escalation stamps its episode with the
+// gen live at escalation; a cost_override carries that gen as `epochKey`, and
+// applyCostOverride REFUSES one whose epochKey ≠ the current gen. Because applying a
+// Continue rotates the gen, a re-enqueued Continue (host crash + retry) is auto-stale,
+// and a decision that lands after a /clear reset is refused — the one money-unsafe
+// path v8 had. Loaded from the persisted cost_cap so it survives respawn (never resets
+// backward). Legacy/pill overrides without epochKey apply unconditionally (back-compat).
+let costBudgetGen = 0;
+// The current escalation episode's stable id (`esc-<sid>-<reason>-<gen>`). Set when an
+// escalation fires, persisted into cost_cap so the host can ingest the episode from
+// durable state (read-only), cleared on reset/rollover/applied-Continue.
+let costEpisodeId: string | undefined;
+
+// One-shot cost-sensitivity note queued by a ceiling-continue, consumed as a
+// <system> prefix on the NEXT real turn's prompt (not injected immediately —
+// cost_override rows are never fed to the agent, so this rides the following
+// genuine message instead). Cleared on consumption and on a fresh session.
+let pendingCostNudge: string | undefined;
+
+/** Current UTC day as "YYYY-MM-DD" — the daily-window bucket key. */
+function utcDayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Publish the runner-instance readiness handshake (NanoClaw #1, "set ceiling
+ * v2"): `{version, runnerInstanceId, readyAt}` under `session_state.
+ * cost_control_protocol`. Called once at loop startup, UNCONDITIONALLY —
+ * independent of `costEnabled` (which requires a Claude provider AND a
+ * configured cap). The host's readiness check needs to know "this runner build
+ * understands the set-ceiling wire protocol" before it ever writes a control
+ * message; whether cost tracking happens to be configured for this particular
+ * session is a separate question the host answers earlier in its own
+ * validation (a session with no live ceiling is rejected there regardless of
+ * what this handshake says).
+ *
+ * `runnerInstanceId` comes from `NANOCLAW_RUNNER_INSTANCE_ID`, the random nonce
+ * `src/container-runner.ts` generates fresh for every container spawn. Its
+ * whole purpose is to let the host distinguish THIS instance's handshake from
+ * one a prior instance of the same session id left behind — without a nonce
+ * there is nothing to compare against, so an empty/missing env var is treated
+ * as "nothing to publish" rather than publishing a handshake no host check
+ * could ever safely match.
+ */
+function publishRunnerReadiness(): void {
+  const runnerInstanceId = process.env.NANOCLAW_RUNNER_INSTANCE_ID || '';
+  if (!runnerInstanceId) return;
+  setCostControlProtocol({ version: 2, runnerInstanceId, readyAt: new Date().toISOString() });
+}
+
+/**
+ * Load persisted cost state once at loop start so accrued spend (and any raised
+ * cap / stop decision) survives a container respawn. Immortality comes from the
+ * authoritative host-materialized config field, not the persisted row.
+ *
+ * FIX #4: the cap is enabled only for the Claude provider (the only one that
+ * emits 'usage' events). A non-Claude group leaves costEnabled false so no
+ * cost_cap row is written — the dashboard renders "—" rather than a false $0.
+ *
+ * Window handling:
+ *  - lifetime (non-immortal): adopt persisted spend/escalation as-is.
+ *  - daily (immortal): adopt persisted spend/escalation ONLY if the persisted
+ *    dayKey is today's UTC day; a stale day starts fresh at 0.
+ */
+function initCostTracking(providerName: string): void {
+  // getConfig() throws if loadConfig() was never called — the case in poll-loop
+  // integration tests that exercise the loop without scaffolding container.json.
+  // Cost accounting is simply off there; production always loads config first.
+  let cfg: ReturnType<typeof getConfig>;
+  try {
+    cfg = getConfig();
+  } catch {
+    costEnabled = false;
+    return;
+  }
+  costAllotmentUsd = cfg.costCapT2Usd && cfg.costCapT2Usd > 0 ? cfg.costCapT2Usd : 0;
+  costCeilingAllotmentUsd = cfg.costCeilingT2Usd && cfg.costCeilingT2Usd > 0 ? cfg.costCeilingT2Usd : 0;
+  costImmortal = cfg.immortal === true;
+  costWindow = costImmortal ? 'daily' : 'lifetime';
+  costEnabled = costAllotmentUsd > 0 && providerName === 'claude';
+  if (!costEnabled) return;
+
+  const persisted = getCostCap();
+  // Budget generation is MONOTONIC across the session lifetime — adopt the persisted
+  // value so a respawn keeps the same live gen (a mid-session respawn must NOT re-arm
+  // a pending grant). Rotations only ever move it forward (below + on reset/rollover).
+  costBudgetGen = persisted?.budgetGen ?? 0;
+
+  if (costWindow === 'daily') {
+    costDayKey = utcDayKey();
+    const persistedIsToday = persisted?.dayKey === costDayKey;
+    // A respawn that crosses a UTC day is a daily rollover — rotate the gen so a
+    // yesterday-daily decision that arrives now is refused (mirrors the in-loop
+    // rollover in recordTurnCost). Guard on `persisted` so a brand-new session
+    // (no prior row) starts at gen 0 rather than spuriously rotating to 1.
+    if (!persistedIsToday && persisted) costBudgetGen++;
+    // A fresh UTC day starts back at the p90/day allotment so the daily bound
+    // holds day-over-day; only a same-day respawn adopts the persisted (possibly
+    // 'continue'-raised) cap, spend, and escalation.
+    costCapUsd = persistedIsToday && persisted?.capUsd && persisted.capUsd > 0 ? persisted.capUsd : costAllotmentUsd;
+    costCeilingUsd =
+      persistedIsToday && persisted?.ceilingUsd && persisted.ceilingUsd > 0
+        ? persisted.ceilingUsd
+        : costCeilingAllotmentUsd;
+    costSpentUsd = persistedIsToday && persisted?.spentUsd && persisted.spentUsd > 0 ? persisted.spentUsd : 0;
+    costEscalatedAt = persistedIsToday ? persisted?.escalatedAt : undefined;
+    costEpisodeId = persistedIsToday ? persisted?.episodeId : undefined;
+  } else {
+    costCapUsd = persisted?.capUsd && persisted.capUsd > 0 ? persisted.capUsd : costAllotmentUsd;
+    costCeilingUsd = persisted?.ceilingUsd && persisted.ceilingUsd > 0 ? persisted.ceilingUsd : costCeilingAllotmentUsd;
+    costDayKey = undefined;
+    costSpentUsd = persisted?.spentUsd && persisted.spentUsd > 0 ? persisted.spentUsd : 0;
+    costEscalatedAt = persisted?.escalatedAt;
+    costEpisodeId = persisted?.episodeId;
+  }
+  costDecision = persisted?.decision;
+  costDecidedAt = persisted?.decidedAt;
+  costStopRequested = persisted?.status === 'stopped' && !costImmortal;
+  // A ceiling that was newly enabled or lowered after this session already
+  // accrued past it won't be reflected in the persisted STATUS (that row was
+  // written before the ceiling existed / at the old threshold). Deriving the
+  // quiesce marker from status alone would hand such a session one free turn on
+  // respawn. Also key it off spend-vs-ceiling so an over-ceiling non-immortal
+  // session loads already-stopped. Immortal is never hard-stopped.
+  if (!costImmortal && costCeilingUsd > 0 && costSpentUsd >= costCeilingUsd) {
+    costStopRequested = true;
+  }
+
+  // Publish immediately so the dashboard shows a cap even before the first turn
+  // (and so a flipped immortal flag / window is reflected).
+  persistCostCap();
+}
+
+/**
+ * Reset the LIFETIME window to a fresh allotment — called when a non-immortal
+ * session genuinely starts over (a new_session task batch or an explicit
+ * /clear). No-op for the immortal daily window (that rolls on the UTC day, not
+ * on session boundaries) and when the cap is disabled.
+ */
+function resetCostForNewSession(): void {
+  if (!costEnabled || costWindow !== 'lifetime') return;
+  costSpentUsd = 0;
+  costCapUsd = costAllotmentUsd;
+  costCeilingUsd = costCeilingAllotmentUsd;
+  costEscalatedAt = undefined;
+  costStopRequested = false;
+  costCeilingEscalated = false;
+  costCeilingHardStop = false;
+  costDecision = undefined;
+  costDecidedAt = undefined;
+  // A fresh window makes any queued cost nudge moot — the session is starting
+  // over below both thresholds, not resuming from a ceiling raise.
+  pendingCostNudge = undefined;
+  // /clear or new_session is a budget-epoch change: rotate the gen so a decision
+  // stamped for the pre-clear escalation is refused, and drop the resolved episode.
+  costBudgetGen++;
+  costEpisodeId = undefined;
+  persistCostCap();
+}
+
+/**
+ * The per-turn ceiling soft-brake handed to the provider as `maxBudgetUsd`: the spend
+ * headroom left before the Tier-2 ceiling, or undefined when no ceiling applies
+ * (disabled, no ceiling configured, or an immortal group — which is never hard-stopped).
+ * Best-effort: the SDK checks between calls, so a turn may overshoot by ≤ one in-flight
+ * call; `recordTurnCost` stays the canonical basis and the sole close decider.
+ */
+function costCeilingRemainingUsd(): number | undefined {
+  if (!costEnabled || costImmortal || costCeilingUsd <= 0) return undefined;
+  return Math.max(0.01, costCeilingUsd - costSpentUsd);
+}
+
+/** Current status band from spent/cap/escalation/stop state. */
+function computeCostStatus(): CostCapStatus {
+  // Tier-2 hard ceiling: a non-immortal session past the ceiling reads 'stopped'
+  // even without an explicit 'stop' decision, and survives a respawn statelessly
+  // (the check is on spend, not a persisted flag). Immortal is never hard-stopped.
+  if (!costImmortal && costCeilingUsd > 0 && costSpentUsd >= costCeilingUsd) return 'stopped';
+  if (costStopRequested && !costImmortal) return 'stopped';
+  if (costSpentUsd >= costCapUsd) return 'escalated';
+  if (costSpentUsd >= WARN_FRACTION * costCapUsd) return 'warn';
+  return 'ok';
+}
+
+function persistCostCap(): void {
+  if (!costEnabled) return;
+  const status = computeCostStatus();
+  const state: CostCapState = {
+    capUsd: costCapUsd,
+    spentUsd: costSpentUsd,
+    status,
+    immortal: costImmortal,
+    window: costWindow,
+    // Live ceiling (base + any approved raises). ALWAYS published — including 0
+    // (disabled/unconfigured) — so the dashboard's live per-session ceiling
+    // control (NanoClaw #1, "set ceiling v2") can distinguish "no cost_cap row
+    // at all" from "cost tracking is on but no ceiling is configured." Every
+    // existing reader already treats an omitted value and 0 identically.
+    ceilingUsd: costCeilingUsd,
+    // Always publish the live budget generation so the host reads the same gen the
+    // runner is fencing on (it stamps overrides with it via the escalation episode).
+    budgetGen: costBudgetGen,
+    // dayKey is present ONLY for the daily window (shared contract #1).
+    ...(costWindow === 'daily' && costDayKey ? { dayKey: costDayKey } : {}),
+    ...(costEscalatedAt ? { escalatedAt: costEscalatedAt } : {}),
+    ...(costDecision ? { decision: costDecision } : {}),
+    ...(costDecidedAt ? { decidedAt: costDecidedAt } : {}),
+    // episodeId is meaningful only while an escalation is live (escalated/stopped);
+    // the host ingests it from this durable state (read-only) to build the card.
+    ...(costEpisodeId && (status === 'escalated' || status === 'stopped') ? { episodeId: costEpisodeId } : {}),
+  };
+  setCostCap(state);
+}
+
+/**
+ * Price one usage event, add it to lifetime spend, persist, and fire the
+ * one-shot escalation on first crossing. Reprices from the token fields for
+ * dashboard parity; falls back to the SDK's own cost only for models the copied
+ * rate table doesn't know (so an unpriced model still accrues rather than
+ * silently reading $0 forever).
+ */
+function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void {
+  if (!costEnabled) return;
+
+  // IMMORTAL daily rollover: crossing into a new UTC day zeroes today's spend
+  // and re-arms the once-per-day escalation. The lifetime window never rolls —
+  // it resets only on a new_session batch or /clear (resetCostForNewSession).
+  if (costWindow === 'daily') {
+    const today = utcDayKey();
+    if (today !== costDayKey) {
+      costDayKey = today;
+      costSpentUsd = 0;
+      costEscalatedAt = undefined;
+      // New UTC day = new budget epoch: rotate the gen so a yesterday-daily decision
+      // that arrives now is refused, and drop the resolved episode.
+      costBudgetGen++;
+      costEpisodeId = undefined;
+      // Re-arm the immortal ceiling re-escalation for the new day — otherwise a
+      // day-1 crossing latches it forever and every later day's ceiling breach
+      // goes silent, killing the only visibility signal for a group class we
+      // deliberately never block.
+      costCeilingEscalated = false;
+      // New day → back to the p90/day allotment; a prior day's 'continue' raise
+      // does not carry over (the bound is per-day).
+      costCapUsd = costAllotmentUsd;
+    }
+  }
+
+  // Prefer the per-TTL cache-write split (authoritative for this fleet, which
+  // runs 1h prompt caching); fall back to the flat cache_creation field only
+  // when no split is reported, matching the dashboard's priceUsage semantics.
+  const hasSplit = event.ephemeral1hInputTokens > 0 || event.ephemeral5mInputTokens > 0;
+  let delta = priceUsage(getConfig().model, {
+    input_tokens: event.inputTokens,
+    output_tokens: event.outputTokens,
+    cache_read_input_tokens: event.cacheReadInputTokens,
+    cache_creation_input_tokens: event.cacheCreationInputTokens,
+    ...(hasSplit
+      ? {
+          cache_creation: {
+            ephemeral_1h_input_tokens: event.ephemeral1hInputTokens,
+            ephemeral_5m_input_tokens: event.ephemeral5mInputTokens,
+          },
+        }
+      : {}),
+  });
+  if (delta <= 0 && event.totalCostUsd > 0) delta = event.totalCostUsd; // unpriced model fallback
+  if (delta <= 0) return;
+
+  costSpentUsd += delta;
+
+  // One-shot soft escalation on first crossing of the cap. Dedupe via
+  // escalatedAt so a warm session that keeps spending only escalates once per
+  // allotment (a 'continue' override clears escalatedAt and raises the cap).
+  // Tier-2 hard ceiling takes precedence over the Tier-1 escalation for this turn:
+  // one large turn can cross both, so fire ONE notification (the ceiling one)
+  // rather than two near-identical payloads.
+  const crossedCeiling = costCeilingUsd > 0 && costSpentUsd >= costCeilingUsd;
+  let firedCeiling = false;
+  if (crossedCeiling) {
+    if (!costImmortal) {
+      // HARD STOP: signal the event loop to end THIS in-flight turn (no more
+      // tokens), and set the quiesce marker for subsequent polls.
+      costCeilingHardStop = true;
+      if (!costStopRequested) {
+        costStopRequested = true;
+        emitCostEscalation('ceiling');
+        firedCeiling = true;
+      }
+    } else if (!costCeilingEscalated) {
+      // Immortal is never blocked — re-escalate once per day for visibility.
+      costCeilingEscalated = true;
+      emitCostEscalation('ceiling');
+      firedCeiling = true;
+    }
+  }
+
+  // Tier-1 soft escalation on first cap crossing. Mark escalatedAt for dedup even
+  // when the ceiling already fired, but skip the second notification.
+  if (costSpentUsd >= costCapUsd && !costEscalatedAt) {
+    costEscalatedAt = new Date().toISOString();
+    if (!firedCeiling) emitCostEscalation('cap');
+  }
+  persistCostCap();
+}
+
+/**
+ * Fire the escalation: a kind:'system' outbound row the host's `cost_escalation`
+ * delivery action picks up and routes to a human approver (owner/admin). This
+ * is the ONLY signal — the runner cannot block on a reply; the human decision
+ * returns asynchronously as a `cost_override` inbound row.
+ */
+function emitCostEscalation(reason: 'cap' | 'ceiling'): void {
+  const sessionId = process.env.NANOCLAW_SESSION_ID || '';
+  // Stamp the episode with the budget generation LIVE at escalation. The host echoes
+  // this back as the override's `epochKey`; applyCostOverride refuses one whose epoch
+  // ≠ the then-current gen (superseded / post-/clear / yesterday-daily). A distinct
+  // `reason` in the same gen is a distinct episode (cap → ceiling supersession).
+  costEpisodeId = `esc-${sessionId}-${reason}-${costBudgetGen}`;
+  // Fire-and-forget: this stays synchronous because `recordTurnCost` (its only
+  // runtime caller) runs inside the provider event loop and its signature is
+  // pinned by __costCapTestHooks. The escalation is advisory — the row is the
+  // ONLY signal and the runner never blocks on it — so a failed write must not
+  // take down the turn, but it must not become an unhandled rejection either.
+  void writeMessageOut({
+    id: generateId(),
+    kind: 'system',
+    content: JSON.stringify({
+      action: 'cost_escalation',
+      // 'cap' = Tier-1 soft escalation; 'ceiling' = Tier-2 (hard stop for
+      // non-immortal, visibility-only for immortal). Lets the human tell a
+      // "please decide" from a "this was hard-stopped / is running away".
+      reason,
+      sessionId,
+      // The card/episode identity + the epoch fence the runner will enforce on the
+      // returning cost_override (see applyCostOverride).
+      episodeId: costEpisodeId,
+      epochKey: String(costBudgetGen),
+      spentUsd: Number(costSpentUsd.toFixed(4)),
+      capUsd: Number(costCapUsd.toFixed(4)),
+      ...(costCeilingUsd > 0 ? { ceilingUsd: Number(costCeilingUsd.toFixed(4)) } : {}),
+      // The fixed step a ceiling-continue adds (host uses this to preview the
+      // post-approve ceiling in the card text). Absent when no ceiling is set.
+      ...(costCeilingAllotmentUsd > 0 ? { ceilingAllotmentUsd: Number(costCeilingAllotmentUsd.toFixed(4)) } : {}),
+      immortal: costImmortal,
+      window: costWindow,
+    }),
+  }).catch((err: unknown) => {
+    log(`Cost escalation row failed to write: ${err instanceof Error ? err.message : String(err)}`);
+  });
+  log(
+    `Cost cap escalation (${reason}): spent=$${costSpentUsd.toFixed(2)} ` +
+      `cap=$${costCapUsd.toFixed(2)}` +
+      (costCeilingUsd > 0 ? ` ceiling=$${costCeilingUsd.toFixed(2)}` : '') +
+      ` (immortal=${costImmortal}, window=${costWindow})`,
+  );
+}
+
+/**
+ * Server-enforced hard maximum for a `set_ceiling` target (NanoClaw #1, "set
+ * ceiling v2") — $1,000.00 in integer cents. Enforced HERE independently of the
+ * host's own identical check (`src/modules/cost-ceiling-adjustment/index.ts`):
+ * the wire contract is host-authoritative for VALIDATION, but the runner never
+ * trusts a control message's value bounds blindly — defense in depth against a
+ * bug or a compromised host.
+ */
+const MAX_CEILING_CENTS = 100_000;
+
+/**
+ * The union of every field either `cost_override` shape can carry — the legacy
+ * `decision:'continue'|'stop'` payload and the "set ceiling v2"
+ * `protocolVersion:2, operation:'set_ceiling'` payload. Parsed once as this
+ * shape so the dispatcher and both handlers share one type instead of each
+ * asserting a narrower, mutually-exclusive one.
+ */
+interface CostOverrideContent {
+  decision?: unknown;
+  epochKey?: unknown;
+  protocolVersion?: unknown;
+  operation?: unknown;
+  adjustmentId?: unknown;
+  expectedEpochKey?: unknown;
+  expectedCeilingCents?: unknown;
+  targetCeilingCents?: unknown;
+}
+
+/**
+ * Apply a human cost-override decision (from a `cost_override` inbound row).
+ * The Tier-2 ceiling is the only actionable decision now (Tier-1 'cap' crossings
+ * are dashboard-observation only — the host never cards them, so a legitimate
+ * 'continue' only ever arrives for a session at/over its ceiling):
+ *   - continue: raise the ceiling by one ceiling-allotment (bounded, not
+ *     unbounded — a session that burns through the raise re-stops and re-cards)
+ *     and resume, queuing a one-shot cost-sensitivity nudge for the next turn.
+ *   - stop: quiesce (finish current turn, take no new work). Immortal groups
+ *     never stop — the decision is recorded but status stays at 'escalated'.
+ *
+ * `{protocolVersion:2, operation:'set_ceiling'}` is a DISTINCT, newer operation
+ * (NanoClaw #1, "set ceiling v2" — the dashboard's live +/- ceiling control) —
+ * handled in its own path (`applySetCeilingOverride`) rather than folded into
+ * the legacy `decision:'continue'|'stop'` branch below. An earlier draft that
+ * overloaded `continue` for this was flagged in review as money-unsafe: the
+ * legacy path can only ADD a fixed allotment, so it structurally cannot express
+ * "lower to an exact value below current spend," and conflating the two
+ * decisions risked a stale/duplicate legacy override interacting with a live
+ * exact-value request in ways neither path was designed to fence against.
+ */
+function applyCostOverride(msg: MessageInRow): void {
+  let parsed: CostOverrideContent;
+  try {
+    parsed = JSON.parse(msg.content) as CostOverrideContent;
+  } catch {
+    log(`cost_override with unparseable content — ignoring (id=${msg.id})`);
+    return;
+  }
+
+  if (parsed.protocolVersion === 2 && parsed.operation === 'set_ceiling') {
+    applySetCeilingOverride(msg, parsed);
+    return;
+  }
+
+  if (!costEnabled) return;
+  const decision = parsed.decision;
+  const epochKey = parsed.epochKey;
+  // EPOCH FENCE — the exactly-once GRANT guarantee. An override carries the budget
+  // generation live when its episode escalated. Refuse it if that gen no longer
+  // matches: the episode was superseded, the session was /clear-reset, a prior
+  // Continue already re-armed (this is a crash re-enqueue of the same click), or a
+  // daily window rolled over. A stale Continue must not raise the cap twice, and a
+  // stale Stop must not quiesce a fresh session. Overrides WITHOUT an epochKey
+  // (legacy S1 rows, dashboard-pill path) apply unconditionally for back-compat.
+  if (epochKey != null && String(epochKey) !== String(costBudgetGen)) {
+    log(
+      `cost_override ${String(decision)} REFUSED — epoch ${String(epochKey)} ≠ live gen ` +
+        `${costBudgetGen} (superseded/stale/re-enqueued); ignoring (id=${msg.id})`,
+    );
+    return;
+  }
+  const now = new Date().toISOString();
+  if (decision === 'continue') {
+    // A non-immortal session at/over its ceiling: this IS the actionable ceiling
+    // decision (see the doc comment above applyCostOverride) — raise the ceiling
+    // by one fixed allotment (bounded: a session that burns through it re-stops
+    // and re-cards rather than running unbounded) and resume.
+    if (!costImmortal && costCeilingUsd > 0 && costSpentUsd >= costCeilingUsd) {
+      const previousCeiling = costCeilingUsd;
+      costCeilingUsd += costCeilingAllotmentUsd > 0 ? costCeilingAllotmentUsd : 0;
+      costStopRequested = false;
+      costCeilingHardStop = false;
+      costDecision = 'continue';
+      costDecidedAt = now;
+      // Re-arm: rotate the gen so a re-enqueue of THIS same Continue (host crash + retry)
+      // is auto-stale (its epochKey now ≠ live gen), and drop the resolved episode. The
+      // next ceiling crossing escalates a fresh episode stamped with the new gen.
+      costBudgetGen++;
+      costEpisodeId = undefined;
+      // Queued for the NEXT real turn's prompt (cost_override rows are never fed
+      // to the agent directly) — tells the agent it's in expensive territory and
+      // to actively wind down rather than keep accumulating context.
+      pendingCostNudge =
+        `Cost checkpoint: this session has spent $${costSpentUsd.toFixed(2)}. A human just approved ` +
+        `raising the cost ceiling to $${costCeilingUsd.toFixed(2)} so you can continue — this is not a ` +
+        `blank check. You're likely carrying a large accumulated context; be frugal from here: avoid ` +
+        `re-reading files or context you already have, summarize progress instead of re-deriving it, and ` +
+        `aim to finish or hand off the current task within the next few turns rather than continuing to ` +
+        `accumulate more context.`;
+      persistCostCap();
+      log(
+        `cost_override continue — CEILING raised $${previousCeiling.toFixed(2)} -> ` +
+          `$${costCeilingUsd.toFixed(2)}, resuming with cost nudge queued`,
+      );
+      return;
+    }
+    // Legacy: resolves an in-flight Tier-1 'cap' episode from before this redesign
+    // (the host no longer creates new ones, but a stale approval could still land
+    // right after deploy). Harmless — raises the now-unused cap number only.
+    costStopRequested = false;
+    costEscalatedAt = undefined;
+    costCapUsd += costAllotmentUsd;
+    costDecision = 'continue';
+    costDecidedAt = now;
+    costBudgetGen++;
+    costEpisodeId = undefined;
+    log(`cost_override continue — cap raised to $${costCapUsd.toFixed(2)}, resuming`);
+  } else if (decision === 'stop') {
+    costDecision = 'stop';
+    costDecidedAt = now;
+    if (!costImmortal) {
+      costStopRequested = true;
+      log('cost_override stop — quiescing after current turn, taking no new work');
+    } else {
+      log('cost_override stop on immortal group — recorded, but immortal never quiesces');
+    }
+  } else {
+    log(`cost_override with unknown decision "${String(decision)}" — ignoring`);
+    return;
+  }
+  persistCostCap();
+}
+
+/**
+ * `{protocolVersion:2, operation:'set_ceiling'}` — the live, per-session, exact-
+ * value ceiling control (NanoClaw #1, "set ceiling v2"). Unlike the legacy
+ * continue/stop path, this ALWAYS sends a receipt back (`commitCostCeiling
+ * AdjustmentOutcome`) — the host's ledger row is stuck `enqueued` until it
+ * hears a definitive outcome, so silently dropping an unrecognized/invalid
+ * message here (as the legacy path does) would leave that row stranded.
+ *
+ * Runs regardless of `costEnabled`/`costImmortal` — those become REJECT
+ * outcomes (`cost_tracking_disabled` / `immortal`) with a receipt, not silent
+ * no-ops, so the host always reaches a terminal ledger state.
+ *
+ * Money-safety invariants this function must uphold (pinned by
+ * `poll-loop.setCeiling.test.ts`):
+ *   - Both `expectedEpochKey` AND `expectedCeilingCents` must match live state
+ *     exactly, or the request is refused as `conflict` — never partially applied.
+ *   - The target is applied VERBATIM against CURRENT live spend — never a
+ *     different/higher value, never a stale spend snapshot. A session that
+ *     stopped between the browser's read and this request's arrival (the
+ *     escalation itself never rotates the epoch) is accepted at the SAME
+ *     expected epoch/ceiling and resolved against its now-current spend: raise
+ *     above spend → resume; raise still at/below spend → stay stopped at
+ *     exactly the requested value.
+ *   - Every successful apply rotates `costBudgetGen`, whether it raises or
+ *     lowers — this is what makes a stale legacy card override (still carrying
+ *     the OLD epoch) refuse itself if it lands after this request already
+ *     resolved the epoch, and what makes a duplicate/redelivered copy of THIS
+ *     SAME request refuse itself on a second delivery.
+ *   - State + receipt + processing_ack are committed in ONE outbound-DB
+ *     transaction (`commitCostCeilingAdjustmentOutcome`) — never partially.
+ */
+function applySetCeilingOverride(msg: MessageInRow, parsed: CostOverrideContent): void {
+  const adjustmentId = typeof parsed.adjustmentId === 'string' && parsed.adjustmentId ? parsed.adjustmentId : undefined;
+  if (!adjustmentId) {
+    log(`set_ceiling control with missing/invalid adjustmentId — cannot address a receipt, ignoring (id=${msg.id})`);
+    return;
+  }
+
+  const sessionId = process.env.NANOCLAW_SESSION_ID || '';
+  const requestExpectedEpochKey =
+    typeof parsed.expectedEpochKey === 'string' ? parsed.expectedEpochKey : String(parsed.expectedEpochKey ?? '');
+  const requestExpectedCeilingCents = Number(parsed.expectedCeilingCents);
+  const requestTargetCeilingCents = Number(parsed.targetCeilingCents);
+
+  const commitOrThrow = (receipt: CostCeilingAdjustmentReceipt, newCostCap: CostCapState | undefined, logMsg: string): void => {
+    try {
+      commitCostCeilingAdjustmentOutcome({ inboundMessageId: msg.id, receipt, newCostCap });
+      log(logMsg);
+    } catch (err) {
+      // Do NOT swallow: the caller (applyCostOverride's callers in the poll
+      // loop) must not mark this inbound message complete by any other path
+      // when the atomic commit itself failed. Propagating lets it be retried
+      // on redelivery / recovered by clearStaleProcessingAcks() on restart,
+      // rather than silently losing the request.
+      log(`set_ceiling: atomic commit FAILED for adjustment ${adjustmentId} — NOT acking (id=${msg.id}): ${String(err)}`);
+      throw err;
+    }
+  };
+
+  const reject = (reason: 'immortal' | 'cost_tracking_disabled' | 'invalid_value'): void => {
+    const receipt: CostCeilingAdjustmentReceipt = {
+      action: 'cost_ceiling_adjustment_result',
+      protocolVersion: 2,
+      adjustmentId,
+      sessionId,
+      outcome: 'rejected',
+      expectedEpochKey: requestExpectedEpochKey,
+      expectedCeilingCents: Number.isFinite(requestExpectedCeilingCents) ? requestExpectedCeilingCents : 0,
+      targetCeilingCents: Number.isFinite(requestTargetCeilingCents) ? requestTargetCeilingCents : 0,
+      reason,
+      ...(costEnabled
+        ? {
+            resultEpochKey: String(costBudgetGen),
+            resultCeilingCents: Math.round(costCeilingUsd * 100),
+            spentUsd: Number(costSpentUsd.toFixed(4)),
+            status: computeCostStatus(),
+          }
+        : {}),
+    };
+    commitOrThrow(receipt, undefined, `set_ceiling REJECTED (${reason}) for adjustment ${adjustmentId} (id=${msg.id})`);
+  };
+
+  if (!costEnabled) return reject('cost_tracking_disabled');
+  if (costImmortal) return reject('immortal');
+
+  const validEpoch = requestExpectedEpochKey.length > 0;
+  const validExpectedCents = Number.isInteger(requestExpectedCeilingCents) && requestExpectedCeilingCents >= 0;
+  const validTargetCents =
+    Number.isInteger(requestTargetCeilingCents) && requestTargetCeilingCents >= 1 && requestTargetCeilingCents <= MAX_CEILING_CENTS;
+  if (!validEpoch || !validExpectedCents || !validTargetCents) return reject('invalid_value');
+
+  const liveCeilingCents = Math.round(costCeilingUsd * 100);
+  const epochMatches = requestExpectedEpochKey === String(costBudgetGen);
+  const ceilingMatches = requestExpectedCeilingCents === liveCeilingCents;
+
+  if (!epochMatches || !ceilingMatches) {
+    const reason = !epochMatches ? 'epoch_mismatch' : 'ceiling_mismatch';
+    const receipt: CostCeilingAdjustmentReceipt = {
+      action: 'cost_ceiling_adjustment_result',
+      protocolVersion: 2,
+      adjustmentId,
+      sessionId,
+      outcome: 'conflict',
+      expectedEpochKey: requestExpectedEpochKey,
+      expectedCeilingCents: requestExpectedCeilingCents,
+      targetCeilingCents: requestTargetCeilingCents,
+      reason,
+      resultEpochKey: String(costBudgetGen),
+      resultCeilingCents: liveCeilingCents,
+      spentUsd: Number(costSpentUsd.toFixed(4)),
+      status: computeCostStatus(),
+    };
+    commitOrThrow(
+      receipt,
+      undefined,
+      `set_ceiling CONFLICT (${reason}) for adjustment ${adjustmentId}: expected epoch=${requestExpectedEpochKey}/` +
+        `ceiling=${requestExpectedCeilingCents}¢, live epoch=${costBudgetGen}/ceiling=${liveCeilingCents}¢ (id=${msg.id})`,
+    );
+    return;
+  }
+
+  // MATCHED — apply against CURRENT live state. `wasStopped` is read BEFORE any
+  // mutation below so the resume-nudge decision reflects the state this request
+  // actually found, not the state it's about to create.
+  const previousEpochKey = String(costBudgetGen);
+  const previousCeilingCents = liveCeilingCents;
+  const wasStopped = computeCostStatus() === 'stopped';
+
+  costCeilingUsd = requestTargetCeilingCents / 100;
+  // Rotate on EVERY successful apply (raise or lower) — not just raises. This is
+  // what fences a still-in-flight legacy card override (stamped with the OLD
+  // epoch) and a redelivered copy of THIS SAME request after it already applied.
+  costBudgetGen++;
+  costEpisodeId = undefined;
+
+  if (costSpentUsd >= costCeilingUsd) {
+    // Stay or become stopped immediately — do not wait for the next
+    // recordTurnCost tick to notice (mirrors the in-turn hard-stop check).
+    costCeilingHardStop = true;
+    costStopRequested = true;
+  } else {
+    costCeilingHardStop = false;
+    costStopRequested = false;
+    // A bare raise on an already-healthy session must not fabricate a "you were
+    // just resumed" nudge — only queue it when this transition actually resumes
+    // a session that WAS stopped.
+    if (wasStopped) {
+      pendingCostNudge =
+        `Cost checkpoint: this session has spent $${costSpentUsd.toFixed(2)}. A human just approved ` +
+        `raising the cost ceiling to $${costCeilingUsd.toFixed(2)} so you can continue — this is not a ` +
+        `blank check. You're likely carrying a large accumulated context; be frugal from here: avoid ` +
+        `re-reading files or context you already have, summarize progress instead of re-deriving it, and ` +
+        `aim to finish or hand off the current task within the next few turns rather than continuing to ` +
+        `accumulate more context.`;
+    }
+  }
+
+  const status = computeCostStatus();
+  const newState: CostCapState = {
+    capUsd: costCapUsd,
+    spentUsd: costSpentUsd,
+    status,
+    immortal: costImmortal,
+    window: costWindow,
+    ceilingUsd: costCeilingUsd,
+    budgetGen: costBudgetGen,
+    ...(costWindow === 'daily' && costDayKey ? { dayKey: costDayKey } : {}),
+    ...(costEscalatedAt ? { escalatedAt: costEscalatedAt } : {}),
+    ...(costDecision ? { decision: costDecision } : {}),
+    ...(costDecidedAt ? { decidedAt: costDecidedAt } : {}),
+  };
+
+  const receipt: CostCeilingAdjustmentReceipt = {
+    action: 'cost_ceiling_adjustment_result',
+    protocolVersion: 2,
+    adjustmentId,
+    sessionId,
+    outcome: 'applied',
+    expectedEpochKey: requestExpectedEpochKey,
+    previousEpochKey,
+    resultEpochKey: String(costBudgetGen),
+    expectedCeilingCents: requestExpectedCeilingCents,
+    previousCeilingCents,
+    targetCeilingCents: requestTargetCeilingCents,
+    resultCeilingCents: Math.round(costCeilingUsd * 100),
+    spentUsd: Number(costSpentUsd.toFixed(4)),
+    status,
+  };
+
+  commitOrThrow(
+    receipt,
+    newState,
+    `set_ceiling APPLIED for adjustment ${adjustmentId}: ceiling $${(previousCeilingCents / 100).toFixed(2)} -> ` +
+      `$${costCeilingUsd.toFixed(2)}, spent=$${costSpentUsd.toFixed(2)}, status=${status} (id=${msg.id})`,
+  );
+}
+
+/**
+ * Test-only seam for the per-session cost state machine (ADDITIVE — no runtime
+ * path references this). The cost functions and their accumulator are
+ * module-private singletons because the accounting happens inside processQuery's
+ * event loop; that makes them unreachable from a unit test without a hook. This
+ * bundle exposes the pure transitions plus a get/set for the module globals so
+ * `poll-loop.cost.test.ts` can drive crossings (cap, ceiling, day rollover,
+ * overrides, reset) directly. It changes no behavior.
+ */
+export const __costCapTestHooks = {
+  recordTurnCost,
+  computeCostStatus,
+  costCeilingRemainingUsd,
+  applyCostOverride,
+  resetCostForNewSession,
+  initCostTracking,
+  emitCostEscalation,
+  publishRunnerReadiness,
+  getState: () => ({
+    costEnabled,
+    costImmortal,
+    costWindow,
+    costDayKey,
+    costAllotmentUsd,
+    costCapUsd,
+    costSpentUsd,
+    costEscalatedAt,
+    costDecision,
+    costDecidedAt,
+    costStopRequested,
+    costCeilingUsd,
+    costCeilingAllotmentUsd,
+    costCeilingEscalated,
+    costCeilingHardStop,
+    costBudgetGen,
+    costEpisodeId,
+    pendingCostNudge,
+  }),
+  setState: (p: {
+    costEnabled?: boolean;
+    costImmortal?: boolean;
+    costWindow?: CostCapWindow;
+    costDayKey?: string | undefined;
+    costAllotmentUsd?: number;
+    costCapUsd?: number;
+    costSpentUsd?: number;
+    costEscalatedAt?: string | undefined;
+    costDecision?: 'continue' | 'stop' | undefined;
+    costDecidedAt?: string | undefined;
+    costStopRequested?: boolean;
+    costCeilingUsd?: number;
+    costCeilingAllotmentUsd?: number;
+    costCeilingEscalated?: boolean;
+    costCeilingHardStop?: boolean;
+    costBudgetGen?: number;
+    costEpisodeId?: string | undefined;
+    pendingCostNudge?: string | undefined;
+  }): void => {
+    if ('costEnabled' in p) costEnabled = p.costEnabled!;
+    if ('costImmortal' in p) costImmortal = p.costImmortal!;
+    if ('costWindow' in p) costWindow = p.costWindow!;
+    if ('costDayKey' in p) costDayKey = p.costDayKey;
+    if ('costAllotmentUsd' in p) costAllotmentUsd = p.costAllotmentUsd!;
+    if ('costCapUsd' in p) costCapUsd = p.costCapUsd!;
+    if ('costSpentUsd' in p) costSpentUsd = p.costSpentUsd!;
+    if ('costEscalatedAt' in p) costEscalatedAt = p.costEscalatedAt;
+    if ('costDecision' in p) costDecision = p.costDecision;
+    if ('costDecidedAt' in p) costDecidedAt = p.costDecidedAt;
+    if ('costStopRequested' in p) costStopRequested = p.costStopRequested!;
+    if ('costCeilingUsd' in p) costCeilingUsd = p.costCeilingUsd!;
+    if ('costCeilingAllotmentUsd' in p) costCeilingAllotmentUsd = p.costCeilingAllotmentUsd!;
+    if ('costCeilingEscalated' in p) costCeilingEscalated = p.costCeilingEscalated!;
+    if ('costCeilingHardStop' in p) costCeilingHardStop = p.costCeilingHardStop!;
+    if ('costBudgetGen' in p) costBudgetGen = p.costBudgetGen!;
+    if ('costEpisodeId' in p) costEpisodeId = p.costEpisodeId;
+    if ('pendingCostNudge' in p) pendingCostNudge = p.pendingCostNudge;
+  },
+};
+
+/**
+ * User-facing notice for a turn that produced nothing at all, even after the
+ * re-send nudge. Delivered so the thread reports the failure instead of just
+ * stopping — the whole point of the silent-turn path.
+ */
+const SILENT_TURN_NOTICE =
+  'The agent finished its turn without producing any output, so there is nothing to deliver. ' +
+  'Your message was not answered — please re-send it.';
+
+/**
+ * True for SQLite errors that indicate a corrupt READ view — almost always a
+ * cross-mount page-cache coherency issue on Docker Desktop macOS rather than
+ * actual file damage (host-side integrity_check passes). Reopening the DB
+ * handle inside this process does NOT recover; only a fresh container mount
+ * does. Caller's job is to exit so host-sweep respawns the container.
+ *
+ * The LIVE classification the poll loop acts on now belongs to the mailbox
+ * driver (`SqliteAgentMailbox.shouldRestartAfter`) — a non-SQLite driver has
+ * its own idea of "needs a fresh runner". This predicate is kept as the
+ * SQLite-specific statement of the symptom for callers that hold a bare
+ * message string rather than a mailbox.
+ */
+export function isCorruptionError(msg: string): boolean {
+  return (
+    msg.includes('database disk image is malformed') ||
+    msg.includes('SQLITE_CORRUPT') ||
+    msg.includes('file is not a database')
+  );
+}
 
 function log(msg: string): void {
   console.error(`[poll-loop] ${msg}`);
 }
 
+/**
+ * Mirror an overlay event to the dashboard's hook-event ingest. Same
+ * shape the universal SDK PostToolUse curl uses, with `tool_name="overlay"`
+ * and an `event` namespace prefix so the timeline can filter / colorize.
+ *
+ * Container-runner sets `NANOCLAW_HOOK_URL` when the dashboard is
+ * configured; empty value → silent no-op (dashboards don't exist on every
+ * install). Errors are swallowed: this is observability, not control flow.
+ */
+function postOverlayEvent(event: string, extra: Record<string, unknown> = {}): void {
+  const url = process.env.NANOCLAW_HOOK_URL;
+  if (!url) return;
+  const payload = JSON.stringify({
+    hook_event_name: event,
+    tool_name: 'overlay',
+    session_id: process.env.NANOCLAW_SESSION_ID ?? '',
+    thread_id: process.env.NANOCLAW_SESSION_THREAD_ID ?? '',
+    group: process.env.NANOCLAW_GROUP_FOLDER ?? '',
+    ...extra,
+  });
+  // Fire-and-forget — do not await, do not block dispatch on a slow
+  // dashboard. The host curl runs as a child process so we get the same
+  // proxy-bypass behavior as the universal hook.
+  try {
+    const { spawn } = require('child_process') as typeof import('child_process');
+    const child = spawn(
+      'curl',
+      [
+        '-sf',
+        '--proxy',
+        '',
+        '-X',
+        'POST',
+        url,
+        '-H',
+        'Content-Type: application/json',
+        '-H',
+        `X-Group-Folder: ${process.env.NANOCLAW_GROUP_FOLDER ?? ''}`,
+        '-H',
+        `X-NanoClaw-Session-Id: ${process.env.NANOCLAW_SESSION_ID ?? ''}`,
+        '-H',
+        `X-NanoClaw-Session-Thread-Id: ${process.env.NANOCLAW_SESSION_THREAD_ID ?? ''}`,
+        '-d',
+        payload,
+        '--max-time',
+        '3',
+      ],
+      { stdio: 'ignore', detached: true },
+    );
+    child.unref();
+    child.on('error', () => {});
+  } catch {
+    // ignore — observability is best-effort
+  }
+}
+
+/**
+ * True iff the message is a scheduled task that explicitly OPTS OUT of the
+ * fresh-session default by setting `content.new_session === false`. The
+ * default across the system is now fresh-session-on for recurring task
+ * batches (see isNewSessionBatch); tasks that genuinely need the stored
+ * continuation (chained workflows that carry state in conversation memory,
+ * rather than in files) must opt out explicitly.
+ *
+ * Strict `=== false` matters — an absent key or `true` both participate in
+ * the default; only an explicit `false` blocks it. Swallows malformed JSON
+ * rather than throwing.
+ */
+export function taskOptsOutOfNewSession(m: { kind: string; content: string }): boolean {
+  if (m.kind !== 'task') return false;
+  try {
+    return (JSON.parse(m.content) as Record<string, unknown>).new_session === false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Decide whether a THROWN turn error (outer-catch path) should bounce the a2a
+ * trigger for host redrive.
+ *
+ * The structured-isError bounce in processQuery only fires when the provider
+ * YIELDS a result event. A transport death — the SDK's readMessages stream
+ * erroring mid-read (e.g. "Connection closed mid-response", ECONNRESET) — is
+ * re-raised as a thrown Error instead and lands in runPollLoop's outer catch,
+ * bypassing that bounce (the #12108 drop). This re-arms those for host redrive.
+ *
+ * CRITICAL asymmetry with the result branch: that branch is gated on
+ * `event.isError === true`, which PROVES the provider turn itself failed and
+ * produced no output — so it can safely bounce even an `unknown` error. The
+ * thrown path has NO such proof. A throw reaching this catch can be a genuine
+ * provider transport death OR a LOCAL runner exception raised AFTER
+ * dispatchResultText already wrote outbound rows (e.g. a downstream throw in
+ * the result branch). Bouncing the latter would redrive the trigger and
+ * DUPLICATE already-delivered peer messages. So the thrown path only bounces
+ * errors we POSITIVELY recognize as transient provider/transport shapes
+ * (classifyTurnError === 'transient'); `unknown` and `permanent` both fall
+ * through to the unchanged relay+complete path. This is allowlist-driven on
+ * purpose — an unrecognized throw is treated as possibly-local, not redriven.
+ *
+ *   - non-`agent` channel  → null  (never bounce; deliver the notice as today)
+ *   - transient error text → 'bounced-transient'  (known provider/transport outage)
+ *   - unknown / permanent  → null  (may be a local post-delivery throw — do NOT redrive)
+ *
+ * Returns 'bounced-transient' to bounce, or null when the turn must NOT bounce.
+ */
+export function classifyThrownBounce(channelType: string | null, errMsg: string): 'bounced-transient' | null {
+  if (channelType !== 'agent') return null;
+  return classifyTurnError(errMsg) === 'transient' ? 'bounced-transient' : null;
+}
+
+/**
+ * Default-on fresh-session policy for recurring task batches:
+ *   - Empty batch: false (defensive — no spurious fresh sessions).
+ *   - Any chat in the batch: false (mixed batches preserve chat history).
+ *   - All-tasks AND at least one opts out via `new_session: false`: false
+ *     (safer to preserve continuity than drop it when any task asks).
+ *   - All-tasks AND none opts out: true (the common heartbeat/cron case,
+ *     now the default without any flag needing to be set).
+ *
+ * Historical note: PR #58 introduced opt-in (`new_session: true`); PR #106
+ * fixed the follow-up-push bypass; empirical prod rollout (slang-discord-
+ * support: $0.57 after flip vs $1.00 before, on 11 turns vs 3) confirmed
+ * the delta is real enough to make opt-out the sane default.
+ */
+export function isNewSessionBatch(keep: Array<{ kind: string; content: string }>): boolean {
+  return keep.length > 0 && keep.every((m) => m.kind === 'task') && !keep.some(taskOptsOutOfNewSession);
+}
+
+/**
+ * Idle cap for providers with no transcript of their own to rotate. Mirrors the
+ * Claude age knob's default and its disable semantics (non-positive = off).
+ */
+function continuationMaxIdleMs(): number {
+  const raw = process.env.CONTINUATION_MAX_IDLE_DAYS;
+  if (raw === undefined || raw.trim() === '') return 14 * 86_400_000;
+  const days = Number(raw);
+  if (!Number.isFinite(days)) return 14 * 86_400_000;
+  return days > 0 ? days * 86_400_000 : Infinity;
+}
+
 function generateId(): string {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
+ * Build a per-loop refresher for the destinations section of the system
+ * prompt. The host re-projects `inbound.db::destinations` whenever a new
+ * coworker is wired up (dashboard/server.ts → refreshRunningSessions),
+ * but Claude SDK pins the system prompt at the initial query and never
+ * re-reads it for `query.push()` follow-ups. Two-part fix:
+ *
+ *   1. Always update `systemContext.instructions` so the NEXT fresh query
+ *      starts with the current destinations list.
+ *   2. Return an inline `[System: destinations updated …]` block that the
+ *      caller prepends to the pushed prompt so the agent sees the live
+ *      list even while the frozen system prompt is stale.
+ *
+ * Returns null (no inline note needed) when destinations haven't changed
+ * since the last call, or on the very first call (seed observation —
+ * otherwise every container's first push carries a redundant note).
+ */
+function makeDestinationsRefresher(systemContext: PollLoopConfig['systemContext']): () => string | null {
+  let last: string | null = null;
+  return () => {
+    const fp = getDestinationsFingerprint();
+    if (fp === last) return null;
+    const firstCall = last === null;
+    last = fp;
+    if (systemContext) systemContext.instructions = buildSystemPromptAddendum();
+    if (firstCall) return null;
+    log('Destinations changed — refreshed system prompt + push-block');
+    return buildDestinationsPushNote();
+  };
+}
+
+/** Inline system note listing current destinations; prepended to pushed prompts. */
+function buildDestinationsPushNote(): string {
+  const all = getAllDestinations();
+  if (all.length === 0) {
+    return '\n[System: destinations updated — you currently have no configured destinations.]\n\n';
+  }
+  const names = all
+    .map((d) => (d.displayName && d.displayName !== d.name ? `${d.name} (${d.displayName})` : d.name))
+    .map((s) => `  - ${s}`)
+    .join('\n');
+  return (
+    '\n[System: destinations list updated since your previous turn. Current list:\n' +
+    names +
+    '\nUse THIS list, not any earlier mention. No restart is needed.]\n\n'
+  );
 }
 
 export interface PollLoopConfig {
@@ -63,6 +1158,8 @@ export interface PollLoopConfig {
    * polling forever and stealing messages from the next test's DB.
    */
   signal?: AbortSignal;
+  /** Test seam: shorten active-query follow-up polling without changing prod. */
+  activePollIntervalMs?: number;
 }
 
 /**
@@ -88,7 +1185,24 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   // long-lived hub keeps trying to reload an ever-growing .jsonl, hangs the
   // first turn, and gets killed before it can reply (then repeats forever).
   if (continuation) {
-    const rotateReason = config.provider.maybeRotateContinuation?.(continuation, config.cwd);
+    let rotateReason = config.provider.maybeRotateContinuation?.(continuation, config.cwd);
+    // Providers whose history lives server-side legitimately omit that hook
+    // (providers/types.ts) — there is no local transcript to measure. They were
+    // therefore never rotated at all, at any age. Codex resumed a thread last
+    // touched seven weeks earlier on 2026-07-17, returned task_complete with
+    // last_agent_message null, and the thread went silent.
+    //
+    // Only applied when the provider has no rotation of its own, so a
+    // file-based provider can never be double-rotated by this. Idle age comes
+    // from session_state's existing per-write timestamp — no new bookkeeping,
+    // and no size cap: bytes are meaningless when the transcript is not local.
+    if (!rotateReason && !config.provider.maybeRotateContinuation) {
+      const ageMs = getContinuationAgeMs(config.providerName);
+      const maxIdleMs = continuationMaxIdleMs();
+      if (ageMs !== null && ageMs > maxIdleMs) {
+        rotateReason = `continuation idle ${(ageMs / 86_400_000).toFixed(1)}d > ${(maxIdleMs / 86_400_000).toFixed(0)}d cap`;
+      }
+    }
     if (rotateReason) {
       log(`Rotating session — ${rotateReason}; starting fresh`);
       clearContinuation(config.providerName);
@@ -103,6 +1217,18 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   // Clear leftover 'processing' acks from a previous crashed container.
   // This lets the new container re-process those messages.
   clearStaleProcessingAcks();
+
+  // Runner-instance readiness handshake (NanoClaw #1, "set ceiling v2") —
+  // publish before anything else so the host's post-wake readiness poll finds
+  // it as soon as possible.
+  publishRunnerReadiness();
+
+  // Cost cap (NanoClaw #1): load persisted spend so the cap survives respawns,
+  // and publish the current cap state for the dashboard. Provider name gates
+  // enablement (only Claude emits the 'usage' events the cap prices — FIX #4).
+  initCostTracking(config.providerName);
+
+  const refreshDestinations = makeDestinationsRefresher(config.systemContext);
 
   let pollCount = 0;
   let isFirstPoll = true;
@@ -136,6 +1262,32 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
       continue;
     }
 
+    // Cost-cap quiesce (NanoClaw #1): after a 'stop' override, take no NEW
+    // work — but still process any `cost_override` control rows so a later
+    // 'continue' can resume. Normal messages are left `pending` (never
+    // markProcessing'd) so they run once the session resumes.
+    if (costStopRequested) {
+      // Recovery out of a cost stop is TWO-WAY: a cost_override 'continue' (the
+      // dashboard button) OR an explicit /clear. A /clear clears the stop and
+      // falls through to the normal command path below (which resets the window
+      // + continuation). Everything else stays pending until the session resumes.
+      const hasClear = messages.some((m) => (m.kind === 'chat' || m.kind === 'chat-sdk') && isClearCommand(m));
+      if (!hasClear) {
+        const controls = messages.filter((m) => m.kind === 'cost_override');
+        if (controls.length === 0) {
+          await sleep(POLL_INTERVAL_MS);
+          continue;
+        }
+        const controlIds = controls.map((m) => m.id);
+        markProcessing(controlIds);
+        for (const c of controls) applyCostOverride(c);
+        markCompleted(controlIds);
+        continue;
+      }
+      // /clear present → drop the quiesce and let the normal loop reset us.
+      costStopRequested = false;
+    }
+
     const ids = messages.map((m) => m.id);
     markProcessing(ids);
 
@@ -148,10 +1300,20 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     const commandIds: string[] = [];
 
     for (const msg of messages) {
+      // Cost-cap override (NanoClaw #1): a human decision from the dashboard.
+      // Applied to the in-memory cost state and acked — never fed to the agent.
+      if (msg.kind === 'cost_override') {
+        applyCostOverride(msg);
+        commandIds.push(msg.id);
+        continue;
+      }
       if ((msg.kind === 'chat' || msg.kind === 'chat-sdk') && isClearCommand(msg)) {
         log('Clearing session (resetting continuation)');
         continuation = undefined;
         clearContinuation(config.providerName);
+        // /clear is a genuine restart — zero the lifetime cost window too so the
+        // fresh conversation starts on a fresh allotment (no-op for daily).
+        resetCostForNewSession();
         await writeMessageOut({
           id: generateId(),
           kind: 'chat',
@@ -215,17 +1377,49 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
       continue;
     }
 
+    // Scheduled tasks with new_session:true run in a fresh context so
+    // heartbeat/cron history doesn't accumulate across runs. Only applies
+    // when the entire batch is tasks (no chat messages mixed in) — mixed
+    // batches default to the stored continuation so chat history is preserved.
+    const newSessionBatch = isNewSessionBatch(keep);
+    // A fresh-session batch starts the conversation over — reset the lifetime
+    // cost window to a new allotment (no-op for the immortal daily window).
+    if (newSessionBatch) resetCostForNewSession();
+
     // Format messages: passthrough commands get raw text (only if the
     // provider natively handles slash commands), others get XML.
-    const prompt = formatMessagesWithCommands(keep, config.provider.supportsNativeSlashCommands);
+    let prompt = formatMessagesWithCommands(keep, config.provider.supportsNativeSlashCommands);
+
+    // A ceiling-continue queued a one-shot cost-sensitivity note — this is the
+    // first real turn since, so prepend it. cost_override rows are never fed to
+    // the agent directly (see applyCostOverride), so it has to ride here instead.
+    if (pendingCostNudge) {
+      prompt = `<system>${pendingCostNudge}</system>\n\n${prompt}`;
+      pendingCostNudge = undefined;
+    }
+
+    // Non-native providers: run intent router on the initial prompt too.
+    // Claude SDK fires UserPromptSubmit hooks natively; for Codex/OpenCode
+    // we call the same bridge so workflow classification applies to every
+    // user message regardless of provider.
+    if (!config.provider.supportsNativeSlashCommands) {
+      prompt = await classifyAndPrepend(prompt);
+    }
 
     log(`Processing ${keep.length} message(s), kinds: ${[...new Set(keep.map((m) => m.kind))].join(',')}`);
+    if (newSessionBatch) log('new_session flag set — running task in fresh context');
+
+    // Pick up destination changes the host wrote mid-session so the agent
+    // sees new coworkers without requiring a container restart.
+    refreshDestinations();
 
     const query = config.provider.query({
       prompt,
-      continuation,
+      continuation: newSessionBatch ? undefined : continuation,
       cwd: config.cwd,
       systemContext: config.systemContext,
+      // Tier-2 ceiling soft-brake for THIS turn (undefined when no ceiling applies).
+      maxBudgetUsd: costCeilingRemainingUsd(),
     });
     // Process the query while concurrently polling for new messages
     const skippedSet = new Set(skipped.map((s) => s.id));
@@ -233,6 +1427,11 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     // Publish the batch's in_reply_to so MCP tools (send_message, send_file)
     // can stamp it on outbound rows — needed for a2a return-path routing.
     setCurrentInReplyTo(routing.inReplyTo);
+    let queryResult: QueryResult | undefined;
+    // Trigger ids bounced via the THROWN-error path (outer catch) this turn.
+    // Kept separate from queryResult.bouncedIds because a throw means
+    // processQuery never returned a result to carry them.
+    let thrownBouncedIds: string[] = [];
     // Forward a loop stop to the ACTIVE query. The stream deliberately stays
     // open between turns, so the loop can be parked inside processQuery when
     // config.signal fires; without this, the "stopped" loop's query — and its
@@ -240,11 +1439,13 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     // claiming) messages from whatever inbound DB the process points at. In
     // tests that leaked one immortal poller per loop-driven test, which could
     // steal a later test's follow-up message into a dead query.
+    // Belt-and-braces with the signal processQuery registers internally: only
+    // this one covers a signal that is ALREADY aborted at query-start.
     const abortActiveQuery = () => query.abort();
     if (config.signal?.aborted) abortActiveQuery();
     else config.signal?.addEventListener('abort', abortActiveQuery, { once: true });
     try {
-      const result = await processQuery(
+      queryResult = await processQuery(
         query,
         routing,
         processingIds,
@@ -253,9 +1454,14 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
         prompt,
         continuation,
         config.provider.emitsMidTurnText === true,
+        config.signal,
+        config.activePollIntervalMs,
+        newSessionBatch,
+        refreshDestinations,
       );
-      if (result.continuation && result.continuation !== continuation) {
-        continuation = result.continuation;
+      // Don't overwrite the stored chat continuation with a task's ephemeral session.
+      if (!newSessionBatch && queryResult.continuation && queryResult.continuation !== continuation) {
+        continuation = queryResult.continuation;
         setContinuation(config.providerName, continuation);
       }
     } catch (err) {
@@ -271,54 +1477,159 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
         clearContinuation(config.providerName);
       }
 
-      // Write error response so the user knows something went wrong
-      await writeMessageOut({
-        id: generateId(),
-        kind: 'chat',
-        platform_id: routing.platformId,
-        channel_type: routing.channelType,
-        thread_id: routing.threadId,
-        content: JSON.stringify({ text: `Error: ${errMsg}` }),
-      });
+      // a2a bounce on the THROWN-error path (#12108). The structured-isError
+      // bounce in processQuery only fires when the provider YIELDS a result
+      // event. But a transport death — the SDK's readMessages stream erroring
+      // mid-read (e.g. "Connection closed mid-response", ECONNRESET) — is
+      // re-raised as `Error("Claude Code returned an error result: <text>")`
+      // and lands HERE instead, bypassing that bounce. Without this, such a
+      // turn relayed the raw error to the peer and was acked completed
+      // (tries=0), permanently consuming an un-actioned a2a handoff — the exact
+      // #12108 drop. classifyThrownBounce mirrors the result-branch decision:
+      // on an `agent` edge a transient/unknown error bounces (trigger left
+      // un-acked for the host redrive sweep, blip NOT relayed to the peer);
+      // permanent errors and non-a2a channels fall through to the unchanged
+      // write-error-and-complete path.
+      const thrownBounce = classifyThrownBounce(routing.channelType, errMsg);
+      if (thrownBounce) {
+        markBounced(processingIds, thrownBounce);
+        thrownBouncedIds = processingIds;
+        log(
+          `a2a thrown-error bounce (${thrownBounce}) — trigger left pending for host redrive: ` + errMsg.slice(0, 80),
+        );
+      } else {
+        // Write error response so the user knows something went wrong
+        await writeMessageOut({
+          id: generateId(),
+          kind: 'chat',
+          platform_id: routing.platformId,
+          channel_type: routing.channelType,
+          thread_id: routing.threadId,
+          content: JSON.stringify({ text: `Error: ${errMsg}` }),
+        });
 
-      // The batch is still acked completed below (no redelivery). Without
-      // this line the only log trace of the errored turn is "Query error"
-      // followed by a "Completed" line that reads like success.
-      log(`Errored batch will be acked completed — ${processingIds.length} message(s), no redelivery`);
+        // The batch is still acked completed below (no redelivery). Without
+        // this line the only log trace of the errored turn is "Query error"
+        // followed by a "Completed" line that reads like success.
+        log(`Errored batch will be acked completed — ${processingIds.length} message(s), no redelivery`);
+      }
     } finally {
       clearCurrentInReplyTo();
       config.signal?.removeEventListener('abort', abortActiveQuery);
     }
 
+    // A caller-requested stop is not a completed turn. If the query already
+    // produced a result, processQuery handled its normal ack; otherwise leave the
+    // processing claim for the next container/test loop to reset instead of
+    // consuming an unanswered message.
+    if (config.signal?.aborted) return;
+
     // Ensure completed even if processQuery ended without a result event
-    // (e.g. stream closed unexpectedly).
-    markCompleted(processingIds);
-    log(`Completed ${ids.length} message(s)`);
+    // (e.g. stream closed unexpectedly). EXCLUDE any ids marked as a transient
+    // a2a bounce — completing them here would clobber the 'bounced-*' marker
+    // back to 'completed' and permanently consume the un-actioned handoff. This
+    // covers both bounce paths: the structured-result bounce (queryResult.
+    // bouncedIds) and the thrown-error bounce (thrownBouncedIds) above.
+    // Silent turns (queryResult.undeliveredIds) are excluded for the same
+    // reason: they were acked 'failed' after delivering a failure notice, and
+    // overwriting that with 'completed' is exactly how the silence used to
+    // disappear from the record.
+    const skipAck = new Set([
+      ...(queryResult?.bouncedIds ?? []),
+      ...(queryResult?.undeliveredIds ?? []),
+      ...thrownBouncedIds,
+    ]);
+    const ackedIds = processingIds.filter((id) => !skipAck.has(id));
+    markCompleted(ackedIds);
+    log(
+      skipAck.size > 0
+        ? `Completed ${ackedIds.length} message(s); ${skipAck.size} NOT completed (bounced or undelivered)`
+        : `Completed ${ids.length} message(s)`,
+    );
   }
+}
+
+/**
+ * For non-native providers, resolve a slash command to its SKILL.md body.
+ * Claude Code's SDK loads SKILL.md on demand via its Skill tool; for Codex
+ * and other providers we inject the body directly into the prompt so the
+ * agent gets the same information without needing to `cat` the file.
+ */
+function resolveSkillBody(command: string): string | null {
+  const skillName = command.replace(/^\//, '').split(/\s/)[0];
+  if (!skillName) return null;
+
+  const agentDirs: string[] = [];
+  try {
+    agentDirs.push(...fs.readdirSync('/workspace/agent'));
+  } catch {
+    /* /workspace/agent may not exist */
+  }
+
+  const candidates = [
+    path.join('/home/node/.claude/skills', skillName, 'SKILL.md'),
+    // Additional dirs: cloned repos may put skills under the agent workspace
+    ...agentDirs.flatMap((dir) => {
+      const p = path.join('/workspace/agent', dir, '.claude', 'skills', skillName, 'SKILL.md');
+      return fs.existsSync(p) ? [p] : [];
+    }),
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      if (!fs.existsSync(candidate)) continue;
+      let body = fs.readFileSync(candidate, 'utf-8');
+      // Strip YAML frontmatter
+      body = body.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
+      return body.trim();
+    } catch {
+      /* skip */
+    }
+  }
+  return null;
 }
 
 /**
  * Format messages, handling passthrough commands differently.
  * When the provider handles slash commands natively (Claude Code),
  * passthrough commands are sent raw (no XML wrapping) so the SDK can
- * dispatch them. Otherwise they fall through to standard XML formatting.
+ * dispatch them. For non-native providers, skill bodies are resolved and
+ * injected so the agent gets the full SKILL.md content on invocation.
  */
 function formatMessagesWithCommands(messages: MessageInRow[], nativeSlashCommands: boolean): string {
   const parts: string[] = [];
   const normalBatch: MessageInRow[] = [];
 
   for (const msg of messages) {
-    if (nativeSlashCommands && (msg.kind === 'chat' || msg.kind === 'chat-sdk')) {
+    if (msg.kind === 'chat' || msg.kind === 'chat-sdk') {
       const cmdInfo = categorizeMessage(msg);
       if (cmdInfo.category === 'passthrough' || cmdInfo.category === 'admin') {
-        // Flush normal batch first
-        if (normalBatch.length > 0) {
-          parts.push(formatMessages(normalBatch));
-          normalBatch.length = 0;
+        if (nativeSlashCommands) {
+          // Flush normal batch first
+          if (normalBatch.length > 0) {
+            parts.push(formatMessages(normalBatch));
+            normalBatch.length = 0;
+          }
+          // Pass raw command text (no XML wrapping) — SDK handles it natively
+          parts.push(cmdInfo.text);
+          continue;
         }
-        // Pass raw command text (no XML wrapping) — SDK handles it natively
-        parts.push(cmdInfo.text);
-        continue;
+
+        // Non-native provider: resolve SKILL.md body and inject it
+        if (cmdInfo.category === 'passthrough') {
+          const body = resolveSkillBody(cmdInfo.command);
+          if (body) {
+            if (normalBatch.length > 0) {
+              parts.push(formatMessages(normalBatch));
+              normalBatch.length = 0;
+            }
+            const args = cmdInfo.text.slice(cmdInfo.command.length).trim();
+            parts.push(
+              `<skill-invocation name="${cmdInfo.command.slice(1)}"${args ? ` args="${args}"` : ''}>\n${body}\n</skill-invocation>`,
+            );
+            continue;
+          }
+        }
       }
     }
     normalBatch.push(msg);
@@ -333,6 +1644,16 @@ function formatMessagesWithCommands(messages: MessageInRow[], nativeSlashCommand
 
 interface QueryResult {
   continuation?: string;
+  // Trigger ids that were marked as a transient a2a bounce (markBounced) this
+  // turn instead of completed. The outer poll loop must EXCLUDE these from its
+  // fallback markCompleted, or it would clobber the bounce marker back to
+  // 'completed' and permanently consume the un-actioned handoff.
+  bouncedIds?: string[];
+  // Ids acked `failed` because the turn delivered nothing at all (see the
+  // silent-turn branch in processQuery). Same contract as bouncedIds: the
+  // outer loop's fallback markCompleted must skip them, or it would overwrite
+  // the failure with 'completed' and the silence would go unrecorded again.
+  undeliveredIds?: string[];
 }
 
 export async function processQuery(
@@ -340,9 +1661,9 @@ export async function processQuery(
   routing: RoutingContext,
   initialBatchIds: string[],
   providerName: string,
-  onExchangeComplete: ((exchange: ProviderExchange) => void) | undefined,
-  initialPrompt: string,
-  initialContinuation: string | undefined,
+  onExchangeComplete: ((exchange: ProviderExchange) => void) | undefined = undefined,
+  initialPrompt = '',
+  initialContinuation: string | undefined = undefined,
   /**
    * The provider's declared `emitsMidTurnText` capability (see
    * providers/types.ts). True → mid-turn streaming is the single content
@@ -353,13 +1674,38 @@ export async function processQuery(
    * delivery-inert and the final result stays the single delivery door.
    */
   emitsMidTurnText = false,
+  signal?: AbortSignal,
+  activePollIntervalMs = ACTIVE_POLL_INTERVAL_MS,
+  skipPersistContinuation = false,
+  refreshDestinations: () => string | null = () => null,
 ): Promise<QueryResult> {
   let queryContinuation: string | undefined;
   let done = false;
+  let lastEventTime = Date.now();
   let unwrappedNudged = false;
   // Once-per-turn guard for the task-run "<message> block was not delivered"
   // nudge — mirrors unwrappedNudged for chat turns.
   let taskBlockNudged = false;
+  // Trigger ids marked as a transient a2a bounce this turn (see the result
+  // branch). Returned so the outer loop's fallback markCompleted skips them.
+  const bouncedIds: string[] = [];
+  // Ids acked 'failed' by finalizeSilentTurn. Same contract as bouncedIds.
+  const undeliveredIds: string[] = [];
+  // Once-per-batch guard for the silent-turn re-send nudge, and the flag that
+  // says a nudged turn is still awaiting its retry (so nothing is acked yet).
+  let silentTurnNudged = false;
+  let silentTurnOpen = false;
+  // Outbound watermark at the start of the current turn. A turn that ends with
+  // no text is only truly silent if this has not moved (see the silent-turn
+  // branch); resampled after every result event.
+  let turnWatermark = outboundWatermark();
+  // Has ANY turn on this query answered the batch yet? The silent-turn
+  // discriminator (`producedOutput`) is per-TURN, but its consequences —
+  // SILENT_TURN_NOTICE and markFailed(initialBatchIds) — are per-BATCH. A
+  // stream that delivers on turn 1 and then ends turn 2 empty (a trailing
+  // tool call, a follow-up push) would otherwise tell the user their message
+  // "was not answered" and ack the batch failed, after it had been answered.
+  let batchDelivered = false;
   // How many <message> blocks were delivered from 'text' events this turn
   // (chat runs, emitsMidTurnText providers only). A frame-local count, never
   // keyed by content: it feeds the result door's nudge decision ("did this
@@ -396,6 +1742,40 @@ export async function processQuery(
   // doesn't implement `onExchangeComplete`.
   const archivePrompts: string[] = [initialPrompt];
 
+  /**
+   * Close out a turn that delivered nothing by any path: emit a durable,
+   * user-visible notice (so the thread does not just stop) and ack the batch
+   * 'failed' — never 'completed'. `failed` is deliberate: syncProcessingAcks
+   * maps it onto the inbound row, so the silence is recorded once and the
+   * message is not re-driven into an identical silent turn forever.
+   */
+  const finalizeSilentTurn = async (resultText: string | null): Promise<void> => {
+    silentTurnOpen = false;
+    log('Turn delivered nothing (no text, no outbound row) — acking failed, not completed');
+    if (routing.channelType && routing.platformId && routing.channelType !== 'system') {
+      await writeMessageOut({
+        id: generateId(),
+        in_reply_to: routing.inReplyTo,
+        kind: 'chat',
+        platform_id: routing.platformId,
+        channel_type: routing.channelType,
+        thread_id: routing.threadId,
+        content: JSON.stringify({ text: SILENT_TURN_NOTICE }),
+      });
+    } else {
+      log('No deliverable routing for the silent-turn notice — recorded in the log only');
+    }
+    notifyExchangeComplete(onExchangeComplete, {
+      prompt: archivePrompts[0] ?? initialPrompt,
+      result: resultText,
+      continuation: queryContinuation ?? initialContinuation,
+      status: 'undelivered',
+    });
+    archivePrompts.shift();
+    for (const id of initialBatchIds) markFailed(id);
+    undeliveredIds.push(...initialBatchIds);
+  };
+
   // Concurrent polling: push follow-ups into the active query as they arrive.
   // We do NOT force-end the stream on silence — keeping the query open avoids
   // re-spawning the SDK subprocess (~few seconds) and re-loading the .jsonl
@@ -408,6 +1788,8 @@ export async function processQuery(
   let pollInFlight = false;
   let endedForCommand = false;
   let mailboxFailureStreak = 0;
+  const onSignalAbort = () => query.abort();
+  signal?.addEventListener('abort', onSignalAbort, { once: true });
   const pollHandle = setInterval(() => {
     if (done || pollInFlight || endedForCommand) return;
     pollInFlight = true;
@@ -433,13 +1815,14 @@ export async function processQuery(
           return;
         }
 
-        // Skip system messages (MCP tool responses).
+        // Skip system messages (MCP tool responses) and /clear (needs fresh query).
         // Thread routing is the router's concern — if a message landed in this
         // session, the agent should see it. Per-thread sessions already isolate
         // threads into separate containers; shared sessions intentionally merge
         // everything. Filtering on thread_id here caused deadlocks when the
         // initial batch and follow-ups had mismatched thread_ids (e.g. a
         // host-generated welcome trigger with null thread vs a Discord DM reply).
+        //
         // Accumulated trigger=0 context rows must never be pushed into a live
         // turn on their own — the agent would answer ambient context that was
         // not addressed to it. They ride along only when a real trigger=1
@@ -447,8 +1830,76 @@ export async function processQuery(
         // batch (mirrors the two-phase initial-batch selection in
         // db/messages-in.ts).
         const hasFollowUpTrigger = pending.some((m) => m.kind !== 'system' && m.trigger === 1);
-        const newMessages = pending.filter((m) => m.kind !== 'system' && (m.trigger === 1 || hasFollowUpTrigger));
-        if (newMessages.length === 0) return;
+        const newMessages = pending.filter((m) => {
+          if (m.kind === 'system') return false;
+          if ((m.kind === 'chat' || m.kind === 'chat-sdk') && isClearCommand(m)) return false;
+          return m.trigger === 1 || hasFollowUpTrigger;
+        });
+
+        // Cost-cap override mid-query (FIX #1): the router writes cost_override
+        // with trigger:1, so without this it would fall through the trigger gate
+        // below, get pushed to the provider as a bogus prompt, and be
+        // markCompleted'd — applyCostOverride would NEVER run mid-query. Extract
+        // and apply these BEFORE the trigger gate (and before routing promotion,
+        // so the override's dashboard routing can't hijack the real routing),
+        // ack them, and drop them from newMessages so they never reach
+        // query.push. A 'stop' quiesces promptly: end the active stream and
+        // return so the outer loop settles into the stop state.
+        const overrides = newMessages.filter((m) => m.kind === 'cost_override');
+        if (overrides.length > 0) {
+          const overrideIds = overrides.map((m) => m.id);
+          markProcessing(overrideIds);
+          for (const o of overrides) applyCostOverride(o);
+          markCompleted(overrideIds);
+          for (const o of overrides) {
+            const idx = newMessages.indexOf(o);
+            if (idx >= 0) newMessages.splice(idx, 1);
+          }
+          if (costStopRequested) {
+            log('cost_override stop applied mid-query — ending active stream to quiesce');
+            endedForCommand = true;
+            query.end();
+            return;
+          }
+        }
+
+        if (newMessages.length === 0) {
+          // End stream when agent is idle: no SDK events and no pending messages
+          if (Date.now() - lastEventTime > IDLE_END_MS) {
+            log(`No SDK events for ${IDLE_END_MS / 1000}s, ending query`);
+            query.end();
+          }
+          return;
+        }
+
+        // new_session bypass guard: if any arriving task defaults to fresh
+        // session (a task kind with no `new_session: false` opt-out), DO NOT
+        // push into the active query — that would resume the stored
+        // continuation and defeat the default. End the active query instead;
+        // the next poll iteration's initial-batch path will pick up the
+        // pending rows via the fresh-session path. Leave rows as 'pending'.
+        const wantsFreshSession = (m: { kind: string; content: string }) =>
+          m.kind === 'task' && !taskOptsOutOfNewSession(m);
+        if (newMessages.some(wantsFreshSession)) {
+          log(
+            `fresh-session task arrived mid-query (${newMessages.length} msg) — ending active query to route through fresh-session path`,
+          );
+          query.end();
+          done = true;
+          return;
+        }
+
+        // Update the shared routing when a follow-up brings richer routing
+        // than the initial batch had.
+        const followUpRouting = extractRouting(newMessages);
+        if (followUpRouting.channelType && followUpRouting.platformId) {
+          if (!routing.channelType || !routing.platformId) {
+            log(
+              `Promoting routing from follow-up (${followUpRouting.channelType}:${followUpRouting.platformId}); initial routing was null`,
+            );
+          }
+          routing = followUpRouting;
+        }
 
         // Accumulated context must not engage a warm query by itself.
         if (!newMessages.some((m) => m.trigger === 1)) return;
@@ -459,7 +1910,6 @@ export async function processQuery(
         // Run pre-task scripts on follow-ups too — without this, a task that
         // arrives during an active query (e.g. a */10 monitoring cron) bypasses
         // its script gate and always wakes the agent, defeating the gate.
-        // Mirrors the initial-batch hook above.
         let keep = newMessages;
         let skipped: Array<{ id: string; reason: string }> = [];
         // MODULE-HOOK:scheduling-pre-task-followup:start
@@ -475,23 +1925,32 @@ export async function processQuery(
 
         if (keep.length === 0) return;
         // Re-check done — the outer query may have finished while the script
-        // was awaited. Pushing into a closed stream is wasted work; the
-        // claimed messages get released by the host's processing-claim sweep.
+        // was awaited.
         if (done) return;
 
         const keptIds = keep.map((m) => m.id);
         const prompt = formatMessages(keep);
+        // The SDK fires UserPromptSubmit (and the intent-router hook) only on
+        // the initial query prompt. Mid-query pushes bypass the hook, so run
+        // the router ourselves here so workflow classification is applied to
+        // every user message — not just the first.
+        let routedPrompt = await classifyAndPrepend(prompt);
+        // Claude SDK pins the system prompt to the initial query — pushed
+        // follow-ups don't re-read it. If destinations changed since the
+        // last push, inline the current list so the agent sees it alongside
+        // this user message even though its frozen system prompt is stale.
+        const destNote = refreshDestinations();
+        if (destNote) routedPrompt = destNote + routedPrompt;
         log(`Pushing ${keep.length} follow-up message(s) into active query`);
         unwrappedNudged = false;
         taskBlockNudged = false;
-        query.push(prompt);
+        query.push(routedPrompt);
         archivePrompts.push(prompt);
         markCompleted(keptIds);
+        lastEventTime = Date.now(); // new input counts as activity
       } catch (err) {
         // Without this catch the rejection escapes the void IIFE and Node
-        // terminates the container on unhandled-rejection. The initial-batch
-        // path is wrapped by processQuery's outer try/catch; the follow-up
-        // path is not, so it needs its own.
+        // terminates the container on unhandled-rejection.
         const errMsg = err instanceof Error ? err.message : String(err);
         log(`Follow-up poll error: ${errMsg}`);
 
@@ -517,12 +1976,32 @@ export async function processQuery(
         pollInFlight = false;
       }
     })();
-  }, ACTIVE_POLL_INTERVAL_MS);
+  }, activePollIntervalMs);
 
   try {
     for await (const event of query.events) {
+      lastEventTime = Date.now();
       handleEvent(event, routing);
       touchHeartbeat();
+
+      // Cost cap (NanoClaw #1): reprice each turn's usage, accrue lifetime
+      // spend, persist, and fire the one-shot soft escalation on cap crossing.
+      if (event.type === 'usage') {
+        recordTurnCost(event);
+        // Tier-2 ceiling: end the IN-FLIGHT stream immediately (no more tokens),
+        // mirroring the mid-query 'stop' override — not merely block the next poll.
+        // Without this a single runaway turn (the case the ceiling exists for)
+        // runs to completion unbounded.
+        if (costCeilingHardStop) {
+          log(
+            `Cost ceiling $${costCeilingUsd.toFixed(2)} reached mid-turn — ending stream to ` +
+              `hard-stop (spent=$${costSpentUsd.toFixed(2)})`,
+          );
+          endedForCommand = true;
+          query.end();
+          break;
+        }
+      }
 
       if (event.type === 'init') {
         queryContinuation = event.continuation;
@@ -532,7 +2011,7 @@ export async function processQuery(
         // container died between `init` and `result`, the SDK session was
         // effectively orphaned and the next message started a blank
         // Claude session with no prior context.
-        setContinuation(providerName, event.continuation);
+        if (!skipPersistContinuation) setContinuation(providerName, event.continuation);
       } else if (event.type === 'text') {
         // Assistant text emitted mid-turn (e.g. between tool calls). The
         // final result only carries the LAST assistant text, so complete
@@ -545,32 +2024,77 @@ export async function processQuery(
           const scan = await deliverMidTurnBlocks(event.text, routing, turnStartSeq, midTurnTail);
           midTurnSent += scan.delivered;
           midTurnTail = scan.tail;
+          // Gate refusals are sender feedback — push them back so the agent
+          // re-sends correctly, same contract as the result door. The gates'
+          // own 3-denial soft-cap bounds the re-send loop.
+          if (scan.gateRefusals?.length) {
+            query.push(`<system>${scan.gateRefusals.join('\n\n')}</system>`);
+          }
         }
       } else if (event.type === 'result') {
-        // A result — with or without text — means the turn is done. Mark
-        // the initial batch completed now so the host sweep doesn't see
-        // stale 'processing' claims while the query stays open for
-        // follow-up pushes. The agent may have responded via MCP
-        // (send_message) mid-turn, or the message may not need a response
-        // at all — either way the turn is finished.
-        markCompleted(initialBatchIds);
-        if (event.text) {
-          const { sent, hasUnwrapped, taskBlocks, resultBlocks } = await dispatchResultText(event.text, routing, {
-            midTurnSent,
-            // For emitsMidTurnText providers the result door NEVER delivers
-            // content (error results excepted, below): mid-turn streaming is
-            // the single content door. The result door's remaining job is
-            // the nudge decision — see turnDelivered.
-            suppressDelivery: emitsMidTurnText,
-            // "Did anything user-visible go out this turn?" — door
-            // deliveries (midTurnSent) plus any chat row written since the
-            // turn boundary (which also sees MCP send_message calls the
-            // frame-local count can't). When false and the result still
-            // carries content, the wrap-nudge fires so the model re-sends
-            // and the retry streams through the mid-turn door.
-            turnDelivered: emitsMidTurnText ? midTurnSent > 0 || chatRowWrittenSince(turnStartSeq) : undefined,
+        // A result — with or without text — means the turn is done. We normally
+        // mark the initial batch completed (at the BOTTOM of this branch) so the
+        // host sweep doesn't see stale 'processing' claims while the query stays
+        // open for follow-up pushes.
+        // EXCEPTION — a2a bounce (#943): a FAILED turn (structured isError) that
+        // classifies transient/unknown on an a2a edge must NOT be ack'd (that
+        // permanently consumes an un-actioned handoff — the #12097 bug). We skip
+        // dispatch entirely (do NOT relay the auth blip to the peer) and leave
+        // the trigger un-acked so the host redrive sweep re-arms it. Permanent
+        // errors and non-a2a channels fall through to the normal dispatch path.
+        let bounced = false;
+        // Any result closes out an open silent turn: either it delivered (and
+        // acks normally below) or it was silent again (and the branch at the
+        // bottom finalizes it, because silentTurnNudged is already set).
+        silentTurnOpen = false;
+        const bounceClass =
+          event.isError === true && event.text && routing.channelType === 'agent'
+            ? classifyTurnError(event.text)
+            : 'permanent';
+        if (event.isError === true && event.text && routing.channelType === 'agent' && bounceClass !== 'permanent') {
+          markBounced(initialBatchIds, bounceClass === 'transient' ? 'bounced-transient' : 'bounced-unknown');
+          bouncedIds.push(...initialBatchIds);
+          bounced = true;
+          log(
+            `a2a transient bounce (${bounceClass}) — trigger left pending for host redrive: ` + event.text.slice(0, 80),
+          );
+          notifyExchangeComplete(onExchangeComplete, {
+            prompt: archivePrompts[0] ?? initialPrompt,
+            result: event.text,
+            continuation: queryContinuation ?? initialContinuation,
+            status: 'error',
           });
+          archivePrompts.shift();
+        } else if (event.text?.trim()) {
+          const { sent, hasUnwrapped, danglingOpen, gateRefusals, taskBlocks, resultBlocks } = await dispatchResultText(
+            event.text,
+            routing,
+            {
+              midTurnSent,
+              // For emitsMidTurnText providers the result door NEVER delivers
+              // a <message> block: mid-turn streaming is the single content
+              // door. The result door's remaining jobs are the error-result
+              // surface (below) and the nudge decision — see turnDelivered.
+              suppressDelivery: emitsMidTurnText,
+              // "Did anything user-visible go out this turn?" — door
+              // deliveries (midTurnSent) plus any chat row written since the
+              // turn boundary (which also sees MCP send_message calls the
+              // frame-local count can't). When false and the result still
+              // carries content, the wrap-nudge fires so the model re-sends
+              // and the retry streams through the mid-turn door.
+              turnDelivered: emitsMidTurnText ? midTurnSent > 0 || chatRowWrittenSince(turnStartSeq) : undefined,
+              // The isError branch below owns the error surface; keep the
+              // auto-route shortcut from writing a second, unsanitized copy.
+              isErrorResult: event.isError === true,
+            },
+          );
           const willRetryTaskBlocks = shouldNudgeTaskBlocks(routing.taskRun, taskBlocks, taskBlockNudged);
+          // Gate refusals are sender feedback — push them back to the emitting
+          // agent so it re-sends correctly (parity with the bash-hook gates).
+          // The gates' own 3-denial soft-cap bounds the re-send loop.
+          if (gateRefusals?.length) {
+            query.push(`<system>${gateRefusals.join('\n\n')}</system>`);
+          }
           // One-door task delivery: the final text becomes the run log entry
           // while explicit append-log calls remain optional additive notes.
           // Errors included: a failed run's text belongs in its log, not chat.
@@ -582,6 +2106,14 @@ export async function processQuery(
             // <message> envelope: deliver the notice instead of dropping it as
             // scratchpad, and skip the re-wrap nudge — it would just re-hammer
             // the failing gateway turn after turn.
+            //
+            // Keyed on `resultBlocks` (blocks present in THIS result text),
+            // NOT on `sent`. That distinction is what makes the call safe for
+            // the fork's gates: when the critique/routing gate WITHHELD every
+            // block, `sent` is 0 but `resultBlocks` is not, so this branch
+            // stays shut and the gated body is never pushed to the channel.
+            // The fork previously had to drop this call entirely for want of
+            // exactly this counter.
             await deliverErrorResult(event.text, routing);
             notifyExchangeComplete(onExchangeComplete, {
               prompt: archivePrompts[0] ?? initialPrompt,
@@ -598,6 +2130,10 @@ export async function processQuery(
             // coaxes a redundant second message (live-observed). It stays in
             // the scratchpad log.
             const willRetryWrapping = hasUnwrapped && !unwrappedNudged;
+            // A turn with no meaningful text never reaches here — the branch
+            // below owns it. (It used to be tested for HERE, inside a branch
+            // gated on `event.text`, which made the check dead for the exact
+            // `text: null` silent turn it was written to catch.)
             notifyExchangeComplete(onExchangeComplete, {
               prompt: archivePrompts[0] ?? initialPrompt,
               result: event.text,
@@ -608,12 +2144,16 @@ export async function processQuery(
               unwrappedNudged = true;
               const destinations = getAllDestinations();
               const names = destinations.map((d) => d.name).join(', ');
-              query.push(
-                `<system>Your response was not delivered — it was not wrapped in <message to="name">...</message> blocks. ` +
+              // Fork: distinguish a dangling-open <message> tag from a fully
+              // unwrapped response so the nudge tells the agent which to fix.
+              const reason = danglingOpen
+                ? `Your response was not delivered — you opened a <message to="…"> tag but never emitted the matching </message> close tag. ` +
+                  `Each block must be self-contained in the same response: <message to="name">…</message>. ` +
+                  `Re-send the full block with both tags.`
+                : `Your response was not delivered — it was not wrapped in <message to="name">...</message> blocks. ` +
                   `All output must be wrapped: use <message to="name"> for content to send, or <internal> for scratchpad. ` +
-                  `Your destinations: ${names}. ` +
-                  `Please re-send your response with the correct wrapping.</system>`,
-              );
+                  `Please re-send your response with the correct wrapping.`;
+              query.push(`<system>${reason} Your destinations: ${names}.</system>`);
             }
             if (willRetryTaskBlocks) {
               taskBlockNudged = true;
@@ -627,7 +2167,61 @@ export async function processQuery(
             // not the nudge text.
             if (!willRetryWrapping && !willRetryTaskBlocks) archivePrompts.shift();
           }
-        } else archivePrompts.shift();
+        } else {
+          // SILENT TURN — the result carried no usable text (`null`, or blank).
+          // A turn that delivered nothing by ANY path is not "completed": the
+          // thread simply stops, with no error for anyone to notice. Codex
+          // reaches here routinely — it emits turn/completed with
+          // last_agent_message null (observed 2026-07-17: 7.5s turn, zero
+          // output, acked completed, thread dead) and never sets isError, so
+          // the bounce branch above can't catch it either. Claude has the same
+          // hole structurally.
+          //
+          // The outbound watermark, NOT `sent`, is the discriminator: the MCP
+          // tools (send_message, send_file) run in a separate stdio process,
+          // so a turn that answered purely through a tool call moves the
+          // watermark while `sent` stays 0. Task runs legitimately end with no
+          // chat message (they append to a run log) and are excluded.
+          const producedOutput = outboundWatermark() > turnWatermark;
+          if (producedOutput) batchDelivered = true;
+          if (producedOutput || batchDelivered || routing.taskRun) {
+            archivePrompts.shift();
+          } else if (!silentTurnNudged && event.isError !== true) {
+            // Recovery attempt #1, owned by the poll loop (not by an optional
+            // provider hook no production provider implements): ask for the
+            // answer again on the SAME open query. Nothing is acked yet, and
+            // the prompt stays queued so the retry archives against the user's
+            // message rather than against this nudge.
+            silentTurnNudged = true;
+            silentTurnOpen = true;
+            const names = getAllDestinations()
+              .map((d) => d.name)
+              .join(', ');
+            log('Turn produced no output at all — pushing a re-send nudge before acking anything');
+            query.push(
+              `<system>Your last turn produced NO output — no final text and no message sent. ` +
+                `Nothing reached the user, who is still waiting on the message above. ` +
+                `Re-send your answer now, wrapped in <message to="name">...</message>. ` +
+                `Your destinations: ${names}.</system>`,
+            );
+          } else {
+            // Either the nudged retry came back empty too, or the turn was
+            // already flagged as an error (re-asking would just re-hammer it).
+            // Emit the durable notice and ack failed.
+            await finalizeSilentTurn(event.text);
+          }
+        }
+        // Ack the turn as completed UNLESS it was a transient a2a bounce (left
+        // pending above for the host redrive), it delivered nothing and was
+        // acked 'failed' by finalizeSilentTurn, or a silent turn is still
+        // awaiting its re-send retry. This replaces the former unconditional
+        // markCompleted at the top of the branch.
+        if (!bounced && !silentTurnOpen && undeliveredIds.length === 0) markCompleted(initialBatchIds);
+        // A turn that delivered through the content door (not just the silent
+        // branch above, which only runs for empty results) also answers the
+        // batch — record it before the watermark is resampled.
+        if (outboundWatermark() > turnWatermark) batchDelivered = true;
+        turnWatermark = outboundWatermark();
         // Turn boundary: reset the per-turn sent count after the result's
         // nudge decision has used it. A nudge retry re-counts via its own
         // text events before the retry result, so resetting on every result
@@ -654,9 +2248,16 @@ export async function processQuery(
   } finally {
     done = true;
     clearInterval(pollHandle);
+    signal?.removeEventListener('abort', onSignalAbort);
   }
 
-  return { continuation: queryContinuation };
+  // The stream ended while a nudged silent turn was still outstanding (the
+  // provider never answered the re-send). The batch is still un-acked at this
+  // point — close it out the same way a second silent result would, so the
+  // outer loop's fallback markCompleted can't quietly call it a success.
+  if (silentTurnOpen) await finalizeSilentTurn(null);
+
+  return { continuation: queryContinuation, bouncedIds, undeliveredIds };
 }
 
 function notifyExchangeComplete(
@@ -687,7 +2288,570 @@ function handleEvent(event: ProviderEvent, _routing: RoutingContext): void {
     case 'progress':
       log(`Progress: ${event.message}`);
       break;
+    case 'usage':
+      // Structured per-turn accounting. Grep-friendly: every field is a
+      // bare keyword=value token, same line. Stable schema so downstream
+      // tooling (ccusage / ad-hoc awk / the 2×2 stress-test harness)
+      // can parse without JSON.
+      log(
+        `Usage: sessionId=${event.sessionId ?? 'null'} ` +
+          `durationMs=${event.durationMs} ` +
+          `numTurns=${event.numTurns} ` +
+          `input=${event.inputTokens} ` +
+          `output=${event.outputTokens} ` +
+          `cacheCreate=${event.cacheCreationInputTokens} ` +
+          `cacheRead=${event.cacheReadInputTokens} ` +
+          `ephemeral1h=${event.ephemeral1hInputTokens} ` +
+          `ephemeral5m=${event.ephemeral5mInputTokens} ` +
+          `costUsd=${event.totalCostUsd}`,
+      );
+      break;
   }
+}
+
+/**
+ * Critique-gate scope-extender: the bash hook
+ * (container/hooks/gate-critique-on-deliver.sh) is wired as a PreToolUse
+ * matcher on `mcp__nanoclaw__send_message|Bash`, so it only catches
+ * delivery-marker traffic that goes through those tools. The most common
+ * delivery path — the agent emitting `<message to="X">[Fix Report]…</message>`
+ * as plain text and letting `dispatchResultText` parse it — uses neither
+ * tool, so the hook never fires and the gate is silently bypassed.
+ *
+ * This in-process check mirrors the bash hook's logic (same MARKER file,
+ * same workflow-state.json, same delivery-marker regex) and runs at the
+ * one chokepoint left for text-output dispatch.
+ *
+ * Returns null when the gate either doesn't apply or permits the body.
+ * Returns a string (the explanation) when the gate refuses delivery —
+ * the caller substitutes that explanation for the original body so the
+ * destination sees a clear refusal note instead of the gated content.
+ *
+ * Paths overridable for tests via the optional opts.
+ */
+// Anchored to line start (multiline): the chain protocol emits markers as
+// message/line prefixes, and unanchored matching treated a mid-sentence
+// MENTION of a marker as a delivery — burning a denial and one of the
+// session's soft-cap strikes each time.
+// Built-in floor = the GENERAL chain-protocol primitives only (chain-reporting.md):
+// [Resolution] (terminal chain close) and [handoff] (lateral peer pass). These
+// are project-agnostic and every coworker uses them. Role-specific terminal
+// names ([Fix Report], [Triage Resolution], [Review Verdict], [Triage handoff])
+// are NOT built in — each emitting role declares them in its coworker-type
+// `delivery_markers` (materialized to .critique-delivery-markers, unioned here
+// and by the routing gate). [Report] is deliberately absent: it's the status
+// channel, not a gated deliverable.
+const DEFAULT_DELIVERY_MARKERS = ['Resolution', 'handoff'];
+const DELIVERY_MARKER_RE = /^[ \t]*\[(Resolution|handoff)\]/m;
+
+// Critique-gate vocabulary: built-in defaults plus ADDITIVE extensions from
+// .critique-delivery-markers (materialized by the composer from the
+// coworker-type chain's delivery_markers declarations). Labels are
+// re-validated to a regex-metachar-free charset before splicing — and since
+// extensions can only add markers, tampering with the file can only widen
+// the gate, never narrow it. Both the critique gate AND the always-on
+// chain-routing gate resolve their vocabulary through this helper, so a
+// per-role delivery_markers extension is recognized identically by both —
+// otherwise moving a marker into per-role YAML would keep the critique gate
+// working while silently regressing routing for that role.
+function deliveryMarkerRe(markersPath: string): RegExp {
+  const fs = require('fs') as typeof import('fs');
+  let extra: string[] = [];
+  try {
+    const parsed = JSON.parse(fs.readFileSync(markersPath, 'utf-8')) as { message_markers?: unknown };
+    if (Array.isArray(parsed.message_markers)) {
+      extra = parsed.message_markers.filter(
+        (m): m is string => typeof m === 'string' && /^[A-Za-z0-9][A-Za-z0-9 _-]*$/.test(m),
+      );
+    }
+  } catch {
+    extra = [];
+  }
+  if (extra.length === 0) return DELIVERY_MARKER_RE;
+  return new RegExp(`^[ \\t]*\\[(${[...DEFAULT_DELIVERY_MARKERS, ...extra].join('|')})\\]`, 'm');
+}
+// Default location of the per-role delivery vocabulary file (materialized by
+// the composer). Shared by both gates; overridable in tests via opts.
+const DEFAULT_DELIVERY_MARKERS_PATH = '/workspace/agent/.critique-delivery-markers';
+
+// Soft-cap shared by the in-process gates, mirroring the bash hooks
+// (gate-critique-on-deliver.sh:73-89). After GATE_DENIAL_CAP refusals on a
+// single session the gate stops denying and yields — without this, a gate
+// whose precondition the agent can't satisfy (e.g. a workflow step that
+// genuinely has no inbound to reply to, or a misconfigured critique-less
+// orchestrator) would thrash the agent's entire turn budget retrying. The
+// counter is persisted in workflow-state.json under `<key>`; the file is
+// CREATED if absent, so a coworker that never runs critique still escapes.
+const GATE_DENIAL_CAP = 3;
+
+// Returns true if the gate should yield (soft-cap reached) rather than deny.
+// Mirrors gate-critique-on-deliver.sh: check the persisted count BEFORE
+// incrementing, so after GATE_DENIAL_CAP denials the counter stays pinned at
+// the cap and the gate yields without bumping further. Best-effort persistence
+// — a state-write failure never blocks delivery, it just disables the cap.
+/**
+ * Merge keys into workflow-state.json. Used to consume/expire a bypass grant,
+ * mirroring the bash hook's jq patch so both gate implementations leave the
+ * same trail.
+ */
+function patchGateState(statePath: string, patch: Record<string, unknown>): void {
+  const fs = require('fs') as typeof import('fs');
+  const path = require('path') as typeof import('path');
+  let state: Record<string, unknown> = {};
+  try {
+    state = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as Record<string, unknown>;
+  } catch {
+    state = {};
+  }
+  Object.assign(state, patch);
+  try {
+    fs.mkdirSync(path.dirname(statePath), { recursive: true });
+    fs.writeFileSync(statePath, JSON.stringify(state));
+  } catch {
+    // Best-effort, as elsewhere in this file.
+  }
+}
+
+/**
+ * Record an enforcement release into the escalation file — the session
+ * bind-mount, which the host reads. Anything that ALLOWS a delivery with the
+ * requirement unmet must leave a durable trace: this container runs --rm, so a
+ * release logged only to stderr is a release nobody ever learns about.
+ */
+/**
+ * Record an enforcement release where the HOST can see it, in parity with
+ * container/hooks/gate-critique-on-deliver.sh.
+ *
+ * Two sinks, one id. `critique-releases.jsonl` is append-only and always
+ * written, because the escalation file can legitimately be GONE by the time we
+ * get here: the host retires a settled request, and it does that between our
+ * own two writes (the consumption patch above, then this stamp). The
+ * escalation file is merged into when it exists, since it carries the
+ * request's audit context. The host records under the shared event id exactly
+ * once, so writing both never double-counts a release.
+ *
+ * It deliberately never CREATES the escalation file. Fabricating one with
+ * `requested_at: 0` — what this did before — made the host read a real release
+ * as a brand-new escalation and card a human for it, while the release itself
+ * went unrecorded and its link to the original request was destroyed.
+ *
+ * @returns false when nothing was recorded; an invisible release is not a
+ * release the caller may allow.
+ */
+function stampFailedOpen(escPath: string, denialReason: string, why: string, grantId?: string | null): boolean {
+  const fs = require('fs') as typeof import('fs');
+  const path = require('path') as typeof import('path');
+  const nowIso = new Date().toISOString();
+  const eventId = `rel-${Date.now()}-${process.pid}-${Math.floor(Math.random() * 1e6)}`;
+  let recorded = false;
+
+  const journalPath =
+    process.env.CRITIQUE_RELEASE_JOURNAL ?? path.join(path.dirname(escPath), 'critique-releases.jsonl');
+  try {
+    fs.appendFileSync(
+      journalPath,
+      `${JSON.stringify({
+        event_id: eventId,
+        at: nowIso,
+        why,
+        reason: denialReason,
+        hit: 'text-output delivery',
+        grant_id: grantId ?? null,
+      })}\n`,
+    );
+    recorded = true;
+  } catch {
+    // Reported by the caller via the return value, not swallowed here.
+  }
+
+  try {
+    const esc = JSON.parse(fs.readFileSync(escPath, 'utf-8')) as Record<string, unknown>;
+    esc.failed_open_at = nowIso;
+    esc.failed_open_why = why;
+    esc.failed_open_event_id = eventId;
+    fs.writeFileSync(escPath, JSON.stringify(esc));
+    recorded = true;
+  } catch {
+    // Absent or unreadable: the journal is the sink. Never fabricate one.
+  }
+  return recorded;
+}
+
+function gateShouldYield(statePath: string, key: string): boolean {
+  const fs = require('fs') as typeof import('fs');
+  let state: Record<string, unknown> = {};
+  try {
+    state = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as Record<string, unknown>;
+  } catch {
+    state = {};
+  }
+  const current = typeof state[key] === 'number' ? (state[key] as number) : 0;
+  if (current >= GATE_DENIAL_CAP) return true;
+  state[key] = current + 1;
+  try {
+    const path = require('path') as typeof import('path');
+    fs.mkdirSync(path.dirname(statePath), { recursive: true });
+    fs.writeFileSync(statePath, JSON.stringify(state));
+  } catch {
+    // Best-effort; see note above.
+  }
+  return false;
+}
+
+// Re-arm a gate's soft-cap counter. Called when the agent demonstrates it CAN
+// satisfy the gate (e.g. a properly-linked handoff). Without this the counter
+// only ever climbs, so after GATE_DENIAL_CAP denials ANYWHERE in a session's
+// life the gate yields permanently and every later unlinked handoff slips
+// through — the counter is meant to bound a thrash loop, not disable the gate.
+// Best-effort: a read/write failure just leaves the counter as-is.
+function resetGateDenials(statePath: string, key: string): void {
+  const fs = require('fs') as typeof import('fs');
+  let state: Record<string, unknown>;
+  try {
+    state = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as Record<string, unknown>;
+  } catch {
+    return; // no state file → nothing to reset
+  }
+  if (!state[key]) return; // already cleared
+  delete state[key];
+  try {
+    fs.writeFileSync(statePath, JSON.stringify(state));
+  } catch {
+    // Best-effort.
+  }
+}
+
+// The chain-routing check is ALWAYS ON — not an overlay. It enforces a pure
+// structural invariant ("a chain handoff must name the inbound it answers",
+// the [MUST] in chain-reporting.md), and it is self-scoping: it only fires on
+// bodies carrying a chain delivery marker, which is the chain protocol's own
+// vocabulary — non-chain coworkers never emit those markers, so they never
+// trip it. There is nothing to select and nothing to opt into.
+//
+// It resolves its vocabulary through the SAME deliveryMarkerRe() union as the
+// critique gate, so a per-role delivery_markers extension is recognized here
+// too. Built-in defaults always apply; the per-role file (if present) only
+// widens the set.
+export function checkRoutingGate(
+  body: string,
+  attrs: { threadIdOverride?: string; inReplyToOverride?: string },
+  opts: { workflowStatePath?: string; deliveryMarkersPath?: string } = {},
+): { blocked: boolean; reason?: string } {
+  const routingRe = deliveryMarkerRe(opts.deliveryMarkersPath ?? DEFAULT_DELIVERY_MARKERS_PATH);
+  if (!routingRe.test(body)) return { blocked: false };
+  // in_reply_to is the canonical routing primitive: it resolves the inbound
+  // row → source_session_id → the exact edge, and the runtime auto-derives
+  // thread_id from it (see applyInReplyToDefaults in mcp-tools/core.ts). So
+  // in_reply_to alone is sufficient; thread_id is optional. Requiring both
+  // would reject the spec's canonical upstream report form
+  // (send_message(to="parent", in_reply_to=<id>, ...)).
+  const statePath =
+    opts.workflowStatePath ?? process.env.ROUTING_GATE_STATE_PATH ?? '/workspace/.claude/workflow-state.json';
+  if (attrs.inReplyToOverride) {
+    // A properly-linked handoff proves the agent CAN satisfy the gate — re-arm
+    // the soft-cap so unlinked handoffs earlier in the session don't leave the
+    // gate permanently yielded (routing_gate_denials otherwise only climbs).
+    resetGateDenials(statePath, 'routing_gate_denials');
+    return { blocked: false };
+  }
+  if (gateShouldYield(statePath, 'routing_gate_denials')) {
+    return { blocked: false };
+  }
+  const marker = body.match(routingRe)?.[1] ?? '<handoff>';
+  return {
+    blocked: true,
+    reason:
+      `[chain-routing-gate] REFUSED — your message contained a [${marker}] handoff/delivery marker but the <message> tag omitted in_reply_to. ` +
+      `Re-send the original body in a <message to="..." in_reply_to="...">...</message> block linked to the inbound message you are answering ` +
+      `(thread_id is optional — the runtime derives it from in_reply_to). ` +
+      `Do not describe the routing in prose; set the attribute on the tag. The original body was retained in the container scratchpad log only — it was not delivered to the destination.`,
+  };
+}
+
+export function checkCritiqueGate(
+  body: string,
+  opts: {
+    overlayMarkerPath?: string;
+    workflowStatePath?: string;
+    requiredStagesPath?: string;
+    deliveryMarkersPath?: string;
+  } = {},
+): { blocked: boolean; reason?: string } {
+  const fs = require('fs') as typeof import('fs');
+  const path = require('path') as typeof import('path');
+  // Path resolution mirrors the bash hook's two-stage override (env var
+  // wins over default), with an opts-arg layer on top for unit tests.
+  const markerPath =
+    opts.overlayMarkerPath ?? process.env.CRITIQUE_GATE_OVERLAY_PATH ?? '/workspace/agent/.overlay-critique-gate';
+  // Activation precedence: the host-injected CRITIQUE_GATE_ACTIVE env var is
+  // authoritative when set (the agent can't `rm` its way out — a child can't
+  // mutate the harness's inherited env). The marker file is the fallback for
+  // local mode / tests. opts.overlayMarkerPath (tests) forces file mode.
+  if (opts.overlayMarkerPath === undefined && process.env.CRITIQUE_GATE_ACTIVE !== undefined) {
+    if (process.env.CRITIQUE_GATE_ACTIVE !== '1') return { blocked: false };
+  } else if (!fs.existsSync(markerPath)) {
+    return { blocked: false };
+  }
+  const markerRe = deliveryMarkerRe(
+    opts.deliveryMarkersPath ?? path.join(path.dirname(markerPath), '.critique-delivery-markers'),
+  );
+  if (!markerRe.test(body)) return { blocked: false };
+  const statePath =
+    opts.workflowStatePath ?? process.env.CRITIQUE_GATE_STATE_PATH ?? '/workspace/.claude/workflow-state.json';
+
+  let state: {
+    critique_rounds?: number;
+    critique_stages?: Record<string, number>;
+    critique_verdicts?: Record<string, string>;
+    critique_gate_bypass_approved?: boolean;
+    critique_gate_bypass_rejected?: boolean;
+    // Grant envelope written by the host on an admin Approve. `grant_id` is the
+    // approving approval_id — the host's ledger is keyed on it, so consumption
+    // can be attributed to a specific grant rather than to a session.
+    critique_gate_bypass_grant_id?: string;
+    critique_gate_bypass_expires_at?: number; // epoch secs (shell arithmetic in the bash gate)
+    critique_gate_bypass_rejected_request?: number;
+    edits_since_critique?: number;
+    critique_attested?: Record<string, Record<string, string>>;
+  } = {};
+  try {
+    state = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as typeof state;
+  } catch {
+    state = {};
+  }
+
+  // Required-stages + verdict enforcement — full parity with
+  // gate-critique-on-deliver.sh. The composer materializes
+  // .critique-required-stages next to the overlay marker; when present (and
+  // non-empty) the gate requires every listed stage recorded AND, when
+  // OUTPUT_REVIEW is required, its last verdict to be "approve" — failing
+  // closed on a missing verdict unless CRITIQUE_VERDICT_STRICT=0. Without
+  // the file, the historical any-1-round check applies. Before this parity
+  // the text-output path (the most common delivery path) enforced only the
+  // count check, so a must-fix OUTPUT_REVIEW could ship via plain
+  // <message> emission while the tool path denied it.
+  // Required stages: env wins over file (same tamper-resistance as activation);
+  // opts.requiredStagesPath (tests) forces file mode.
+  const requiredPath = opts.requiredStagesPath ?? path.join(path.dirname(markerPath), '.critique-required-stages');
+  let required: string[] = [];
+  try {
+    const raw =
+      opts.requiredStagesPath === undefined && process.env.CRITIQUE_REQUIRED_STAGES !== undefined
+        ? process.env.CRITIQUE_REQUIRED_STAGES
+        : fs.readFileSync(requiredPath, 'utf-8');
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed)) required = parsed.filter((s): s is string => typeof s === 'string');
+  } catch {
+    required = [];
+  }
+
+  let denialReason = '';
+  if (required.length > 0) {
+    const stages = state.critique_stages ?? {};
+    const verdicts = state.critique_verdicts ?? {};
+    const missing = required.filter((s) => (stages[s] ?? 0) < 1);
+    if (missing.length > 0) {
+      denialReason = `required critique stages are missing: ${missing.join(', ')}`;
+    } else if (required.includes('OUTPUT_REVIEW')) {
+      const verdict = verdicts['OUTPUT_REVIEW'] ?? '';
+      if (verdict !== '' && verdict !== 'approve') {
+        denialReason = `OUTPUT_REVIEW last verdict is "${verdict}" (must be "approve") — re-run /codex-critique with STAGE: OUTPUT_REVIEW after fixing the issues`;
+      } else if (verdict === '' && process.env.CRITIQUE_VERDICT_STRICT !== '0') {
+        denialReason =
+          'OUTPUT_REVIEW ran but no verdict was recorded (missing or unparseable) — re-run /codex-critique with STAGE: OUTPUT_REVIEW';
+      }
+    }
+    // Freshness: the OUTPUT_REVIEW approve must postdate the last mutation.
+    // track-edits.sh bumps edits_since_critique on every substantive edit and
+    // track-critique.sh zeroes it on every recorded round — a nonzero count
+    // means the approve covers code that has since changed. Mirrors the bash
+    // hook; CRITIQUE_FRESHNESS=0 disables.
+    if (denialReason === '' && required.includes('OUTPUT_REVIEW') && process.env.CRITIQUE_FRESHNESS !== '0') {
+      const edits = typeof state.edits_since_critique === 'number' ? state.edits_since_critique : 0;
+      if (edits > 0) {
+        denialReason = `${edits} edit(s) recorded since the last critique round — the OUTPUT_REVIEW approve no longer covers the current state; re-run /codex-critique with STAGE: OUTPUT_REVIEW`;
+      }
+    }
+    // Attested-hash binding: re-hash the artifacts the reviewer attested to
+    // (### Attested → critique_attested, recorded by track-critique.sh) —
+    // an approve whose reviewed artifacts have since changed does not ship.
+    // Mirrors the bash hook; CRITIQUE_ATTEST=0 disables,
+    // CRITIQUE_ATTEST_ROOT bounds verified paths (default /workspace).
+    if (denialReason === '' && required.includes('OUTPUT_REVIEW') && process.env.CRITIQUE_ATTEST !== '0') {
+      const attested = (state.critique_attested ?? {})['OUTPUT_REVIEW'] ?? {};
+      const attestRoot = process.env.CRITIQUE_ATTEST_ROOT ?? '/workspace';
+      const changed: string[] = [];
+      for (const [artifactPath, hash] of Object.entries(attested).slice(0, 20)) {
+        if (!artifactPath.startsWith(`${attestRoot}/`)) continue;
+        try {
+          const crypto = require('crypto') as typeof import('crypto');
+          const digest = crypto.createHash('sha256').update(fs.readFileSync(artifactPath)).digest('hex');
+          if (digest !== hash) changed.push(artifactPath);
+        } catch {
+          changed.push(`${artifactPath}(missing)`);
+        }
+      }
+      if (changed.length > 0) {
+        denialReason = `reviewed artifacts changed since the OUTPUT_REVIEW approve: ${changed.join(', ')} — re-run /codex-critique with STAGE: OUTPUT_REVIEW`;
+      }
+    }
+  } else {
+    const rounds = typeof state.critique_rounds === 'number' ? state.critique_rounds : 0;
+    if (rounds < 1) {
+      denialReason = `no /codex-critique round has been recorded for this session (critique_rounds=${rounds})`;
+    }
+  }
+  if (denialReason === '') return { blocked: false };
+
+  const marker = body.match(markerRe)?.[1] ?? '<delivery>';
+
+  // Denial cap → graduated escalation, in parity with the bash hook. At the
+  // cap the gate no longer silently fails open: it writes an escalation
+  // request file (the host sweep turns it into an admin approval card) and
+  // keeps denying until an admin approves the bypass, rejects it, or the
+  // request times out (backstop preserving the original anti-thrash
+  // contract). CRITIQUE_ESCALATION=0 restores the legacy fail-open cap.
+  if (gateShouldYield(statePath, 'critique_gate_denials')) {
+    const escPath =
+      process.env.CRITIQUE_ESCALATION_FILE ?? path.join(path.dirname(statePath), 'critique-escalation.json');
+    const nowS = Math.floor(Date.now() / 1000);
+    let requestedAt = 0;
+    try {
+      const esc = JSON.parse(fs.readFileSync(escPath, 'utf-8')) as { requested_at?: number };
+      requestedAt = typeof esc.requested_at === 'number' ? esc.requested_at : 0;
+    } catch {
+      requestedAt = 0;
+    }
+    const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+
+    // The kill switch still fails open, but the release is now recorded where
+    // the HOST can see it: this container is --rm'd, so anything written only
+    // to stderr is unrecoverable once the session ends.
+    if (process.env.CRITIQUE_ESCALATION === '0') {
+      // The kill switch is an operator's explicit standing instruction to let
+      // deliveries through, so an unrecordable release does not convert it into
+      // a refusal the way the admin-bypass path below does. It is still said
+      // out loud rather than passing as success.
+      if (!stampFailedOpen(escPath, denialReason, 'CRITIQUE_ESCALATION=0 kill switch')) {
+        log(
+          `[critique-gate] kill-switch release could NOT be recorded in ${path.dirname(escPath)} — ` +
+            `the host will never learn the gate opened (${denialReason})`,
+        );
+      }
+      return { blocked: false };
+    }
+
+    // Admin bypass — ONE-SHOT and time-limited, in parity with the bash hook.
+    // This was a bare `=== true` with no expiry and no consumption, so a single
+    // approval stood THIS path open for the session's whole life even after the
+    // hook path was fixed — and this is the more common delivery path.
+    if (state.critique_gate_bypass_approved === true) {
+      const expiresAt = num(state.critique_gate_bypass_expires_at);
+      // A grant with no usable expiry is NOT an unlimited grant. Treating a
+      // missing or non-numeric value as "no expiry" would let a forged flag
+      // with no expiry at all defeat the TTL entirely — fail closed instead.
+      if (expiresAt <= 0 || nowS >= expiresAt) {
+        patchGateState(statePath, {
+          critique_gate_bypass_approved: false,
+          critique_gate_bypass_expired_at: nowS,
+        });
+        // Expired (or unusable) grant: fall through to the denial path below.
+      } else {
+        patchGateState(statePath, {
+          critique_gate_bypass_approved: false,
+          critique_gate_bypass_consumed_grant_id: state.critique_gate_bypass_grant_id ?? null,
+          critique_gate_bypass_consumed_at: nowS,
+        });
+        // The one-shot property depends on that write. If it did not land the
+        // grant is still `approved` and would be reusable on every subsequent
+        // delivery, so refuse rather than allow — a denied delivery is
+        // recoverable, a permanently reusable waiver is not.
+        let stillApproved = true;
+        try {
+          const after = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as {
+            critique_gate_bypass_approved?: boolean;
+          };
+          stillApproved = after.critique_gate_bypass_approved === true;
+        } catch {
+          stillApproved = true; // unreadable → assume the worst
+        }
+        if (stillApproved) {
+          return {
+            blocked: true,
+            reason:
+              `[critique-gate] REFUSED — the admin bypass could NOT be recorded as consumed, so allowing it ` +
+              `would leave a reusable waiver (${denialReason}).`,
+          };
+        }
+        // Same reasoning as the consumption check above, one step further on: a
+        // release nobody can see is worse than a denied delivery. The grant is
+        // already spent, so the host reports it as an ORPHANED release — which
+        // is exactly what it is.
+        if (
+          !stampFailedOpen(
+            escPath,
+            denialReason,
+            'admin bypass consumed (one-shot)',
+            state.critique_gate_bypass_grant_id ?? null,
+          )
+        ) {
+          return {
+            blocked: true,
+            reason:
+              `[critique-gate] REFUSED — the admin bypass was consumed but the release could NOT be recorded ` +
+              `anywhere the host can see it, so allowing it would open the gate with no durable trace (${denialReason}).`,
+          };
+        }
+        return { blocked: false };
+      }
+    }
+
+    // A rejection answers the request it was made about — not every later one.
+    // Unscoped, a single old "no" silently decided every subsequent delivery
+    // in the session and suppressed re-escalation with it.
+    if (
+      state.critique_gate_bypass_rejected === true &&
+      num(state.critique_gate_bypass_rejected_request) === requestedAt
+    ) {
+      return {
+        blocked: true,
+        reason:
+          `[critique-gate] REFUSED — an admin REJECTED the bypass request (${denialReason}). ` +
+          `Satisfy the critique requirement (/codex-critique) or report the blocker to your parent instead of delivering.`,
+      };
+    }
+
+    // NOTE: there is deliberately NO timeout fail-open here any more. It used
+    // to allow the delivery once CRITIQUE_ESCALATION_TIMEOUT_SECS elapsed,
+    // which meant an agent could satisfy the requirement by waiting.
+    if (requestedAt === 0) {
+      try {
+        fs.writeFileSync(
+          escPath,
+          JSON.stringify({
+            requested_at: nowS,
+            reason: denialReason,
+            hit: 'text-output delivery',
+            denials: GATE_DENIAL_CAP,
+          }),
+        );
+      } catch {
+        // Best-effort — an unwritable escalation file degrades to deny-only.
+      }
+    }
+    return {
+      blocked: true,
+      reason:
+        `[critique-gate] REFUSED — denial cap reached; a bypass request has been sent to an admin (${denialReason}). ` +
+        `Satisfy the requirement with /codex-critique or wait for the decision; do not retry the delivery in a tight loop.`,
+    };
+  }
+  return {
+    blocked: true,
+    reason:
+      `[critique-gate] REFUSED — your message contained a [${marker}] marker but ${denialReason}. ` +
+      `Run /codex-critique on the work first, then resend. The original delivery body was retained in the container scratchpad log only — it was not delivered to the destination.`,
+  };
 }
 
 /**
@@ -758,6 +2922,14 @@ export interface ResultDispatchOptions {
    * retry, never a direct result-door send.
    */
   turnDelivered?: boolean;
+  /**
+   * This result carried `isError`. The error surface is the result door's own
+   * job (`deliverErrorResult` in processQuery) and it sanitizes harness-tag
+   * artifacts on the way out, so the plain-text auto-route shortcut below must
+   * stand down for such a turn — otherwise BOTH doors write and the channel
+   * gets the notice twice, the auto-routed copy unsanitized.
+   */
+  isErrorResult?: boolean;
 }
 /**
  * `<internal>…</internal>` spans are explicitly not-for-delivery scratchpad.
@@ -800,6 +2972,14 @@ const INTERNAL_SPAN_RE = /<internal\b[\s\S]*?<\/internal>/gi;
 export interface MidTurnScanResult {
   delivered: number;
   tail: string;
+  /**
+   * Fork: gate refusals raised on blocks in THIS segment. The mid-turn door is
+   * the only delivery door for an `emitsMidTurnText` provider, so the critique
+   * and chain-routing gates have to run here or they would be unreachable for
+   * that provider. Refusals are sender feedback — the caller pushes them back
+   * as a <system> nudge, exactly as the result door does.
+   */
+  gateRefusals?: string[];
 }
 
 export async function deliverMidTurnBlocks(
@@ -823,12 +3003,20 @@ export async function deliverMidTurnBlocks(
   // door always treated it.
   const segStartSeq = turnStartSeq === undefined ? 0 : maxOutboundSeq();
   const visible = settled.replace(INTERNAL_SPAN_RE, '');
-  const MESSAGE_RE = /<message\s+to="([^"]+)"\s*>([\s\S]*?)<\/message>/g;
+  // Fork regex: tolerate extra attributes (`thread_id`, `in_reply_to`, plus
+  // unknown ones) between `to="…"` and `>`. Upstream's narrower form demands
+  // `>` immediately after `to="…"`, which would make every branching-workflow
+  // block (`<message to="X" thread_id="Y">`) invisible to this door — and with
+  // the result door suppressed, invisible here means silently undelivered.
+  const MESSAGE_RE = /<message\s+to="([^"]+)"((?:\s+\w+="[^"]*")*)\s*>([\s\S]*?)<\/message>/g;
+  const ATTR_RE = /(\w+)="([^"]*)"/g;
   let match: RegExpExecArray | null;
   let delivered = 0;
+  const gateRefusals: string[] = [];
   while ((match = MESSAGE_RE.exec(visible)) !== null) {
     const toName = match[1];
-    const rawBody = match[2];
+    const attrsStr = match[2] ?? '';
+    const rawBody = match[3];
     const body = stripHarnessTagArtifacts(rawBody.trim());
     const dest = findByName(toName);
     if (!dest) continue;
@@ -851,11 +3039,41 @@ export async function deliverMidTurnBlocks(
       log(`Mid-turn <message to="${toName}"> is a verbatim repeat of a message already sent this turn — skipped`);
       continue;
     }
-    await sendToDestination(dest, body, routing);
+
+    let threadIdOverride: string | undefined;
+    let inReplyToOverride: string | undefined;
+    for (const am of attrsStr.matchAll(ATTR_RE)) {
+      if (am[1] === 'thread_id') threadIdOverride = am[2];
+      else if (am[1] === 'in_reply_to') inReplyToOverride = am[2];
+      // Unknown attributes are tolerated and ignored — keeps the parser
+      // forward-compatible with future protocol extensions.
+    }
+
+    // Fork gates, re-applied at this door. With `suppressDelivery` on for an
+    // emitsMidTurnText provider this is the ONLY path that writes a block, so
+    // gating only in dispatchResultText would let every gated body through for
+    // that provider. Same gates, same state, same sender-directed refusal: the
+    // body is withheld from the peer and the reason goes back to the emitter.
+    const routingGate = checkRoutingGate(body, { threadIdOverride, inReplyToOverride });
+    if (routingGate.blocked) {
+      log(`Chain-routing gate refused mid-turn delivery to "${toName}": handoff marker missing thread_id/in_reply_to`);
+      postOverlayEvent('chain-routing-gate.refused', { destination: toName, reason: routingGate.reason });
+      gateRefusals.push(routingGate.reason!);
+      continue;
+    }
+    const gate = checkCritiqueGate(body);
+    if (gate.blocked) {
+      log(`Critique-gate refused mid-turn delivery to "${toName}": body contained delivery marker, critique_rounds=0`);
+      postOverlayEvent('critique-gate.refused', { destination: toName, reason: gate.reason });
+      gateRefusals.push(gate.reason!);
+      continue;
+    }
+
+    await sendToDestination(dest, body, routing, { threadIdOverride, inReplyToOverride });
     delivered++;
     log(`Mid-turn delivery: <message to="${toName}"> (${body.length} chars)`);
   }
-  return { delivered, tail };
+  return { delivered, tail, ...(gateRefusals.length ? { gateRefusals } : {}) };
 }
 
 const OPEN_INTERNAL_RE = /<internal\b/i;
@@ -969,7 +3187,14 @@ export async function dispatchResultText(
   text: string,
   routing: RoutingContext,
   options?: ResultDispatchOptions,
-): Promise<{ sent: number; hasUnwrapped: boolean; taskBlocks: TaskMessageBlock[]; resultBlocks: number }> {
+): Promise<{
+  sent: number;
+  hasUnwrapped: boolean;
+  danglingOpen?: boolean;
+  gateRefusals?: string[];
+  taskBlocks: TaskMessageBlock[];
+  resultBlocks: number;
+}> {
   // <internal> spans are not-for-delivery scratchpad. Remove them BEFORE block
   // extraction so a <message> drafted inside one is never delivered from the
   // final text either — the mid-turn seam already guarantees this; without the
@@ -977,29 +3202,46 @@ export async function dispatchResultText(
   // never reaches the user (the closing stripInternalTags pass removed it from
   // the scratchpad already), so nudge/scratchpad semantics are unchanged.
   text = text.replace(INTERNAL_SPAN_RE, '');
-  const MESSAGE_RE = /<message\s+to="([^"]+)"\s*>([\s\S]*?)<\/message>/g;
+  // Capture the destination name (group 1), any additional attributes as one
+  // string (group 2), and the body (group 3). Extra attributes — `thread_id`,
+  // `in_reply_to`, plus unknown ones — are tolerated. Earlier versions of
+  // this regex demanded `>` immediately after `to="..."`, so any agent
+  // emitting `<message to="X" thread_id="Y">` saw the entire markup fall
+  // through to the scratchpad path and get dumped to the inbound channel
+  // instead of routed to the chain target. Branching workflows need the
+  // explicit thread_id channel because `resolveDestinationThread` only
+  // recovers a thread from prior inbound history — it has no way to
+  // synthesize a NEW thread.
+  const MESSAGE_RE = /<message\s+to="([^"]+)"((?:\s+\w+="[^"]*")*)\s*>([\s\S]*?)<\/message>/g;
+  const ATTR_RE = /(\w+)="([^"]*)"/g;
 
   let match: RegExpExecArray | null;
   // Blocks delivered mid-turn count toward this turn's sent total — a final
   // text with no (new) blocks after a mid-turn delivery is scratchpad, not an
   // undelivered reply.
   let sent = options?.midTurnSent ?? 0;
+  let blocked = 0;
   // <message> blocks present in THIS result text (delivered, stripped, task
   // or dropped alike) — drives the bare-error-text delivery gate, which must
   // key on the error result itself, not on earlier mid-turn deliveries.
   let resultBlocks = 0;
   // <message to> blocks left inert in a task run — drives the same-turn
-  // "use send_message" nudge in processQuery.
+  // "use send_message" nudge in processQuery (upstream task-delivery feature).
   const taskBlocks: TaskMessageBlock[] = [];
   let lastIndex = 0;
   const scratchpadParts: string[] = [];
+  // Gate refusals are feedback for the SENDER, not the peer destination — the
+  // caller pushes these back to the emitting agent as a <system> nudge (parity
+  // with the bash-hook gates, which exit 2 and surface the error to the sender).
+  const gateRefusals: string[] = [];
 
   while ((match = MESSAGE_RE.exec(text)) !== null) {
     if (match.index > lastIndex) {
       scratchpadParts.push(text.slice(lastIndex, match.index));
     }
     const toName = match[1];
-    const body = stripHarnessTagArtifacts(match[2].trim());
+    const attrsStr = match[2] ?? '';
+    const body = stripHarnessTagArtifacts(match[3].trim());
     lastIndex = MESSAGE_RE.lastIndex;
     resultBlocks++;
 
@@ -1015,6 +3257,16 @@ export async function dispatchResultText(
       taskBlocks.push({ to: toName, body });
       continue;
     }
+
+    let threadIdOverride: string | undefined;
+    let inReplyToOverride: string | undefined;
+    for (const am of attrsStr.matchAll(ATTR_RE)) {
+      if (am[1] === 'thread_id') threadIdOverride = am[2];
+      else if (am[1] === 'in_reply_to') inReplyToOverride = am[2];
+      // Unknown attributes are tolerated and ignored — keeps the parser
+      // forward-compatible with future protocol extensions.
+    }
+
     const dest = findByName(toName);
     if (!dest) {
       log(`Unknown destination in <message to="${toName}">, dropping block`);
@@ -1029,6 +3281,35 @@ export async function dispatchResultText(
       scratchpadParts.push(`[not delivered — empty after sanitization; to="${toName}"]`);
       continue;
     }
+    const routingGate = checkRoutingGate(body, { threadIdOverride, inReplyToOverride });
+    if (routingGate.blocked) {
+      log(`Chain-routing gate refused delivery to "${toName}": handoff marker missing thread_id/in_reply_to`);
+      // Keep the body in the scratchpad log (the refusal text claims it's
+      // "retained in the container scratchpad log only") and emit the overlay
+      // event for measurement, but do NOT deliver the refusal to the peer —
+      // collect it for the sender-directed nudge instead.
+      scratchpadParts.push(`[chain-routing-gate refused delivery to "${toName}"] ${body}`);
+      postOverlayEvent('chain-routing-gate.refused', { destination: toName, reason: routingGate.reason });
+      gateRefusals.push(routingGate.reason!);
+      blocked++;
+      continue;
+    }
+
+    // Critique-gate scope extension (#67): the bash PreToolUse hook only
+    // catches send_message/Bash invocations; this text-output path is
+    // where most delivery markers actually land. Same gate, same state,
+    // re-applied here. When gated, the body is withheld from the peer and the
+    // refusal is routed back to the SENDER (see the routing-gate block above) —
+    // delivering it to the peer mis-routed gate feedback into the chain.
+    const gate = checkCritiqueGate(body);
+    if (gate.blocked) {
+      log(`Critique-gate refused delivery to "${toName}": body contained delivery marker, critique_rounds=0`);
+      scratchpadParts.push(`[critique-gate refused delivery to "${toName}"] ${body}`);
+      postOverlayEvent('critique-gate.refused', { destination: toName, reason: gate.reason });
+      gateRefusals.push(gate.reason!);
+      blocked++;
+      continue;
+    }
     // One content door: with an emitsMidTurnText provider the result door
     // never sends. A deliverable block here is either a repeat of a mid-turn
     // delivery (turnDelivered — keep it out of the scratchpad so it does not
@@ -1036,6 +3317,10 @@ export async function dispatchResultText(
     // then it goes to the scratchpad as undelivered content, which makes the
     // turn count as undelivered and fires the wrap-nudge: the model re-sends
     // and the retry streams through the mid-turn door.
+    //
+    // Placed AFTER the gates deliberately: a gated block must be counted as
+    // gated (blocked++, refusal to the sender) rather than silently folded
+    // into "the streaming door already handled it".
     if (options?.suppressDelivery) {
       if (options.turnDelivered) {
         log(`<message to="${toName}"> in final result after a same-turn delivery — repeat, result door does not send`);
@@ -1047,7 +3332,7 @@ export async function dispatchResultText(
       }
       continue;
     }
-    await sendToDestination(dest, body, routing);
+    await sendToDestination(dest, body, routing, { threadIdOverride, inReplyToOverride });
     sent++;
   }
   if (lastIndex < text.length) {
@@ -1056,21 +3341,95 @@ export async function dispatchResultText(
 
   const scratchpad = stripInternalTags(scratchpadParts.join(''));
 
+  // Refuse to deliver when an opening `<message to="…">` was emitted with no
+  // matching close tag — the regex above silently skipped the block, and the
+  // single-destination/auto-route shortcut below would otherwise dump the
+  // entire half-finished payload onto the inbound channel (the case that
+  // mis-routed an a2a "Review Resume" dispatch to the dashboard in May 2026).
+  // Treat it as undelivered so the nudge fires and the agent re-sends.
+  const danglingOpen = /<message\s+to="[^"]+"[^>]*>/.test(scratchpad);
+
+  // Single-destination shortcut: plain text is auto-routed.
+  // 'system' is blocked — its inbound carries platformId=null, so there's
+  // nowhere to send anyway; explicit gate as defense-in-depth.
+  // 'agent' auto-routes to platformId (the source agent group). Same-session
+  // protection lives in agent-route.ts's same-session guard, which catches
+  // any write that resolves back to the emitting session regardless of how
+  // it was emitted (auto-route, <message to=…>, or send_message).
+  //
+  // NOT in a task run (upstream one-door contract): a task session's final
+  // text is its run-log summary (autoAppendTaskLog handles it in processQuery),
+  // never auto-delivered to a destination. Without this guard the fork's
+  // single-destination shortcut would deliver task-run scratchpad, breaking the
+  // "final-output blocks stay inert" invariant.
+  //
+  // NOT under `suppressDelivery` either: auto-routing IS a result-door
+  // delivery, and for an emitsMidTurnText provider the result door never
+  // delivers content. Letting it through here would re-open the double-send
+  // the one-door design closes — and would deliver the "[not delivered — the
+  // result door does not send]" scratchpad note itself as chat. Unwrapped
+  // final text from a streaming provider is a self-summary; the wrap-nudge
+  // owns it. Non-streaming providers (codex, opencode) keep the shortcut.
+  if (
+    !routing.taskRun &&
+    !options?.suppressDelivery &&
+    !options?.isErrorResult &&
+    sent === 0 &&
+    blocked === 0 &&
+    scratchpad &&
+    !danglingOpen
+  ) {
+    const internalChannel = routing.channelType === 'system';
+    if (routing.channelType && routing.platformId && !internalChannel) {
+      await writeMessageOut({
+        id: generateId(),
+        in_reply_to: routing.inReplyTo,
+        kind: 'chat',
+        platform_id: routing.platformId,
+        channel_type: routing.channelType,
+        thread_id: routing.threadId,
+        content: JSON.stringify({ text: scratchpad }),
+      });
+      return { sent: 1, hasUnwrapped: false, taskBlocks: [], resultBlocks };
+    }
+    if (!internalChannel) {
+      const all = getAllDestinations();
+      if (all.length === 1) {
+        await sendToDestination(all[0], scratchpad, routing);
+        return { sent: 1, hasUnwrapped: false, taskBlocks: [], resultBlocks };
+      }
+    }
+  }
+
   if (scratchpad) {
     log(`[scratchpad] ${scratchpad.slice(0, 500)}${scratchpad.length > 500 ? '…' : ''}`);
   }
 
+  // A purely-gated batch (blocked > 0, sent === 0) is NOT "unwrapped" — the
+  // agent wrapped its output correctly; the gate withheld it. It gets the
+  // gate-specific refusal nudge instead of the generic "wrap your output" one.
   // In a task run, plain final text is the NORMAL ending (it becomes the run
   // log) — never treat it as an undelivered reply or nudge the agent to wrap it.
   // With suppressDelivery the delivered-this-turn question is answered by
   // turnDelivered (door deliveries + DB-visible sends like MCP send_message);
   // otherwise by this dispatch's own send count.
   const anythingDelivered = options?.suppressDelivery ? options.turnDelivered === true : sent > 0;
-  const hasUnwrapped = !routing.taskRun && !anythingDelivered && !!scratchpad;
+  const hasUnwrapped = !routing.taskRun && !anythingDelivered && blocked === 0 && (!!scratchpad || danglingOpen);
   if (hasUnwrapped) {
-    log(`WARNING: agent output had no <message to="..."> blocks — nothing was sent`);
+    if (danglingOpen) {
+      log(`WARNING: agent emitted <message to="..."> with no closing </message>; nothing was sent`);
+    } else {
+      log(`WARNING: agent output had no <message to="..."> blocks — nothing was sent`);
+    }
   }
-  return { sent, hasUnwrapped, taskBlocks, resultBlocks };
+  return {
+    sent,
+    hasUnwrapped,
+    danglingOpen,
+    gateRefusals: gateRefusals.length ? gateRefusals : undefined,
+    taskBlocks,
+    resultBlocks,
+  };
 }
 
 /**
@@ -1131,21 +3490,73 @@ export async function autoAppendTaskLog(text: string): Promise<void> {
   log('Task run log auto-appended from final text');
 }
 
-async function sendToDestination(dest: DestinationEntry, body: string, routing: RoutingContext): Promise<void> {
+/**
+ * Resolve an agent-supplied `in_reply_to` override to the canonical inbound
+ * message id, mirroring `resolveInReplyTo` in the send_message MCP tool.
+ *
+ * The formatter shows each inbound message as id="<seq>", so agents quote the
+ * integer seq. Returns:
+ *   - `undefined` when there is no override (so the caller's `??` chain falls
+ *     through to the destination/routing default),
+ *   - the resolved canonical id when the seq maps to a real inbound row,
+ *   - `undefined` when a numeric seq does NOT resolve (fall back to the
+ *     canonical routing value — never persist a bare seq),
+ *   - the raw value unchanged when it is already a non-numeric canonical id.
+ */
+export function resolveInReplyToOverride(raw: string | undefined): string | undefined {
+  if (raw == null) return undefined;
+  const seq = Number(raw);
+  if (Number.isNaN(seq)) return raw; // non-numeric → already a canonical id, use as-is
+  if (!Number.isInteger(seq) || seq <= 0) return undefined; // numeric but not a valid seq → fall back
+  try {
+    const row = getMessageInBySeq(seq);
+    return row ? row.id : undefined; // resolved id, or fall back — never persist a bare seq
+  } catch {
+    return undefined; // never worse than the canonical routing fallback
+  }
+}
+
+async function sendToDestination(
+  dest: DestinationEntry,
+  body: string,
+  routing: RoutingContext,
+  overrides?: { threadIdOverride?: string; inReplyToOverride?: string },
+): Promise<void> {
   const platformId = dest.type === 'channel' ? dest.platformId! : dest.agentGroupId!;
   const channelType = dest.type === 'channel' ? dest.channelType! : 'agent';
+  // Task runs: an explicitly-addressed final-text block that duplicates an MCP
+  // send the agent already made this turn is a turn-final echo — drop it here,
+  // where the duplication originates (#943). `taskRun` is the upstream-sync
+  // rename of the fork's former `taskFire`.
+  if (routing.taskRun && hasIdenticalSend(platformId, channelType, body)) {
+    log(`Dropping turn-final echo of an already-sent task message to ${dest.name}`);
+    return;
+  }
   // Resolve thread_id per-destination from the most recent inbound message
   // that came from this same channel+platform. In agent-shared sessions,
   // different destinations have different thread contexts — using a single
   // routing.threadId would stamp one channel's thread onto another.
+  // Agent-supplied overrides win: a `<message to="X" thread_id="...">` is
+  // explicit branching intent (e.g. starting a new chain on a destination
+  // we've never received from), and inbound-history resolution can't
+  // produce a thread we've never seen.
   const destRouting = resolveDestinationThread(channelType, platformId);
+  const threadId = overrides?.threadIdOverride ?? destRouting?.threadId ?? null;
+  // An agent-supplied `in_reply_to` override is the integer id shown on an
+  // inbound message (the formatter renders id="<seq>"). Resolve it to the
+  // canonical message id the same way `send_message` does — otherwise the raw
+  // seq is persisted as `in_reply_to`, the host's id-based source lookup
+  // (getInboundSourceSessionId) misses, and routing silently falls back to
+  // peer-affinity guessing. That is the seq-as-id ("D2") misroute.
+  const resolvedOverride = resolveInReplyToOverride(overrides?.inReplyToOverride);
+  const inReplyTo = resolvedOverride ?? destRouting?.inReplyTo ?? routing.inReplyTo;
   await writeMessageOut({
     id: generateId(),
-    in_reply_to: destRouting?.inReplyTo ?? routing.inReplyTo,
+    in_reply_to: routing.taskRun ? null : inReplyTo,
     kind: 'chat',
     platform_id: platformId,
     channel_type: channelType,
-    thread_id: destRouting?.threadId ?? null,
+    thread_id: threadId,
     content: JSON.stringify({ text: body }),
   });
 }

@@ -194,7 +194,26 @@ describe('wiring creation — resolved defaults persist onto the row', () => {
     const { createAgentGroup } = await import('../db/agent-groups.js');
     const { createMessagingGroup } = await import('../db/messaging-groups.js');
     const now = new Date().toISOString();
-    const ag: AgentGroup = { id: 'ag-1', name: 'Nano', folder: 'nano', agent_provider: null, created_at: now };
+    // The fork's AgentGroup carries the lego columns (is_admin / coworker_type /
+    // overlays / routing / disable_overlays / paused / container_config /
+    // allowed_mcp_tools). Spelled out at their row defaults — matching
+    // container-overlay-hooks.test.ts's makeAgentGroup — rather than cast away,
+    // so a future column addition surfaces here instead of silently defaulting.
+    const ag: AgentGroup = {
+      id: 'ag-1',
+      name: 'Nano',
+      folder: 'nano',
+      is_admin: 0,
+      agent_provider: null,
+      container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
+      overlays: null,
+      routing: 'direct',
+      disable_overlays: 0,
+      paused: 0,
+      created_at: now,
+    };
     await createAgentGroup(ag);
     const mg: MessagingGroup = {
       id: 'mg-1',

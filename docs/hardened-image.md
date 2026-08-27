@@ -47,10 +47,12 @@ is involved.
 
 ## What it does not buy
 
-**It does not contain the agent.** `/app/src` and `/app/skills` are read-only bind mounts from
-your own checkout at every spawn, and the container starts with `--entrypoint bash`, bypassing
-the image's entrypoint. The code your agent runs is the code in your checkout — unsigned, and
-reviewed by nobody but you.
+**It does not contain the agent.** `/app/skills` is a read-only bind mount from your own
+checkout at every spawn, and `/app/src` is a **read-only** bind mount of the agent-runner
+source in that checkout (`container/agent-runner/src/`), shared by every group. The container
+starts with `--entrypoint bash`, bypassing the image's entrypoint. So the code your agent
+runs is whatever is in your checkout — unsigned and reviewed by nobody but you, which is the
+point of the caveat, but at least it is not silently a stale copy of it.
 
 Containment is runtime configuration you own. `NANOCLAW_EGRESS_LOCKDOWN=true`, the mount
 allowlist, and per-group resource limits all do more here than any image can.

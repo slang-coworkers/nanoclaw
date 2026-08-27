@@ -1,0 +1,111 @@
+name: PR guard
+
+# Deliberately has NO `branches:` filter.
+#
+# Why this exists: PR #1099 changed 1,157 files and NO repository CI job ran on
+# it. Not one. The only green tick was the labeller. The cause was a branch
+# filter — `ci.yml` and `nv-path-guard.yml` list
+# [main, nv-main, nv-dashboard, nv-slang, nv-slangpy, nv-nanoclaw] and #1099
+# targeted `nv-coworkers`, which is absent from both (though `compose-check.yml`
+# does list it, so its omission looks like an oversight rather than a policy).
+#
+# The dangerous part is not that the suite was skipped. It is that "no job ran"
+# and "the jobs ran and passed" are indistinguishable in the GitHub UI: both
+# show a green PR. This job runs everywhere, so that ambiguity is gone — every
+# PR now carries at least one status that had to actually pass, and any base
+# branch without full CI coverage is named out loud in the log.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Report repository CI coverage for this base branch
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          set -uo pipefail
+          COVERED=$(sed -n '/^on:/,/^jobs:/p' .github/workflows/ci.yml | grep -o 'branches:.*' || true)
+          echo "Base branch: $BASE"
+          echo "ci.yml PR trigger: $COVERED"
+          if printf '%s' "$COVERED" | grep -q "\b${BASE}\b"; then
+            echo "✅ the full CI suite runs on PRs to '$BASE'."
+          else
+            echo "::warning::No full CI suite runs on PRs to '$BASE' — it is not in ci.yml's branch list."
+            echo "::warning::This PR guard is the ONLY repository check covering it. Do not read a green PR as a passing test suite."
+          fi
+
+      - name: Whitespace and EOF check (this PR's own diff)
+        env:
+          BASE: ${{ github.base_ref }}
+        # `set +e`, deliberately: the runner's default shell is `bash -e`, which
+        # would abort this step the moment `git diff --check` reports a finding
+        # — before the exit code could be captured and reported. Every command
+        # below therefore carries its own explicit status handling.
+        run: |
+          set +e
+          set -uo pipefail
+
+          # actions/checkout ran with fetch-depth: 0, so the base ref is already
+          # local. Fetch only as a fallback, and never with --depth (that is a
+          # clone flag; `git fetch --depth=0` is an error, which is how the
+          # first version of this job failed).
+          if ! git rev-parse --verify --quiet "origin/${BASE}" >/dev/null; then
+            git fetch --no-tags origin "+refs/heads/${BASE}:refs/remotes/origin/${BASE}"
+            if [ $? -ne 0 ]; then
+              echo "::error::could not resolve base branch '${BASE}'"
+              exit 1
+            fi
+          fi
+
+          # Only this PR's diff, never the whole tree: the KB corpus carries
+          # thousands of pre-existing diagnostics, and a gate that fails on
+          # somebody else's debt gets disabled instead of fixed.
+          RANGE="origin/${BASE}...HEAD"
+
+          # `container/claude-trace` is a vendored upstream project, not our
+          # source: minified bundles, .map files, a template.html and an upstream
+          # .patch all legitimately carry long lines, tabs-after-spaces and no
+          # trailing newline. Enforcing our style on it fails every PR that
+          # merely carries the directory across (a nv-main pre-merge into a leaf
+          # sync branch adds the whole tree), which is somebody else's debt by
+          # the same argument that already excludes knowledge_base.
+          #
+          # Excluded as a whole tree rather than per-subdirectory: the offenders
+          # are spread across dist/, frontend/ and the repo root of the vendored
+          # project, so enumerating them just invites the next one to slip in.
+          echo "--- code paths (enforced) ---"
+          git diff --check "$RANGE" -- . \
+            ':(exclude)knowledge_base' \
+            ':(exclude)container/claude-trace' > /tmp/code.txt 2>&1
+          CODE_RC=$?
+          cat /tmp/code.txt
+
+          echo "--- knowledge_base/** (reported, not yet enforced) ---"
+          git diff --check "$RANGE" -- knowledge_base > /tmp/kb.txt 2>&1
+          KB_N=$(grep -c . /tmp/kb.txt)
+          [ -n "$KB_N" ] || KB_N=0
+          head -20 /tmp/kb.txt
+          if [ "${KB_N:-0}" -gt 0 ]; then
+            echo "::warning::${KB_N} whitespace/EOF diagnostic(s) under knowledge_base/**."
+            echo "::warning::NOT failing yet: the generators that emit these were fixed separately and the"
+            echo "::warning::existing corpus needs one regeneration pass first. Flip this to enforced once"
+            echo "::warning::a post-fix KB sync lands clean — leaving it reported forever defeats the point."
+          else
+            echo "knowledge_base/** is clean."
+          fi
+
+          if [ "$CODE_RC" -ne 0 ]; then
+            echo "::error::whitespace/EOF errors introduced outside knowledge_base/** — see above."
+            exit 1
+          fi
+          echo "No whitespace/EOF errors introduced in code paths."

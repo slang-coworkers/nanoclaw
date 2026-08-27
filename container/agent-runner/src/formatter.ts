@@ -122,26 +122,20 @@ export interface RoutingContext {
 
 /**
  * Extract routing context from a batch of messages.
- *
- * Two independent guards, both required.
- *
- * Row choice: the first NON-ECHO message. A cross-session echo row must never
- * decide where the reply goes (its routing is NULL by contract, but even a
- * malformed row with routing set is skipped). Falls back to the plain first row
- * if the batch is somehow all echo — shouldn't happen, echo rows never trigger.
- *
- * Field choice: session routing (channel_type + platform_id) is preferred over
- * that row's fields. This matters when a cross-channel webhook (e.g. github PR
- * review) wakes an a2a session: the webhook's routing is github, but the
- * session's bound channel is agent. Without the preference, bare-text
- * auto-route writes target github — which has no messaging group on the
- * delivery side and fails permanently.
- *
- * threadId and inReplyTo always come from the chosen row — they are per-turn,
- * not per-session.
+ * Uses the first non-echo message's routing fields — a cross-session echo
+ * row must never decide where the reply goes (its routing is NULL by
+ * contract, but even a malformed row with routing set is skipped). Falls
+ * back to the plain first row if the batch is somehow all echo (shouldn't
+ * happen — echo rows never trigger).
  */
 export function extractRouting(messages: MessageInRow[]): RoutingContext {
   const first = messages.find((m) => !isSessionEcho(m)) ?? messages[0];
+  // Session routing outranks the message's own fields. A cross-channel webhook
+  // (a github PR review, say) waking an a2a session carries github routing while
+  // the session's bound channel is agent; the poll loop's bare-text auto-route
+  // would then target github, which has no messaging group on the delivery side
+  // and fails permanently instead of retrying. threadId and inReplyTo stay
+  // per-turn, so they still come from the message.
   const session = getSessionRouting();
   const useSession = !!(session.channel_type && session.platform_id);
   return {
@@ -167,11 +161,21 @@ export function extractRouting(messages: MessageInRow[]): RoutingContext {
  * (src/v1/router.ts:20-22); dropping it led to misinterpretations where the
  * agent scheduled tasks for the wrong hour.
  *
- * Strips routing fields — the agent never sees platform_id, channel_type, thread_id.
+ * Strips most routing fields — the agent never sees platform_id or channel_type.
+ *
+ * `thread_id` is surfaced as a `thread="…"` attribute when an inbound row's
+ * thread differs from the session's bound thread (i.e. an a2a fan-in or
+ * cross-thread inbound). This lets the agent reply on the correct thread
+ * without having to infer the thread_id from message content — critical
+ * when a parent session receives several batched replies on different
+ * thread_ids in one turn. Replies on the session's own thread suppress
+ * the attribute (no-op for single-thread sessions).
  */
 export function formatMessages(messages: MessageInRow[]): string {
   const header = `<context timezone="${escapeXml(TIMEZONE)}" />\n`;
   if (messages.length === 0) return header;
+
+  const sessionThreadId = getSessionRouting().thread_id;
 
   // Group by kind
   const chatMessages = messages.filter((m) => m.kind === 'chat' || m.kind === 'chat-sdk');
@@ -182,7 +186,7 @@ export function formatMessages(messages: MessageInRow[]): string {
   const parts: string[] = [];
 
   if (chatMessages.length > 0) {
-    parts.push(formatChatMessages(chatMessages));
+    parts.push(formatChatMessages(chatMessages, sessionThreadId));
   }
   if (taskMessages.length > 0) {
     parts.push(...taskMessages.map(formatTaskMessage));
@@ -197,7 +201,7 @@ export function formatMessages(messages: MessageInRow[]): string {
   return header + parts.join('\n\n');
 }
 
-function formatChatMessages(messages: MessageInRow[]): string {
+function formatChatMessages(messages: MessageInRow[], sessionThreadId: string | null): string {
   // Each `<message id="..." from="...">...</message>` block is self-contained;
   // concatenating them reads to the agent as a sequence of distinct messages.
   // Earlier revisions wrapped multi-message batches in an outer `<messages>`
@@ -206,10 +210,10 @@ function formatChatMessages(messages: MessageInRow[]): string {
   // requested."`) instead of calling the API — see #2555 for the full trace.
   // The fix is simply to drop the wrapper; the single-message path (which
   // already worked) is now just the N=1 case of the same code.
-  return messages.map(formatSingleChat).join('\n');
+  return messages.map((m) => formatSingleChat(m, sessionThreadId)).join('\n');
 }
 
-function formatSingleChat(msg: MessageInRow): string {
+function formatSingleChat(msg: MessageInRow, sessionThreadId: string | null): string {
   if (isSessionEcho(msg)) return formatEchoMessage(msg);
   const content = parseContent(msg.content);
   const sender = content.sender || content.author?.fullName || content.author?.userName || 'Unknown';
@@ -217,14 +221,36 @@ function formatSingleChat(msg: MessageInRow): string {
   const text = content.text || '';
   const idAttr = msg.seq != null ? ` id="${msg.seq}"` : '';
   const replyAttr = content.replyTo?.id ? ` reply_to="${escapeXml(String(content.replyTo.id))}"` : '';
+  const threadAttr =
+    msg.thread_id && msg.thread_id !== sessionThreadId
+      ? ` thread="${escapeXml(msg.thread_id)}"`
+      : '';
   const replyPrefix = formatReplyContext(content.replyTo);
   const linksSuffix = formatLinks(content.links, text);
   const attachmentsSuffix = formatAttachments(content.attachments);
   const appContextSuffix = formatAppContext(content.app_context);
 
+  // Engine-synthesized system notifications (channelType='system' OR
+  // sender='system') get rendered as <system-notification>, NOT as a
+  // <message id=… from=…> envelope. Two reasons:
+  //
+  //   1. Routing leak: the old envelope was `from="unknown:agent:<self
+  //      group id>"` because findByRouting couldn't resolve the bogus
+  //      channelType='agent' + platformId=self that notifyAgent used to
+  //      set. The model literally mirrored that envelope in its output,
+  //      turning a benign "Learning saved" notification into a self-
+  //      prompt loop.
+  //   2. Attribution clarity: a system notification is unambiguously
+  //      from the engine, not from a human or another agent, so it
+  //      shouldn't share the same envelope shape and risk the model
+  //      treating it as a conversational turn it must respond to.
+  if (msg.channel_type === 'system' || sender === 'system') {
+    return `<system-notification${idAttr} time="${escapeXml(time)}">${escapeXml(text)}</system-notification>`;
+  }
+
   const fromAttr = originAttr(msg);
 
-  return `<message${idAttr}${fromAttr} sender="${escapeXml(sender)}" time="${escapeXml(time)}"${replyAttr}>${replyPrefix}${escapeXml(text)}${linksSuffix}${attachmentsSuffix}${appContextSuffix}</message>`;
+  return `<message${idAttr}${fromAttr} sender="${escapeXml(sender)}" time="${escapeXml(time)}"${threadAttr}${replyAttr}>${replyPrefix}${escapeXml(text)}${linksSuffix}${attachmentsSuffix}${appContextSuffix}</message>`;
 }
 
 /**

@@ -105,6 +105,13 @@ export function writeMessageOut(msg: WriteMessageOut): Promise<number> {
   });
 }
 
+/**
+ * The odd/even seq split between outbound and inbound is load-bearing here,
+ * not just collision avoidance: seq is the agent-facing message ID returned by
+ * send_message and accepted by add_reaction, and this lookup spans BOTH tables.
+ * If inbound and outbound could share a seq, the agent's "react to message #5"
+ * could resolve to the wrong row.
+ */
 export function getMessageIdBySeq(seq: number): string | null {
   return getAgentMailbox().operations.getMessageIdBySeq(seq);
 }
@@ -122,6 +129,46 @@ export function getRoutingBySeq(
   );
 }
 
+/**
+ * True if this session has previously written an outbound row to the same
+ * (channel_type, platform_id, thread_id) tuple — i.e. we originated /
+ * already dispatched on this thread to this destination. Used by the a2a
+ * runtime guard in send_message to distinguish "I'm continuing my own
+ * thread" from "I'm writing into a thread the peer owns" (the latter
+ * should require in_reply_to to prove the link).
+ */
+export function hasOutboundToThread(channelType: string, platformId: string, threadId: string): boolean {
+  return getAgentMailbox().operations.hasOutboundToThread(channelType, platformId, threadId);
+}
+
+/**
+ * Highest outbound seq currently in `messages_out` (0 when empty).
+ *
+ * The poll loop samples this before a turn and again at its `result` event: a
+ * strictly greater value means the turn produced at least one outbound row, by
+ * ANY path. An in-process counter can't answer that — the MCP tools
+ * (`send_message`, `send_file`, …) run in a separate stdio process and write
+ * to the same file — so the watermark has to come from the DB. seq is
+ * monotonic (container writes odd, never reused) and nothing deletes from
+ * `messages_out`, so this only ever increases.
+ */
+export function outboundWatermark(): number {
+  return getAgentMailbox().operations.outboundWatermark();
+}
+
+/** Get undelivered messages (for host polling — reads from outbound.db). */
 export function getUndeliveredMessages(): MessageOutRow[] {
   return getAgentMailbox().operations.getUndeliveredMessages().map(messageRow);
+}
+
+/**
+ * True when an outbound row already exists for (platformId, channelType) with
+ * the same text and no in_reply_to — i.e. the agent already sent this exact
+ * message via the MCP tool this turn. Used by sendToDestination to drop a
+ * turn-final <message> echo of an already-sent task message (#943). Restored
+ * on the upstream sync: nv-main re-added it in #943, and it coexists with the
+ * one-door task-delivery change as defense-in-depth.
+ */
+export function hasIdenticalSend(platformId: string, channelType: string, text: string): boolean {
+  return getAgentMailbox().operations.hasIdenticalSend(platformId, channelType, text);
 }

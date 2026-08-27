@@ -17,11 +17,13 @@ import {
   validateEngageAgainstChannel,
 } from '../src/channels/channel-defaults.js';
 import { hasDeclaredChannelDefaults } from '../src/channels/channel-registry.js';
-import { CENTRAL_DB_PATH } from '../src/config.js';
-import { initDb } from '../src/db/connection.js';
+import { getDb, initDb } from '../src/db/connection.js';
+import type { DbDriver } from '../src/db/driver.js';
 import { runMigrations } from '../src/db/migrations/index.js';
-import { createAgentGroup, getAgentGroupByFolder } from '../src/db/agent-groups.js';
+import { createAgentGroup, getAdminAgentGroup, getAgentGroupByFolder } from '../src/db/agent-groups.js';
 import { ensureContainerConfig } from '../src/db/container-configs.js';
+import { createUser, getUser } from '../src/modules/permissions/db/users.js';
+import { grantRole, getUserRoles } from '../src/modules/permissions/db/user-roles.js';
 import {
   createMessagingGroup,
   createMessagingGroupAgent,
@@ -33,6 +35,12 @@ import { log } from '../src/log.js';
 import '../src/mailbox/compose.js';
 import { namespacedPlatformId } from '../src/platform-id.js';
 import { resolveSession, writeSessionMessage } from '../src/session-manager.js';
+import {
+  allocateDestinationName,
+  createDestination,
+  getDestinationByName,
+  normalizeName,
+} from '../src/modules/agent-to-agent/db/agent-destinations.js';
 import { emitStatus } from './status.js';
 
 interface RegisterArgs {
@@ -50,8 +58,18 @@ interface RegisterArgs {
   requiresTrigger: boolean;
   /** Display name for the assistant */
   assistantName: string;
-  /** Session mode: 'shared' (one session per channel) or 'per-thread' */
+  /** Session mode: 'shared' (one session per channel), 'per-thread' (one per thread — needed for Slack-style UIs), or 'agent-shared' (one per agent across channels) */
   sessionMode: string;
+  /** Whether --session-mode was explicitly passed (suppresses channel-aware default below) */
+  sessionModeExplicit: boolean;
+  /** Whether this agent group is an admin/orchestrator group */
+  isAdmin: boolean;
+  /** Coworker type from the lego registry (e.g. slang-triage, slang-fix) */
+  coworkerType: string | null;
+  /** Agent provider: 'claude' (default) or 'codex' */
+  agentProvider: string | null;
+  /** Routing mode: 'direct' (own channel) or 'internal' (via orchestrator only) */
+  routing: 'direct' | 'internal';
   /** Whether the messaging group is a multi-user chat (default: true) */
   isGroup: boolean;
   /** Explicit engage mode override; omitted = channel declaration / heuristic */
@@ -73,6 +91,11 @@ function parseArgs(args: string[]): RegisterArgs {
     requiresTrigger: false,
     assistantName: 'Andy',
     sessionMode: 'shared',
+    sessionModeExplicit: false,
+    isAdmin: false,
+    coworkerType: null,
+    agentProvider: null,
+    routing: 'direct',
     isGroup: true,
   };
 
@@ -101,6 +124,19 @@ function parseArgs(args: string[]): RegisterArgs {
         break;
       case '--session-mode':
         result.sessionMode = args[++i] || 'shared';
+        result.sessionModeExplicit = true;
+        break;
+      case '--is-admin':
+        result.isAdmin = true;
+        break;
+      case '--coworker-type':
+        result.coworkerType = args[++i] || null;
+        break;
+      case '--agent-provider':
+        result.agentProvider = args[++i] || null;
+        break;
+      case '--routing':
+        result.routing = args[++i] === 'internal' ? 'internal' : 'direct';
         break;
       case '--is-group': {
         const raw = (args[++i] || '').toLowerCase();
@@ -127,6 +163,21 @@ function parseArgs(args: string[]): RegisterArgs {
         break;
       }
     }
+  }
+
+  // Default coworker_type for admin groups to 'main' if not explicitly set
+  if (result.isAdmin && !result.coworkerType) {
+    result.coworkerType = 'main';
+  }
+
+  // Channel-aware session_mode default. Dashboard's Slack-style thread UI
+  // only renders correctly when each thread has its own agent session, so
+  // route dashboard wirings to 'per-thread' unless the caller overrode it
+  // with --session-mode. Other channels keep the conservative 'shared'
+  // default (one session per channel, threads collapse to the root) —
+  // that matches how Telegram/WhatsApp/iMessage already behave.
+  if (!result.sessionModeExplicit && result.channel === 'dashboard') {
+    result.sessionMode = 'per-thread';
   }
 
   return result;
@@ -162,7 +213,7 @@ export async function run(args: string[]): Promise<void> {
     process.exit(4);
   }
 
-  if (!isValidGroupFolder(parsed.folder)) {
+  if (!isValidGroupFolder(parsed.folder, { adminSetup: !!parsed.isAdmin })) {
     emitStatus('REGISTER_CHANNEL', {
       STATUS: 'failed',
       ERROR: 'invalid_folder',
@@ -178,9 +229,31 @@ export async function run(args: string[]): Promise<void> {
 
   log.info('Registering channel', { ...parsed });
 
-  // Init v2 central DB
-  fs.mkdirSync(path.join(projectRoot, 'data'), { recursive: true });
-  const db = await initDb(CENTRAL_DB_PATH);
+  // Init v2 central DB, under the CALL-TIME project root.
+  //
+  // Not `CENTRAL_DB_PATH`: that constant is resolved from `process.cwd()` when
+  // src/config.ts is first imported, so it pins whatever the cwd was at module
+  // load. Everything else in this function is relative to `projectRoot`, read at
+  // call time — so a caller that chdir'd after import wrote its groups/ and .env
+  // to one root and its central DB to another. The pre-async code derived this
+  // path from `projectRoot` for exactly that reason; keep it that way.
+  //
+  // The visible symptom was `pnpm test` writing into the operator's LIVE
+  // data/v2.db instead of the test's temp dir.
+  const dataDir = path.join(projectRoot, 'data');
+  fs.mkdirSync(dataDir, { recursive: true });
+
+  // Reuse an already-open handle rather than opening a second writer onto the
+  // same file — `initDb` THROWS on a second call (the async port added that
+  // guard), so a caller that registers twice in one process, or that already
+  // has the central DB open, previously died here. Same idiom and same reason as
+  // setup/registry-reconcile.ts.
+  let db: DbDriver;
+  try {
+    db = getDb();
+  } catch {
+    db = await initDb(path.join(dataDir, 'v2.db'));
+  }
   await runMigrations(db);
 
   // 1. Create or find agent group. The workspace is scaffolded at the first
@@ -196,7 +269,10 @@ export async function run(args: string[]): Promise<void> {
       id: agId,
       name: parsed.assistantName,
       folder: parsed.folder,
-      agent_provider: null,
+      is_admin: parsed.isAdmin ? 1 : 0,
+      coworker_type: parsed.coworkerType,
+      routing: parsed.routing,
+      agent_provider: parsed.agentProvider,
       created_at: new Date().toISOString(),
     });
     agentGroup = (await getAgentGroupByFolder(parsed.folder))!;
@@ -204,87 +280,152 @@ export async function run(args: string[]): Promise<void> {
   }
   await ensureContainerConfig(agentGroup.id);
 
-  // 2. Create or find messaging group
-  let messagingGroup = await getMessagingGroupByPlatform(parsed.channel, parsed.platformId);
-  if (!messagingGroup) {
-    const mgId = generateId('mg');
-    // Policy: explicit flag → channel declaration → legacy 'strict' (stale
-    // adapters without a declaration must keep pre-declaration behavior).
-    const unknownSenderPolicy =
-      parsed.unknownSenderPolicy ??
-      (hasDeclaredChannelDefaults(parsed.channel)
-        ? resolveUnknownSenderPolicy(parsed.channel, parsed.isGroup)
-        : 'strict');
-    await createMessagingGroup({
-      id: mgId,
-      channel_type: parsed.channel,
-      platform_id: parsed.platformId,
-      name: parsed.name,
-      is_group: parsed.isGroup ? 1 : 0,
-      unknown_sender_policy: unknownSenderPolicy,
-      created_at: new Date().toISOString(),
-    });
-    messagingGroup = (await getMessagingGroupByPlatform(parsed.channel, parsed.platformId))!;
-    log.info('Created messaging group', { id: mgId, channel: parsed.channel, platformId: parsed.platformId });
+  // 1b. Grant the channel's default user the owner role so approval flows work.
+  // Route through the permissions DB helpers instead of raw SQL against core
+  // tables (anti-pattern #4), and guard on existence so re-registration stays
+  // idempotent (the helpers do plain INSERTs that throw on duplicate). No
+  // error swallowing: a genuine failure here should surface, not be hidden.
+  if (parsed.isAdmin && parsed.channel === 'dashboard') {
+    const now = new Date().toISOString();
+    const dashUserId = 'dashboard:dashboard-admin';
+    if (!(await getUser('system'))) {
+      await createUser({ id: 'system', kind: 'system', display_name: 'System', created_at: now });
+    }
+    if (!(await getUser(dashUserId))) {
+      await createUser({ id: dashUserId, kind: 'dashboard', display_name: 'Dashboard Admin', created_at: now });
+    }
+    const dashRoles = await getUserRoles(dashUserId);
+    const hasOwner = dashRoles.some((r) => r.role === 'owner' && r.agent_group_id === null);
+    if (!hasOwner) {
+      await grantRole({
+        user_id: dashUserId,
+        role: 'owner',
+        agent_group_id: null,
+        granted_by: 'system',
+        granted_at: now,
+      });
+    }
+    log.info('Granted dashboard-admin owner role');
+  }
+
+  const shouldCreateDirectChannel = parsed.routing === 'direct';
+
+  // 2. Create or find messaging group (direct-routing only)
+  let messagingGroup = null;
+  if (shouldCreateDirectChannel) {
+    messagingGroup = await getMessagingGroupByPlatform(parsed.channel, parsed.platformId);
+    if (!messagingGroup) {
+      const mgId = generateId('mg');
+      // Policy: explicit flag → channel declaration → legacy 'strict' (stale
+      // adapters without a declaration must keep pre-declaration behavior).
+      const unknownSenderPolicy =
+        parsed.unknownSenderPolicy ??
+        (hasDeclaredChannelDefaults(parsed.channel)
+          ? resolveUnknownSenderPolicy(parsed.channel, parsed.isGroup)
+          : 'strict');
+      await createMessagingGroup({
+        id: mgId,
+        channel_type: parsed.channel,
+        platform_id: parsed.platformId,
+        name: parsed.name,
+        is_group: parsed.isGroup ? 1 : 0,
+        unknown_sender_policy: unknownSenderPolicy,
+        created_at: new Date().toISOString(),
+      });
+      messagingGroup = (await getMessagingGroupByPlatform(parsed.channel, parsed.platformId))!;
+      log.info('Created messaging group', { id: mgId, channel: parsed.channel, platformId: parsed.platformId });
+    }
   }
 
   // 3. Wire agent to messaging group — createMessagingGroupAgent auto-creates
   // the companion agent_destinations row so delivery's ACL admits this target.
   let newlyWired = false;
-  const existing = await getMessagingGroupAgentByPair(messagingGroup.id, agentGroup.id);
-  if (!existing) {
-    newlyWired = true;
-    const mgaId = generateId('mga');
-    // Engage defaults, first hit wins: explicit --engage-mode → explicit
-    // --trigger (pattern regex, the historical override) → the channel's
-    // declared defaults → the legacy heuristic for stale (undeclared)
-    // adapters, so a trunk update alone changes nothing for them: groups get
-    // 'mention' (respond when addressed), DMs 'pattern'/'.' (every message).
-    const isGroup = messagingGroup.is_group === 1;
-    const channelKey = messagingGroup.instance ?? messagingGroup.channel_type;
-    let engage: { engage_mode: 'pattern' | 'mention' | 'mention-sticky'; engage_pattern: string | null };
-    if (parsed.engageMode) {
-      if (parsed.engageMode === 'pattern' && !parsed.trigger) {
-        throw new Error(`--engage-mode pattern requires --trigger (use "." to match every message)`);
+  if (shouldCreateDirectChannel && messagingGroup) {
+    const existing = await getMessagingGroupAgentByPair(messagingGroup.id, agentGroup.id);
+    if (!existing) {
+      newlyWired = true;
+      const mgaId = generateId('mga');
+      // Engage defaults, first hit wins: explicit --engage-mode → explicit
+      // --trigger (pattern regex, the historical override) → the channel's
+      // declared defaults → the legacy heuristic for stale (undeclared)
+      // adapters, so a trunk update alone changes nothing for them: groups get
+      // 'mention' (respond when addressed), DMs 'pattern'/'.' (every message).
+      const isGroup = messagingGroup.is_group === 1;
+      const channelKey = messagingGroup.instance ?? messagingGroup.channel_type;
+      let engage: { engage_mode: 'pattern' | 'mention' | 'mention-sticky'; engage_pattern: string | null };
+      if (parsed.engageMode) {
+        if (parsed.engageMode === 'pattern' && !parsed.trigger) {
+          throw new Error(`--engage-mode pattern requires --trigger (use "." to match every message)`);
+        }
+        engage = {
+          engage_mode: parsed.engageMode,
+          engage_pattern: parsed.engageMode === 'pattern' ? parsed.trigger : null,
+        };
+      } else if (parsed.trigger) {
+        engage = { engage_mode: 'pattern', engage_pattern: parsed.trigger };
+      } else if (hasDeclaredChannelDefaults(channelKey, messagingGroup.channel_type)) {
+        engage = resolveWiringDefaults(channelKey, isGroup, agentGroup.name, messagingGroup.channel_type);
+      } else {
+        engage = isGroup
+          ? { engage_mode: 'mention', engage_pattern: null }
+          : { engage_mode: 'pattern', engage_pattern: '.' };
       }
-      engage = {
-        engage_mode: parsed.engageMode,
-        engage_pattern: parsed.engageMode === 'pattern' ? parsed.trigger : null,
-      };
-    } else if (parsed.trigger) {
-      engage = { engage_mode: 'pattern', engage_pattern: parsed.trigger };
-    } else if (hasDeclaredChannelDefaults(channelKey, messagingGroup.channel_type)) {
-      engage = resolveWiringDefaults(channelKey, isGroup, agentGroup.name, messagingGroup.channel_type);
-    } else {
-      engage = isGroup
-        ? { engage_mode: 'mention', engage_pattern: null }
-        : { engage_mode: 'pattern', engage_pattern: '.' };
+      // Same cross-checks as `ncl wirings create`: rejects mention modes on
+      // channels declaring mentions:'never'; coerces mention-sticky→mention
+      // when the channel context has no thread ids.
+      validateEngageAgainstChannel(engage, messagingGroup);
+      await createMessagingGroupAgent({
+        id: mgaId,
+        messaging_group_id: messagingGroup.id,
+        agent_group_id: agentGroup.id,
+        engage_mode: engage.engage_mode,
+        engage_pattern: engage.engage_pattern,
+        sender_scope: 'all',
+        ignored_message_policy: 'drop',
+        session_mode: parsed.sessionMode as 'shared' | 'per-thread' | 'agent-shared',
+        priority: 0,
+        created_at: new Date().toISOString(),
+      });
+      log.info('Wired agent to messaging group', {
+        mgaId,
+        agentGroup: agentGroup.id,
+        messagingGroup: messagingGroup.id,
+      });
     }
-    // Same cross-checks as `ncl wirings create`: rejects mention modes on
-    // channels declaring mentions:'never'; coerces mention-sticky→mention
-    // when the channel context has no thread ids.
-    validateEngageAgainstChannel(engage, messagingGroup);
-    await createMessagingGroupAgent({
-      id: mgaId,
-      messaging_group_id: messagingGroup.id,
-      agent_group_id: agentGroup.id,
-      engage_mode: engage.engage_mode,
-      engage_pattern: engage.engage_pattern,
-      sender_scope: 'all',
-      ignored_message_policy: 'drop',
-      session_mode: parsed.sessionMode as 'shared' | 'per-thread' | 'agent-shared',
-      priority: 0,
-      created_at: new Date().toISOString(),
-    });
-    log.info('Wired agent to messaging group', {
-      mgaId,
-      agentGroup: agentGroup.id,
-      messagingGroup: messagingGroup.id,
-    });
+  }
+
+  // 3b. Bidirectional destinations: admin ↔ new agent
+  if (!parsed.isAdmin) {
+    const admin = await getAdminAgentGroup();
+    if (admin && admin.id !== agentGroup.id) {
+      const now = new Date().toISOString();
+      const childName = await allocateDestinationName(admin.id, agentGroup.name);
+      if (!(await getDestinationByName(admin.id, childName))) {
+        await createDestination({
+          agent_group_id: admin.id,
+          local_name: childName,
+          target_type: 'agent',
+          target_id: agentGroup.id,
+          created_at: now,
+        });
+        log.info('Added admin → agent destination', { admin: admin.id, localName: childName, agent: agentGroup.id });
+      }
+      const adminName = await allocateDestinationName(agentGroup.id, admin.name);
+      if (!(await getDestinationByName(agentGroup.id, adminName))) {
+        await createDestination({
+          agent_group_id: agentGroup.id,
+          local_name: adminName,
+          target_type: 'agent',
+          target_id: admin.id,
+          created_at: now,
+        });
+        log.info('Added agent → admin destination', { agent: agentGroup.id, localName: adminName, admin: admin.id });
+      }
+    }
   }
 
   // 4. Send onboarding message — only on first wiring, not re-registration
-  if (newlyWired) {
+  if (shouldCreateDirectChannel && newlyWired && messagingGroup) {
     const { session } = await resolveSession(
       agentGroup.id,
       messagingGroup.id,
