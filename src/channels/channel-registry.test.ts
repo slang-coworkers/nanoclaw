@@ -247,29 +247,32 @@ describe('channel + router integration', () => {
 
     const { initTestDb, runMigrations, createAgentGroup, createMessagingGroup, createMessagingGroupAgent } =
       await import('../db/index.js');
-    const db = initTestDb();
-    runMigrations(db);
+    const db = await initTestDb();
+    await runMigrations(db);
 
-    createAgentGroup({
+    await createAgentGroup({
       id: 'ag-1',
       name: 'Test Agent',
       folder: 'test-agent',
       agent_provider: null,
       created_at: now(),
     });
-    createMessagingGroup({
+    await createMessagingGroup({
       id: 'mg-1',
       channel_type: 'mock',
       platform_id: 'chan-100',
       name: 'Test Channel',
       is_group: 1,
+      admin_user_id: null,
       unknown_sender_policy: 'public',
       created_at: now(),
     });
-    createMessagingGroupAgent({
+    await createMessagingGroupAgent({
       id: 'mga-1',
       messaging_group_id: 'mg-1',
       agent_group_id: 'ag-1',
+      trigger_rules: null,
+      response_scope: 'all',
       engage_mode: 'pattern',
       engage_pattern: '.',
       sender_scope: 'all',
@@ -282,14 +285,14 @@ describe('channel + router integration', () => {
 
   afterEach(async () => {
     const { closeDb } = await import('../db/index.js');
-    closeDb();
+    await closeDb();
     if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true });
   });
 
   it('should route inbound message from adapter to session DB', async () => {
     const { routeInbound } = await import('../router.js');
     const { findSession } = await import('../db/sessions.js');
-    const { inboundDbPath } = await import('../session-manager.js');
+    const { inboundDbPath } = await import('../mailbox/sqlite/paths.js');
 
     // Simulate what the adapter bridge does: stringify content, call routeInbound
     const inboundContent = { sender: 'TestUser', senderId: 'u1', text: 'Hello from adapter', isFromMe: false };
@@ -307,7 +310,7 @@ describe('channel + router integration', () => {
     });
 
     // Verify session was created and message written
-    const session = findSession('mg-1', null);
+    const session = await findSession('mg-1', null);
     expect(session).toBeDefined();
 
     const dbPath = inboundDbPath('ag-1', session!.id);
@@ -354,5 +357,22 @@ describe('channel + router integration', () => {
 
     expect(mockAdapter.delivered).toHaveLength(1);
     expect((mockAdapter.delivered[0].content as { text: string }).text).toBe('Agent response');
+  });
+});
+
+describe('optional channel adapters', () => {
+  // dashboard.ts lives on the nv-dashboard overlay, but its registration has to
+  // sit in the barrel, which nv-main owns and the composer canonicalizes. A
+  // static `import './dashboard.js';` is therefore broken on one side or the
+  // other: present and unresolvable on nv-main (barrel dies at module load, and
+  // tsc does not see it because a missing runtime import is not a type error),
+  // or absent and unregistered on the composed tree ("No adapter for channel
+  // type dashboard" at delivery). It has been both — #919 fixed the second by
+  // causing the first.
+  it('resolves the barrel when an optional adapter is not in this tree', async () => {
+    const reg = await import('./channel-registry.js');
+    await import('./index.js');
+
+    expect(reg.getRegisteredChannelNames()).toContain('cli');
   });
 });

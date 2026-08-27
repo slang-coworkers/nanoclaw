@@ -1,0 +1,39 @@
+name: nv-* path guard
+
+# Reject PRs that touch files outside the target branch's owned-path allowlist.
+# Prevents cross-branch leakage (the kind that caused 13 merge conflicts on 2026-05-12).
+#
+# Config per branch: .github/nv-path-guard/<branch>.txt — one gitwildmatch pattern per line.
+# If the config file is missing, the check is skipped with a warning.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - nv-main
+      - nv-dashboard
+      - nv-slang
+      - nv-slangpy
+      - nv-nanoclaw
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.11'
+
+      # No dependency install step here on purpose. The matcher is
+      # `git check-ignore` run inside an empty isolated repo, so the guard that
+      # decides what a branch may change never fetches code from a registry at
+      # the moment it runs. See .github/nv-path-guard/ownership.py.
+      - name: Validate paths against allowlist
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 .github/nv-path-guard/check.py "$BASE" "$HEAD_SHA"

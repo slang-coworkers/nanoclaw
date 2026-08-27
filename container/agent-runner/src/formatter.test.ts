@@ -11,7 +11,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 
-import { initTestSessionDb, closeSessionDb, getInboundDb } from './db/connection.js';
+import { initTestSessionDb, closeSessionDb, getInboundDb } from './mailbox/sqlite/connection.js';
 import { getPendingMessages } from './db/messages-in.js';
 import { formatMessages, stripInternalTags, stripLegacyTaskContract } from './formatter.js';
 import { TIMEZONE, formatLocalTime } from './timezone.js';
@@ -24,19 +24,56 @@ afterEach(() => {
   closeSessionDb();
 });
 
+// Production always assigns seq (the host writer); a NULL seq makes both the
+// query's ORDER BY and getPendingMessages' final sort ties, so multi-row
+// ordering becomes whatever SQLite returns — the source of a long flake.
+let nextSeq = 1;
+
 function insertMessage(
   id: string,
   kind: string,
   content: object,
-  opts?: { timestamp?: string; processAfter?: string },
+  opts?: {
+    timestamp?: string;
+    processAfter?: string;
+    thread_id?: string | null;
+    channel_type?: string | null;
+    platform_id?: string | null;
+  },
 ) {
   const timestamp = opts?.timestamp ?? new Date().toISOString();
   getInboundDb()
     .prepare(
-      `INSERT INTO messages_in (id, kind, timestamp, status, process_after, content)
-       VALUES (?, ?, ?, 'pending', ?, ?)`,
+      `INSERT INTO messages_in (id, kind, timestamp, status, process_after, content, thread_id, channel_type, platform_id, seq)
+       VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
     )
-    .run(id, kind, timestamp, opts?.processAfter ?? null, JSON.stringify(content));
+    .run(
+      id,
+      kind,
+      timestamp,
+      opts?.processAfter ?? null,
+      JSON.stringify(content),
+      opts?.thread_id ?? null,
+      opts?.channel_type ?? null,
+      opts?.platform_id ?? null,
+      nextSeq++,
+    );
+}
+
+function setSessionThread(threadId: string | null) {
+  const db = getInboundDb();
+  db.exec(
+    `CREATE TABLE IF NOT EXISTS session_routing (
+       id           INTEGER PRIMARY KEY CHECK (id = 1),
+       channel_type TEXT,
+       platform_id  TEXT,
+       thread_id    TEXT
+     )`,
+  );
+  db.prepare(
+    `INSERT OR REPLACE INTO session_routing (id, channel_type, platform_id, thread_id)
+     VALUES (1, ?, ?, ?)`,
+  ).run('dashboard', 'dashboard:admin', threadId);
 }
 
 describe('context timezone header', () => {
@@ -124,6 +161,31 @@ describe('multi-message chat batches', () => {
   });
 });
 
+describe('structured chat links', () => {
+  it('preserves a link target hidden by shortened display text', () => {
+    insertMessage('m1', 'chat-sdk', {
+      sender: 'Joel',
+      text: 'read example.com/assets/…/review',
+      links: [{ url: 'https://example.com/assets/a_123/review?x=1&y=2' }],
+    });
+
+    const result = formatMessages(getPendingMessages());
+
+    expect(result).toContain(
+      'read example.com/assets/…/review\n[link: https://example.com/assets/a_123/review?x=1&amp;y=2]',
+    );
+  });
+
+  it('does not repeat a link already present in message text', () => {
+    const url = 'https://example.com/full-path';
+    insertMessage('m1', 'chat-sdk', { sender: 'Joel', text: `read ${url}`, links: [{ url }] });
+
+    const result = formatMessages(getPendingMessages());
+
+    expect(result.match(/https:\/\/example\.com\/full-path/g)).toHaveLength(1);
+  });
+});
+
 describe('timestamp formatting', () => {
   it('renders time via formatLocalTime (user TZ)', () => {
     // 2026-06-15T12:00:00Z — timezone-agnostic assertions (year is stable)
@@ -206,6 +268,70 @@ describe('reply_to + quoted_message rendering', () => {
   });
 });
 
+describe('thread="…" attribute (foreign-thread surfacing)', () => {
+  it('emits thread="…" when an inbound row carries a thread_id different from the session', () => {
+    setSessionThread('dashboard-thread-x');
+    insertMessage(
+      'm1',
+      'chat',
+      { sender: 'slang-triage', text: '[Triage] slang#11144' },
+      { thread_id: 'slang-11144', channel_type: 'agent', platform_id: 'ag-triage' },
+    );
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain('thread="slang-11144"');
+  });
+
+  it('suppresses thread="…" when the inbound shares the session thread_id', () => {
+    setSessionThread('dashboard-thread-x');
+    insertMessage(
+      'm1',
+      'chat',
+      { sender: 'admin', text: 'hi' },
+      { thread_id: 'dashboard-thread-x', channel_type: 'dashboard', platform_id: 'dashboard:admin' },
+    );
+    const result = formatMessages(getPendingMessages());
+    expect(result).not.toContain('thread=');
+  });
+
+  it('suppresses thread="…" when inbound thread_id is null', () => {
+    setSessionThread('dashboard-thread-x');
+    insertMessage('m1', 'chat', { sender: 'admin', text: 'no thread' });
+    const result = formatMessages(getPendingMessages());
+    expect(result).not.toContain('thread=');
+  });
+
+  it('emits distinct thread="…" attributes for each inbound in a multi-thread batch', () => {
+    setSessionThread(null);
+    insertMessage(
+      'm1',
+      'chat',
+      { sender: 'slang-triage', text: 'slang report' },
+      { thread_id: 'slang-11144', channel_type: 'agent', platform_id: 'ag-slang-triage' },
+    );
+    insertMessage(
+      'm2',
+      'chat',
+      { sender: 'slangy-triage', text: 'slangpy report' },
+      { thread_id: 'slangpy-807', channel_type: 'agent', platform_id: 'ag-slangy-triage' },
+    );
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain('thread="slang-11144"');
+    expect(result).toContain('thread="slangpy-807"');
+  });
+
+  it('escapes thread_id in the attribute', () => {
+    setSessionThread('home');
+    insertMessage(
+      'm1',
+      'chat',
+      { sender: 'peer', text: 'msg' },
+      { thread_id: 'a"b<c>&d', channel_type: 'agent', platform_id: 'ag-x' },
+    );
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain('thread="a&quot;b&lt;c&gt;&amp;d"');
+  });
+});
+
 describe('XML escaping', () => {
   it('escapes <, >, &, " in sender and body', () => {
     insertMessage('m1', 'chat', {
@@ -245,5 +371,55 @@ describe('stripInternalTags', () => {
     expect(stripInternalTags('<internal>thinking</internal>The answer is 42')).toBe(
       'The answer is 42',
     );
+  });
+});
+
+describe('app_context rendering (Slack agent mode, contract C4)', () => {
+  it('renders a compact single (viewing: …) line inside the message block', () => {
+    insertMessage('m1', 'chat-sdk', {
+      sender: 'Gavriel',
+      text: 'what do you think?',
+      app_context: { entities: [{ type: 'channel', id: 'C0DESIGN' }] },
+    });
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain('what do you think?\n(viewing: channel C0DESIGN)</message>');
+  });
+
+  it('joins multiple entities in order with commas', () => {
+    insertMessage('m1', 'chat-sdk', {
+      sender: 'Gavriel',
+      text: 'here',
+      app_context: {
+        entities: [
+          { type: 'channel', id: 'C0DESIGN' },
+          { type: 'canvas', id: 'F0CANVAS' },
+        ],
+      },
+    });
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain('(viewing: channel C0DESIGN, canvas F0CANVAS)');
+  });
+
+  it('renders nothing for absent, empty, or malformed app_context', () => {
+    insertMessage('m1', 'chat-sdk', { sender: 'A', text: 'no context' });
+    insertMessage('m2', 'chat-sdk', { sender: 'A', text: 'empty', app_context: { entities: [] } });
+    insertMessage('m3', 'chat-sdk', { sender: 'A', text: 'malformed', app_context: 'C0DESIGN' });
+    insertMessage('m4', 'chat-sdk', {
+      sender: 'A',
+      text: 'idless',
+      app_context: { entities: [{ type: 'channel' }] },
+    });
+    const result = formatMessages(getPendingMessages());
+    expect(result).not.toContain('(viewing:');
+  });
+
+  it('escapes XML-significant characters in entity values', () => {
+    insertMessage('m1', 'chat-sdk', {
+      sender: 'A',
+      text: 'x',
+      app_context: { entities: [{ type: 'channel', id: 'C1<&>' }] },
+    });
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain('(viewing: channel C1&lt;&amp;&gt;)');
   });
 });

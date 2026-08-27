@@ -45,7 +45,7 @@ export function commandGuardSpec(cmd: CommandDef): GuardedActionSpec {
   };
 }
 
-function commandDecide(cmd: CommandDef, input: GuardInput) {
+async function commandDecide(cmd: CommandDef, input: GuardInput) {
   const { actor } = input;
   if (actor.kind === 'host') return ALLOW('host caller (trusted socket)');
   if (actor.kind !== 'agent') return DENY('CLI commands accept host or agent callers only.');
@@ -59,7 +59,7 @@ function commandDecide(cmd: CommandDef, input: GuardInput) {
   }
 
   const args = input.payload;
-  const cliScope = getContainerConfig(actor.agentGroupId)?.cli_scope ?? 'group';
+  const cliScope = (await getContainerConfig(actor.agentGroupId))?.cli_scope ?? 'group';
 
   if (cliScope === 'disabled') {
     return DENY('CLI access is disabled for this agent group.');
@@ -97,6 +97,18 @@ function commandDecide(cmd: CommandDef, input: GuardInput) {
     if (args.cli_scope !== undefined || args['cli-scope'] !== undefined) {
       return DENY('Cannot change cli_scope from a group-scoped agent.');
     }
+  }
+
+  // Self-targeting is DENIED, never held. Checked AFTER the auto-filled args
+  // arrive (dispatch fills `--id` with the caller's own group under
+  // `cli_scope: 'group'`, so an omitted `--id` is a self-target) and BEFORE the
+  // approval hold, so no human is ever asked to approve an agent's change to
+  // its own privilege surface. A privilege change must come from a different
+  // principal — Main acting on a coworker, or a human operator.
+  if (cmd.denySelfTarget && args.id === actor.agentGroupId) {
+    return DENY(
+      `"${cmd.name}" cannot target the calling agent's own group. Ask the admin/Main group to make this change.`,
+    );
   }
 
   if (cmd.access === 'approval') {

@@ -27,7 +27,8 @@ import {
   createPendingApproval,
   deletePendingApproval,
   getPendingApprovalsByAction,
-  updatePendingApprovalStatus,
+  transitionPendingApprovalStatus,
+  updatePendingApprovalDelivery,
 } from '../../db/sessions.js';
 import type { ChannelDeliveryAdapter } from '../../delivery.js';
 import { log } from '../../log.js';
@@ -67,17 +68,27 @@ function shortApprovalId(): string {
 }
 
 /** Called from the approvals response handler when a card button is clicked. */
-export function resolveOneCLIApproval(approvalId: string, selectedOption: string): boolean {
+export async function resolveOneCLIApproval(approvalId: string, selectedOption: string): Promise<boolean> {
   const state = pending.get(approvalId);
   if (!state) return false;
+  // fork override (nv): the in-memory map is the claim — deleting the entry
+  // here is what makes a duplicate click a no-op (it finds no state and
+  // returns false). Upstream instead gates on the DB compare-and-swap below
+  // and returns false when it loses; that would make a click on a row whose
+  // status is no longer 'pending' fall through to the response handler's
+  // delete-and-drop path, changing the resolution outcome. Keep the fork's.
   pending.delete(approvalId);
   clearTimeout(state.timer);
 
-  const decision: Decision = selectedOption === 'approve' ? 'approve' : 'deny';
-  updatePendingApprovalStatus(approvalId, decision === 'approve' ? 'approved' : 'rejected');
+  // Upstream paths canonicalize to `Approve`/`Reject`, but some legacy
+  // callers still pass lowercase. Accept both by normalizing before compare.
+  const decision: Decision = selectedOption.trim().toLowerCase() === 'approve' ? 'approve' : 'deny';
+  // updatePendingApprovalStatus is gone post-async-port; the compare-and-swap
+  // helper is the replacement. Its result is deliberately not gated on (see above).
+  await transitionPendingApprovalStatus(approvalId, 'pending', decision === 'approve' ? 'approved' : 'rejected');
   // Card is auto-edited to "✅ <option>" by chat-sdk-bridge's onAction handler,
   // so we don't need to deliver an edit here.
-  deletePendingApproval(approvalId);
+  await deletePendingApproval(approvalId);
 
   state.resolve(decision);
   log.info('OneCLI approval resolved', { approvalId, decision });
@@ -118,9 +129,9 @@ async function handleRequest(request: ApprovalRequest): Promise<Decision> {
   // Originating agent group is carried on the request via OneCLI's agent
   // identifier (set by container-runner.ts to agentGroup.id). Use it as
   // the scope for approver selection: admin @ group → global admin → owner.
-  const originGroup = request.agent.externalId ? getAgentGroup(request.agent.externalId) : undefined;
+  const originGroup = request.agent.externalId ? await getAgentGroup(request.agent.externalId) : undefined;
   const agentGroupId = originGroup?.id ?? null;
-  const approvers = pickApprover(agentGroupId);
+  const approvers = await pickApprover(agentGroupId);
   if (approvers.length === 0) {
     log.warn('OneCLI approval auto-denied: no eligible approver', {
       id: request.id,
@@ -130,20 +141,6 @@ async function handleRequest(request: ApprovalRequest): Promise<Decision> {
     return 'deny';
   }
 
-  // No origin channel preference — OneCLI requests don't carry one. First
-  // approver with a reachable DM wins.
-  const target = await pickApprovalDelivery(approvers, '');
-  if (!target) {
-    log.warn('OneCLI approval auto-denied: no DM channel for any approver', {
-      id: request.id,
-      approvers,
-    });
-    return 'deny';
-  }
-
-  // Use a short id for the card/button so Chat SDK's Telegram adapter can
-  // fit everything inside the 64-byte callback_data limit. The OneCLI
-  // request.id stays in the payload for audit.
   const approvalId = shortApprovalId();
   const question = buildQuestion(request, originGroup?.name ?? request.agent.name);
 
@@ -152,27 +149,19 @@ async function handleRequest(request: ApprovalRequest): Promise<Decision> {
     { label: 'Approve', selectedLabel: '✅ Approved', value: 'approve', style: 'primary' as const },
     { label: 'Reject', selectedLabel: '❌ Rejected', value: 'reject', style: 'danger' as const },
   ];
-  let platformMessageId: string | undefined;
-  try {
-    platformMessageId = await adapterRef.deliver(
-      target.messagingGroup.channel_type,
-      target.messagingGroup.platform_id,
-      null,
-      'chat-sdk',
-      JSON.stringify({
-        type: 'ask_question',
-        questionId: approvalId,
-        title: onecliTitle,
-        question,
-        options: onecliOptions,
-      }),
-    );
-  } catch (err) {
-    log.error('Failed to deliver OneCLI approval card', { approvalId, oneCliRequestId: request.id, err });
-    return 'deny';
-  }
 
-  createPendingApproval({
+  // Resolved before the insert only so the row can carry the bot identity the
+  // card goes out as (`instance`) — editCardExpired's dispatch is exact-key and
+  // there is no later helper that can set that column. A null target is NOT a
+  // denial: see the best-effort delivery block below.
+  const target = await pickApprovalDelivery(approvers, '');
+
+  // fork override (nv): the row is persisted BEFORE delivery and is never
+  // deleted when delivery fails — this fork's dashboard can surface a
+  // persisted pending row, so a DM failure must not fail the request closed
+  // the way upstream's deliver-first/return-'deny' path does. Same judgement
+  // as requestApproval() in primitive.js.
+  await createPendingApproval({
     approval_id: approvalId,
     session_id: null,
     request_id: request.id,
@@ -184,13 +173,17 @@ async function handleRequest(request: ApprovalRequest): Promise<Decision> {
       path: request.path,
       bodyPreview: request.bodyPreview,
       agent: request.agent,
-      approver: target.userId,
+      approver: null,
     }),
     created_at: new Date().toISOString(),
     agent_group_id: agentGroupId,
-    channel_type: target.messagingGroup.channel_type,
-    platform_id: target.messagingGroup.platform_id,
-    platform_message_id: platformMessageId ?? null,
+    channel_type: null,
+    platform_id: null,
+    // Delivery address is stamped by updatePendingApprovalDelivery once the
+    // card actually lands; `instance` is not part of that update, so it is
+    // recorded up front — an expired-card edit cannot re-derive it.
+    instance: target?.messagingGroup.instance ?? null,
+    platform_message_id: null,
     expires_at: request.expiresAt,
     status: 'pending',
     title: onecliTitle,
@@ -198,8 +191,47 @@ async function handleRequest(request: ApprovalRequest): Promise<Decision> {
     options_json: JSON.stringify(onecliOptions),
   });
 
-  // Expiry timer fires just before the gateway's own TTL so our decision lands
-  // in time to be recorded, even though the HTTP side will already be closing.
+  // Best-effort DM delivery — dashboard can approve even if DM fails.
+  if (target) {
+    try {
+      const platformMessageId = await adapterRef.deliver(
+        target.messagingGroup.channel_type,
+        target.messagingGroup.platform_id,
+        null,
+        'chat-sdk',
+        JSON.stringify({
+          type: 'ask_question',
+          questionId: approvalId,
+          title: onecliTitle,
+          question,
+          options: onecliOptions,
+        }),
+        undefined,
+        // ensureUserDm may resolve the DM through a named instance (its registry
+        // lookup falls back across instances of a channel type); dispatch here is
+        // exact-key, so the card must be addressed to the instance that owns the
+        // conversation or it cannot be posted at all.
+        target.messagingGroup.instance,
+      );
+      await updatePendingApprovalDelivery(approvalId, {
+        channel_type: target.messagingGroup.channel_type,
+        platform_id: target.messagingGroup.platform_id,
+        platform_message_id: platformMessageId ?? null,
+      });
+    } catch (err) {
+      log.error('Failed to deliver OneCLI approval card — row persisted for dashboard', {
+        approvalId,
+        oneCliRequestId: request.id,
+        err,
+      });
+    }
+  } else {
+    log.warn('OneCLI approval: no DM channel — row persisted for dashboard polling', {
+      id: request.id,
+      approvers,
+    });
+  }
+
   const expiresAtMs = new Date(request.expiresAt).getTime();
   const timeoutMs = Math.max(1000, expiresAtMs - Date.now() - 1000);
 
@@ -218,17 +250,18 @@ async function handleRequest(request: ApprovalRequest): Promise<Decision> {
 }
 
 async function expireApproval(approvalId: string, reason: ExpiryReason): Promise<void> {
-  const rows = getPendingApprovalsByAction(ONECLI_ACTION).filter((r) => r.approval_id === approvalId);
+  const rows = (await getPendingApprovalsByAction(ONECLI_ACTION)).filter((r) => r.approval_id === approvalId);
   const row = rows[0];
   if (!row) return;
 
-  updatePendingApprovalStatus(approvalId, 'expired');
+  if (!(await transitionPendingApprovalStatus(approvalId, 'pending', 'expired'))) return;
   await editCardExpired(row, reason);
-  deletePendingApproval(approvalId);
+  await deletePendingApproval(approvalId);
   log.info('OneCLI approval expired', { approvalId, reason });
 }
 
-async function editCardExpired(row: PendingApproval, reason: ExpiryReason): Promise<void> {
+/** Exported for tests — the sweep and the expiry timer are its only callers. */
+export async function editCardExpired(row: PendingApproval, reason: ExpiryReason): Promise<void> {
   if (!adapterRef || !row.platform_message_id || !row.channel_type || !row.platform_id) return;
   const resolution =
     reason === 'no response' ? '⏱️ Timed out — no response' : '⏱️ Timed out — host restarted before resolution';
@@ -250,19 +283,26 @@ async function editCardExpired(row: PendingApproval, reason: ExpiryReason): Prom
           resolution,
         },
       }),
+      undefined,
+      // Dispatch is exact-key: editing through the bare channel type finds no
+      // adapter at all on an install whose bots are all named instances.
+      row.instance ?? row.channel_type,
     );
   } catch (err) {
-    log.warn('Failed to edit expired OneCLI approval card', { approvalId: row.approval_id, err });
+    // Louder than a warn: the row is deleted straight after, so a swallowed
+    // failure leaves a card showing live Approve/Reject buttons that resolve
+    // nothing, with no other trace that it happened.
+    log.error('Failed to edit expired OneCLI approval card', { approvalId: row.approval_id, err });
   }
 }
 
 async function sweepStaleApprovals(): Promise<void> {
-  const rows = getPendingApprovalsByAction(ONECLI_ACTION);
+  const rows = await getPendingApprovalsByAction(ONECLI_ACTION);
   if (rows.length === 0) return;
   log.info('Sweeping stale OneCLI approvals from previous process', { count: rows.length });
   for (const row of rows) {
     await editCardExpired(row, 'host restarted');
-    deletePendingApproval(row.approval_id);
+    await deletePendingApproval(row.approval_id);
   }
 }
 

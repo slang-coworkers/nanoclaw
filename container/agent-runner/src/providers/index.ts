@@ -3,3 +3,6 @@
 // level. Skills add a new provider by appending one import line below.
 
 import './claude.js';
+import './codex.js';
+import './opencode.js';
+import './pi.js';

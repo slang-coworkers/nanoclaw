@@ -7,10 +7,11 @@
 # registry and retags it to the same local tag this script builds — the one
 # thing the host ever looks at. See that script for the settings it reads.
 #
-# Reads one optional build flag from ../.env:
+# Reads optional build flags from ../.env:
 #   INSTALL_CJK_FONTS=true   — add Chinese/Japanese/Korean fonts (~200MB)
+#   ENABLE_GPU=1             — add CUDA toolkit + Vulkan loader + GLVND (~multi-GB)
 # setup/container.ts reads the same file, so both build paths stay in sync.
-# Callers can also override by exporting INSTALL_CJK_FONTS directly.
+# Callers can also override by exporting either var directly.
 
 set -e
 
@@ -129,6 +130,9 @@ fi
 if [ -z "${INSTALL_CJK_FONTS:-}" ] && [ -f "../.env" ]; then
     INSTALL_CJK_FONTS="$(grep '^INSTALL_CJK_FONTS=' ../.env | tail -n1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '[:space:]')"
 fi
+if [ -z "${ENABLE_GPU:-}" ] && [ -f "../.env" ]; then
+    ENABLE_GPU="$(grep '^ENABLE_GPU=' ../.env | tail -n1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '[:space:]')"
+fi
 
 BUILD_ARGS=()
 if [ "${INSTALL_CJK_FONTS:-false}" = "true" ]; then
@@ -142,9 +146,51 @@ if [ "${INSTALL_CJK_FONTS:-false}" = "true" ]; then
     fi
 fi
 
+# GPU build path: enabled via explicit env var. Previously this auto-flipped on
+# any host that had `nvidia-smi` in PATH (RC-L1), which silently opted hosts
+# into a ~multi-GB CUDA/Vulkan/X11 rebuild they didn't ask for. Opt-in only.
+if [ "${ENABLE_GPU:-}" = "1" ] || [ "${ENABLE_GPU:-}" = "true" ]; then
+    echo "GPU build requested via ENABLE_GPU — building with CUDA, Vulkan, X11"
+    BUILD_ARGS+=(--build-arg ENABLE_GPU=1)
+fi
+
+# Stamps dev.nanoclaw.agent-runner-lock-sha256 so a pulled image can be checked
+# against this checkout's bun.lock (see the readback guard above).
 if [ -n "$LOCK_SHA" ]; then
     BUILD_ARGS+=(--build-arg "AGENT_RUNNER_LOCK_SHA256=$LOCK_SHA")
 fi
+
+# Fetch external skills declared in coworker-types.yaml.
+#
+# This used to be `|| echo "⚠ ... — using cached"`, which made the fail-loud
+# contract in fetch-skills.sh pointless for the one caller that matters most: a
+# rate-limited fetch left container/skills/ partial, the build carried on, and
+# the damage surfaced later as
+# `references unknown skill/workflow/overlay: slangpy-build, ...`.
+# Building an image off a known-incomplete skill tree is never what you want.
+#
+# ALLOW_STALE_SKILLS=1 opts out explicitly — for building offline, or off a
+# deliberately pinned container/skills/. It has to be asked for.
+if [ -x "$PROJECT_ROOT/scripts/fetch-skills.sh" ]; then
+    echo "Fetching external skills..."
+    set +e
+    bash "$PROJECT_ROOT/scripts/fetch-skills.sh"
+    FETCH_RC=$?
+    set -e
+    if [ "$FETCH_RC" -ne 0 ]; then
+        if [ "${ALLOW_STALE_SKILLS:-}" = "1" ]; then
+            echo "⚠ External skill fetch failed (rc=$FETCH_RC) — continuing on cached skills (ALLOW_STALE_SKILLS=1)"
+        else
+            echo "✗ External skill fetch failed (rc=$FETCH_RC) — refusing to build an image" >&2
+            echo "  off an incomplete container/skills/. Fix the fetch, or re-run with" >&2
+            echo "  ALLOW_STALE_SKILLS=1 to build on whatever is cached on disk." >&2
+            exit "$FETCH_RC"
+        fi
+    fi
+fi
+
+echo "Building NanoClaw agent container image..."
+echo "Image: ${IMAGE_NAME}:${TAG}"
 
 if [ "$PULL" = "true" ]; then
     echo "Pulling NanoClaw agent container image..."

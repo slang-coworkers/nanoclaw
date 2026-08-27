@@ -363,10 +363,6 @@ In both cases, the approval and action execution happen on the host side, not th
 
 **Approval routing:** Privilege is a user-level concept. `user_roles` records `owner` (global only — first user to pair becomes owner) and `admin` (global or scoped to a specific `agent_group_id`). When an action requires approval, `pickApprover(agentGroupId)` returns candidates in order: scoped admins for that agent group → global admins → owners (deduplicated). `pickApprovalDelivery` then takes the first candidate reachable via `ensureUserDm` (with a same-channel-kind tie-break so a Discord approval request prefers a Discord-using approver). The approval card lands in the approver's DM messaging group, not the origin chat. Delivery is resolved through the Chat SDK's `openDM` for resolution-required channels (Discord/Slack/…) or the user's handle directly for direct-addressable channels (Telegram/WhatsApp/…), and the mapping is cached in `user_dms` for subsequent requests. See `src/modules/permissions/access.ts` and `src/modules/permissions/user-dm.ts` (`ensureUserDm`); the approver-picking primitives live in `src/modules/approvals/primitive.ts`.
 
-**Editing a sent message:**
-
-Agent calls an `edit_message` tool with the message ID and new content. Agent-runner writes messages_out with an edit operation. Host calls `adapter.editMessage()`. Messages in the agent's context include integer IDs so the agent can reference them.
-
 **Reactions:**
 
 Agent calls `add_reaction` tool with message ID and emoji. Agent-runner writes messages_out with a reaction operation. Host calls `adapter.addReaction()`.
@@ -379,9 +375,6 @@ Agent calls `add_reaction` tool with message ID and emoji. Agent-runner writes m
 
 // Interactive card
 { "operation": "ask_question", "title": "Deploy", "question": "Approve deployment?", "options": ["Yes", "No", "Defer"] }
-
-// Edit existing message
-{ "operation": "edit", "messageId": "3", "text": "Updated: LGTM with minor comments" }
 
 // Reaction
 { "operation": "reaction", "messageId": "5", "emoji": "thumbs_up" }
@@ -455,9 +448,9 @@ This is documented as a pattern, not a built-in feature.
     ... working files
 ```
 
-Two directory mounts: session folder at `/workspace`, agent group folder at `/workspace/agent/`. The agent-runner CDs into `/workspace/agent/` to run the agent. Claude SDK writes `.claude/` at `/workspace/.claude/` (root of the workspace).
+Two directory mounts: session folder at `/workspace`, agent group folder at `/workspace/agent/`, plus nested read-only file mounts over the group dir (the composed `CLAUDE.md`, `container.json`). The agent-runner CDs into `/workspace/agent/` to run the agent. Claude SDK writes `.claude/` at `/workspace/.claude/` (root of the workspace).
 
-The runtime is Docker (`src/container-runtime.ts` hardcodes the `docker` binary); nested bind mounts make this layout straightforward. The layout deliberately sticks to directory mounts (no file-level mounts) so it stays portable to runtimes that only support directory mounts.
+The runtime is Docker (`src/container-runtime.ts` hardcodes the `docker` binary); nested bind mounts make this layout straightforward. Directory mounts carry the bulk of the layout, so it stays close to portable for runtimes with weaker file-mount support; the nested file mounts exist to make individual files read-only on top of a read-write dir.
 
 **Cross-mount DB access:** The two files exist precisely so each has a single writer — the
 host writes `inbound.db`, the container writes `outbound.db` — which removes writer
@@ -489,8 +482,6 @@ The central DB session row creation is the serialization point. No provider sess
 NanoClaw does not stream tokens to users. The provider's query interface yields complete results, but a result's text is not delivered as-is: the agent-runner parses it for `<message to="name">...</message>` blocks (`dispatchResultText` in poll-loop.ts) and writes one messages_out row per block, addressed to that destination with its thread context resolved per destination. Everything outside a block — including `<internal>...</internal>` — is scratchpad: logged, never sent. A block naming an unknown destination is dropped into the scratchpad log.
 
 If a result produced text but no valid block, the agent-runner pushes a one-time `<system>` nudge into the live turn asking the agent to re-wrap its response. The exception is a non-retryable error result (e.g. a billing error) with no envelope, which is delivered as an error notice instead of being dropped as scratchpad. Mid-turn interim updates go out through the `send_message` MCP tool; the final-text envelope parsing is how a turn's reply reaches the user. The host delivers complete messages_out rows to channels.
-
-Message editing is supported as an explicit operation (agent calls an `edit_message` tool), not as a streaming mechanism.
 
 Typing indicators: host sets typing when a container is active for a session, clears when the container exits or a response appears in messages_out.
 
@@ -899,7 +890,6 @@ MCP tools write to the container's own `outbound.db`. Anything that needs a chan
 | `send_file` | Copy file to `outbox/{msg_id}/`, write `messages_out` (`kind: 'chat'`) with filenames, same `to` resolution |
 | `send_card` | Write `messages_out`, `kind: 'chat-sdk'`, content `{ type: 'card', … }` |
 | `ask_user_question` | Write `messages_out` (`kind: 'chat-sdk'`, `type: 'ask_question'`). Hold tool call open, poll `inbound.db` for the response matching `questionId`. Return selection as tool result. |
-| `edit_message` | Write `messages_out` with `operation: 'edit'` (targets the original message's destination) |
 | `add_reaction` | Write `messages_out` with `operation: 'reaction'` |
 
 (There is no `send_to_agent` tool — agent-to-agent is `send_message` to an `agent` destination.)

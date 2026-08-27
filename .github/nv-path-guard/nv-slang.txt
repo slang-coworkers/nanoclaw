@@ -1,0 +1,16 @@
+# nv-slang — Slang compiler coworker overlay.
+# Owned paths: slang-specific skills, spine, workflows, MCP servers,
+# maintainer tooling, coworker YAMLs, slang-labeled tests in src/.
+
+container/skills/slang-*/**
+container/mcp-servers/slang-mcp/**
+container/mcp-servers/slang-pr-knowledge/**
+container/spines/slang/**
+container/workflows/slang-*/**
+coworkers/slang-*.yaml
+docs/slang-maintainer/**
+container/config/subagents.json
+
+# src/ tests that are slang-specific:
+src/*slang*.test.ts
+src/v2-content-guardrails.test.ts

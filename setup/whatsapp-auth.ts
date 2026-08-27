@@ -55,14 +55,10 @@ const _require = createRequire(import.meta.url);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const { proto } = _require('@whiskeysockets/baileys') as { proto: any };
 try {
-  const _generics = _require(
-    '@whiskeysockets/baileys/lib/Utils/generics',
-  ) as Record<string, unknown>;
+  const _generics = _require('@whiskeysockets/baileys/lib/Utils/generics') as Record<string, unknown>;
   _generics.getPlatformId = (browser: string): string => {
     const platformType =
-      proto.DeviceProps.PlatformType[
-        browser.toUpperCase() as keyof typeof proto.DeviceProps.PlatformType
-      ];
+      proto.DeviceProps.PlatformType[browser.toUpperCase() as keyof typeof proto.DeviceProps.PlatformType];
     return platformType ? platformType.toString() : '1';
   };
 } catch {
@@ -215,12 +211,7 @@ export async function run(args: string[]): Promise<void> {
       });
 
       // Request pairing code only on first connect (not reconnect after 515).
-      if (
-        !isReconnect &&
-        method === 'pairing-code' &&
-        phone &&
-        !state.creds.registered
-      ) {
+      if (!isReconnect && method === 'pairing-code' && phone && !state.creds.registered) {
         setTimeout(async () => {
           try {
             const code = await sock.requestPairingCode(phone);
@@ -237,7 +228,15 @@ export async function run(args: string[]): Promise<void> {
         }, 3000);
       }
 
-      sock.ev.on('connection.update', (update) => {
+      // baileys is an ambient `any` stub (setup/types/optional-modules.d.ts), so
+      // `sock.ev.on` gives this callback no contextual type. Annotate exactly the
+      // three fields the handler reads rather than importing baileys'
+      // ConnectionState — that type only exists once /add-whatsapp has installed
+      // the package, and an annotation that resolves on some machines and not
+      // others is precisely what the stubs exist to prevent.
+      sock.ev.on(
+        'connection.update',
+        (update: { connection?: string; lastDisconnect?: { error?: unknown }; qr?: string }) => {
         const { connection, lastDisconnect, qr } = update;
 
         // QR method: render each rotation as plain stdout lines so a streaming
@@ -256,9 +255,7 @@ export async function run(args: string[]): Promise<void> {
         }
 
         if (connection === 'close') {
-          const reason = (
-            lastDisconnect?.error as { output?: { statusCode?: number } }
-          )?.output?.statusCode;
+          const reason = (lastDisconnect?.error as { output?: { statusCode?: number } })?.output?.statusCode;
           if (reason === DisconnectReason.loggedOut) {
             clearTimeout(timeout);
             emitStatus('WHATSAPP_AUTH', {
@@ -279,7 +276,8 @@ export async function run(args: string[]): Promise<void> {
             connectSocket(true);
           }
         }
-      });
+        },
+      );
 
       sock.ev.on('creds.update', saveCreds);
     }

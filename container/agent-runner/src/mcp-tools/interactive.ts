@@ -62,7 +62,11 @@ export const askUserQuestion: McpToolDefinition = {
           },
           description: 'Options for the user to choose from (string or {label, selectedLabel?, value?})',
         },
-        timeout: { type: 'number', description: 'Timeout in seconds (default: 300)' },
+        timeout: {
+          type: 'number',
+          description:
+            'Timeout in seconds (default: 300). Pass 0 to wait indefinitely — use this for human-decision escalations where there is no acceptable fallback if the operator does not answer (e.g. "spec change required, do you authorize option A or B?").',
+        },
       },
       required: ['title', 'question', 'options'],
     },
@@ -71,7 +75,11 @@ export const askUserQuestion: McpToolDefinition = {
     const title = args.title as string;
     const question = args.question as string;
     const rawOptions = args.options as unknown[];
-    const timeout = ((args.timeout as number) || 300) * 1000;
+    // timeout=0 means infinite — used for human-decision escalations where
+    // there is no acceptable fallback if the operator doesn't answer. The
+    // poll loop simply runs until findQuestionResponse returns a row.
+    const rawTimeout = args.timeout as number | undefined;
+    const timeout = rawTimeout === 0 ? 0 : (rawTimeout ?? 300) * 1000;
     if (!title || !question || !rawOptions?.length) {
       return err('title, question, and options are required');
     }
@@ -90,7 +98,7 @@ export const askUserQuestion: McpToolDefinition = {
     const r = routing();
 
     // Write question card to outbound.db
-    writeMessageOut({
+    await writeMessageOut({
       id: questionId,
       kind: 'chat-sdk',
       platform_id: r.platform_id,
@@ -107,8 +115,9 @@ export const askUserQuestion: McpToolDefinition = {
 
     log(`ask_user_question: ${questionId} → "${question}" [${options.join(', ')}]`);
 
-    // Poll for response in inbound.db (host writes the response there)
-    const deadline = Date.now() + timeout;
+    // Poll for response in inbound.db (host writes the response there).
+    // timeout=0 → poll forever (no deadline check); otherwise enforce deadline.
+    const deadline = timeout === 0 ? Number.POSITIVE_INFINITY : Date.now() + timeout;
     while (Date.now() < deadline) {
       const response = findQuestionResponse(questionId);
 
@@ -152,7 +161,7 @@ export const sendCard: McpToolDefinition = {
     const id = generateId();
     const r = routing();
 
-    writeMessageOut({
+    await writeMessageOut({
       id,
       kind: 'chat-sdk',
       platform_id: r.platform_id,
