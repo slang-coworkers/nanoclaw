@@ -31,7 +31,7 @@ import { fileURLToPath } from 'url';
 import { discoverAdditionalDirectories } from './additional-directories.js';
 import { refreshPrimaryClones } from './refresh-clones.js';
 import { loadConfig } from './config.js';
-import { buildSystemPromptAddendum } from './destinations.js';
+import { buildSystemPromptAddendum, type SessionMode } from './destinations.js';
 import { getTaskSeriesId } from './db/session-routing.js';
 import { appendMemorySection, memoryContextForSystemPrompt } from './memory/context.js';
 import { ensureMemoryScaffold } from './memory/scaffold.js';
@@ -81,10 +81,8 @@ async function main(): Promise<void> {
   // index.ts only provides this routing addendum — CLAUDE.md ownership lives in
   // the provider. Per-group memory lives in CLAUDE.local.md (auto-loaded).
   const taskId = getTaskSeriesId();
-  const instructions = buildSystemPromptAddendum(
-    config.assistantName || undefined,
-    taskId ? { kind: 'task', taskId } : { kind: 'chat' },
-  );
+  const sessionMode: SessionMode = taskId ? { kind: 'task', taskId } : { kind: 'chat' };
+  const buildInstructions = (): string => buildSystemPromptAddendum(config.assistantName || undefined, sessionMode);
 
   // Discover additional directories: /workspace/extra/* (host-mounted) and
   // /workspace/agent/* subdirs with their own .claude/ (cloned repos), skipping
@@ -301,17 +299,23 @@ async function main(): Promise<void> {
   // mechanism. Only Claude Code has one; the rest report false and get the
   // section in the system prompt instead, so `container/CLAUDE.md`'s promise
   // that memory arrives in context holds for every provider.
-  const memorySection = provider.registerMemorySessionHook(MEMORY_SESSION_HOOK)
-    ? undefined
-    : memoryContextForSystemPrompt(CWD);
-  if (memorySection) log(`Memory delivered via system prompt (${providerName} has no session-start hook)`);
+  const needsMemoryInPrompt = !provider.registerMemorySessionHook(MEMORY_SESSION_HOOK);
+  if (needsMemoryInPrompt) log(`Memory delivered via system prompt (${providerName} has no session-start hook)`);
+
+  // Re-read on every rebuild rather than caching a boot-time copy: the agent
+  // edits its own memory during the session, and this string outlives the
+  // container's whole life.
+  const rebuild = (): string =>
+    needsMemoryInPrompt
+      ? appendMemorySection(buildInstructions(), memoryContextForSystemPrompt(CWD))
+      : buildInstructions();
 
   try {
     await runPollLoop({
       provider,
       providerName,
       cwd: CWD,
-      systemContext: { instructions: appendMemorySection(instructions, memorySection), memorySection },
+      systemContext: { instructions: rebuild(), rebuild },
     });
   } finally {
     await mailbox.stop();

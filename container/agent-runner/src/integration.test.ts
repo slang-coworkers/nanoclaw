@@ -533,7 +533,9 @@ describe('poll loop — silent turn (Codex last_agent_message: null)', () => {
    */
   class SilentProvider {
     readonly supportsNativeSlashCommands = false;
-    registerMemorySessionHook(): void {}
+    registerMemorySessionHook(): boolean {
+      return false;
+    }
     isSessionInvalid(): boolean {
       return false;
     }

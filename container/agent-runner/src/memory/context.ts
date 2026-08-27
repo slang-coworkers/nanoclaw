@@ -14,7 +14,11 @@ export type MemoryDelivery = 'session-start' | 'system-prompt';
 
 const DELIVERY_LINE: Record<MemoryDelivery, string> = {
   'session-start': 'These files are loaded at startup, after clear, and after compaction:',
-  'system-prompt': 'These files are copied below as of the start of this turn:',
+  // Re-read whenever the system prompt is rebuilt, but a follow-up pushed into
+  // an already-open query reuses the pinned copy — so the agent is told to
+  // re-read from disk rather than trust this copy after editing memory.
+  'system-prompt':
+    'These files were copied below when this turn began. After you edit a memory file, re-read it from disk rather than trusting the copy here:',
 };
 
 /**
@@ -76,9 +80,22 @@ export function appendMemorySection(instructions: string, memorySection?: string
 function readMemoryFile(filePath: string): string {
   let content: string;
   try {
-    content = fs.readFileSync(filePath, 'utf-8').trim();
+    // Bounded read: the hook path runs as a child process with a timeout, but the
+    // system-prompt path runs in the runner itself, where slurping a pathological
+    // file (or a FIFO) would stall the poll loop. UTF-8 uses at most 4 bytes per
+    // char, so this many bytes always yields at least the budget+1 chars needed
+    // to detect over-budget content. A sequence clipped at the far end lands
+    // beyond the budget and is truncated away regardless.
+    const fd = fs.openSync(filePath, 'r');
+    try {
+      const buf = Buffer.allocUnsafe(4 * (MEMORY_FILE_BUDGET_CHARS + 1));
+      const read = fs.readSync(fd, buf, 0, buf.length, 0);
+      content = buf.subarray(0, read).toString('utf-8').trim();
+    } finally {
+      fs.closeSync(fd);
+    }
   } catch {
-    return '(unavailable during this hook invocation)';
+    return '(unavailable — could not read the file)';
   }
   if (content.length <= MEMORY_FILE_BUDGET_CHARS) return content;
 

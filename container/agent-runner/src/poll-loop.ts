@@ -1126,11 +1126,11 @@ function makeDestinationsRefresher(systemContext: PollLoopConfig['systemContext'
     if (fp === last) return null;
     const firstCall = last === null;
     last = fp;
-    // Rebuilding drops everything the addendum doesn't own, so re-append the
-    // memory section the runner attached for hookless providers.
-    if (systemContext) {
-      systemContext.instructions = appendMemorySection(buildSystemPromptAddendum(), systemContext.memorySection);
-    }
+    // Rebuild through the runner's own builder, not a bare
+    // buildSystemPromptAddendum(): that loses the assistant name, the task-vs-chat
+    // mode, and (for hookless providers) the memory section. This refresher runs
+    // once before the very first query, so anything it drops is never sent at all.
+    if (systemContext) systemContext.instructions = systemContext.rebuild();
     if (firstCall) return null;
     log('Destinations changed — refreshed system prompt + push-block');
     return buildDestinationsPushNote();
@@ -1166,11 +1166,13 @@ export interface PollLoopConfig {
   systemContext?: {
     instructions?: string;
     /**
-     * Memory section for providers with no session-start hook, kept separately
-     * so a destinations refresh can re-append it. Undefined under Claude, whose
-     * hook re-reads the tree for every new context window.
+     * Recompute `instructions` from scratch. Owned by the runner because only it
+     * knows the assistant name, the session mode, and whether this provider needs
+     * the memory section — and because memory must be re-read, not cached: the
+     * agent edits its own memory mid-session, and a pinned boot-time copy would
+     * go stale for the rest of the container's life.
      */
-    memorySection?: string;
+    rebuild(): string;
   };
   /**
    * Optional stop signal. In production the loop runs until the container

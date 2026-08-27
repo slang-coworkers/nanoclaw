@@ -53,11 +53,13 @@ every new context window, so a memory edit is visible in the next one.
 
 **System prompt** (codex, OpenCode, pi). These harnesses expose no
 session-start mechanism, so `registerMemorySessionHook` returns false and the
-runner appends the same section to the system-prompt addendum instead. The copy
-is taken when the turn's query opens rather than per context window, and the
-section says so, so the agent does not over-trust its freshness. A provider
-that later grows a session-start mechanism returns true and stops paying for
-the duplicate.
+runner appends the same section to the system-prompt addendum instead. The
+addendum is rebuilt — and memory re-read from disk — for every fresh query, so
+an edit lands in the next one. A follow-up pushed into an already-open query
+reuses the prompt that opened it, so the section tells the agent to re-read a
+memory file from disk after editing it rather than trusting the copy inline. A
+provider that later grows a session-start mechanism returns true and stops
+paying for the duplicate.
 
 Only those two files are injected, and each is capped at 16k characters (a
 truncation notice tells the agent to slim the file). For anything deeper, the
