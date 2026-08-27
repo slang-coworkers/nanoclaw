@@ -5842,6 +5842,34 @@ async function pollCeilingUntilTerminal(sid) {
 // just 'stopped' — a healthy row used to show spend but not the number it was
 // actually bounded by. The live +/-/Apply stepper (renderCostCeilingControl)
 // is appended below the pill for every non-immortal session.
+// Cost column: the TOTAL for the window, plus which provider drove it.
+//
+// A session's spend has two independent sources and the column used to show only
+// one. `claudeUsd` is the Claude transcript; `codexUsd` is what `codex-critique`
+// spent calling `mcp__codex__codex` as an MCP tool — real dollars that never
+// appear in a Claude transcript and were silently missing here (issue #1327).
+// The headline number stays the total, so nothing that reads this column changes
+// meaning; the `+codex` chip appears only when there IS codex spend, and the
+// tooltip carries the split so a surprising total is explainable in one hover.
+// Shared contract with the host: s.cost / s.claudeUsd / s.codexUsd / s.costUnpriced.
+function renderCostCell(s) {
+  const total = s.cost || 0;
+  const codex = s.codexUsd || 0;
+  const claude = s.claudeUsd || 0;
+  const unpriced = s.costUnpriced
+    ? '<span title="includes usage from a model without a known price" style="color:#F59E0B"> *</span>'
+    : '';
+  // Only annotate when the split is real. Both-zero (idle) and codex-zero (the
+  // common case) render exactly as before.
+  if (codex <= 0) return `<span style="color:#10B981">${fmtUsd(total)}</span>${unpriced}`;
+  const pct = total > 0 ? Math.round((codex / total) * 100) : 0;
+  const tip = `Claude ${fmtUsd(claude)} + Codex ${fmtUsd(codex)} (${pct}% codex) — codex-critique MCP tool calls`;
+  return (
+    `<span style="color:#10B981" title="${escAttr(tip)}">${fmtUsd(total)}</span>${unpriced}` +
+    `<span title="${escAttr(tip)}" style="margin-left:4px;font-size:9px;color:#A78BFA;border:1px solid #A78BFA55;border-radius:3px;padding:0 3px">+cdx ${fmtUsd(codex)}</span>`
+  );
+}
+
 function renderCostCapCell(s) {
   const status = s.costStatus;
   if (!status) return '<span style="color:#64748B">—</span>';
@@ -6053,9 +6081,7 @@ function renderAdminSessions() {
       const dest = tid ? 'thread panel' : direct ? 'a2a panel' : 'main chat';
       sidCell = `<span style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px" title="Open in Coworkers (${dest})" ${attrs}>${esc(sid)}</span>`;
     }
-    const costCell = costUnavailable
-      ? '<span style="color:#94A3B8">n/a</span>'
-      : `<span style="color:#10B981">${fmtUsd(s.cost || 0)}</span>${s.costUnpriced ? '<span title="includes usage from a model without a known price" style="color:#F59E0B"> *</span>' : ''}`;
+    const costCell = costUnavailable ? '<span style="color:#94A3B8">n/a</span>' : renderCostCell(s);
     const costCapCell = renderCostCapCell(s);
     const ghCell = renderGithubOriginCell(s);
     html += `<tr>

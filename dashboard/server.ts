@@ -58,6 +58,14 @@ import {
   type TokenUsage,
 } from './session-costs.js';
 import {
+  CODEX_MODEL_PRICING,
+  codexUsageKey,
+  codexUsageTokens,
+  normalizeCodexModel,
+  parseCodexRollout,
+  priceCodexUsage,
+} from './codex-costs.js';
+import {
   parseCostCapBlob,
   buildCostCapEntry,
   buildSessionCostFields,
@@ -2089,6 +2097,242 @@ function scanFileCost(path: string, mtimeMs: number): PerFileCost {
   return out;
 }
 
+// ---------- Per-session CODEX cost (the other half of the cost column) ----------
+//
+// `codex-critique` calls `mcp__codex__codex` as a plain MCP tool, so its spend
+// never lands in a Claude transcript and the walk above cannot see it (issue
+// #1327). Codex writes its own rollouts under the SESSION's own directory —
+// `<sessionDir>/codex/sessions/YYYY/MM/DD/rollout-*.jsonl` (src/providers/codex.ts
+// mounts `<sessionDir>/codex` as the container's CODEX_HOME) — so unlike the
+// Claude side there is no `sdk_session_routes` hop: the path IS the attribution.
+//
+// TWO cache layers, because the two costs are different:
+//
+//   - PER FILE (`codexFileEventCache`): the expensive part is reading + parsing.
+//     Rollouts are big (1.5GB fleet-wide on prod, 20MB in the worst single
+//     session) and a live session appends to ONE of its files while the rest are
+//     immutable. Keyed by path+mtime+size so an append re-parses only that file.
+//   - PER SESSION (`codexSessionCostCache`): the dedupe that keeps this
+//     reconciled with ccusage is inherently cross-file (a codex subagent thread
+//     spawn replays its parent's already-billed turns into its own rollout — see
+//     codex-costs.ts), so the day buckets can only be finalized once per session.
+//     Keyed by a signature over the whole rollout set.
+//
+// Without the per-file layer, one append to a 20MB session would re-read and
+// re-parse all 20MB synchronously, on the event loop, every 60s tick.
+//
+// Deliberately NOT persisted across restarts (unlike perFileCostCache). A cold
+// start re-reads the rollouts once; there is no equivalent of the Claude side's
+// warm-start snapshot here yet. Revisit if cold-start latency becomes visible.
+
+/**
+ * One rollout file's billable readings, in a compact parallel-array form.
+ *
+ * Compact on purpose: ~5400 files x ~50 readings fleet-wide is ~270k events, and
+ * an array of objects per event would cost several hundred MB in a process that
+ * runs for weeks. `dayKeys`/`models` hold few distinct values each, so V8 shares
+ * the strings; `usage` is a flat triple stream.
+ */
+interface CodexFileEvents {
+  mtimeMs: number;
+  size: number;
+  /** `YYYYMMDD` per event (from the event's own timestamp), '' when absent. */
+  dayKeys: string[];
+  /** Wire model id per event, '' when the rollout never declared one. */
+  models: string[];
+  /** 3 numbers per event: input_tokens, cached_input_tokens, output_tokens. */
+  usage: number[];
+  /** Read + parse completed. A false here is never cached — see scanSessionCodexCost. */
+  ok: boolean;
+}
+const codexFileEventCache = new Map<string, CodexFileEvents>();
+
+interface CodexSessionCost {
+  /** Signature of the session's rollout set: recompute only when this changes. */
+  sig: string;
+  /** YYYYMMDD -> { cost, tokens }, from each event's OWN timestamp (ccusage's day attribution). */
+  days: Map<string, { cost: number; tokens: number }>;
+  unpriced: boolean;
+  hadSignal: boolean;
+  lastActiveMs: number;
+  /** Every file read+parsed cleanly. A partial scan is never cached. */
+  ok: boolean;
+  /** The rollout paths this entry covers — the caller's prune list for codexFileEventCache. */
+  files: string[];
+}
+const codexSessionCostCache = new Map<string, CodexSessionCost>();
+
+/**
+ * `rollout-*.jsonl` under a CODEX_HOME, with mtime + size.
+ *
+ * Covers BOTH `sessions/` and `archived_sessions/` — ccusage reads both, so
+ * skipping the archive would silently drop a thread from this column while it
+ * still counted toward the Overview total. (No install in the current fleet has
+ * archived anything yet; this is here so that stays true when one does.)
+ */
+function listCodexRollouts(codexHome: string): { f: string; m: number; s: number }[] {
+  const out: { f: string; m: number; s: number }[] = [];
+  for (const bucket of ['sessions', 'archived_sessions']) {
+    const root = join(codexHome, bucket);
+    // Depth-bounded walk: <bucket>/<year>/<month>/<day>/rollout-*.jsonl. A plain
+    // recursive walk would also descend into anything else codex parks in there.
+    let years: string[];
+    try {
+      years = readdirSync(root);
+    } catch {
+      continue; // no such bucket for this session — by far the common case
+    }
+    for (const y of years) {
+      let months: string[];
+      try {
+        months = readdirSync(join(root, y));
+      } catch {
+        continue;
+      }
+      for (const mo of months) {
+        let days: string[];
+        try {
+          days = readdirSync(join(root, y, mo));
+        } catch {
+          continue;
+        }
+        for (const d of days) {
+          const dir = join(root, y, mo, d);
+          let names: string[];
+          try {
+            names = readdirSync(dir);
+          } catch {
+            continue;
+          }
+          for (const n of names) {
+            if (!n.startsWith('rollout-') || !n.endsWith('.jsonl')) continue;
+            const f = join(dir, n);
+            let m = 0;
+            let s = 0;
+            try {
+              const st = statSync(f);
+              m = st.mtimeMs;
+              s = st.size;
+            } catch {
+              /* unreadable — treat as oldest/empty */
+            }
+            out.push({ f, m, s });
+          }
+        }
+      }
+    }
+  }
+  // Path order is chronological (the timestamp is in the filename), which is the
+  // order the cross-file dedupe below depends on: a fork is always created after
+  // the parent it replays, so the surviving copy of a duplicated call is the
+  // parent's. `sessions` before `archived_sessions` for the same reason.
+  out.sort((a, b) => (a.f < b.f ? -1 : a.f > b.f ? 1 : 0));
+  return out;
+}
+
+/** Parsed readings for one rollout file, from cache when path+mtime+size are unchanged. */
+function readCodexFileEvents(f: string, m: number, s: number): CodexFileEvents {
+  const cached = codexFileEventCache.get(f);
+  if (cached && cached.mtimeMs === m && cached.size === s) return cached;
+  const out: CodexFileEvents = { mtimeMs: m, size: s, dayKeys: [], models: [], usage: [], ok: false };
+  try {
+    for (const ev of parseCodexRollout(readFileSync(f, 'utf-8'))) {
+      out.dayKeys.push(ev.dayKey ?? '');
+      out.models.push(ev.model);
+      out.usage.push(ev.usage.input_tokens || 0, ev.usage.cached_input_tokens || 0, ev.usage.output_tokens || 0);
+    }
+    out.ok = true;
+  } catch {
+    /* unreadable — leave ok=false so the caller refuses to cache a partial session */
+  }
+  // A failed read is still cached, but only against THIS mtime+size; the session
+  // above it is what refuses to cache, so the next tick retries the whole thing.
+  if (out.ok) codexFileEventCache.set(f, out);
+  return out;
+}
+
+/**
+ * Priced codex spend for one session, bucketed by day.
+ *
+ * Dedupes calls across the session's rollout files by their usage tuple — the
+ * key ccusage uses, and the reason a forked subagent rollout's replayed prefix
+ * is not billed twice. See codex-costs.ts for the measurement behind that choice
+ * and its known limitation.
+ */
+function scanSessionCodexCost(codexHome: string): CodexSessionCost {
+  const files = listCodexRollouts(codexHome);
+  const empty: CodexSessionCost = {
+    sig: '',
+    days: new Map(),
+    unpriced: false,
+    hadSignal: false,
+    lastActiveMs: 0,
+    ok: true,
+    files: [],
+  };
+  // No rollouts: the overwhelmingly common case (most sessions never call codex).
+  // Return without touching the cache so we don't hold an entry per session.
+  if (files.length === 0) {
+    codexSessionCostCache.delete(codexHome);
+    return empty;
+  }
+  const sig = createHash('sha1')
+    .update(files.map((x) => `${x.f}:${x.m}:${x.s}`).join('\n'))
+    .digest('hex')
+    .slice(0, 16);
+  const cached = codexSessionCostCache.get(codexHome);
+  if (cached && cached.sig === sig) return cached;
+
+  const out: CodexSessionCost = {
+    sig,
+    days: new Map(),
+    unpriced: false,
+    hadSignal: false,
+    lastActiveMs: 0,
+    ok: true,
+    files: files.map((x) => x.f),
+  };
+  const seen = new Set<string>();
+  for (const { f, m, s } of files) {
+    const fe = readCodexFileEvents(f, m, s);
+    if (!fe.ok) {
+      out.ok = false;
+      continue;
+    }
+    if (m > out.lastActiveMs) out.lastActiveMs = m;
+    for (let i = 0; i < fe.dayKeys.length; i++) {
+      const model = fe.models[i];
+      const usage = {
+        input_tokens: fe.usage[i * 3],
+        cached_input_tokens: fe.usage[i * 3 + 1],
+        output_tokens: fe.usage[i * 3 + 2],
+      };
+      const key = codexUsageKey(model, usage);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const cost = priceCodexUsage(model, usage);
+      const tokens = codexUsageTokens(usage);
+      out.hadSignal = true;
+      // Raise the `*` whenever tokens were billed but we could not price them —
+      // including when the rollout never declared a model at all. (The Claude
+      // side can require a model here because a `<synthetic>` row genuinely
+      // carries no cost; a model-less codex reading is real spend we can't name.)
+      if (cost === 0 && tokens > 0 && !normalizeCodexModel(model)) out.unpriced = true;
+      const dayKey = fe.dayKeys[i] || MISSING_TS_KEY;
+      const d = out.days.get(dayKey) || { cost: 0, tokens: 0 };
+      d.cost += cost;
+      d.tokens += tokens;
+      out.days.set(dayKey, d);
+    }
+  }
+  // A session with an unreadable file is NOT cached: caching it would freeze a
+  // transient EMFILE/EACCES as a permanently-undercounted session until some
+  // file's mtime happened to change.
+  if (out.ok) codexSessionCostCache.set(codexHome, out);
+  else codexSessionCostCache.delete(codexHome);
+  return out;
+}
+
 // nanoclaw session id -> cost row, per period. Endpoint joins this onto the
 // /api/sessions rows; the ranked arrays back an optional sort=cost.
 type SessionCostByPeriod = Record<ContextPeriod, Map<string, SessionCostEntry>>;
@@ -2212,6 +2456,8 @@ function refreshSessionCostCache(): void {
     // (+1d slack). A file older than that has no rows in any served window.
     const cutoffMs = Date.now() - 31 * 86400 * 1000;
     const livePaths = new Set<string>();
+    const liveCodexHomes = new Set<string>();
+    const liveCodexFiles = new Set<string>();
 
     for (const group of groups) {
       const claudeShared = join(sessionsDir, group.id, '.claude-shared');
@@ -2221,7 +2467,11 @@ function refreshSessionCostCache(): void {
       // skill runs, not sessions. Excluding them keeps the tab to real sessions
       // and matches the reconciliation (projects-only) against ccusage.
       const files = collectClaudeJsonlFiles(claudeShared).filter((f) => f.includes('/projects/'));
-      if (files.length === 0) continue;
+      // NOTE: no `continue` when this is empty. A group whose provider is codex
+      // (or whose only spend is codex-critique tool calls) has no Claude
+      // transcripts at all, and skipping it here would skip the codex walk below
+      // too — which is exactly the hole issue #1327 is closing.
+      //
       // Accurate over the whole 30d window: scan EVERY file touched in the last
       // ~31d, no count cap. The old 400-file cap truncated the busiest groups
       // (main/fixer/triager each have ~1000 files/30d), undercounting the 30d
@@ -2263,6 +2513,7 @@ function refreshSessionCostCache(): void {
           const prev = bucket.get(mapKey);
           if (prev) {
             prev.cost += cost;
+            prev.claudeUsd += cost;
             prev.tokens += tokens;
             prev.lastActiveMs = Math.max(prev.lastActiveMs, m);
             prev.unpriced = prev.unpriced || fc.unpriced;
@@ -2273,9 +2524,71 @@ function refreshSessionCostCache(): void {
               groupFolder: group.folder,
               groupName: group.name,
               cost,
+              claudeUsd: cost,
+              codexUsd: 0,
               tokens,
               lastActiveMs: m,
               unpriced: fc.unpriced,
+            });
+          }
+        }
+      }
+
+      // Codex half. Keyed by the nanoclaw session id straight off the path, so
+      // it merges onto the Claude row for the same session when there is one and
+      // stands up its own row when there isn't — a session that ONLY ever called
+      // `mcp__codex__codex` used to report a confident $0 (issue #1327).
+      let sessDirs: string[];
+      try {
+        sessDirs = readdirSync(join(sessionsDir, group.id)).filter((d) => d.startsWith('sess-'));
+      } catch {
+        continue; // group has no session dir yet
+      }
+      for (const sessId of sessDirs) {
+        const codexHome = join(sessionsDir, group.id, sessId, 'codex');
+        liveCodexHomes.add(codexHome);
+        const cc = scanSessionCodexCost(codexHome);
+        for (const f of cc.files) liveCodexFiles.add(f);
+        if (!cc.hadSignal) continue;
+        // Same 31d file-mtime bound the Claude walk above applies to its
+        // transcripts, deliberately: both halves of `cost` are then scoped
+        // identically, so `all` means the same thing on either side of the sum.
+        // (It means "everything in files touched in the last ~31d", not
+        // "everything ever" — a pre-existing property of this cache, not a new
+        // one, but worth naming since a codex session can be long-lived.)
+        if (cc.lastActiveMs < cutoffMs) continue;
+        for (const period of CONTEXT_PERIODS) {
+          const since = cutoffs[period];
+          let cost = 0;
+          let tokens = 0;
+          let inWindow = false;
+          for (const [key, d] of cc.days) {
+            if (period !== 'all' && !(key >= since)) continue;
+            inWindow = true;
+            cost += d.cost;
+            tokens += d.tokens;
+          }
+          if (!inWindow) continue;
+          const bucket = next[period];
+          const prev = bucket.get(sessId);
+          if (prev) {
+            prev.cost += cost;
+            prev.codexUsd += cost;
+            prev.tokens += tokens;
+            prev.lastActiveMs = Math.max(prev.lastActiveMs, cc.lastActiveMs);
+            prev.unpriced = prev.unpriced || cc.unpriced;
+          } else {
+            bucket.set(sessId, {
+              sessionId: sessId,
+              sdkSessionId: '',
+              groupFolder: group.folder,
+              groupName: group.name,
+              cost,
+              claudeUsd: 0,
+              codexUsd: cost,
+              tokens,
+              lastActiveMs: cc.lastActiveMs,
+              unpriced: cc.unpriced,
             });
           }
         }
@@ -2284,6 +2597,14 @@ function refreshSessionCostCache(): void {
     sessionCostCache = next;
     if (perFileCostCache.size > livePaths.size * 2 + 1000) {
       for (const k of perFileCostCache.keys()) if (!livePaths.has(k)) perFileCostCache.delete(k);
+    }
+    // Same prune shape for both codex caches — sessions and rollout files that
+    // no longer exist on disk (deleted sessions) must not pin memory.
+    if (codexSessionCostCache.size > liveCodexHomes.size + 100) {
+      for (const k of codexSessionCostCache.keys()) if (!liveCodexHomes.has(k)) codexSessionCostCache.delete(k);
+    }
+    if (codexFileEventCache.size > liveCodexFiles.size * 2 + 1000) {
+      for (const k of codexFileEventCache.keys()) if (!liveCodexFiles.has(k)) codexFileEventCache.delete(k);
     }
     writeCostThresholdFile(next);
     // Snapshot the freshly-updated + pruned per-file cache so the next process
@@ -9710,6 +10031,12 @@ export async function handleRequest(
     for (const s of sessions) {
       const c = s.session_id ? costByNano.get(s.session_id) : undefined;
       s.cost = c ? c.cost : 0;
+      // Provider split of the SAME number. `cost` stays the total (every existing
+      // consumer keeps working); these let the UI show what drove it. Codex spend
+      // is the `codex-critique` MCP tool's own model cost, which is invisible to
+      // the Claude transcript walk — see codex-costs.ts / issue #1327.
+      s.claudeUsd = c ? c.claudeUsd : 0;
+      s.codexUsd = c ? c.codexUsd : 0;
       s.costTokens = c ? c.tokens : 0;
       s.costUnpriced = c ? c.unpriced : false;
       // p99 threshold this row is judged against for pill color — the group's own

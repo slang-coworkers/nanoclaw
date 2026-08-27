@@ -129,6 +129,8 @@ describe('rankByCost', () => {
     groupFolder: 'g',
     groupName: 'g',
     cost,
+    claudeUsd: cost,
+    codexUsd: 0,
     tokens: 0,
     lastActiveMs,
     unpriced: false,
@@ -137,5 +139,64 @@ describe('rankByCost', () => {
   it('orders by cost desc, then recency, and caps', () => {
     const out = rankByCost([mk('a', 10, 1), mk('b', 30, 1), mk('c', 30, 5), mk('d', 5, 9)], 3);
     expect(out.map((e) => e.sessionId)).toEqual(['c', 'b', 'a']); // c before b (same cost, newer); d dropped by cap
+  });
+
+  it('ranks on TOTAL cost, so a codex-heavy session is not buried', () => {
+    // The whole point of the split: before codexUsd existed, `b` looked like a
+    // $1 session because its spend was all `codex-critique` MCP tool calls.
+    const claudeOnly = { ...mk('a', 20), claudeUsd: 20, codexUsd: 0 };
+    const codexHeavy = { ...mk('b', 31), claudeUsd: 1, codexUsd: 30 };
+    expect(rankByCost([claudeOnly, codexHeavy]).map((e) => e.sessionId)).toEqual(['b', 'a']);
+  });
+});
+
+describe('SessionCostEntry provider split', () => {
+  // `cost` is the contract every existing consumer reads (rankByCost, the p90 the
+  // runner's Tier-1 cap seeds from, the p99 pill, the Sessions column). It must
+  // stay the TOTAL; the split is additive detail.
+  const entry: SessionCostEntry = {
+    sessionId: 'sess-1',
+    sdkSessionId: 'sdk-1',
+    groupFolder: 'fixer',
+    groupName: 'fixer',
+    cost: 0,
+    claudeUsd: 0,
+    codexUsd: 0,
+    tokens: 0,
+    lastActiveMs: 0,
+    unpriced: false,
+  };
+
+  it('cost is the sum of both halves', () => {
+    // Mirrors how refreshSessionCostCache accumulates: the Claude walk adds to
+    // cost+claudeUsd, the codex walk adds to cost+codexUsd, on the same row.
+    const e = { ...entry };
+    e.cost += 78.69;
+    e.claudeUsd += 78.69; // Claude transcript half
+    e.cost += 21.31;
+    e.codexUsd += 21.31; // codex rollout half
+    expect(e.cost).toBeCloseTo(e.claudeUsd + e.codexUsd, 9);
+    expect(e.cost).toBeCloseTo(100, 9);
+  });
+
+  it('a session whose ONLY spend is codex still reports a nonzero cost', () => {
+    const e = { ...entry, cost: 21.31, claudeUsd: 0, codexUsd: 21.31 };
+    expect(e.cost).toBeGreaterThan(0);
+    expect(e.claudeUsd).toBe(0);
+  });
+
+  it('Claude cost from MULTIPLE transcript files rolls into one claudeUsd', () => {
+    // A session spans several SDK transcript files — resumes, and (once the
+    // subagent-attribution fix lands on this branch) Task-tool subagent
+    // transcripts at `<parent-sdk-id>/subagents/agent-*.jsonl`, which are
+    // SEPARATE files carrying disjoint message ids. The merge below is what makes
+    // every one of them land on the session's own total rather than an orphan row.
+    const e = { ...entry };
+    for (const fileCost of [50.0, 12.5, 16.19]) {
+      e.cost += fileCost;
+      e.claudeUsd += fileCost;
+    }
+    expect(e.claudeUsd).toBeCloseTo(78.69, 9);
+    expect(e.cost).toBeCloseTo(e.claudeUsd, 9);
   });
 });
