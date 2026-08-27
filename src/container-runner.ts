@@ -412,8 +412,26 @@ async function composeCoworkerClaudeMd(agentGroup: AgentGroup): Promise<void> {
     if (composed) {
       log.debug('CLAUDE.md is composer output, not a persona — not migrating', { folder: agentGroup.folder });
     } else {
-      fs.renameSync(claudeMdPath, personaPath);
-      log.info('Auto-migrated CLAUDE.md to instructions.prepend.md', { folder: agentGroup.folder });
+      // COPY, don't rename. A rename removed the group's only document BEFORE
+      // composition ran, so a compose failure left `assertComposedDocUsable` with
+      // nothing to fall back on and it refused to spawn a group that had a
+      // perfectly good document moments earlier.
+      //
+      // No cleanup is needed on success: `writeComposedDocument` publishes by
+      // renaming over this very path, so the composed document replaces the
+      // legacy one. On failure the legacy document survives — which is the point.
+      // `COPYFILE_EXCL` closes the gap between the `existsSync` check above and
+      // this write; a failed migration must not cost the group its spawn, so it
+      // is logged rather than thrown.
+      try {
+        fs.copyFileSync(claudeMdPath, personaPath, fs.constants.COPYFILE_EXCL);
+        log.info('Auto-migrated CLAUDE.md to instructions.prepend.md', { folder: agentGroup.folder });
+      } catch (err) {
+        log.warn('Could not migrate CLAUDE.md to instructions.prepend.md; leaving both in place', {
+          folder: agentGroup.folder,
+          err,
+        });
+      }
     }
   }
 
