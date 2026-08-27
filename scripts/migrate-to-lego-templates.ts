@@ -16,6 +16,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import { composeCoworkerSpine, readCoworkerTypes } from '../src/claude-composer.js';
+import { writeComposedDocument } from '../src/group-persona.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '..');
@@ -37,7 +38,7 @@ function regenerateGroup(folder: string, coworkerType: string): void {
     coworkerType,
     extraInstructions: readInstructions(groupDir),
   });
-  fs.writeFileSync(claudeMd, composed);
+  writeComposedDocument(claudeMd, composed);
   console.log(`regenerated ${path.relative(projectRoot, claudeMd)} (type: ${coworkerType})`);
 }
 

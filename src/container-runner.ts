@@ -59,7 +59,7 @@ import { GROUP_FOLDER_LABEL, labelValueLegal, specInvalid } from './drivers/type
 import type { ContainerSpec, MountSpec, SessionFailure, SessionSpec } from './drivers/types.js';
 import { getGatewayProvider, type GatewayContribution } from './gateway-providers/index.js';
 import { initGroupFilesystem } from './group-init.js';
-import { PERSONA_PREPEND_FILE, isComposedDocument, readGroupPersona } from './group-persona.js';
+import { PERSONA_PREPEND_FILE, isComposedDocument, readGroupPersona, writeComposedDocument } from './group-persona.js';
 import { getAgentMailbox } from './mailbox/index.js';
 import { stopTypingRefresh } from './modules/typing/index.js';
 import { log } from './log.js';
@@ -393,7 +393,7 @@ async function composeCoworkerClaudeMd(agentGroup: AgentGroup): Promise<void> {
       };
       const composed = composeCoworkerSpine(composeOpts);
       fs.mkdirSync(groupDir, { recursive: true });
-      fs.writeFileSync(claudeMdPath, composed);
+      writeComposedDocument(claudeMdPath, composed);
       // Materialize MARKER files for overlays carrying one (e.g. buddy-monitor).
       // Containers see /workspace/agent/.overlay-<name> via the standard mount;
       // hooks like spawn-buddy.sh test for these files to gate themselves.
@@ -422,7 +422,7 @@ async function composeCoworkerClaudeMd(agentGroup: AgentGroup): Promise<void> {
     const composed = composeCoworkerSpine(composeOpts);
 
     fs.mkdirSync(groupDir, { recursive: true });
-    fs.writeFileSync(claudeMdPath, composed);
+    writeComposedDocument(claudeMdPath, composed);
     const appliedOverlays = getAppliedOverlayNames(process.cwd(), agentGroup.coworker_type, composeOpts);
     materializeOverlayMarkers(appliedOverlays, process.cwd(), groupDir);
     materializeCritiqueRequiredStages(

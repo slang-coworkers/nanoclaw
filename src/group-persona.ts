@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
@@ -26,6 +27,35 @@ export const COMPOSED_DOC_MARKER = '<!-- Composed at spawn';
  */
 export function isComposedDocument(content: string): boolean {
   return content.slice(0, 400).includes(COMPOSED_DOC_MARKER);
+}
+
+/**
+ * Publish a composed document by writing a temp sibling and renaming over the
+ * target, so a container spawn racing composition reads either the previous
+ * document or the new one — never a truncated prefix. `assertComposedDocUsable`
+ * only checks `size > 0`, so a torn file would otherwise pass as usable.
+ *
+ * Both halves are load-bearing. The temp name comes from `randomUUID()` because
+ * the group dir is agent-writable: a `pid`-and-timestamp name is reconstructible,
+ * so it can be pre-created as a symlink pointing anywhere the host can write.
+ * `wx` then fails closed instead of following it.
+ *
+ * Renaming does NOT reach a running container — the composed document is a *file*
+ * bind mount, so an established mount keeps pointing at the old inode. This
+ * protects the next spawn from a torn read; live update is `killContainer`'s job.
+ */
+export function writeComposedDocument(filePath: string, content: string): void {
+  const tmp = `${filePath}.tmp-${randomUUID()}`;
+  try {
+    fs.writeFileSync(tmp, content, { flag: 'wx' });
+    fs.renameSync(tmp, filePath);
+  } finally {
+    try {
+      fs.unlinkSync(tmp);
+    } catch {
+      // The rename consumed the temp file, or creation failed before it existed.
+    }
+  }
 }
 
 /**
