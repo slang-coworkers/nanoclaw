@@ -15,6 +15,13 @@ import {
 
 const tempDirs: string[] = [];
 
+// Composed documents open with the composer marker + a blank line. These flat-mode
+// cases assert the rendered BODY verbatim, so drop the marker rather than bake it
+// into every expected string.
+function stripComposedMarker(doc: string): string {
+  return doc.replace(/^<!-- Composed at spawn[^\n]*-->\n\n/, '');
+}
+
 function makeTempProject(): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-lego-'));
   tempDirs.push(dir);
@@ -470,7 +477,9 @@ slang-triage:
         `main:\n  flat: true\n  description: "base"\n  identity: container/skills/nanoclaw-base/prompts/main-body.md\n`,
       );
       const out = composeCoworkerSpine({ projectRoot: root, coworkerType: 'main' });
-      expect(out).toBe('# Main\n\nSlim.\n');
+      // Every composed document opens with the composer marker (see
+      // composed-doc-marker.test.ts); the body must follow it verbatim.
+      expect(stripComposedMarker(out)).toBe('# Main\n\nSlim.\n');
     });
 
     it('appends additive context fragments after identity when addon skills contribute to the same type', () => {
@@ -495,7 +504,7 @@ slang-triage:
         `main:\n  context:\n    - container/skills/dashboard-base/prompts/formatting.md\n`,
       );
       const out = composeCoworkerSpine({ projectRoot: root, coworkerType: 'main' });
-      expect(out).toBe('# Main\n\nHello.\n\n### Dashboard\n\nMarkdown.\n');
+      expect(stripComposedMarker(out)).toBe('# Main\n\nHello.\n\n### Dashboard\n\nMarkdown.\n');
     });
 
     it('suppresses structured sections and auto-title in flat mode', () => {

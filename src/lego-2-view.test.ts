@@ -109,7 +109,9 @@ describe('2-view model: Main (orchestrator) and Coworker (typed+untyped)', () =>
   it('main (flat) emits the body alone when no projects or addon skills are installed', () => {
     scaffoldBase(tmpRoot);
     const out = composeCoworkerSpine({ projectRoot: tmpRoot, coworkerType: 'main' });
-    expect(out).toBe('# Main\n\nYou are Main.\n');
+    // Composed documents open with the composer marker (composed-doc-marker.test.ts
+    // pins it); past that, flat mode emits the body and nothing else.
+    expect(out.replace(/^<!-- Composed at spawn[^\n]*-->\n\n/, '')).toBe('# Main\n\nYou are Main.\n');
     // No "Projects available" block until a project spine is present.
     expect(out).not.toMatch(/## Projects available/);
   });
