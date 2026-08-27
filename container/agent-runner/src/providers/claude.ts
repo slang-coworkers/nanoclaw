@@ -738,9 +738,10 @@ export class ClaudeProvider implements AgentProvider {
     }
   }
 
-  registerMemorySessionHook(hook: MemorySessionHookRegistration): void {
+  registerMemorySessionHook(hook: MemorySessionHookRegistration): boolean {
     writeMemorySessionHook(hook);
     this.memorySessionHook = hook;
+    return true;
   }
 
   isSessionInvalid(err: unknown): boolean {

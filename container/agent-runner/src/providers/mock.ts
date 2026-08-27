@@ -32,7 +32,9 @@ export class MockProvider implements AgentProvider {
     this.textFactory = textFactory;
   }
 
-  registerMemorySessionHook(_hook: MemorySessionHookRegistration): void {}
+  registerMemorySessionHook(_hook: MemorySessionHookRegistration): boolean {
+    return false;
+  }
 
   isSessionInvalid(_err: unknown): boolean {
     return false;

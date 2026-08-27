@@ -8,6 +8,7 @@ import {
   getDestinationsFingerprint,
   type DestinationEntry,
 } from './destinations.js';
+import { appendMemorySection } from './memory/context.js';
 import {
   getPendingMessages,
   markProcessing,
@@ -682,7 +683,11 @@ function applySetCeilingOverride(msg: MessageInRow, parsed: CostOverrideContent)
   const requestExpectedCeilingCents = Number(parsed.expectedCeilingCents);
   const requestTargetCeilingCents = Number(parsed.targetCeilingCents);
 
-  const commitOrThrow = (receipt: CostCeilingAdjustmentReceipt, newCostCap: CostCapState | undefined, logMsg: string): void => {
+  const commitOrThrow = (
+    receipt: CostCeilingAdjustmentReceipt,
+    newCostCap: CostCapState | undefined,
+    logMsg: string,
+  ): void => {
     try {
       commitCostCeilingAdjustmentOutcome({ inboundMessageId: msg.id, receipt, newCostCap });
       log(logMsg);
@@ -692,7 +697,9 @@ function applySetCeilingOverride(msg: MessageInRow, parsed: CostOverrideContent)
       // when the atomic commit itself failed. Propagating lets it be retried
       // on redelivery / recovered by clearStaleProcessingAcks() on restart,
       // rather than silently losing the request.
-      log(`set_ceiling: atomic commit FAILED for adjustment ${adjustmentId} — NOT acking (id=${msg.id}): ${String(err)}`);
+      log(
+        `set_ceiling: atomic commit FAILED for adjustment ${adjustmentId} — NOT acking (id=${msg.id}): ${String(err)}`,
+      );
       throw err;
     }
   };
@@ -726,7 +733,9 @@ function applySetCeilingOverride(msg: MessageInRow, parsed: CostOverrideContent)
   const validEpoch = requestExpectedEpochKey.length > 0;
   const validExpectedCents = Number.isInteger(requestExpectedCeilingCents) && requestExpectedCeilingCents >= 0;
   const validTargetCents =
-    Number.isInteger(requestTargetCeilingCents) && requestTargetCeilingCents >= 1 && requestTargetCeilingCents <= MAX_CEILING_CENTS;
+    Number.isInteger(requestTargetCeilingCents) &&
+    requestTargetCeilingCents >= 1 &&
+    requestTargetCeilingCents <= MAX_CEILING_CENTS;
   if (!validEpoch || !validExpectedCents || !validTargetCents) return reject('invalid_value');
 
   const liveCeilingCents = Math.round(costCeilingUsd * 100);
@@ -1117,7 +1126,11 @@ function makeDestinationsRefresher(systemContext: PollLoopConfig['systemContext'
     if (fp === last) return null;
     const firstCall = last === null;
     last = fp;
-    if (systemContext) systemContext.instructions = buildSystemPromptAddendum();
+    // Rebuild through the runner's own builder, not a bare
+    // buildSystemPromptAddendum(): that loses the assistant name, the task-vs-chat
+    // mode, and (for hookless providers) the memory section. This refresher runs
+    // once before the very first query, so anything it drops is never sent at all.
+    if (systemContext) systemContext.instructions = systemContext.rebuild();
     if (firstCall) return null;
     log('Destinations changed — refreshed system prompt + push-block');
     return buildDestinationsPushNote();
@@ -1152,6 +1165,14 @@ export interface PollLoopConfig {
   cwd: string;
   systemContext?: {
     instructions?: string;
+    /**
+     * Recompute `instructions` from scratch. Owned by the runner because only it
+     * knows the assistant name, the session mode, and whether this provider needs
+     * the memory section — and because memory must be re-read, not cached: the
+     * agent edits its own memory mid-session, and a pinned boot-time copy would
+     * go stale for the rest of the container's life.
+     */
+    rebuild(): string;
   };
   /**
    * Optional stop signal. In production the loop runs until the container
