@@ -429,6 +429,13 @@ export function ensureCleanupPeriodDays(settingsFile: string, initialized: strin
     const raw = fs.readFileSync(settingsFile, 'utf-8');
     const settings = JSON.parse(raw);
 
+    // Only a JSON object can carry a cleanupPeriodDays key. A non-object root
+    // (array, null, primitive) is not a valid Claude settings.json anyway, and
+    // assigning a property to it either throws (null/primitive) or is dropped
+    // by stringify (array) — which would rewrite the file yet record a bogus
+    // success. Leave it untouched instead.
+    if (settings === null || typeof settings !== 'object' || Array.isArray(settings)) return;
+
     const current = settings.cleanupPeriodDays;
     if (typeof current === 'number' && current >= CLEANUP_PERIOD_DAYS_NEVER) return;
 

@@ -149,4 +149,29 @@ describe('ensureCleanupPeriodDays', () => {
     expect(fs.readFileSync(file, 'utf8')).toBe('{ not valid json');
     expect(initialized).toEqual([]);
   });
+
+  it('leaves a non-object JSON root (array) untouched and records no bogus success', () => {
+    // `[]` is a valid parse but not a valid settings.json. Assigning a key to
+    // it would be dropped by stringify, rewriting the file while falsely
+    // recording success — guard against that.
+    const file = settingsPath();
+    fs.writeFileSync(file, '[]');
+    const initialized: string[] = [];
+
+    ensureCleanupPeriodDays(file, initialized);
+
+    expect(fs.readFileSync(file, 'utf8')).toBe('[]'); // untouched
+    expect(initialized).toEqual([]);
+  });
+
+  it('leaves a null/primitive JSON root untouched', () => {
+    const file = settingsPath();
+    fs.writeFileSync(file, 'null');
+    const initialized: string[] = [];
+
+    ensureCleanupPeriodDays(file, initialized);
+
+    expect(fs.readFileSync(file, 'utf8')).toBe('null');
+    expect(initialized).toEqual([]);
+  });
 });

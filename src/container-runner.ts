@@ -238,6 +238,22 @@ export function getActiveContainerInstanceId(sessionId: string): string | undefi
   return activeContainers.get(sessionId)?.instanceId;
 }
 
+/**
+ * Normalize the operator override for the transcript age-rotation trigger into
+ * the value forwarded to the container. Default '0' (disabled). Only a finite
+ * numeric string is passed through verbatim; undefined, blank, whitespace, or
+ * a non-numeric value all become '0'. This is deliberately stricter than a
+ * `?? '0'` guard: the container reader treats a blank/non-numeric value as the
+ * 14-day DEFAULT, so forwarding one would silently re-enable the age rotation
+ * this override exists to disable (issue #1327).
+ */
+export function normalizeRotateAgeDays(raw: string | undefined): string {
+  if (raw === undefined) return '0';
+  const trimmed = raw.trim();
+  if (trimmed === '' || !Number.isFinite(Number(trimmed))) return '0';
+  return trimmed;
+}
+
 /** SHA-256 hash of CLAUDE.md at spawn time, keyed by session ID. */
 const spawnedClaudeMdHash = new Map<string, string>();
 
@@ -2373,7 +2389,16 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
   // still governs, so a genuinely runaway transcript still rotates.
   // Operator-overridable via CLAUDE_TRANSCRIPT_ROTATE_AGE_DAYS in host env.
   // See issue #1327.
-  env.CLAUDE_TRANSCRIPT_ROTATE_AGE_DAYS = process.env.CLAUDE_TRANSCRIPT_ROTATE_AGE_DAYS ?? '0';
+  //
+  // NORMALIZE, do not forward raw: the container-side reader
+  // (`transcriptRotateAgeMs` in providers/claude.ts) treats a blank / non-
+  // numeric value as the 14-day DEFAULT, not as "disabled". A bare
+  // `CLAUDE_TRANSCRIPT_ROTATE_AGE_DAYS=` in host env (`??` only guards
+  // `undefined`, not '') would therefore silently reactivate the exact loss
+  // this line exists to stop. Forward a finite numeric string as-is, else '0'.
+  env.CLAUDE_TRANSCRIPT_ROTATE_AGE_DAYS = normalizeRotateAgeDays(
+    process.env.CLAUDE_TRANSCRIPT_ROTATE_AGE_DAYS,
+  );
 
   // Bypass proxy for host-local traffic (dashboard hooks, MCP proxy) only.
   // NOTE: discord.com must NOT be bypassed. The container-side slang-mcp
