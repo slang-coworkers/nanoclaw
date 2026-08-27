@@ -683,6 +683,12 @@ export class ClaudeProvider implements AgentProvider {
     this.env = {
       ...(options.env ?? {}),
       CLAUDE_CODE_AUTO_COMPACT_WINDOW,
+      // NanoClaw owns memory (the OKF tree + session-start hook), so Claude
+      // Code's native auto-memory must stay off or the two disagree about
+      // recall. group-init.ts writes the same flag into each group's
+      // settings.json; this covers the SDK child for groups scaffolded before
+      // that flag existed. Spread last so a caller env cannot re-enable it.
+      CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1',
     };
     // Resolve `envInherit` names → values from process env for every stdio
     // MCP entry. Claude Agent SDK spawns MCP children with a literal env
