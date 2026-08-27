@@ -62,31 +62,19 @@ describe('ClaudeProvider.maybeRotateContinuation', () => {
     expect(fs.existsSync(p)).toBe(true);
   });
 
-  it('rotates an oversized transcript (returns reason, deletes the .jsonl after archiving)', () => {
+  // Deleted, not renamed aside: a rename only hides the bytes, so a long-lived
+  // hub crossing the threshold repeatedly grew `.rotated-*` files without bound
+  // while the code claimed the disk was reclaimed.
+  it('rotates an oversized transcript and reclaims the disk (no .rotated-* left)', () => {
     process.env.CLAUDE_TRANSCRIPT_ROTATE_BYTES = String(64 * 1024);
-    // Pin the conversations dir to this test's own fresh tmp explicitly (not just
-    // via beforeEach): the sibling "archiving fails" case points this global env
-    // var at a *file* to force EEXIST, and the whole suite shares one process, so
-    // the success path must not inherit a stale blocker value — that would flip
-    // archiving to the rename-aside branch and leave a `.rotated-` copy.
-    const convDir = path.join(tmp, 'conversations');
-    process.env.NANOCLAW_CONVERSATIONS_DIR = convDir;
     const p = writeTranscript('sess-big', 200 * 1024);
     const provider = new ClaudeProvider();
     const reason = provider.maybeRotateContinuation('sess-big', CWD);
     expect(reason).toContain('MB');
-    expect(fs.existsSync(p)).toBe(false); // original removed from the resume path
+    expect(fs.existsSync(p)).toBe(false);
     const dir = path.dirname(p);
-    // Disk is reclaimed: the raw .jsonl is deleted, not left behind as a .rotated- copy.
     expect(fs.readdirSync(dir).some((f) => f.startsWith('sess-big.jsonl.rotated-'))).toBe(false);
-    // The readable summary is preserved in the conversations dir.
-    expect(fs.existsSync(convDir) && fs.readdirSync(convDir).some((f) => f.endsWith('.md'))).toBe(true);
   });
-
-  // NOTE: the "archiving fails" case lives in claude.rotate-archive-fail.test.ts.
-  // It points the process-global NANOCLAW_CONVERSATIONS_DIR at a *file* to force
-  // an archive error; isolating it into its own module keeps that blocker value
-  // from ever leaking into the success-path tests above under the concurrent suite.
 
   it('rotates an aged transcript even when small', () => {
     process.env.CLAUDE_TRANSCRIPT_ROTATE_BYTES = String(1024 * 1024);

@@ -766,12 +766,12 @@ export class ClaudeProvider implements AgentProvider {
     }
     if (!reason) return null;
 
-    // Preserve a readable summary, then drop the heavy .jsonl out of the
-    // resume path so the SDK starts a fresh session. Once the summary is
-    // archived the raw transcript is deleted so the disk is actually reclaimed
-    // (a plain rename only hides it — the bytes pile up across rotations). If
-    // archiving fails we keep the raw file (renamed aside) rather than lose
-    // unrecoverable history.
+    // Preserve a readable summary, then drop the heavy .jsonl out of the resume
+    // path so the SDK starts a fresh session. Delete it once archiving
+    // succeeded: renaming aside only hides the bytes, so a long-lived hub that
+    // repeatedly crosses the rotation threshold accumulates `.rotated-*` files
+    // without bound. Keep the raw file when archiving failed — unrecoverable
+    // history is worth the disk.
     const archived = archiveTranscriptFile(transcriptPath, continuation, this.assistantName);
     try {
       if (archived) {
@@ -780,7 +780,7 @@ export class ClaudeProvider implements AgentProvider {
         fs.renameSync(transcriptPath, `${transcriptPath}.rotated-${Date.now()}`);
       }
     } catch (err) {
-      log(`Failed to drop rotated transcript: ${err instanceof Error ? err.message : String(err)}`);
+      log(`Failed to reclaim rotated transcript: ${err instanceof Error ? err.message : String(err)}`);
     }
     return reason;
   }
