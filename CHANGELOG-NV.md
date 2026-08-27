@@ -667,7 +667,7 @@ _+8 more: #1325, #1324, #1323, #1322, #1315, #1313, #1311, #1310_
 
 ## 📅 2026-06-30
 
-### nv-main (7 PRs)
+### nv-main (8 PRs)
 - **#714** `chore(nv-main): allowlist upstream-synced files in path-guard`
 - **#721** `fix(ci): stop composed-tree vitest OOM (exit 137)`
 - **#725** `fix(supervise): move PR #711 edits to nv-main (path-guard owner)`
@@ -675,6 +675,7 @@ _+8 more: #1325, #1324, #1323, #1322, #1315, #1313, #1311, #1310_
 - **#728** `feat(skills): learnings-wiki — synthesize shared learnings into a Karpathy wiki`
 - **#734** `fix(approvals): case-insensitive approve — canonicalized Approve was rejected`
 - **#735** `fix(learnings-wiki): standard markdown links instead of Obsidian syntax`
+- **#742** `fix(recall): limit=100 for wiki/index.md read (plan/implement + workspace spine)`
 
 ### nv-dashboard (9 PRs)
 - **#722** `fix(dashboard): lighten test-server boot (gate MCP/ccusage/timers under VITEST)`
@@ -687,14 +688,17 @@ _+8 more: #1325, #1324, #1323, #1322, #1315, #1313, #1311, #1310_
 - **#739** `feat(dashboard): unified issue table + win-rate as merged/PRs-authored`
 - **#741** `fix(dashboard): funnel table polish — dropdown, inst fallback, trend label`
 
-### nv-slang (1 PRs)
+### nv-slang (2 PRs)
 - **#731** `feat(recall): wiki-first recall for slang workflows`
+- **#743** `fix(recall): limit=100 for wiki/index.md read (slang workflows)`
 
-### nv-slangpy (1 PRs)
+### nv-slangpy (2 PRs)
 - **#732** `feat(recall): wiki-first recall for slangpy workflows`
+- **#744** `fix(recall): limit=100 for wiki/index.md read (slangpy workflows)`
 
-### nv-nanoclaw (1 PRs)
+### nv-nanoclaw (2 PRs)
 - **#733** `feat(recall): wiki-first recall for nanoclaw-pr-review`
+- **#745** `fix(recall): limit=100 for wiki/index.md read (nanoclaw-pr-review)`
 
 ## 📅 2026-06-29
 
