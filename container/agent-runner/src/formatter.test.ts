@@ -13,7 +13,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 
 import { initTestSessionDb, closeSessionDb, getInboundDb } from './mailbox/sqlite/connection.js';
 import { getPendingMessages } from './db/messages-in.js';
-import { formatMessages, stripInternalTags, stripLegacyTaskContract } from './formatter.js';
+import { extractRouting, formatMessages, stripInternalTags, stripLegacyTaskContract } from './formatter.js';
 import { TIMEZONE, formatLocalTime } from './timezone.js';
 
 beforeEach(() => {
@@ -421,5 +421,51 @@ describe('app_context rendering (Slack agent mode, contract C4)', () => {
     });
     const result = formatMessages(getPendingMessages());
     expect(result).toContain('(viewing: channel C1&lt;&amp;&gt;)');
+  });
+});
+
+describe('extractRouting — session routing outranks the message', () => {
+  // The production failure this prevents: a github PR-review webhook waking an
+  // a2a session stamped the turn's routing as github, and the poll loop's
+  // bare-text auto-route then wrote to github — which has no messaging group on
+  // the delivery side, so delivery failed permanently instead of retrying.
+  it('prefers the session channel over a cross-channel webhook row', () => {
+    setSessionThread('t-1');
+    insertMessage('w1', 'webhook', { event: 'pr_review' }, {
+      channel_type: 'github',
+      platform_id: 'github:owner/repo:99',
+    });
+
+    const r = extractRouting(getPendingMessages());
+    expect(r.channelType).toBe('dashboard');
+    expect(r.platformId).toBe('dashboard:admin');
+  });
+
+  // threadId and inReplyTo are per-turn, not per-session, so they must keep
+  // coming from the message even when the channel is overridden.
+  it('still takes threadId and inReplyTo from the message', () => {
+    setSessionThread('session-thread');
+    insertMessage('w2', 'webhook', { event: 'pr_review' }, {
+      channel_type: 'github',
+      platform_id: 'github:owner/repo:99',
+      thread_id: 'turn-thread',
+    });
+
+    const r = extractRouting(getPendingMessages());
+    expect(r.threadId).toBe('turn-thread');
+    expect(r.inReplyTo).toBe('w2');
+  });
+
+  // No bound messaging group (session routing absent) → the message's own
+  // fields are all there is, so they must still win.
+  it('falls back to the message when session routing is absent', () => {
+    insertMessage('c1', 'chat', { sender: 'A', text: 'hi' }, {
+      channel_type: 'telegram',
+      platform_id: 'telegram:42',
+    });
+
+    const r = extractRouting(getPendingMessages());
+    expect(r.channelType).toBe('telegram');
+    expect(r.platformId).toBe('telegram:42');
   });
 });
