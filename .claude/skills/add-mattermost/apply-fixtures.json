@@ -1,0 +1,48 @@
+{
+  "notes": "Fake values only. API responses and callback-secret generation are stubbed.",
+  "scenarios": [
+    {
+      "name": "self-hosted-bot",
+      "inputs": {
+        "base_url": "https://mattermost.example.test/",
+        "bot_token": "fakeMattermostBotToken_123456",
+        "callback_url": "http://host.docker.internal:3000/webhook/mattermost/",
+        "owner_username": "owner.test"
+      },
+      "exec": [
+        {
+          "match": "discover-server.mjs",
+          "stdout": "{\"discovery\":\"none\",\"base_url\":\"\"}"
+        },
+        { "match": "/api/v4/users/me", "stdout": "{\"id\":\"bbbbbbbbbbbbbbbbbbbbbbbbbb\",\"username\":\"nanoclaw\"}" },
+        {
+          "match": "openssl rand -hex 32",
+          "stdout": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        },
+        { "match": "/api/v4/users/username/owner.test", "stdout": "{\"id\":\"oooooooooooooooooooooooooo\"}" },
+        { "match": "/api/v4/channels/direct", "stdout": "mattermost:dddddddddddddddddddddddddd" }
+      ]
+    },
+    {
+      "name": "detected-local-server",
+      "inputs": {
+        "bot_token": "fakeMattermostBotToken_123456",
+        "callback_url": "http://host.docker.internal:3000/webhook/mattermost/",
+        "owner_username": "owner.test"
+      },
+      "exec": [
+        {
+          "match": "discover-server.mjs",
+          "stdout": "{\"discovery\":\"found\",\"base_url\":\"http://localhost:8065\"}"
+        },
+        { "match": "/api/v4/users/me", "stdout": "{\"id\":\"bbbbbbbbbbbbbbbbbbbbbbbbbb\",\"username\":\"nanoclaw\"}" },
+        {
+          "match": "openssl rand -hex 32",
+          "stdout": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        },
+        { "match": "/api/v4/users/username/owner.test", "stdout": "{\"id\":\"oooooooooooooooooooooooooo\"}" },
+        { "match": "/api/v4/channels/direct", "stdout": "mattermost:dddddddddddddddddddddddddd" }
+      ]
+    }
+  ]
+}
