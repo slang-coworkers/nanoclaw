@@ -238,6 +238,16 @@ export interface CostCapState {
    */
   codexLedger?: Record<string, number>;
   /**
+   * Permanent (codexEventKey -> owning rollout-file key) assignment. Ownership
+   * by "whichever file sorts first among the files readable this scan" moves
+   * when a file's readability flips — the true owner going unreadable lets a
+   * later-sorted file claim and charge a call, then the true owner becoming
+   * readable again re-claims it with no watermark of its own and charges it a
+   * second time. Persisted (not just in-memory) so a container restart can't
+   * reopen this window by forgetting who already owns what.
+   */
+  codexEventOwners?: Record<string, string>;
+  /**
    * True while this session still owes a one-time codex BASELINE: its existing
    * rollout history is absorbed into `codexLedger` without being charged, so
    * deploying #1327 cannot retroactively bill a live session for spend it

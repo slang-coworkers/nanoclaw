@@ -80,6 +80,8 @@ function seed(over: Parameters<typeof H.setState>[0] = {}): void {
     turnMessageCostUsd: 0,
     turnUnpricedCount: 0,
     turnMissingIdCount: 0,
+    turnNoUsageCount: 0,
+    codexEventOwners: {},
     ...over,
   });
 }
@@ -340,6 +342,28 @@ describe('#1327 — completeness gating of the aggregate fallback', () => {
     expect(s.turnMissingIdCount).toBe(0);
   });
 
+  it('a turn that never reaches its aggregate event (thrown/aborted mid-stream) still gets reset — the next query() defensively clears it', () => {
+    // Simulates a turn that priced at least one message via recordMessageCost
+    // but then threw/was aborted before the provider's aggregate `usage`
+    // event fired — recordTurnCost (and its reset) never runs for this turn.
+    H.recordMessageCost(messageUsage('m1'));
+    H.recordMessageCost(messageUsage(null)); // also picks up a missing-id count
+    const leaked = H.getState();
+    expect(leaked.turnSawMessageUsage).toBe(true);
+    expect(leaked.turnMessageCostUsd).toBeGreaterThan(0);
+    expect(leaked.turnMissingIdCount).toBe(1);
+
+    // The next turn's query() calls this before building its query — see the
+    // call site in poll-loop.ts just above `config.provider.query(`.
+    H.resetTurnAccountingState();
+
+    const s = H.getState();
+    expect(s.turnSawMessageUsage).toBe(false);
+    expect(s.turnMessageCostUsd).toBe(0);
+    expect(s.turnUnpricedCount).toBe(0);
+    expect(s.turnMissingIdCount).toBe(0);
+  });
+
   it('closes the zero-residual hole when the provider reports totalCostUsd as 0', () => {
     __setConfigForTest(cfg({ model: 'also-unknown' }));
     seed();
@@ -359,7 +383,7 @@ describe('#1327 — completeness gating of the aggregate fallback', () => {
 });
 
 describe('#1327 — window resets clear per-message state', () => {
-  it('/clear drops the seen-id set and re-arms the codex baseline', () => {
+  it('/clear drops the seen-id set and (with no rollout files) settles the codex baseline immediately', () => {
     H.recordMessageCost(messageUsage('m1'));
     expect(H.getState().seenMessageIdCount).toBe(1);
 
@@ -368,7 +392,11 @@ describe('#1327 — window resets clear per-message state', () => {
     const s = H.getState();
     expect(s.costSpentUsd).toBe(0);
     expect(s.seenMessageIdCount).toBe(0);
-    expect(s.codexLedgerBaselinePending).toBe(true);
+    // resetCostForNewSession now folds the baseline SYNCHRONOUSLY. With no
+    // CODEX_HOME rollout files present the scan is empty-but-complete, so the
+    // baseline finishes on the spot rather than staying armed for a later fold
+    // (the window that used to let the first post-reset codex turn go free).
+    expect(s.codexLedgerBaselinePending).toBe(false);
     expect(s.codexUsdCharged).toBe(0);
     // The same id can be charged again — it belongs to a different budget window.
     H.recordMessageCost(messageUsage('m1'));
@@ -609,6 +637,114 @@ describe('#1327 — codex MCP-tool spend folded into the cap', () => {
     writeRollout(D_TODAY, 'aaa', [{ ts: `${D_TODAY}T10:00:00.000Z`, input: 1_000_000 }]);
     H.foldCodexCost();
     expect(H.getState().costSpentUsd).toBe(0);
+  });
+
+  it('a /clear that re-baselines does NOT leave the first post-reset codex turn free', () => {
+    // The free-turn window: resetCostForNewSession re-arms the baseline; if it
+    // deferred to the next natural fold, a codex call made in between would be
+    // absorbed as "pre-existing" and never charged. The synchronous fold in
+    // resetCostForNewSession closes it — only rollout content present AT reset
+    // time is baselined.
+    writeRollout(D_TODAY, 'aaa', [{ ts: `${D_TODAY}T10:00:00.000Z`, input: 1_000_000 }]);
+    H.resetCostForNewSession(); // folds synchronously → the $5 already there is baselined, not charged
+    expect(H.getState().costSpentUsd).toBe(0);
+    expect(H.getState().codexLedgerBaselinePending).toBe(false);
+
+    // A genuinely new call AFTER the reset must be charged, not absorbed.
+    fs.appendFileSync(
+      path.join(home, 'sessions', ...D_TODAY.split('-'), `rollout-${D_TODAY}T10-00-00-aaa.jsonl`),
+      '\n' +
+        JSON.stringify({
+          timestamp: `${D_TODAY}T11:00:00.000Z`,
+          type: 'event_msg',
+          payload: {
+            type: 'token_count',
+            info: {
+              total_token_usage: { input_tokens: 3_000_000, cached_input_tokens: 0, output_tokens: 0 },
+              last_token_usage: { input_tokens: 2_000_000, cached_input_tokens: 0, output_tokens: 0 },
+            },
+          },
+        }),
+    );
+    __resetCodexCostMemo();
+    H.foldCodexCost();
+    expect(H.getState().costSpentUsd).toBeCloseTo(10, 6); // 2M @ $5/M — the post-reset call is charged
+  });
+
+  it('does NOT charge the readable half of an incomplete MIGRATION scan (baseline stays fully pending)', () => {
+    // Two pre-existing files, one unreadable. Charging only the readable one
+    // would bill a live session for pre-#1327 history — the exact hard-stop the
+    // baseline exists to prevent. Neither is touched until a complete scan.
+    writeRollout(D_TODAY, 'aaa-readable', [{ ts: `${D_TODAY}T10:00:00.000Z`, input: 1_000_000 }]);
+    const locked = writeRollout(D_TODAY, 'zzz-locked', [{ ts: `${D_TODAY}T11:00:00.000Z`, input: 2_000_000 }]);
+    fs.chmodSync(locked, 0o000);
+    seed({ codexLedgerBaselinePending: true });
+    H.foldCodexCost();
+    expect(H.getState().costSpentUsd).toBe(0); // readable file NOT charged
+    expect(H.getState().codexLedgerBaselinePending).toBe(true); // still fully pending
+    expect(Object.keys(H.getState().codexLedger)).toHaveLength(0); // no watermark written either
+
+    // Once the locked file reads, the WHOLE history baselines at once, uncharged.
+    fs.chmodSync(locked, 0o644);
+    __resetCodexCostMemo();
+    H.foldCodexCost();
+    expect(H.getState().costSpentUsd).toBe(0);
+    expect(H.getState().codexLedgerBaselinePending).toBe(false);
+  });
+
+  it('charges the same token tuple on TWO different days (day is part of the dedup key)', () => {
+    seed({ costImmortal: true, costWindow: 'daily', costDayKey: D_TODAY });
+    // Identical (model, input, cached, output) on two days must NOT collapse to
+    // one charge — only a same-rollout fork replay should dedup.
+    writeRollout('2020-01-01', 'old', [{ ts: '2020-01-01T10:00:00.000Z', input: 1_000_000 }]);
+    writeRollout(D_TODAY, 'new', [{ ts: `${D_TODAY}T10:00:00.000Z`, input: 1_000_000 }]);
+    H.foldCodexCost();
+    // Today's $5 charged; the identical prior-day call recorded separately (not
+    // swallowed as a duplicate). Two distinct ledger keys prove both were seen.
+    expect(H.getState().costSpentUsd).toBeCloseTo(5, 6);
+    expect(Object.keys(H.getState().codexLedger)).toHaveLength(2);
+  });
+
+  it('unknown-day usage is charged to TODAY in a daily window, never silently deferred forever', () => {
+    seed({ costImmortal: true, costWindow: 'daily', costDayKey: D_TODAY });
+    // A token_count row with an unparseable timestamp → MISSING_DAY_KEY. Left as
+    // a non-today bucket it would be "recorded, not charged" on every future day
+    // too — permanently free. It must land on today instead.
+    const dir = path.join(home, 'sessions', ...D_TODAY.split('-'));
+    fs.mkdirSync(dir, { recursive: true });
+    const u = { input_tokens: 1_000_000, cached_input_tokens: 0, output_tokens: 0 };
+    fs.writeFileSync(
+      path.join(dir, `rollout-${D_TODAY}T10-00-00-noday.jsonl`),
+      [
+        JSON.stringify({ timestamp: `${D_TODAY}T00:00:00.000Z`, type: 'turn_context', payload: { model: 'gpt-5.6-sol' } }),
+        JSON.stringify({ timestamp: 'not-a-timestamp', type: 'event_msg', payload: { type: 'token_count', info: { total_token_usage: u, last_token_usage: u } } }),
+      ].join('\n'),
+    );
+    H.foldCodexCost();
+    expect(H.getState().costSpentUsd).toBeCloseTo(5, 6); // charged to today, not deferred
+  });
+
+  it('treats a corrupt (non-trailing) billing line as an INCOMPLETE scan', () => {
+    // A JSON parse failure on any line but the last is real corruption, not the
+    // benign mid-write race. Realistic corruption of a BILLING row still carries
+    // the "token_count" marker (it appears early in the JSON), so it survives
+    // the cheap pre-filter, reaches the parse, fails, and is flagged.
+    const dir = path.join(home, 'sessions', ...D_TODAY.split('-'));
+    fs.mkdirSync(dir, { recursive: true });
+    const u = { input_tokens: 1_000_000, cached_input_tokens: 0, output_tokens: 0 };
+    fs.writeFileSync(
+      path.join(dir, `rollout-${D_TODAY}T10-00-00-corrupt.jsonl`),
+      [
+        JSON.stringify({ timestamp: `${D_TODAY}T00:00:00.000Z`, type: 'turn_context', payload: { model: 'gpt-5.6-sol' } }),
+        // A garbled token_count row (truncated mid-object) that is NOT the last line.
+        '{"timestamp":"x","type":"event_msg","payload":{"type":"token_count","info":{"last_token_',
+        JSON.stringify({ timestamp: `${D_TODAY}T10:00:00.000Z`, type: 'event_msg', payload: { type: 'token_count', info: { total_token_usage: u, last_token_usage: u } } }),
+      ].join('\n'),
+    );
+    // A migration baseline must not complete off a corrupt scan.
+    seed({ codexLedgerBaselinePending: true });
+    H.foldCodexCost();
+    expect(H.getState().codexLedgerBaselinePending).toBe(true);
   });
 });
 

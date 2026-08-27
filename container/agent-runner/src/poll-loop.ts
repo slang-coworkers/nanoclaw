@@ -42,7 +42,7 @@ import {
 } from './db/session-state.js';
 import { getConfig } from './config.js';
 import { priceUsage } from './pricing.js';
-import { ledgerKey, scanCodexRollouts } from './codex-cost.js';
+import { MISSING_DAY_KEY, ledgerKey, scanCodexRollouts } from './codex-cost.js';
 import {
   formatMessages,
   extractRouting,
@@ -184,12 +184,50 @@ let turnSawMessageUsage = false;
 let turnMessageCostUsd = 0;
 let turnUnpricedCount = 0;
 let turnMissingIdCount = 0;
+// A genuine assistant message arrived with no `usage` at all (not just no id).
+// Forces the end-of-turn aggregate fallback so its spend is settled, not
+// silently dropped when it is mixed with usage-bearing messages (issue #1327).
+let turnNoUsageCount = 0;
+
+/** Record that an assistant message carried no per-message usage. */
+function noteMessageMissingUsage(): void {
+  if (!costEnabled) return;
+  turnNoUsageCount++;
+}
+
+/**
+ * Clear the per-turn accounting counters. Called from THREE places, not one:
+ * `recordTurnCost` (the happy path — a turn that reached its aggregate
+ * `usage` event), `resetCostForNewSession` (an explicit /clear or
+ * new_session), and defensively right before a new `query()` is built. The
+ * third call site is load-bearing: a turn that throws or gets aborted
+ * mid-stream after at least one `recordMessageCost()` call never reaches
+ * `recordTurnCost`, so without it the next turn would inherit a dead turn's
+ * partial state and mis-settle its own fallback. This state is also
+ * persisted/restored (see CostCapState), so an unreset leak survives a
+ * container restart too.
+ */
+function resetTurnAccountingState(): void {
+  turnSawMessageUsage = false;
+  turnMessageCostUsd = 0;
+  turnUnpricedCount = 0;
+  turnMissingIdCount = 0;
+  turnNoUsageCount = 0;
+}
 
 // --- Codex MCP-tool accounting (issue #1327) --------------------------------
 //
 // "<rollout file> <UTC day>" → USD already charged. See CostCapState.codexLedger
 // for why the ledger is per-file and per-day rather than one absolute total.
 let codexLedger: Record<string, number> = {};
+// Permanent (codexEventKey -> owning rollout file key) assignment, held for
+// the container's lifetime AND persisted (see persistCostCap/initCostTracking)
+// so a restart can't reopen the window by forgetting who already owns what.
+// Without this, ownership is implicitly "whichever file sorts first among the
+// files readable THIS scan" — which moves when a file's readability flips, and
+// a moved-to file has no ledger watermark, so the same call gets charged again
+// under its new owner. See codex-cost.ts priceCodexFiles for the full mechanism.
+let codexEventOwners = new Map<string, string>();
 // Absolute codex spend folded into costSpentUsd (observability / dashboard).
 let codexUsdCharged = 0;
 // True until the first fold when the session had NO persisted ledger — that fold
@@ -317,6 +355,7 @@ function initCostTracking(providerName: string): void {
   // brand-new session (no persisted row at all) owes no baseline — it has no
   // rollout files, and charging from its first codex call is exactly right.
   codexLedger = persisted?.codexLedger ? { ...persisted.codexLedger } : {};
+  codexEventOwners = persisted?.codexEventOwners ? new Map(Object.entries(persisted.codexEventOwners)) : new Map();
   codexLedgerBaselinePending = persisted
     ? (persisted.codexBaselinePending ?? persisted.codexLedger === undefined)
     : false;
@@ -368,10 +407,7 @@ function resetCostForNewSession(): void {
   // holding memory — drop it. Codex: re-baseline on the next fold so the
   // rollout files that exist right now are absorbed, not billed again.
   seenMessageIds.clear();
-  turnSawMessageUsage = false;
-  turnMessageCostUsd = 0;
-  turnUnpricedCount = 0;
-  turnMissingIdCount = 0;
+  resetTurnAccountingState();
   codexLedgerBaselinePending = true;
   codexUsdCharged = 0;
   costCapUsd = costAllotmentUsd;
@@ -390,6 +426,18 @@ function resetCostForNewSession(): void {
   costBudgetGen++;
   costEpisodeId = undefined;
   persistCostCap();
+  // Absorb the baseline SYNCHRONOUSLY, right now — not on the next natural
+  // fold (a turn boundary later). Deferring it left a window: the reset
+  // arms `codexLedgerBaselinePending` but the first turn of the fresh
+  // session can make real codex calls before that later fold ever runs, and
+  // when it finally does, `baselining` is still true so those genuinely-new
+  // calls get absorbed as "pre-existing history" and never charged. Folding
+  // here, before this function returns and the caller can start that first
+  // turn, means only rollout content that existed AT reset time can ever be
+  // baselined; anything after is a real, chargeable delta. If the scan is
+  // incomplete right now, foldCodexCost leaves the pending flag set and this
+  // degrades to the old deferred behavior for this one reset.
+  foldCodexCost();
 }
 
 /**
@@ -439,6 +487,7 @@ function persistCostCap(): void {
     // tells a later respawn this session has already been baselined.
     accountingVersion: COST_ACCOUNTING_VERSION,
     codexLedger,
+    ...(codexEventOwners.size > 0 ? { codexEventOwners: Object.fromEntries(codexEventOwners) } : {}),
     // Written on EVERY persist, including the one initCostTracking does before
     // the first fold — that is the point: a crash between init and the baseline
     // fold must leave the successor knowing the baseline is still owed.
@@ -462,14 +511,20 @@ function persistCostCap(): void {
  * Split out of the accrual path so every cost source (per-message Claude usage,
  * the result-derived fallback, the codex fold) rolls the day identically before
  * charging into it.
+ *
+ * Returns whether a rollover happened, so a caller that would otherwise only
+ * persist conditionally on a charge (`foldCodexCost`) still publishes the
+ * rescoped dayKey/spentUsd/codexUsd on an idle rollover — without this an idle
+ * session's DB row keeps publishing yesterday's figures until some unrelated
+ * later mutation happens to persist.
  */
-function maybeRollDailyWindow(): void {
+function maybeRollDailyWindow(): boolean {
   // IMMORTAL daily rollover: crossing into a new UTC day zeroes today's spend
   // and re-arms the once-per-day escalation. The lifetime window never rolls —
   // it resets only on a new_session batch or /clear (resetCostForNewSession).
-  if (costWindow !== 'daily') return;
+  if (costWindow !== 'daily') return false;
   const today = utcDayKey();
-  if (today === costDayKey) return;
+  if (today === costDayKey) return false;
   costDayKey = today;
   costSpentUsd = 0;
   costEscalatedAt = undefined;
@@ -490,6 +545,7 @@ function maybeRollDailyWindow(): void {
   // per-(file, day) ledger is what actually fences double-charging, and it is
   // deliberately NOT reset here.
   codexUsdCharged = 0;
+  return true;
 }
 
 /**
@@ -620,12 +676,12 @@ function recordMessageCost(event: Extract<ProviderEvent, { type: 'message_usage'
  *     the SDK's own `totalCostUsd` for a model the rate table doesn't know.
  *  2. Fully accounted per message — charge nothing more.
  *  3. DEGRADED: some message priced, but at least one message was undedupable
- *     (null id) or billed tokens at an unknown rate. Charge the residual
- *     `totalCostUsd - <already charged>` and log it. `totalCostUsd` carries the
- *     same block inflation, so the residual is an over-estimate — deliberately:
- *     in a path we cannot account exactly, erring toward charging more is the
- *     money-safe direction, and silently dropping the unpriced part is not
- *     acceptable.
+ *     (null id), billed tokens at an unknown rate, or arrived with no `usage`
+ *     object at all (`noUsage`). Charge the residual `totalCostUsd - <already
+ *     charged>` and log it. `totalCostUsd` carries the same block inflation, so
+ *     the residual is an over-estimate — deliberately: in a path we cannot
+ *     account exactly, erring toward charging more is the money-safe direction,
+ *     and silently dropping the unpriced part is not acceptable.
  */
 function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void {
   if (!costEnabled) return;
@@ -633,14 +689,16 @@ function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void 
   const messageCost = turnMessageCostUsd;
   const unpriced = turnUnpricedCount;
   const missingId = turnMissingIdCount;
+  const noUsage = turnNoUsageCount;
   // The turn is over either way — reset before any early return so a later turn
   // never inherits this one's state.
-  turnSawMessageUsage = false;
-  turnMessageCostUsd = 0;
-  turnUnpricedCount = 0;
-  turnMissingIdCount = 0;
+  resetTurnAccountingState();
 
-  if (sawMessages && unpriced === 0 && missingId === 0) return; // case 2
+  // A message with no usage at all (noUsage) makes the per-message stream
+  // incomplete even if every message that DID carry usage was priced cleanly,
+  // so it must NOT take the fully-accounted fast path — its spend lives only in
+  // the aggregate. Treat it as a degraded turn (case 3) so the fallback runs.
+  if (sawMessages && unpriced === 0 && missingId === 0 && noUsage === 0) return; // case 2
 
   // The pre-#1327 basis: reprice the turn's aggregate tokens at the configured
   // model. Block-inflated (that is the bug), so it is an OVER-estimate of the
@@ -670,7 +728,7 @@ function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void 
     const residual = Math.max(event.totalCostUsd, aggregateUsd) - messageCost;
     log(
       `Cost accounting DEGRADED this turn: ${unpriced} unpriced message(s), ${missingId} without a ` +
-        `message id. Charged $${messageCost.toFixed(4)} per-message` +
+        `message id, ${noUsage} without usage. Charged $${messageCost.toFixed(4)} per-message` +
         (residual > 0 ? ` + $${residual.toFixed(4)} residual from the turn total` : ' (no positive residual)'),
     );
     applyCostDelta(residual);
@@ -721,7 +779,7 @@ function foldCodexCost(): void {
   if (!costEnabled) return;
   let scan: ReturnType<typeof scanCodexRollouts>;
   try {
-    scan = scanCodexRollouts();
+    scan = scanCodexRollouts(undefined, codexEventOwners);
   } catch (err) {
     codexScanFailures++;
     log(
@@ -740,7 +798,7 @@ function foldCodexCost(): void {
     // the session on it would turn a benign accounting delay into an outage that
     // needs a human to clear.
     log(
-      `Codex cost scan INCOMPLETE: ${scan.errors} unreadable path(s) ` +
+      `Codex cost scan INCOMPLETE: ${scan.errors} unreadable/corrupt path(s) ` +
         `(${codexScanFailures} consecutive). Their spend is charged when they become readable.`,
     );
   } else {
@@ -758,17 +816,37 @@ function foldCodexCost(): void {
   }
 
   // Roll the day BEFORE deciding what "today" means for the daily window below.
-  maybeRollDailyWindow();
+  // Persist even on an idle rollover (no charge this fold) so the DB row stops
+  // publishing yesterday's dayKey/spentUsd/codexUsd the moment the day turns,
+  // not whenever some later unrelated mutation happens to persist.
+  const rolled = maybeRollDailyWindow();
 
-  // NEVER baseline off an incomplete scan: absorbing "what we could read" marks
-  // the session baselined while the unread files stay uncharged forever. Stay
-  // pending and retry on the next fold.
-  const baselining = codexLedgerBaselinePending && scan.errors === 0;
+  // NEVER mutate the ledger off an incomplete scan while a baseline is owed:
+  // charging only the readable files would both mark some history charged (via
+  // their watermark) AND leave the baseline flag pending, so the NEXT complete
+  // scan would re-absorb the readable files' totals as if new — but their
+  // watermark already reflects them, so nothing double-charges there, except
+  // the unreadable files' eventual absorption still races a session that has
+  // been paying real charges throughout, contradicting "baseline the WHOLE
+  // pre-existing history before charging anything." Stay fully pending instead:
+  // no ledger writes, no charges, retry next fold.
+  if (codexLedgerBaselinePending && scan.errors > 0) {
+    if (rolled) persistCostCap();
+    return;
+  }
+  const baselining = codexLedgerBaselinePending;
   let charged = 0;
   let recorded = 0;
   for (const file of scan.files) {
-    for (const [day, usd] of Object.entries(file.byDay)) {
-      const k = ledgerKey(file.key, day);
+    for (const [rawDay, usd] of Object.entries(file.byDay)) {
+      // Unknown-day usage (unparseable/absent timestamp) must not be
+      // permanently free: in a daily window `day` would never equal a real
+      // costDayKey on any future date either, so treating it like "prior-day,
+      // defer forever" (the branch below) silently drops it for good. Charge
+      // it to TODAY instead — the money-safe direction, matching how an
+      // unpriced model is charged at a default rate rather than $0.
+      const day = rawDay === MISSING_DAY_KEY ? (costDayKey ?? rawDay) : rawDay;
+      const k = ledgerKey(file.key, rawDay);
       const prev = codexLedger[k] ?? 0;
       const delta = usd - prev;
       if (delta <= 0) continue;
@@ -779,7 +857,8 @@ function foldCodexCost(): void {
       }
       // The immortal daily window deliberately discards prior-day spend
       // (initCostTracking drops a stale dayKey). A late scan must not smuggle
-      // yesterday into today, so record it and move on.
+      // yesterday into today, so record it and move on. Unknown-day usage was
+      // already rewritten to today's key above, so it never lands here.
       if (costWindow === 'daily' && day !== costDayKey) {
         recorded += delta;
         continue;
@@ -804,9 +883,10 @@ function foldCodexCost(): void {
   if (charged > 0) {
     log(`Codex cost: +$${charged.toFixed(4)} folded into the cap (codex total $${codexUsdCharged.toFixed(4)})`);
   }
-  // A baseline, a recorded-not-charged delta or a prune all mutate the ledger,
-  // so persist whenever anything moved; applyCostDelta already persisted on charge.
-  if (charged === 0 && (recorded > 0 || baselining || pruned > 0)) persistCostCap();
+  // A baseline, a recorded-not-charged delta, a rollover or a prune all mutate
+  // published state, so persist whenever anything moved; applyCostDelta
+  // already persisted on charge.
+  if (charged === 0 && (recorded > 0 || baselining || pruned > 0 || rolled)) persistCostCap();
 }
 
 /**
@@ -1255,6 +1335,8 @@ function applySetCeilingOverride(msg: MessageInRow, parsed: CostOverrideContent)
 export const __costCapTestHooks = {
   recordTurnCost,
   recordMessageCost,
+  noteMessageMissingUsage,
+  resetTurnAccountingState,
   foldCodexCost,
   computeCostStatus,
   costCeilingRemainingUsd,
@@ -1290,6 +1372,8 @@ export const __costCapTestHooks = {
     turnMessageCostUsd,
     turnUnpricedCount,
     turnMissingIdCount,
+    turnNoUsageCount,
+    codexEventOwners: Object.fromEntries(codexEventOwners),
   }),
   setState: (p: {
     costEnabled?: boolean;
@@ -1318,6 +1402,8 @@ export const __costCapTestHooks = {
     turnMessageCostUsd?: number;
     turnUnpricedCount?: number;
     turnMissingIdCount?: number;
+    turnNoUsageCount?: number;
+    codexEventOwners?: Record<string, string>;
   }): void => {
     if ('costEnabled' in p) costEnabled = p.costEnabled!;
     if ('costImmortal' in p) costImmortal = p.costImmortal!;
@@ -1348,6 +1434,8 @@ export const __costCapTestHooks = {
     if ('turnMessageCostUsd' in p) turnMessageCostUsd = p.turnMessageCostUsd!;
     if ('turnUnpricedCount' in p) turnUnpricedCount = p.turnUnpricedCount!;
     if ('turnMissingIdCount' in p) turnMissingIdCount = p.turnMissingIdCount!;
+    if ('turnNoUsageCount' in p) turnNoUsageCount = p.turnNoUsageCount!;
+    if ('codexEventOwners' in p) codexEventOwners = new Map(Object.entries(p.codexEventOwners!));
   },
 };
 
@@ -1871,6 +1959,11 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     // Pick up destination changes the host wrote mid-session so the agent
     // sees new coworkers without requiring a container restart.
     refreshDestinations();
+
+    // Defensive reset before a NEW query starts — see resetTurnAccountingState's
+    // doc comment for why this call site matters (a thrown/aborted turn never
+    // reaches recordTurnCost's own reset).
+    resetTurnAccountingState();
 
     const query = config.provider.query({
       prompt,
@@ -2467,6 +2560,14 @@ export async function processQuery(
       // stream emits one message per content block, all repeating one usage.
       if (event.type === 'message_usage') {
         recordMessageCost(event);
+      }
+
+      // A genuine assistant message the provider couldn't price per-message
+      // (no `usage` object). Mark the turn degraded so recordTurnCost settles
+      // from the aggregate instead of skipping the fallback — otherwise this
+      // message's spend, mixed with priced ones, would be free (issue #1327).
+      if (event.type === 'message_missing_usage') {
+        noteMessageMissingUsage();
       }
 
       if (event.type === 'usage') {

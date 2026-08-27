@@ -141,9 +141,17 @@ export function priceCodexEvent(e: CodexUsageEvent): number {
  * Measured on prod: charging both over-counts by 13.7% and 19.2% on the two of
  * thirty sampled sessions that had forked rollouts. ccusage de-duplicates by the
  * usage tuple, and doing the same reproduced its figure EXACTLY on all thirty.
+ *
+ * `day` is part of the key, not just a payload field: a fork replay happens
+ * within the same short-lived rollout (same UTC day almost always), so
+ * including it costs nothing against the fork case, but WITHOUT it two
+ * genuinely distinct calls on different days that happen to share a token
+ * tuple would collide and the later one would silently vanish — permanently,
+ * since a scan is recomputed from scratch every time and the earlier day
+ * always sorts first.
  */
 export function codexEventKey(e: CodexUsageEvent): string {
-  return `${normalizeCodexModel(e.rawModel)}|${e.input}|${e.cached}|${e.output}`;
+  return `${normalizeCodexModel(e.rawModel)}|${e.day}|${e.input}|${e.cached}|${e.output}`;
 }
 
 /** One rollout file's spend, partitioned by the UTC day it was billed on. */
@@ -192,12 +200,32 @@ function dayKeyOf(ts: unknown): string {
  *
  * Tracks the model from the most recent preceding `turn_context`: a rollout CAN
  * switch models mid-file, and pricing every call under one model would be wrong.
+ *
+ * `corrupted` distinguishes a genuinely bad line from the ordinary case of
+ * codex still writing the file: only the LAST non-empty line of a rollout can
+ * be a benign in-flight write (the next scan re-reads it once the write
+ * finishes), so a parse failure on any EARLIER line is real corruption, not a
+ * race — the caller must not treat that scan as complete for baselining or
+ * enforcement purposes.
  */
-export function parseCodexRollout(content: string, key: string): { key: string; events: CodexUsageEvent[] } {
+export function parseCodexRollout(
+  content: string,
+  key: string,
+): { key: string; events: CodexUsageEvent[]; corrupted: boolean } {
   const events: CodexUsageEvent[] = [];
   let rawModel = '';
+  const lines = content.split('\n');
+  let lastNonEmpty = -1;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (lines[i]) {
+      lastNonEmpty = i;
+      break;
+    }
+  }
+  let corrupted = false;
 
-  for (const line of content.split('\n')) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     if (!line) continue;
     // Cheap pre-filter: the vast majority of rollout lines are response_items.
     if (line.indexOf('"turn_context"') < 0 && line.indexOf('"token_count"') < 0) continue;
@@ -205,7 +233,10 @@ export function parseCodexRollout(content: string, key: string): { key: string; 
     try {
       row = JSON.parse(line) as typeof row;
     } catch {
-      continue; // truncated tail while codex is mid-write — the next scan sees it
+      // A failure on the file's last line is codex mid-write — benign, self-heals
+      // next scan. Anywhere else is real corruption: flag it.
+      if (i !== lastNonEmpty) corrupted = true;
+      continue;
     }
     const payload = row.payload;
     if (!payload) continue;
@@ -227,24 +258,34 @@ export function parseCodexRollout(content: string, key: string): { key: string; 
     if (input === 0 && output === 0) continue;
     events.push({ day: dayKeyOf(row.timestamp) || MISSING_DAY_KEY, rawModel, input, cached, output });
   }
-  return { key, events };
+  return { key, events, corrupted };
 }
 
 /**
  * Price parsed files into per-file, per-UTC-day USD, de-duplicating calls ACROSS
  * files.
  *
- * `files` must be in a STABLE order (the scanner sorts by path, which is
- * chronological because the rollout timestamp is in the filename). The first
- * file to report a call keeps it, so the original thread is charged and its
- * forked replay is not — and the assignment does not move between scans, which
- * is what lets the caller hold a per-file watermark.
+ * `owners` is the PERMANENT record of which file's rollout won each event key,
+ * first-seen-ever — not a fresh Set rebuilt from this call's file list. Ownership
+ * by "first in this scan's sorted+readable order" is unstable: if the file that
+ * currently owns a key is unreadable on one scan, a later-sorted file claims it
+ * and gets a ledger watermark for it; the moment the true owner becomes readable
+ * again it would re-sort first and re-claim the key, and since it has no
+ * watermark of its own that call is charged a second time (while the original
+ * claimant's total silently drops, but a `delta <= 0` never reverses a charge).
+ * Persisting the owner assignment across calls closes that: once a key is
+ * claimed, it stays claimed by that file for the session's lifetime, so a
+ * readability flip cannot move ownership, and the caller's per-file watermark
+ * stays valid indefinitely. Pass a fresh Map for a one-off/test computation
+ * that doesn't need cross-call stability.
  */
-export function priceCodexFiles(files: Array<{ key: string; events: CodexUsageEvent[] }>): {
+export function priceCodexFiles(
+  files: Array<{ key: string; events: CodexUsageEvent[] }>,
+  owners: Map<string, string> = new Map(),
+): {
   files: CodexFileCost[];
   unpricedModels: string[];
 } {
-  const seen = new Set<string>();
   const unpricedModels = new Set<string>();
   const out: CodexFileCost[] = [];
   for (const f of files) {
@@ -252,8 +293,12 @@ export function priceCodexFiles(files: Array<{ key: string; events: CodexUsageEv
     let totalUsd = 0;
     for (const e of f.events) {
       const k = codexEventKey(e);
-      if (seen.has(k)) continue;
-      seen.add(k);
+      const owner = owners.get(k);
+      if (owner === undefined) {
+        owners.set(k, f.key);
+      } else if (owner !== f.key) {
+        continue; // permanently owned by a different file
+      }
       if (e.rawModel && !normalizeCodexModel(e.rawModel)) unpricedModels.add(e.rawModel);
       const usd = priceCodexEvent(e);
       if (usd <= 0) continue;
@@ -280,7 +325,7 @@ export function codexHome(): string {
 interface MemoEntry {
   size: number;
   mtimeMs: number;
-  parsed: { key: string; events: CodexUsageEvent[] };
+  parsed: { key: string; events: CodexUsageEvent[]; corrupted: boolean };
 }
 // Caches the PARSE (per file, deterministic), not the pricing — pricing depends
 // on what earlier files claimed, so it has to be redone for the whole session
@@ -331,10 +376,15 @@ function listRollouts(sessionsDir: string): { paths: string[]; errors: number } 
  *
  * Unchanged files are served from a `(size, mtimeMs)` memo, so a steady-state
  * scan is one `stat` per file.
+ *
+ * `owners` is the persistent cross-scan ownership map — see `priceCodexFiles`.
+ * The caller must hold this across calls (same instance passed every fold);
+ * a fresh Map here would reopen the readability-flip double-charge it exists
+ * to close.
  */
-export function scanCodexRollouts(home: string = codexHome()): CodexScan {
+export function scanCodexRollouts(home: string = codexHome(), owners: Map<string, string> = new Map()): CodexScan {
   const sessionsDir = path.join(home, 'sessions');
-  const parsed: Array<{ key: string; events: CodexUsageEvent[] }> = [];
+  const parsed: Array<{ key: string; events: CodexUsageEvent[]; corrupted: boolean }> = [];
   const listed = listRollouts(sessionsDir);
   let errors = listed.errors;
   // Sorted by path, which is chronological (`rollout-<ISO timestamp>-<uuid>`)
@@ -349,22 +399,28 @@ export function scanCodexRollouts(home: string = codexHome()): CodexScan {
       continue;
     }
     const hit = memo.get(p);
+    let entry: { key: string; events: CodexUsageEvent[]; corrupted: boolean };
     if (hit && hit.size === st.size && hit.mtimeMs === st.mtimeMs) {
-      parsed.push(hit.parsed);
-      continue;
+      entry = hit.parsed;
+    } else {
+      let content: string;
+      try {
+        content = fs.readFileSync(p, 'utf-8');
+      } catch {
+        errors++;
+        continue;
+      }
+      entry = parseCodexRollout(content, key);
+      memo.set(p, { size: st.size, mtimeMs: st.mtimeMs, parsed: entry });
     }
-    let content: string;
-    try {
-      content = fs.readFileSync(p, 'utf-8');
-    } catch {
-      errors++;
-      continue;
-    }
-    const entry = parseCodexRollout(content, key);
-    memo.set(p, { size: st.size, mtimeMs: st.mtimeMs, parsed: entry });
+    // A corrupted file (a parse failure on a non-trailing line) is NOT the
+    // benign in-flight-write case — count it toward errors so the caller
+    // treats this scan as incomplete rather than a session that genuinely
+    // has less usage in that file than it truly billed.
+    if (entry.corrupted) errors++;
     parsed.push(entry);
   }
-  const { files, unpricedModels } = priceCodexFiles(parsed);
+  const { files, unpricedModels } = priceCodexFiles(parsed, owners);
   return { files, unpricedModels, errors };
 }
 

@@ -291,6 +291,18 @@ export type ProviderEvent =
       isSubagent: boolean;
     }
   /**
+   * A genuine assistant message the provider could NOT attach per-message
+   * `usage` to. Distinct from `message_usage` with a null id (usage present,
+   * id absent): here there is no usage at all, so there is nothing to price
+   * per-message. The consumer must treat the turn as degraded and settle from
+   * the end-of-turn aggregate `usage` event — otherwise a turn that mixes
+   * usage-bearing and usage-less assistant messages would look fully accounted
+   * (some message priced, no explicit gap) and skip the fallback, making the
+   * usage-less message's spend free. Empirically the Claude SDK attaches usage
+   * to every assistant message, so this is a money-safe guard, not a hot path.
+   */
+  | { type: 'message_missing_usage'; isSubagent: boolean }
+  /**
    * Liveness signal. Providers MUST yield this on every underlying SDK
    * event (tool call, thinking, partial message, anything) so the
    * poll-loop's idle timer stays honest during long tool runs.

@@ -936,6 +936,12 @@ export class ClaudeProvider implements AgentProvider {
               ephemeral5mInputTokens: mu.cache_creation?.ephemeral_5m_input_tokens ?? 0,
               isSubagent,
             };
+          } else {
+            // A genuine assistant message with no `usage` object. Signal it so
+            // the poll-loop treats the turn as degraded and settles from the
+            // aggregate — otherwise, mixed with usage-bearing messages, this
+            // one's spend would be invisible and free (issue #1327).
+            yield { type: 'message_missing_usage', isSubagent };
           }
         } else if (message.type === 'result') {
           // `result` text exists only on subtype:"success"; error subtypes
