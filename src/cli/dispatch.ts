@@ -22,6 +22,7 @@ import type { PendingApproval } from '../types.js';
 import type { CallerContext, ErrorCode, RequestFrame, ResponseFrame } from './frame.js';
 import { localizeIsoTimestamps } from './format.js';
 import { getResource } from './crud.js';
+import { drainPostResponseEffects } from './post-response.js';
 import { listVerbs, renderVerbHelp } from './help-render.js';
 import { commandGuard, listCommands, lookup } from './registry.js';
 
@@ -107,6 +108,16 @@ export async function dispatch(
         (req.command === 'sessions-get' || req.command === 'sessions-history') &&
         req.args.id
       ) {
+        const s = await getSession(req.args.id as string);
+        if (!s || s.agent_group_id !== ctx.agentGroupId) {
+          return err(req.id, 'handler-error', `session not found: ${req.args.id}`);
+        }
+      }
+
+      // Same oracle-safe guard for sessions-messages. Custom ops bypass the
+      // post-handler scopeField filter, so this pre-check is the only thing
+      // keeping a group-scoped agent from reading another group's transcript.
+      if (cmd.resource === 'sessions' && req.command === 'sessions-messages' && req.args.id) {
         const s = await getSession(req.args.id as string);
         if (!s || s.agent_group_id !== ctx.agentGroupId) {
           return err(req.id, 'handler-error', `session not found: ${req.args.id}`);
@@ -241,6 +252,11 @@ registerApprovalHandler('cli_command', async ({ payload, approval, notify }) => 
   } else {
     await notify(`Your \`ncl ${frame.command}\` request was approved but failed: ${response.error.message}`);
   }
+  // Approved replays reach handlers the same way a direct call does, so they
+  // can queue the same deferred effects. Drain after `notify`, for the same
+  // reason the other transports drain after their write: a container restart
+  // must not pre-empt the answer that explains it.
+  drainPostResponseEffects();
 });
 
 function parseCallerContext(value: unknown): CallerContext | undefined {

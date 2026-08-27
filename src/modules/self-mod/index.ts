@@ -25,6 +25,7 @@
  * action" and drops them. Admin never sees a card; nothing changes.
  */
 import { reenterGuardedDeliveryAction, registerDeliveryAction } from '../../delivery.js';
+import { unguarded } from '../../guard/index.js';
 import { notifyAgent, registerApprovalHandler } from '../approvals/index.js';
 import { applyAddMcpServer, applyInstallPackages } from './apply.js';
 import { selfModAddMcpServer, selfModInstallPackages } from './guard.js';
@@ -34,6 +35,7 @@ import {
   validateAddMcpServer,
   validateInstallPackages,
 } from './request.js';
+import { handleRequestRestart } from './restart.js';
 
 registerDeliveryAction('install_packages', applyInstallPackages, {
   guardAction: selfModInstallPackages,
@@ -47,6 +49,13 @@ registerDeliveryAction('add_mcp_server', applyAddMcpServer, {
   requestHold: requestAddMcpServerHold,
   onDeny: (_content, session, reason) => notifyAgent(session, `add_mcp_server denied: ${reason}`),
 });
+// nv-main fork action: request_restart needs no admin approval — an agent
+// restarting its own container is not a privilege escalation.
+registerDeliveryAction(
+  'request_restart',
+  handleRequestRestart,
+  unguarded('agent restarting its own container is not a privilege escalation'),
+);
 
 registerApprovalHandler('install_packages', reenterGuardedDeliveryAction('install_packages'));
 registerApprovalHandler('add_mcp_server', reenterGuardedDeliveryAction('add_mcp_server'));

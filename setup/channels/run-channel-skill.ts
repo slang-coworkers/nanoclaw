@@ -166,7 +166,8 @@ async function applyCompanionSkills(
   }
 }
 
-interface WireArgs {
+/** Exported so tests can type their captured-`wire` arrays against the real shape. */
+export interface WireArgs {
   channel: string;
   userId: string;
   platformId: string;

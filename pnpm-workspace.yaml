@@ -3,5 +3,17 @@ onlyBuiltDependencies:
   - protobufjs
   - sharp
 
-pnpm:
-  minimumReleaseAge: 4320
+# Three-day quarantine: refuse to resolve any version published less than 4320
+# minutes ago, so a compromised same-day release cannot enter the tree.
+#
+# THIS KEY MUST STAY TOP-LEVEL. It was previously nested under a `pnpm:` key,
+# which the pinned pnpm 10.33.0 ignores — silently, with no warning of any kind
+# — so the quarantine this repo documents was not actually in force. Verified
+# against pnpm 10.33.0:
+#
+#   top-level    -> ERR_PNPM_NO_MATURE_MATCHING_VERSION (enforced)
+#   under `pnpm:` -> install succeeds, no warning (ignored)
+#
+# scripts/check-release-age-policy.sh runs that same probe in CI, so the setting
+# cannot go quiet again.
+minimumReleaseAge: 4320

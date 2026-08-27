@@ -103,7 +103,13 @@ export interface InboundMailbox {
   markDelivered(messageOutId: string, platformMessageId: string | null): void;
   markDeliveryFailed(messageOutId: string): void;
   getInboundSourceSessionId(messageId: string): string | null;
-  getMostRecentPeerSourceSessionId(peerAgentGroupId: string): string | null;
+  /**
+   * `threadId` scopes the peer-affinity fallback to one thread. Omitting it
+   * resolves to most-recent-overall, which mis-routes when a parent dispatches
+   * to the same peer agent group on two threads — see the SQLite
+   * implementation's header for the multi-thread rationale.
+   */
+  getMostRecentPeerSourceSessionId(peerAgentGroupId: string, threadId?: string | null): string | null;
   insertTask(task: Task): Promise<void>;
   cancelTask(taskId?: string): number;
   pauseTask(taskId: string): number;

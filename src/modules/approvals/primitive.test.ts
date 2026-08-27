@@ -111,7 +111,12 @@ function lastNotifyText(): string | undefined {
 }
 
 describe('requestApproval delivery failure', () => {
-  it('removes the pending approval row and notifies the agent when delivery throws', async () => {
+  it('retains the pending approval row for the dashboard and tells the agent when DM delivery throws', async () => {
+    // nv-main fork behavior (overrides upstream's delete-on-failure): this
+    // install has a dashboard that surfaces pending approval rows, so a failed
+    // DM delivery RETAINS the row (an admin can still act on it from the
+    // dashboard) rather than deleting it. The agent is told the card is pending
+    // dashboard review, not that it failed outright.
     const failingAdapter: ChannelDeliveryAdapter = {
       async deliver() {
         throw new Error('platform down');
@@ -128,9 +133,9 @@ describe('requestApproval delivery failure', () => {
       question: 'Approve the thing?',
     });
 
-    // No orphan: the row created before the delivery attempt is gone.
-    expect(await getPendingApprovalsByAction('test_action')).toHaveLength(0);
-    expect(lastNotifyText()).toMatch(/test_action failed: could not deliver/);
+    // Row retained for the dashboard fallback.
+    expect(await getPendingApprovalsByAction('test_action')).toHaveLength(1);
+    expect(lastNotifyText()).toMatch(/awaiting admin review via dashboard/);
   });
 
   it('keeps the pending approval row when delivery succeeds', async () => {
