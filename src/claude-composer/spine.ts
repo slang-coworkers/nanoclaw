@@ -10,6 +10,7 @@ import path from 'path';
 import { readCoworkerTypes, readSkillCatalog } from './registry.js';
 import { injectOverlays, resolveCoworkerManifest } from './resolve.js';
 import type { CoworkerManifest, CoworkerTypeEntry, SkillMeta } from './types.js';
+import { COMPOSED_DOC_MARKER } from '../group-persona.js';
 
 function indentBlock(text: string, spaces: number): string {
   const pad = ' '.repeat(spaces);
@@ -574,7 +575,7 @@ export function renderCoworkerSpine(
     // Section boundaries are H2 headings inside each fragment — no `---`
     // separators. Horizontal rules between every fragment created visual
     // noise without adding structure that the headings didn't already carry.
-    return bodies.join('\n\n').trimEnd() + '\n';
+    return renderDocument(bodies);
   }
 
   const parts: string[] = [];
@@ -860,7 +861,25 @@ export function renderCoworkerSpine(
     parts.push(normalizeFragment(extraInstructions.trim(), 3));
   }
 
-  return parts.join('\n\n').trimEnd() + '\n';
+  return renderDocument(parts);
+}
+
+/**
+ * The single place a composed document becomes a string. Both the flat and the
+ * inherited path route through here so neither can lose the marker — `main` is
+ * `flat: true` and returns early, which is exactly how the first attempt at this
+ * missed the admin orchestrator.
+ *
+ * The marker makes the document self-identifying as composer output. Two
+ * consumers depend on it: the persona migration in `container-runner.ts` (a
+ * composed document must never be mistaken for hand-written standing
+ * instructions) and `.claude/skills/migrate-memory` (generated boilerplate vs
+ * memory). It deliberately carries no timestamp — the composed text feeds a
+ * sha256 staleness comparison, so a clock would make every spawn look stale.
+ */
+function renderDocument(parts: string[]): string {
+  const header = `${COMPOSED_DOC_MARKER} — do not edit; edit instructions.prepend.md -->`;
+  return [header, ...parts].join('\n\n').trimEnd() + '\n';
 }
 
 // Emit a gate block. Uses stage-aware rendering when the overlay body

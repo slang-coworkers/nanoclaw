@@ -7,6 +7,28 @@ import { log } from './log.js';
 export const PERSONA_PREPEND_FILE = 'instructions.prepend.md';
 
 /**
+ * Marker opening every composed group document.
+ *
+ * `CLAUDE.md` is the *output* of composition — spine fragments, workflows,
+ * skills, and `instructions.prepend.md` merged together. `instructions.prepend.md`
+ * is one *input* to it. The two are not interchangeable, and feeding a composed
+ * document back in as persona compounds it on every spawn.
+ *
+ * `.claude/skills/migrate-memory/SKILL.md` already keys generated-vs-authored off
+ * this marker, so the same string is what the writer must emit.
+ */
+export const COMPOSED_DOC_MARKER = '<!-- Composed at spawn';
+
+/**
+ * True when a document was produced by the composer rather than written by a
+ * human. Only the head is inspected: the marker is the first line by contract,
+ * and a persona file can legitimately mention it further down.
+ */
+export function isComposedDocument(content: string): boolean {
+  return content.slice(0, 400).includes(COMPOSED_DOC_MARKER);
+}
+
+/**
  * Create a group's standing instructions without following or replacing an
  * existing path. Returns false when the content is empty or the path exists.
  */

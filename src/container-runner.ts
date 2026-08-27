@@ -59,7 +59,7 @@ import { GROUP_FOLDER_LABEL, labelValueLegal, specInvalid } from './drivers/type
 import type { ContainerSpec, MountSpec, SessionFailure, SessionSpec } from './drivers/types.js';
 import { getGatewayProvider, type GatewayContribution } from './gateway-providers/index.js';
 import { initGroupFilesystem } from './group-init.js';
-import { PERSONA_PREPEND_FILE, readGroupPersona } from './group-persona.js';
+import { PERSONA_PREPEND_FILE, isComposedDocument, readGroupPersona } from './group-persona.js';
 import { getAgentMailbox } from './mailbox/index.js';
 import { stopTypingRefresh } from './modules/typing/index.js';
 import { log } from './log.js';
@@ -349,8 +349,29 @@ async function composeCoworkerClaudeMd(agentGroup: AgentGroup): Promise<void> {
     !fs.existsSync(personaPath) &&
     fs.existsSync(claudeMdPath)
   ) {
-    fs.renameSync(claudeMdPath, personaPath);
-    log.info('Auto-migrated CLAUDE.md to instructions.prepend.md', { folder: agentGroup.folder });
+    // Only a HAND-WRITTEN document is a persona. A composed CLAUDE.md is this
+    // function's own output — spine fragments, workflows, skills and
+    // instructions.prepend.md merged — so migrating one into the persona input
+    // folds the whole document into the next composition, and again on the spawn
+    // after that. Reachable whenever an untyped group loses its persona file
+    // while a composed CLAUDE.md remains.
+    let composed = true;
+    try {
+      composed = isComposedDocument(fs.readFileSync(claudeMdPath, 'utf-8'));
+    } catch (err) {
+      // Unreadable is not migratable: leave it for the composer to overwrite
+      // rather than rename a document we could not classify.
+      log.warn('Could not read CLAUDE.md to classify it; skipping persona migration', {
+        folder: agentGroup.folder,
+        err,
+      });
+    }
+    if (composed) {
+      log.debug('CLAUDE.md is composer output, not a persona — not migrating', { folder: agentGroup.folder });
+    } else {
+      fs.renameSync(claudeMdPath, personaPath);
+      log.info('Auto-migrated CLAUDE.md to instructions.prepend.md', { folder: agentGroup.folder });
+    }
   }
 
   if (!agentGroup.coworker_type) {

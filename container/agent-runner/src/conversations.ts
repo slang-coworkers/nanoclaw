@@ -10,8 +10,9 @@ import { TIMEZONE, formatLocalStamp } from './timezone.js';
  * conversations/ folder in your workspace holds searchable transcripts of past
  * sessions with this group". That was only true under Claude: the archive was
  * produced by `ClaudeProvider`'s PreCompact hook, which parses the Claude Agent
- * SDK's own `.jsonl`. The other four providers never produced the folder at
- * all, so the contract pointed them at a directory that did not exist.
+ * SDK's own `.jsonl`. The other three registered providers (`codex`,
+ * `opencode`, `pi` — see `providers/index.ts`) produced no folder at all, so
+ * the contract pointed them at a directory that did not exist.
  *
  * Archiving per exchange in the poll loop fixes that by construction — the
  * `prompt`/`result` pair exists for every provider, so no provider has to opt
