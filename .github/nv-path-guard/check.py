@@ -20,11 +20,42 @@ Exit codes:
 """
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 from ownership import OwnershipError, build_spec, load_patterns
+
+
+def _blob(ref: str, path: str) -> str | None:
+    """Blob sha of `path` at `ref`, or None when absent there."""
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", f"{ref}:{path}"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return out.stdout.strip() if out.returncode == 0 else None
+    except OSError:
+        return None
+
+
+def _is_sync_branch() -> bool:
+    """True when the PR head is a sync-upstream branch.
+
+    Read from the event payload, never from the head ref's own content: a
+    branch cannot name itself into an exemption it does not qualify for, since
+    every forgiven file is still content-checked against nv-main.
+    """
+    return (os.environ.get("HEAD_REF") or "").startswith("sync/upstream-")
+
+
+def _matches_nv_main(path: str, head: str) -> bool:
+    ours, theirs = _blob(head, path), _blob("origin/nv-main", path)
+    # Absent on both = the leaf honored a nv-main deletion.
+    return ours == theirs
 
 
 def main() -> int:
@@ -78,6 +109,24 @@ def main() -> int:
         return 2
 
     violations = [f for f in changed if f not in owned]
+
+    # A leaf's upstream-sync branch merges origin/nv-main first, so it carries
+    # nv-main-owned files it does not own. That is the reconciliation working:
+    # nv-main is canonical for those paths, so importing its exact content is
+    # not the leaf editing something it has no claim to.
+    #
+    # Forgiven ONLY when the blob matches nv-main byte-for-byte (or is absent on
+    # both sides, i.e. the leaf honored a nv-main deletion). A leaf-authored edit
+    # to an unowned path still differs from nv-main and still fails, which is the
+    # case this guard exists for.
+    if violations and _is_sync_branch():
+        reconciled = [f for f in violations if _matches_nv_main(f, head)]
+        if reconciled:
+            print(
+                f"::notice::sync branch: {len(reconciled)} unowned file(s) match "
+                f"origin/nv-main exactly (reconciliation, not an edit)"
+            )
+            violations = [f for f in violations if f not in set(reconciled)]
 
     if violations:
         print(
