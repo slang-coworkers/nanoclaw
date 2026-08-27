@@ -2365,6 +2365,16 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
   // per-agent-group config. The poll-loop clamps to a 60s floor.
   if (process.env.NANOCLAW_IDLE_END_MS) env.NANOCLAW_IDLE_END_MS = process.env.NANOCLAW_IDLE_END_MS;
 
+  // Disable the age-based transcript-rotation trigger by default. Past this
+  // age, maybeRotateContinuation() renames the live .jsonl to
+  // `.rotated-<ts>` — invisible to cost accounting (dashboard + fleet
+  // reporting only glob *.jsonl), so a "safe" rotation was silently deleting
+  // history from cost's point of view. Size-based rotation (12MB default)
+  // still governs, so a genuinely runaway transcript still rotates.
+  // Operator-overridable via CLAUDE_TRANSCRIPT_ROTATE_AGE_DAYS in host env.
+  // See issue #1327.
+  env.CLAUDE_TRANSCRIPT_ROTATE_AGE_DAYS = process.env.CLAUDE_TRANSCRIPT_ROTATE_AGE_DAYS ?? '0';
+
   // Bypass proxy for host-local traffic (dashboard hooks, MCP proxy) only.
   // NOTE: discord.com must NOT be bypassed. The container-side slang-mcp
   // Discord tools never receive DISCORD_BOT_TOKEN via env (it's not in the

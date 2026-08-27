@@ -10,9 +10,20 @@ import { log } from './log.js';
 import { providerProvidesAgentSurfaces } from './providers/provider-container-registry.js';
 import type { AgentGroup } from './types.js';
 
+// Effectively "never" — Claude Code's own cleanupPeriodDays setting prunes
+// ~/.claude/projects/*.jsonl at CLI startup (default 30 when unset). Every
+// active group was silently losing its own transcript history to this on a
+// rolling 30-day window — the file NanoClaw's own cost accounting (dashboard
+// + fleet ccusage reporting) reads as its source of truth. Proven on prod:
+// oldest-surviving-transcript date tracked (today − 30d) exactly, across
+// every busy group; idle groups (whose `claude` never restarts to run the
+// sweep) kept full history back to April. See issue #1327.
+const CLEANUP_PERIOD_DAYS_NEVER = 3650;
+
 const DEFAULT_SETTINGS_JSON =
   JSON.stringify(
     {
+      cleanupPeriodDays: CLEANUP_PERIOD_DAYS_NEVER,
       sandbox: {
         enabled: false,
       },
@@ -219,6 +230,7 @@ export async function initGroupFilesystem(
       initialized.push('settings.json');
     } else {
       ensurePreCompactHook(settingsFile, initialized);
+      ensureCleanupPeriodDays(settingsFile, initialized);
     }
 
     // mtime-based mirror: re-copy any skill whose source tree is newer than
@@ -399,6 +411,30 @@ function ensurePreCompactHook(settingsFile: string, initialized: string[]): void
 
     fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
     initialized.push('settings.json (added PreCompact hook)');
+  } catch {
+    // Don't break init if settings.json is malformed — it'll use whatever's there.
+  }
+}
+
+/**
+ * Patch an existing settings.json to raise cleanupPeriodDays if it's absent
+ * or still at a value that lets Claude Code's own startup sweep prune
+ * transcript history (default 30 days when unset). Runs on every group init
+ * (every wake) so pre-existing groups self-heal without a restart-only
+ * migration. See issue #1327 — this is the fix for the fleet-wide
+ * transcript-loss bug, not a preference.
+ */
+export function ensureCleanupPeriodDays(settingsFile: string, initialized: string[]): void {
+  try {
+    const raw = fs.readFileSync(settingsFile, 'utf-8');
+    const settings = JSON.parse(raw);
+
+    const current = settings.cleanupPeriodDays;
+    if (typeof current === 'number' && current >= CLEANUP_PERIOD_DAYS_NEVER) return;
+
+    settings.cleanupPeriodDays = CLEANUP_PERIOD_DAYS_NEVER;
+    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+    initialized.push(`settings.json (cleanupPeriodDays -> ${CLEANUP_PERIOD_DAYS_NEVER})`);
   } catch {
     // Don't break init if settings.json is malformed — it'll use whatever's there.
   }

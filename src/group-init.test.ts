@@ -4,7 +4,7 @@ import path from 'path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { refreshMirror } from './group-init.js';
+import { ensureCleanupPeriodDays, refreshMirror } from './group-init.js';
 
 describe('refreshMirror', () => {
   let tmp: string;
@@ -85,5 +85,68 @@ describe('refreshMirror', () => {
 
     expect(refreshMirror(src, dst)).toBe(true);
     expect(fs.readFileSync(path.join(dst, 'sub', 'nested.md'), 'utf8')).toBe('v2');
+  });
+});
+
+describe('ensureCleanupPeriodDays', () => {
+  let tmp: string;
+
+  beforeEach(() => {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-settings-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  function settingsPath(): string {
+    return path.join(tmp, 'settings.json');
+  }
+
+  it('adds cleanupPeriodDays=3650 to a pre-existing settings.json that lacks it', () => {
+    const file = settingsPath();
+    fs.writeFileSync(file, JSON.stringify({ sandbox: { enabled: false } }, null, 2));
+    const initialized: string[] = [];
+
+    ensureCleanupPeriodDays(file, initialized);
+
+    const written = JSON.parse(fs.readFileSync(file, 'utf8'));
+    expect(written.cleanupPeriodDays).toBe(3650);
+    expect(written.sandbox).toEqual({ enabled: false }); // preserves existing keys
+    expect(initialized).toEqual(['settings.json (cleanupPeriodDays -> 3650)']);
+  });
+
+  it('raises a lower existing value (e.g. an explicit 30) up to 3650', () => {
+    const file = settingsPath();
+    fs.writeFileSync(file, JSON.stringify({ cleanupPeriodDays: 30 }, null, 2));
+    const initialized: string[] = [];
+
+    ensureCleanupPeriodDays(file, initialized);
+
+    expect(JSON.parse(fs.readFileSync(file, 'utf8')).cleanupPeriodDays).toBe(3650);
+    expect(initialized).toHaveLength(1);
+  });
+
+  it('is a no-op when the value is already >= 3650 (idempotent, no rewrite)', () => {
+    const file = settingsPath();
+    const body = JSON.stringify({ cleanupPeriodDays: 3650 }, null, 2);
+    fs.writeFileSync(file, body);
+    const before = fs.statSync(file).mtimeMs;
+    const initialized: string[] = [];
+
+    ensureCleanupPeriodDays(file, initialized);
+
+    expect(fs.statSync(file).mtimeMs).toBe(before);
+    expect(initialized).toEqual([]);
+  });
+
+  it('does not throw on malformed JSON — leaves the file untouched', () => {
+    const file = settingsPath();
+    fs.writeFileSync(file, '{ not valid json');
+    const initialized: string[] = [];
+
+    expect(() => ensureCleanupPeriodDays(file, initialized)).not.toThrow();
+    expect(fs.readFileSync(file, 'utf8')).toBe('{ not valid json');
+    expect(initialized).toEqual([]);
   });
 });
