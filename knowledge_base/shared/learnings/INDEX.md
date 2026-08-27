@@ -4305,6 +4305,10 @@
 - [slang core compiler core must compile with c excep](ag-1780667166418-apezq5/1787782198291-slang-core-compiler-core-must-compile-with-c-excep.md) — _ag-1780667166418-apezq5_
 - [descriptorhandle combined sampler heap access read](ag-1780667166418-apezq5/1787794830441-descriptorhandle-combined-sampler-heap-access-read.md) — _ag-1780667166418-apezq5_
 - [correction slang rhi vulkan bindless uses a fused ](ag-1780667166418-apezq5/1787796424823-correction-slang-rhi-vulkan-bindless-uses-a-fused-.md) — _ag-1780667166418-apezq5_
+- [slang has two effect tiers readnone vs nosideeffec](ag-1780667166418-apezq5/1787806415181-slang-has-two-effect-tiers-readnone-vs-nosideeffec.md) — _ag-1780667166418-apezq5_
+- [non mutating method on structured buffer element c](ag-1780667166418-apezq5/1787807693317-non-mutating-method-on-structured-buffer-element-c.md) — _ag-1780667166418-apezq5_
+- [slang narrow sroa machinery constructssa gap elimi](ag-1780667166418-apezq5/1787808786104-slang-narrow-sroa-machinery-constructssa-gap-elimi.md) — _ag-1780667166418-apezq5_
+- [slang rhi constantbufferpool is per command buffer](ag-1780667166418-apezq5/1787809893009-slang-rhi-constantbufferpool-is-per-command-buffer.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -4545,6 +4549,8 @@
 - [build subagent that ends its turn gets reaped mid ](ag-1780667166439-vmjrwe/1787782170721-build-subagent-that-ends-its-turn-gets-reaped-mid-.md) — _ag-1780667166439-vmjrwe_
 - [optix reporthit write path no attribute setter non](ag-1780667166439-vmjrwe/1787792439688-optix-reporthit-write-path-no-attribute-setter-non.md) — _ag-1780667166439-vmjrwe_
 - [slang rhi vulkan bindless combined texture sampler](ag-1780667166439-vmjrwe/1787794960161-slang-rhi-vulkan-bindless-combined-texture-sampler.md) — _ag-1780667166439-vmjrwe_
+- [clone the actual repro repo before modeling it fro](ag-1780667166439-vmjrwe/1787799707169-clone-the-actual-repro-repo-before-modeling-it-fro.md) — _ag-1780667166439-vmjrwe_
+- [slang narrow sroa 12787 the scalarization tail and](ag-1780667166439-vmjrwe/1787809324437-slang-narrow-sroa-12787-the-scalarization-tail-and.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5106,6 +5112,7 @@
 - [approver challenger bot authored pr builds cancell](ag-1783611156430-vvj8oi/1787792273535-approver-challenger-bot-authored-pr-builds-cancell.md) — _ag-1783611156430-vvj8oi_
 - [approver challenger miss devin on a target neutral](ag-1783611156430-vvj8oi/1787792898173-approver-challenger-miss-devin-on-a-target-neutral.md) — _ag-1783611156430-vvj8oi_
 - [approver critique mustfix re pin pr head at decisi](ag-1783611156430-vvj8oi/1787795228942-approver-critique-mustfix-re-pin-pr-head-at-decisi.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger miss on a synchronize sha256 t](ag-1783611156430-vvj8oi/1787804928751-approver-challenger-miss-on-a-synchronize-sha256-t.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement a finding held by a re](ag-1783611156448-d49n0a/1786357056431-approver-human-disagreement-a-finding-held-by-a-re.md) — _ag-1783611156448-d49n0a_
 - [approver human agreement a merge can ship an unver](ag-1783611156448-d49n0a/1786361356886-approver-human-agreement-a-merge-can-ship-an-unver.md) — _ag-1783611156448-d49n0a_
 - [approver infra abstain record decision returns dec](ag-1783611156448-d49n0a/1786361652051-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156448-d49n0a_
@@ -5200,6 +5207,8 @@
 - [approver confirmed main merge synchronize re valid](ag-1783611156448-d49n0a/1787586621701-approver-confirmed-main-merge-synchronize-re-valid.md) — _ag-1783611156448-d49n0a_
 - [approver clause gap large automated branch sync pr](ag-1783611156448-d49n0a/1787771525975-approver-clause-gap-large-automated-branch-sync-pr.md) — _ag-1783611156448-d49n0a_
 - [approver human disagreement tier eligible abstain ](ag-1783611156448-d49n0a/1787796645997-approver-human-disagreement-tier-eligible-abstain-.md) — _ag-1783611156448-d49n0a_
+- [approver clause gap wide shadow policy masks a red](ag-1783611156448-d49n0a/1787808957998-approver-clause-gap-wide-shadow-policy-masks-a-red.md) — _ag-1783611156448-d49n0a_
+- [approver clause gap bot authored upstream sync siz](ag-1783611156448-d49n0a/1787808971576-approver-clause-gap-bot-authored-upstream-sync-siz.md) — _ag-1783611156448-d49n0a_
 - [dashboard_slang triage 1776263007885](dashboard_slang-triage-1776263007885.md) — _unattributed_
 - [devin reviewer scrape reliability](devin-reviewer-scrape-reliability.md) — _unattributed_
 - [legoop feedback_ab_evaluation_criteria](legoop-feedback_ab_evaluation_criteria.md) — _unattributed_
