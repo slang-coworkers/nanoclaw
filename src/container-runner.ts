@@ -306,6 +306,49 @@ export function readStandingInstructions(groupDir: string, instructionsPath: str
  * usable document there is nothing to degrade to, and spawning cannot be made
  * safe, so this throws and the caller aborts the spawn.
  */
+/**
+ * The compose inputs for one agent group, in ONE place.
+ *
+ * Four call sites need them: the two spawn paths (untyped and typed) plus the two
+ * staleness-hash paths. When each built its own options object, a section added
+ * to one and not the others made the digests disagree — the sweep would either
+ * see permanent drift and restart containers on every pass, or miss a real change
+ * and never refresh. Neither failure is visible in a test that only exercises
+ * spawn.
+ *
+ * Untyped groups compose through the `default` leaf: it extends `base-common`
+ * with no project skills, i.e. the bare spine.
+ */
+async function composeOptionsFor(agentGroup: AgentGroup): Promise<{
+  coworkerType: string;
+  extraInstructions: string | null;
+  disableOverlays: boolean;
+  overlays: string[] | undefined;
+  cliScope: 'disabled' | 'group' | 'global';
+}> {
+  const groupDir = path.resolve(GROUPS_DIR, agentGroup.folder);
+  return {
+    coworkerType: agentGroup.coworker_type || 'default',
+    extraInstructions: readStandingInstructions(groupDir, path.join(groupDir, '.instructions.md')),
+    disableOverlays: agentGroup.disable_overlays === 1,
+    overlays: agentGroup.overlays ? JSON.parse(agentGroup.overlays) : undefined,
+    cliScope: ((await getContainerConfig(agentGroup.id))?.cli_scope ?? 'group') as 'disabled' | 'group' | 'global',
+  };
+}
+
+/**
+ * Render a group's document and hash it, from the single options builder above.
+ * Both staleness paths and the spawn hash agree by construction rather than by
+ * four separate call sites happening to stay in sync.
+ */
+export async function renderComposedDocument(
+  agentGroup: AgentGroup,
+): Promise<{ content: string; hash: string; opts: Awaited<ReturnType<typeof composeOptionsFor>> }> {
+  const opts = await composeOptionsFor(agentGroup);
+  const content = composeCoworkerSpine(opts);
+  return { content, hash: crypto.createHash('sha256').update(content).digest('hex'), opts };
+}
+
 export function assertComposedDocUsable(claudeMdPath: string, agentGroup: AgentGroup, err: unknown): void {
   let existing = 0;
   try {
@@ -381,17 +424,7 @@ async function composeCoworkerClaudeMd(agentGroup: AgentGroup): Promise<void> {
     // project-specific knowledge. This goes through the same composer
     // pipeline as typed coworkers.
     try {
-      const extraInstructions = readStandingInstructions(groupDir, instructionsPath);
-
-      const overlays = agentGroup.overlays ? JSON.parse(agentGroup.overlays) : undefined;
-      const composeOpts = {
-        coworkerType: 'default',
-        extraInstructions,
-        disableOverlays: agentGroup.disable_overlays === 1,
-        overlays,
-        cliScope: ((await getContainerConfig(agentGroup.id))?.cli_scope ?? 'group') as 'disabled' | 'group' | 'global',
-      };
-      const composed = composeCoworkerSpine(composeOpts);
+      const { content: composed, opts: composeOpts } = await renderComposedDocument(agentGroup);
       fs.mkdirSync(groupDir, { recursive: true });
       writeComposedDocument(claudeMdPath, composed);
       // Materialize MARKER files for overlays carrying one (e.g. buddy-monitor).
@@ -409,17 +442,7 @@ async function composeCoworkerClaudeMd(agentGroup: AgentGroup): Promise<void> {
   }
 
   try {
-    const extraInstructions = readStandingInstructions(groupDir, instructionsPath);
-
-    const overlays = agentGroup.overlays ? JSON.parse(agentGroup.overlays) : undefined;
-    const composeOpts = {
-      coworkerType: agentGroup.coworker_type,
-      extraInstructions,
-      disableOverlays: agentGroup.disable_overlays === 1,
-      overlays,
-      cliScope: ((await getContainerConfig(agentGroup.id))?.cli_scope ?? 'group') as 'disabled' | 'group' | 'global',
-    };
-    const composed = composeCoworkerSpine(composeOpts);
+    const { content: composed, opts: composeOpts } = await renderComposedDocument(agentGroup);
 
     fs.mkdirSync(groupDir, { recursive: true });
     writeComposedDocument(claudeMdPath, composed);
@@ -1016,21 +1039,14 @@ export async function recomposeAndUpdateHash(sessionId: string): Promise<void> {
   const ag = await getAgentGroup(session.agent_group_id);
   if (!ag) return;
   await composeCoworkerClaudeMd(ag);
-  // Hash must match what detectStaleContainers computes: composeCoworkerSpine output,
-  // NOT the file on disk (which may have @-import prefixes for flat types).
+  // Same seam `detectStaleContainers` hashes, so the two agree by construction.
+  //
+  // Rewriting the file does NOT update a RUNNING container: the composed document
+  // is a file bind mount, so the established mount keeps the old inode however the
+  // host replaces the path. The caller must kill the container for a recompose to
+  // take effect — `host-sweep.ts` does exactly that on the next line.
   try {
-    const coworkerType = ag.coworker_type || 'default';
-    const groupDir = path.join(GROUPS_DIR, ag.folder);
-    const extra = readStandingInstructions(groupDir, path.join(groupDir, '.instructions.md'));
-    const overlays = ag.overlays ? JSON.parse(ag.overlays) : undefined;
-    const composed = composeCoworkerSpine({
-      coworkerType,
-      extraInstructions: extra,
-      disableOverlays: ag.disable_overlays === 1,
-      overlays,
-      cliScope: ((await getContainerConfig(ag.id))?.cli_scope ?? 'group') as 'disabled' | 'group' | 'global',
-    });
-    spawnedClaudeMdHash.set(sessionId, crypto.createHash('sha256').update(composed).digest('hex'));
+    spawnedClaudeMdHash.set(sessionId, (await renderComposedDocument(ag)).hash);
   } catch {
     /* best-effort */
   }
@@ -1052,36 +1068,27 @@ export async function detectStaleContainers(): Promise<
     if (!ag) continue;
 
     const coworkerType = ag.coworker_type || 'default';
-    // Same reader as spawn. Reading `.instructions.md` here instead made every
-    // group with a persona look permanently stale: spawn migrates the legacy
-    // file to the canonical name and composes WITH the persona, so a direct
-    // legacy read composed WITHOUT it and the digests could never agree.
-    const groupDir = path.join(GROUPS_DIR, ag.folder);
-    const extra = readStandingInstructions(groupDir, path.join(groupDir, '.instructions.md'));
-
-    // Compose the current spine to compare against the running container's
-    // baseline. This can THROW when a coworker type references a skill/workflow/
-    // overlay that isn't resolvable on disk (e.g. an external `skill-source`
-    // skill that hasn't been fetched into container/skills/ yet). Guard it
-    // per-session: a single broken type must not abort the whole stale scan.
+    // Compose the current document through the same seam spawn uses, and compare
+    // against the running container's baseline. Sharing the seam is what keeps the
+    // two digests comparable: they read `.instructions.md` through
+    // `readStandingInstructions`, because spawn migrates the legacy file to the
+    // canonical name and composes WITH the persona — a direct legacy read composed
+    // WITHOUT it, and the digests could never agree.
     //
-    // Before this guard, one unresolvable type (any live slang/slangpy
-    // container while its external skills were absent) threw here, propagated
-    // to the sweep's outer try/catch, and skipped the entire CLAUDE.md-stale
-    // respawn loop — silently disabling instruction hot-reload FLEET-WIDE for
-    // every healthy coworker. Mirror resolveTypeManifest's tolerance: log and
-    // skip just this session. Its stale-check resumes once the type resolves.
+    // This can THROW when a coworker type references a skill/workflow/overlay that
+    // isn't resolvable on disk (e.g. an external `skill-source` skill not yet
+    // fetched into container/skills/). Guard it per-session: a single broken type
+    // must not abort the whole stale scan.
+    //
+    // Before this guard, one unresolvable type (any live slang/slangpy container
+    // while its external skills were absent) threw here, propagated to the sweep's
+    // outer try/catch, and skipped the entire CLAUDE.md-stale respawn loop —
+    // silently disabling instruction hot-reload FLEET-WIDE for every healthy
+    // coworker. Mirror resolveTypeManifest's tolerance: log and skip just this
+    // session. Its stale-check resumes once the type resolves.
     let currentHash: string;
     try {
-      const overlays = ag.overlays ? JSON.parse(ag.overlays) : undefined;
-      const composed = composeCoworkerSpine({
-        coworkerType,
-        extraInstructions: extra,
-        disableOverlays: ag.disable_overlays === 1,
-        overlays,
-        cliScope: ((await getContainerConfig(ag.id))?.cli_scope ?? 'group') as 'disabled' | 'group' | 'global',
-      });
-      currentHash = crypto.createHash('sha256').update(composed).digest('hex');
+      currentHash = (await renderComposedDocument(ag)).hash;
     } catch (err) {
       log.warn('Skipping stale-check — spine compose failed', { folder: ag.folder, coworkerType, err });
       continue;
