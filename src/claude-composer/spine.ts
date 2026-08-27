@@ -9,7 +9,9 @@ import path from 'path';
 
 import { readCoworkerTypes, readSkillCatalog } from './registry.js';
 import { injectOverlays, resolveCoworkerManifest } from './resolve.js';
+import { RUNTIME_CONTRACT_SECTION, renderRuntimeContract } from './runtime-contract.js';
 import type { CoworkerManifest, CoworkerTypeEntry, SkillMeta } from './types.js';
+import { COMPOSED_DOC_MARKER } from '../group-persona.js';
 
 function indentBlock(text: string, spaces: number): string {
   const pad = ' '.repeat(spaces);
@@ -196,6 +198,37 @@ function demoteHeadings(md: string, levels: number): string {
     lines[i] = '#'.repeat(newLevel) + ' ' + m[2];
   }
   return lines.join('\n');
+}
+
+/**
+ * Render per-server usage prose from `container.json` `mcpServers[].instructions`.
+ *
+ * An external MCP server ships its own tool descriptions, but those cannot say
+ * "in THIS install, use the staging endpoint" or "never call `delete_*` here".
+ * That install-specific prose is what this section carries, and it has to be in
+ * context BEFORE the agent reaches for the tool — a prohibition cannot be lazily
+ * loaded the way a SKILL.md body can.
+ *
+ * Server names are sorted so the section is deterministic: the composed document
+ * feeds a sha256 staleness comparison, and `Object.entries` order would otherwise
+ * make an unrelated config edit look like a content change.
+ *
+ * Bodies are normalized to `####` (one level below the `### <name>` sub-heading)
+ * so operator-authored headings nest instead of escaping the section wrapper.
+ * Blank or whitespace-only entries are skipped rather than emitting an empty
+ * heading.
+ */
+function renderMcpInstructions(mcpInstructions: Record<string, string> | undefined): string | undefined {
+  if (!mcpInstructions) return undefined;
+
+  const blocks: string[] = [];
+  for (const name of Object.keys(mcpInstructions).sort()) {
+    const body = mcpInstructions[name]?.trim();
+    if (!body) continue;
+    blocks.push(`### ${name}\n\n${normalizeFragment(body, 4)}`);
+  }
+
+  return blocks.length > 0 ? blocks.join('\n\n') : undefined;
 }
 
 // Normalize a fragment so its top heading sits at `targetMinLevel`. Computes
@@ -523,7 +556,12 @@ export function renderCoworkerSpine(
   projectRoot: string,
   coworkerType: string,
   extraInstructions: string | null | undefined,
-  opts: { disableOverlays?: boolean; overlays?: string[]; cliScope?: 'disabled' | 'group' | 'global' } = {},
+  opts: {
+    disableOverlays?: boolean;
+    overlays?: string[];
+    cliScope?: 'disabled' | 'group' | 'global';
+    mcpInstructions?: Record<string, string>;
+  } = {},
 ): string {
   // cliScope gates inclusion of the `ncl-*.md` tool-instruction fragments.
   //   'disabled' → strip every ncl-*.md from context (agent has no CLI access)
@@ -554,6 +592,11 @@ export function renderCoworkerSpine(
     manifest.customizations = manifest.customizations.filter((c) => c.kind !== 'overlay');
   }
 
+  // Both render paths get the contract: `main` is `flat: true` and returns
+  // early, so computing it here is what keeps the admin orchestrator from being
+  // the one coworker without it.
+  const contract = renderRuntimeContract(projectRoot);
+
   if (manifest.flat) {
     // Flat mode: emit identity (body file) + context fragments (skill
     // contributions via `context:` in their coworker-types.yaml), verbatim,
@@ -564,21 +607,41 @@ export function renderCoworkerSpine(
     // install. This is pure discovery — no project is hardcoded anywhere.
     // Adding a new project (e.g. container/spines/nv-graphics/ with
     // `project: graphics` in its yaml) automatically shows up here.
-    const bodies = [manifest.identity, ...manifest.context].map((b) => b.trim()).filter(Boolean);
+    // Flat bodies carry their own headings, so the contract joins them as a peer
+    // `##` section rather than nesting under a wrapper. It goes AFTER the
+    // identity body, not before it: in flat mode the identity carries the
+    // document's `# Title` (`main-body.md:1`), so leading with an `##` section
+    // would emit a subsection above the H1.
+    const contractBody = contract ? [`## ${RUNTIME_CONTRACT_SECTION}\n\n${contract}`] : [];
+    const bodies = [manifest.identity, ...contractBody, ...manifest.context].map((b) => b.trim()).filter(Boolean);
     if (coworkerType === 'main') {
       const projectsBlock = emitDiscoveredProjectFragments(types, projectRoot);
       if (projectsBlock) bodies.push(projectsBlock);
     }
+    // Same section, same reason, on this path too: `main` is the only flat type,
+    // and an admin orchestrator with wired MCP servers needs their usage prose as
+    // much as a typed coworker does.
+    const flatMcp = renderMcpInstructions(opts.mcpInstructions);
+    if (flatMcp) bodies.push(`## MCP Servers\n\n${flatMcp}`);
     const extra = extraInstructions?.trim();
     if (extra) bodies.push(extra);
     // Section boundaries are H2 headings inside each fragment — no `---`
     // separators. Horizontal rules between every fragment created visual
     // noise without adding structure that the headings didn't already carry.
-    return bodies.join('\n\n').trimEnd() + '\n';
+    return renderDocument(bodies);
   }
 
   const parts: string[] = [];
   parts.push(`# ${manifest.title}`);
+
+  // Before Identity, matching the §4.3 ownership table and upstream's composer:
+  // the contract states environment facts (where attachments land, where memory
+  // lives) that hold for every coworker, so they precede this type's own
+  // material rather than trailing it.
+  if (contract) {
+    parts.push(`## ${RUNTIME_CONTRACT_SECTION}`);
+    parts.push(contract);
+  }
 
   // Fragments are normalized to start at h3 so they nest correctly under
   // their ## h2 wrapper regardless of how they were authored. Without this,
@@ -853,6 +916,15 @@ export function renderCoworkerSpine(
   // Footer dropped — `container/spines/base/context/invocation.md` already
   // covers the "skills are slash commands / workflows are embedded" split.
 
+  // Per-server MCP guidance, after Skills because it is the same kind of thing
+  // (how to use a tool you have) and before Additional Instructions so the
+  // operator's persona still has the last word.
+  const mcpSection = renderMcpInstructions(opts.mcpInstructions);
+  if (mcpSection) {
+    parts.push('## MCP Servers');
+    parts.push(mcpSection);
+  }
+
   if (extraInstructions?.trim()) {
     parts.push('## Additional Instructions');
     // Normalize so any operator-authored `## Foo` headings nest under our
@@ -860,7 +932,25 @@ export function renderCoworkerSpine(
     parts.push(normalizeFragment(extraInstructions.trim(), 3));
   }
 
-  return parts.join('\n\n').trimEnd() + '\n';
+  return renderDocument(parts);
+}
+
+/**
+ * The single place a composed document becomes a string. Both the flat and the
+ * inherited path route through here so neither can lose the marker — `main` is
+ * `flat: true` and returns early, which is exactly how the first attempt at this
+ * missed the admin orchestrator.
+ *
+ * The marker makes the document self-identifying as composer output. Two
+ * consumers depend on it: the persona migration in `container-runner.ts` (a
+ * composed document must never be mistaken for hand-written standing
+ * instructions) and `.claude/skills/migrate-memory` (generated boilerplate vs
+ * memory). It deliberately carries no timestamp — the composed text feeds a
+ * sha256 staleness comparison, so a clock would make every spawn look stale.
+ */
+function renderDocument(parts: string[]): string {
+  const header = `${COMPOSED_DOC_MARKER} — do not edit; edit instructions.prepend.md -->`;
+  return [header, ...parts].join('\n\n').trimEnd() + '\n';
 }
 
 // Emit a gate block. Uses stage-aware rendering when the overlay body

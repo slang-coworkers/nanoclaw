@@ -51,6 +51,7 @@ export function composeCoworkerSpine(options: ComposeCoworkerSpineOptions): stri
     disableOverlays: options.disableOverlays === true,
     overlays: options.overlays,
     cliScope: options.cliScope,
+    mcpInstructions: options.mcpInstructions,
   });
 }
 
