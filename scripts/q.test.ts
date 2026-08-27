@@ -16,7 +16,10 @@ import Database from 'better-sqlite3';
 
 const Q = path.resolve(__dirname, 'q.ts');
 
-describe('scripts/q.ts', () => {
+// Each case spawns `pnpm exec tsx q.ts` (cold-start ~5-15s); a generous
+// suite-level timeout keeps them green under full-suite CPU contention (the
+// default 15s testTimeout intermittently trips on a loaded CI runner).
+describe('scripts/q.ts', { timeout: 60_000 }, () => {
   let tempDir: string;
   let dbPath: string;
 

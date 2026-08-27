@@ -59,27 +59,27 @@ describe('explicit outbound destinations', () => {
     expect(getTaskSeriesId()).toBeNull();
   });
 
-  it('requires `to` in both outbound tool schemas', () => {
-    expect(sendMessage.tool.inputSchema.required).toContain('to');
-    expect(sendFile.tool.inputSchema.required).toContain('to');
+  // nv-main fork contract (overrides upstream's mandatory-`to`): `to` is
+  // OPTIONAL in both outbound schemas. A bare send defaults to the session's
+  // current conversation (or, absent session routing, the single destination)
+  // — this is load-bearing for the fork's chain-communication model (see
+  // CLAUDE.md "Sending messages"). Upstream's original two tests here asserted
+  // `to` was required + that a lone destination is never inferred; both are
+  // deliberately inverted below to match the fork.
+  it('does NOT require `to` in either outbound tool schema', () => {
+    expect(sendMessage.tool.inputSchema.required).not.toContain('to');
+    expect(sendFile.tool.inputSchema.required).not.toContain('to');
   });
 
-  it('never infers the only destination when `to` is omitted', async () => {
-    const messageResult = (await sendMessage.handler({ text: 'hello' })) as {
-      isError?: boolean;
-      content: { text: string }[];
-    };
-    const fileResult = (await sendFile.handler({ path: 'report.txt' })) as {
-      isError?: boolean;
-      content: { text: string }[];
-    };
+  it('defaults a bare send (no `to`) to the current conversation', async () => {
+    seedSessionRouting('discord', 'channel:1', 'thread-9');
+    const messageResult = (await sendMessage.handler({ text: 'hello' })) as { isError?: boolean };
+    expect(messageResult.isError).toBeFalsy();
 
-    for (const result of [messageResult, fileResult]) {
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('to is required');
-      expect(result.content[0].text).toContain('family');
-    }
-    expect(getUndeliveredMessages()).toHaveLength(0);
+    const out = getUndeliveredMessages();
+    expect(out).toHaveLength(1);
+    expect(out[0].platform_id).toBe('channel:1');
+    expect(out[0].thread_id).toBe('thread-9');
   });
 
   it('rejects an unknown explicit destination without falling back', async () => {

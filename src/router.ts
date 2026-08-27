@@ -261,6 +261,7 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
       instance: event.instance ?? event.channelType,
       name: null,
       is_group: event.message.isGroup ? 1 : 0,
+      admin_user_id: null,
       // Policy from the receiving channel's declared defaults (DM vs group
       // context); undeclared adapters resolve through the behavior-faithful
       // fallback, which is 'request_approval' in both contexts — identical
@@ -454,6 +455,21 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
   }
 }
 
+/** Cache compiled engage regexes by pattern string to avoid re-creation on every message. */
+const engageRegexCache = new Map<string, RegExp | null>();
+
+function getOrCompileRegex(pattern: string): RegExp | null {
+  let re = engageRegexCache.get(pattern);
+  if (re !== undefined) return re;
+  try {
+    re = new RegExp(pattern, 'i');
+  } catch {
+    re = null;
+  }
+  engageRegexCache.set(pattern, re);
+  return re;
+}
+
 /**
  * Decide whether a given wired agent should engage on this message.
  *
@@ -482,15 +498,14 @@ async function evaluateEngage(
   threadId: string | null,
 ): Promise<boolean> {
   switch (agent.engage_mode) {
+    case 'always':
+      return true;
     case 'pattern': {
       const pat = agent.engage_pattern ?? '.';
       if (pat === '.') return true;
-      try {
-        return new RegExp(pat).test(text);
-      } catch {
-        // Bad regex: fail open so admin sees the agent responding + can fix.
-        return true;
-      }
+      const re = getOrCompileRegex(pat);
+      // Bad regex (null): fail open so admin sees the agent responding + can fix.
+      return re ? re.test(text) : true;
     }
     case 'mention':
       return isMention;
@@ -577,6 +592,41 @@ async function deliverToAgent(
     }
   }
 
+  // Seed the new per-thread session with the parent message (if the caller
+  // supplied one). Only runs when `resolveSession` actually minted a fresh
+  // session AND we passed the command gate. Written with `trigger: 0` so it
+  // does NOT wake the container on its own — the user's real message (below)
+  // drives the wake and includes both rows as conversation context.
+  if (created && event.parentMessage) {
+    const pm = event.parentMessage;
+    await writeSessionMessage(session.agent_group_id, session.id, {
+      id: `seed-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: 'chat',
+      timestamp: pm.timestamp ?? event.message.timestamp,
+      platformId: deliveryAddr.platformId,
+      channelType: deliveryAddr.channelType,
+      threadId: deliveryAddr.threadId,
+      content: JSON.stringify({
+        text: pm.content,
+        sender: pm.sender ?? 'unknown',
+        senderId: pm.sender ?? 'unknown',
+        // Original direction from the parent's perspective. The row physically
+        // lives in inbound.db (so the agent can read it as context), but the
+        // dashboard's thread renderer reads this field to restore the correct
+        // author attribution — "outgoing" → show the coworker's own name,
+        // "incoming" → show "You" or @sender.
+        direction: pm.direction ?? 'outgoing',
+      }),
+      trigger: false,
+    });
+    log.info('Parent message seeded into new thread session', {
+      sessionId: session.id,
+      agentGroup: agent.agent_group_id,
+      parentDirection: pm.direction ?? 'unknown',
+      parentSender: pm.sender ?? 'unknown',
+    });
+  }
+
   if (wake && created) {
     // New-session backfill (cross-session context): a just-born session is
     // seeded with its conversation's top-level timeline from sibling
@@ -656,11 +706,14 @@ async function deliverToAgent(
     );
     const freshSession = await getSession(session.id);
     if (freshSession) {
-      const woke = await wakeContainer(freshSession);
-      // wakeContainer never throws — it returns false on transient spawn
-      // failure (host-sweep retries). Stop the typing indicator we just
-      // started so it doesn't leak; the inbound row stays pending.
-      if (!woke) stopTypingRefresh(freshSession.id);
+      try {
+        await wakeContainer(freshSession);
+      } catch {
+        // wakeContainer rejects on transient spawn failure (host-sweep
+        // retries). Stop the typing indicator we just started so it
+        // doesn't leak; the inbound row stays pending.
+        stopTypingRefresh(freshSession.id);
+      }
     }
   }
 }
@@ -674,4 +727,135 @@ async function deliverToAgent(
 function messageIdForAgent(baseId: string | undefined, agentGroupId: string): string {
   const id = baseId && baseId.length > 0 ? baseId : generateId();
   return `${id}:${agentGroupId}`;
+}
+
+/**
+ * Bypass messaging-group routing: write a message directly into a known
+ * session's inbound.db and wake the container.
+ *
+ * Used by the dashboard "open a2a session" view, where the admin wants to
+ * interject in a peer-to-peer agent conversation. Normal routing
+ * (`routeInbound`) keys on (channel, platform, thread) and would either
+ * misroute the message into the coworker's main dashboard session OR
+ * create a new dashboard session — both wrong, because the admin is
+ * looking at a specific a2a session and expects their reply to land there.
+ *
+ * Caller is the dashboard ingress, gated by `DASHBOARD_SECRET`. No
+ * messaging_group lookup, no fan-out, no command-gate — admin-only.
+ */
+export async function routeInboundToSession(opts: {
+  sessionId: string;
+  content: string;
+  parentMessage?: InboundEvent['parentMessage'];
+}): Promise<void> {
+  const session = await getSession(opts.sessionId);
+  if (!session) throw new Error(`session not found: ${opts.sessionId}`);
+
+  const now = new Date().toISOString();
+
+  // Optional parent_message seed (matches the existing per-thread seed
+  // semantics in routeInbound). trigger:0 so it accumulates as context.
+  if (opts.parentMessage) {
+    const pm = opts.parentMessage;
+    await writeSessionMessage(session.agent_group_id, session.id, {
+      id: `seed-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: 'chat',
+      timestamp: pm.timestamp ?? now,
+      platformId: 'dashboard:admin',
+      channelType: 'dashboard',
+      threadId: session.thread_id ?? null,
+      content: JSON.stringify({
+        text: pm.content,
+        sender: pm.sender ?? 'unknown',
+        senderId: pm.sender ?? 'unknown',
+        direction: pm.direction ?? 'outgoing',
+      }),
+      trigger: false,
+    });
+  }
+
+  // The admin's own message — clearly attributed so the agent can
+  // distinguish it from the a2a peer's messages it has been receiving.
+  await writeSessionMessage(session.agent_group_id, session.id, {
+    id: generateId(),
+    kind: 'chat',
+    timestamp: now,
+    platformId: 'dashboard:admin',
+    channelType: 'dashboard',
+    threadId: session.thread_id ?? null,
+    content: JSON.stringify({
+      text: opts.content,
+      sender: 'dashboard-admin',
+      senderId: 'dashboard-admin',
+    }),
+    trigger: true,
+  });
+
+  log.info('Routed message direct to session', {
+    sessionId: session.id,
+    agentGroup: session.agent_group_id,
+    threadId: session.thread_id,
+  });
+
+  startTypingRefresh(session.id, session.agent_group_id, 'dashboard', 'dashboard:admin', session.thread_id ?? null);
+  const freshSession = await getSession(session.id);
+  if (freshSession) {
+    await wakeContainer(freshSession);
+  }
+}
+
+/**
+ * Route a human cost-cap override decision (NanoClaw #1) into a session.
+ *
+ * The dashboard admin picks Continue or Stop on an escalated session; this
+ * writes a `cost_override` control row into the session's inbound.db and wakes
+ * the container so the runner's next poll applies it. A direct analog of
+ * `routeInboundToSession` — no messaging-group lookup, no fan-out, no command
+ * gate. Caller (dashboard ingress) is `DASHBOARD_SECRET`-gated and must have
+ * already validated the decision.
+ */
+export async function routeCostOverrideToSession(opts: {
+  sessionId: string;
+  decision: 'continue' | 'stop';
+  /**
+   * The budget generation the escalation episode was stamped with (the
+   * cost-approval card path supplies it; the legacy dashboard pill omits it).
+   * When present it is echoed onto the `cost_override` as the runner's epoch
+   * fence — applyCostOverride refuses a decision whose epoch no longer matches
+   * the live generation (superseded / post-/clear / re-enqueued). When absent
+   * the runner applies unconditionally (back-compat with the pill).
+   */
+  epochKey?: string;
+}): Promise<void> {
+  if (opts.decision !== 'continue' && opts.decision !== 'stop') {
+    throw new Error(`invalid cost-override decision: ${String(opts.decision)}`);
+  }
+  const session = await getSession(opts.sessionId);
+  if (!session) throw new Error(`session not found: ${opts.sessionId}`);
+
+  await writeSessionMessage(session.agent_group_id, session.id, {
+    id: generateId(),
+    kind: 'cost_override',
+    timestamp: new Date().toISOString(),
+    platformId: 'dashboard:admin',
+    channelType: 'dashboard',
+    threadId: session.thread_id ?? null,
+    content: JSON.stringify({
+      decision: opts.decision,
+      ...(opts.epochKey != null ? { epochKey: opts.epochKey } : {}),
+    }),
+    trigger: true,
+  });
+
+  log.info('Routed cost-override to session', {
+    sessionId: session.id,
+    agentGroup: session.agent_group_id,
+    decision: opts.decision,
+    ...(opts.epochKey != null ? { epochKey: opts.epochKey } : {}),
+  });
+
+  const freshSession = await getSession(session.id);
+  if (freshSession) {
+    await wakeContainer(freshSession);
+  }
 }

@@ -33,6 +33,19 @@ export type CommandDef<TArgs = unknown, TData = unknown> = {
    */
   hostOnly?: boolean;
   /**
+   * An agent caller may never aim this command at its OWN agent group — the
+   * guard DENIES it instead of holding it for approval.
+   *
+   * For commands that change a group's own privilege surface (its MCP tool
+   * allow-list, say). Two reasons it has to be a guard decision and not just a
+   * handler check: under `cli_scope: 'group'` the dispatcher auto-fills `--id`
+   * with the caller's own group id, so an omitted `--id` IS a self-target; and
+   * an `access: 'approval'` command mints the approval card BEFORE the handler
+   * ever runs, so a handler-only check asks a human to approve a
+   * self-escalation and rejects it only after they agree.
+   */
+  denySelfTarget?: boolean;
+  /**
    * Dotted guard-catalog action name (e.g. `roles.grant`,
    * `groups.config.add-mcp-server`). Set by registerResource from the
    * resource + verb; commands registered directly (help) fall back to

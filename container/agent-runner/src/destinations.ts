@@ -39,6 +39,26 @@ export function getAllDestinations(): DestinationEntry[] {
   return getAgentMailbox().operations.getDestinations().map(destinationEntry);
 }
 
+/**
+ * Deterministic fingerprint of the destinations table — cheap to compute
+ * on every poll iteration, changes iff any row's significant content
+ * changes. Used by the poll loop to decide whether the system prompt's
+ * destinations section needs to be rebuilt (the host refreshes this
+ * table mid-session when new coworkers are wired; without a fingerprint
+ * check the agent would operate from its startup snapshot forever).
+ *
+ * Format is intentionally opaque — callers must compare for equality,
+ * not parse.
+ */
+export function getDestinationsFingerprint(): string {
+  return getAgentMailbox()
+    .operations.getDestinations()
+    .map((d) =>
+      [d.name, d.displayName ?? '', d.type, d.channelType ?? '', d.platformId ?? '', d.agentGroupId ?? ''].join('\x1f'),
+    )
+    .join('\x1e');
+}
+
 export function findByName(name: string): DestinationEntry | undefined {
   const destination = getAgentMailbox().operations.findDestinationByName(name);
   return destination && destinationEntry(destination);
@@ -64,7 +84,13 @@ export function buildSystemPromptAddendum(assistantName?: string, mode: SessionM
   const sections: string[] = [];
 
   if (assistantName) {
-    sections.push(['# You are ' + assistantName, '', `Your name is **${assistantName}**. Use it when the channel asks who you are, when introducing yourself, and when signing any message that explicitly calls for a signature.`].join('\n'));
+    sections.push(
+      [
+        '# You are ' + assistantName,
+        '',
+        `Your name is **${assistantName}**. Use it when the channel asks who you are, when introducing yourself, and when signing any message that explicitly calls for a signature.`,
+      ].join('\n'),
+    );
   }
 
   sections.push(buildDestinationsSection(mode));
@@ -81,7 +107,9 @@ function buildDestinationsSection(mode: SessionMode): string {
     if (mode.kind === 'chat') return lines.join('\n');
   } else if (all.length === 1) {
     const d = all[0];
-    lines.push(`Your destination is \`${d.name}\`${destinationLabel(d)}.`);
+    lines.push(
+      `Your messages are delivered to \`${d.name}\`${destinationLabel(d)}. Just write your response directly — no special wrapping needed.`,
+    );
   } else {
     lines.push('You can send messages to the following destinations:', '');
     for (const d of all) {
@@ -101,12 +129,13 @@ function buildDestinationsSection(mode: SessionMode): string {
   }
 
   lines.push(
-    'Wrap each delivered message in a `<message to="name">…</message>` block; include several blocks in one response to address several destinations. `<internal>…</internal>` marks thinking you don\'t want sent.',
+    'This list is regenerated at the top of every message you process — if the admin tells you they just created a new coworker, trust the list above rather than asking for a container restart. No restart is needed for the agent to see newly-wired coworkers.',
   );
   lines.push('');
-  lines.push(
-    'When replying to an incoming message, default to addressing the destination it came `from` (every inbound `<message>` tag carries a `from="name"` attribute). Pick a different destination when the request asks for it (e.g., "tell Laura that…").',
-  );
+  lines.push('To send a message, wrap it in a `<message to="name">...</message>` block.');
+  lines.push('You can include multiple `<message>` blocks in one response to send to multiple destinations.');
+  lines.push('Text outside of `<message>` blocks is scratchpad — logged but not sent anywhere.');
+  lines.push('Use `<internal>...</internal>` to make scratchpad intent explicit.');
   lines.push('');
   lines.push(
     'The `send_message` MCP tool is the same delivery, available mid-turn — handy for a quick acknowledgment ("on it") before a slow tool call. Always pass its explicit `to` destination. Each `send_message` call and each final-response `<message>` block lands as its own message in the conversation, so they read as a sequence rather than as one combined reply.',

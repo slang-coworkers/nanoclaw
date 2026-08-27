@@ -44,7 +44,6 @@ import { dispatch } from '../src/cli/dispatch.js';
 // Side-effect import: registers the `groups-*` commands for the contract test.
 import '../src/cli/resources/groups.js';
 import '../src/cli/resources/wirings.js';
-import type { AgentGroup } from '../src/types.js';
 import {
   applyTemplatePick,
   clearTemplatePick,
@@ -53,6 +52,7 @@ import {
   listTemplateAgents,
   listTemplatesFromDir,
   validateNewTemplateAgentName,
+  type TemplateAgentRow,
   type TemplateReplacePlan,
 } from './templates.js';
 
@@ -97,7 +97,7 @@ describe('setup template library', () => {
   });
 
   it('requires a distinct name only when setup creates another template agent', () => {
-    const agents: AgentGroup[] = [
+    const agents: TemplateAgentRow[] = [
       {
         id: 'ag-existing',
         name: 'EMEA Sales',
@@ -113,7 +113,7 @@ describe('setup template library', () => {
   });
 
   it('creates through ncl and applies the provider', async () => {
-    const created: AgentGroup = {
+    const created: TemplateAgentRow = {
       id: 'ag-new',
       name: 'SDR',
       folder: 'sdr',
@@ -151,7 +151,7 @@ describe('setup template library', () => {
   });
 
   it('confirms the dry-run plan, applies with --yes, and restarts the group', async () => {
-    const stamped: AgentGroup = {
+    const stamped: TemplateAgentRow = {
       id: 'ag-old',
       name: 'SDR',
       folder: 'sdr',
@@ -197,7 +197,7 @@ describe('setup template library', () => {
   // Declining is a real cancel: the existing group must not be returned as a
   // newly-created agent for the channel step to consume.
   it('cancels without mutating or returning the existing group when the update is declined', async () => {
-    const stamped: AgentGroup = {
+    const stamped: TemplateAgentRow = {
       id: 'ag-old',
       name: 'SDR',
       folder: 'sdr',

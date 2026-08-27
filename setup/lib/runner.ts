@@ -321,7 +321,10 @@ export function startSpinner(labels: SpinnerLabels): {
         s.stop(`${k.bold(fitToWidth(msg, suffix))}${k.dim(suffix)}`);
       } else {
         const failMsg = labels.failed ?? labels.running.replace(/…$/, ' failed');
-        s.stop(`${k.bold(fitToWidth(failMsg, suffix))}${k.dim(suffix)}`, 1);
+        // `s.error`, not `s.stop(msg, 1)`: clack's `stop` hard-codes the success
+        // code and silently DISCARDS a second argument, so the old call rendered
+        // a failed step with the green ◇. `error` is the red ▲.
+        s.error(`${k.bold(fitToWidth(failMsg, suffix))}${k.dim(suffix)}`);
         if (transcript) dumpTranscriptOnFailure(transcript);
       }
     },

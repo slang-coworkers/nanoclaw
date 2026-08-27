@@ -15,9 +15,14 @@
  *   NANOCLAW_AGENT_PROVIDER preselect the setup provider and skip the picker
  *                          (for packaged flows). Example: claude.
  *   NANOCLAW_SKIP          comma-separated step names to skip
- *                          (environment|container|onecli|auth|mounts|
+ *                          (environment|projects|container|onecli|auth|mounts|
  *                           service|cli-agent|timezone|channel|
  *                           verify|first-chat)
+ *   NANOCLAW_PROJECTS      preselect project overlays (e.g. slang,slangpy) and
+ *                          skip the project-integrations multiselect
+ *   NANOCLAW_LLM_MERGE     =1 enables the LLM-assisted keep-both fallback when
+ *                          merge-train can't compose a project overlay (opt-in;
+ *                          CI leaves it unset to stay deterministic)
  *
  * Timezone is auto-detected after the CLI agent step. UTC resolves are
  * confirmed with the user, and free-text replies fall through to a
@@ -37,6 +42,13 @@ import { BACK_TO_CHANNEL_SELECTION } from './lib/back-nav.js';
 // extensions (setup/channels/companions.ts) before running its install skill
 // — the wizard itself stays free of channel-specific imports.
 import { runChannelSkillWithPreStep } from './channels/run-channel-skill.js';
+import { run as runProjectIntegrationsStep } from './project-integrations.js';
+import {
+  channelDmLabel,
+  initialChannelOptions,
+  runInitialChannel,
+  type ChannelChoice,
+} from './channels/initial-setup.js';
 import { runInheritScript } from './lib/inherit-script.js';
 import { pingCliAgent, PING_AGENT_FOLDER, type PingResult } from './lib/agent-ping.js';
 import { getSetupProvider, listSetupProviders } from './providers/registry.js';
@@ -66,7 +78,7 @@ import { runUninstallFlow } from './uninstall/flow.js';
 import { detectExistingInstall } from './uninstall/scan.js';
 import { detectRegisteredGroups, detectExistingDisplayName, readEnvKey } from './environment.js';
 import { pollHealth } from './onecli.js';
-import { getLaunchdLabel, getSystemdUnit } from '../src/install-slug.js';
+import { SERVICE_NAME_CAVEAT, getLaunchdLabel, getSystemdUnit, serviceRestartHint } from '../src/install-slug.js';
 import type { AgentGroup } from '../src/types.js';
 import { claudeCliAvailable, resolveTimezoneViaClaude } from './lib/tz-from-claude.js';
 import * as setupLog from './logs.js';
@@ -109,18 +121,6 @@ const REGISTRY_STEP = 'pnpm exec tsx setup/index.ts --step registry';
 
 /** `setup/registry-login.sh`'s "nothing was signed in, and that is fine" code. */
 const LOGIN_EXIT_SKIPPED = 2;
-
-type ChannelChoice =
-  | 'telegram'
-  | 'discord'
-  | 'whatsapp'
-  | 'signal'
-  | 'teams'
-  | 'slack'
-  | 'imessage'
-  | 'dial'
-  | 'other'
-  | 'skip';
 
 async function main(): Promise<void> {
   // Make sure ~/.local/bin is on PATH for every child process we spawn.
@@ -236,6 +236,15 @@ async function main(): Promise<void> {
     }
   }
 
+  // Optional project overlays (Slang, SlangPy, …) merged before the container
+  // image is built below, so the composed spines/skills are baked in. Silent
+  // no-op on a stock install (no project branches on origin). Set
+  // NANOCLAW_SKIP=projects to bypass, NANOCLAW_PROJECTS=slang,slangpy to
+  // preselect non-interactively.
+  if (!skip.has('projects')) {
+    await runProjectIntegrationsStep();
+  }
+
   // Nothing loads .env into the wizard process — bridge the persisted pick so
   // it survives not just self re-execs (`sg docker`, fail-retry) but full
   // process restarts. Without this, a run that aborted after the pick silently
@@ -335,7 +344,7 @@ async function main(): Promise<void> {
       s.start(`Checking remote OneCLI at ${remoteHost}…`);
       const healthy = await pollHealth(remoteHost, 5000);
       if (!healthy) {
-        s.stop(`Couldn't reach OneCLI at ${remoteHost}.`, 1);
+        s.error(`Couldn't reach OneCLI at ${remoteHost}.`);
         await fail(
           'onecli',
           `Couldn't reach OneCLI at ${remoteHost}.`,
@@ -468,13 +477,13 @@ async function main(): Promise<void> {
       try {
         ({ blockers } = await applyProviderSkill(skillDir, process.cwd()));
       } catch (err) {
-        s.stop(`Couldn't install ${agentProvider}.`, 1);
+        s.error(`Couldn't install ${agentProvider}.`);
         const message = err instanceof Error ? err.message : String(err);
         await fail(`add-${agentProvider}`, `Couldn't install ${agentProvider}.`, message);
         return; // unreachable — fail() exits — but narrows blockers for TS
       }
       if (blockers.length) {
-        s.stop(`Couldn't install ${agentProvider}.`, 1);
+        s.error(`Couldn't install ${agentProvider}.`);
         await fail(`add-${agentProvider}`, `Couldn't install ${agentProvider}.`, blockers.join('; '));
       }
       s.stop(`${agentProvider} installed.`);
@@ -532,9 +541,14 @@ async function main(): Promise<void> {
     }
     if (res.terminal?.fields.DOCKER_GROUP_STALE === 'true') {
       p.log.warn(brandBody("NanoClaw's permissions need a tweak before it can reach Docker."));
+      // Linux-only context (setfacl on /var/run/docker.sock), so systemctl alone
+      // is correct here — but the unit name is DERIVED from the checkout path, so
+      // it is the name a default install would have, not necessarily this one's.
       p.log.message(
         brandBody(
-          '  sudo setfacl -m u:$(whoami):rw /var/run/docker.sock\n' + `  systemctl --user restart ${getSystemdUnit()}`,
+          '  sudo setfacl -m u:$(whoami):rw /var/run/docker.sock\n' +
+            `  systemctl --user restart ${getSystemdUnit()}\n` +
+            '  (custom unit name? find it: systemctl --user list-units --all | grep -i claw)',
         ),
       );
     }
@@ -688,31 +702,13 @@ async function main(): Promise<void> {
       if (channelChoice !== 'skip' && channelChoice !== 'other') {
         await resolveDisplayName();
       }
-      let result: void | typeof BACK_TO_CHANNEL_SELECTION;
-      // Every channel now runs through the SKILL.md-driven flow — the whole
-      // connect+wire procedure lives in each add-<channel>/SKILL.md.
-      if (channelChoice === 'telegram') {
-        result = await runChannelSkillWithPreStep('telegram', displayName!, { offerBack: true });
-      } else if (channelChoice === 'discord') {
-        result = await runChannelSkillWithPreStep('discord', displayName!, { offerBack: true });
-      } else if (channelChoice === 'whatsapp') {
-        result = await runChannelSkillWithPreStep('whatsapp', displayName!, { offerBack: true });
-      } else if (channelChoice === 'signal') {
-        result = await runChannelSkillWithPreStep('signal', displayName!, { offerBack: true });
-      } else if (channelChoice === 'teams') {
-        // Fresh create resolves the owner DM proactively and wires inline (the
-        // welcome message reaches the human first); a drop-through re-run
-        // resolves nothing and falls back to the deferred-wire ending.
-        result = await runChannelSkillWithPreStep('teams', displayName!, { wireIfResolved: true, offerBack: true });
-      } else if (channelChoice === 'slack') {
-        result = await runChannelSkillWithPreStep('slack', displayName!, { offerBack: true });
-      } else if (channelChoice === 'imessage') {
-        result = await runChannelSkillWithPreStep('imessage', displayName!, { offerBack: true });
-      } else if (channelChoice === 'dial') {
-        result = await runChannelSkillWithPreStep('dial', displayName!, { offerBack: true });
-      } else if (channelChoice === 'other') {
+      // Initialized, not just declared: the `skip` branch below assigns nothing,
+      // so the `result === BACK_TO_CHANNEL_SELECTION` read at the bottom of the
+      // loop is reached with `result` unassigned on that path.
+      let result: void | typeof BACK_TO_CHANNEL_SELECTION = undefined;
+      if (channelChoice === 'other') {
         result = await askOtherChannelName();
-      } else {
+      } else if (channelChoice === 'skip') {
         p.log.info(
           brandBody(
             wrapForGutter(
@@ -721,6 +717,10 @@ async function main(): Promise<void> {
             ),
           ),
         );
+      } else {
+        // Every installable choice runs through the SKILL.md-driven flow. The
+        // mapping is executable and unit-tested in channels/initial-setup.ts.
+        result = await runInitialChannel(channelChoice, displayName!, runChannelSkillWithPreStep);
       }
       if (result === BACK_TO_CHANNEL_SELECTION) backed = true;
     }
@@ -835,29 +835,6 @@ async function main(): Promise<void> {
   }
 }
 
-function channelDmLabel(choice: ChannelChoice): string | null {
-  switch (choice) {
-    case 'telegram':
-      return 'Telegram';
-    case 'discord':
-      return 'Discord DMs';
-    case 'whatsapp':
-      return 'WhatsApp';
-    case 'signal':
-      return 'Signal';
-    case 'teams':
-      return 'Teams';
-    case 'imessage':
-      return 'iMessage';
-    case 'slack':
-      return 'Slack DMs';
-    case 'dial':
-      return 'phone';
-    default:
-      return null;
-  }
-}
-
 // ─── first-chat step ───────────────────────────────────────────────────
 
 /**
@@ -886,7 +863,7 @@ async function confirmAssistantResponds(): Promise<PingResult> {
   } else {
     const msg =
       result === 'socket_error' ? "Couldn't reach the NanoClaw service." : "Your assistant didn't reply in time.";
-    s.stop(`${k.bold(fitToWidth(msg, suffix))}${k.dim(suffix)}`, 1);
+    s.error(`${k.bold(fitToWidth(msg, suffix))}${k.dim(suffix)}`);
   }
   return result;
 }
@@ -896,12 +873,12 @@ function renderPingFailureNote(result: PingResult): void {
     result === 'socket_error'
       ? [
           wrapForGutter(
-            "The NanoClaw service isn't listening on its local socket. Try restarting it, then chat with `pnpm run chat hi`:",
+            "The NanoClaw service isn't listening on its local socket. Try restarting it, then chat with `pnpm run chat hi`. " +
+              SERVICE_NAME_CAVEAT,
             6,
           ),
           '',
-          `  macOS:  launchctl kickstart -k gui/$(id -u)/${getLaunchdLabel()}`,
-          `  Linux:  systemctl --user restart ${getSystemdUnit()}`,
+          serviceRestartHint(),
         ].join('\n')
       : wrapForGutter(
           'No reply from your assistant within 30 seconds. Check `logs/nanoclaw.log` for clues, then try `pnpm run chat hi`.',
@@ -1259,11 +1236,14 @@ async function installSelectedTemplateAgent(provider?: string): Promise<Template
     p.log.warn(`Couldn't install the "${ref}" template: ${message}`);
     note(
       [
-        wrapForGutter('Setup continues without it; you still get a fresh default agent. To retry the template:', 6),
+        wrapForGutter(
+          'Setup continues without it; you still get a fresh default agent. To retry the template: ' +
+            SERVICE_NAME_CAVEAT,
+          6,
+        ),
         '',
         "  1. If the service isn't running:",
-        `     macOS:  launchctl kickstart -k gui/$(id -u)/${getLaunchdLabel()}`,
-        `     Linux:  systemctl --user restart ${getSystemdUnit()}`,
+        serviceRestartHint(),
         '  2. Rerun: bash nanoclaw.sh',
       ].join('\n'),
       'Skipping the template',
@@ -1311,7 +1291,7 @@ async function chooseTemplateOperation(
 }
 
 async function askNewTemplateAgentName(
-  agents: readonly AgentGroup[],
+  agents: readonly Pick<AgentGroup, 'name'>[],
   initialValue?: string,
 ): Promise<string> {
   const answer = ensureAnswer(
@@ -1882,26 +1862,7 @@ async function askChannelChoice(): Promise<ChannelChoice> {
   const choice = ensureAnswer(
     await brightSelect<ChannelChoice>({
       message: 'Want to chat with your assistant from your phone?',
-      options: [
-        { value: 'slack', label: 'Yes, connect Slack', hint: 'NEW!! one-click install' },
-        { value: 'teams', label: 'Yes, connect Microsoft Teams' },
-        { value: 'telegram', label: 'Yes, connect Telegram' },
-        { value: 'discord', label: 'Yes, connect Discord' },
-        { value: 'whatsapp', label: 'Yes, connect WhatsApp', hint: 'best with a dedicated number' },
-        { value: 'dial', label: 'Yes, connect Dial', hint: 'a dedicated phone number for your agent — place calls, SMS — worldwide' },
-        {
-          value: 'signal',
-          label: 'Yes, connect Signal',
-          hint: 'needs signal-cli installed',
-        },
-        {
-          value: 'imessage',
-          label: 'Yes, connect iMessage',
-          hint: 'local Mac or hosted iMessage (via photon.codes)',
-        },
-        { value: 'other', label: 'Other…', hint: 'install via /add-<name> after setup' },
-        { value: 'skip', label: 'Skip for now', hint: "I'll just use the terminal" },
-      ],
+      options: initialChannelOptions(),
     }),
   );
   setupLog.userInput('channel_choice', String(choice));

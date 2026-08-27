@@ -30,15 +30,24 @@ function freshDb() {
   return openInboundDb(DB_PATH);
 }
 
-function insertBasicTask(db: ReturnType<typeof openInboundDb>, id: string, recurrence: string | null) {
+function insertBasicTask(
+  db: ReturnType<typeof openInboundDb>,
+  id: string,
+  recurrence: string | null,
+  processAfter: string = new Date().toISOString(),
+) {
   insertTaskRow(db, {
     id,
     seriesId: id,
-    processAfter: new Date().toISOString(),
+    processAfter,
     recurrence,
     content: JSON.stringify({ prompt: 'noop' }),
   });
 }
+
+// updateTask only reaches future-pending or paused occurrences (a due row is
+// already an execution candidate), so the toggle tests must seed a future one.
+const FUTURE = '2999-01-01T00:00:00.000Z';
 
 afterEach(() => {
   if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true });
@@ -302,6 +311,75 @@ describe('insertRecurrence', () => {
       series_id: string;
     };
     expect(row.series_id).toBe('task-orig');
+    db.close();
+  });
+});
+
+describe('updateTask — new_session toggle (default-on semantics)', () => {
+  // Post-default-on: the stored content's `new_session` field is tri-state:
+  //   absent  → default (fresh session per fire, applied by reader)
+  //   true    → explicit opt-in (redundant w/ default but persisted verbatim)
+  //   false   → explicit opt-out (reader resumes the stored continuation)
+  // updateTask must PRESERVE the false value rather than strip it, so a
+  // coworker can opt out of the default on an existing task.
+  it('setting newSession=true writes new_session:true into content', () => {
+    const db = freshDb();
+    insertBasicTask(db, 'task-1', '*/5 * * * *', FUTURE);
+    const touched = updateTask(db, 'task-1', { newSession: true });
+    expect(touched).toBe(1);
+    const row = db.prepare('SELECT content FROM messages_in WHERE id = ?').get('task-1') as { content: string };
+    const parsed = JSON.parse(row.content) as Record<string, unknown>;
+    expect(parsed.new_session).toBe(true);
+    expect(parsed.prompt).toBe('noop'); // other fields preserved
+    db.close();
+  });
+
+  it('setting newSession=false PERSISTS new_session:false (opt-out)', () => {
+    const db = freshDb();
+    insertBasicTask(db, 'task-2', '*/5 * * * *', FUTURE);
+    updateTask(db, 'task-2', { newSession: false });
+    const row = db.prepare('SELECT content FROM messages_in WHERE id = ?').get('task-2') as { content: string };
+    const parsed = JSON.parse(row.content) as Record<string, unknown>;
+    // Post-default-on: false MUST be persisted (not stripped). Reader looks
+    // for === false to decide opt-out; stripping the key would mean the
+    // reader applies the default = fresh-session, silently overriding the
+    // caller's explicit opt-out.
+    expect(parsed.new_session).toBe(false);
+    expect(parsed.prompt).toBe('noop');
+    db.close();
+  });
+
+  it('omitting newSession leaves the existing value untouched (true stays true)', () => {
+    const db = freshDb();
+    insertTaskRow(db, {
+      id: 'task-3',
+      seriesId: 'task-3',
+      processAfter: FUTURE,
+      recurrence: '*/5 * * * *',
+      content: JSON.stringify({ prompt: 'old', new_session: true }),
+    });
+    updateTask(db, 'task-3', { prompt: 'new' });
+    const row = db.prepare('SELECT content FROM messages_in WHERE id = ?').get('task-3') as { content: string };
+    const parsed = JSON.parse(row.content) as Record<string, unknown>;
+    expect(parsed.prompt).toBe('new');
+    expect(parsed.new_session).toBe(true);
+    db.close();
+  });
+
+  it('omitting newSession leaves the existing value untouched (false stays false)', () => {
+    const db = freshDb();
+    insertTaskRow(db, {
+      id: 'task-4',
+      seriesId: 'task-4',
+      processAfter: FUTURE,
+      recurrence: '*/5 * * * *',
+      content: JSON.stringify({ prompt: 'old', new_session: false }),
+    });
+    updateTask(db, 'task-4', { prompt: 'new' });
+    const row = db.prepare('SELECT content FROM messages_in WHERE id = ?').get('task-4') as { content: string };
+    const parsed = JSON.parse(row.content) as Record<string, unknown>;
+    expect(parsed.prompt).toBe('new');
+    expect(parsed.new_session).toBe(false);
     db.close();
   });
 });

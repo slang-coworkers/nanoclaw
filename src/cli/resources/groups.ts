@@ -7,11 +7,14 @@ import {
   type AdditionalMountConfig,
   type McpServerConfig,
 } from '../../container-config.js';
-import { buildAgentGroupImage, killContainer, wakeContainer } from '../../container-runner.js';
+import { buildAgentGroupImage, isContainerRunning, killContainer, wakeContainer } from '../../container-runner.js';
 import { restartAgentGroupContainers } from '../../container-restart.js';
 import { createAgentGroup, getAgentGroupByFolder } from '../../db/agent-groups.js';
 import { getDb, hasTable } from '../../db/connection.js';
-import { getSession } from '../../db/sessions.js';
+import { getAgentGroup, updateAgentGroup } from '../../db/agent-groups.js';
+import { BUILTIN_MCP_SERVER, parseAllowlistFlag, resolveMcpAllowlist } from '../../mcp-allowlist.js';
+import { getDiscoveredToolInventory, updateContainerTokenScope } from '../../mcp-auth-proxy.js';
+import { getSession, getSessionsByAgentGroup } from '../../db/sessions.js';
 import { writeSessionMessage } from '../../session-manager.js';
 import {
   getContainerConfig,
@@ -32,6 +35,7 @@ import { isValidTimezone } from '../../timezone.js';
 import type { AgentGroup, ContainerConfigRow } from '../../types.js';
 import { registerResource } from '../crud.js';
 import { localizeIsoTimestamps } from '../format.js';
+import { enqueuePostResponseEffect } from '../post-response.js';
 
 /**
  * Parse a --timezone flag: undefined = not passed, null = explicit clear
@@ -97,6 +101,21 @@ registerResource({
       required: true,
     },
     { name: 'created_at', type: 'string', description: 'Auto-set.', generated: true },
+    {
+      name: 'agent_provider',
+      type: 'string',
+      description:
+        'Agent runtime provider (e.g. "claude", "codex", "opencode"). Set via the dashboard UI or `update`. Takes precedence over container_configs.provider in the resolution chain (session → agent_group → container_config → "claude").',
+      updatable: true,
+    },
+    {
+      name: 'paused',
+      type: 'number',
+      enum: ['0', '1'],
+      description:
+        'Operator kill switch: 1 pauses the group (host refuses to spawn ANY container for it, at the wakeContainer choke point that every wake path honours — router, agent-to-agent, host-sweep, task fires); 0 resumes. Inbound messages keep accumulating while paused, so resuming loses no work. Effective immediately — no restart needed, since the gate is on the next spawn.',
+      updatable: true,
+    },
   ],
   // `create` and `delete` are custom (below): create needs a `--template`
   // branch, and the generic create inserts a bare agent_groups row but never
@@ -104,6 +123,177 @@ registerResource({
   // DELETE violates FK constraints (#2525).
   operations: { list: 'open', get: 'open', update: 'approval' },
   customOperations: {
+    'mcp-tools get': {
+      access: 'open',
+      description:
+        "Show a group's EFFECTIVE MCP tool allow-list — what the next spawn will actually enforce — " +
+        'alongside the tools each wired MCP server exposes. `state` is one of `explicit` (a list stored ' +
+        'on the group — the only state that denies anything), `inherited` (no list set: the default, ' +
+        'which restricts nothing) or `unrestricted` (explicitly `*`). ' +
+        'Use --id <agent-group-id>.',
+      handler: async (args) => {
+        const id = String(args.id ?? '');
+        if (!id) throw new Error('--id is required');
+        const group = await getAgentGroup(id);
+        if (!group) throw new Error(`No agent group ${id}`);
+        // Same resolver the spawn path uses, so the displayed policy is the
+        // enforced policy. Reporting a stored NULL as "unrestricted, nothing
+        // blocked" was wrong for every non-admin group: the runtime falls back
+        // to the coworker-type manifest, which restricts.
+        const resolved = resolveMcpAllowlist(group);
+        // Discovery is already done by the proxy at server start; this only reads
+        // the cache, so it needs no MCP handshake of its own.
+        const inventory = getDiscoveredToolInventory();
+        return {
+          agent_group_id: id,
+          folder: group.folder,
+          state: resolved.state,
+          origin: resolved.origin,
+          restricted: resolved.state === 'explicit',
+          stored_allow_list: group.allowed_mcp_tools ?? null,
+          effective_tools: resolved.tools,
+          // What this policy actually governs: external servers only. Any
+          // `mcp__nanoclaw__*` entry a coworker manifest carries is inert —
+          // surfaced separately so the boundary is visible rather than looking
+          // like the policy quietly ignored part of the list.
+          external_tools: resolved.externalTools,
+          builtin_tools_scope: `out of scope — mcp__${BUILTIN_MCP_SERVER}__* is never restricted by this allow-list`,
+          discovered_by_server: inventory,
+          blocked: resolved.blocked,
+          // Present only when something was unreadable. The policy above is
+          // still the policy — a configuration fault never narrows a group —
+          // but it needs fixing and an operator has to be able to see it.
+          ...(resolved.configurationError
+            ? {
+                configuration_error:
+                  `${resolved.configurationError}. The allow-list above is unaffected (a fault never narrows a ` +
+                  `group), but discovered-tool listings may be incomplete until it is fixed.`,
+              }
+            : {}),
+        };
+      },
+    },
+    'mcp-tools set': {
+      access: 'approval',
+      // Denied outright for a self-targeting agent — never held for approval.
+      // Under `cli_scope: 'group'` the dispatcher auto-fills `--id` with the
+      // caller's own group, so without this an agent that omits `--id` gets a
+      // human asked to approve its own privilege change, and the request is
+      // only rejected AFTER they say yes.
+      denySelfTarget: true,
+      description:
+        "Replace a group's MCP tool allow-list and RESTART every running container in the group so the " +
+        'change is enforced on direct MCP servers too. ' +
+        '--id <agent-group-id> --tools \'["mcp__server__tool", …]\' for an explicit list, ' +
+        "--tools '[]' to allow no configurable MCP tool at all, " +
+        '--tools inherit to fall back to the coworker-type manifest (the default), ' +
+        '--tools unrestricted to allow every discovered tool. ' +
+        "NOTE: 'inherit' is NOT 'unrestricted' — it restricts to the type manifest. " +
+        'An agent may never change its OWN allow-list.',
+      handler: async (args, ctx) => {
+        const id = String(args.id ?? '');
+        if (!id) throw new Error('--id is required');
+
+        // No principal may widen its own permissions. Without this an agent in
+        // group scope reaches its own row via the pre-handler `--id` auto-fill,
+        // and a human approving a routine-looking card would be granting a
+        // self-escalation. A privilege change must come from a different
+        // principal — Main acting on a coworker, or a human operator.
+        if (ctx?.caller === 'agent' && ctx.agentGroupId === id) {
+          throw new Error(
+            'An agent cannot change its own MCP tool allow-list. Ask the admin/Main group to make this change.',
+          );
+        }
+        // Cross-group changes are admin-only. Group-scoped callers are additionally
+        // rejected by dispatch, but fail closed here rather than relying on it.
+        if (ctx?.caller === 'agent') {
+          const caller = await getAgentGroup(ctx.agentGroupId);
+          if (!caller?.is_admin) {
+            throw new Error("Only an admin agent group may change another group's MCP tool allow-list.");
+          }
+        }
+
+        const group = await getAgentGroup(id);
+        if (!group) throw new Error(`No agent group ${id}`);
+
+        const stored = parseAllowlistFlag(args.tools);
+        await updateAgentGroup(id, { allowed_mcp_tools: stored });
+
+        // Resolve through the same policy the next spawn will use, then apply
+        // THAT to the container running right now. The old code re-scoped only
+        // for an explicit list and reported `0` otherwise, which left a live
+        // container on its previous scope while the operator was told the
+        // restriction had been removed.
+        const resolved = resolveMcpAllowlist({ ...group, allowed_mcp_tools: stored });
+
+        // Layer 1 — immediate, and only half the job. The proxy token governs
+        // PROXIED servers; it deliberately excludes `mcp__nanoclaw__*` and it
+        // has no reach at all over direct stdio servers like `codex`, which
+        // never traverse the proxy.
+        const rescoped = updateContainerTokenScope(group.folder, resolved.externalTools);
+
+        // Layer 2 — the part that was missing. A running container snapshots
+        // its MCP policy at boot: the SDK is handed `allowedTools` /
+        // `disallowedTools` / `mcpServers` once per query, and a wired stdio
+        // server is a live child process. Nothing the host can say to a
+        // running container revokes a direct tool, so the container has to go.
+        //
+        // Restart, not a dynamic revocation seam, because a restart is honest
+        // about its own bounds: after it returns the container is provably
+        // running the new policy, whereas a mid-session seam would have to
+        // reach into SDK state we do not own and would silently no-op the day
+        // that state changes shape. It also matches the existing self-mod flow,
+        // which already restarts on a container-config change.
+        //
+        // Group-WIDE, not caller-wide: `allowed_mcp_tools` is a column on the
+        // agent group, and a group routinely has several live sessions (root
+        // plus per-thread). Restarting only the session that happened to make
+        // the request would leave every sibling container holding exactly the
+        // privileges the operator just revoked — and reporting success.
+        const affected = (await getSessionsByAgentGroup(id)).filter(
+          (s) => s.status === 'active' && isContainerRunning(s.id),
+        );
+        const wakeMessage =
+          `[system] Your MCP tool allow-list changed (${resolved.state}: ${resolved.origin}) and your ` +
+          `container was restarted so the new policy applies to direct MCP servers too. ` +
+          `Allowed external MCP tools: ${resolved.externalTools.length > 0 ? resolved.externalTools.join(', ') : 'none'}. ` +
+          `NanoClaw's own tools are unaffected.`;
+
+        // Deferred so the response frame is durable first. If the caller is a
+        // container in this group, the kill would otherwise destroy the answer
+        // to the command that ordered it. See src/cli/post-response.ts.
+        enqueuePostResponseEffect(`mcp-tools-set:restart:${id}`, () => {
+          restartAgentGroupContainers(id, 'mcp allow-list changed', wakeMessage);
+        });
+
+        return {
+          agent_group_id: id,
+          folder: group.folder,
+          state: resolved.state,
+          origin: resolved.origin,
+          stored_allow_list: stored,
+          effective_tools: resolved.tools,
+          external_tools: resolved.externalTools,
+          blocked: resolved.blocked,
+          live_containers_rescoped: rescoped,
+          // Named for what it is. The proxy scope is already narrowed; the
+          // direct-tool half lands when these containers come back, which is
+          // seconds away but is NOT "applied" at the moment this returns.
+          containers_pending_restart: affected.map((s) => s.id),
+          enforcement: {
+            proxied_mcp_servers: 'applied',
+            direct_mcp_servers: affected.length > 0 ? 'pending-restart' : 'applied',
+          },
+          note:
+            `Effective policy: ${resolved.state} (${resolved.origin}). ` +
+            `Proxy scope narrowed on ${rescoped} live token(s) immediately. ` +
+            (affected.length > 0
+              ? `${affected.length} container(s) in this group are being restarted so direct MCP servers ` +
+                `(built-in nanoclaw tools, codex) pick it up — direct-tool enforcement is PENDING-RESTART until they return.`
+              : 'No containers are running, so the policy applies in full at the next spawn.'),
+        };
+      },
+    },
     create: {
       access: 'approval',
       description:
@@ -162,6 +352,8 @@ registerResource({
         // grammar refuses at every spawn.
         assertValidGroupFolder(folder);
         const name = (args.name as string) ?? folder;
+        // Idempotent on --folder (upstream): a reused group is re-provisioned,
+        // not duplicated.
         const existing = await getAgentGroupByFolder(folder);
         if (existing) {
           await initGroupFilesystem(existing); // ensure a reused group is fully configured too (idempotent; also repairs a missing workspace folder)
@@ -178,8 +370,25 @@ registerResource({
               `adopt the old group's data under a new identity. Move or remove the folder, or pick a different --folder.`,
           );
         }
+        // nv-main fork columns (coworker_type/overlays/routing/…) default here so
+        // a bare-created group carries the lego shape the composer expects.
         const id = `ag-${randomUUID()}`;
-        const group: AgentGroup = { id, name, folder, agent_provider: null, created_at: new Date().toISOString() };
+        const group: AgentGroup = {
+          id,
+          name,
+          folder,
+          is_admin: 0,
+          agent_provider: null,
+          container_config: null,
+          coworker_type: null,
+          allowed_mcp_tools: null,
+          overlays: null,
+          routing: 'direct',
+          disable_overlays: 0,
+          paused: 0,
+          sidebar_group: null,
+          created_at: new Date().toISOString(),
+        };
         await createAgentGroup(group);
         // Provision the workspace folder and the `container_configs` row that
         // `getContainerConfig` and the spawn path require. Without this, a
@@ -357,13 +566,40 @@ registerResource({
     },
     'config get': {
       access: 'open',
-      description: 'Show the container config for a group. Use --id <group-id>.',
+      description:
+        'Show the container config for a group. Use --id <group-id>. Also surfaces ' +
+        'agent_provider (from agent_groups) and effective_model (derived from CODEX_MODEL ' +
+        'env when provider=codex and container_configs.model is null) so the agent can ' +
+        'introspect what runtime it is actually running on.',
       handler: async (args) => {
         const id = args.id as string;
         if (!id) throw new Error('--id is required');
         const row = await getContainerConfig(id);
         if (!row) throw new Error(`No container config for group: ${id}`);
-        return presentConfig(row);
+        const presented = presentConfig(row);
+
+        // Enrich with agent_provider from agent_groups (the runtime provider:
+        // claude/codex/opencode), distinct from container_configs.provider
+        // (the model provider, e.g. "nvinference"). Default is "claude"
+        // when no explicit override is set on the group.
+        const agentGroup = await getAgentGroup(id);
+        const agentProvider = agentGroup?.agent_provider ?? 'claude';
+
+        // Derive effective_model when container_configs.model is null. For Codex,
+        // the model is set via CODEX_MODEL env var on the host process and baked
+        // into the per-container config.toml at spawn time, so the DB row is
+        // null but the container is in fact running a specific model. Surface
+        // it so introspection ("what model am I?") gets a useful answer.
+        let effectiveModel = presented.model as string | null;
+        if (!effectiveModel && agentProvider === 'codex') {
+          effectiveModel = process.env.CODEX_MODEL ?? 'openai/openai/gpt-5.5';
+        }
+
+        return {
+          ...presented,
+          agent_provider: agentProvider,
+          effective_model: effectiveModel,
+        };
       },
     },
     'config update': {

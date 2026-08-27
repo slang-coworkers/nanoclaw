@@ -228,7 +228,15 @@ export async function run(args: string[]): Promise<void> {
         }, 3000);
       }
 
-      sock.ev.on('connection.update', (update) => {
+      // baileys is an ambient `any` stub (setup/types/optional-modules.d.ts), so
+      // `sock.ev.on` gives this callback no contextual type. Annotate exactly the
+      // three fields the handler reads rather than importing baileys'
+      // ConnectionState — that type only exists once /add-whatsapp has installed
+      // the package, and an annotation that resolves on some machines and not
+      // others is precisely what the stubs exist to prevent.
+      sock.ev.on(
+        'connection.update',
+        (update: { connection?: string; lastDisconnect?: { error?: unknown }; qr?: string }) => {
         const { connection, lastDisconnect, qr } = update;
 
         // QR method: render each rotation as plain stdout lines so a streaming
@@ -268,7 +276,8 @@ export async function run(args: string[]): Promise<void> {
             connectSocket(true);
           }
         }
-      });
+        },
+      );
 
       sock.ev.on('creds.update', saveCreds);
     }

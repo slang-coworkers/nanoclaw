@@ -5,7 +5,18 @@
 import { log } from '../src/log.js';
 import { emitStatus } from './status.js';
 
-const STEPS: Record<string, () => Promise<{ run: (args: string[]) => Promise<void> }>> = {
+/**
+ * Every entry here must name a module that exists ON TRUNK. The import is
+ * lazy, so a dangling entry does not fail at load — it fails only when an
+ * operator picks that step, with an ERR_MODULE_NOT_FOUND nobody can act on.
+ * A step whose file ships from a branch (`channels`, `providers`) registers
+ * itself inside the `nanoclaw:setup-steps` marker below, as part of the
+ * install skill that copies the file in — never as a hardcoded line up here.
+ */
+const STEPS: Record<
+  string,
+  () => Promise<{ run: (args: string[]) => Promise<void> }>
+> = {
   timezone: () => import('./timezone.js'),
   'set-env': () => import('./set-env.js'),
   environment: () => import('./environment.js'),
@@ -13,7 +24,6 @@ const STEPS: Record<string, () => Promise<{ run: (args: string[]) => Promise<voi
   register: () => import('./register.js'),
   'pair-telegram': () => import('./pair-telegram.js'),
   'pair-dial': () => import('./pair-dial.js'),
-  groups: () => import('./groups.js'),
   'whatsapp-auth': () => import('./whatsapp-auth.js'),
   'signal-auth': () => import('./signal-auth.js'),
   mounts: () => import('./mounts.js'),
@@ -23,6 +33,7 @@ const STEPS: Record<string, () => Promise<{ run: (args: string[]) => Promise<voi
   auth: () => import('./auth.js'),
   'provider-auth': () => import('./provider-auth.js'),
   'cli-agent': () => import('./cli-agent.js'),
+  'project-integrations': () => import('./project-integrations.js'),
   registry: () => import('./registry.js'),
   'registry-reconcile': () => import('./registry-reconcile.js'),
   // >>> nanoclaw:setup-steps

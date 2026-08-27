@@ -5,6 +5,7 @@ import {
   type HistoryRow,
 } from '../../modules/cross-session-context/index.js';
 import { registerResource } from '../crud.js';
+import { readSessionMessages, type ReadOpts } from '../session-messages.js';
 
 registerResource({
   name: 'session',
@@ -50,6 +51,35 @@ registerResource({
   ],
   operations: { list: 'open', get: 'open' },
   customOperations: {
+    messages: {
+      access: 'open',
+      description:
+        'Read merged inbound+outbound message transcript for a session (read-only). System-kind rows are filtered by default; pass --include-system to include them.',
+      args: [
+        { name: 'id', type: 'string', description: 'Session ID.', required: true },
+        { name: 'limit', type: 'number', description: 'Max rows to return (default 50, hard cap 500).' },
+        { name: 'offset', type: 'number', description: 'Skip the first N rows of the merged result (default 0).' },
+        { name: 'since_seq', type: 'number', description: 'Return only rows with seq strictly greater than this.' },
+        { name: 'kind', type: 'string', description: 'Filter by message kind (e.g. chat-sdk, chat, system).' },
+        {
+          name: 'include_system',
+          type: 'boolean',
+          description: 'Include system-kind rows (cli_request/cli_response noise). Default false.',
+        },
+        {
+          name: 'full',
+          type: 'boolean',
+          description: 'Return untruncated text. Default false (truncates each text to 300 chars).',
+        },
+        {
+          name: 'reverse',
+          type: 'boolean',
+          description:
+            'Sort newest-first so --limit N returns the most recent N rows (default false = chronological). Use --limit 1 --reverse for the last message.',
+        },
+      ],
+      handler: async (args) => readSessionMessages(args as unknown as ReadOpts),
+    },
     history: {
       access: 'open',
       description:

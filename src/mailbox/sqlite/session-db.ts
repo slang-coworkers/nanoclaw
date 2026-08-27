@@ -11,6 +11,17 @@ import { createInboundRecord } from '../model.js';
 import type { InboundWrite } from '../model.js';
 import { INBOUND_SCHEMA, OUTBOUND_SCHEMA } from './schema.js';
 
+/**
+ * The session-DB handle type, published BY the SQLite driver.
+ *
+ * Host code that legitimately needs a raw handle (the a2a bounce sweep,
+ * runaway detection) imports this rather than `better-sqlite3` directly, so
+ * the dependency points at the driver seam instead of reaching past it. If a
+ * non-SQLite mailbox is ever composed, those call sites are the ones this
+ * alias makes findable.
+ */
+export type SessionDbHandle = Database.Database;
+
 /** Apply the inbound or outbound schema to a DB file. Idempotent. */
 export function ensureSchema(dbPath: string, schema: 'inbound' | 'outbound'): void {
   const db = new Database(dbPath);
@@ -34,13 +45,16 @@ export function openOutboundDb(dbPath: string): Database.Database {
   return db;
 }
 
-/** Open the outbound DB for a session with write access. Only safe to call when no container is running. */
-export function openOutboundDbRw(dbPath: string): Database.Database {
+/** Open the outbound DB for a session with write access (host direct-write path). */
+export function openOutboundDbWritable(dbPath: string): Database.Database {
   const db = new Database(dbPath);
   db.pragma('journal_mode = DELETE');
   db.pragma('busy_timeout = 5000');
   return db;
 }
+
+/** Alias: open outbound DB read-write. Only safe to call when no container is running. */
+export const openOutboundDbRw = openOutboundDbWritable;
 
 export function upsertSessionRouting(
   db: Database.Database,
@@ -93,8 +107,42 @@ export function nextEvenSeq(db: Database.Database): number {
   return maxSeq < 2 ? 2 : maxSeq + 2 - (maxSeq % 2);
 }
 
+// Stored-timestamp shape contract for messages_in: always an ISO-8601 UTC
+// string. Historically some callers slipped `Date.now()` in as a number,
+// which SQLite stored as REAL and printed back as "<ms>.0" — unparseable by
+// Date.parse and able to bisect downstream sorts via NaN poisoning. We guard
+// at the insert site so the corruption can't re-enter the DB.
+function toIsoTimestamp(raw: unknown, field: string): string {
+  if (typeof raw === 'string') {
+    const s = raw.trim();
+    if (/^\d+(\.\d+)?$/.test(s)) {
+      const n = Number(s);
+      if (Number.isFinite(n)) return new Date(n).toISOString();
+    }
+    const parsed = Date.parse(s);
+    if (Number.isFinite(parsed)) return new Date(parsed).toISOString();
+    throw new Error(`insertMessage: unparseable ${field} "${raw}"`);
+  }
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return new Date(raw).toISOString();
+  }
+  if (raw instanceof Date) return raw.toISOString();
+  throw new Error(`insertMessage: invalid ${field} type ${typeof raw}`);
+}
+
 export function insertMessage(db: Database.Database, message: InboundWrite, sequence = nextEvenSeq(db)): void {
-  const record = createInboundRecord(message, sequence);
+  // Normalize BEFORE createInboundRecord: upstream's parseIsoTimestamp rejects
+  // anything that isn't already an exact ISO string, whereas toIsoTimestamp
+  // heals the numeric/Date shapes that historically reached this write path
+  // (see c2e5b14b). Coercing first keeps the guard and satisfies the parser.
+  const record = createInboundRecord(
+    {
+      ...message,
+      timestamp: toIsoTimestamp(message.timestamp, 'timestamp'),
+      processAfter: message.processAfter == null ? null : toIsoTimestamp(message.processAfter, 'processAfter'),
+    },
+    sequence,
+  );
   db.prepare(
     `INSERT INTO messages_in (id, seq, kind, timestamp, status, platform_id, channel_type, thread_id, content, process_after, recurrence, series_id, trigger, source_session_id, on_wake)
      VALUES (@id, @sequence, @kind, @timestamp, @status, @platformId, @channelType, @threadId, @content, @processAfter, @recurrence, @seriesId, @trigger, @sourceSessionId, @onWake)`,
@@ -105,6 +153,59 @@ export function insertMessage(db: Database.Database, message: InboundWrite, sequ
   });
 }
 
+/**
+ * Idempotent variant of `insertMessage` for a caller-chosen DETERMINISTIC id
+ * (`insertMessage` above always throws on an id collision — correct for its
+ * callers, which generate a fresh random id per call). `INSERT ... ON
+ * CONFLICT(id) DO NOTHING`, matching the same idempotent-insert pattern
+ * `upsertSessionRouting` (this file) and `writeOutboundDirect`
+ * (session-manager.ts) already use elsewhere in this codebase.
+ *
+ * Returns `{inserted: true}` for a first-ever insert, or `{inserted: false,
+ * existing}` when a row with this id already existed — the caller (NanoClaw #1
+ * "set ceiling v2": the host writing its deterministic
+ * `cost-ceiling-adjustment:<id>` control message) is responsible for verifying
+ * `existing.kind`/`existing.content` match byte-for-byte before treating a
+ * conflict as a safe idempotent retry; this function does not compare bodies
+ * itself; it only reports what is actually on file.
+ */
+export function insertMessageIfAbsent(
+  db: Database.Database,
+  message: InboundWrite,
+  sequence = nextEvenSeq(db),
+): { inserted: true } | { inserted: false; existing: { kind: string; content: string } } {
+  const record = createInboundRecord(
+    {
+      ...message,
+      timestamp: toIsoTimestamp(message.timestamp, 'timestamp'),
+      processAfter: message.processAfter == null ? null : toIsoTimestamp(message.processAfter, 'processAfter'),
+    },
+    sequence,
+  );
+  const info = db
+    .prepare(
+      `INSERT INTO messages_in (id, seq, kind, timestamp, status, platform_id, channel_type, thread_id, content, process_after, recurrence, series_id, trigger, source_session_id, on_wake)
+       VALUES (@id, @sequence, @kind, @timestamp, @status, @platformId, @channelType, @threadId, @content, @processAfter, @recurrence, @seriesId, @trigger, @sourceSessionId, @onWake)
+       ON CONFLICT(id) DO NOTHING`,
+    )
+    .run({
+      ...record,
+      trigger: record.trigger ? 1 : 0,
+      onWake: record.onWake ? 1 : 0,
+    });
+
+  if (info.changes > 0) return { inserted: true };
+
+  const existing = db.prepare('SELECT kind, content FROM messages_in WHERE id = ?').get(message.id) as
+    | { kind: string; content: string }
+    | undefined;
+  // The INSERT targeted this exact id and hit ON CONFLICT — the row MUST
+  // exist. A missing row here would mean it was deleted between the conflict
+  // and this read, which nothing in this codebase does to messages_in rows.
+  if (!existing) throw new Error(`insertMessageIfAbsent: conflicted on id=${message.id} but no row found on re-read`);
+  return { inserted: false, existing };
+}
+
 export function countDueMessages(db: Database.Database): number {
   return (
     db
@@ -112,7 +213,7 @@ export function countDueMessages(db: Database.Database): number {
         `SELECT COUNT(*) as count FROM messages_in
        WHERE status = 'pending'
          AND trigger = 1
-         AND (process_after IS NULL OR datetime(process_after) <= datetime('now'))`,
+         AND (process_after IS NULL OR SUBSTR(REPLACE(REPLACE(process_after, 'T', ' '), 'Z', ''), 1, 19) <= datetime('now'))`,
       )
       .get() as { count: number }
   ).count;
@@ -123,8 +224,11 @@ export function markMessageFailed(db: Database.Database, messageId: string): voi
 }
 
 export function retryWithBackoff(db: Database.Database, messageId: string, backoffSec: number): void {
-  const processAfter = new Date(Date.now() + backoffSec * 1000).toISOString();
-  db.prepare('UPDATE messages_in SET tries = tries + 1, process_after = ? WHERE id = ?').run(processAfter, messageId);
+  // Compute the future timestamp in JS to avoid string-interpolating backoffSec
+  // into SQL (SQL injection risk if the caller ever passes untrusted input).
+  const futureMs = Date.now() + Math.max(0, Math.floor(backoffSec)) * 1000;
+  const processAfter = new Date(futureMs).toISOString();
+  db.prepare(`UPDATE messages_in SET tries = tries + 1, process_after = ? WHERE id = ?`).run(processAfter, messageId);
 }
 
 export function getMessageForRetry(
@@ -175,16 +279,103 @@ export function getProcessingClaims(outDb: Database.Database): ProcessingClaim[]
 }
 
 /**
- * Delete orphan 'processing' rows. Called by the host after killing a
- * container so the leftover claim doesn't trip claim-stuck on the next sweep
- * tick (which would kill the freshly respawned container before its
- * agent-runner can run its own startup cleanup).
+ * Delete orphan 'processing' rows from processing_ack (host-side cleanup by path).
+ * Only call when the container is NOT running — avoids concurrent writes.
+ */
+export function clearOrphanProcessingAcks(outDbPath: string): void {
+  const db = openOutboundDbWritable(outDbPath);
+  try {
+    db.prepare("DELETE FROM processing_ack WHERE status = 'processing'").run();
+  } finally {
+    db.close();
+  }
+}
+
+/**
+ * Delete orphan 'processing' rows on an already-open DB handle. Called by the
+ * host after killing a container so the leftover claim doesn't trip claim-stuck
+ * on the next sweep tick (which would kill the freshly respawned container
+ * before its agent-runner can run its own startup cleanup).
  *
  * Safe because the host only writes to outbound.db when no container is
  * running (we just killed it). Returns the number of rows deleted.
  */
 export function deleteOrphanProcessingClaims(outDb: Database.Database): number {
   return outDb.prepare("DELETE FROM processing_ack WHERE status = 'processing'").run().changes;
+}
+
+export interface BouncedClaim {
+  message_id: string;
+  status: 'bounced-transient' | 'bounced-unknown';
+}
+
+/**
+ * Return processing_ack rows the container marked as a transient a2a bounce
+ * (markBounced in the agent-runner). These are handoffs whose recipient turn
+ * errored on a transient/unknown provider fault and delivered nothing — the
+ * trigger `messages_in` row is still `pending` (syncProcessingAcks ignores these
+ * statuses). The host redrive sweep re-arms them; see redriveBouncedA2a.
+ */
+export function getBouncedClaims(outDb: Database.Database): BouncedClaim[] {
+  return outDb
+    .prepare("SELECT message_id, status FROM processing_ack WHERE status IN ('bounced-transient', 'bounced-unknown')")
+    .all() as BouncedClaim[];
+}
+
+/**
+ * Delete SPECIFIC bounced-claim rows by id on an already-open writable handle.
+ * Only the ids passed are removed — never a blanket clear — so an unrelated
+ * bounce that arrived concurrently is left for the next sweep. Only call when
+ * the container is NOT running (single-writer). Returns rows deleted.
+ */
+export function deleteBouncedClaims(outDb: Database.Database, ids: string[]): number {
+  if (ids.length === 0) return 0;
+  const stmt = outDb.prepare('DELETE FROM processing_ack WHERE message_id = ?');
+  let n = 0;
+  const tx = outDb.transaction((list: string[]) => {
+    for (const id of list) n += stmt.run(id).changes;
+  });
+  tx(ids);
+  return n;
+}
+
+/**
+ * Fetch the fields needed to redrive/dead-letter a bounced a2a trigger: its
+ * retry counter, backoff gate, the a2a edge type, and the lineage back to the
+ * delegating session (source_session_id). Returns undefined if the row is no
+ * longer pending (already re-armed, completed, or failed).
+ */
+export function getBouncedTriggerRow(
+  db: Database.Database,
+  messageId: string,
+):
+  | {
+      id: string;
+      tries: number;
+      processAfter: string | null;
+      channelType: string | null;
+      sourceSessionId: string | null;
+      threadId: string | null;
+      platformId: string | null;
+    }
+  | undefined {
+  return db
+    .prepare(
+      `SELECT id, tries, process_after AS processAfter, channel_type AS channelType,
+              source_session_id AS sourceSessionId, thread_id AS threadId, platform_id AS platformId
+         FROM messages_in WHERE id = ? AND status = 'pending'`,
+    )
+    .get(messageId) as
+    | {
+        id: string;
+        tries: number;
+        processAfter: string | null;
+        channelType: string | null;
+        sourceSessionId: string | null;
+        threadId: string | null;
+        platformId: string | null;
+      }
+    | undefined;
 }
 
 export interface ContainerState {
@@ -331,11 +522,40 @@ export function getInboundSourceSessionId(db: Database.Database, messageId: stri
  * container's send_message MCP tool path didn't thread the batch's
  * in_reply_to through).
  *
- * Heuristic: "the last time this peer talked to me, which session was it?"
- * Returns null when no prior a2a inbound from that peer carries a
- * non-null source_session_id (typical for pre-migration installs).
+ * Heuristic: "the last time this peer talked to me on this thread, which
+ * session was it?" When `threadId` is provided, the lookup filters to
+ * inbound rows on that exact thread — this is the multi-thread case
+ * (e.g. a parent dispatches to one peer agent group on two distinct
+ * threads; replying without a thread filter would route to whichever
+ * thread happened to be most-recent overall, even if the sender
+ * explicitly addressed a different one). When `threadId` is null/omitted
+ * (single-thread peer relationship, or unthreaded a2a), the lookup falls
+ * back to most-recent regardless of thread — preserving the original
+ * single-thread behavior.
+ *
+ * Returns null when no prior a2a inbound from that peer (on the matching
+ * thread, when filtered) carries a non-null source_session_id (typical
+ * for pre-migration installs and brand-new dispatches).
  */
-export function getMostRecentPeerSourceSessionId(db: Database.Database, peerAgentGroupId: string): string | null {
+export function getMostRecentPeerSourceSessionId(
+  db: Database.Database,
+  peerAgentGroupId: string,
+  threadId?: string | null,
+): string | null {
+  if (threadId) {
+    const row = db
+      .prepare(
+        `SELECT source_session_id FROM messages_in
+          WHERE channel_type = 'agent'
+            AND platform_id = ?
+            AND thread_id = ?
+            AND source_session_id IS NOT NULL
+          ORDER BY seq DESC
+          LIMIT 1`,
+      )
+      .get(peerAgentGroupId, threadId) as { source_session_id: string | null } | undefined;
+    return row?.source_session_id ?? null;
+  }
   const row = db
     .prepare(
       `SELECT source_session_id FROM messages_in
