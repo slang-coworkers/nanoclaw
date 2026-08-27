@@ -470,7 +470,7 @@ describe('check.py — sync-branch reconciliation exemption', () => {
   function runSync(
     files: { path: string; head: string | null; nvMain: string | null },
     headRef: string,
-  ): ReturnType<typeof spawnSync> {
+  ): { status: number | null; out: string } {
     return withTmp((dir) => {
       const git = (...a: string[]) => spawnSync('git', ['-C', dir, ...a], { encoding: 'utf-8' });
       spawnSync('git', ['init', '-q', '-b', 'nv-slang', dir]);
@@ -511,11 +511,12 @@ describe('check.py — sync-branch reconciliation exemption', () => {
       git('commit', '-qm', 'head state');
       const headSha = git('rev-parse', 'HEAD').stdout.trim();
 
-      return spawnSync(PYTHON, [path.join(guard, 'check.py'), 'nv-slang', headSha], {
+      const r = spawnSync(PYTHON, [path.join(guard, 'check.py'), 'nv-slang', headSha], {
         cwd: dir,
         encoding: 'utf-8',
         env: { ...process.env, HEAD_REF: headRef },
       });
+      return { status: r.status, out: `${r.stdout ?? ''}${r.stderr ?? ''}` };
     });
   }
 
@@ -525,7 +526,7 @@ describe('check.py — sync-branch reconciliation exemption', () => {
       'sync/upstream-nv-slang',
     );
     expect(r.status).toBe(0);
-    expect(r.stdout + r.stderr).toContain('reconciliation');
+    expect(r.out).toContain('reconciliation');
   });
 
   it('forgives an unowned file the leaf deleted because nv-main deleted it', () => {
@@ -541,7 +542,7 @@ describe('check.py — sync-branch reconciliation exemption', () => {
       'sync/upstream-nv-slang',
     );
     expect(r.status).toBe(1);
-    expect(r.stdout + r.stderr).toContain('outside');
+    expect(r.out).toContain('outside');
   });
 
   it('does not exempt a non-sync branch even when content matches nv-main', () => {
