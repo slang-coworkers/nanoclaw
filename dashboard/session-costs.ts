@@ -12,6 +12,11 @@
  * carries, so a session sum reconciles with the group total on the Overview.
  * A test (session-costs.test.ts) asserts this table agrees with FALLBACK_PRICING
  * on every shared model, so the two can't drift.
+ *
+ * This module owns the CLAUDE half only. A session's Codex spend (the
+ * `codex-critique` skill's `mcp__codex__codex` tool calls, which never touch a
+ * Claude transcript) is priced by the sibling `codex-costs.ts` and lands in the
+ * same `SessionCostEntry` as `codexUsd`.
  */
 
 export interface TokenUsage {
@@ -102,7 +107,21 @@ export interface SessionCostEntry {
   sdkSessionId: string; // source SDK uuid
   groupFolder: string;
   groupName: string;
+  /**
+   * TOTAL priced spend for the session in the window — `claudeUsd + codexUsd`.
+   * Every existing consumer (ranking, p90/p99, the Sessions column) reads this
+   * and keeps meaning "what this session cost", which is why the split was
+   * added alongside it rather than replacing it.
+   */
   cost: number;
+  /** Claude-transcript half of `cost` (`.claude-shared/projects/**`). */
+  claudeUsd: number;
+  /**
+   * Codex half of `cost` (`<session>/codex/sessions/**` rollouts) — the spend
+   * `codex-critique` incurs by calling `mcp__codex__codex` as a plain MCP tool,
+   * which never appears in a Claude transcript. See `codex-costs.ts`.
+   */
+  codexUsd: number;
   tokens: number;
   lastActiveMs: number;
   unpriced: boolean; // saw usage from a model MODEL_PRICING doesn't know
