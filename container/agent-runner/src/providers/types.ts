@@ -254,6 +254,43 @@ export type ProviderEvent =
       sessionId: string | null;
     }
   /**
+   * PER-MESSAGE usage — one per assistant message the provider streams, carrying
+   * that message's OWN `usage` and the wire id that identifies it.
+   *
+   * This is the cost-cap's primary accounting basis (issue #1327). The
+   * end-of-turn `usage` event above is NOT a safe basis: the underlying stream
+   * emits one assistant message per CONTENT BLOCK (thinking / text / tool_use
+   * are separate messages) and every block of one API response repeats the same
+   * `message.id` AND the same message-level `usage`. Measured on real prod
+   * transcripts, summing those without deduplication double- to triple-counts
+   * (1.7x–2.8x; the reported session ran 2.1x over its true cost and enforced
+   * its ceiling that much too early).
+   *
+   * `messageId` is the dedup key. A consumer MUST ignore a repeat of an id it
+   * already charged, and MUST NOT charge an event whose id is null (it cannot be
+   * deduplicated) — see `recordMessageCost` in poll-loop.ts.
+   *
+   * `model` is the model that actually served THIS message, which is not
+   * necessarily the configured one (fallback model, a subagent on a cheaper
+   * model, …). Providers that cannot supply a value pass undefined and the
+   * consumer falls back to the configured model.
+   */
+  | {
+      type: 'message_usage';
+      /** Wire message id — the dedup key. Null when the provider has none. */
+      messageId: string | null;
+      /** Model that served this message; undefined → consumer uses the configured one. */
+      model: string | undefined;
+      inputTokens: number;
+      outputTokens: number;
+      cacheCreationInputTokens: number;
+      cacheReadInputTokens: number;
+      ephemeral1hInputTokens: number;
+      ephemeral5mInputTokens: number;
+      /** True when this message was produced by a Task-tool subagent. */
+      isSubagent: boolean;
+    }
+  /**
    * Liveness signal. Providers MUST yield this on every underlying SDK
    * event (tool call, thinking, partial message, anything) so the
    * poll-loop's idle timer stays honest during long tool runs.

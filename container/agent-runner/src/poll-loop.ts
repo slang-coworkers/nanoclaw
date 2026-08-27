@@ -42,6 +42,7 @@ import {
 } from './db/session-state.js';
 import { getConfig } from './config.js';
 import { priceUsage } from './pricing.js';
+import { ledgerKey, scanCodexRollouts } from './codex-cost.js';
 import {
   formatMessages,
   extractRouting,
@@ -158,6 +159,52 @@ let costEpisodeId: string | undefined;
 // genuine message instead). Cleared on consumption and on a fresh session.
 let pendingCostNudge: string | undefined;
 
+// --- Per-message Claude accounting (issue #1327) -----------------------------
+//
+// Wire message ids already charged. The provider emits ONE assistant message per
+// content block and every block of an API response repeats the same id and the
+// same message-level usage, so without this set the same response is charged
+// two to three times (measured 1.7x–2.8x on real prod transcripts).
+//
+// In-memory and EXACT — no eviction. An LRU would re-charge an evicted id, and
+// under-enforcement by memory is not a trade worth making at this scale
+// (~850 ids for a 17MB, week-long transcript). It is not persisted because a
+// resumed stream does not re-emit historical assistant messages: `SDKMessage`
+// has a replay variant for USER messages (`SDKUserMessageReplay`) and none for
+// assistant ones, and the observed inflation on a 48-resume session was ~2.1x —
+// the block-duplication factor — not the ~24x whole-history replay would give.
+// Cleared only when the spend window itself resets.
+const seenMessageIds = new Set<string>();
+// Per-turn accounting state, reset at every aggregate `usage` event. Explicit
+// counters rather than "did we charge anything": `recordTurnCost` has to tell a
+// provider that emits no per-message usage from one whose messages were all
+// priced from one whose messages were partly unpriceable, and a single number
+// conflates all three.
+let turnSawMessageUsage = false;
+let turnMessageCostUsd = 0;
+let turnUnpricedCount = 0;
+let turnMissingIdCount = 0;
+
+// --- Codex MCP-tool accounting (issue #1327) --------------------------------
+//
+// "<rollout file> <UTC day>" → USD already charged. See CostCapState.codexLedger
+// for why the ledger is per-file and per-day rather than one absolute total.
+let codexLedger: Record<string, number> = {};
+// Absolute codex spend folded into costSpentUsd (observability / dashboard).
+let codexUsdCharged = 0;
+// True until the first fold when the session had NO persisted ledger — that fold
+// absorbs existing rollout history without charging (see foldCodexCost).
+let codexLedgerBaselinePending = false;
+let codexScanFailures = 0;
+
+/**
+ * Cost-accounting schema generation stamped into the persisted state. Bumped by
+ * #1327: v1 summed the provider's end-of-turn aggregate once per query() call
+ * (block-duplicated, 1.7x–2.8x over), v2 sums per assistant message deduped by
+ * wire id and folds codex tool spend.
+ */
+const COST_ACCOUNTING_VERSION = 2;
+
 /** Current UTC day as "YYYY-MM-DD" — the daily-window bucket key. */
 function utcDayKey(): string {
   return new Date().toISOString().slice(0, 10);
@@ -218,6 +265,13 @@ function initCostTracking(providerName: string): void {
   costCeilingAllotmentUsd = cfg.costCeilingT2Usd && cfg.costCeilingT2Usd > 0 ? cfg.costCeilingT2Usd : 0;
   costImmortal = cfg.immortal === true;
   costWindow = costImmortal ? 'daily' : 'lifetime';
+  // SCOPE (issue #1327): codex spend is folded in for sessions whose PRIMARY
+  // provider is Claude — i.e. codex reached via `mcp__codex__codex`, which is
+  // how `codex-critique` and every coworker overlay uses it. A group configured
+  // to run the codex provider NATIVELY is still unenforced: costEnabled stays
+  // false for it (that provider emits no `usage` event, and flipping it on would
+  // start writing cost_cap rows for groups the dashboard currently renders "—"
+  // for rather than a false $0). Tracked separately; #1327 does not close it.
   costEnabled = costAllotmentUsd > 0 && providerName === 'claude';
   if (!costEnabled) return;
 
@@ -254,6 +308,31 @@ function initCostTracking(providerName: string): void {
     costEscalatedAt = persisted?.escalatedAt;
     costEpisodeId = persisted?.episodeId;
   }
+  // Codex ledger (issue #1327). The baseline marker is an EXPLICIT persisted
+  // flag so it survives a crash between this persist and the first fold; the
+  // ledger's absence is only the fallback for rows written before #1327. A
+  // brand-new session (no persisted row at all) owes no baseline — it has no
+  // rollout files, and charging from its first codex call is exactly right.
+  codexLedger = persisted?.codexLedger ? { ...persisted.codexLedger } : {};
+  codexLedgerBaselinePending = persisted
+    ? (persisted.codexBaselinePending ?? persisted.codexLedger === undefined)
+    : false;
+  codexUsdCharged = persisted?.codexUsd && persisted.codexUsd > 0 ? persisted.codexUsd : 0;
+  if (costWindow === 'daily' && !(persisted?.dayKey === costDayKey)) {
+    // A stale day's spend is discarded, so the codex figure attributed to it is
+    // too — the ledger keeps the per-day watermarks, this is only the display total.
+    codexUsdCharged = 0;
+  }
+  if (persisted && (persisted.accountingVersion ?? 1) < COST_ACCOUNTING_VERSION) {
+    log(
+      `Cost accounting upgraded to v${COST_ACCOUNTING_VERSION} (issue #1327). The persisted ` +
+        `spend of $${costSpentUsd.toFixed(2)} was accumulated by the pre-fix basis, which counted each ` +
+        `API response once per content block (measured 1.7x-2.8x over). It is RETAINED, not rescaled — ` +
+        `the factor is per-session and unknowable, and lowering recorded spend is the unsafe direction. ` +
+        `It clears at the next window reset (UTC rollover for daily, /clear or new_session for lifetime).`,
+    );
+  }
+
   costDecision = persisted?.decision;
   costDecidedAt = persisted?.decidedAt;
   costStopRequested = persisted?.status === 'stopped' && !costImmortal;
@@ -281,6 +360,17 @@ function initCostTracking(providerName: string): void {
 function resetCostForNewSession(): void {
   if (!costEnabled || costWindow !== 'lifetime') return;
   costSpentUsd = 0;
+  // A fresh window must not re-charge spend the old one already paid for.
+  // Per-message ids: the new conversation gets new ids, so the set is only
+  // holding memory — drop it. Codex: re-baseline on the next fold so the
+  // rollout files that exist right now are absorbed, not billed again.
+  seenMessageIds.clear();
+  turnSawMessageUsage = false;
+  turnMessageCostUsd = 0;
+  turnUnpricedCount = 0;
+  turnMissingIdCount = 0;
+  codexLedgerBaselinePending = true;
+  codexUsdCharged = 0;
   costCapUsd = costAllotmentUsd;
   costCeilingUsd = costCeilingAllotmentUsd;
   costEscalatedAt = undefined;
@@ -341,6 +431,16 @@ function persistCostCap(): void {
     // Always publish the live budget generation so the host reads the same gen the
     // runner is fencing on (it stamps overrides with it via the escalation episode).
     budgetGen: costBudgetGen,
+    // Cost-accounting generation + the codex delta watermark (issue #1327).
+    // `codexLedger` is ALWAYS written, including empty: its presence is what
+    // tells a later respawn this session has already been baselined.
+    accountingVersion: COST_ACCOUNTING_VERSION,
+    codexLedger,
+    // Written on EVERY persist, including the one initCostTracking does before
+    // the first fold — that is the point: a crash between init and the baseline
+    // fold must leave the successor knowing the baseline is still owed.
+    codexBaselinePending: codexLedgerBaselinePending,
+    ...(codexUsdCharged > 0 ? { codexUsd: codexUsdCharged } : {}),
     // dayKey is present ONLY for the daily window (shared contract #1).
     ...(costWindow === 'daily' && costDayKey ? { dayKey: costDayKey } : {}),
     ...(costEscalatedAt ? { escalatedAt: costEscalatedAt } : {}),
@@ -354,60 +454,48 @@ function persistCostCap(): void {
 }
 
 /**
- * Price one usage event, add it to lifetime spend, persist, and fire the
- * one-shot escalation on first crossing. Reprices from the token fields for
- * dashboard parity; falls back to the SDK's own cost only for models the copied
- * rate table doesn't know (so an unpriced model still accrues rather than
- * silently reading $0 forever).
+ * Roll the immortal daily window if the UTC day changed.
+ *
+ * Split out of the accrual path so every cost source (per-message Claude usage,
+ * the result-derived fallback, the codex fold) rolls the day identically before
+ * charging into it.
  */
-function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void {
-  if (!costEnabled) return;
-
+function maybeRollDailyWindow(): void {
   // IMMORTAL daily rollover: crossing into a new UTC day zeroes today's spend
   // and re-arms the once-per-day escalation. The lifetime window never rolls —
   // it resets only on a new_session batch or /clear (resetCostForNewSession).
-  if (costWindow === 'daily') {
-    const today = utcDayKey();
-    if (today !== costDayKey) {
-      costDayKey = today;
-      costSpentUsd = 0;
-      costEscalatedAt = undefined;
-      // New UTC day = new budget epoch: rotate the gen so a yesterday-daily decision
-      // that arrives now is refused, and drop the resolved episode.
-      costBudgetGen++;
-      costEpisodeId = undefined;
-      // Re-arm the immortal ceiling re-escalation for the new day — otherwise a
-      // day-1 crossing latches it forever and every later day's ceiling breach
-      // goes silent, killing the only visibility signal for a group class we
-      // deliberately never block.
-      costCeilingEscalated = false;
-      // New day → back to the p90/day allotment; a prior day's 'continue' raise
-      // does not carry over (the bound is per-day).
-      costCapUsd = costAllotmentUsd;
-    }
-  }
+  if (costWindow !== 'daily') return;
+  const today = utcDayKey();
+  if (today === costDayKey) return;
+  costDayKey = today;
+  costSpentUsd = 0;
+  costEscalatedAt = undefined;
+  // New UTC day = new budget epoch: rotate the gen so a yesterday-daily decision
+  // that arrives now is refused, and drop the resolved episode.
+  costBudgetGen++;
+  costEpisodeId = undefined;
+  // Re-arm the immortal ceiling re-escalation for the new day — otherwise a
+  // day-1 crossing latches it forever and every later day's ceiling breach
+  // goes silent, killing the only visibility signal for a group class we
+  // deliberately never block.
+  costCeilingEscalated = false;
+  // New day → back to the p90/day allotment; a prior day's 'continue' raise
+  // does not carry over (the bound is per-day).
+  costCapUsd = costAllotmentUsd;
+}
 
-  // Prefer the per-TTL cache-write split (authoritative for this fleet, which
-  // runs 1h prompt caching); fall back to the flat cache_creation field only
-  // when no split is reported, matching the dashboard's priceUsage semantics.
-  const hasSplit = event.ephemeral1hInputTokens > 0 || event.ephemeral5mInputTokens > 0;
-  let delta = priceUsage(getConfig().model, {
-    input_tokens: event.inputTokens,
-    output_tokens: event.outputTokens,
-    cache_read_input_tokens: event.cacheReadInputTokens,
-    cache_creation_input_tokens: event.cacheCreationInputTokens,
-    ...(hasSplit
-      ? {
-          cache_creation: {
-            ephemeral_1h_input_tokens: event.ephemeral1hInputTokens,
-            ephemeral_5m_input_tokens: event.ephemeral5mInputTokens,
-          },
-        }
-      : {}),
-  });
-  if (delta <= 0 && event.totalCostUsd > 0) delta = event.totalCostUsd; // unpriced model fallback
-  if (delta <= 0) return;
-
+/**
+ * Add one priced delta to spend, persist, and fire the one-shot escalations on
+ * first crossing.
+ *
+ * THE single accrual point. Every cost source funnels through here so the
+ * cap/ceiling/escalation semantics cannot diverge between them: per-assistant-
+ * message Claude usage (`recordMessageCost`), the end-of-turn fallback
+ * (`recordTurnCost`), and codex MCP-tool spend (`foldCodexCost`).
+ */
+function applyCostDelta(delta: number): void {
+  if (!costEnabled || !(delta > 0)) return;
+  maybeRollDailyWindow();
   costSpentUsd += delta;
 
   // One-shot soft escalation on first crossing of the cap. Dedupe via
@@ -443,6 +531,296 @@ function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void 
     if (!firedCeiling) emitCostEscalation('cap');
   }
   persistCostCap();
+}
+
+/**
+ * Price ONE streamed assistant message and accrue it — the cost cap's primary
+ * basis since #1327.
+ *
+ * WHY PER MESSAGE, AND WHY DEDUPED. The provider stream emits one assistant
+ * message per CONTENT BLOCK (thinking / text / tool_use are separate messages),
+ * and every block of one API response repeats the same wire `message.id` AND the
+ * same message-level `usage`. Summing the end-of-turn aggregate instead
+ * double- to triple-counted: measured across 8 real prod transcripts the
+ * non-deduped sum ran 1.7x–2.8x the deduped one, and the session that motivated
+ * the issue carried a live counter of $166.00 against a true $78.69 — so its
+ * ceiling fired at less than half the spend it was configured for. Deduping by
+ * `message.id` reproduces, to the cent, the figure the dashboard's transcript
+ * scanner already computes (`dashboard/server.ts` `scanFileCost`), which is the
+ * number a human sees and the one reconciled against ccusage.
+ *
+ * A null id is NOT charged here: without an id the event cannot be deduplicated,
+ * so charging it risks re-charging the same API response once per block. It is
+ * counted instead, and the end-of-turn fallback settles the residual.
+ */
+function recordMessageCost(event: Extract<ProviderEvent, { type: 'message_usage' }>): void {
+  if (!costEnabled) return;
+  turnSawMessageUsage = true;
+
+  if (!event.messageId) {
+    // Undedupable — see the doc comment. `recordTurnCost` picks up the residual.
+    turnMissingIdCount++;
+    return;
+  }
+  if (seenMessageIds.has(event.messageId)) return;
+  seenMessageIds.add(event.messageId);
+
+  // Prefer the per-TTL cache-write split (authoritative for this fleet, which
+  // runs 1h prompt caching); fall back to the flat cache_creation field only
+  // when no split is reported, matching the dashboard's priceUsage semantics.
+  const hasSplit = event.ephemeral1hInputTokens > 0 || event.ephemeral5mInputTokens > 0;
+  const usage = {
+    input_tokens: event.inputTokens,
+    output_tokens: event.outputTokens,
+    cache_read_input_tokens: event.cacheReadInputTokens,
+    cache_creation_input_tokens: event.cacheCreationInputTokens,
+    ...(hasSplit
+      ? {
+          cache_creation: {
+            ephemeral_1h_input_tokens: event.ephemeral1hInputTokens,
+            ephemeral_5m_input_tokens: event.ephemeral5mInputTokens,
+          },
+        }
+      : {}),
+  };
+  // Price by the model that actually served THIS message (fallback model, a
+  // subagent on a cheaper model, …). Falling back to the configured model is
+  // what the pre-#1327 code did for the whole turn, so it can only be an
+  // improvement, never a regression.
+  let delta = priceUsage(event.model, usage);
+  if (delta <= 0) delta = priceUsage(getConfig().model, usage);
+  if (delta <= 0) {
+    const tokens = event.inputTokens + event.outputTokens + event.cacheCreationInputTokens + event.cacheReadInputTokens;
+    // Zero-token messages price to $0 legitimately; only a message that billed
+    // tokens with no known rate is a real accounting hole.
+    if (tokens > 0) turnUnpricedCount++;
+    return;
+  }
+  turnMessageCostUsd += delta;
+  applyCostDelta(delta);
+}
+
+/**
+ * End-of-turn settlement for the provider's aggregate `usage` event.
+ *
+ * Since #1327 this is a FALLBACK, not the primary basis (see
+ * `recordMessageCost`). Three cases, decided from explicit per-turn state rather
+ * than from "did we charge anything", which conflates far too much:
+ *
+ *  1. No `message_usage` at all — a provider that reports only an end-of-turn
+ *     aggregate. Charge exactly as before: reprice the tokens, and fall back to
+ *     the SDK's own `totalCostUsd` for a model the rate table doesn't know.
+ *  2. Fully accounted per message — charge nothing more.
+ *  3. DEGRADED: some message priced, but at least one message was undedupable
+ *     (null id) or billed tokens at an unknown rate. Charge the residual
+ *     `totalCostUsd - <already charged>` and log it. `totalCostUsd` carries the
+ *     same block inflation, so the residual is an over-estimate — deliberately:
+ *     in a path we cannot account exactly, erring toward charging more is the
+ *     money-safe direction, and silently dropping the unpriced part is not
+ *     acceptable.
+ */
+function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void {
+  if (!costEnabled) return;
+  const sawMessages = turnSawMessageUsage;
+  const messageCost = turnMessageCostUsd;
+  const unpriced = turnUnpricedCount;
+  const missingId = turnMissingIdCount;
+  // The turn is over either way — reset before any early return so a later turn
+  // never inherits this one's state.
+  turnSawMessageUsage = false;
+  turnMessageCostUsd = 0;
+  turnUnpricedCount = 0;
+  turnMissingIdCount = 0;
+
+  if (sawMessages && unpriced === 0 && missingId === 0) return; // case 2
+
+  // The pre-#1327 basis: reprice the turn's aggregate tokens at the configured
+  // model. Block-inflated (that is the bug), so it is an OVER-estimate of the
+  // turn — which is exactly what a degraded path wants as an upper bound.
+  const hasSplit = event.ephemeral1hInputTokens > 0 || event.ephemeral5mInputTokens > 0;
+  const aggregateUsd = priceUsage(getConfig().model, {
+    input_tokens: event.inputTokens,
+    output_tokens: event.outputTokens,
+    cache_read_input_tokens: event.cacheReadInputTokens,
+    cache_creation_input_tokens: event.cacheCreationInputTokens,
+    ...(hasSplit
+      ? {
+          cache_creation: {
+            ephemeral_1h_input_tokens: event.ephemeral1hInputTokens,
+            ephemeral_5m_input_tokens: event.ephemeral5mInputTokens,
+          },
+        }
+      : {}),
+  });
+
+  if (sawMessages) {
+    // case 3 — degraded. Take the LARGER of the two independent turn estimates
+    // before subtracting what we already charged. Using `totalCostUsd` alone
+    // leaves a hole: a provider that reports it as 0 (or below the priced
+    // aggregate) would yield a non-positive residual and the unpriced messages
+    // would vanish silently — the failure this branch exists to prevent.
+    const residual = Math.max(event.totalCostUsd, aggregateUsd) - messageCost;
+    log(
+      `Cost accounting DEGRADED this turn: ${unpriced} unpriced message(s), ${missingId} without a ` +
+        `message id. Charged $${messageCost.toFixed(4)} per-message` +
+        (residual > 0 ? ` + $${residual.toFixed(4)} residual from the turn total` : ' (no positive residual)'),
+    );
+    applyCostDelta(residual);
+    return;
+  }
+
+  // case 1 — legacy aggregate-only path, unchanged
+  let delta = aggregateUsd;
+  if (delta <= 0 && event.totalCostUsd > 0) delta = event.totalCostUsd; // unpriced model fallback
+  applyCostDelta(delta);
+}
+
+/**
+ * Fold codex (MCP tool) spend into the cap — the second half of #1327.
+ *
+ * `mcp__codex__codex` runs as a stdio child, so none of its inference reaches
+ * the Claude stream; before this the cap had zero visibility into it and a
+ * codex-heavy session could spend real, uncapped money (the issue's session:
+ * $76.72, next to $78.69 of Claude spend). `$CODEX_HOME` is a per-session mount,
+ * so everything under it belongs to this session — no attribution needed.
+ *
+ * Charges the DELTA against a persisted per-(file, UTC-day) ledger, so it is
+ * idempotent, respawn-safe, and cannot be blinded by a rotated file (a new file
+ * charges from zero rather than having to climb past a global high-water mark).
+ *
+ * MIGRATION: a session with no `codexLedger` at all has its existing codex
+ * history absorbed once WITHOUT charging. Charging it would bill a live session
+ * for spend it already made and hard-stop much of the fleet the moment this
+ * deploys. A brand-new session has no rollout files, so it absorbs $0 and
+ * charges from its first codex call.
+ *
+ * Synchronous end to end — see `scanCodexRollouts`. Called only at turn
+ * boundaries (before a query is built, and on the turn's aggregate `usage`
+ * event), so enforcement of codex spend is turn-granular: a single turn can
+ * overshoot by its own codex calls. That is the honest bound; a timer here would
+ * not change it, because ending a turn mid-stream is not something the runner
+ * can do safely (the result/ack path owns that).
+ */
+function foldCodexCost(): void {
+  if (!costEnabled) return;
+  let scan: ReturnType<typeof scanCodexRollouts>;
+  try {
+    scan = scanCodexRollouts();
+  } catch (err) {
+    codexScanFailures++;
+    log(
+      `Codex cost scan THREW (${codexScanFailures} consecutive): ` +
+        `${err instanceof Error ? err.message : String(err)}`,
+    );
+    return;
+  }
+  if (scan.errors > 0) {
+    codexScanFailures++;
+    // Loud, but NOT a quiesce. An unreadable rollout loses nothing permanently:
+    // its ledger entries are untouched, so the entire delta is charged the first
+    // time the file reads successfully. The only unrecoverable case is a file
+    // that is never readable again — an infrastructure fault on a bind mount
+    // that, if it were real, would also stop codex from running at all. Stopping
+    // the session on it would turn a benign accounting delay into an outage that
+    // needs a human to clear.
+    log(
+      `Codex cost scan INCOMPLETE: ${scan.errors} unreadable path(s) ` +
+        `(${codexScanFailures} consecutive). Their spend is charged when they become readable.`,
+    );
+  } else {
+    codexScanFailures = 0;
+  }
+  if (scan.unpricedModels.length > 0) {
+    // Priced at DEFAULT_CODEX_RATE, never $0 — an unrecognized model must not
+    // buy unaccounted spend. Loud so the rate table gets updated.
+    log(`Codex cost: unknown model id(s) ${scan.unpricedModels.join(', ')} priced at the default codex rate`);
+  }
+
+  // Roll the day BEFORE deciding what "today" means for the daily window below.
+  maybeRollDailyWindow();
+
+  // NEVER baseline off an incomplete scan: absorbing "what we could read" marks
+  // the session baselined while the unread files stay uncharged forever. Stay
+  // pending and retry on the next fold.
+  const baselining = codexLedgerBaselinePending && scan.errors === 0;
+  let charged = 0;
+  let recorded = 0;
+  for (const file of scan.files) {
+    for (const [day, usd] of Object.entries(file.byDay)) {
+      const k = ledgerKey(file.key, day);
+      const prev = codexLedger[k] ?? 0;
+      const delta = usd - prev;
+      if (delta <= 0) continue;
+      codexLedger[k] = usd;
+      if (baselining) {
+        recorded += delta;
+        continue;
+      }
+      // The immortal daily window deliberately discards prior-day spend
+      // (initCostTracking drops a stale dayKey). A late scan must not smuggle
+      // yesterday into today, so record it and move on.
+      if (costWindow === 'daily' && day !== costDayKey) {
+        recorded += delta;
+        continue;
+      }
+      charged += delta;
+      codexUsdCharged += delta;
+      applyCostDelta(delta);
+    }
+  }
+
+  const pruned = scan.errors === 0 ? pruneCodexLedger(new Set(scan.files.map((f) => f.key))) : 0;
+
+  if (baselining) {
+    codexLedgerBaselinePending = false;
+    if (recorded > 0) {
+      log(
+        `Codex cost: baselined $${recorded.toFixed(4)} of pre-existing rollout spend without charging ` +
+          `(first run under accounting v${COST_ACCOUNTING_VERSION})`,
+      );
+    }
+  }
+  if (charged > 0) {
+    log(`Codex cost: +$${charged.toFixed(4)} folded into the cap (codex total $${codexUsdCharged.toFixed(4)})`);
+  }
+  // A baseline, a recorded-not-charged delta or a prune all mutate the ledger,
+  // so persist whenever anything moved; applyCostDelta already persisted on charge.
+  if (charged === 0 && (recorded > 0 || baselining || pruned > 0)) persistCostCap();
+}
+
+/**
+ * Days a ledger entry is kept after its rollout file disappears from disk.
+ *
+ * The ledger rides inside the `cost_cap` row, which is rewritten on EVERY cost
+ * delta — i.e. once per assistant message — so an unbounded ledger turns into
+ * unbounded write amplification on a long-lived immortal session.
+ *
+ * Both conditions are required before an entry is dropped, and both matter:
+ * a file still on disk would re-charge its whole total from zero if its
+ * watermark were removed, and a file that vanished only recently is the one case
+ * where a restore is plausible (an operator moving data, a mount blip). Past the
+ * retention window a rollout is neither present nor plausibly returning.
+ */
+const CODEX_LEDGER_RETENTION_DAYS = 30;
+
+/**
+ * Drop watermarks for rollout files that are gone from a COMPLETE scan and whose
+ * day bucket is older than the retention window. Returns how many were removed.
+ */
+function pruneCodexLedger(present: Set<string>): number {
+  const cutoff = new Date(Date.now() - CODEX_LEDGER_RETENTION_DAYS * 86_400_000).toISOString().slice(0, 10);
+  let removed = 0;
+  for (const k of Object.keys(codexLedger)) {
+    const sep = k.lastIndexOf(' ');
+    if (sep < 0) continue;
+    const fileKey = k.slice(0, sep);
+    const day = k.slice(sep + 1);
+    if (present.has(fileKey)) continue; // still on disk — its watermark is load-bearing
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day >= cutoff) continue;
+    delete codexLedger[k];
+    removed++;
+  }
+  return removed;
 }
 
 /**
@@ -855,6 +1233,8 @@ function applySetCeilingOverride(msg: MessageInRow, parsed: CostOverrideContent)
  */
 export const __costCapTestHooks = {
   recordTurnCost,
+  recordMessageCost,
+  foldCodexCost,
   computeCostStatus,
   costCeilingRemainingUsd,
   applyCostOverride,
@@ -881,6 +1261,14 @@ export const __costCapTestHooks = {
     costBudgetGen,
     costEpisodeId,
     pendingCostNudge,
+    codexLedger,
+    codexUsdCharged,
+    codexLedgerBaselinePending,
+    seenMessageIdCount: seenMessageIds.size,
+    turnSawMessageUsage,
+    turnMessageCostUsd,
+    turnUnpricedCount,
+    turnMissingIdCount,
   }),
   setState: (p: {
     costEnabled?: boolean;
@@ -901,6 +1289,14 @@ export const __costCapTestHooks = {
     costBudgetGen?: number;
     costEpisodeId?: string | undefined;
     pendingCostNudge?: string | undefined;
+    codexLedger?: Record<string, number>;
+    codexUsdCharged?: number;
+    codexLedgerBaselinePending?: boolean;
+    seenMessageIds?: string[];
+    turnSawMessageUsage?: boolean;
+    turnMessageCostUsd?: number;
+    turnUnpricedCount?: number;
+    turnMissingIdCount?: number;
   }): void => {
     if ('costEnabled' in p) costEnabled = p.costEnabled!;
     if ('costImmortal' in p) costImmortal = p.costImmortal!;
@@ -920,6 +1316,17 @@ export const __costCapTestHooks = {
     if ('costBudgetGen' in p) costBudgetGen = p.costBudgetGen!;
     if ('costEpisodeId' in p) costEpisodeId = p.costEpisodeId;
     if ('pendingCostNudge' in p) pendingCostNudge = p.pendingCostNudge;
+    if ('codexLedger' in p) codexLedger = { ...p.codexLedger! };
+    if ('codexUsdCharged' in p) codexUsdCharged = p.codexUsdCharged!;
+    if ('codexLedgerBaselinePending' in p) codexLedgerBaselinePending = p.codexLedgerBaselinePending!;
+    if ('seenMessageIds' in p) {
+      seenMessageIds.clear();
+      for (const id of p.seenMessageIds!) seenMessageIds.add(id);
+    }
+    if ('turnSawMessageUsage' in p) turnSawMessageUsage = p.turnSawMessageUsage!;
+    if ('turnMessageCostUsd' in p) turnMessageCostUsd = p.turnMessageCostUsd!;
+    if ('turnUnpricedCount' in p) turnUnpricedCount = p.turnUnpricedCount!;
+    if ('turnMissingIdCount' in p) turnMissingIdCount = p.turnMissingIdCount!;
   },
 };
 
@@ -1283,6 +1690,15 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
       await sleep(POLL_INTERVAL_MS);
       continue;
     }
+
+    // Settle codex (MCP tool) spend from the PREVIOUS turn BEFORE the quiesce
+    // gate below (issue #1327). Order matters: fold later and a session that
+    // blew its ceiling purely on codex would claim this batch and start another
+    // turn with $0.01 of headroom before anyone noticed. Folding here means the
+    // crossing sets `costStopRequested`, the gate immediately below leaves the
+    // rows `pending`, and the ceiling headroom handed to the provider
+    // (`maxBudgetUsd`) is computed from a spend figure that includes codex.
+    foldCodexCost();
 
     // Cost-cap quiesce (NanoClaw #1): after a 'stop' override, take no NEW
     // work — but still process any `cost_override` control rows so a later
@@ -1894,6 +2310,24 @@ export async function processQuery(
           return;
         }
 
+        // Cost quiesce mid-query (issue #1327). A ceiling crossing is now
+        // detected DURING a turn (per-assistant-message accounting) instead of
+        // only at its end, so this poller can be running while the session is
+        // already quiesced. Claiming a message here would be the worst outcome
+        // available: it gets markProcessing'd and pushed, the stream is ended a
+        // moment later on the turn's `usage` event, and the end-of-batch
+        // fallback then marks it COMPLETED — an inbound message consumed with no
+        // answer and no retry. Leave every row `pending` instead; the outer
+        // loop's quiesce gate keeps them that way until a human resumes.
+        //
+        // Placed AFTER the idle-end check on purpose: a quiesced turn that then
+        // goes silent must still be able to close its stream, or the container
+        // sits on an open query nothing will ever end.
+        if (costStopRequested && !costImmortal) {
+          log(`Cost ceiling crossed — not claiming ${newMessages.length} follow-up message(s); leaving them pending`);
+          return;
+        }
+
         // new_session bypass guard: if any arriving task defaults to fresh
         // session (a task kind with no `new_session: false` opt-out), DO NOT
         // push into the active query — that would resume the stored
@@ -2006,9 +2440,20 @@ export async function processQuery(
       handleEvent(event, routing);
       touchHeartbeat();
 
-      // Cost cap (NanoClaw #1): reprice each turn's usage, accrue lifetime
-      // spend, persist, and fire the one-shot soft escalation on cap crossing.
+      // Cost cap (NanoClaw #1): accrue spend, persist, and fire the one-shot
+      // soft escalation on cap crossing. Per assistant message since #1327 —
+      // the aggregate `usage` event below double- to triple-counts because the
+      // stream emits one message per content block, all repeating one usage.
+      if (event.type === 'message_usage') {
+        recordMessageCost(event);
+      }
+
       if (event.type === 'usage') {
+        // Turn boundary — settle codex (MCP tool) spend before the aggregate
+        // event so a ceiling crossing driven by codex is caught by the same
+        // hard-stop check below. `usage` follows `result`, so the turn's output
+        // has already been delivered and acked by the time we can stop.
+        foldCodexCost();
         recordTurnCost(event);
         // Tier-2 ceiling: end the IN-FLIGHT stream immediately (no more tokens),
         // mirroring the mid-query 'stop' override — not merely block the next poll.
@@ -2354,6 +2799,12 @@ function handleEvent(event: ProviderEvent, _routing: RoutingContext): void {
           `ephemeral5m=${event.ephemeral5mInputTokens} ` +
           `costUsd=${event.totalCostUsd}`,
       );
+      break;
+    case 'message_usage':
+      // Deliberately NOT logged per message: the stream emits one of these per
+      // content block, so a busy turn would drown the container log. The
+      // aggregate `usage` line above still reports the turn, and the cost cap's
+      // own escalation lines report what was actually charged.
       break;
   }
 }
