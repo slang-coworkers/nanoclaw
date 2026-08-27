@@ -196,6 +196,9 @@ let codexUsdCharged = 0;
 // absorbs existing rollout history without charging (see foldCodexCost).
 let codexLedgerBaselinePending = false;
 let codexScanFailures = 0;
+// One-shot dedup for the unknown-codex-model warning (in-memory: re-reporting
+// after a respawn is fine and rare).
+const codexUnpricedReported = new Set<string>();
 
 /**
  * Cost-accounting schema generation stamped into the persisted state. Bumped by
@@ -743,10 +746,15 @@ function foldCodexCost(): void {
   } else {
     codexScanFailures = 0;
   }
-  if (scan.unpricedModels.length > 0) {
-    // Priced at DEFAULT_CODEX_RATE, never $0 — an unrecognized model must not
-    // buy unaccounted spend. Loud so the rate table gets updated.
-    log(`Codex cost: unknown model id(s) ${scan.unpricedModels.join(', ')} priced at the default codex rate`);
+  // Priced at DEFAULT_CODEX_RATE, never $0 — an unrecognized model must not buy
+  // unaccounted spend. Reported ONCE per model per container: the fold runs at
+  // every turn boundary, and there are genuinely several GPT-5.x ids in the wild
+  // the table does not enumerate, so logging every fold is noise that would
+  // train the reader to ignore the line.
+  const newlyUnpriced = scan.unpricedModels.filter((m) => !codexUnpricedReported.has(m));
+  if (newlyUnpriced.length > 0) {
+    for (const m of newlyUnpriced) codexUnpricedReported.add(m);
+    log(`Codex cost: unknown model id(s) ${newlyUnpriced.join(', ')} priced at the default codex rate`);
   }
 
   // Roll the day BEFORE deciding what "today" means for the daily window below.
