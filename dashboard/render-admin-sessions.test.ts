@@ -48,6 +48,10 @@ interface FakeSession {
   group_folder: string;
   group_name?: string;
   cost?: number;
+  // Provider split of `cost` (issue #1327) — see renderCostCell in app.js.
+  claudeUsd?: number;
+  codexUsd?: number;
+  costUnpriced?: boolean;
   status?: string;
   container_status?: string;
   last_active?: string;
@@ -91,6 +95,7 @@ function buildRenderer(): {
     extractFn('centsToUsdInputStr'),
     extractFn('clampCeilingCents'),
     extractFn('renderCostCeilingControl'),
+    extractFn('renderCostCell'),
     extractFn('renderCostCapCell'),
     extractFn('renderGithubOriginCell'),
     extractFn('renderAdminSessions'),

@@ -177,6 +177,23 @@ describe('parseCodexRollout', () => {
     const events = parseCodexRollout(content);
     expect(events[0].model).toBe('');
     expect(priceCodexUsage(events[0].model, events[0].usage)).toBe(0);
+    // …and server.ts must RAISE the unpriced `*` for it. The rule there is
+    // `cost === 0 && tokens > 0 && !normalizeCodexModel(model)` — deliberately
+    // NOT gated on the model being non-empty, because a model-less reading is
+    // real spend we cannot name, not a free synthetic row. This assertion pins
+    // the predicate; an `&& model` guard would silently report a confident $0.
+    const model = events[0].model;
+    const cost = priceCodexUsage(model, events[0].usage);
+    const tokens = codexUsageTokens(events[0].usage);
+    expect(cost === 0 && tokens > 0 && !normalizeCodexModel(model)).toBe(true);
+  });
+
+  it('a null dayKey (timestamp missing) is reported rather than guessed', () => {
+    const content = JSON.stringify({
+      type: 'event_msg',
+      payload: { type: 'token_count', info: { last_token_usage: { input_tokens: 100, output_tokens: 10 } } },
+    });
+    expect(parseCodexRollout(content)[0].dayKey).toBeNull();
   });
 });
 
@@ -283,27 +300,34 @@ describe('CODEX_MODEL_PRICING agrees with the agent-runner’s copy (no drift)',
     return hits;
   }
 
-  it('every model both copies know is priced identically', async () => {
+  it('every model both copies know is priced identically, and the runner covers all of ours', async () => {
     const files = findRunnerPricingFiles();
     if (files.length === 0) return; // runner half not in this tree — see comment above
-    let compared = 0;
+    const tables: { where: string; table: Record<string, unknown> }[] = [];
     for (const file of files) {
-      let mod: Record<string, unknown>;
-      try {
-        mod = (await import(file)) as Record<string, unknown>;
-      } catch {
-        continue; // not importable under vitest (bun-only deps) — not a drift signal
-      }
+      // An import failure is NOT swallowed: a rate table that the dashboard's
+      // test runner cannot load is a table nothing can check, which is the
+      // failure mode this guard exists to prevent.
+      const mod = (await import(file)) as Record<string, unknown>;
       for (const [exportName, value] of Object.entries(mod)) {
         if (!/CODEX.*(PRICING|RATES)/i.test(exportName) || !value || typeof value !== 'object') continue;
-        for (const [model, rate] of Object.entries(value as Record<string, unknown>)) {
-          const ours = CODEX_MODEL_PRICING[model];
-          if (!ours) continue; // runner may price models we don't; only shared keys must agree
-          expect(rate, `${file}#${exportName}[${model}] disagrees with dashboard/codex-costs.ts`).toMatchObject(ours);
-          compared++;
-        }
+        tables.push({ where: `${file}#${exportName}`, table: value as Record<string, unknown> });
       }
     }
-    expect(compared).toBeGreaterThan(0);
+    expect(tables.length, `found ${files.join(', ')} but no CODEX_*_PRICING/RATES export in them`).toBeGreaterThan(0);
+
+    for (const { where, table } of tables) {
+      // (a) Shared keys must agree exactly.
+      for (const [model, rate] of Object.entries(table)) {
+        const ours = CODEX_MODEL_PRICING[model];
+        if (!ours) continue; // the runner may price models we don't; that's allowed
+        expect(rate, `${where}[${model}] disagrees with dashboard/codex-costs.ts`).toMatchObject(ours);
+      }
+      // (b) …and the runner must know every model WE price. Otherwise a model
+      // the dashboard reports spend for is one the runner's cost cap can't see,
+      // which is the enforcement hole #1327 is closing, reopened by omission.
+      const missing = Object.keys(CODEX_MODEL_PRICING).filter((m) => !(m in table));
+      expect(missing, `${where} is missing models dashboard/codex-costs.ts prices`).toEqual([]);
+    }
   });
 });

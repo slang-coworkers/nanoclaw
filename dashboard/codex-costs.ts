@@ -139,6 +139,16 @@ export function normalizeCodexModel(model: string | undefined): string {
   if (!model) return '';
   // Only the last path segment names the model; everything before it is
   // provider routing (`azure/`, `openai/`, `azure/openai/`, `nvinference/`, …).
+  //
+  // LIMITATION, stated rather than hidden: the route is DISCARDED, so a bare
+  // `gpt-5.6-sol` prices at the azure rate even though LiteLLM's bare-OpenAI
+  // entry is 20% cheaper. That is correct for this fleet — every rollout goes
+  // through the OneCLI gateway and arrives `azure/openai/…` (5368 files
+  // surveyed, no un-prefixed gpt-5.6 among them) — and for every OTHER model in
+  // the table the azure and OpenAI LiteLLM rates are identical, so the route
+  // cannot change the answer. A genuinely mixed-route fleet would need a
+  // route-aware key (`azure/gpt-5.6-sol` vs `gpt-5.6-sol` as separate entries);
+  // adding that now would be untested speculation, so it is deliberately not.
   let m = model.trim().toLowerCase().split('/').pop() || '';
   if (CODEX_MODEL_PRICING[m]) return m;
   const undated = m.replace(/-\d{8}$/, '');
