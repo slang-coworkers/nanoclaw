@@ -118,6 +118,27 @@ For every
 - Any other path type: leave it untouched and stop this group for operator
   review.
 
+Once every native-memory path for this group has been staged or quarantined,
+turn the native store off so the CLI stops writing a second one:
+
+```bash
+pnpm exec tsx scripts/migrate-claude-memory-settings.ts --group <group-id>
+```
+
+This sets `autoMemoryEnabled: false` and `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` in
+that group's `data/v2-sessions/<group-id>/.claude-shared/settings.json`, strips
+the retired `bun /app/src/memory-hook.ts` SessionStart hook, and adds the
+`PreCompact` instruction hook if absent. It is idempotent, prints `unchanged`
+when there is nothing to do, and skips a group whose provider owns its own
+surfaces (no `settings.json`). New groups already ship these settings.
+
+Order matters, which is why this is a step here and not a startup migration:
+flipping the switches before the native store is staged would strand those
+memories — the CLI stops loading them and there is nothing left to import.
+
+The change lands on this group's next container start, which step 1 already
+arranged by stopping it.
+
 ### `memory/memories/imported-agent-memory.md`
 
 Without opening a regular file, rename it into
@@ -224,6 +245,10 @@ and add a non-duplicate index link so it remains usable.
 Verify for every group:
 
 - no automatic migration occurred during an ordinary restart
+- native auto-memory is off in
+  `data/v2-sessions/<group-id>/.claude-shared/settings.json`
+  (`autoMemoryEnabled: false` **and** `env.CLAUDE_CODE_DISABLE_AUTO_MEMORY` is
+  `"1"`), or the group's provider owns its own surfaces and has no such file
 - `memory/index.md`, `memory/system/index.md`, and
   `memory/system/definition.md` exist
 - root `index.md` declares OKF v0.1 and each non-reserved durable Markdown

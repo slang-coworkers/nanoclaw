@@ -132,8 +132,10 @@ describe('detectStaleContainers per-session compose guard (structural)', () => {
     const fnStart = src.indexOf('export async function detectStaleContainers');
     expect(fnStart).toBeGreaterThan(-1);
     const fnBody = src.slice(fnStart, src.indexOf('\n}', fnStart));
-    // The compose call must sit inside a try whose catch skips just this session.
-    expect(fnBody).toMatch(/try\s*{[\s\S]*composeCoworkerSpine\(/);
+    // The render must sit inside a try whose catch skips just this session. The
+    // compose call now lives behind `renderComposedDocument` (one seam shared with
+    // spawn), so the guard is asserted on the call that can throw.
+    expect(fnBody).toMatch(/try\s*{[\s\S]*renderComposedDocument\(/);
     expect(fnBody).toMatch(/catch \(err\) {[\s\S]*Skipping stale-check[\s\S]*continue;/);
   });
 
@@ -148,6 +150,11 @@ describe('detectStaleContainers per-session compose guard (structural)', () => {
   //
   // Structural, like the guard above: the divergence is in which reader is
   // called, and driving the real functions needs a live activeContainers map.
+  //
+  // Both paths now reach the persona through `renderComposedDocument`, so they
+  // cannot diverge from spawn by construction rather than by two call sites
+  // happening to agree. Assert that neither reconstructs the inputs locally —
+  // which is how the original bug was written.
   it('records and compares the spawn hash through the same persona reader as spawn', () => {
     const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
     for (const fn of ['export async function recomposeAndUpdateHash', 'export async function detectStaleContainers']) {
@@ -159,10 +166,15 @@ describe('detectStaleContainers per-session compose guard (structural)', () => {
       expect(body, `${fn} must not read the legacy persona path directly`).not.toMatch(
         /readFileSync\([^)]*\.instructions\.md/,
       );
-      expect(body, `${fn} must resolve the persona through the shared reader`).toMatch(
-        /readStandingInstructions\(|readGroupPersona\(/,
-      );
+      expect(body, `${fn} must render through the shared seam`).toMatch(/renderComposedDocument\(/);
+      // ...and must not rebuild compose options of its own: that is precisely the
+      // duplication that let the digests drift apart.
+      expect(body, `${fn} must not build its own compose options`).not.toMatch(/composeCoworkerSpine\(/);
     }
+
+    // The seam is where the shared persona reader must actually be called.
+    const seam = src.slice(src.indexOf('async function composeOptionsFor'));
+    expect(seam.slice(0, seam.indexOf('\n}\n'))).toMatch(/readStandingInstructions\(/);
   });
 });
 

@@ -76,6 +76,13 @@ describe('initGroupFilesystem agent surfaces', () => {
     expect(fs.existsSync(path.join(groupDir, '.instructions.md'))).toBe(false);
     expect(fs.existsSync(path.join(claudeDir, 'settings.json'))).toBe(true);
     expect(fs.existsSync(path.join(claudeDir, 'skills'))).toBe(true);
+    // Native Claude memory must be off: NanoClaw owns memory via the OKF tree,
+    // and two systems writing the same workspace disagree about recall. The
+    // provider env carries the same flag (claude.auto-memory-env.test.ts) —
+    // asserting both halves is why a squash cannot silently drop one again.
+    const settings = JSON.parse(fs.readFileSync(path.join(claudeDir, 'settings.json'), 'utf-8'));
+    expect(settings.autoMemoryEnabled).toBe(false);
+    expect(settings.env.CLAUDE_CODE_DISABLE_AUTO_MEMORY).toBe('1');
   });
 
   it('writes the seed into the memory scaffold — never CLAUDE.* — for a provider with its own surfaces', async () => {
