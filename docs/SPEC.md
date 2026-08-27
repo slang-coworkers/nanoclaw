@@ -54,10 +54,11 @@ A personal Claude assistant with multi-channel support, persistent memory per co
 │  ┌──────────────────────────────────────────────────────────────┐    │
 │  │                    AGENT RUNNER                               │    │
 │  │                                                                │    │
-│  │  Working directory: /workspace/group (mounted from host)       │    │
+│  │  Working directory: /workspace/agent (mounted from host)       │    │
 │  │  Volume mounts:                                                │    │
-│  │    • groups/{name}/ → /workspace/group                         │    │
-│  │    • groups/global/ → /workspace/global/ (non-main only)       │    │
+│  │    • groups/{name}/ → /workspace/agent                         │    │
+│  │    • data/shared/  → /workspace/shared/                        │    │
+│  │        (read-write for Main, read-only for coworkers)          │    │
 │  │    • data/sessions/{group}/.claude/ → /home/node/.claude/      │    │
 │  │    • Additional dirs → /workspace/extra/*                      │    │
 │  │                                                                │    │
@@ -82,7 +83,7 @@ A personal Claude assistant with multi-channel support, persistent memory per co
 | Container Runtime | Containers (Linux VMs) | Isolated environments for agent execution |
 | Agent | @anthropic-ai/claude-agent-sdk (0.2.29) | Run Claude with tools and MCP servers |
 | Browser Automation | agent-browser + Chromium | Web interaction and screenshots |
-| Runtime | Node.js 20+ | Host process for routing and scheduling |
+| Runtime | Node.js 22+ | Host process for routing and scheduling |
 
 ---
 
