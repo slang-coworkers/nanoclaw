@@ -35,25 +35,36 @@ export function isComposedDocument(content: string): boolean {
  * document or the new one — never a truncated prefix. `assertComposedDocUsable`
  * only checks `size > 0`, so a torn file would otherwise pass as usable.
  *
- * Both halves are load-bearing. The temp name comes from `randomUUID()` because
- * the group dir is agent-writable: a `pid`-and-timestamp name is reconstructible,
- * so it can be pre-created as a symlink pointing anywhere the host can write.
- * `wx` then fails closed instead of following it.
+ * `randomUUID()` rather than a `pid`-and-timestamp name, plus `wx`: the group dir
+ * is agent-writable, so a reconstructible temp path can be pre-created as a
+ * symlink pointing anywhere the host can write, and `wx` then fails closed
+ * instead of following it. That bounds pre-creation; it does not bound an
+ * in-flight swap of the temp entry between the write and the rename — an
+ * unguessable name is what makes that race impractical rather than impossible.
  *
  * Renaming does NOT reach a running container — the composed document is a *file*
  * bind mount, so an established mount keeps pointing at the old inode. This
  * protects the next spawn from a torn read; live update is `killContainer`'s job.
+ * Nor is it crash-durable: there is no `fsync`, so this orders visibility, not
+ * persistence.
  */
 export function writeComposedDocument(filePath: string, content: string): void {
   const tmp = `${filePath}.tmp-${randomUUID()}`;
+  let created = false;
   try {
     fs.writeFileSync(tmp, content, { flag: 'wx' });
+    created = true;
     fs.renameSync(tmp, filePath);
   } finally {
-    try {
-      fs.unlinkSync(tmp);
-    } catch {
-      // The rename consumed the temp file, or creation failed before it existed.
+    // Only clean up an entry this call created. Without the guard a `wx` failure
+    // — the path already existed, i.e. someone else's file — would be deleted on
+    // the way out, turning a refusal to overwrite into a deletion.
+    if (created) {
+      try {
+        fs.unlinkSync(tmp);
+      } catch {
+        // Expected: the rename consumed it.
+      }
     }
   }
 }

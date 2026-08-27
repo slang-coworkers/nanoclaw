@@ -20,7 +20,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { writeComposedDocument } from './group-persona.js';
 
@@ -73,45 +73,97 @@ describe('writeComposedDocument', () => {
     expect(fs.readdirSync(tmp)).toEqual(['CLAUDE.md']);
   });
 
-  // `wx` fails closed rather than following a pre-planted symlink. Provable by
-  // pointing the TARGET's directory at a temp path we do control: write once to
-  // learn nothing, then assert the flag's effect directly — a second write to an
-  // existing temp path must not clobber it.
-  it('creates its temp file exclusively (wx), never truncating an existing path', () => {
+  // A rename failure must leave the PREVIOUS document intact and clean up the
+  // temp file. `assertComposedDocUsable` then spawns on that previous document
+  // rather than refusing — losing the update is recoverable, losing the document
+  // is not.
+  it('leaves the previous document intact when the rename fails', () => {
     const target = path.join(tmp, 'CLAUDE.md');
-    const victim = path.join(tmp, 'victim.txt');
-    fs.writeFileSync(victim, 'untouched\n');
+    fs.writeFileSync(target, 'previous\n');
+    const rename = vi.spyOn(fs, 'renameSync').mockImplementation(() => {
+      throw Object.assign(new Error('EXDEV'), { code: 'EXDEV' });
+    });
 
-    // If the implementation opened its temp path without `wx` AND that path were
-    // guessable, this file would be the one it clobbered. We cannot guess the
-    // name, so the guarantee is asserted structurally below; here we at least
-    // pin that a normal write touches nothing else in the directory.
-    writeComposedDocument(target, 'composed\n');
+    try {
+      expect(() => writeComposedDocument(target, 'next\n')).toThrow(/EXDEV/);
+    } finally {
+      rename.mockRestore();
+    }
 
-    expect(fs.readFileSync(victim, 'utf-8')).toBe('untouched\n');
-    expect(fs.readdirSync(tmp).sort()).toEqual(['CLAUDE.md', 'victim.txt']);
+    expect(fs.readFileSync(target, 'utf-8')).toBe('previous\n');
+    expect(fs.readdirSync(tmp)).toEqual(['CLAUDE.md']);
   });
 });
 
 /**
- * The symlink-planting guarantee has no honest behavioural test: it holds
- * precisely BECAUSE the temp name is unguessable, so a test cannot plant the
- * name the implementation will choose. Asserting it structurally is the only
- * non-theatrical option — a test that plants `…tmp-<pid>` would pass against a
- * vulnerable implementation too, which is worse than no test.
+ * `randomUUID()` makes the temp name unguessable, so a test cannot plant the
+ * name the implementation will pick — but it can learn that name by intercepting
+ * the write, which turns the symlink guarantee into a real assertion rather than
+ * a structural one.
  */
-describe('temp-path hardening (structural — see comment)', () => {
-  const source = fs.readFileSync(new URL('./group-persona.ts', import.meta.url), 'utf-8');
-  const body = source.slice(source.indexOf('function writeComposedDocument'));
-  const fn = body.slice(0, body.indexOf('\n}\n') + 3);
+describe('temp-path hardening', () => {
+  it('refuses to write through a symlink planted at its own temp path', () => {
+    const target = path.join(tmp, 'CLAUDE.md');
+    fs.writeFileSync(target, 'previous\n');
+    const victim = path.join(tmp, 'victim.txt');
+    fs.writeFileSync(victim, 'untouched\n');
 
-  it('derives the temp name from randomUUID, not pid/timestamp', () => {
-    expect(fn).toContain('randomUUID()');
-    expect(fn).not.toMatch(/process\.pid|Date\.now\(\)/);
+    // Intercept the first write to learn the real temp path, plant a symlink to
+    // the victim there, and let the call proceed. `wx` must reject the existing
+    // path instead of following it.
+    const real = fs.writeFileSync;
+    const spy = vi.spyOn(fs, 'writeFileSync').mockImplementation(((p: fs.PathOrFileDescriptor, ...rest) => {
+      spy.mockRestore();
+      fs.symlinkSync(victim, p as string);
+      return (real as (...a: unknown[]) => void)(p, ...rest);
+    }) as typeof fs.writeFileSync);
+
+    try {
+      expect(() => writeComposedDocument(target, 'attacker-visible\n')).toThrow(/EEXIST/);
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(fs.readFileSync(victim, 'utf-8')).toBe('untouched\n');
+    expect(fs.readFileSync(target, 'utf-8')).toBe('previous\n');
   });
 
-  it('opens the temp file with the exclusive-create flag', () => {
-    expect(fn).toContain("flag: 'wx'");
+  // A `wx` refusal must not become a deletion: the entry it collided with
+  // belongs to someone else, and an unconditional cleanup would remove it.
+  it('does not delete the colliding entry when its temp path already exists', () => {
+    const target = path.join(tmp, 'CLAUDE.md');
+
+    // Occupy the exact temp path the call is about to use, so `wx` collides with
+    // a real file. The cleanup must leave it alone: it is not ours to remove.
+    let occupied: string | undefined;
+    const spy = vi.spyOn(fs, 'writeFileSync').mockImplementation(((p: fs.PathOrFileDescriptor) => {
+      spy.mockRestore();
+      occupied = p as string;
+      fs.writeFileSync(occupied, 'not mine\n');
+      throw Object.assign(new Error(`EEXIST: file already exists, open '${occupied}'`), { code: 'EEXIST' });
+    }) as typeof fs.writeFileSync);
+
+    try {
+      expect(() => writeComposedDocument(target, 'composed\n')).toThrow(/EEXIST/);
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(occupied).toBeDefined();
+    expect(fs.existsSync(occupied!)).toBe(true);
+    expect(fs.readFileSync(occupied!, 'utf-8')).toBe('not mine\n');
+  });
+
+  // Belt to the above brace: the policy itself, so a future edit that swaps
+  // `randomUUID()` for a reconstructible name fails here even if the behavioural
+  // test above is ever weakened.
+  it('derives the temp name from randomUUID, not pid/timestamp', () => {
+    const source = fs.readFileSync(new URL('./group-persona.ts', import.meta.url), 'utf-8');
+    const body = source.slice(source.indexOf('function writeComposedDocument'));
+    const fn = body.slice(0, body.indexOf('\n}\n') + 3);
+
+    expect(fn).toContain('randomUUID()');
+    expect(fn).not.toMatch(/process\.pid|Date\.now\(\)/);
   });
 });
 
