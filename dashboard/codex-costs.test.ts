@@ -291,7 +291,18 @@ describe('CODEX_MODEL_PRICING agrees with the agent-runner’s copy (no drift)',
         if (isDir) {
           if (name === 'node_modules') continue;
           walk(full, depth + 1);
-        } else if (/codex.*(pricing|cost)|(pricing|cost).*codex/i.test(name) && name.endsWith('.ts') && !name.endsWith('.test.ts')) {
+        } else if (
+          name.endsWith('.ts') &&
+          !name.endsWith('.test.ts') &&
+          /codex/i.test(name) &&
+          /pricing|price|cost|rate/i.test(name)
+        ) {
+          // Filename contract with the runner half (see the describe() comment):
+          // anything under container/agent-runner/src named for BOTH codex and
+          // pricing/cost/rates. Kept a pattern rather than one hard-coded path so
+          // the runner can organise its tree freely; the tradeoff is that a table
+          // hidden in an unrelated filename is not guarded, which is why the
+          // expected name is written down on both sides.
           hits.push(full);
         }
       }

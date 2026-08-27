@@ -91,6 +91,14 @@
  * duplicated there, guarded the same way `MODEL_PRICING` is guarded against
  * `FALLBACK_PRICING` — by a test that fails if the two copies disagree
  * (`codex-costs.test.ts`, "agrees with the agent-runner's copy").
+ *
+ * The written half of that contract, since a pattern-matched test cannot enforce
+ * where a file lives: the runner's copy belongs in a file under
+ * `container/agent-runner/src/` whose name mentions BOTH `codex` and one of
+ * `pricing`/`price`/`cost`/`rate` (e.g. `cost/codex-pricing.ts`), exporting a
+ * table named `CODEX_*_PRICING` or `CODEX_*_RATES` with these same keys and
+ * `{ input, output, cacheRead }` shape. The dollar field both sides surface is
+ * `codexUsd`.
  */
 
 export interface CodexModelRate {
