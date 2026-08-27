@@ -51,6 +51,7 @@ import {
   stripInternalTags,
   type RoutingContext,
 } from './formatter.js';
+import { appendExchange } from './conversations.js';
 import { classifyAndPrepend } from './intent-router-bridge.js';
 import { stripHarnessTagArtifacts } from './harness-tag-strip.js';
 import { isUploadTraceCommand, uploadTrace } from './upload-trace.js';
@@ -2134,12 +2135,16 @@ export async function processQuery(
             // below owns it. (It used to be tested for HERE, inside a branch
             // gated on `event.text`, which made the check dead for the exact
             // `text: null` silent turn it was written to catch.)
-            notifyExchangeComplete(onExchangeComplete, {
-              prompt: archivePrompts[0] ?? initialPrompt,
-              result: event.text,
-              continuation: queryContinuation ?? initialContinuation,
-              status: hasUnwrapped || willRetryTaskBlocks ? 'undelivered' : 'completed',
-            });
+            notifyExchangeComplete(
+              onExchangeComplete,
+              {
+                prompt: archivePrompts[0] ?? initialPrompt,
+                result: event.text,
+                continuation: queryContinuation ?? initialContinuation,
+                status: hasUnwrapped || willRetryTaskBlocks ? 'undelivered' : 'completed',
+              },
+              routing,
+            );
             if (willRetryWrapping) {
               unwrappedNudged = true;
               const destinations = getAllDestinations();
@@ -2263,13 +2268,34 @@ export async function processQuery(
 function notifyExchangeComplete(
   hook: ((exchange: ProviderExchange) => void) | undefined,
   exchange: ProviderExchange,
+  routing?: RoutingContext,
 ): void {
+  archiveExchange(exchange, routing);
   if (!hook) return;
   try {
     hook(exchange);
   } catch (err) {
     log(`onExchangeComplete failed: ${err instanceof Error ? err.message : String(err)}`);
   }
+}
+
+/**
+ * Write the exchange to `conversations/` — the folder `container/CLAUDE.md`
+ * promises every agent, regardless of provider. Done here rather than behind
+ * `onExchangeComplete` because that hook is optional and no provider implements
+ * it, so archiving through it would stay dead for all five.
+ *
+ * Only `completed` exchanges: an `error`/`undelivered` result is text the user
+ * never received, so archiving it would let the agent "recall" something that
+ * never happened. Task runs are skipped — they already get `tasks/<id>.md`.
+ */
+function archiveExchange(exchange: ProviderExchange, routing?: RoutingContext): void {
+  if (exchange.status !== 'completed') return;
+  if (routing?.taskRun) return;
+  appendExchange(exchange, {
+    assistantName: process.env.NANOCLAW_ASSISTANT_NAME || undefined,
+    log,
+  });
 }
 
 function handleEvent(event: ProviderEvent, _routing: RoutingContext): void {
