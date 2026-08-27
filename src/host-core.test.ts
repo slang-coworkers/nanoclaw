@@ -79,6 +79,7 @@ describe('session manager', () => {
       platform_id: 'chan-123',
       name: 'General',
       is_group: 1,
+      admin_user_id: null,
       unknown_sender_policy: 'strict',
       created_at: now(),
     });
@@ -291,6 +292,85 @@ describe('session manager', () => {
     expect(s2.id).toBe(s1.id);
   });
 
+  describe('canonical gh-issue/gh-pr session collapse', () => {
+    // A second a2a messaging group standing in for an agent-to-agent
+    // delegation source (channel_type 'agent'), distinct from mg-1.
+    beforeEach(async () => {
+      await createMessagingGroup({
+        id: 'mg-a2a-X',
+        channel_type: 'agent',
+        platform_id: 'agent:ag-2:ag-1',
+        name: null,
+        is_group: 1,
+        admin_user_id: null,
+        unknown_sender_policy: 'strict',
+        created_at: now(),
+      });
+    });
+
+    it('collapses different messaging groups on the same gh-issue thread into one session', async () => {
+      // Webhook session: messaging_group_id null (mirrors deliverGitHubIssueOpened).
+      const { session: webhook, created: c1 } = await resolveSession(
+        'ag-1',
+        null,
+        'gh-issue-shader-slang/slang-9999',
+        'per-thread',
+      );
+      expect(c1).toBe(true);
+
+      // A later a2a delegation on the SAME issue thread but a different
+      // messaging group must reuse the webhook session, not mint a new one.
+      const { session: a2a, created: c2 } = await resolveSession(
+        'ag-1',
+        'mg-a2a-X',
+        'gh-issue-shader-slang/slang-9999',
+        'per-thread',
+      );
+      expect(c2).toBe(false);
+      expect(a2a.id).toBe(webhook.id);
+    });
+
+    it('collapses gh-pr threads too', async () => {
+      const { session: first } = await resolveSession('ag-1', null, 'gh-pr-shader-slang/slang-1234', 'per-thread');
+      const { session: second, created } = await resolveSession(
+        'ag-1',
+        'mg-a2a-X',
+        'gh-pr-shader-slang/slang-1234',
+        'per-thread',
+      );
+      expect(created).toBe(false);
+      expect(second.id).toBe(first.id);
+    });
+
+    it('does NOT collapse generic (non-gh) a2a threads — per-source isolation preserved', async () => {
+      // Per #301: two different a2a sources sharing a plain thread_id must stay
+      // isolated. Only the gh-issue/gh-pr namespace collapses.
+      const { session: s1 } = await resolveSession('ag-1', 'mg-1', 'review-PR-A', 'per-thread');
+      const { session: s2, created } = await resolveSession('ag-1', 'mg-a2a-X', 'review-PR-A', 'per-thread');
+      expect(created).toBe(true);
+      expect(s2.id).not.toBe(s1.id);
+    });
+
+    it('does NOT collapse a gh thread across different agent groups', async () => {
+      await createAgentGroup({
+        id: 'ag-2',
+        name: 'Other Agent',
+        folder: 'other-agent',
+        agent_provider: null,
+        created_at: now(),
+      });
+      const { session: s1 } = await resolveSession('ag-1', null, 'gh-issue-shader-slang/slang-7777', 'per-thread');
+      const { session: s2, created } = await resolveSession(
+        'ag-2',
+        'mg-a2a-X',
+        'gh-issue-shader-slang/slang-7777',
+        'per-thread',
+      );
+      expect(created).toBe(true);
+      expect(s2.id).not.toBe(s1.id);
+    });
+  });
+
   it('should write message to inbound DB', async () => {
     const { session } = await resolveSession('ag-1', 'mg-1', null, 'shared');
 
@@ -390,6 +470,7 @@ describe('router', () => {
       platform_id: 'chan-123',
       name: 'General',
       is_group: 1,
+      admin_user_id: null,
       unknown_sender_policy: 'public',
       created_at: now(),
     });
@@ -397,6 +478,8 @@ describe('router', () => {
       id: 'mga-1',
       messaging_group_id: 'mg-1',
       agent_group_id: 'ag-1',
+      trigger_rules: null,
+      response_scope: 'all',
       engage_mode: 'pattern',
       engage_pattern: '.',
       sender_scope: 'all',
@@ -556,6 +639,8 @@ describe('router', () => {
       id: 'mga-2',
       messaging_group_id: 'mg-1',
       agent_group_id: 'ag-2',
+      trigger_rules: null,
+      response_scope: 'all',
       engage_mode: 'pattern',
       engage_pattern: '.',
       sender_scope: 'all',
@@ -1445,9 +1530,12 @@ describe('agent-to-agent routing', () => {
     expect(discordA2a).toHaveLength(0);
   });
 
-  it('BUG: A2A-only session gets null session_routing (#2332)', async () => {
-    // Researcher only has an agent-shared session (no channel wiring).
-    // writeSessionRouting writes nulls because messaging_group_id is null.
+  it('A2A-only session gets agent-typed session_routing (#2332)', async () => {
+    // Fixed: writeSessionRouting overrides the synthetic `agent:<src>:<rcp>`
+    // mg with channel_type='agent', platform_id=<source agent group id>,
+    // so the container's bare send_message produces an outbound addressed
+    // at the real source — routeAgentMessage's reply-detection branch
+    // then delivers it into the source's session.
     const { routeAgentMessage } = await import('./modules/agent-to-agent/agent-route.js');
 
     const { session: paSession } = await resolveSession('ag-pa', 'mg-slack', null, 'shared');
@@ -1471,10 +1559,9 @@ describe('agent-to-agent routing', () => {
       | undefined;
     rDb.close();
 
-    // BUG: session_routing is all null — researcher has no default routing
     expect(routing).toBeDefined();
-    expect(routing!.channel_type).toBeNull();
-    expect(routing!.platform_id).toBeNull();
+    expect(routing!.channel_type).toBe('agent');
+    expect(routing!.platform_id).toBe('ag-pa');
   });
 });
 
@@ -1493,6 +1580,7 @@ describe('delivery', () => {
       platform_id: 'chan-test',
       name: 'Test',
       is_group: 0,
+      admin_user_id: null,
       unknown_sender_policy: 'strict',
       created_at: now(),
     });

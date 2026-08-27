@@ -83,9 +83,15 @@ const startTime = Date.now();
 const mockAdapter: ChannelAdapter = {
   name: 'mock',
   channelType: 'mock',
+  // The harness routes with threadId: null into a 'shared' wiring — the
+  // channel IS the conversation, so declare the capability that matches.
+  supportsThreads: false,
 
-  async setup(config: ChannelSetup) {
-    console.log(`  ✓ Mock adapter setup with ${config.conversations.length} conversations`);
+  async setup(_config: ChannelSetup) {
+    // ChannelSetup carries only callbacks now; per-wiring conversation configs
+    // moved out of it (see src/index.ts ConversationConfig), so there is no
+    // `conversations` to count here.
+    console.log('  ✓ Mock adapter setup');
   },
 
   async deliver(platformId, threadId, message) {
@@ -95,6 +101,9 @@ const mockAdapter: ChannelAdapter = {
     const content = message.content as Record<string, unknown>;
     const text = ((content.text as string) || '').slice(0, 120);
     console.log(`  ✓ [${elapsed}s] Delivered #${deliveredMessages.length}: ${text}...`);
+    // ChannelAdapter.deliver returns the platform message id. The mock has no
+    // platform, so it has no id to report — undefined is the declared "unknown".
+    return undefined;
   },
 
   async setTyping() {},
@@ -108,16 +117,10 @@ const mockAdapter: ChannelAdapter = {
 registerChannelAdapter('mock', { factory: () => mockAdapter });
 
 // Init channel adapters — this calls setup() with conversation configs from central DB
+// Mirrors the real setup built in src/index.ts — ChannelSetup is four callbacks
+// (onInbound, onInboundEvent, onMetadata, onAction) and nothing else. Wiring
+// comes from the central DB rows created above, not from this object.
 await initChannelAdapters((adapter) => ({
-  conversations: [
-    {
-      platformId: 'mock-channel-1',
-      agentGroupId: 'ag-chan',
-      engageMode: 'pattern',
-      engagePattern: '.',
-      sessionMode: 'shared',
-    },
-  ],
   onInbound(platformId, threadId, message) {
     routeInbound({
       channelType: adapter.channelType,
@@ -131,15 +134,23 @@ await initChannelAdapters((adapter) => ({
       },
     }).catch((err) => console.error('Route error:', err));
   },
+  onInboundEvent(event) {
+    routeInbound(event).catch((err) => console.error('Route event error:', err));
+  },
   onMetadata() {},
+  onAction() {},
 }));
 
 // Set up delivery adapter bridge
 setDeliveryAdapter({
+  // ChannelDeliveryAdapter.deliver grew `files` and `instance` params and now
+  // returns the platform message id. The mock ignores attachments and only ever
+  // has the one instance, so it forwards the same three arguments as before and
+  // hands the adapter's id (undefined here) back to the delivery loop.
   async deliver(channelType, platformId, threadId, kind, content) {
     const adapter = getChannelAdapter(channelType);
-    if (!adapter) return;
-    await adapter.deliver(platformId, threadId, { kind, content: JSON.parse(content) });
+    if (!adapter) return undefined;
+    return adapter.deliver(platformId, threadId, { kind, content: JSON.parse(content) });
   },
 });
 

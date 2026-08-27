@@ -22,11 +22,14 @@
  * throw because the module isn't installed.
  */
 import { reenterGuardedDeliveryAction, registerDeliveryAction } from '../../delivery.js';
+import { unguarded } from '../../guard/index.js';
 import { notifyAgent, registerApprovalHandler } from '../approvals/index.js';
 import { A2A_MESSAGE_GATE_ACTION } from './agent-route.js';
+import { handleAppendLearning } from './append-learning.js';
 import { createAgent, requestCreateAgentHold, validateCreateAgent } from './create-agent.js';
 import { agentsCreate } from './guard.js';
 import { applyA2aMessageGate } from './message-gate.js';
+import { handleWireAgents } from './wire-agents.js';
 
 registerDeliveryAction('create_agent', createAgent, {
   guardAction: agentsCreate,
@@ -34,6 +37,20 @@ registerDeliveryAction('create_agent', createAgent, {
   requestHold: requestCreateAgentHold,
   onDeny: (_content, session, reason) => notifyAgent(session, `create_agent denied: ${reason}`),
 });
+// nv-main fork actions: wire_agents mutates destination ACLs (admin-only path is
+// enforced upstream of delivery); append_learning writes to the shared learnings
+// dir. Neither is a container-escalation primitive like create_agent, so they
+// register unguarded, matching their pre-refactor behavior.
+registerDeliveryAction(
+  'wire_agents',
+  handleWireAgents,
+  unguarded('wire_agents ACL mutation is gated by the admin command path, not the delivery guard'),
+);
+registerDeliveryAction(
+  'append_learning',
+  handleAppendLearning,
+  unguarded('append_learning writes only to the shared learnings dir — no privileged central-DB write'),
+);
 registerApprovalHandler('create_agent', reenterGuardedDeliveryAction('create_agent'));
 
 registerApprovalHandler(A2A_MESSAGE_GATE_ACTION, applyA2aMessageGate);

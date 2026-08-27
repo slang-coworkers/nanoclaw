@@ -53,6 +53,8 @@ export interface CustomOperation {
   examples?: string[];
   /** Operator-only: never runnable from inside a container (see CommandDef.hostOnly). */
   hostOnly?: boolean;
+  /** An agent may never aim this verb at its own group (see CommandDef.denySelfTarget). */
+  denySelfTarget?: boolean;
   handler: (args: Record<string, unknown>, ctx: CallerContext) => Promise<unknown>;
   /** Presentational renderer for human mode — see CommandDef.formatHuman. */
   formatHuman?: (data: unknown) => string;
@@ -533,6 +535,7 @@ export function registerResource(def: ResourceDef): void {
         description: op.description,
         access: op.access,
         hostOnly: op.hostOnly,
+        denySelfTarget: op.denySelfTarget,
         resource: def.plural,
         parseArgs: declared
           ? (raw) => {
