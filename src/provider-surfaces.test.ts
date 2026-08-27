@@ -67,10 +67,13 @@ describe('initGroupFilesystem agent surfaces', () => {
 
     const groupDir = path.join(GROUPS_DIR, ag.folder);
     const claudeDir = path.join(DATA_DIR, 'v2-sessions', ag.id, '.claude-shared');
-    // This fork seeds the instruction surface as `.instructions.md` (the lego
-    // spine composes CLAUDE.md from templates + .instructions.md on each wake);
-    // CLAUDE.local.md is the agent's own per-group memory, never host-seeded.
-    expect(fs.readFileSync(path.join(groupDir, '.instructions.md'), 'utf-8')).toBe('hello\n');
+    // The seed lands on the canonical `instructions.prepend.md` (the lego spine
+    // composes CLAUDE.md from templates + that file on each wake); seeding the
+    // legacy `.instructions.md` handed the group a surface the first spawn
+    // immediately migrated away. CLAUDE.local.md is the agent's own per-group
+    // memory, never host-seeded.
+    expect(fs.readFileSync(path.join(groupDir, 'instructions.prepend.md'), 'utf-8')).toBe('hello\n');
+    expect(fs.existsSync(path.join(groupDir, '.instructions.md'))).toBe(false);
     expect(fs.existsSync(path.join(claudeDir, 'settings.json'))).toBe(true);
     expect(fs.existsSync(path.join(claudeDir, 'skills'))).toBe(true);
   });
@@ -127,7 +130,7 @@ describe('initGroupFilesystem deferred seed (.seed.md)', () => {
   // `.seed.md` and defer placement to the first spawn, where the DB-resolved
   // provider is known. group-init places it into the right surface and
   // consumes it. Red-on-delete: if that placement is removed, these fail.
-  it('places .seed.md into .instructions.md for the default provider, then consumes it', async () => {
+  it('places .seed.md into instructions.prepend.md for the default provider, then consumes it', async () => {
     const ag = group('ag-seed-default', 'seed-default');
     await createAgentGroup(ag);
     const groupDir = path.join(GROUPS_DIR, ag.folder);
@@ -136,8 +139,8 @@ describe('initGroupFilesystem deferred seed (.seed.md)', () => {
 
     await initGroupFilesystem(ag, {}); // no inline instructions — must read .seed.md
 
-    // Default provider → seed lands in .instructions.md (the fork's instruction surface).
-    expect(fs.readFileSync(path.join(groupDir, '.instructions.md'), 'utf-8')).toBe('seeded identity\n');
+    // Default provider → seed lands on the canonical persona file.
+    expect(fs.readFileSync(path.join(groupDir, 'instructions.prepend.md'), 'utf-8')).toBe('seeded identity\n');
     expect(fs.existsSync(path.join(groupDir, '.seed.md'))).toBe(false);
   });
 
