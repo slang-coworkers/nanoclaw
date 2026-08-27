@@ -25,8 +25,14 @@ export interface AgentProvider {
    */
   readonly emitsMidTurnText?: boolean;
 
-  /** Register shared memory through the provider's native session-start mechanism. */
-  registerMemorySessionHook(hook: MemorySessionHookRegistration): void;
+  /**
+   * Register shared memory through the provider's native session-start
+   * mechanism. Returns whether the provider has one: `false` means the runner
+   * must deliver memory some other way (it falls back to the system prompt),
+   * so a provider without a session-start mechanism is a no-op that returns
+   * false, never a silent one.
+   */
+  registerMemorySessionHook(hook: MemorySessionHookRegistration): boolean;
 
   /**
    * Optional. Called by the poll-loop after each completed exchange (a

@@ -164,11 +164,15 @@ export function mountPolicy(env: NodeJS.ProcessEnv = process.env): MountPolicy {
     surfaceRoots: [
       path.join(projectRoot, 'container', 'agent-runner', 'src'),
       path.join(projectRoot, 'container', 'skills'),
-      // Not mounted any more — the composer reads it on the host. The root
-      // stays because it is what forces install-surface (and therefore
-      // read-only) on an operator additionalMount whose allowlisted root
-      // happens to cover the project tree. Without it the agent could get a
-      // writable mount of the base document inlined into its prompt.
+      // Not mounted any more — `claude-composer/runtime-contract.ts` reads it on
+      // the host and emits the selected sections into the composed document.
+      // (This comment claimed the same thing while nothing read the file at all:
+      // the fork's spine replaced the composer that used to, so the contract
+      // reached no agent until the layer above was added.) The root stays because
+      // it is what forces install-surface (and therefore read-only) on an
+      // operator additionalMount whose allowlisted root happens to cover the
+      // project tree. Without it the agent could get a writable mount of the base
+      // document inlined into its prompt.
       path.join(projectRoot, 'container', 'CLAUDE.md'),
     ],
     // Must resolve to the same path an egress overlay's provisioner writes

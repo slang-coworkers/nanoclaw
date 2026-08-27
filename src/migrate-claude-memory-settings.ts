@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import fs from 'fs';
 
 import { log } from './log.js';
@@ -73,16 +74,30 @@ function removeLegacyNanoClawMemoryHook(value: unknown): unknown {
   return remaining.length > 0 ? { ...value, hooks: remaining } : undefined;
 }
 
+/**
+ * Same shape as `writeComposedDocument` in group-persona.ts, and for the same
+ * reason: `.claude-shared/` is mounted writable into the container, so a
+ * reconstructible temp path (`pid` + `Date.now()`) can be pre-created as a
+ * symlink pointing at anything the host can write. `randomUUID()` makes the name
+ * unguessable and `wx` fails closed rather than following a planted link.
+ */
 function writeAtomic(filePath: string, content: string): void {
-  const tmp = `${filePath}.tmp-${process.pid}-${Date.now()}`;
+  const tmp = `${filePath}.tmp-${randomUUID()}`;
+  let created = false;
   try {
     fs.writeFileSync(tmp, content, { flag: 'wx' });
+    created = true;
     fs.renameSync(tmp, filePath);
   } finally {
-    try {
-      fs.unlinkSync(tmp);
-    } catch {
-      // The rename consumed the temp file, or creation failed before it existed.
+    // Only clean up an entry this call created: on a `wx` failure the path was
+    // someone else's file, and unlinking it would turn a refusal to overwrite
+    // into a deletion.
+    if (created) {
+      try {
+        fs.unlinkSync(tmp);
+      } catch {
+        // Expected: the rename consumed it.
+      }
     }
   }
 }
