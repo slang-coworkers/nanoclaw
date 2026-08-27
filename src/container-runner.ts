@@ -44,7 +44,12 @@ import {
 } from './config.js';
 // resolveGroupTimezone: the fork's per-group timezone override (migration 020)
 // grounds the container's TZ, falling back to the install global.
-import { CONTAINER_PLUGINS_DIR, materializeContainerJson, resolveGroupTimezone } from './container-config.js';
+import {
+  CONTAINER_PLUGINS_DIR,
+  materializeContainerJson,
+  resolveGroupTimezone,
+  sanitizeStoredMcpServers,
+} from './container-config.js';
 import { getContainerConfig, updateContainerConfigScalars } from './db/container-configs.js';
 // Only the binary name survives here: spawn argv, mounts, kill/stop and orphan
 // reaping now live behind the driver seam (hostGatewayArgs → the driver-private
@@ -326,15 +331,51 @@ async function composeOptionsFor(agentGroup: AgentGroup): Promise<{
   disableOverlays: boolean;
   overlays: string[] | undefined;
   cliScope: 'disabled' | 'group' | 'global';
+  mcpInstructions: Record<string, string> | undefined;
 }> {
   const groupDir = path.resolve(GROUPS_DIR, agentGroup.folder);
+  const configRow = await getContainerConfig(agentGroup.id);
   return {
     coworkerType: agentGroup.coworker_type || 'default',
     extraInstructions: readStandingInstructions(groupDir, path.join(groupDir, '.instructions.md')),
     disableOverlays: agentGroup.disable_overlays === 1,
     overlays: agentGroup.overlays ? JSON.parse(agentGroup.overlays) : undefined,
-    cliScope: ((await getContainerConfig(agentGroup.id))?.cli_scope ?? 'group') as 'disabled' | 'group' | 'global',
+    cliScope: (configRow?.cli_scope ?? 'group') as 'disabled' | 'group' | 'global',
+    mcpInstructions: readMcpInstructions(configRow?.mcp_servers, agentGroup.name),
   };
+}
+
+/**
+ * Extract per-server `instructions` from a group's stored `mcp_servers` JSON.
+ *
+ * Routed through `sanitizeStoredMcpServers` rather than reading the JSON
+ * directly: that is the layer which validates each entry and drops malformed
+ * ones, and `instructions` is copied verbatim into an always-loaded document, so
+ * it must not come from an unvalidated blob. A server whose config is rejected
+ * contributes no prose — the alternative would be honouring guidance for a
+ * server the agent cannot actually reach.
+ *
+ * Returns `undefined` when no server carries instructions, so the composer emits
+ * no section at all rather than an empty heading.
+ */
+function readMcpInstructions(rawMcpServers: string | undefined, groupName: string): Record<string, string> | undefined {
+  if (!rawMcpServers) return undefined;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawMcpServers);
+  } catch (err) {
+    // The sanitizer handles a well-formed-but-wrong shape; unparseable JSON never
+    // reaches it. Composition must not die over one bad config row.
+    log.warn('Stored mcp_servers is not valid JSON; omitting MCP instructions', { group: groupName, err });
+    return undefined;
+  }
+
+  const out: Record<string, string> = {};
+  for (const [name, server] of Object.entries(sanitizeStoredMcpServers(parsed, groupName))) {
+    if (server.instructions?.trim()) out[name] = server.instructions;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 /**
