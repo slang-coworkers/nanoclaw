@@ -6,15 +6,47 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 491 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 220 |
-| `nv-slang` | slang project spine, skills, workflows | 138 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 69 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 48 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 508 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 224 |
+| `nv-slang` | slang project spine, skills, workflows | 140 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 71 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 50 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-08-27
+
+### nv-main (17 PRs)
+- **#1326** `feat(agent-runner): archive conversations for every provider, not just Claude`
+- **#1328** `fix: mark composed documents so CLAUDE.md is never mistaken for a persona`
+- **#1331** `fix(memory): deliver memory to every provider, not just Claude`
+- **#1335** `fix(compose): publish the composed CLAUDE.md atomically`
+- **#1337** `fix(skills): restore the onecli-gateway container skill`
+- **#1338** `refactor(compose): render the composed document through one seam`
+- **#1339** `Wire the dead Claude memory-settings migration into /migrate-memory`
+- **#1340** `Emit the runtime contract into composed documents (GAP-1)`
+- **#1341** `Don't remove a group's only document before composing its replacement`
+_+8 more: #1325, #1324, #1323, #1322, #1315, #1313, #1311, #1310_
+
+### nv-dashboard (4 PRs)
+- **#1138** `Sync nv-dashboard with upstream/main`
+- **#1317** `Sync nv-dashboard with upstream/main`
+- **#1330** `fix(dashboard): attribute subagent transcript cost to the parent session`
+- **#1332** `feat(dashboard): count codex spend in the per-session cost column`
+
+### nv-slang (2 PRs)
+- **#1139** `Sync nv-slang with upstream/main`
+- **#1318** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (2 PRs)
+- **#1140** `Sync nv-slangpy with upstream/main`
+- **#1319** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (2 PRs)
+- **#1141** `Sync nv-nanoclaw with upstream/main`
+- **#1320** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-08-26
 
