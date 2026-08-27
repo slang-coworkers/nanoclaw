@@ -2476,13 +2476,17 @@ export async function processQuery(
         // has already been delivered and acked by the time we can stop.
         foldCodexCost();
         recordTurnCost(event);
-        // Tier-2 ceiling: end the IN-FLIGHT stream immediately (no more tokens),
-        // mirroring the mid-query 'stop' override — not merely block the next poll.
-        // Without this a single runaway turn (the case the ceiling exists for)
-        // runs to completion unbounded.
+        // Tier-2 ceiling: end the stream now rather than merely blocking the next
+        // poll, so a session past its ceiling cannot be handed more work by a
+        // follow-up push. This runs at the TURN BOUNDARY, not mid-turn: `usage`
+        // arrives after `result`, whose branch below has already delivered and
+        // acked this turn's output. That ordering is load-bearing — breaking any
+        // earlier would leave an inbound message claimed, unanswered, and then
+        // marked completed by the end-of-batch fallback. Per-turn overshoot is
+        // the SDK's `maxBudgetUsd` brake's job, not this check's.
         if (costCeilingHardStop) {
           log(
-            `Cost ceiling $${costCeilingUsd.toFixed(2)} reached mid-turn — ending stream to ` +
+            `Cost ceiling $${costCeilingUsd.toFixed(2)} reached — ending stream to ` +
               `hard-stop (spent=$${costSpentUsd.toFixed(2)})`,
           );
           endedForCommand = true;
