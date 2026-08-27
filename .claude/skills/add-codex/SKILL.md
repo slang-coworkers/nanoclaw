@@ -9,7 +9,7 @@ description: Use Codex (OpenAI's codex app-server) as a full agent provider — 
 
 NanoClaw selects each group's agent backend from `container_configs.provider` (default `claude`). This skill installs the Codex provider: copy the payload from the `providers` branch, append one import to each of the three provider barrels, add the pinned Codex CLI to the container manifest (`container/cli-tools.json`), rebuild, then run the vault auth walk-through.
 
-The provider runs `codex app-server` as a child process speaking JSON-RPC over stdio: native streaming, MCP tools, server-side conversation history (the continuation is a thread id, no on-disk transcript). Credentials are **vault-only**: OneCLI serves a sentinel `auth.json` stub into the container and swaps the real ChatGPT token or API key on the wire — no key in `.env`, nothing readable in the container.
+The provider runs `codex app-server` as a child process speaking JSON-RPC over stdio: native streaming, MCP tools, server-side conversation history (the continuation is a thread id, no on-disk transcript). This replaced the earlier `@openai/codex-sdk` library integration, which is gone — no dependency on it remains in `container/agent-runner/package.json`, and any lockfile still naming `@openai/codex-sdk` is stale and should be deleted, not reinstalled from. Credentials are **vault-only**: OneCLI serves a sentinel `auth.json` stub into the container and swaps the real ChatGPT token or API key on the wire — no key in `.env`, nothing readable in the container.
 
 The mechanical steps under **Install** carry `nc:` directive fences: an agent reads the prose and applies them, and a parser can apply them deterministically from the same document. Every directive is idempotent, so the whole skill is safe to re-run; anything a parser can't apply falls back to the prose beside it.
 
@@ -17,20 +17,18 @@ The mechanical steps under **Install** carry `nc:` directive fences: an agent re
 
 ### Pre-flight
 
-Requires `src/project-doc-compose.ts` on trunk. If it is missing, stop and tell
-the operator to run `/update-nanoclaw` first.
+Check whether the payload is already wired (a prior apply, or a trunk that still carries it). These are the markers that mean installed — skip to **Authenticate**:
 
-Check whether the payload is already wired (a prior apply, or a trunk that still carries it). All of these present means installed — skip to **Authenticate**:
-
-- `src/providers/codex.ts` and `src/providers/codex-agents-md.ts`
+- `src/providers/codex.ts`
 - `container/agent-runner/src/providers/codex.ts` and `codex-app-server.ts`
-- `setup/providers/codex.ts`
-- `import './codex.js';` in `src/providers/index.ts`, `container/agent-runner/src/providers/index.ts`, and `setup/providers/index.ts`
+- `import './codex.js';` in `src/providers/index.ts` and `container/agent-runner/src/providers/index.ts`
 - an `@openai/codex` entry in `container/cli-tools.json`
+
+**nv-main carries a reduced payload, and that is deliberate** — do not read the missing files as a broken install and re-copy over them. This fork does not carry `src/providers/codex-agents-md.ts`, `container/AGENTS.md`, `setup/providers/codex.ts`, or `container/agent-runner/src/providers/exchange-archive.ts`, and `setup/providers/index.ts` has no codex line. Re-copying the full payload onto a working fork reintroduces `exchange-archive.ts`, whose `onExchangeComplete` hook no production provider here implements.
 
 ### 1. Fetch and copy the payload
 
-Fetch the `providers` branch and copy the Codex payload into all three trees (additive — overwrite each file, never merge the branch). The host files are the provider contribution + the AGENTS.md spec (composition itself lives in trunk's `src/project-doc-compose.ts`) + their guards; the container files are the provider runtime (turn loop, JSON-RPC wrapper, native memory SessionStart hook, per-exchange archiver) + their guards; the setup file is the picker entry + vault auth walk-through; `container/AGENTS.md` is the runtime-contract base the composed AGENTS.md embeds.
+Fetch the `providers` branch and copy the Codex payload into all three trees (additive — overwrite each file, never merge the branch). The host files are the provider contribution + the AGENTS.md spec (composition itself lives in trunk's `src/claude-composer/spine.ts`) + their guards; the container files are the provider runtime (turn loop, JSON-RPC wrapper, native memory SessionStart hook, per-exchange archiver) + their guards; the setup file is the picker entry + vault auth walk-through; `container/AGENTS.md` is the runtime-contract base the composed AGENTS.md embeds.
 
 ```nc:copy from-branch:providers
 src/providers/codex.ts
@@ -69,13 +67,18 @@ import './codex.js';
 
 ### 3. CLI manifest
 
-The agent's global Node CLIs install from `container/cli-tools.json` (a json-merge seam), not hand-edited Dockerfile layers. Add Codex by appending one entry — idempotent on `name`, so a re-run is a no-op. `@openai/codex` has no native postinstall, so no `onlyBuilt`. The Dockerfile already installs every manifest entry via pinned `pnpm install -g`; no Dockerfile edit is needed.
+The agent's global Node CLIs install from `container/cli-tools.json` (a json-merge seam), not hand-edited Dockerfile layers. Add Codex by appending one entry — idempotent on `name`, so a re-run is a no-op. `@openai/codex` has no native postinstall (its published `scripts` are empty), so no `onlyBuilt`. Both `container/Dockerfile` and `container/Dockerfile.derived` install every manifest entry via pinned `pnpm install -g`; no Dockerfile edit is needed.
 
 ```nc:json-merge into:container/cli-tools.json key:name
 { "name": "@openai/codex", "version": "0.146.0" }
 ```
 
-The version (`0.146.0`) is the canonical pin — this SKILL.md is the source of truth.
+The version (`0.146.0`, published 2026-07-29) is the canonical pin — this SKILL.md is the source of truth, and `container/cli-tools.json` must agree with it.
+
+Two things to know before bumping it:
+
+- **The pin is the whole supply-chain control.** Codex briefly escaped the manifest into a hand-written `pnpm install -g` layer duplicated across both Dockerfiles, and `0.146.1` reached the image roughly 14.6 hours after it was published. Keep it here.
+- **The release-age quarantine is now ENFORCED on this install path**, not merely documented. `container/install-cli-tools.sh` writes `minimum-release-age=4320` into `/root/.npmrc` — the config a global install actually reads — and proves at build time that pnpm is honouring it. A pin younger than three days fails the image build with `ERR_PNPM_NO_MATURE_MATCHING_VERSION`. That is why the pin is `0.146.0` and not `0.146.1`: check the publish time first (`pnpm view @openai/codex@<version> time`) and choose a version that has already matured rather than the newest tag. Do **not** reach for `minimumReleaseAgeExclude` — it needs explicit human sign-off, and every entry is a permanent hole unless someone prunes it.
 
 ### 4. Build
 

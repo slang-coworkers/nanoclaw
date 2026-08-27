@@ -1,0 +1,88 @@
+# Base coworker types: the universal spine every typed coworker extends,
+# plus the two top-level types — `main` (flat admin orchestrator) and
+# `default` (untyped fallback when no coworker_type is set).
+
+base-common:
+  description: "Universal coworker spine — invariants, workspace conventions. Every project type extends this."
+  invariants:
+    # Each invariant is in its own file so the file path documents the topic.
+    # Order is intentional: behavior (principles → safety → truthfulness →
+    # scope) before operational nuance (formatting → packages → clock).
+    - container/spines/base/invariants/principles.md
+    - container/spines/base/invariants/safety.md
+    - container/spines/base/invariants/truthfulness.md
+    - container/spines/base/invariants/scope.md
+    - container/spines/base/invariants/formatting.md
+    - container/spines/base/invariants/packages.md
+    - container/spines/base/invariants/clock.md
+  context:
+    # Always-loaded body stays slim. Scheduling, self-mod, and core messaging
+    # nuance live in the `base-nanoclaw` skill body — Claude Code's progressive
+    # skill discovery surfaces them on demand. Admin-only tool guidance
+    # (create_agent, install_packages) is attached to the `main` coworker type
+    # directly and not inherited by typed coworkers.
+    - container/spines/base/context/workspace.md
+    - container/spines/base/context/learnings.md
+    - container/spines/base/context/invocation.md
+    # Both ncl-* are listed; the composer picks one based on agent_groups.cli_scope:
+    #   `group`  (default) → ncl-group.md kept, ncl-global.md dropped
+    #   `global`           → ncl-group.md dropped, ncl-global.md kept
+    #   `disabled`         → both dropped
+    - container/spines/base/tool-instructions/ncl-group.md
+    - container/spines/base/tool-instructions/ncl-global.md
+    - container/spines/base/context/chain-reporting.md
+  skills:
+    - base-nanoclaw
+    - codex-critique
+    - buddy
+  # Standard chain-role delivery vocabulary — declared ONCE here and inherited
+  # by every coworker type via `extends:` (the composer unions delivery_markers
+  # across the chain into .critique-delivery-markers; all three gates —
+  # critique, chain-routing, poll-loop — union that file with the built-in
+  # floor). The floor itself carries only the general primitives
+  # (Resolution/handoff); these are the standard role-terminal markers the
+  # chain protocol's workflows emit (fixer report, fixer→reviewer handoff,
+  # reviewer verdict, triage close + handoff). A project spine only declares
+  # delivery_markers for genuinely NOVEL markers of its own; roles that never
+  # emit these are unaffected (the gates are self-scoping on emission).
+  # [Report] is deliberately absent — it is the ungated status channel.
+  delivery_markers:
+    - Fix Report
+    - Fix Review Request
+    - Review Verdict
+    - Triage Resolution
+    - Triage handoff
+
+main:
+  flat: true
+  description: "Admin orchestrator — slim manager body plus per-project main fragments contributed by project skills."
+  identity: container/spines/base/identity/main-body.md
+  context:
+    # Admin-specific tool guidance (create_agent, wire_agents,
+    # ask_user_question vs send_card, install_packages/add_mcp_server admin
+    # flow) and universal core + scheduling nuance. Main is flat so it can't
+    # invoke `/base-nanoclaw` as a skill — the baked-in refs are its only
+    # access to tool nuance. Order: messaging first (most-used), then
+    # delegation patterns, then the rest.
+    - container/spines/base/tool-instructions/core.md
+    - container/spines/base/tool-instructions/agents.md
+    - container/spines/base/tool-instructions/wire-agents.md
+    - container/spines/base/tool-instructions/interactive.md
+    - container/spines/base/tool-instructions/self-mod.md
+    - container/spines/base/tool-instructions/scheduling.md
+    # Multi-chain orchestration / cross-post avoidance / outcome-line
+    # protocol. base-common loads this for typed coworkers via the
+    # extends chain; main is flat, so it has to reference the file
+    # directly. Without this, main has no rule against broadcasting
+    # cross-chain status to peer chains' threads.
+    - container/spines/base/context/chain-reporting.md
+    # ncl-global.md replaces ncl-group.md for owner / global-scope agents.
+    # Composer drops it when cli_scope != 'global'. Default for main is
+    # global, set by init-first-agent at owner-group bootstrap.
+    - container/spines/base/tool-instructions/ncl-global.md
+
+default:
+  title: "Coworker"
+  description: "Untyped fallback coworker — base spine only, no project skills or workflows."
+  extends: base-common
+  identity: container/spines/base/identity/default-identity.md

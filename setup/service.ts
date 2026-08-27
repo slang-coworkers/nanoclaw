@@ -310,9 +310,11 @@ After=network.target
 Type=simple
 ExecStart=${nodePath} ${projectRoot}/dist/index.js
 WorkingDirectory=${projectRoot}
+EnvironmentFile=-${projectRoot}/.env
 Restart=always
-RestartSec=5
-KillMode=process
+RestartSec=10
+KillMode=control-group
+TimeoutStopSec=10
 Environment=HOME=${homeDir}
 Environment=PATH=/usr/local/bin:/usr/bin:/bin:${homeDir}/.local/bin
 StandardOutput=append:${projectRoot}/logs/nanoclaw.log
@@ -323,6 +325,8 @@ WantedBy=${runningAsRoot ? 'multi-user.target' : 'default.target'}`;
 
   fs.writeFileSync(unitPath, unit);
   log.info('Wrote systemd unit', { unitPath });
+
+  installLogRotateTimer(projectRoot, homeDir, runningAsRoot, unitName, systemctlPrefix);
 
   // Detect stale docker group before starting (user systemd only). The user
   // systemd manager is a long-running process whose group list is frozen at
@@ -409,6 +413,68 @@ WantedBy=${runningAsRoot ? 'multi-user.target' : 'default.target'}`;
     STATUS: 'success',
     LOG: 'logs/setup.log',
   });
+}
+
+/**
+ * Install a companion systemd timer that runs scripts/rotate-logs.sh daily.
+ *
+ * systemd's StandardOutput=append: holds an append fd on the log file for
+ * the life of the main service, so rename-style rotation (logrotate without
+ * copytruncate) orphans the fd — systemd keeps appending to the rotated
+ * file. The bundled script uses copytruncate semantics so the main service
+ * survives rotation without a reload.
+ *
+ * Idempotent: rewrites unit files on every setup run. Failure to enable the
+ * timer is non-fatal — the main service still runs, logs just grow.
+ */
+function installLogRotateTimer(
+  projectRoot: string,
+  homeDir: string,
+  runningAsRoot: boolean,
+  mainUnitName: string,
+  systemctlPrefix: string,
+): void {
+  const rotateScript = path.join(projectRoot, 'scripts', 'rotate-logs.sh');
+  if (!fs.existsSync(rotateScript)) {
+    log.warn('rotate-logs.sh missing — skipping logrotate timer install', { rotateScript });
+    return;
+  }
+
+  const timerUnitName = `${mainUnitName}-logrotate`;
+  const unitDir = runningAsRoot
+    ? '/etc/systemd/system'
+    : path.join(homeDir, '.config', 'systemd', 'user');
+
+  const serviceUnit = `[Unit]
+Description=NanoClaw log rotation (copytruncate; preserves systemd fd)
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash ${rotateScript} ${projectRoot}/logs/nanoclaw.log ${projectRoot}/logs/nanoclaw.error.log
+`;
+
+  const timerUnit = `[Unit]
+Description=Daily NanoClaw log rotation
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+Unit=${timerUnitName}.service
+
+[Install]
+WantedBy=timers.target
+`;
+
+  try {
+    fs.mkdirSync(unitDir, { recursive: true });
+    fs.writeFileSync(path.join(unitDir, `${timerUnitName}.service`), serviceUnit);
+    fs.writeFileSync(path.join(unitDir, `${timerUnitName}.timer`), timerUnit);
+    execSync(`${systemctlPrefix} daemon-reload`, { stdio: 'ignore' });
+    execSync(`${systemctlPrefix} enable --now ${timerUnitName}.timer`, { stdio: 'ignore' });
+    log.info('Installed log-rotation timer', { timer: `${timerUnitName}.timer` });
+  } catch (err) {
+    log.warn('Failed to install log-rotation timer — logs will grow unbounded until manually rotated', { err });
+  }
 }
 
 function setupNohupFallback(projectRoot: string, nodePath: string, homeDir: string): void {

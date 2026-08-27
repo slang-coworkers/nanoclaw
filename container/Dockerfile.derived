@@ -1,0 +1,104 @@
+# syntax=docker/dockerfile:1
+#
+# Derived agent image: the hardened upstream base + this fork's layers.
+#
+# Why this exists. `container/pull.sh` downloads the hardened image and then
+# REFUSES to tag it:
+#
+#   Agent-runner lock drift — refusing to tag this image.
+#     image     <sha of upstream's bun.lock>
+#     checkout  <sha of container/agent-runner/bun.lock>
+#
+# The base bakes /app/node_modules from the lockfile it was built with, while
+# `src/container-runner.ts` mounts /app/src from THIS checkout at spawn time.
+# Pair upstream's node_modules with our source and a container dies on a missing
+# module — inside `--rm`, so the logs are gone. The guard is correct; the answer
+# is to reinstall against our lock and re-stamp the label, which is what this
+# does. The fork's other additions are re-applied here too.
+#
+# Measured against the pinned base (2026-08-05): it runs as non-root `node`
+# (uid 1000), WORKDIR /workspace/group, ENTRYPOINT ["/usr/bin/tini","--",
+# "/app/entrypoint.sh"], and already ships `agent-browser` and `ncl` but NOT
+# `codex`, and NOT `jq`/`python3`/`gh`. Those are what this file restores.
+#
+# Build via `container/build-derived.sh`.
+
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+# Installing global CLIs and rewriting /app needs root. The base deliberately
+# runs as `node`, so switch up here and switch back at the end — leaving the
+# runtime identity exactly as the hardened base set it. Without this the build
+# fails with EACCES on /root/.npmrc.
+USER root
+
+# ---- tools the hardened base strips out ---------------------------------------
+# The base trims its attack surface and drops jq, python3 and gh — all of which
+# our locally-built image had, and all of which container/hooks/*.sh call.
+#
+# Their absence is SILENT. A hook that dies with "jq: command not found" exits
+# 127, hook failures are swallowed (5s timeout, non-fatal), so the dashboard
+# simply shows no events for that coworker and nothing anywhere says why.
+# MEASURED ON LEGO: adopting the hardened base took hook_events for a Codex
+# group to zero while the agent carried on replying normally — the coworker
+# looked healthy and its whole event timeline was gone.
+#
+# build-derived.sh gates on these at build time so a future base change cannot
+# reintroduce the same silence.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends jq python3 gh && \
+    rm -rf /var/lib/apt/lists/*
+
+# ---- fork-only global CLIs ---------------------------------------------------
+# Reuse the fork's installer so pins match a local build instead of drifting to
+# "latest". The base already has agent-browser and claude-code.
+#
+# codex is installed here too, from that same manifest. It used to be a separate
+# hand-written `pnpm install -g` duplicated from container/Dockerfile under a
+# "KEEP THIS IN LOCKSTEP" comment — the two files had to be reconciled by hand,
+# and when they drifted the derived image shipped a different codex than the
+# base build while both claimed to be "the" pinned version. That is exactly the
+# two-versions-in-one-image confusion that cost a debugging session. Sharing the
+# manifest makes the lockstep structural instead of aspirational.
+COPY cli-tools.json install-cli-tools.sh /tmp/
+RUN --mount=type=cache,target=/root/.cache/pnpm \
+    sh /tmp/install-cli-tools.sh /tmp/cli-tools.json
+
+# Managed-layer Codex hooks — see container/codex-hooks.toml. The hardened base
+# has no /etc/codex, so this creates it.
+COPY codex-hooks.toml /etc/codex/requirements.toml
+
+# ---- agent-runner: the whole reason this image exists -------------------------
+WORKDIR /app
+COPY agent-runner/package.json agent-runner/bun.lock ./
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    bun install --frozen-lockfile && \
+    rm -f node_modules/@anthropic-ai/claude-agent-sdk-linux-x64-musl/claude
+COPY agent-runner/ ./
+# Files copied as root must stay readable by the runtime user.
+RUN chown -R node:node /app
+
+# NOTE: claude-trace is still not COPY'd here, and that is now deliberate rather
+# than forced. The patched build lives in the repo at container/claude-trace and
+# is MOUNTED read-only at /opt/claude-trace at spawn time (see
+# resolveClaudeTraceDir() in src/container-runner.ts) — mounting, not baking,
+# keeps it out of the lock-sha'd image so updating the tracer never forces an
+# image rebuild.
+#
+# The old `container/claude-trace-wrap` shim is intentionally NOT ported: it was
+# dead code. CLAUDE_CODE_EXECUTABLE points at the MOUNTED
+# /opt/claude-trace/claude-trace-wrapper.sh, so the baked /usr/local/bin copy was
+# never invoked by anything.
+
+# ---- restore the base's runtime identity -------------------------------------
+# ENTRYPOINT is inherited from the base and deliberately not redeclared.
+USER node
+WORKDIR /workspace/group
+
+# ---- lock label --------------------------------------------------------------
+# LAST on purpose: an ARG invalidates every layer below it. Re-stamping with OUR
+# lock sha is what lets pull.sh/build.sh accept this image for this checkout.
+ARG AGENT_RUNNER_LOCK_SHA256=
+LABEL dev.nanoclaw.agent-runner-lock-sha256="${AGENT_RUNNER_LOCK_SHA256}"
+ARG IMAGE_SOURCE=derived
+LABEL dev.nanoclaw.image-source="${IMAGE_SOURCE}"

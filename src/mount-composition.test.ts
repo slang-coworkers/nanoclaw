@@ -22,10 +22,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 // Composing the group's instructions needs the central DB and is not what is
 // under test; every path it would write is created below instead.
-vi.mock('./project-doc-compose.js', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./project-doc-compose.js')>()),
-  composeGroupProjectDoc: vi.fn(),
-}));
+// This fork composes instructions via the lego spine (claude-composer), not
+// upstream's project-doc-compose, whose predecessor it deleted.
+vi.mock('./claude-composer.js', () => ({ composeCoworkerSpine: vi.fn(() => ({ text: '', hash: '' })) }));
 vi.mock('./log.js', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), fatal: vi.fn() },
 }));
@@ -58,6 +57,11 @@ const claudeShared = path.join(DATA_DIR, 'v2-sessions', GROUP_ID, '.claude-share
 beforeAll(() => {
   fs.mkdirSync(sessionDir, { recursive: true });
   fs.mkdirSync(claudeShared, { recursive: true });
+  // This fork's buildMounts injects the dashboard hook-event hook, which reads
+  // (and rewrites) .claude-shared/settings.json whenever DASHBOARD_PORT is set
+  // — it is part of the real buildMounts this case drives end-to-end, so the
+  // file has to exist like container.json and CLAUDE.md below.
+  fs.writeFileSync(path.join(claudeShared, 'settings.json'), '{}');
   fs.mkdirSync(path.join(groupDir, 'plugins'), { recursive: true });
   fs.writeFileSync(path.join(groupDir, 'container.json'), '{}');
   fs.writeFileSync(path.join(groupDir, 'CLAUDE.md'), '# composed\n');

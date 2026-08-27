@@ -38,14 +38,22 @@ export interface ClonedRegistry {
 
 type RunNcl = (command: string, args: Record<string, unknown>) => Promise<unknown>;
 
+/**
+ * What `ncl groups list/create` actually hands back — the five columns the
+ * groups resource projects (`src/cli/resources/groups.ts`), not the full
+ * `AgentGroup` row. Named as a projection OF `AgentGroup` so adding a column
+ * there cannot silently widen what setup claims to have parsed.
+ */
+export type TemplateAgentRow = Pick<AgentGroup, 'id' | 'name' | 'folder' | 'agent_provider' | 'created_at'>;
+
 export type TemplateAgentInstallResult =
-  | { status: 'installed'; group: AgentGroup }
-  | { status: 'updated'; group: AgentGroup }
+  | { status: 'installed'; group: TemplateAgentRow }
+  | { status: 'updated'; group: TemplateAgentRow }
   | { status: 'cancelled' };
 
 export type TemplateOperation = { kind: 'create' } | { kind: 'restamp'; agentGroupId: string };
 
-export type SetupTemplateAgent = AgentGroup & { isWired: boolean };
+export type SetupTemplateAgent = TemplateAgentRow & { isWired: boolean };
 
 /** One plugin-owned surface from the dry-run update plan `groups create --template` returns. */
 export interface TemplateChange {
@@ -57,7 +65,7 @@ export interface TemplateChange {
 
 /** The dry-run plan returned when a group already carries the template's plugin. */
 export interface TemplateReplacePlan {
-  group: AgentGroup;
+  group: TemplateAgentRow;
   changes: TemplateChange[];
   note: string;
 }
@@ -88,7 +96,7 @@ export async function listTemplateAgents(ref: string, runNcl: RunNcl): Promise<S
 /** Validation used only after the operator chooses "Create another agent". */
 export function validateNewTemplateAgentName(
   value: string | undefined,
-  agents: readonly AgentGroup[],
+  agents: readonly Pick<AgentGroup, 'name'>[],
 ): string | undefined {
   const name = (value ?? '').trim();
   if (!name) return 'Required';
@@ -237,7 +245,7 @@ function parseTemplateChange(value: unknown): TemplateChange {
   return { surface, name, action, ...(customized === true ? { customized: true } : {}) };
 }
 
-function parseAgentGroup(value: unknown): AgentGroup {
+function parseAgentGroup(value: unknown): TemplateAgentRow {
   if (!isRecord(value)) throw new Error('ncl returned an invalid agent group');
   const { id, name, folder, agent_provider: provider, created_at: createdAt } = value;
   if (

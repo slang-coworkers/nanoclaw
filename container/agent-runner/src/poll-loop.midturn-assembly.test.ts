@@ -60,6 +60,13 @@ function deliveredTexts(): string[] {
     .map((m) => (JSON.parse(m.content) as { text: string }).text);
 }
 
+// See poll-loop.ts. A turn that delivers nothing emits this notice so the thread
+// reports the failure instead of stopping silently; it postdates the turn-
+// boundary case below, which was written when an empty turn produced no row.
+const SILENT_TURN_NOTICE =
+  'The agent finished its turn without producing any output, so there is nothing to deliver. ' +
+  'Your message was not answered — please re-send it.';
+
 async function run(events: AsyncGenerator<ProviderEvent>): Promise<string[]> {
   const { query, pushes } = makeStubQuery(events);
   await processQuery(query, CHAT_ROUTING, ['m1'], 'claude', undefined, 'prompt', undefined, true);
@@ -211,7 +218,10 @@ describe('cross-segment block assembly', () => {
     }
     const pushes = await run(events());
 
-    expect(deliveredTexts()).toEqual([]);
+    // Neither the turn-1 fragment nor turn-2's stray close is ever delivered —
+    // the buffer really does die at the boundary. Nothing was delivered by any
+    // turn, so the silent-turn notice is the only row.
+    expect(deliveredTexts()).toEqual([SILENT_TURN_NOTICE]);
     expect(pushes.filter((p) => p.includes('was not delivered'))).toHaveLength(1);
   });
 

@@ -10,15 +10,17 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { CONTAINER_CPU_LIMIT, CONTAINER_MEMORY_LIMIT } from './config.js';
 import type { ContainerConfig } from './container-config.js';
 import {
   armSessionLifecycle,
+  assertComposedDocUsable,
   composeSessionSpec,
   parseMemoryMb,
   parsePidsLimit,
+  readStandingInstructions,
   resolveProviderName,
   syncSkillSymlinks,
   toMountSpecs,
@@ -27,10 +29,24 @@ import type { SupervisedHandle } from './drivers/session-events.js';
 import { log } from './log.js';
 import type { VolumeMount } from './providers/provider-container-registry.js';
 import type { AgentGroup, Session } from './types.js';
+import { closeDb, initTestDb } from './db/connection.js';
+import { runMigrations } from './db/migrations/index.js';
 
 vi.mock('./log.js', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), fatal: vi.fn() },
 }));
+
+// composeSessionSpec resolves the group's timezone override through the central
+// DB (resolveGroupTimezone → getContainerConfig), so a live driver is required.
+// No rows are seeded: a group with no container_configs row resolves to the
+// install-global timezone, which is what every case here expects.
+beforeAll(async () => {
+  await runMigrations(await initTestDb());
+});
+
+afterAll(async () => {
+  await closeDb();
+});
 
 describe('resolveProviderName', () => {
   it('prefers session over container config', () => {
@@ -63,6 +79,101 @@ const agentGroup: AgentGroup = {
   agent_provider: null,
   created_at: '2026-07-22T00:00:00.000Z',
 } as AgentGroup;
+
+describe('paused agent-group kill switch (structural)', () => {
+  // wakeContainer is THE choke point every wake path funnels through (router
+  // fanout via delivery, agent-to-agent / host-direct delivery, the host-sweep
+  // due-message wake, scheduled-task fires, container-restart), and
+  // spawnContainer has no other caller. A per-wiring pause was proven
+  // insufficient on prod — the a2a and sweep paths never consult wirings — so
+  // the pause MUST gate the spawn itself. Driving wakeContainer needs a live DB
+  // + runtime, so this guards the invariant structurally: the paused check must
+  // read the group and short-circuit BEFORE spawnContainer is reached.
+  const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
+
+  it('wakeContainer checks group.paused', () => {
+    const wake = src.indexOf('export function wakeContainer');
+    const spawnCall = src.indexOf('spawnContainer(session)', wake);
+    const pausedCheck = src.indexOf('group?.paused', wake);
+    expect(wake).toBeGreaterThan(-1);
+    expect(pausedCheck).toBeGreaterThan(-1);
+    // The guard returns before the spawn.
+    expect(pausedCheck).toBeLessThan(spawnCall);
+  });
+
+  it('the paused guard resolves false (does not spawn) rather than throwing', () => {
+    // The gates moved out of `wakeContainer` into the async `wakeGuarded` body
+    // during the async central-DB port, so the wake's in-flight promise is
+    // still registered synchronously while both gates read the DB. The guarded
+    // outcome is unchanged — a paused group resolves false — but inside an async
+    // function that is spelled `return false`, not `return Promise.resolve(false)`,
+    // and the block now ends at the spawn `try` rather than `const existing`.
+    const guarded = src.indexOf('async function wakeGuarded');
+    expect(guarded).toBeGreaterThan(-1);
+    const guardBlock = src.slice(src.indexOf('group?.paused', guarded), src.indexOf('try {', guarded));
+    expect(guardBlock).toContain('return false;');
+    expect(guardBlock).not.toContain('throw');
+  });
+});
+
+describe('detectStaleContainers per-session compose guard (structural)', () => {
+  // composeCoworkerSpine THROWS when a coworker type references a skill/workflow/
+  // overlay that isn't resolvable on disk (e.g. an external `skill-source` skill
+  // not yet fetched into container/skills/). detectStaleContainers loops over
+  // ALL active containers and composes each; before the guard, one unresolvable
+  // type propagated its throw to the sweep's outer try/catch and skipped the
+  // entire CLAUDE.md-stale respawn loop — disabling instruction hot-reload
+  // fleet-wide for every healthy coworker. The compose must be wrapped
+  // per-session so a broken type is skipped (continue), not fatal to the scan.
+  // Driving the real loop needs a live activeContainers map, so guard the wiring
+  // structurally, matching the invariant test above.
+  it('wraps the per-session spine compose in try/catch and continues on failure', () => {
+    const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
+    const fnStart = src.indexOf('export async function detectStaleContainers');
+    expect(fnStart).toBeGreaterThan(-1);
+    const fnBody = src.slice(fnStart, src.indexOf('\n}', fnStart));
+    // The compose call must sit inside a try whose catch skips just this session.
+    expect(fnBody).toMatch(/try\s*{[\s\S]*composeCoworkerSpine\(/);
+    expect(fnBody).toMatch(/catch \(err\) {[\s\S]*Skipping stale-check[\s\S]*continue;/);
+  });
+
+  // Both hash sites must resolve the persona the SAME way spawn does. They used
+  // to read `.instructions.md` directly while spawn went through
+  // readStandingInstructions, which migrates that file to
+  // `instructions.prepend.md` and reads the canonical name. After the first
+  // spawn migrated it, the legacy path no longer existed: spawn composed WITH
+  // the persona, both hash sites composed WITHOUT it, and the digests could
+  // never agree — so every group with a persona looked permanently stale and
+  // got restarted on every 60s sweep.
+  //
+  // Structural, like the guard above: the divergence is in which reader is
+  // called, and driving the real functions needs a live activeContainers map.
+  it('records and compares the spawn hash through the same persona reader as spawn', () => {
+    const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
+    for (const fn of ['export async function recomposeAndUpdateHash', 'export async function detectStaleContainers']) {
+      const start = src.indexOf(fn);
+      expect(start, `${fn} not found`).toBeGreaterThan(-1);
+      const body = src.slice(start, src.indexOf('\n}', start));
+      // Naming the legacy path is fine — it is the migration SOURCE argument.
+      // Reading it straight off disk is the bug.
+      expect(body, `${fn} must not read the legacy persona path directly`).not.toMatch(
+        /readFileSync\([^)]*\.instructions\.md/,
+      );
+      expect(body, `${fn} must resolve the persona through the shared reader`).toMatch(
+        /readStandingInstructions\(|readGroupPersona\(/,
+      );
+    }
+  });
+});
+
+// Dropped with this merge, genuinely superseded rather than lost:
+//  - 'per-container resource limits': the knobs are now SessionSpec.resources,
+//    covered behaviorally by parseMemoryMb/parsePidsLimit + the driver's
+//    resourceArgs tests.
+//  - 'container boot-failure tripwire': the stderr tail moved into
+//    DockerHandle.start(); docker-driver.test.ts asserts it.
+//  - 'hardeningArgs': moved to docker-driver.ts, and its three unconditional
+//    flags are asserted in docker-driver.test.ts.
 
 const session: Session = {
   id: 'session-1',
@@ -116,6 +227,7 @@ function compose(
     mailboxEnvironment: { NANOCLAW_MAILBOX_BACKEND: 'sqlite' },
     contribution: (overrides.contribution ?? {}) as never,
     gateway: (overrides.gateway ?? {}) as never,
+    instanceId: 'test-instance-id',
   });
 }
 
@@ -129,20 +241,21 @@ function composeWithFolder(folder: string) {
     mailboxEnvironment: { NANOCLAW_MAILBOX_BACKEND: 'sqlite' },
     contribution: {} as never,
     gateway: {} as never,
+    instanceId: 'test-instance-id',
   });
 }
 
 describe('composeSessionSpec', () => {
-  it('keys the session by install, group and session id', () => {
-    expect(compose().key).toMatchObject({ agentGroupId: 'agent-1', sessionId: 'session-1' });
+  it('keys the session by install, group and session id', async () => {
+    expect((await compose()).key).toMatchObject({ agentGroupId: 'agent-1', sessionId: 'session-1' });
   });
 
-  it('routes the model provider contribution onto the contributed lane', () => {
+  it('routes the model provider contribution onto the contributed lane', async () => {
     // Registry-sourced env is provenance-exempt from the credential-NAME check
     // — the custom-endpoint provider registers ANTHROPIC_AUTH_TOKEN=placeholder
     // for the gateway to overwrite on the wire, and composed-lane rules would
     // deny that install's every spawn.
-    const spec = compose({
+    const spec = await compose({
       contribution: { env: { XDG_DATA_HOME: '/workspace/xdg', ANTHROPIC_AUTH_TOKEN: 'placeholder' } },
     });
     expect(spec.containers[0].contributedEnv).toMatchObject({
@@ -152,20 +265,20 @@ describe('composeSessionSpec', () => {
     expect(spec.containers[0].env.ANTHROPIC_AUTH_TOKEN).toBeUndefined();
   });
 
-  it('passes non-secret mailbox environment on the composed lane', () => {
-    expect(compose().containers[0].env.NANOCLAW_MAILBOX_BACKEND).toBe('sqlite');
+  it('passes non-secret mailbox environment on the composed lane', async () => {
+    expect((await compose()).containers[0].env.NANOCLAW_MAILBOX_BACKEND).toBe('sqlite');
   });
 
-  it('the gateway contribution fills the contributed lane last and wins a collision', () => {
-    const spec = compose({
+  it('the gateway contribution fills the contributed lane last and wins a collision', async () => {
+    const spec = await compose({
       contribution: { env: { HTTPS_PROXY: 'http://provider:1' } },
       gateway: { env: { HTTPS_PROXY: 'http://gateway-must-win:15001' } },
     });
     expect(spec.containers[0].contributedEnv?.HTTPS_PROXY).toBe('http://gateway-must-win:15001');
   });
 
-  it('gateway mounts merge collision-free, shadowing a composed mount on the same target', () => {
-    const spec = compose({
+  it('gateway mounts merge collision-free, shadowing a composed mount on the same target', async () => {
+    const spec = await compose({
       gateway: {
         mounts: [
           {
@@ -191,8 +304,8 @@ describe('composeSessionSpec', () => {
     expect(targets).toContain('/tmp/onecli-ca.pem');
   });
 
-  it('gateway containers ride beside the agent', () => {
-    const spec = compose({
+  it('gateway containers ride beside the agent', async () => {
+    const spec = await compose({
       gateway: {
         containers: [{ role: 'egress-proxy', image: 'proxy:1', env: {}, mounts: [] }],
       },
@@ -200,16 +313,16 @@ describe('composeSessionSpec', () => {
     expect(spec.containers.map((c) => c.role)).toEqual(['agent', 'egress-proxy']);
   });
 
-  it('carries the lineage label and stamps the group folder VERBATIM (D9)', () => {
+  it('carries the lineage label and stamps the group folder VERBATIM (D9)', async () => {
     // The id→folder mapping lives only in the central DB; carrying the folder
     // on the session is what lets an admission-side check pin `groups/<folder>`
     // mounts to the session. Byte-identical to `agentGroup.folder` — drivers
     // refuse rather than project it, so composition must never pre-mangle it.
-    expect(compose().labels['nanoclaw-container-name']).toBe('nanoclaw-v2-agent-one-1700000000000');
-    expect(compose().labels['nanoclaw-group-folder']).toBe(agentGroup.folder);
+    expect((await compose()).labels['nanoclaw-container-name']).toBe('nanoclaw-v2-agent-one-1700000000000');
+    expect((await compose()).labels['nanoclaw-group-folder']).toBe(agentGroup.folder);
   });
 
-  it('REFUSES a folder that exceeds the 63-byte label cap instead of letting a driver project it', () => {
+  it('REFUSES a folder that exceeds the 63-byte label cap instead of letting a driver project it', async () => {
     // Admission joins `groups/<folder>` hostPaths to this label by string
     // concatenation; no admission-side check can invert a hash-suffix
     // projection, so an unlabelable folder must refuse at composition —
@@ -217,7 +330,7 @@ describe('composeSessionSpec', () => {
     // of surfacing later as a policy denial blaming the wrong culprit.
     let thrown: unknown;
     try {
-      composeWithFolder(`agent-${'x'.repeat(70)}`);
+      await composeWithFolder(`agent-${'x'.repeat(70)}`);
     } catch (error) {
       thrown = error;
     }
@@ -226,11 +339,11 @@ describe('composeSessionSpec', () => {
     expect(String((thrown as Error).message)).toContain('rename the group folder');
   });
 
-  it('REFUSES a folder outside the label-value charset, even a short one', () => {
+  it('REFUSES a folder outside the label-value charset, even a short one', async () => {
     for (const folder of ['spike agent', 'café', 'agent-']) {
       let thrown: unknown;
       try {
-        composeWithFolder(folder);
+        await composeWithFolder(folder);
       } catch (error) {
         thrown = error;
       }
@@ -238,40 +351,48 @@ describe('composeSessionSpec', () => {
     }
   });
 
-  it('accepts a folder at exactly 63 bytes, and the uuid-minted shape a governance flow creates', () => {
+  it('accepts a folder at exactly 63 bytes, and the uuid-minted shape a governance flow creates', async () => {
     // The bound is the cap itself, not a timid margin below it — and the
     // ~42-byte `agent-<uuid>` shape minted group folders get must stay legal,
     // so refusals are rare and loud rather than routine.
     const sixtyThree = `a${'b'.repeat(61)}c`;
     expect(sixtyThree.length).toBe(63);
-    expect(composeWithFolder(sixtyThree).labels['nanoclaw-group-folder']).toBe(sixtyThree);
+    expect((await composeWithFolder(sixtyThree)).labels['nanoclaw-group-folder']).toBe(sixtyThree);
     const minted = 'agent-ef251cff-7911-42a6-b835-942fa947ab74';
-    expect(composeWithFolder(minted).labels['nanoclaw-group-folder']).toBe(minted);
+    expect((await composeWithFolder(minted)).labels['nanoclaw-group-folder']).toBe(minted);
   });
 
-  it('splits PID 1 so a driver can preserve the image init', () => {
-    const agent = compose().containers[0];
+  it('splits PID 1 so a driver can preserve the image init', async () => {
+    const agent = (await compose()).containers[0];
     expect(agent.command).toEqual(['bash', '-c']);
-    expect(agent.args).toEqual(['exec bun run /app/src/index.ts']);
+    // The invariant is the PID-1 SPLIT: a `bash -c` wrapper whose script ends by
+    // `exec`ing the runner, so bun replaces the shell and signals reach it
+    // directly. Not exact equality — this fork's agentEntrypointScript() emits a
+    // preamble first (a `git config url.insteadOf` and a ~/.codex/config.toml
+    // heredoc), which exact-matching upstream's single-line form would forbid.
+    expect(agent.args).toHaveLength(1);
+    const script = agent.args![0];
+    expect(script).toContain('exec bun run /app/src/index.ts');
+    expect(script.trimEnd().endsWith('exec bun run /app/src/index.ts')).toBe(true);
   });
 
-  it('asks for a shared-private network and the standard posture', () => {
-    const spec = compose();
+  it('asks for a shared-private network and the standard posture', async () => {
+    const spec = await compose();
     expect(spec.network).toBe('shared-private');
     expect(spec.hardening).toBe('standard');
     expect(spec.runtimeTier).toBe('container');
     expect(spec.stopGraceSeconds).toBe(1);
   });
 
-  it('reads the isolation tier from the group container config, defaulting to container', () => {
-    expect(compose().runtimeTier).toBe('container');
-    expect(compose({ containerConfig: { ...containerConfig, runtimeTier: 'vm' } }).runtimeTier).toBe('vm');
-    expect(compose({ containerConfig: { ...containerConfig, runtimeTier: 'container' } }).runtimeTier).toBe(
+  it('reads the isolation tier from the group container config, defaulting to container', async () => {
+    expect((await compose()).runtimeTier).toBe('container');
+    expect((await compose({ containerConfig: { ...containerConfig, runtimeTier: 'vm' } })).runtimeTier).toBe('vm');
+    expect((await compose({ containerConfig: { ...containerConfig, runtimeTier: 'container' } })).runtimeTier).toBe(
       'container',
     );
   });
 
-  it('composes an explicit runAs posture on a uid-1000 host', () => {
+  it('composes an explicit runAs posture on a uid-1000 host', async () => {
     // uid 1000 matches the agent image's node user, so Docker's realization of
     // this posture is a no-op — but the spec contract (drivers/types.ts) says
     // the identity that must read 0600 host-owned material is explicit for
@@ -281,7 +402,7 @@ describe('composeSessionSpec', () => {
     const getuid = vi.spyOn(process, 'getuid').mockReturnValue(1000);
     const getgid = vi.spyOn(process, 'getgid').mockReturnValue(1000);
     try {
-      const spec = compose();
+      const spec = await compose();
       expect(spec.runAs).toEqual({ uid: 1000, gid: 1000 });
       expect(spec.containers[0].env.HOME).toBe('/home/node');
     } finally {
@@ -290,14 +411,14 @@ describe('composeSessionSpec', () => {
     }
   });
 
-  it('maps identity and HOME together for any non-root uid', () => {
+  it('maps identity and HOME together for any non-root uid', async () => {
     // Under a uid the image has no passwd entry for, HOME resolves to '/' and
     // the provider SDK's `mkdir ~/.claude` dies EACCES — so the mapping and
     // the explicit HOME travel together, exactly as they did in the old argv.
     const getuid = vi.spyOn(process, 'getuid').mockReturnValue(501);
     const getgid = vi.spyOn(process, 'getgid').mockReturnValue(20);
     try {
-      const spec = compose();
+      const spec = await compose();
       expect(spec.runAs).toEqual({ uid: 501, gid: 20 });
       expect(spec.containers[0].env.HOME).toBe('/home/node');
     } finally {
@@ -306,12 +427,12 @@ describe('composeSessionSpec', () => {
     }
   });
 
-  it('never asks a runtime to run the session as root', () => {
+  it('never asks a runtime to run the session as root', async () => {
     // The hardened posture pins non-root, so a composed uid-0 runAs could never
     // be realized; Docker's root behavior (image USER wins) stays unchanged.
     const getuid = vi.spyOn(process, 'getuid').mockReturnValue(0);
     try {
-      const spec = compose();
+      const spec = await compose();
       expect(spec.runAs).toBeUndefined();
       expect(spec.containers[0].env.HOME).toBeUndefined();
     } finally {
@@ -319,12 +440,12 @@ describe('composeSessionSpec', () => {
     }
   });
 
-  it('leaves cpu and memory unset by default (unbounded, as today)', () => {
+  it('leaves cpu and memory unset by default (unbounded, as today)', async () => {
     // Guards the knobs' own defaults: an accidental default cap would OOM-kill
     // workloads that run fine now.
     expect(CONTAINER_CPU_LIMIT).toBe('');
     expect(CONTAINER_MEMORY_LIMIT).toBe('');
-    const spec = compose();
+    const spec = await compose();
     expect(spec.resources.cpus).toBeUndefined();
     expect(spec.resources.memoryMb).toBeUndefined();
     expect(spec.resources.shmSizeMb).toBe(1024);
@@ -490,5 +611,105 @@ describe('syncSkillSymlinks', () => {
       expect.stringContaining('Shared skill not symlinked'),
       expect.objectContaining({ skill: 'welcome' }),
     );
+  });
+});
+
+describe('assertComposedDocUsable — compose failure must not spawn an uninstructed agent', () => {
+  const group = { id: 'ag-x', folder: 'grp-x', name: 'X' } as never;
+
+  function tmpDir(): string {
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'ncl-compose-'));
+  }
+
+  // The regression: both compose paths logged a warning and let the spawn
+  // proceed, so a group whose composition threw ran with NO project document —
+  // no persona, no invariants, no chain-reporting rules — and nothing went red.
+  it('throws when composition failed and no document exists', () => {
+    const dir = tmpDir();
+    expect(() => assertComposedDocUsable(path.join(dir, 'CLAUDE.md'), group, new Error('boom'))).toThrow(
+      /no usable document exists/,
+    );
+  });
+
+  it('throws when the existing document is empty (present but useless)', () => {
+    const dir = tmpDir();
+    const p = path.join(dir, 'CLAUDE.md');
+    fs.writeFileSync(p, '');
+
+    expect(() => assertComposedDocUsable(p, group, new Error('boom'))).toThrow(/no usable document exists/);
+  });
+
+  // Stale beats absent: the group keeps its last good instructions rather than
+  // losing the session entirely while the cause is fixed.
+  it('tolerates the failure when a previous non-empty document survives', () => {
+    const dir = tmpDir();
+    const p = path.join(dir, 'CLAUDE.md');
+    fs.writeFileSync(p, '# previous good compose\n');
+
+    expect(() => assertComposedDocUsable(p, group, new Error('boom'))).not.toThrow();
+    expect(fs.readFileSync(p, 'utf-8')).toContain('previous good compose');
+  });
+});
+
+describe('readStandingInstructions', () => {
+  function tmpGroupDir(): string {
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'ncl-persona-'));
+  }
+
+  // The regression this whole helper exists for. `instructions.prepend.md` is
+  // written by group-init, template stamping, restamp and init-first-agent, and
+  // is the file every agent-facing doc tells the agent to edit — but its only
+  // reader was the project-doc composer this fork replaced with the spine. A
+  // template-stamped group and the OWNER group composed with no persona at all,
+  // and nothing went red.
+  it('reads instructions.prepend.md when no .instructions.md exists', () => {
+    const dir = tmpGroupDir();
+    fs.writeFileSync(path.join(dir, 'instructions.prepend.md'), 'you are terse\n');
+
+    expect(readStandingInstructions(dir, path.join(dir, '.instructions.md'))?.trim()).toBe('you are terse');
+  });
+
+  it('migrates a legacy .instructions.md onto the canonical name, once', () => {
+    const dir = tmpGroupDir();
+    const dotfile = path.join(dir, '.instructions.md');
+    const canonical = path.join(dir, 'instructions.prepend.md');
+    fs.writeFileSync(dotfile, 'legacy persona\n');
+
+    expect(readStandingInstructions(dir, dotfile)?.trim()).toBe('legacy persona');
+    // Converged: one file, and the legacy name is gone so it cannot drift.
+    expect(fs.existsSync(dotfile)).toBe(false);
+    expect(fs.readFileSync(canonical, 'utf-8').trim()).toBe('legacy persona');
+    // Idempotent — a second spawn is a plain read.
+    expect(readStandingInstructions(dir, dotfile)?.trim()).toBe('legacy persona');
+  });
+
+  it('does not clobber an existing canonical file when both are present', () => {
+    const dir = tmpGroupDir();
+    const dotfile = path.join(dir, '.instructions.md');
+    fs.writeFileSync(dotfile, 'stale legacy\n');
+    fs.writeFileSync(path.join(dir, 'instructions.prepend.md'), 'current persona\n');
+
+    // Both present means someone wrote the canonical file too; renaming over it
+    // would discard the newer intent.
+    expect(readStandingInstructions(dir, dotfile)?.trim()).toBe('current persona');
+    expect(fs.existsSync(dotfile)).toBe(true);
+  });
+
+  it('returns null when the group has neither', () => {
+    const dir = tmpGroupDir();
+
+    expect(readStandingInstructions(dir, path.join(dir, '.instructions.md'))).toBeNull();
+  });
+
+  it('does not follow a symlinked persona', () => {
+    const dir = tmpGroupDir();
+    const secret = path.join(dir, 'secret.md');
+    fs.writeFileSync(secret, 'not the persona\n');
+    fs.symlinkSync(secret, path.join(dir, 'instructions.prepend.md'));
+
+    // readGroupPersona opens O_NOFOLLOW: the persona is the one input an agent
+    // can author, so a symlink must not become an arbitrary-file read into the
+    // system prompt.
+    expect(readStandingInstructions(dir, path.join(dir, '.instructions.md'))).toBeNull();
   });
 });

@@ -127,6 +127,71 @@ Instructions here...
 - Put code in separate files, not inline in the markdown
 - See the [skills standard](https://code.claude.com/docs/en/skills) for all available frontmatter fields
 
+### Writing a workflow (`container/workflows/<name>/WORKFLOW.md`)
+
+Workflow bodies are **embedded into the agent's CLAUDE.md at compose time** by `src/claude-composer/`. The composer's step parser only recognizes one step format — anything else gets silently dropped, leaving the agent with a description-only stub.
+
+**Required step format:**
+
+```markdown
+---
+name: my-workflow
+type: workflow
+description: "..."
+requires: [...]
+uses:
+  skills: [...]
+  workflows: []
+---
+
+# /my-workflow — One-line title
+
+Optional preamble.
+
+## Steps
+
+1. **Title-cased step** {#step-id} — short prose body. May span multiple lines, code blocks, tables, sub-bullets.
+
+2. **Next step** {#next-id} — body.
+
+   Inner H2/H3 sections under a step are fine; just keep the numbered-list item at column 0.
+
+   ```bash
+   # code blocks ok inside a step body
+   ```
+```
+
+**The parser regex** (in `src/claude-composer/registry.ts`):
+
+```regex
+/^(\s*\d+\.\s+\*\*([^*]+)\*\*)(?:\s*\{#([a-z0-9-]+)\})?/gm
+```
+
+This matches **only**:
+- Start of line (column 0 or indented)
+- An integer followed by `.` and whitespace
+- A bolded title `**Title**`
+- An optional `{#anchor-id}` for overlay/override targeting
+
+**Things that don't work** (and silently produce empty step bodies):
+
+- ❌ `## Step 1: TITLE {#id}` — H2 headers
+- ❌ `#### 1. Title` — H4 headers
+- ❌ `0.5. **Title**` — decimal step numbers (only integers match)
+- ❌ `1. Title (no asterisks)` — title must be bolded with `**`
+
+**Things that DO work:**
+
+- ✅ `1. **Title** {#id} — body…`
+- ✅ `2. **Title** — body…` (anchor optional; auto-synthesized from title)
+- ✅ Inner H2/H3/H4 headings inside a step body — preserved as-is, only H1 is demoted
+
+**Inheritance:** if your workflow extends a parent (e.g. `extends: plan`), declare it in frontmatter and the parent's step structure flows through. Override individual steps by id with `overrides: { step-id: "..." }`.
+
+**Validation:** `pnpm run validate:templates` (and the `R13` test in `src/claude-composer-refactor.test.ts`) flags any non-`extends` workflow whose body parses to zero steps. Run before opening a PR — both checks gate CI.
+
+**Reference example:** [`container/workflows/plan/WORKFLOW.md`](container/workflows/plan/WORKFLOW.md).
+
 ## Templates
 
 Agent templates (reusable bundles of instructions + MCP servers + skills) ship in the separate [`nanocoai/nanoclaw-templates`](https://github.com/nanocoai/nanoclaw-templates) repo, not this one. Contribute them there via PR (its README has the anatomy and checklist). For how templates load and the OneCLI credential model, see [docs/templates.md](docs/templates.md).

@@ -71,11 +71,14 @@ export async function applyInstallPackages(payload: Record<string, unknown>, ses
       id: `appr-note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       kind: 'chat',
       timestamp: new Date().toISOString(),
-      platformId: session.agent_group_id,
-      channelType: 'agent',
-      threadId: null,
+      // System notification — channelType='system' / platformId=null so the
+      // formatter renders <system-notification> and the routing layer can
+      // never resolve self as an a2a destination.
+      platformId: null,
+      channelType: 'system',
+      threadId: session.thread_id,
       content: JSON.stringify({
-        text: `Packages installed (${pkgs}) and container rebuilt. Verify the new packages are available (e.g. run them or check versions) and report the result to the user.`,
+        text: `Packages installed (${pkgs}) and container rebuilt. The old container and all its processes have been killed — any background tasks (builds, long-running commands) that were running before this rebuild are gone. Verify the new packages are available, then resume any interrupted work from scratch, running long tasks synchronously (not in the background).`,
         sender: 'system',
         senderId: 'system',
       }),

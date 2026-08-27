@@ -9,19 +9,33 @@ import path from 'path';
 import { deriveAttachmentName } from './attachment-naming.js';
 import { isSafeAttachmentName } from './attachment-safety.js';
 import type { OutboundFile } from './channels/adapter.js';
+import { ensureContainedInboxDir } from './inbox-safety.js';
 import { DATA_DIR } from './config.js';
-import { ensureContainedInboxDir, isPathInside } from './inbox-safety.js';
+import { getSourceFor as getA2aSourceFor } from './db/a2a-session-sources.js';
 import { getMessagingGroup } from './db/messaging-groups.js';
 import { isUniqueViolation } from './db/errors.js';
 import {
   createSession,
   findSystemSession,
   findSessionByAgentGroup,
+  findSessionByAgentThread,
   findSessionForAgent,
   getSession,
   taskThreadId,
   updateSession,
 } from './db/sessions.js';
+// Raw SQLite handles for the host paths the mailbox surface does not cover:
+// the a2a bounce/redrive sweep reads and clears `processing_ack` bounce rows,
+// which MailboxSession has no operation for. Upstream relocated this module
+// out of src/db/ as part of isolating the SQLite driver internals.
+import { inboundDbPath, outboundDbPath } from './mailbox/sqlite/paths.js';
+import type { SessionDbHandle } from './mailbox/sqlite/session-db.js';
+import {
+  openInboundDb as openInboundDbRaw,
+  openOutboundDb as openOutboundDbRaw,
+  openOutboundDbWritable as openOutboundDbWritableRaw,
+  migrateMessagesInTable,
+} from './mailbox/sqlite/session-db.js';
 import { log } from './log.js';
 import { getAgentMailbox, type InboundMessage, type MailboxSession } from './mailbox/index.js';
 import type { Session } from './types.js';
@@ -108,6 +122,43 @@ export async function resolveSession(
 ): Promise<{ session: Session; created: boolean }> {
   const key = sessionCreationKey(agentGroupId, messagingGroupId, threadId, sessionMode);
   return withSessionCreationLock(key, async () => {
+    // Canonical GitHub issue/PR chains: exactly one real conversation per
+    // (agent, gh-issue/pr thread) globally. Collapse all a2a senders + the
+    // webhook session into ONE canonical session, so a handoff from the triager
+    // and a follow-up from main on the same issue share one container memory
+    // instead of fragmenting into a session per (sender→recipient) pair.
+    //
+    // Runs ABOVE the messaging-group branch and regardless of whether
+    // messagingGroupId is set: a webhook-origin caller (messagingGroupId=null)
+    // must reuse an existing canonical session too, otherwise it could mint a
+    // split when an a2a delegation created the gh session first. (Today the
+    // webhook path resolves sessions directly via findSessionByAgentThread, not
+    // resolveSession — but this guards any future null-mg gh caller.)
+    //
+    // Inside the creation lock, not before it: two senders racing on the same
+    // gh thread arrive with different sessionCreationKeys (the key includes
+    // messagingGroupId), so the lock alone does not serialize them — but the
+    // lookup must still see any session a concurrent caller just committed.
+    //
+    // Scoped to ^gh-(issue|pr)- ONLY, and only when this is a per-thread lookup
+    // (sessionMode !== 'shared'). Generic a2a threads (named threads, Slack
+    // thread_ts, msg-* ids) keep their per-source isolation — broadening this to
+    // all a2a threads was tried and reverted in #301 because it merged unrelated
+    // sources that happened to collide on a thread_id. GitHub issue/PR ids are
+    // globally canonical (one repo+number = one conversation everywhere), so the
+    // collision concern doesn't apply.
+    //
+    // Reply routing stays correct after the collapse: it is per-message via
+    // messages_in.source_session_id + in_reply_to (resolveExplicitReplyTarget),
+    // not per-session — each inbound row still records who sent it, so the merged
+    // session routes every reply home to the right peer.
+    if (sessionMode !== 'shared' && sessionMode !== 'agent-shared' && threadId && /^gh-(issue|pr)-/.test(threadId)) {
+      const canonical = await findSessionByAgentThread(agentGroupId, threadId);
+      if (canonical) {
+        return { session: canonical, created: false };
+      }
+    }
+
     // agent-shared: single session per agent group, regardless of messaging group
     if (sessionMode === 'agent-shared') {
       const existing = await findSessionByAgentGroup(agentGroupId);
@@ -122,6 +173,18 @@ export async function resolveSession(
       if (existing) {
         return { session: existing, created: false };
       }
+      // Fallback: when a dashboard message targets a thread owned by an a2a session,
+      // reuse that session. Only for dashboard channels — a2a sources with the same
+      // thread_id must stay isolated per-source (the messaging_group scopes them).
+      if (lookupThreadId) {
+        const mg = await getMessagingGroup(messagingGroupId);
+        if (mg && mg.channel_type === 'dashboard') {
+          const crossChannel = await findSessionByAgentThread(agentGroupId, lookupThreadId);
+          if (crossChannel) {
+            return { session: crossChannel, created: false };
+          }
+        }
+      }
     }
 
     const id = generateId();
@@ -131,6 +194,9 @@ export async function resolveSession(
       agent_group_id: agentGroupId,
       messaging_group_id: messagingGroupId,
       thread_id: lookupThreadId,
+      display_title: null,
+      title_source: null,
+      title_updated_at: null,
       agent_provider: null,
       status: 'active',
       container_status: 'stopped',
@@ -228,7 +294,19 @@ export async function writeSessionRouting(agentGroupId: string, sessionId: strin
 
   let channelType: string | null = null;
   let platformId: string | null = null;
-  if (session.messaging_group_id) {
+  let threadId: string | null = session.thread_id;
+
+  // a2a recipient sessions: override the synthetic `agent:<src>:<rcp>` mg
+  // platform_id with the real source agent group id, so the container's
+  // bare `send_message({text})` produces an outbound addressed at the
+  // original source — which routeAgentMessage's reply-detection branch
+  // then delivers into source_session_id.
+  const a2aSrc = await getA2aSourceFor(sessionId);
+  if (a2aSrc && a2aSrc.source_agent_group_id !== agentGroupId) {
+    channelType = 'agent';
+    platformId = a2aSrc.source_agent_group_id;
+    threadId = a2aSrc.source_thread_id;
+  } else if (session.messaging_group_id) {
     const mg = await getMessagingGroup(session.messaging_group_id);
     if (mg) {
       channelType = mg.channel_type;
@@ -240,10 +318,10 @@ export async function writeSessionRouting(agentGroupId: string, sessionId: strin
     mailbox.setRouting({
       channelType,
       platformId,
-      threadId: session.thread_id,
+      threadId,
     });
   });
-  log.debug('Session routing written', { sessionId, channelType, platformId, threadId: session.thread_id });
+  log.debug('Session routing written', { sessionId, channelType, platformId, threadId });
 }
 
 /**
@@ -315,20 +393,6 @@ export async function writeSessionMessage(
 /**
  * If message content has attachments with base64 `data`, save them to
  * the session's inbox directory and replace with `localPath`.
- *
- * Both `messageId` and `att.name` originate in untrusted input. WhatsApp
- * passes `msg.key.id` through raw (and that field is client generated, so a
- * peer can craft it), and other adapters may follow. The session dir is
- * mounted writable into the container, so a compromised agent can also
- * pre-place a symlink at `inbox/<future msgId>/` and wait for a chat message
- * with a matching id to redirect the host's write.
- *
- * Defenses, mirrored from the outbound side:
- *   1. basename check on `messageId` and `filename`.
- *   2. lstat of the inbox dir to refuse pre-placed symlinks.
- *   3. realpath-based containment under the session inbox root.
- *   4. `wx` flag on writeFileSync to refuse following a pre-existing symlink
- *      at the target file path or overwriting any existing file.
  */
 function extractAttachmentFiles(
   agentGroupId: string,
@@ -457,6 +521,42 @@ async function runMailboxSession<T>(
 }
 
 /**
+ * Raw SQLite escape hatches for the a2a bounce/redrive sweep.
+ *
+ * `MailboxSession` has no bounce operation — its `ProcessingStatus` union
+ * cannot express 'bounced-transient'/'bounced-unknown' — so the sweep reads
+ * and clears those `processing_ack` rows through direct handles. Everything
+ * else on the host goes through the mailbox.
+ */
+
+/** Open the inbound DB for a session (host reads/writes). */
+export function openInboundDb(agentGroupId: string, sessionId: string): SessionDbHandle {
+  const db = openInboundDbRaw(inboundDbPath(agentGroupId, sessionId));
+  migrateMessagesInTable(db);
+  return db;
+}
+
+/** Open a session's inbound DB, run `fn`, and always close it. */
+export function withInboundDb<T>(agentGroupId: string, sessionId: string, fn: (db: SessionDbHandle) => T): T {
+  const db = openInboundDb(agentGroupId, sessionId);
+  try {
+    return fn(db);
+  } finally {
+    db.close();
+  }
+}
+
+/** Open the outbound DB for a session (host reads only). */
+export function openOutboundDb(agentGroupId: string, sessionId: string): SessionDbHandle {
+  return openOutboundDbRaw(outboundDbPath(agentGroupId, sessionId));
+}
+
+/** Open the outbound DB read-write. Only safe when no container is running (e.g. kill-and-respawn cleanup path). */
+export function openOutboundDbRw(agentGroupId: string, sessionId: string): SessionDbHandle {
+  return openOutboundDbWritableRaw(outboundDbPath(agentGroupId, sessionId));
+}
+
+/**
  * Write a message directly to a session's outbound mailbox so the host delivery
  * loop picks it up. Used by the command gate to send denial responses
  * without waking a container.
@@ -496,51 +596,61 @@ export function readOutboxFiles(
   filenames: string[],
 ): OutboundFile[] | undefined {
   if (!isSafeAttachmentName(messageId)) {
-    log.warn('Rejecting unsafe outbox message id', { messageId });
+    log.warn('Refused unsafe outbox messageId', { messageId });
     return undefined;
   }
-
-  const outboxDir = path.join(sessionDir(agentGroupId, sessionId), 'outbox', messageId);
+  const sessDir = sessionDir(agentGroupId, sessionId);
+  const outboxRoot = path.join(sessDir, 'outbox');
+  const outboxDir = path.join(outboxRoot, messageId);
   if (!fs.existsSync(outboxDir)) return undefined;
-
-  let realOutboxDir: string;
+  // Reject if outboxDir is a symlink escaping outboxRoot.
   try {
-    const stat = fs.lstatSync(outboxDir);
-    if (!stat.isDirectory() || stat.isSymbolicLink()) {
-      log.warn('Rejecting unsafe outbox directory', { messageId, outboxDir });
+    if (fs.lstatSync(outboxDir).isSymbolicLink()) {
+      log.warn('Refused outbox dir that is a symlink', { messageId });
       return undefined;
     }
-    realOutboxDir = fs.realpathSync(outboxDir);
+    const realOutbox = fs.realpathSync(outboxDir);
+    if (!isPathInside(realOutbox, fs.realpathSync(outboxRoot))) {
+      log.warn('Outbox dir resolves outside session outbox root', { messageId });
+      return undefined;
+    }
   } catch (err) {
-    log.warn('Failed to inspect outbox directory', { messageId, err });
+    log.warn('Outbox dir stat failed', { messageId, err });
     return undefined;
   }
-
   const files: OutboundFile[] = [];
   for (const filename of filenames) {
     if (!isSafeAttachmentName(filename)) {
-      log.warn('Refused unsafe outbox filename, would escape outbox', { messageId, filename });
+      log.warn('Refused unsafe outbox filename', { messageId, filename });
       continue;
     }
-
     const filePath = path.join(outboxDir, filename);
-    try {
-      const stat = fs.lstatSync(filePath);
-      if (!stat.isFile() || stat.isSymbolicLink()) {
-        log.warn('Rejecting unsafe outbox file', { messageId, filename });
-        continue;
-      }
-      const realFilePath = fs.realpathSync(filePath);
-      if (!isPathInside(realOutboxDir, realFilePath)) {
-        log.warn('Rejecting outbox file outside message directory', { messageId, filename });
-        continue;
-      }
-      files.push({ filename, data: fs.readFileSync(realFilePath) });
-    } catch {
+    if (!fs.existsSync(filePath)) {
       log.warn('Outbox file not found', { messageId, filename });
+      continue;
     }
+    try {
+      if (fs.lstatSync(filePath).isSymbolicLink()) {
+        log.warn('Refused outbox attachment that is a symlink', { messageId, filename });
+        continue;
+      }
+      const realFile = fs.realpathSync(filePath);
+      if (!isPathInside(realFile, fs.realpathSync(outboxDir))) {
+        log.warn('Outbox attachment resolves outside outbox dir', { messageId, filename });
+        continue;
+      }
+    } catch (err) {
+      log.warn('Outbox attachment stat failed', { messageId, filename, err });
+      continue;
+    }
+    files.push({ filename, data: fs.readFileSync(filePath) });
   }
   return files.length > 0 ? files : undefined;
+}
+
+function isPathInside(child: string, parent: string): boolean {
+  const rel = path.relative(parent, child);
+  return rel.length > 0 && !rel.startsWith('..') && !path.isAbsolute(rel);
 }
 
 /**
@@ -551,25 +661,24 @@ export function readOutboxFiles(
  */
 export function clearOutbox(agentGroupId: string, sessionId: string, messageId: string): void {
   if (!isSafeAttachmentName(messageId)) {
-    log.warn('Rejecting unsafe outbox cleanup message id', { messageId });
+    log.warn('Refused to clear outbox for unsafe messageId', { messageId });
     return;
   }
-
-  const outboxDir = path.join(sessionDir(agentGroupId, sessionId), 'outbox', messageId);
+  const sessDir = sessionDir(agentGroupId, sessionId);
+  const outboxRoot = path.join(sessDir, 'outbox');
+  const outboxDir = path.join(outboxRoot, messageId);
   if (!fs.existsSync(outboxDir)) return;
   try {
-    const stat = fs.lstatSync(outboxDir);
-    if (!stat.isDirectory() || stat.isSymbolicLink()) {
-      log.warn('Rejecting unsafe outbox cleanup directory', { messageId, outboxDir });
+    if (fs.lstatSync(outboxDir).isSymbolicLink()) {
+      log.warn('Refused to rmSync outbox dir that is a symlink', { messageId });
       return;
     }
-    const realOutboxBase = fs.realpathSync(path.join(sessionDir(agentGroupId, sessionId), 'outbox'));
-    const realOutboxDir = fs.realpathSync(outboxDir);
-    if (!isPathInside(realOutboxBase, realOutboxDir)) {
-      log.warn('Rejecting outbox cleanup outside session outbox', { messageId, outboxDir });
+    const realOutbox = fs.realpathSync(outboxDir);
+    if (!isPathInside(realOutbox, fs.realpathSync(outboxRoot))) {
+      log.warn('Refused to rmSync outbox dir outside outbox root', { messageId });
       return;
     }
-    fs.rmSync(realOutboxDir, { recursive: true, force: true });
+    fs.rmSync(outboxDir, { recursive: true, force: true });
   } catch (err) {
     log.warn('Outbox cleanup failed (message already delivered)', { messageId, err });
   }

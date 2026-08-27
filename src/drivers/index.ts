@@ -36,6 +36,8 @@
  * would be silently ignored when written to the file where every other
  * NanoClaw setting lives.
  */
+import { execSync } from 'child_process';
+import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
@@ -83,9 +85,62 @@ function dockerNetworkArgs(spec: SessionSpec): string[] {
   return os.platform() === 'linux' ? ['--add-host=host.docker.internal:host-gateway'] : [];
 }
 
+type GpuMode = 'runtime-nvidia' | 'gpus-all' | 'none';
+let gpuModeCache: GpuMode | null = null;
+
+/**
+ * Which GPU passthrough this host can do. `ENABLE_GPU=1` forces the check on a
+ * host whose driver lives outside /usr/bin; `GPU_RUNTIME_MODE` pins the answer
+ * when detection guesses wrong. Cached — `docker info` per spawn is wasteful and
+ * the answer cannot change without a daemon restart.
+ */
+function detectGpuMode(): GpuMode {
+  if (gpuModeCache) return gpuModeCache;
+  if (process.env.ENABLE_GPU !== '1' && !fs.existsSync('/usr/bin/nvidia-smi')) {
+    return (gpuModeCache = 'none');
+  }
+  const forced = process.env.GPU_RUNTIME_MODE as GpuMode | undefined;
+  if (forced === 'runtime-nvidia' || forced === 'gpus-all') return (gpuModeCache = forced);
+  try {
+    const runtimes = execSync('docker info --format "{{json .Runtimes}}"', { timeout: 3000 }).toString();
+    if (/\bnvidia\b/.test(runtimes)) return (gpuModeCache = 'runtime-nvidia');
+  } catch {
+    /* fall through to --gpus */
+  }
+  return (gpuModeCache = 'gpus-all');
+}
+
+/**
+ * GPU passthrough, decided at spawn like the network topology above and for the
+ * same reason: whether this host has an NVIDIA runtime is a property of the
+ * host, not of the session, so composition has nothing to say about it and
+ * `SessionResources` gains no field a non-Docker realization would have to fake.
+ *
+ * The two `NVIDIA_*` vars ride this lane rather than `ContainerSpec.env`
+ * because they are meaningless without the flags beside them — one host
+ * capability, decided once. Non-secret by inspection; `-e` here is the same
+ * append the pre-seam argv did.
+ */
+function dockerGpuArgs(): string[] {
+  const mode = detectGpuMode();
+  if (mode === 'none') return [];
+  return [
+    ...(mode === 'runtime-nvidia' ? ['--runtime=nvidia'] : ['--gpus', 'all']),
+    '-e',
+    'NVIDIA_VISIBLE_DEVICES=all',
+    '-e',
+    'NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics',
+  ];
+}
+
+/** Reset the cached GPU probe. Tests only. */
+export function resetGpuModeCacheForTests(): void {
+  gpuModeCache = null;
+}
+
 registerSessionDriver(
   DEFAULT_DRIVER_KIND,
-  (policy) => new DockerSessionDriver({ ...policy, networkArgsFor: dockerNetworkArgs }),
+  (policy) => new DockerSessionDriver({ ...policy, networkArgsFor: dockerNetworkArgs, hostDeviceArgs: dockerGpuArgs }),
 );
 
 export function configuredDriverKind(env: NodeJS.ProcessEnv = process.env): DriverKind {

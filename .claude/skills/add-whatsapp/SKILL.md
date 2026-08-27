@@ -85,7 +85,7 @@ container/skills/whatsapp-formatting/instructions.md
 
 The `whatsapp-formatting` container skill is part of the channel payload: its
 `instructions.md` is inlined as a section of every group's composed project
-document (see `src/project-doc-compose.ts`), teaching agents WhatsApp's
+document (see `src/claude-composer/spine.ts`), teaching agents WhatsApp's
 formatting syntax. Trunk does not ship it — without this copy step
 agents format WhatsApp messages with generic markdown that renders literally.
 

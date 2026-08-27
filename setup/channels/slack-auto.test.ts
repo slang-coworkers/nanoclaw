@@ -26,17 +26,21 @@ const state = vi.hoisted(() => ({
   brokerListWorkspaces: vi.fn(async () => [
     { team_id: 'T0TEAM123', team_name: 'NanoCo', status: 'active', connected_as: 'U0OWNER12' },
   ]),
-  brokerProvision: vi.fn(async () => ({
-    appId: 'A0APP123',
-    appToken: 'xapp-test',
-    botToken: 'xoxb-test',
-    installUrl: '',
-  })),
+  brokerProvision: vi.fn(
+    async (): Promise<import('./slack-auto.js').ProvisionedApp> => ({
+      appId: 'A0APP123',
+      appToken: 'xapp-test',
+      botToken: 'xoxb-test',
+      installUrl: '',
+    }),
+  ),
 }));
 
 vi.mock('@clack/prompts', () => ({
   note: vi.fn((message: string, title: string) => state.notes.push({ message, title })),
-  spinner: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
+  // `error` alongside `stop`: failure paths call s.error() so clack renders the
+  // red outcome marker — s.stop(msg, 1) discards the code and shows green.
+  spinner: vi.fn(() => ({ start: vi.fn(), stop: vi.fn(), error: vi.fn(), cancel: vi.fn() })),
   log: {
     info: vi.fn((message: string) => state.infos.push(message)),
     warn: vi.fn((message: string) => state.warns.push(message)),

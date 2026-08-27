@@ -125,8 +125,13 @@ jobs:
                 git add -- "$f"
               else
                 echo "::notice::$branch: $f absent on $OWNED_SRC — taking the deletion"
-                git rm -f -- "$f" >/dev/null 2>&1 || rm -f "$f"
-                git add -A -- "$f"
+                # `git rm -f` stages the deletion itself, so `git add -A` after
+                # it SUCCEEDS is fatal rather than redundant: the path is gone
+                # from both worktree and index, git answers `pathspec did not
+                # match any files` and exits 128, killing the step under
+                # `bash -e`. add -A belongs only on the fallback path, where a
+                # plain `rm` left the index untouched.
+                git rm -f -- "$f" >/dev/null 2>&1 || { rm -f "$f"; git add -A -- "$f"; }
               fi
             done
             git commit --no-edit
@@ -323,6 +328,12 @@ jobs:
       # scripts/kb-doctor.py's job and it needs the host to do it.
       - name: Scheduled-task snapshots agree with themselves
         run: bash scripts/check-task-snapshots.sh
+
+      # The compose step above cannot test its own conflict resolution: it only
+      # exercises the paths that happen to conflict on this PR. This builds the
+      # modify/delete case on purpose, against all three copies of that loop.
+      - name: Compose paths resolve modify/delete conflicts
+        run: bash scripts/check-compose-conflict-resolution.sh
 
   # Repository rules require exact `ci`; always run it so matrix failures remain blocking.
   ci:

@@ -64,6 +64,27 @@ export interface InboundEvent {
     isGroup?: boolean;
   };
   replyTo?: DeliveryAddress;
+  /**
+   * Optional context the caller wants seeded as a prior message in the new
+   * per-thread session's inbound.db. Used only when `resolveSession` mints
+   * a brand-new session for `threadId`; ignored otherwise. This lets the
+   * dashboard ship the message the user clicked ↳Reply on so the agent sees
+   * the parent-child pair as a coherent mini-history, rather than a single
+   * ambiguous "fix it" with no antecedent.
+   */
+  parentMessage?: {
+    /** Raw text body of the parent message. */
+    content: string;
+    /** ISO timestamp of the parent. Falls back to now() when omitted. */
+    timestamp?: string;
+    /** Display name of who said it ("implementer", "You", "@reviewer"). */
+    sender?: string;
+    /**
+     * Direction from the agent's point of view. 'outgoing' means the parent
+     * was the agent's own prior reply; 'incoming' means someone else said it.
+     */
+    direction?: 'outgoing' | 'incoming';
+  };
 }
 
 /** Inbound message from adapter to host. */
