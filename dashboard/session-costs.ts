@@ -14,6 +14,8 @@
  * on every shared model, so the two can't drift.
  */
 
+import { basename, dirname } from 'path';
+
 export interface TokenUsage {
   input_tokens?: number;
   output_tokens?: number;
@@ -111,4 +113,24 @@ export interface SessionCostEntry {
 /** Sort by cost desc, then most-recent, and cap to `limit`. */
 export function rankByCost(entries: SessionCostEntry[], limit = 500): SessionCostEntry[] {
   return [...entries].sort((a, b) => b.cost - a.cost || b.lastActiveMs - a.lastActiveMs).slice(0, limit);
+}
+
+/**
+ * Resolve the SDK session id a transcript file's cost should attribute to.
+ *
+ * Claude Task-tool subagent transcripts live nested at
+ * `<workspace>/<PARENT_SDK_SESSION_ID>/subagents/agent-*.jsonl` and never get
+ * their own `sdk_session_routes` entry — routes only stamp top-level session
+ * hook lifecycles (SessionStart/Stop), never subagent spawns. Naively keying
+ * off the file's own basename orphans every subagent file into an
+ * "unattributed" bucket instead of the session that actually spent the
+ * money — measured on prod at ~99% of what first looked like unattributed
+ * spend. Detect the nesting and use the parent directory instead.
+ */
+export function resolveSdkSessionId(filePath: string): string {
+  const immediateDir = basename(dirname(filePath));
+  if (immediateDir === 'subagents') {
+    return basename(dirname(dirname(filePath)));
+  }
+  return basename(filePath).replace(/\.jsonl$/, '');
 }
