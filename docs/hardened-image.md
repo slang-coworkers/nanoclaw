@@ -47,10 +47,12 @@ is involved.
 
 ## What it does not buy
 
-**It does not contain the agent.** `/app/src` and `/app/skills` are read-only bind mounts from
-your own checkout at every spawn, and the container starts with `--entrypoint bash`, bypassing
-the image's entrypoint. The code your agent runs is the code in your checkout — unsigned, and
-reviewed by nobody but you.
+**It does not contain the agent.** `/app/skills` is a read-only bind mount from your own
+checkout at every spawn, and `/app/src` is a **read-only** bind mount of the agent-runner
+source in that checkout (`container/agent-runner/src/`), shared by every group. The container
+starts with `--entrypoint bash`, bypassing the image's entrypoint. So the code your agent
+runs is whatever is in your checkout — unsigned and reviewed by nobody but you, which is the
+point of the caveat, but at least it is not silently a stale copy of it.
 
 Containment is runtime configuration you own. `NANOCLAW_EGRESS_LOCKDOWN=true`, the mount
 allowlist, and per-group resource limits all do more here than any image can.
@@ -59,7 +61,7 @@ allowlist, and per-group resource limits all do more here than any image can.
 
 | | Pull | Build |
 |---|---|---|
-| `install_packages` | Works, as a derived image | Works |
+| `install_packages` (apt and npm only) | Works, as a derived image | Works |
 | Non-Claude providers | Only if the publisher baked the CLI, or you add it | Work |
 | Custom `Dockerfile` edits | Replaced on the next refresh | Yours |
 | `INSTALL_CJK_FONTS` | Whatever the publisher baked — or `fonts-noto-cjk` via `install_packages` | Your choice |
@@ -70,6 +72,12 @@ prints what to run instead, so a skill that rebuilds can't silently replace the 
 `install_packages` is the exception, and it works because it never rebuilds the base — it builds
 a small image `FROM` the one you pulled and adds your layers, then pins that group to it. The
 vendor's bytes are still underneath, unmodified.
+
+It reaches apt and npm packages only (`packages_apt` and `packages_npm`). A `Dockerfile` that
+installs by any other means — `pip`, a `curl | sh` vendor installer, a language toolchain fetched
+in a `RUN` — has no equivalent here, so those additions are lost on the switch and cannot be put
+back through the derived image. Check what your `Dockerfile` adds before opting in; if anything
+it installs falls outside apt and npm, local builds are the path that keeps it.
 
 What that costs is the vendor's claim over that one group. Their scan covered the base, not
 whatever you added on top, so a derived image labels itself `derived` rather than inheriting
@@ -216,7 +224,7 @@ account-takeover bugs happen — and there is no way to merge them today. Pick o
 |---|---|
 | `./container/build.sh` exits 3 | Pinned install. `pull` to refresh, `build` to force local. |
 | Setup never offers the pull option | The option needs a Claude install and an `agent-image` pin in `versions.json`. Existing installs can follow [the migration above](#existing-installs-switch-to-the-hardened-image). |
-| Pull fails: lockfile mismatch | The image was built against a different `container/agent-runner/bun.lock`. Refresh the pin or build locally. |
+| Pull warns: lockfile mismatch | The image was built against a different `container/agent-runner/bun.lock`. The pull proceeds — temporarily, while no published image carries the current lockfile. If the agent then dies on a missing module, run `./container/build.sh build`. |
 | Pull fails: architecture mismatch | The reference names one architecture and it isn't this daemon's. Use a multi-arch index, or the reference for this architecture. |
 | "No agent-image reference for linux/…" | The pin is per-platform and has no entry for this machine. Build locally, or set `NANOCLAW_AGENT_IMAGE_REF`. |
 | Pull fails: auth | `--status` shows whether the credential helper is wired; `--force` re-runs sign-in. |

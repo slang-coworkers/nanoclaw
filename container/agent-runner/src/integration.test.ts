@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 
-import { initTestSessionDb, closeSessionDb, getInboundDb, getOutboundDb } from './db/connection.js';
+import { initTestSessionDb, closeSessionDb, getInboundDb, getOutboundDb } from './mailbox/sqlite/connection.js';
 import { getUndeliveredMessages } from './db/messages-out.js';
 import { getPendingMessages } from './db/messages-in.js';
 import { getContinuation, setContinuation } from './db/session-state.js';
+import { getSessionRouting } from './db/session-routing.js';
 import { MockProvider } from './providers/mock.js';
 import type { ProviderExchange } from './providers/types.js';
 import { runPollLoop } from './poll-loop.js';
@@ -33,6 +34,13 @@ function insertMessage(id: string, content: object, opts?: { platformId?: string
 }
 
 describe('poll loop integration', () => {
+  it('defaults only when the legacy session routing table is absent', () => {
+    expect(getSessionRouting()).toEqual({ channel_type: null, platform_id: null, thread_id: null });
+
+    getInboundDb().exec('CREATE VIEW session_routing AS SELECT * FROM missing_routing');
+    expect(() => getSessionRouting()).toThrow(/missing_routing/);
+  });
+
   it('should pick up a message, process it, and write a response', async () => {
     insertMessage('m1', { sender: 'Alice', text: 'What is the meaning of life?' }, { platformId: 'chan-1', channelType: 'discord', threadId: 'thread-1' });
 
@@ -114,10 +122,14 @@ describe('poll loop integration', () => {
     await loopPromise.catch(() => {});
   });
 
-  it('bare text produces no outbound messages (scratchpad only)', async () => {
-    insertMessage('m1', { sender: 'Alice', text: 'hello' }, { platformId: 'chan-1', channelType: 'discord' });
+  it('bare text on system channel produces no outbound messages (scratchpad only)', async () => {
+    // System-channel inbound carries platformId=null; the auto-route gate in
+    // dispatchResultText (PR #366) is restricted to channelType !== 'system',
+    // so bare scratchpad here stays scratchpad. (External channels DO
+    // auto-route bare text — covered by `dispatchResultText auto-route gate`
+    // in poll-loop.test.ts.)
+    insertMessage('m1', { sender: 'Alice', text: 'hello' }, { platformId: null, channelType: 'system' });
 
-    // Agent responds with bare text — no <message to="..."> wrapping
     const provider = new MockProvider({}, () => 'I am thinking about this...');
     const controller = new AbortController();
     const loopPromise = runPollLoopWithTimeout(provider, controller.signal, 2000);
@@ -298,20 +310,34 @@ describe('poll loop integration', () => {
 
 });
 
-// Helper: run poll loop until aborted or timeout
+// Helper: run poll loop until aborted or timeout.
+//
+// The promise returned by the old helper settled as soon as the abort/timeout
+// race arm fired, while the real runPollLoop kept an active query open. Those
+// orphan loops kept polling later tests' freshly-created DBs and could steal the
+// /clear row from the active-query abort test. Drain the real loop after abort so
+// each test owns exactly one live poll loop.
 async function runPollLoopWithTimeout(provider: MockProvider, signal: AbortSignal, timeoutMs: number): Promise<void> {
-  return Promise.race([
-    runPollLoop({
-      provider,
-      providerName: 'mock',
-      cwd: '/tmp',
-      signal,
-    }),
-    new Promise<void>((_, reject) => {
-      signal.addEventListener('abort', () => reject(new Error('aborted')));
-    }),
-    new Promise<void>((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),
-  ]);
+  const loop = runPollLoop({
+    provider,
+    providerName: 'mock',
+    cwd: '/tmp',
+    signal,
+    activePollIntervalMs: 10,
+  });
+  loop.catch(() => {});
+
+  try {
+    await Promise.race([
+      loop,
+      new Promise<void>((_, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+      }),
+      new Promise<void>((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),
+    ]);
+  } finally {
+    if (signal.aborted) await loop.catch(() => {});
+  }
 }
 
 async function waitFor(condition: () => boolean, timeoutMs: number): Promise<void> {
@@ -364,8 +390,13 @@ describe('poll loop — exchange hook (onExchangeComplete)', () => {
     let calls = 0;
     const provider = new HookedMockProvider({}, () => {
       calls += 1;
-      // First result is unwrapped (triggers the retry nudge), second is wrapped.
-      return calls === 1 ? 'unwrapped text' : '<message to="discord-test">wrapped now</message>';
+      // First result is a dangling-open <message> (no close tag) → triggers the
+      // fork's wrapping-retry nudge (plain text would auto-route instead); the
+      // second is a well-formed block. The nudge must never surface as a user
+      // prompt to the exchange hook.
+      return calls === 1
+        ? '<message to="discord-test">half a message with no closing tag'
+        : '<message to="discord-test">wrapped now</message>';
     });
     const controller = new AbortController();
     const loopPromise = runPollLoopWithTimeout(provider, controller.signal, 3000);
@@ -488,6 +519,59 @@ describe('poll loop — /clear command', () => {
     // Command message was completed
     const pending = getPendingMessages();
     expect(pending).toHaveLength(0);
+
+    await loopPromise.catch(() => {});
+  });
+});
+
+describe('poll loop — silent turn (Codex last_agent_message: null)', () => {
+  /**
+   * Reproduces the real failure end to end: the provider completes its turn
+   * with `text: null`, never sets isError, and writes nothing. The whole
+   * runPollLoop path has to hold the line here — processQuery's ack AND the
+   * outer loop's fallback markCompleted, which used to overwrite everything.
+   */
+  class SilentProvider {
+    readonly supportsNativeSlashCommands = false;
+    registerMemorySessionHook(): void {}
+    isSessionInvalid(): boolean {
+      return false;
+    }
+    query() {
+      return {
+        push() {},
+        end() {},
+        abort() {},
+        events: (async function* () {
+          yield { type: 'init', continuation: 'silent-session' };
+          yield { type: 'result', text: null };
+        })(),
+      };
+    }
+  }
+
+  it('never acks the trigger completed, and says so in the channel', async () => {
+    insertMessage('m-silent', { sender: 'Alice', text: 'are you there?' }, { platformId: 'chan-1', channelType: 'discord' });
+
+    const provider = new SilentProvider();
+    const controller = new AbortController();
+    const loopPromise = runPollLoopWithTimeout(provider as unknown as MockProvider, controller.signal, 3000);
+
+    await waitFor(() => getUndeliveredMessages().length > 0, 3000);
+    // Let the outer loop run past its fallback markCompleted before asserting —
+    // that line is the one that used to turn this into a 'completed' turn.
+    await sleep(200);
+    controller.abort();
+
+    const ack = getOutboundDb()
+      .prepare('SELECT status FROM processing_ack WHERE message_id = ?')
+      .get('m-silent') as { status: string } | undefined;
+    expect(ack?.status).not.toBe('completed');
+    expect(ack?.status).toBe('failed');
+
+    const out = getUndeliveredMessages();
+    expect(out).toHaveLength(1);
+    expect(JSON.parse(out[0].content).text).toContain('without producing any output');
 
     await loopPromise.catch(() => {});
   });
