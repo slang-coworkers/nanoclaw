@@ -683,6 +683,12 @@ export class ClaudeProvider implements AgentProvider {
     this.env = {
       ...(options.env ?? {}),
       CLAUDE_CODE_AUTO_COMPACT_WINDOW,
+      // NanoClaw owns memory (the OKF tree + session-start hook), so Claude
+      // Code's native auto-memory must stay off or the two disagree about
+      // recall. group-init.ts writes the same flag into each group's
+      // settings.json; this covers the SDK child for groups scaffolded before
+      // that flag existed. Spread last so a caller env cannot re-enable it.
+      CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1',
     };
     // Resolve `envInherit` names → values from process env for every stdio
     // MCP entry. Claude Agent SDK spawns MCP children with a literal env
@@ -732,9 +738,10 @@ export class ClaudeProvider implements AgentProvider {
     }
   }
 
-  registerMemorySessionHook(hook: MemorySessionHookRegistration): void {
+  registerMemorySessionHook(hook: MemorySessionHookRegistration): boolean {
     writeMemorySessionHook(hook);
     this.memorySessionHook = hook;
+    return true;
   }
 
   isSessionInvalid(err: unknown): boolean {
@@ -766,13 +773,21 @@ export class ClaudeProvider implements AgentProvider {
     }
     if (!reason) return null;
 
-    // Preserve a readable summary, then move the heavy .jsonl out of the
-    // resume path so the SDK starts a fresh session and the disk is reclaimed.
-    archiveTranscriptFile(transcriptPath, continuation, this.assistantName);
+    // Preserve a readable summary, then drop the heavy .jsonl out of the resume
+    // path so the SDK starts a fresh session. Delete it once archiving
+    // succeeded: renaming aside only hides the bytes, so a long-lived hub that
+    // repeatedly crosses the rotation threshold accumulates `.rotated-*` files
+    // without bound. Keep the raw file when archiving failed — unrecoverable
+    // history is worth the disk.
+    const archived = archiveTranscriptFile(transcriptPath, continuation, this.assistantName);
     try {
-      fs.renameSync(transcriptPath, `${transcriptPath}.rotated-${Date.now()}`);
+      if (archived) {
+        fs.rmSync(transcriptPath);
+      } else {
+        fs.renameSync(transcriptPath, `${transcriptPath}.rotated-${Date.now()}`);
+      }
     } catch (err) {
-      log(`Failed to move rotated transcript aside: ${err instanceof Error ? err.message : String(err)}`);
+      log(`Failed to reclaim rotated transcript: ${err instanceof Error ? err.message : String(err)}`);
     }
     return reason;
   }
