@@ -62,15 +62,18 @@ describe('ClaudeProvider.maybeRotateContinuation', () => {
     expect(fs.existsSync(p)).toBe(true);
   });
 
-  it('rotates an oversized transcript (returns reason, moves the .jsonl aside)', () => {
+  // Deleted, not renamed aside: a rename only hides the bytes, so a long-lived
+  // hub crossing the threshold repeatedly grew `.rotated-*` files without bound
+  // while the code claimed the disk was reclaimed.
+  it('rotates an oversized transcript and reclaims the disk (no .rotated-* left)', () => {
     process.env.CLAUDE_TRANSCRIPT_ROTATE_BYTES = String(64 * 1024);
     const p = writeTranscript('sess-big', 200 * 1024);
     const provider = new ClaudeProvider();
     const reason = provider.maybeRotateContinuation('sess-big', CWD);
     expect(reason).toContain('MB');
-    expect(fs.existsSync(p)).toBe(false); // original moved out of the resume path
+    expect(fs.existsSync(p)).toBe(false);
     const dir = path.dirname(p);
-    expect(fs.readdirSync(dir).some((f) => f.startsWith('sess-big.jsonl.rotated-'))).toBe(true);
+    expect(fs.readdirSync(dir).some((f) => f.startsWith('sess-big.jsonl.rotated-'))).toBe(false);
   });
 
   it('rotates an aged transcript even when small', () => {

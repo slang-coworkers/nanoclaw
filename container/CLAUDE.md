@@ -16,7 +16,7 @@ Files sent to you arrive at **`/workspace/inbox/<message-id>/<filename>`**, and 
 
 ## Memory
 
-Your persistent memory lives under `/workspace/agent/memory/`. The session-start memory context contains the live top-level index and system definition. Follow that definition when deciding what to store and keep the index accurate so you can retrieve details later.
+Your persistent memory lives under `/workspace/agent/memory/`. A **Memory** section in your context carries the live top-level index and system definition. Follow that definition when deciding what to store and keep the index accurate so you can retrieve details later.
 
 Standing role, persona, and behavioral instructions belong in `/workspace/agent/instructions.prepend.md`; durable facts belong in memory. Changes to standing instructions take effect after the group container restarts, so say that when confirming an edit.
 
