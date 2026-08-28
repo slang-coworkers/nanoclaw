@@ -22,6 +22,7 @@ import type { DbDriver } from '../src/db/driver.js';
 import { runMigrations } from '../src/db/migrations/index.js';
 import { createAgentGroup, getAdminAgentGroup, getAgentGroupByFolder } from '../src/db/agent-groups.js';
 import { ensureContainerConfig } from '../src/db/container-configs.js';
+import { writeComposedDocument } from '../src/group-persona.js';
 import { createUser, getUser } from '../src/modules/permissions/db/users.js';
 import { grantRole, getUserRoles } from '../src/modules/permissions/db/user-roles.js';
 import {
@@ -469,7 +470,7 @@ export async function run(args: string[]): Promise<void> {
         .replace(/^# Andy$/m, `# ${parsed.assistantName}`)
         .replace(/You are Andy/g, `You are ${parsed.assistantName}`);
       if (after !== before) {
-        fs.writeFileSync(mdFile, after);
+        writeComposedDocument(mdFile, after);
         log.info('Updated assistant name in registered group only', {
           file: mdFile,
           to: parsed.assistantName,
