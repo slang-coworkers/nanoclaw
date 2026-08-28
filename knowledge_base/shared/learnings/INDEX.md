@@ -4581,6 +4581,7 @@
 - [on a shallow clone git merge base lies about remot](ag-1780667166439-vmjrwe/1787862114697-on-a-shallow-clone-git-merge-base-lies-about-remot.md) — _ag-1780667166439-vmjrwe_
 - [expand pack arity bugs only reproduce whole module](ag-1780667166439-vmjrwe/1787868222506-expand-pack-arity-bugs-only-reproduce-whole-module.md) — _ag-1780667166439-vmjrwe_
 - [detect an unresolved ir pack leaf by op not by dat](ag-1780667166439-vmjrwe/1787868230656-detect-an-unresolved-ir-pack-leaf-by-op-not-by-dat.md) — _ag-1780667166439-vmjrwe_
+- [a passive rebase hold cannot gate a maintainer wit](ag-1780667166439-vmjrwe/1787888940678-a-passive-rebase-hold-cannot-gate-a-maintainer-wit.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5170,6 +5171,8 @@
 - [approver infra abstain devin fetch exit 0 is not h](ag-1783611156430-vvj8oi/1787882263271-approver-infra-abstain-devin-fetch-exit-0-is-not-h.md) — _ag-1783611156430-vvj8oi_
 - [approver confirmed safe requiredloweringpassset ga](ag-1783611156430-vvj8oi/1787883589296-approver-confirmed-safe-requiredloweringpassset-ga.md) — _ag-1783611156430-vvj8oi_
 - [approver critique mustfix a master merge revision ](ag-1783611156430-vvj8oi/1787884407584-approver-critique-mustfix-a-master-merge-revision-.md) — _ag-1783611156430-vvj8oi_
+- [approver confirmed safe ray query only as construc](ag-1783611156430-vvj8oi/1787888898374-approver-confirmed-safe-ray-query-only-as-construc.md) — _ag-1783611156430-vvj8oi_
+- [approver human disagreement a maintainer discretio](ag-1783611156430-vvj8oi/1787888977718-approver-human-disagreement-a-maintainer-discretio.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement a finding held by a re](ag-1783611156448-d49n0a/1786357056431-approver-human-disagreement-a-finding-held-by-a-re.md) — _ag-1783611156448-d49n0a_
 - [approver human agreement a merge can ship an unver](ag-1783611156448-d49n0a/1786361356886-approver-human-agreement-a-merge-can-ship-an-unver.md) — _ag-1783611156448-d49n0a_
 - [approver infra abstain record decision returns dec](ag-1783611156448-d49n0a/1786361652051-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156448-d49n0a_
@@ -5269,6 +5272,8 @@
 - [approver clause gap merge outcome confirms tier el](ag-1783611156448-d49n0a/1787814836142-approver-clause-gap-merge-outcome-confirms-tier-el.md) — _ag-1783611156448-d49n0a_
 - [approver critique mustfix mutex consolidation prs ](ag-1783611156448-d49n0a/1787845785062-approver-critique-mustfix-mutex-consolidation-prs-.md) — _ag-1783611156448-d49n0a_
 - [approver calibration confirmed safe shape same aut](ag-1783611156448-d49n0a/1787845795403-approver-calibration-confirmed-safe-shape-same-aut.md) — _ag-1783611156448-d49n0a_
+- [approver scope decide pr scope by changed paths no](ag-1783611156448-d49n0a/1787887327287-approver-scope-decide-pr-scope-by-changed-paths-no.md) — _ag-1783611156448-d49n0a_
+- [approver clause gap coderabbit clean posts as an i](ag-1783611156448-d49n0a/1787896130226-approver-clause-gap-coderabbit-clean-posts-as-an-i.md) — _ag-1783611156448-d49n0a_
 - [dashboard_slang triage 1776263007885](dashboard_slang-triage-1776263007885.md) — _unattributed_
 - [devin reviewer scrape reliability](devin-reviewer-scrape-reliability.md) — _unattributed_
 - [legoop feedback_ab_evaluation_criteria](legoop-feedback_ab_evaluation_criteria.md) — _unattributed_
