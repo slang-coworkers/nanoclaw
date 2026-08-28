@@ -158,11 +158,37 @@ export function priceCodexEvent(e: CodexUsageEvent): number {
 /**
  * Identity of one billed call, for cross-file de-duplication.
  *
- * A codex subagent thread spawn writes its OWN rollout file that REPLAYS the
- * parent thread's already-billed turns, so the same call appears in two files.
- * Measured on prod: charging both over-counts by 13.7% and 19.2% on the two of
- * thirty sampled sessions that had forked rollouts. ccusage de-duplicates by the
- * usage tuple, and doing the same reproduced its figure EXACTLY on all thirty.
+ * THE KEY IS A VALUE TUPLE ON PURPOSE, and the reason is narrower than it looks:
+ * it is what reproduces `ccusage`'s token attribution, which is the number the
+ * dashboard publishes. Measured over 40 prod sessions / 54 session-days
+ * (`dashboard/codex-costs.ts` holds the table):
+ *
+ *     no dedupe                                 35 / 54 session-days match
+ *     dedupe within a fork LINEAGE only         36 / 54
+ *     dedupe by usage tuple, session-wide       54 / 54   <- this one
+ *
+ * The lineage rule is what you would design from first principles, and it is
+ * measurably worse: ccusage collapses repeats regardless of lineage.
+ *
+ * THE COST: two genuinely distinct calls with byte-identical token counts
+ * collapse into one, because a `token_count` row carries no request/turn id.
+ * A saturated context makes that common — consecutive turns settle at
+ * near-identical sizes. Accepted, because matching ccusage is the point.
+ *
+ * DO NOT "FIX" THIS BY KEYING ON THE ROW TIMESTAMP. It looks like the obvious
+ * identity and it diverges: measured on the same corpus, a `ts`-keyed variant
+ * reports 4859720/120595089/616259 input/cacheRead/output tokens against
+ * ccusage's 4413838/111517533/555490, while this key matches exactly. Verify any
+ * change here on TOKENS first — cost is f(tokens, rates), so a cost-only
+ * comparison hides a token error behind a rate error.
+ *
+ * STALE RATIONALE, kept because it explains the shape: this was written for
+ * "a subagent spawn REPLAYS the parent's already-billed turns" (measured then at
+ * +13.7%/+19.2% over on two of thirty sessions). Current codex-cli does not
+ * replay — parent `01a04288-c636` and child `01a04289-0f4b` share ZERO token
+ * tuples (167 calls vs 11), and adding `ts` to the key catches ZERO cross-file
+ * duplicates fleet-wide. So the key still matches ccusage, but for a different
+ * reason than replay-cancellation.
  *
  * `day` is part of the key, not just a payload field: a fork replay happens
  * within the same short-lived rollout (same UTC day almost always), so
