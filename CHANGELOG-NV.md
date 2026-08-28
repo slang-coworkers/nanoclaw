@@ -323,6 +323,16 @@ _+8 more: #1325, #1324, #1323, #1322, #1315, #1313, #1311, #1310_
 - **#1051** `Sync nv-nanoclaw with upstream/main`
 - **#1091** `Sync nv-nanoclaw with upstream/main`
 
+## 📅 2026-08-04
+
+### nv-main (6 PRs)
+- **#1064** `fix(cli): group-scoped tasks lookup misses tasks in ordinary sessions`
+- **#1065** `fix(sweep): reclaim bounced claims before the wake, not after`
+- **#1066** `fix(learnings-wiki): bound the fold — supersede-aware coverage, page cap, catalog-only index`
+- **#1067** `fix(learnings-wiki): land the prod-only footer normalizer into the embedded builder`
+- **#1068** `feat(scripts): kb-health — standing offline telemetry for the learnings KB`
+- **#1069** `fix(approval-ledger): join the human verdict when the PR head advanced`
+
 ## 📅 2026-07-27
 
 ### nv-main (8 PRs)
@@ -693,6 +703,33 @@ _+8 more: #1325, #1324, #1323, #1322, #1315, #1313, #1311, #1310_
 
 ### nv-nanoclaw (1 PRs)
 - **#788** `Sync nv-nanoclaw with upstream/main (aecad864)`
+
+## 📅 2026-07-02
+
+### nv-main (17 PRs)
+- **#766** `fix: route codex creds via OneCLI + harden MCP proxy ACL/body cap (HIGH)`
+- **#767** `fix(data-safety): register.ts → DB helpers; back up before global→shared DELETE (HIGH)`
+- **#768** `chore(hygiene): gitignore slang_kb/archives/pidfiles + drop orphan package-lock.json`
+- **#769** `test(providers): barrel-driven registration guards for both provider trees (HIGH)`
+- **#770** `fix(types,restart): re-export widened engage/sender aliases; restart via on_wake`
+- **#771** `feat(setup): move the nv merge into setup/merge-train.sh; /setup invokes it`
+- **#772** `fix(composer): throw on an unresolvable workflow extends target`
+- **#773** `fix(run-test): route sqlite3 CLI reads through scripts/q.ts`
+- **#774** `fix(add-slang): drop personal-fork remote + route merge through merge-train.sh`
+- _+8 more: #765, #764, #763, #760, #759, #758, #757, #756_
+
+### nv-dashboard (3 PRs)
+- **#755** `fix(dashboard): populate active/paused task counts in admin overview`
+- **#762** `fix(dashboard): add sonnet-5 cost reporting and skill transcript scanning`
+- **#775** `perf(dashboard): mtime-gate message-ts poll + 3s→1s (snappier chat/badge)`
+
+## 📅 2026-07-01
+
+### nv-main (1 PRs)
+- **#752** `fix(supervise): worktree GC checks issue state, not just PR state`
+
+### nv-nanoclaw (1 PRs)
+- **#747** `fix(agent-runner): prefer session routing over webhook routing in extractRouting`
 
 ## 📅 2026-06-30
 
@@ -1179,6 +1216,23 @@ _+5 more: #443, #442, #441, #440, #439_
 ### nv-nanoclaw (1 PRs)
 - **#428** `prose(nv-nanoclaw): nanoclaw-plan path tokens`
 
+## 📅 2026-05-21
+
+### nv-main (7 PRs)
+- **#413** `fix(composer): overlays follow workflow extends: chain`
+- **#414** `feat(composer): canonical base workflow + implicit extends`
+- **#415** `feat(composer): trait-based overlay matching + start: true mode`
+- **#416** `refactor(overlays): buddy + critique adopt new auto-attach shape`
+- **#417** `feat(composer): anchor aliases for canonical-stage matching`
+- **#418** `fix(overlays): buddy must not double-spawn`
+- **#421** `feat(webhook): WEBHOOK_REQUIRE_MAPPING + WEBHOOK_FANOUT_URLS for cross-instance delivery`
+
+### nv-dashboard (1 PRs)
+- **#419** `fix(dashboard): fold cli_response payloads in main feed`
+
+### nv-slang (1 PRs)
+- **#410** `fix(slang): bindings — slang-build provides code.build`
+
 ## 📅 2026-05-20
 
 ### nv-main (9 PRs)
@@ -1237,6 +1291,32 @@ _+5 more: #443, #442, #441, #440, #439_
 ### nv-nanoclaw (2 PRs)
 - **#374** `Rebase nv-nanoclaw on upstream/main v2.0.64 — base-nanoclaw + nanoclaw-reviewer coworker (Devin PR review #350)`
 - **#381** `Sync nv-nanoclaw with upstream/main (2026-05-19)`
+
+## 📅 2026-05-18
+
+### nv-main (7 PRs)
+- **#357** `chore(nv-main): remove container/skills/github-webhook/ — moves to nv-slang`
+- **#355** `fix: break engine self-loop chain — routing guards + envelope + skill rewrite`
+- **#362** `feat(host): recompose every group CLAUDE.md at NanoClaw startup`
+- **#364** `fix(host): downgrade MCP auth proxy 5m-timeout from ERROR to INFO`
+- **#366** `fix(agent-runner): restore a2a reply auto-route on agent channel`
+- **#367** `fix(agent-route): explicit same-session guard on a2a reply branch`
+- **#368** `chore(a2a): trim L1 comment rot, drop dead test, add host L2 auto-route coverage`
+
+### nv-dashboard (3 PRs)
+- **#349** `fix(dashboard): paginate older messages in coworker chat + thread views`
+- **#363** `fix(dashboard): adapt cost panel to ccusage 19+ schema (period field, no modelBreakdowns)`
+- **#365** `fix(dashboard): filter ccusage output to Claude-only (fix codex global mis-attribution)`
+
+### nv-slang (5 PRs)
+- **#356** `feat(slang-mcp): forum-thread continuation with cap, Resolved stop, OP-only`
+- **#358** `feat(nv-slang): add slang-github-webhook skill — moved from nv-main, rewritten for one-comment-per-task`
+- **#359** `feat(slang-mcp): eager Discord init + restore DISCORD_POST_SUMMON / DISCORD_READ_ONLY gates`
+- **#360** `fix(slang-mcp): gate eager Discord init behind DISCORD_EAGER_INIT (prod-safe default off)`
+- **#361** `docs(slang-discord): modernize WORKFLOW + spine + critique for post-#356 push/continuation architecture`
+
+### nv-nanoclaw (1 PRs)
+- **#350** `feat(nv-nanoclaw): add nanoclaw-reviewer coworker (Devin-only PR review)`
 
 ## 📅 2026-05-15
 
