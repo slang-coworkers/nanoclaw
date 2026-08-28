@@ -460,7 +460,18 @@ async function* runOneTurn(
     while (buffer.length > 0) yield buffer.shift()!;
 
     if (turnState.error) {
-      yield { type: 'error', message: turnState.error.message, retryable: false };
+      // Yield a structured error-RESULT, not a bare `type:'error'` (#1360 review,
+      // MAJOR #3). The poll-loop's streaming chain handles usage/text/result but
+      // NOT error, so a `type:'error'` event is only logged and then dropped —
+      // the failed turn never reaches the `result` branch. That branch is where
+      // codex settles cost (foldCodexCost + the ceiling hard-stop) and where the
+      // a2a-bounce / error-delivery / ack paths live. Routing a failure through
+      // `result` (isError:true) makes a turn that wrote chargeable token_count
+      // rows and then failed settle its spend and hard-stop if it crossed the
+      // ceiling, instead of leaving costStopRequested false and admitting another
+      // turn. `retryable` is dropped: it was always false here, and an a2a edge
+      // now gets its retry/bounce decision from classifyTurnError on the result.
+      yield { type: 'result', text: turnState.error.message, isError: true };
       return;
     }
 

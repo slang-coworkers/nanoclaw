@@ -1,8 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 import { initTestSessionDb, closeSessionDb, getInboundDb, getOutboundDb } from './mailbox/sqlite/connection.js';
 import { getUndeliveredMessages } from './db/messages-out.js';
-import { processQuery } from './poll-loop.js';
+import { processQuery, __costCapTestHooks as H } from './poll-loop.js';
+import { __resetCodexCostMemo } from './codex-cost.js';
 import type { AgentQuery, ProviderEvent } from './providers/types.js';
 
 // Adversarial verification of the one-door contract for emitsMidTurnText
@@ -517,5 +521,141 @@ describe('capability=true keeps base result-door handling for door-skipped block
 
     expect(deliveredTexts()).toEqual([]);
     expect(nudges(pushes)).toHaveLength(1);
+  });
+});
+
+// ── #1360 MAJOR #3: a native-codex turn ending in ERROR must settle at the ──────
+// result boundary, not bypass it.
+//
+// Pre-fix, providers/codex.ts yielded `{type:'error'}` on turn/failed. The
+// poll-loop streaming chain handles usage/text/result but NOT error, so a failed
+// codex turn was only logged and dropped — it never reached the `result` branch,
+// so foldCodexCost() + the ceiling hard-stop never ran, costStopRequested stayed
+// false, and the poller could admit another turn past the ceiling. Post-fix the
+// provider yields a structured error-RESULT (isError:true) so the turn flows
+// through delivery + the codex result-boundary settle. This drives that exact
+// path through processQuery with a ceiling-crossing rollout on disk.
+describe('#1360 MAJOR #3 — a native-codex error turn settles cost at the result boundary', () => {
+  const D_TODAY = new Date().toISOString().slice(0, 10);
+  let home: string;
+  let prevHome: string | undefined;
+
+  // Full pristine cost state: setState only writes the keys present, and the
+  // module globals are process-wide (they leak across sibling test files), so
+  // seeding every field keeps this test independent of run order. afterEach
+  // disables tracking again so nothing leaks out.
+  function seedCost(over: Parameters<typeof H.setState>[0] = {}): void {
+    H.setState({
+      costEnabled: true,
+      costImmortal: false,
+      costWindow: 'lifetime',
+      costDayKey: undefined,
+      costAllotmentUsd: 1000,
+      costCapUsd: 1000,
+      costSpentUsd: 0,
+      costEscalatedAt: undefined,
+      costDecision: undefined,
+      costDecidedAt: undefined,
+      costStopRequested: false,
+      costCeilingUsd: 0,
+      costCeilingAllotmentUsd: 0,
+      costCeilingEscalated: false,
+      costCeilingHardStop: false,
+      costBudgetGen: 0,
+      costEpisodeId: undefined,
+      pendingCostNudge: undefined,
+      codexLedger: {},
+      codexUsdCharged: 0,
+      codexLedgerBaselinePending: false,
+      seenMessageIds: [],
+      turnSawMessageUsage: false,
+      turnMessageCostUsd: 0,
+      turnUnpricedCount: 0,
+      turnMissingIdCount: 0,
+      turnNoUsageCount: 0,
+      codexEventOwners: {},
+      ...over,
+    });
+  }
+
+  function writeRollout(day: string, inputTokens: number): void {
+    const [y, m, d] = day.split('-');
+    const dir = path.join(home, 'sessions', y, m, d);
+    fs.mkdirSync(dir, { recursive: true });
+    const u = {
+      input_tokens: inputTokens,
+      cached_input_tokens: 0,
+      cache_write_input_tokens: 0,
+      output_tokens: 0,
+      reasoning_output_tokens: 0,
+      total_tokens: inputTokens,
+    };
+    const lines = [
+      JSON.stringify({
+        timestamp: `${day}T00:00:00.000Z`,
+        type: 'turn_context',
+        payload: { cwd: '/workspace/agent', model: 'gpt-5.6-sol' },
+      }),
+      JSON.stringify({
+        timestamp: `${day}T10:00:00.000Z`,
+        type: 'event_msg',
+        payload: { type: 'token_count', info: { total_token_usage: u, last_token_usage: u } },
+      }),
+    ];
+    fs.writeFileSync(path.join(dir, `rollout-${day}T10-00-00-err.jsonl`), lines.join('\n'));
+  }
+
+  beforeEach(() => {
+    prevHome = process.env.CODEX_HOME;
+    home = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-err-'));
+    process.env.CODEX_HOME = home;
+    __resetCodexCostMemo();
+    seedDest();
+  });
+
+  afterEach(() => {
+    if (prevHome === undefined) delete process.env.CODEX_HOME;
+    else process.env.CODEX_HOME = prevHome;
+    fs.rmSync(home, { recursive: true, force: true });
+    __resetCodexCostMemo();
+    // Disable tracking so the enabled state can't bleed into sibling files.
+    H.setState({ costEnabled: false, costStopRequested: false, costCeilingHardStop: false, codexLedger: {}, codexEventOwners: {} });
+  });
+
+  it('folds rollout spend, crosses the ceiling, hard-stops, and delivers the error notice', async () => {
+    // 1M non-cached input @ $5/M = $5 of chargeable codex spend on disk, ceiling $3.
+    seedCost({ costCeilingUsd: 3, costCeilingAllotmentUsd: 3 });
+    writeRollout(D_TODAY, 1_000_000);
+
+    let ended = false;
+    let pulled = 0;
+    async function* events(): AsyncGenerator<ProviderEvent> {
+      pulled++;
+      // What codex.ts now yields on turn/failed.
+      yield { type: 'result', text: 'Turn timed out after 300000ms', isError: true };
+      // A second turn must NOT be admitted after the ceiling hard-stop — pulling
+      // it is exactly the "admit another turn past the ceiling" regression #3 fixes.
+      pulled++;
+      yield { type: 'result', text: '<message to="discord-main">second turn</message>' };
+    }
+    const query: AgentQuery = {
+      push: () => {},
+      end: () => {
+        ended = true;
+      },
+      abort: () => {},
+      events: events(),
+    };
+
+    await processQuery(query, CHAT_ROUTING, ['m1'], 'codex', undefined, 'prompt', undefined, false);
+
+    const s = H.getState();
+    expect(s.costSpentUsd).toBeCloseTo(5, 6); // the FAILED turn's rollout was folded — the bug was it wasn't
+    expect(s.costStopRequested).toBe(true); // …and the crossing quiesced the session
+    expect(s.costCeilingHardStop).toBe(true);
+    expect(ended).toBe(true); // the settle hard-stopped the stream
+    expect(pulled).toBe(1); // the second turn was never admitted
+    // The error text reached the channel instead of being silently dropped.
+    expect(deliveredTexts().some((t) => t.includes('Turn timed out'))).toBe(true);
   });
 });
