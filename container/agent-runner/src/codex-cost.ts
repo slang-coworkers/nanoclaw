@@ -228,6 +228,15 @@ export interface CodexFileCost {
   key: string;
   /** UTC day ("YYYY-MM-DD") → cumulative USD spent on that day in this file. */
   byDay: Record<string, number>;
+  /**
+   * The DEDUPED billable calls this file owns, for the durable cost ledger (#65).
+   * These are exactly the calls that contributed to `byDay` — the ones that
+   * survived the session-wide tuple dedup (`codexEventKey`), verified on prod to
+   * reproduce ccusage's tokens to the token. The ledger writes one row per call
+   * keyed by `codexEventKey`, so `INSERT OR IGNORE` re-does the same dedup across
+   * files for free.
+   */
+  dedupedEvents: CodexUsageEvent[];
   /** Sum over `byDay` — the file's whole-life cost. */
   totalUsd: number;
 }
@@ -366,6 +375,7 @@ export function priceCodexFiles(
   const out: CodexFileCost[] = [];
   for (const f of files) {
     const byDay: Record<string, number> = {};
+    const dedupedEvents: CodexUsageEvent[] = [];
     let totalUsd = 0;
     for (const e of f.events) {
       const k = codexEventKey(e);
@@ -375,13 +385,17 @@ export function priceCodexFiles(
       } else if (owner !== f.key) {
         continue; // permanently owned by a different file
       }
+      // This call survived the session-wide dedup — record it for the ledger
+      // (#65) BEFORE the usd filter, so token capture matches ccusage's token
+      // accounting (which counts every deduped call).
+      dedupedEvents.push(e);
       if (e.rawModel && !normalizeCodexModel(e.rawModel)) unpricedModels.add(e.rawModel);
       const usd = priceCodexEvent(e);
       if (usd <= 0) continue;
       byDay[e.day] = (byDay[e.day] ?? 0) + usd;
       totalUsd += usd;
     }
-    out.push({ key: f.key, byDay, totalUsd });
+    out.push({ key: f.key, byDay, dedupedEvents, totalUsd });
   }
   return { files: out, unpricedModels: [...unpricedModels] };
 }
