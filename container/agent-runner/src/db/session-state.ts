@@ -262,6 +262,30 @@ export interface CostCapState {
    * ledger's absence is the correct fallback signal.
    */
   codexBaselinePending?: boolean;
+  /**
+   * #65 durable cost ledger (DUAL-RUN) — persisted so a respawn keeps the same
+   * reconciliation identity. NOT enforcement state; the live counter above is
+   * still the sole basis. See the module vars in `poll-loop.ts`.
+   *
+   * `ledgerGen`: the active WINDOW GENERATION stamped into every `cost_events`
+   * row the reconcile sums. Rotated forward on `/clear`/`new_session` (where the
+   * live counter resets to $0), so a reset starts a fresh, empty generation
+   * instead of the lifetime reconcile summing every historical row forever.
+   *
+   * `ledgerAdjSeq`: monotonic sequence for synthetic ADJUSTMENT rows (the
+   * counter's non-token-derivable fallback/residual charges and the migration
+   * baseline). Persisted so a respawn never reuses an id — `INSERT OR IGNORE`
+   * would silently drop a reused id and strand that charge's ledger row.
+   *
+   * `ledgerBaselinePending`: the current generation still owes a one-time LEDGER
+   * baseline — the next codex fold stamps pre-existing rollout history OUT of the
+   * generation (its dollars are already captured by a migration adjustment row).
+   * Persisted so a crash between the baseline write and the first fold still
+   * excludes that history on the successor.
+   */
+  ledgerGen?: number;
+  ledgerAdjSeq?: number;
+  ledgerBaselinePending?: boolean;
 }
 
 const COST_CAP_KEY = 'cost_cap';

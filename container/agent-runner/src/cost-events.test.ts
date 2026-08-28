@@ -126,3 +126,99 @@ describe('write path: dedup + reprice', () => {
     expect(sumWindow(db, RATE_TABLE, '2026-08-27', '2026-08-28').usd).toBe(0); // NOT charged to yesterday
   });
 });
+
+// The LEDGER_BASELINE_GEN sentinel (poll-loop.ts): pre-existing / baselined rows
+// are stamped at -1, a gen the reconcile (which passes the live gen ≥ 0) never
+// selects. Kept as a literal here — cost-events.ts does not export it.
+const BASELINE_GEN = -1;
+
+describe('#65 dual-run reconciliation — adjustments + window generation (findings 1 & 2)', () => {
+  const GEN = 0;
+
+  it('adjustment_usd is summed as a STORED dollar, never repriced (finding 2)', () => {
+    // Token fields all 0 → priceTokens returns $0 (a zero-token event legitimately
+    // costs $0, NOT unpriced), so the sum is exactly the stored dollar, and the
+    // priced_usd cache reflects the adjustment too.
+    expect(recordCostEvent(db, ev({ id: 'adj:s:1', adjustmentUsd: 4.2 }), RATE_VERSION, RATE_TABLE, 'now', GEN)).toBe(true);
+    const r = sumWindow(db, RATE_TABLE, '0000-00-00', '9999-99-99', GEN);
+    expect(r.usd).toBeCloseTo(4.2, 10);
+    expect(r.unpricedModels).toEqual([]); // an adjustment row is never flagged unpriced
+    const row = db.prepare('SELECT priced_usd, adjustment_usd FROM cost_events WHERE id = ?').get('adj:s:1') as {
+      priced_usd: number;
+      adjustment_usd: number;
+    };
+    expect(row.priced_usd).toBeCloseTo(4.2, 10);
+    expect(row.adjustment_usd).toBeCloseTo(4.2, 10);
+  });
+
+  it('a token row and an adjustment row do not cross-contaminate (each contributes ONE term)', () => {
+    // A token row has adjustment 0; an adjustment row has 0 tokens. The sum is the
+    // repriced tokens PLUS the stored dollar — exactly what a DEGRADED turn needs.
+    const usage = { input_tokens: 1000, output_tokens: 200, cache_read_input_tokens: 5000, cache_creation_input_tokens: 300 };
+    const messageUsd = priceUsage('claude-opus-4-8', usage);
+    const residualUsd = 3.5;
+
+    recordCostEvent(db, ev({ id: 'claude:m1', inputTokens: 1000, outputTokens: 200, cacheReadTokens: 5000, cacheWriteTokens: 300 }), RATE_VERSION, RATE_TABLE, 'now', GEN);
+    recordCostEvent(db, ev({ id: 'adj:s:1', adjustmentUsd: residualUsd }), RATE_VERSION, RATE_TABLE, 'now', GEN);
+
+    // Counter path: charge messageUsd per-message, then settle residualUsd. The
+    // ledger reproduces messageUsd + residualUsd to the cent — reconcile delta ≈ 0.
+    expect(sumWindow(db, RATE_TABLE, '0000-00-00', '9999-99-99', GEN).usd).toBeCloseTo(messageUsd + residualUsd, 10);
+  });
+
+  it('reconcile sums only the ACTIVE generation — a /clear rotation starts empty (finding 1)', () => {
+    // Gen 0 carries a priced row; a /clear rotates to gen 1. WITHOUT the gen filter
+    // the lifetime sum would keep counting gen 0 forever while the counter reset to
+    // $0 — the `ledger=$10 counter=$0` defect. With it, gen 1 starts empty.
+    recordCostEvent(db, codexCallToEvent({ day: '2026-08-28', rawModel: 'gpt-5.6-sol', input: 1_000_000, cached: 0, output: 0 }, NOW), RATE_VERSION, RATE_TABLE, 'now', 0);
+    const gen0 = sumWindow(db, RATE_TABLE, '0000-00-00', '9999-99-99', 0).usd;
+    expect(gen0).toBeGreaterThan(0);
+    expect(sumWindow(db, RATE_TABLE, '0000-00-00', '9999-99-99', 1).usd).toBe(0); // post-/clear gen: empty == counter $0
+
+    // A fresh charge in gen 1 reconciles against a counter that only counts it.
+    const freshUsd = priceCodexEvent({ day: '2026-08-28', rawModel: 'gpt-5.6-sol', input: 500_000, cached: 0, output: 0 });
+    recordCostEvent(db, codexCallToEvent({ day: '2026-08-28', rawModel: 'gpt-5.6-sol', input: 500_000, cached: 0, output: 0 }, NOW), RATE_VERSION, RATE_TABLE, 'now', 1);
+    expect(sumWindow(db, RATE_TABLE, '0000-00-00', '9999-99-99', 1).usd).toBeCloseTo(freshUsd, 10);
+  });
+
+  it('a migration baseline seeds the ledger to the persisted counter (finding 1)', () => {
+    // Existing session: counter $10, ledger empty. ONE baseline adjustment = $10 at
+    // the current gen makes the lifetime reconcile read ledger == counter instead
+    // of $0 vs $10 forever. Older-gen rows never leak in.
+    recordCostEvent(db, ev({ id: 'adj:s:base:1', adjustmentUsd: 10 }), RATE_VERSION, RATE_TABLE, 'now', GEN);
+    recordCostEvent(db, ev({ id: 'old:gen', inputTokens: 999_999, model: 'claude-opus-4-8' }), RATE_VERSION, RATE_TABLE, 'now', BASELINE_GEN);
+    expect(sumWindow(db, RATE_TABLE, '0000-00-00', '9999-99-99', GEN).usd).toBeCloseTo(10, 10);
+  });
+
+  it('codex baseline rows sit OUT of the reconciled gen; new charges land IN it (finding 1)', () => {
+    // Pre-existing history the counter never charges is stamped at BASELINE_GEN, so
+    // the reconcile (current gen 0) reads ledger==counter==$0 DURING the baseline —
+    // no phantom ledger>counter. A genuinely-new charged call at gen 0 then reconciles.
+    recordCostEvent(db, codexCallToEvent({ day: '2026-08-28', rawModel: 'gpt-5.6-sol', input: 4_000_000, cached: 0, output: 0 }, NOW), RATE_VERSION, RATE_TABLE, 'now', BASELINE_GEN);
+    expect(sumWindow(db, RATE_TABLE, '0000-00-00', '9999-99-99', 0).usd).toBe(0); // during baseline
+
+    const freshUsd = priceCodexEvent({ day: '2026-08-28', rawModel: 'gpt-5.6-sol', input: 1_000_000, cached: 0, output: 0 });
+    recordCostEvent(db, codexCallToEvent({ day: '2026-08-28', rawModel: 'gpt-5.6-sol', input: 1_000_000, cached: 0, output: 0 }, NOW), RATE_VERSION, RATE_TABLE, 'now', 0);
+    expect(sumWindow(db, RATE_TABLE, '0000-00-00', '9999-99-99', 0).usd).toBeCloseTo(freshUsd, 10); // after baseline
+  });
+
+  it('first-write-wins keeps a baselined call OUT of a later real gen (finding 1)', () => {
+    // The baseline fold writes a call at BASELINE_GEN; a later fold re-sees the same
+    // call and tries to write it at gen 0. INSERT OR IGNORE no-ops on the id, so it
+    // stays sentinel'd — a baselined call can never be promoted into a charged gen.
+    const call: CodexUsageEvent = { day: '2026-08-28', rawModel: 'gpt-5.6-sol', input: 2_000_000, cached: 0, output: 0 };
+    expect(recordCostEvent(db, codexCallToEvent(call, NOW), RATE_VERSION, RATE_TABLE, 'now', BASELINE_GEN)).toBe(true);
+    expect(recordCostEvent(db, codexCallToEvent(call, NOW), RATE_VERSION, RATE_TABLE, 'now', 0)).toBe(false); // deduped
+    expect(sumWindow(db, RATE_TABLE, '0000-00-00', '9999-99-99', 0).usd).toBe(0);
+  });
+
+  it('the gen-less sumWindow (no gen arg) stays behavior-preserving for existing callers', () => {
+    // Existing tests/callers pass no gen. Every historical row is window_gen 0, so
+    // the unfiltered sum equals the gen-0 sum — the default is a no-op change.
+    recordCostEvent(db, codexCallToEvent({ day: '2026-08-28', rawModel: 'gpt-5.6-sol', input: 1_000_000, cached: 0, output: 0 }, NOW), RATE_VERSION, RATE_TABLE, 'now');
+    const noGen = sumWindow(db, RATE_TABLE, '0000-00-00', '9999-99-99').usd;
+    const gen0 = sumWindow(db, RATE_TABLE, '0000-00-00', '9999-99-99', 0).usd;
+    expect(noGen).toBeCloseTo(gen0, 12);
+    expect(noGen).toBeGreaterThan(0);
+  });
+});

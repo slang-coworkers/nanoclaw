@@ -46,6 +46,15 @@ export interface CostEvent {
   outputTokens: number;
   /** Informational; already inside `outputTokens`. */
   reasoningTokens: number;
+  /**
+   * An explicit DOLLAR adjustment for a charge that is NOT token-derivable — the
+   * counter's aggregate/residual fallback (`recordTurnCost`, from `totalCostUsd`)
+   * and the one-time migration baseline. Stored as a stored dollar, NEVER
+   * repriced (token fields are 0 on an adjustment row; token rows carry 0 here).
+   * `sumWindow` adds it on top of the repriced tokens so the ledger captures
+   * every dollar the live counter charged (#65 finding 2). Default 0.
+   */
+  adjustmentUsd?: number;
   threadId?: string | null;
   ghRef?: string | null;
 }
@@ -143,12 +152,28 @@ export function createCostEventsTable(db: Database): void {
       reasoning_tokens      INTEGER NOT NULL DEFAULT 0,
       priced_usd            REAL NOT NULL,
       rate_version          INTEGER NOT NULL,
+      adjustment_usd        REAL NOT NULL DEFAULT 0,
+      window_gen            INTEGER NOT NULL DEFAULT 0,
       thread_id             TEXT,
       gh_ref                TEXT,
       created_at            TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS cost_events_ts ON cost_events(ts);
+    CREATE INDEX IF NOT EXISTS cost_events_gen_ts ON cost_events(window_gen, ts);
   `);
+  // Defensive back-compat: #1359 is unshipped, but a dev/CI outbound.db from an
+  // EARLIER #1359 checkout may hold a `cost_events` that predates these two
+  // columns (`CREATE TABLE IF NOT EXISTS` above then no-ops and would leave it
+  // stale). `ADD COLUMN` brings it forward; it throws "duplicate column name"
+  // when the column already exists (the fresh-table case), which we swallow — so
+  // this is idempotent either way. The index create above is already IF NOT EXISTS.
+  for (const col of ['adjustment_usd REAL NOT NULL DEFAULT 0', 'window_gen INTEGER NOT NULL DEFAULT 0']) {
+    try {
+      db.exec(`ALTER TABLE cost_events ADD COLUMN ${col}`);
+    } catch {
+      /* column already present — no-op */
+    }
+  }
 }
 
 /**
@@ -167,16 +192,18 @@ export function recordCostEvent(
   rateVersion: number,
   table: LiteLLMRateTable,
   nowIso: string,
+  windowGen = 0,
 ): boolean {
   const priced = priceTokens(e, table);
+  const adjustment = e.adjustmentUsd ?? 0;
   const info = db
     .prepare(
       `INSERT OR IGNORE INTO cost_events
        (id, ts, provider, model, input_tokens, cache_read_tokens, cache_write_tokens,
         cache_write_5m_tokens, cache_write_1h_tokens, output_tokens, reasoning_tokens,
-        priced_usd, rate_version, thread_id, gh_ref, created_at)
+        priced_usd, rate_version, adjustment_usd, window_gen, thread_id, gh_ref, created_at)
        VALUES ($id, $ts, $provider, $model, $input, $cacheRead, $cacheWrite,
-        $cw5, $cw1, $output, $reasoning, $priced, $rv, $thread, $gh, $now)`,
+        $cw5, $cw1, $output, $reasoning, $priced, $rv, $adj, $gen, $thread, $gh, $now)`,
     )
     .run({
       $id: e.id,
@@ -190,8 +217,12 @@ export function recordCostEvent(
       $cw1: e.cacheWrite1hTokens,
       $output: e.outputTokens,
       $reasoning: e.reasoningTokens,
-      $priced: priced.usd,
+      // Convenience cache only (reads reprice from tokens): tokens + the stored
+      // dollar adjustment, so an adjustment row's `priced_usd` is its amount.
+      $priced: priced.usd + adjustment,
       $rv: rateVersion,
+      $adj: adjustment,
+      $gen: windowGen,
       $thread: e.threadId ?? null,
       $gh: e.ghRef ?? null,
       $now: nowIso,
@@ -218,17 +249,32 @@ export function sumWindow(
   table: LiteLLMRateTable,
   windowStart: string,
   windowEndExclusive: string,
+  windowGen?: number,
 ): { usd: number; unpricedModels: string[] } {
-  const rows = db
-    .prepare(`SELECT * FROM cost_events WHERE ts >= $start AND ts < $end`)
-    .all({ $start: windowStart, $end: windowEndExclusive }) as Array<Record<string, unknown>>;
+  // Filter to ONE window generation when given (the reconcile always passes the
+  // live gen so only the ACTIVE budget epoch is summed — a lifetime `/clear`
+  // rotates the gen, and codex baseline history is stamped out of it; #65
+  // finding 1). Omitted → sum every generation (used by callers that don't scope
+  // to an epoch); every row predates gens as `window_gen = 0`, so the default is
+  // behavior-preserving for existing callers/tests.
+  const rows = (
+    windowGen === undefined
+      ? db
+          .prepare(`SELECT * FROM cost_events WHERE ts >= $start AND ts < $end`)
+          .all({ $start: windowStart, $end: windowEndExclusive })
+      : db
+          .prepare(`SELECT * FROM cost_events WHERE ts >= $start AND ts < $end AND window_gen = $gen`)
+          .all({ $start: windowStart, $end: windowEndExclusive, $gen: windowGen })
+  ) as Array<Record<string, unknown>>;
   let usd = 0;
   const unpriced = new Set<string>();
   for (const row of rows) {
     const e = rowToEvent(row);
     const p = priceTokens(e, table);
     if (p.unpriced) unpriced.add(e.model);
-    usd += p.usd;
+    // Repriced tokens PLUS the stored dollar adjustment (a token row's adjustment
+    // is 0; an adjustment row's tokens are 0, so exactly one term is non-zero).
+    usd += p.usd + Number(row.adjustment_usd ?? 0);
   }
   return { usd, unpricedModels: [...unpriced] };
 }
@@ -246,6 +292,7 @@ function rowToEvent(row: Record<string, unknown>): CostEvent {
     cacheWrite1hTokens: Number(row.cache_write_1h_tokens),
     outputTokens: Number(row.output_tokens),
     reasoningTokens: Number(row.reasoning_tokens),
+    adjustmentUsd: Number(row.adjustment_usd ?? 0),
     threadId: (row.thread_id as string) ?? null,
     ghRef: (row.gh_ref as string) ?? null,
   };

@@ -244,6 +244,38 @@ let codexScanFailures = 0;
 // after a respawn is fine and rare).
 const codexUnpricedReported = new Set<string>();
 
+// --- #65 durable cost ledger (DUAL-RUN) state ------------------------------
+//
+// ADDITIVE and best-effort: these drive ONLY the `cost_events` write path and the
+// turn-boundary reconcile log — enforcement still runs entirely off the live
+// counter above. See db/session-state.ts CostCapState for the persisted contract.
+//
+// The active WINDOW GENERATION stamped into every row the reconcile sums. The
+// lifetime reconcile has no ts selectivity (it spans all dates), so WITHOUT a gen
+// the sum would include every historical row while `costSpentUsd` reflects only
+// the post-reset window — `ledger=$X counter=$0` forever after a `/clear`.
+// Rotated forward wherever the live counter's lifetime window resets to $0
+// (resetCostForNewSession). Restored from the persisted row so a respawn keeps
+// the same live gen.
+let ledgerGen = 0;
+// Monotonic id sequence for synthetic ADJUSTMENT rows (the counter's
+// non-token-derivable residual/aggregate fallback charges + the migration
+// baseline). Persisted so a respawn never reuses an id (INSERT OR IGNORE would
+// silently drop it and strand that charge's ledger row).
+let ledgerAdjSeq = 0;
+// The current gen still owes a one-time LEDGER baseline: the next codex fold
+// stamps pre-existing rollout history at LEDGER_BASELINE_GEN so the current-gen
+// reconcile is not inflated by rows whose dollars are already captured by a
+// migration adjustment. Set at migration; the `/clear` path is already covered by
+// the enforcement `codexLedgerBaselinePending`. Persisted so a crash before the
+// first fold still excludes that history.
+let ledgerBaselinePending = false;
+// Sentinel generation for pre-existing/baselined codex rows: never equals a live
+// `ledgerGen` (which starts at 0 and only increments), so a `window_gen = $gen`
+// reconcile permanently excludes them, while the rows are still durably captured
+// (first-write-wins on the id keeps them out of every later real gen too).
+const LEDGER_BASELINE_GEN = -1;
+
 /**
  * Cost-accounting schema generation stamped into the persisted state. Bumped by
  * #1327: v1 summed the provider's end-of-turn aggregate once per query() call
@@ -373,6 +405,12 @@ function initCostTracking(providerName: string): void {
     ? (persisted.codexBaselinePending ?? persisted.codexLedger === undefined)
     : false;
   codexUsdCharged = persisted?.codexUsd && persisted.codexUsd > 0 ? persisted.codexUsd : 0;
+  // #65 durable ledger (dual-run) — restore the reconciliation identity alongside
+  // the codex ledger so a respawn keeps the same generation, adjustment sequence,
+  // and pending ledger baseline. A pre-#65 row has none of these → 0/0/false.
+  ledgerGen = persisted?.ledgerGen ?? 0;
+  ledgerAdjSeq = persisted?.ledgerAdjSeq ?? 0;
+  ledgerBaselinePending = persisted?.ledgerBaselinePending ?? false;
   if (costWindow === 'daily' && !(persisted?.dayKey === costDayKey)) {
     // A stale day's spend is discarded, so the codex figure attributed to it is
     // too — the ledger keeps the per-day watermarks, this is only the display total.
@@ -399,6 +437,52 @@ function initCostTracking(providerName: string): void {
   // session loads already-stopped. Immortal is never hard-stopped.
   if (!costImmortal && costCeilingUsd > 0 && costSpentUsd >= costCeilingUsd) {
     costStopRequested = true;
+  }
+
+  // #65 dual-run MIGRATION BASELINE. An existing session carries persisted spend
+  // but the durable ledger has NO rows in the current generation — the table is
+  // new on this branch (empty for every pre-#65 session), so the lifetime
+  // reconcile would read `ledger=$0 counter=$10` forever. Seed ONE dollar
+  // adjustment = the persisted spend so this gen starts at ledger==counter. Guard
+  // on a zero row COUNT (not a $0 sum) so a WARM respawn whose rows are already
+  // present never double-seeds. Arm the ledger codex baseline so the first fold
+  // stamps pre-existing rollout history OUT of this gen — its dollars are already
+  // inside this one adjustment, and re-counting the repriced tokens would double
+  // it. Best-effort; a failure just leaves the pre-existing `ledger=$0` delta.
+  if (costSpentUsd > 0) {
+    try {
+      const db = getOutboundDb();
+      const genCount = (
+        db.prepare('SELECT COUNT(*) c FROM cost_events WHERE window_gen = $g').get({ $g: ledgerGen }) as { c: number }
+      ).c;
+      if (genCount === 0) {
+        const seq = ++ledgerAdjSeq;
+        recordCostEvent(
+          db,
+          {
+            id: `adj:${process.env.NANOCLAW_SESSION_ID || ''}:base:${seq}`,
+            ts: ledgerNow(),
+            provider: 'claude',
+            model: getConfig().model || '',
+            inputTokens: 0,
+            cacheReadTokens: 0,
+            cacheWriteTokens: 0,
+            cacheWrite5mTokens: 0,
+            cacheWrite1hTokens: 0,
+            outputTokens: 0,
+            reasoningTokens: 0,
+            adjustmentUsd: costSpentUsd,
+          },
+          RATE_VERSION,
+          RATE_TABLE,
+          ledgerNow(),
+          ledgerGen,
+        );
+        ledgerBaselinePending = true;
+      }
+    } catch {
+      /* best-effort — a ledger seed failure must not block cost tracking */
+    }
   }
 
   // Publish immediately so the dashboard shows a cap even before the first turn
@@ -438,6 +522,13 @@ function resetCostForNewSession(): void {
   // stamped for the pre-clear escalation is refused, and drop the resolved episode.
   costBudgetGen++;
   costEpisodeId = undefined;
+  // #65 dual-run: the live counter just reset to $0, so rotate the LEDGER
+  // generation too — the new gen starts empty and the reconcile (which sums only
+  // the current gen) reads ledger==counter==$0. The synchronous foldCodexCost
+  // below re-baselines codex (codexLedgerBaselinePending was set above), so the
+  // pre-existing rollout history is stamped at LEDGER_BASELINE_GEN, out of this
+  // new gen; the first real charge on the next turn lands in it and reconciles.
+  ledgerGen++;
   persistCostCap();
   // Absorb the baseline SYNCHRONOUSLY, right now — not on the next natural
   // fold (a turn boundary later). Deferring it left a window: the reset
@@ -505,6 +596,11 @@ function persistCostCap(): void {
     // the first fold — that is the point: a crash between init and the baseline
     // fold must leave the successor knowing the baseline is still owed.
     codexBaselinePending: codexLedgerBaselinePending,
+    // #65 durable ledger (dual-run) identity — always written so a respawn keeps
+    // the same generation/sequence and any pending ledger baseline.
+    ledgerGen,
+    ledgerAdjSeq,
+    ledgerBaselinePending,
     ...(codexUsdCharged > 0 ? { codexUsd: codexUsdCharged } : {}),
     // dayKey is present ONLY for the daily window (shared contract #1).
     ...(costWindow === 'daily' && costDayKey ? { dayKey: costDayKey } : {}),
@@ -703,19 +799,63 @@ function recordClaudeLedger(event: Extract<ProviderEvent, { type: 'message_usage
   const ev = claudeMessageToEvent(event, ledgerNow(), event.model?.trim() || getConfig().model || '');
   if (!ev) return; // null-id message — the counter skips it too
   try {
-    recordCostEvent(getOutboundDb(), ev, RATE_VERSION, RATE_TABLE, ledgerNow());
+    recordCostEvent(getOutboundDb(), ev, RATE_VERSION, RATE_TABLE, ledgerNow(), ledgerGen);
   } catch {
     /* best-effort */
   }
 }
-function recordCodexLedger(files: ReturnType<typeof scanCodexRollouts>['files']): void {
+/**
+ * Persist ONE synthetic ADJUSTMENT row (#65 finding 2): a dollar charge the live
+ * counter made that is NOT token-derivable — `recordTurnCost`'s degraded residual
+ * and legacy aggregate fallback, both settled from the SDK's `totalCostUsd`.
+ * Token fields are all 0; `adjustmentUsd` carries the exact dollars charged, so
+ * the reconcile counts it verbatim rather than repricing it. No-op unless the
+ * charge is positive. The id draws from the persisted monotonic `ledgerAdjSeq`, so
+ * a respawn never reuses one (INSERT OR IGNORE would else silently drop the row).
+ */
+function recordLedgerAdjustment(usd: number): void {
+  if (!costEnabled || !(usd > 0)) return;
+  const seq = ++ledgerAdjSeq;
+  try {
+    recordCostEvent(
+      getOutboundDb(),
+      {
+        id: `adj:${process.env.NANOCLAW_SESSION_ID || ''}:${seq}`,
+        ts: ledgerNow(),
+        provider: 'claude',
+        model: getConfig().model || '',
+        inputTokens: 0,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+        reasoningTokens: 0,
+        adjustmentUsd: usd,
+      },
+      RATE_VERSION,
+      RATE_TABLE,
+      ledgerNow(),
+      ledgerGen,
+    );
+  } catch {
+    /* best-effort */
+  }
+  // Persist the advanced sequence so the id is never reused after a respawn.
+  persistCostCap();
+}
+function recordCodexLedger(files: ReturnType<typeof scanCodexRollouts>['files'], windowGen: number): void {
   if (!costEnabled) return;
   try {
     const db = getOutboundDb();
     const now = ledgerNow();
     // INSERT OR IGNORE on codexEventKey → re-scans and cross-file fork replays
-    // are no-ops, so writing every deduped call every fold is safe.
-    for (const f of files) for (const e of f.dedupedEvents) recordCostEvent(db, codexCallToEvent(e, now), RATE_VERSION, RATE_TABLE, now);
+    // are no-ops, so writing every deduped call every fold is safe. `windowGen`
+    // is the live gen for genuinely-new (charged) calls, or LEDGER_BASELINE_GEN
+    // for pre-existing history a baseline is absorbing — first-write-wins on the
+    // id keeps a call in whichever gen first saw it, so a later fold cannot
+    // promote baselined history into the reconciled gen.
+    for (const f of files) for (const e of f.dedupedEvents) recordCostEvent(db, codexCallToEvent(e, now), RATE_VERSION, RATE_TABLE, now, windowGen);
   } catch {
     /* best-effort */
   }
@@ -729,19 +869,24 @@ function recordCodexLedger(files: ReturnType<typeof scanCodexRollouts>['files'])
 function nextUtcDay(day: string): string {
   return new Date(new Date(`${day}T00:00:00.000Z`).getTime() + 86_400_000).toISOString().slice(0, 10);
 }
-function reconcileLedger(): void {
-  if (!costEnabled) return;
+function reconcileLedger(): { ledgerUsd: number; counterUsd: number; delta: number } | undefined {
+  if (!costEnabled) return undefined;
   try {
     const [ws, we] =
       costWindow === 'daily' && costDayKey ? [costDayKey, nextUtcDay(costDayKey)] : ['0000-00-00', '9999-99-99'];
-    const { usd, unpricedModels } = sumWindow(getOutboundDb(), RATE_TABLE, ws, we);
+    // Reconcile only the ACTIVE generation: the counter reflects the post-reset
+    // window, so the ledger must sum the same one (else a `/clear` leaves every
+    // pre-reset row inflating the lifetime sum forever). #65 finding 1.
+    const { usd, unpricedModels } = sumWindow(getOutboundDb(), RATE_TABLE, ws, we, ledgerGen);
     log(
-      `[ledger dual-run v${RATE_VERSION}] window=${costWindow} ledger=$${usd.toFixed(4)} counter=$${costSpentUsd.toFixed(4)} ` +
+      `[ledger dual-run v${RATE_VERSION}] window=${costWindow} gen=${ledgerGen} ledger=$${usd.toFixed(4)} counter=$${costSpentUsd.toFixed(4)} ` +
         `delta=$${(usd - costSpentUsd).toFixed(4)}` +
         (unpricedModels.length ? ` unpriced:${unpricedModels.join(',')}` : ''),
     );
+    return { ledgerUsd: usd, counterUsd: costSpentUsd, delta: usd - costSpentUsd };
   } catch {
     /* best-effort */
+    return undefined;
   }
 }
 
@@ -813,6 +958,10 @@ function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void 
         (residual > 0 ? ` + $${residual.toFixed(4)} residual from the turn total` : ' (no positive residual)'),
     );
     applyCostDelta(residual);
+    // #65 finding 2: this residual is a DOLLAR charge with no per-message tokens
+    // behind it (it settles the SDK's totalCostUsd), so mirror it into the ledger
+    // as an explicit adjustment — no-op if the residual was not positive.
+    recordLedgerAdjustment(residual);
     return;
   }
 
@@ -820,6 +969,10 @@ function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void 
   let delta = aggregateUsd;
   if (delta <= 0 && event.totalCostUsd > 0) delta = event.totalCostUsd; // unpriced model fallback
   applyCostDelta(delta);
+  // #65 finding 2: aggregate-only turns charge dollars with no per-message ledger
+  // rows behind them; record the exact charge as an adjustment so the reconcile
+  // matches. No-op when nothing was charged.
+  recordLedgerAdjustment(delta);
 }
 
 /**
@@ -953,7 +1106,23 @@ function foldCodexCost(): void {
   // #65 dual-run: durably record every deduped codex call (incl. baselined
   // history and, once #1333 lands, native-codex). Best-effort, no enforcement
   // effect. Deduped by codexEventKey (verified to match ccusage's tokens).
-  recordCodexLedger(scan.files);
+  //
+  // GEN CHOICE (finding 1 codex sub-case). Pre-existing history the counter does
+  // NOT charge — an enforcement baseline (`baselining`) or a ledger migration/reset
+  // baseline (`ledgerBaselinePending`) — is stamped at LEDGER_BASELINE_GEN so the
+  // current-gen reconcile excludes it; otherwise it would read `ledger > counter`.
+  // Genuinely-new (charged) calls take the live gen and reconcile. First-write-wins
+  // on the id means a call stays in whichever gen first saw it, so once the baseline
+  // fold has sentinel-stamped today's history, a later fold cannot promote it into
+  // the reconciled gen. Prior-day `recorded` deltas in a daily window are already
+  // excluded by the ts-window, so they may take the live gen harmlessly.
+  const ledgerBaselining = baselining || ledgerBaselinePending;
+  recordCodexLedger(scan.files, ledgerBaselining ? LEDGER_BASELINE_GEN : ledgerGen);
+  // The pre-existing history for this gen has now been stamped out; the ledger
+  // baseline is a one-shot (the enforcement `baselining` flag clears separately
+  // below). The migration fold runs before the session's first turn, so there are
+  // no new-and-charged calls here to wrongly exclude.
+  ledgerBaselinePending = false;
 
   // #1361: prune now takes the scan's live event-key set so an owner whose file
   // vanished but whose call still replays in a surviving fork is NOT dropped
@@ -1469,6 +1638,7 @@ export const __costCapTestHooks = {
   initCostTracking,
   emitCostEscalation,
   publishRunnerReadiness,
+  reconcileLedger,
   getState: () => ({
     costEnabled,
     costImmortal,
@@ -1491,6 +1661,9 @@ export const __costCapTestHooks = {
     codexLedger,
     codexUsdCharged,
     codexLedgerBaselinePending,
+    ledgerGen,
+    ledgerAdjSeq,
+    ledgerBaselinePending,
     seenMessageIdCount: seenMessageIds.size,
     turnSawMessageUsage,
     turnMessageCostUsd,
@@ -1521,6 +1694,9 @@ export const __costCapTestHooks = {
     codexLedger?: Record<string, number>;
     codexUsdCharged?: number;
     codexLedgerBaselinePending?: boolean;
+    ledgerGen?: number;
+    ledgerAdjSeq?: number;
+    ledgerBaselinePending?: boolean;
     seenMessageIds?: string[];
     turnSawMessageUsage?: boolean;
     turnMessageCostUsd?: number;
@@ -1550,6 +1726,9 @@ export const __costCapTestHooks = {
     if ('codexLedger' in p) codexLedger = { ...p.codexLedger! };
     if ('codexUsdCharged' in p) codexUsdCharged = p.codexUsdCharged!;
     if ('codexLedgerBaselinePending' in p) codexLedgerBaselinePending = p.codexLedgerBaselinePending!;
+    if ('ledgerGen' in p) ledgerGen = p.ledgerGen!;
+    if ('ledgerAdjSeq' in p) ledgerAdjSeq = p.ledgerAdjSeq!;
+    if ('ledgerBaselinePending' in p) ledgerBaselinePending = p.ledgerBaselinePending!;
     if ('seenMessageIds' in p) {
       seenMessageIds.clear();
       for (const id of p.seenMessageIds!) seenMessageIds.add(id);
