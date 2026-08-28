@@ -6,15 +6,44 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 508 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 224 |
-| `nv-slang` | slang project spine, skills, workflows | 140 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 71 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 50 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 516 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 227 |
+| `nv-slang` | slang project spine, skills, workflows | 142 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 73 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 52 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-08-28
+
+### nv-main (8 PRs)
+- **#1344** `Cap the composed document at 4 MiB, refusing rather than degrading`
+- **#1345** `Emit per-MCP-server instructions into composed documents (GAP-4)`
+- **#1346** `Sync nv-main with upstream/main`
+- **#1336** `fix(cost-cap): stop transcript-retention data loss (cleanupPeriodDays unset)`
+- **#1329** `fix(cost-cap): count Claude spend per message, and enforce codex tool spend`
+- **#1361** `fix(cost): match runner codex normalizer to dashboard; harden + prune owners`
+- **#1359** `feat(cost): durable per-session cost ledger — DUAL-RUN (#65)`
+- **#1360** `fix(cost-cap): meter native-codex sessions (#1333/#1302)`
+
+### nv-dashboard (3 PRs)
+- **#1348** `Sync nv-dashboard with upstream/main`
+- **#1355** `Sync nv-dashboard with upstream/main`
+- **#1362** `fix(cost): align dashboard codex table with runner + harden drift guard`
+
+### nv-slang (2 PRs)
+- **#1349** `Sync nv-slang with upstream/main`
+- **#1356** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (2 PRs)
+- **#1350** `Sync nv-slangpy with upstream/main`
+- **#1357** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (2 PRs)
+- **#1351** `Sync nv-nanoclaw with upstream/main`
+- **#1358** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-08-27
 
