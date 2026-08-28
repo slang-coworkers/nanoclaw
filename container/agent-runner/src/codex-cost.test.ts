@@ -96,12 +96,41 @@ const D1 = '2026-08-18';
 const D2 = '2026-08-19';
 
 describe('codex rate table (anti-drift vs the ccusage-derived rates)', () => {
-  it('pins $5 / $30 / $0.50 per Mtok for every known model id', () => {
-    for (const key of Object.keys(CODEX_MODEL_PRICING)) {
-      expect(CODEX_MODEL_PRICING[key]).toEqual({ input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 });
+  // Per-model, not one blanket tier. The blanket form asserted every id was
+  // $5/$30/$0.50, so it PINNED the bug it was meant to guard: the codex-tuned
+  // variants price like their base models (cheaper), and blanket-rating them
+  // overstated codex spend ~2.9x while disagreeing with dashboard/codex-costs.ts.
+  const EXPECTED: Record<string, { input: number; output: number; cacheRead: number }> = {
+    // ccusage-fitted (prod-observed).
+    'gpt-5.6-sol': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
+    'gpt-5.5': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
+    // Published per-model rates.
+    'gpt-5.6': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
+    'gpt-5.6-terra': { input: 2e-6, output: 12e-6, cacheRead: 0.2e-6 },
+    'gpt-5.6-luna': { input: 0.2e-6, output: 1.2e-6, cacheRead: 0.02e-6 },
+    'gpt-5.5-codex': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
+    'gpt-5.3-codex': { input: 1.75e-6, output: 14e-6, cacheRead: 0.175e-6 },
+    'gpt-5.2-codex': { input: 1.75e-6, output: 14e-6, cacheRead: 0.175e-6 },
+    'gpt-5.1-codex': { input: 1.25e-6, output: 10e-6, cacheRead: 0.125e-6 },
+    'gpt-5-codex': { input: 1.25e-6, output: 10e-6, cacheRead: 0.125e-6 },
+  };
+
+  it('pins the published rate for every known model id', () => {
+    // Both directions: an added model with no expectation here fails too, so a
+    // new row cannot arrive unpriced-by-contract.
+    expect(Object.keys(CODEX_MODEL_PRICING).sort()).toEqual(Object.keys(EXPECTED).sort());
+    for (const [key, rate] of Object.entries(EXPECTED)) {
+      expect(CODEX_MODEL_PRICING[key], `${key} rate drifted from its published price`).toEqual(rate);
     }
-    expect(Object.keys(CODEX_MODEL_PRICING)).toContain('gpt-5.6-sol');
-    expect(Object.keys(CODEX_MODEL_PRICING)).toContain('gpt-5.5');
+  });
+
+  it('prices codex-tuned variants below the $5/$30 tier', () => {
+    // The specific regression: `gpt-5.2-codex` at the gpt-5.5 rate. Stated as a
+    // relation so it survives a future repricing of either side.
+    for (const id of ['gpt-5.2-codex', 'gpt-5.1-codex', 'gpt-5-codex'] as const) {
+      expect(CODEX_MODEL_PRICING[id].input).toBeLessThan(CODEX_MODEL_PRICING['gpt-5.5'].input);
+      expect(CODEX_MODEL_PRICING[id].output).toBeLessThan(CODEX_MODEL_PRICING['gpt-5.5'].output);
+    }
   });
 
   it('never prices an unknown model at zero — that would buy unaccounted spend', () => {

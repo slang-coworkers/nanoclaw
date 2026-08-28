@@ -37,6 +37,14 @@
  * whole sessions to the cent, including the issue's session ($76.7210 both) and
  * per UTC day. `codex-cost.test.ts` pins the table, in the same anti-drift style
  * `pricing.test.ts` uses for the Claude table.
+ *
+ * SCOPE OF THAT FIT — read before trusting a row. The 2 model ids it covered
+ * were `gpt-5.6-sol` and `gpt-5.5`. NO codex-tuned model appeared in the prod
+ * data, so their rates are NOT empirical; they are the published per-model
+ * prices, and they are lower than the fitted tier. Adding a model here without
+ * prod data means reading its documented rate, not copying a neighbouring row —
+ * that copy is what made codex spend read ~2.9x high. `dashboard/codex-costs.ts`
+ * (nv-dashboard) holds the same table and a cross-branch test fails on drift.
  */
 import fs from 'fs';
 import os from 'os';
@@ -81,12 +89,26 @@ export const DEFAULT_CODEX_RATE: CodexRate = { input: 5e-6, output: 30e-6, cache
  * them on that side and cross-checks the shared keys.
  */
 export const CODEX_MODEL_PRICING: Record<string, CodexRate> = {
+  // Empirically fitted against ccusage (see RATES above) — prod-observed.
   'gpt-5.6-sol': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
   'gpt-5.5': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
+  // Rest of the 5.6 family. Not prod-observed here, but the dashboard prices
+  // them, and a model it bills for that this table lacks is a model the cost cap
+  // cannot see — the enforcement hole #1327 closes, reopened by omission.
+  'gpt-5.6': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
+  'gpt-5.6-terra': { input: 2e-6, output: 12e-6, cacheRead: 0.2e-6 },
+  'gpt-5.6-luna': { input: 0.2e-6, output: 1.2e-6, cacheRead: 0.02e-6 },
+  // The codex-tuned variants are NOT the $5/$30 tier: they price identically to
+  // their base models, which is cheaper. The ccusage fit above only ever saw
+  // `gpt-5.6-sol` and `gpt-5.5`, so these six entries came from extrapolating
+  // that tier — which silently overstated codex spend by ~2.9x and disagreed
+  // with dashboard/codex-costs.ts. Values below are the published per-model
+  // rates (developers.openai.com/api/docs/models/<id>), matching the dashboard.
   'gpt-5.5-codex': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
-  'gpt-5.2-codex': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
-  'gpt-5.1-codex': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
-  'gpt-5-codex': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
+  'gpt-5.3-codex': { input: 1.75e-6, output: 14e-6, cacheRead: 0.175e-6 },
+  'gpt-5.2-codex': { input: 1.75e-6, output: 14e-6, cacheRead: 0.175e-6 },
+  'gpt-5.1-codex': { input: 1.25e-6, output: 10e-6, cacheRead: 0.125e-6 },
+  'gpt-5-codex': { input: 1.25e-6, output: 10e-6, cacheRead: 0.125e-6 },
 };
 
 /**
