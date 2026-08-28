@@ -65,11 +65,26 @@ describe('DUAL-RUN reconciliation premise: ledger $ == counter $', () => {
 });
 
 describe('integration mappers', () => {
-  it('claudeMessageToEvent maps + skips a null-id message', () => {
-    const e = claudeMessageToEvent(msgUsage({ messageId: 'abc', inputTokens: 5, ephemeral1hInputTokens: 9 }), '2026-08-28T00:00:00Z')!;
+  it('claudeMessageToEvent stores the effective (counter-priced) model + skips a null-id message', () => {
+    const e = claudeMessageToEvent(msgUsage({ messageId: 'abc', inputTokens: 5, ephemeral1hInputTokens: 9 }), '2026-08-28T00:00:00Z', 'claude-opus-4-8')!;
     expect(e.id).toBe('claude:abc');
     expect(e.cacheWrite1hTokens).toBe(9);
-    expect(claudeMessageToEvent(msgUsage({ messageId: null }), 'now')).toBeNull();
+    expect(e.model).toBe('claude-opus-4-8'); // finding 3: the effective model, never ''
+    expect(claudeMessageToEvent(msgUsage({ messageId: null }), 'now', 'claude-opus-4-8')).toBeNull();
+  });
+
+  it('priceTokens reuses the shipped normalizers + codex default (findings 4/5)', () => {
+    // Finding 4: a -vN Claude id keys the same as its bare form (normalizeModel).
+    const bare = priceTokens(ev({ inputTokens: 1_000_000, model: 'claude-opus-4-8' }), RATE_TABLE).usd;
+    const versioned = priceTokens(ev({ inputTokens: 1_000_000, model: 'aws/anthropic/claude-opus-4-8-v1' }), RATE_TABLE).usd;
+    expect(versioned).toBeCloseTo(bare, 12);
+    expect(versioned).toBeGreaterThan(0); // not the pre-fix $0/unpriced
+    // Finding 5: an unknown codex model prices at DEFAULT_CODEX_RATE (like the
+    // counter's priceCodexEvent), flagged unpriced — not a silent $0.
+    const unknownCodex = priceTokens(ev({ provider: 'codex', model: 'future-codex', inputTokens: 1_000_000 }), RATE_TABLE);
+    expect(unknownCodex.usd).toBeCloseTo(priceCodexEvent({ day: '2026-08-28', rawModel: 'future-codex', input: 1_000_000, cached: 0, output: 0 }), 10);
+    expect(unknownCodex.usd).toBeGreaterThan(0);
+    expect(unknownCodex.unpriced).toBe(true);
   });
 
   it('codexCallToEvent keys by the VERIFIED tuple identity and stores NET input', () => {

@@ -21,6 +21,7 @@ import type { ProviderEvent } from './providers/types.js';
 export function claudeMessageToEvent(
   e: Extract<ProviderEvent, { type: 'message_usage' }>,
   ts: string,
+  effectiveModel: string,
 ): CostEvent | null {
   if (!e.messageId) return null;
   const hasSplit = e.ephemeral1hInputTokens > 0 || e.ephemeral5mInputTokens > 0;
@@ -28,7 +29,10 @@ export function claudeMessageToEvent(
     id: `claude:${e.messageId}`,
     ts,
     provider: 'claude',
-    model: e.model ?? '',
+    // The model the COUNTER priced (= e.model || configuredModel), not `e.model
+    // ?? ''` — an absent model must reprice at the configured model, or the
+    // ledger reads $0 while the counter charged the configured rate (finding 3).
+    model: effectiveModel,
     inputTokens: e.inputTokens,
     cacheReadTokens: e.cacheReadInputTokens,
     cacheWriteTokens: hasSplit ? 0 : e.cacheCreationInputTokens,

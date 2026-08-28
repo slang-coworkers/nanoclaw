@@ -697,7 +697,10 @@ function ledgerNow(): string {
 }
 function recordClaudeLedger(event: Extract<ProviderEvent, { type: 'message_usage' }>): void {
   if (!costEnabled) return;
-  const ev = claudeMessageToEvent(event, ledgerNow());
+  // Same effective model the counter priced (recordMessageCost:
+  // `reportedModel || getConfig().model`), so an absent model reprices at the
+  // configured model in the ledger too (finding 3).
+  const ev = claudeMessageToEvent(event, ledgerNow(), event.model?.trim() || getConfig().model || '');
   if (!ev) return; // null-id message — the counter skips it too
   try {
     recordCostEvent(getOutboundDb(), ev, RATE_VERSION, RATE_TABLE, ledgerNow());

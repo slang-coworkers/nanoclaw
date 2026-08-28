@@ -19,6 +19,11 @@
  *     (this is what would have prevented the -codex 2.9x mispricing).
  */
 import type { Database } from 'bun:sqlite';
+// The ledger reuses the SHIPPED normalizers + codex default so its pricing keys
+// EXACTLY match the live counter (priceUsage / priceCodexEvent) — a separate,
+// weaker normalizer is what made findings 4/5 diverge.
+import { DEFAULT_CODEX_RATE, normalizeCodexModel } from './codex-cost.js';
+import { normalizeModel } from './pricing.js';
 
 /** One billable unit's token breakdown + identity. Provider-agnostic. */
 export interface CostEvent {
@@ -62,21 +67,10 @@ export interface LiteLLMModelRate {
 /** A versioned snapshot: `{ modelKey → rates }`. Vendored into the image, bumped on refresh. */
 export type LiteLLMRateTable = Record<string, LiteLLMModelRate>;
 
-/**
- * Reduce a wire model id to its LiteLLM key. LiteLLM keys are the bare model
- * ids (`gpt-5.2-codex`, `claude-opus-4-1`); wire ids can carry provider
- * prefixes (`azure/openai/…`, `aws/anthropic/bedrock-…`) and suffixes
- * (`[1m]`, `-vN`). Strip the provider path; a real implementation also strips
- * the documented suffixes. Returns '' if unmappable (caller flags it).
- */
-export function liteLLMKey(model: string | undefined, table: LiteLLMRateTable): string {
-  if (!model) return '';
-  let m = model.trim().toLowerCase();
-  const slash = m.lastIndexOf('/');
-  if (slash >= 0) m = m.slice(slash + 1);
-  m = m.replace(/-bedrock-|^bedrock-/, '').replace(/\[1m\]$/, '');
-  return table[m] ? m : (table[model] ? model : '');
-}
+// NB: model→rate-key normalization intentionally lives in `priceTokens`, which
+// reuses the SHIPPED `normalizeModel` (Claude) / `normalizeCodexModel` (codex).
+// A separate weaker normalizer here is what made the ledger diverge from the
+// counter on `-vN`/dated/`-latest`/prefixed ids (finding 4).
 
 /** Result of pricing one event: the dollar figure, or an UNPRICED flag (never a silent $0). */
 export interface PricedEvent {
@@ -95,12 +89,29 @@ export interface PricedEvent {
  * so those terms are simply zero.
  */
 export function priceTokens(e: CostEvent, table: LiteLLMRateTable): PricedEvent {
-  const key = liteLLMKey(e.model, table);
-  const r = table[key];
+  // Provider-aware, reusing the SHIPPED normalizers so a `-vN`/dated/`-latest`/
+  // prefixed id keys into RATE_TABLE exactly as the live counter keys it
+  // (finding 4). RATE_TABLE is keyed by MODEL_PRICING / CODEX_MODEL_PRICING ids —
+  // precisely what these normalizers return.
+  const key = e.provider === 'codex' ? normalizeCodexModel(e.model) : normalizeModel(e.model);
+  let r = table[key];
+  let unpriced = false;
   if (!r) {
     const billed = e.inputTokens + e.outputTokens + e.cacheReadTokens + e.cacheWriteTokens + e.cacheWrite5mTokens + e.cacheWrite1hTokens;
-    // A zero-token event legitimately costs $0 and is NOT "unpriced".
-    return { usd: 0, unpriced: billed > 0 };
+    if (billed === 0) return { usd: 0, unpriced: false }; // a zero-token event legitimately costs $0
+    if (e.provider === 'codex') {
+      // Match the counter: an unknown codex model prices at DEFAULT_CODEX_RATE
+      // (priceCodexEvent does the same), still flagged so the snapshot refreshes
+      // (finding 5). Claude unknown → $0, which is what priceUsage also returns.
+      r = {
+        input_cost_per_token: DEFAULT_CODEX_RATE.input,
+        output_cost_per_token: DEFAULT_CODEX_RATE.output,
+        cache_read_input_token_cost: DEFAULT_CODEX_RATE.cacheRead,
+      };
+      unpriced = true;
+    } else {
+      return { usd: 0, unpriced: true };
+    }
   }
   const cacheRead = r.cache_read_input_token_cost ?? 0;
   const cacheWriteBase = r.cache_creation_input_token_cost ?? 0;
@@ -112,7 +123,7 @@ export function priceTokens(e: CostEvent, table: LiteLLMRateTable): PricedEvent 
     (hasSplit
       ? e.cacheWrite5mTokens * cacheWriteBase + e.cacheWrite1hTokens * (r.input_cost_per_token * 2)
       : e.cacheWriteTokens * cacheWriteBase);
-  return { usd, unpriced: false };
+  return { usd, unpriced };
 }
 
 /** Create the per-session `cost_events` table (outbound.db). Idempotent. */
