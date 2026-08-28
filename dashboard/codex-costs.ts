@@ -128,7 +128,13 @@ export const CODEX_MODEL_PRICING: Record<string, CodexModelRate> = {
   'gpt-5.6-luna': { input: 2e-7, output: 1.2e-6, cacheRead: 2e-8 },
   // gpt-5.5 — seen in prod rollouts as `openai/openai/gpt-5.5`.
   'gpt-5.5': { input: 5e-6, output: 3e-5, cacheRead: 5e-7 },
-  // codex-tuned models, also observed in prod rollouts.
+  // codex-tuned models. gpt-5.5-codex / gpt-5.3-codex carry the runner's
+  // published rates and were absent here — so the dashboard silently reported
+  // their spend as unpriced ($0) while the runner's cost cap charged it. Added
+  // so the dashboard prices every model the runner (the enforcer) can see; the
+  // no-drift test asserts the two tables stay in lockstep.
+  'gpt-5.5-codex': { input: 5e-6, output: 3e-5, cacheRead: 5e-7 },
+  'gpt-5.3-codex': { input: 1.75e-6, output: 1.4e-5, cacheRead: 1.75e-7 },
   'gpt-5.2-codex': { input: 1.75e-6, output: 1.4e-5, cacheRead: 1.75e-7 },
   'gpt-5.1-codex': { input: 1.25e-6, output: 1e-5, cacheRead: 1.25e-7 },
   'gpt-5-codex': { input: 1.25e-6, output: 1e-5, cacheRead: 1.25e-7 },
@@ -157,12 +163,20 @@ export function normalizeCodexModel(model: string | undefined): string {
   // cannot change the answer. A genuinely mixed-route fleet would need a
   // route-aware key (`azure/gpt-5.6-sol` vs `gpt-5.6-sol` as separate entries);
   // adding that now would be untested speculation, so it is deliberately not.
+  //
+  // Membership is `hasOwnProperty`, NOT a truthy index: `CODEX_MODEL_PRICING` is a
+  // plain object, so `['constructor']`/`['toString']`/`['__proto__']` inherit
+  // truthy values from Object.prototype — a wire id like `constructor-20260101`
+  // would otherwise resolve to a non-rate and price as NaN (silently $0). The
+  // agent-runner copy (container/agent-runner/src/codex-cost.ts) gates the same
+  // way; codex-costs.test.ts asserts the two return the same output for every input.
+  const hasRate = (key: string): boolean => Object.prototype.hasOwnProperty.call(CODEX_MODEL_PRICING, key);
   let m = model.trim().toLowerCase().split('/').pop() || '';
-  if (CODEX_MODEL_PRICING[m]) return m;
+  if (hasRate(m)) return m;
   const undated = m.replace(/-\d{8}$/, '');
-  if (CODEX_MODEL_PRICING[undated]) return undated;
+  if (hasRate(undated)) return undated;
   m = m.replace(/-latest$/, '');
-  if (CODEX_MODEL_PRICING[m]) return m;
+  if (hasRate(m)) return m;
   return '';
 }
 

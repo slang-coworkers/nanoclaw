@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, statSync } from 'fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 
 import { describe, expect, it } from 'vitest';
@@ -54,6 +54,36 @@ describe('normalizeCodexModel', () => {
     expect(normalizeCodexModel('some-future-model')).toBe('');
     expect(normalizeCodexModel(undefined)).toBe('');
     expect(normalizeCodexModel('')).toBe('');
+  });
+
+  // Data-driven anti-regression over the WHOLE table — a model added to
+  // CODEX_MODEL_PRICING automatically inherits the naming guarantees, so a new
+  // entry can't ship without dated/-latest/prefix resolution being asserted.
+  // Mirrors container/agent-runner/src/codex-cost.test.ts; the drift block below
+  // proves the two normalizer COPIES agree byte-for-byte.
+  it('resolves EVERY known model across bare / prefix / dated / -latest / mixed-case forms', () => {
+    for (const base of Object.keys(CODEX_MODEL_PRICING)) {
+      expect(normalizeCodexModel(base)).toBe(base);                              // bare
+      expect(normalizeCodexModel(`azure/openai/${base}`)).toBe(base);           // provider prefix
+      expect(normalizeCodexModel(`openai/openai/${base}`)).toBe(base);          // doubled prefix
+      expect(normalizeCodexModel(`${base}-20260101`)).toBe(base);               // dated snapshot
+      expect(normalizeCodexModel(`azure/openai/${base}-20260101`)).toBe(base);  // prefix + dated
+      expect(normalizeCodexModel(`${base}-latest`)).toBe(base);                 // -latest alias
+      expect(normalizeCodexModel(`  ${base.toUpperCase()} `)).toBe(base);       // case + whitespace
+    }
+  });
+
+  it('a snapshot/-latest suffix on an UNKNOWN base still returns "" (never invents a match)', () => {
+    expect(normalizeCodexModel('gpt-9-imaginary-20260101')).toBe('');
+    expect(normalizeCodexModel('totally-unknown-latest')).toBe('');
+    expect(normalizeCodexModel('azure/openai/not-a-model-20260101')).toBe('');
+  });
+
+  it('does not resolve inherited Object.prototype keys (would price as NaN, silently $0)', () => {
+    expect(normalizeCodexModel('constructor')).toBe('');
+    expect(normalizeCodexModel('constructor-20260101')).toBe('');
+    expect(normalizeCodexModel('__proto__-latest')).toBe('');
+    expect(normalizeCodexModel('toString')).toBe('');
   });
 });
 
@@ -291,19 +321,21 @@ describe('CODEX_MODEL_PRICING agrees with the agent-runner’s copy (no drift)',
         if (isDir) {
           if (name === 'node_modules') continue;
           walk(full, depth + 1);
-        } else if (
-          name.endsWith('.ts') &&
-          !name.endsWith('.test.ts') &&
-          /codex/i.test(name) &&
-          /pricing|price|cost|rate/i.test(name)
-        ) {
-          // Filename contract with the runner half (see the describe() comment):
-          // anything under container/agent-runner/src named for BOTH codex and
-          // pricing/cost/rates. Kept a pattern rather than one hard-coded path so
-          // the runner can organise its tree freely; the tradeoff is that a table
-          // hidden in an unrelated filename is not guarded, which is why the
-          // expected name is written down on both sides.
-          hits.push(full);
+        } else if (name.endsWith('.ts') && !name.endsWith('.test.ts')) {
+          // Discover by CONTENT, not filename: a rename of the runner's module
+          // must not silently disable this guard. Match only files that EXPORT
+          // the normalizer or the rate table (not mere consumers that import
+          // them) — matching a consumer risks importing a bun-only module that
+          // fails to load under Node/vitest and turns the guard into a red herring.
+          let source = '';
+          try {
+            source = readFileSync(full, 'utf8');
+          } catch {
+            continue;
+          }
+          if (/export\s+(?:function\s+normalizeCodexModel|const\s+CODEX_MODEL_(?:PRICING|RATES))\b/.test(source)) {
+            hits.push(full);
+          }
         }
       }
     };
@@ -339,6 +371,55 @@ describe('CODEX_MODEL_PRICING agrees with the agent-runner’s copy (no drift)',
       // which is the enforcement hole #1327 is closing, reopened by omission.
       const missing = Object.keys(CODEX_MODEL_PRICING).filter((m) => !(m in table));
       expect(missing, `${where} is missing models dashboard/codex-costs.ts prices`).toEqual([]);
+    }
+  });
+
+  it('the runner normalizes model ids IDENTICALLY (no normalizer drift)', async () => {
+    // The table check above proves the two RATE tables agree; this proves the two
+    // `normalizeCodexModel` FUNCTIONS agree. They are the reason a rate table is
+    // even consulted correctly — when they drifted, a dated id resolved to '' on
+    // the runner (enforcer) side and fell to DEFAULT_CODEX_RATE: up to a 25x
+    // overcharge that hard-stopped sessions. Runs only in the composed tree (both
+    // halves present); on nv-dashboard alone it no-ops like the table check.
+    const files = findRunnerPricingFiles();
+    if (files.length === 0) return; // runner half not in this tree — see block comment
+    // Collect EVERY exported normalizer (not just the first walked — order is
+    // unspecified) and every runner rate-table's keys.
+    const runnerNormalizers: Array<{ where: string; fn: (m: string | undefined) => string }> = [];
+    const runnerKeys = new Set<string>();
+    for (const file of files) {
+      const mod = (await import(file)) as Record<string, unknown>;
+      if (typeof mod.normalizeCodexModel === 'function') {
+        runnerNormalizers.push({ where: file, fn: mod.normalizeCodexModel as (m: string | undefined) => string });
+      }
+      for (const [name, value] of Object.entries(mod)) {
+        if (/CODEX.*(PRICING|RATES)/i.test(name) && value && typeof value === 'object') {
+          for (const k of Object.keys(value as object)) runnerKeys.add(k);
+        }
+      }
+    }
+    expect(runnerNormalizers.length, 'runner exposes normalizeCodexModel for the parity check').toBeGreaterThan(0);
+
+    // Battery over the UNION of both tables' keys × every wire form, plus edge
+    // inputs. Union (not just dashboard keys) so a model EITHER side prices is
+    // checked — a runner-only model the dashboard resolves to '' is exactly the
+    // drift this must catch; enumerating only dashboard keys would miss it.
+    const bases = new Set<string>([...Object.keys(CODEX_MODEL_PRICING), ...runnerKeys]);
+    const inputs: (string | undefined)[] = [
+      undefined, '', 'claude-opus-5', 'some-future-model', 'gpt-9-imaginary-20260101', 'totally-unknown-latest',
+      'constructor', 'constructor-20260101', '__proto__-latest', 'toString', // inherited Object.prototype keys
+    ];
+    for (const base of bases) {
+      inputs.push(
+        base, `azure/openai/${base}`, `openai/openai/${base}`, `${base}-20260101`,
+        `azure/openai/${base}-20260101`, `${base}-latest`, `  ${base.toUpperCase()} `,
+      );
+    }
+    // Every discovered normalizer must agree with the dashboard on every input.
+    for (const { where, fn } of runnerNormalizers) {
+      for (const input of inputs) {
+        expect(fn(input), `${where} vs dashboard disagree on ${JSON.stringify(input)}`).toBe(normalizeCodexModel(input));
+      }
     }
   });
 });
