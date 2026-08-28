@@ -71,6 +71,7 @@ function seed(over: Parameters<typeof H.setState>[0] = {}): void {
     ledgerGen: 0,
     ledgerAdjSeq: 0,
     ledgerBaselinePending: false,
+    ledgerBaselineVersion: undefined,
     seenMessageIds: [],
     turnSawMessageUsage: false,
     turnMessageCostUsd: 0,
@@ -208,14 +209,18 @@ describe('#65 finding 1 — window generation isolates the reconcile', () => {
     expect(H.getState().costSpentUsd).toBe(0);
     expectReconciled(); // ledger 0 == counter 0 in the fresh gen
 
-    // A fresh charge in the NEW gen reconciles. NB: a new conversation after a
-    // /clear carries NEW wire message ids (Anthropic ids are globally unique), so
-    // this uses a distinct id — the ledger keys claude rows by wire id, which is
-    // durable across the gen boundary by design (see the boundary note in the
-    // task report: a hypothetical reused id would dedup and under-count the row).
-    H.recordMessageCost(messageUsage('m2'));
+    // Finding-2 fix #2: the SAME wire id is re-admitted in the new window. The
+    // counter re-charges it (seenMessageIds was cleared); pre-fix the ledger
+    // INSERT OR IGNORE-deduped it against the prior gen's `claude:m1` row and stayed
+    // below the counter. The gen-scoped id (`claude:<gen>:m1`) makes it a new row.
+    H.recordMessageCost(messageUsage('m1'));
     expect(H.getState().costSpentUsd).toBeCloseTo(ONE_RESPONSE_USD, 8);
     expectReconciled();
+    // The new-gen row exists and the old-gen one is untouched (both durably present).
+    const rows = getOutboundDb()
+      .prepare('SELECT id FROM cost_events WHERE id LIKE $p ORDER BY id')
+      .all({ $p: 'claude:%:m1' }) as Array<{ id: string }>;
+    expect(rows.map((r) => r.id)).toEqual([`claude:${genBefore}:m1`, `claude:${genBefore + 1}:m1`]);
   });
 
   it('an existing-session MIGRATION seeds the ledger to the persisted counter', () => {
@@ -241,10 +246,10 @@ describe('#65 finding 1 — window generation isolates the reconcile', () => {
     expectReconciled();
   });
 
-  it('MIGRATION does not double-seed on a warm respawn (rows already present)', () => {
-    // First activation seeds the $9 baseline. A warm respawn re-runs
-    // initCostTracking; the current gen already has a row, so it must NOT seed a
-    // second $9 — reconcile would otherwise read $18 vs $9.
+  it('MIGRATION does not double-seed on a warm respawn (version marker, not row count)', () => {
+    // First activation seeds the $9 baseline and stamps the version marker. A warm
+    // respawn re-runs initCostTracking; the marker is now present, so it must NOT
+    // seed a second $9 — reconcile would otherwise read $18 vs $9.
     const persisted = {
       capUsd: 50,
       spentUsd: 9,
@@ -259,14 +264,51 @@ describe('#65 finding 1 — window generation isolates the reconcile', () => {
     setCostCap(persisted);
     __setConfigForTest(cfg({ costCapT2Usd: 50, costCeilingT2Usd: 100 } as Partial<RunnerConfig>));
     H.initCostTracking('claude');
+    expect(H.getState().ledgerBaselineVersion).toBe(1); // marker recorded
     expectReconciled();
     const rowsAfterFirst = (getOutboundDb().prepare('SELECT COUNT(*) c FROM cost_events').get() as { c: number }).c;
 
-    // Warm respawn: same persisted spend, ledger already has the seed row.
+    // Warm respawn: the persisted marker is present now, so migration is skipped.
     H.initCostTracking('claude');
     const rowsAfterSecond = (getOutboundDb().prepare('SELECT COUNT(*) c FROM cost_events').get() as { c: number }).c;
     expect(rowsAfterSecond).toBe(rowsAfterFirst); // no second seed
     expect(H.getState().costSpentUsd).toBeCloseTo(9, 8);
+    expectReconciled();
+  });
+
+  it('MIGRATION fires even when the current gen already holds a stray row (marker, NOT row count)', () => {
+    // The durability fix: a COUNT(*)-based guard would see this stray gen-0 row and
+    // WRONGLY suppress the baseline (finding-1 defect codex flagged). The persisted
+    // version marker (absent here) fires it regardless, and it rotates to a fresh
+    // gen so the seed is isolated from any partial/torn prior write.
+    setCostCap({
+      capUsd: 50,
+      spentUsd: 8,
+      status: 'ok',
+      immortal: false,
+      window: 'lifetime',
+      ceilingUsd: 100,
+      accountingVersion: 2,
+      codexLedger: {},
+      codexBaselinePending: false,
+      // NO ledgerBaselineVersion, ledgerGen defaults to 0 → migration owed at gen 0.
+    });
+    // A stray gen-0 row worth $99 (what a partial prior write could leave behind).
+    getOutboundDb()
+      .prepare(
+        `INSERT INTO cost_events (id, ts, provider, model, priced_usd, rate_version, adjustment_usd, window_gen, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run('stray:1', `${D_TODAY}T00:00:00.000Z`, 'claude', MODEL, 99, 1, 99, 0, `${D_TODAY}T00:00:00.000Z`);
+
+    __setConfigForTest(cfg({ costCapT2Usd: 50, costCeilingT2Usd: 100 } as Partial<RunnerConfig>));
+    H.initCostTracking('claude');
+
+    // Baseline fired despite the stray row: marker set, gen rotated to 1, $8 seeded
+    // there. reconcile (gen 1) is exact — the $99 stray in gen 0 is NOT summed.
+    expect(H.getState().ledgerBaselineVersion).toBe(1);
+    expect(H.getState().ledgerGen).toBe(1);
+    expect(H.getState().costSpentUsd).toBeCloseTo(8, 8);
     expectReconciled();
   });
 });

@@ -65,12 +65,16 @@ describe('DUAL-RUN reconciliation premise: ledger $ == counter $', () => {
 });
 
 describe('integration mappers', () => {
-  it('claudeMessageToEvent stores the effective (counter-priced) model + skips a null-id message', () => {
-    const e = claudeMessageToEvent(msgUsage({ messageId: 'abc', inputTokens: 5, ephemeral1hInputTokens: 9 }), '2026-08-28T00:00:00Z', 'claude-opus-4-8')!;
-    expect(e.id).toBe('claude:abc');
+  it('claudeMessageToEvent stores the effective model, GEN-SCOPES the id, + skips a null-id message', () => {
+    const e = claudeMessageToEvent(msgUsage({ messageId: 'abc', inputTokens: 5, ephemeral1hInputTokens: 9 }), '2026-08-28T00:00:00Z', 'claude-opus-4-8', 0)!;
+    expect(e.id).toBe('claude:0:abc'); // finding-2 fix: id carries the generation
     expect(e.cacheWrite1hTokens).toBe(9);
     expect(e.model).toBe('claude-opus-4-8'); // finding 3: the effective model, never ''
-    expect(claudeMessageToEvent(msgUsage({ messageId: null }), 'now', 'claude-opus-4-8')).toBeNull();
+    // The SAME wire id in a DIFFERENT generation is a DISTINCT ledger id, so a
+    // post-/clear window re-admits it instead of INSERT OR IGNORE-deduping it away.
+    const e2 = claudeMessageToEvent(msgUsage({ messageId: 'abc' }), '2026-08-28T00:00:00Z', 'claude-opus-4-8', 1)!;
+    expect(e2.id).toBe('claude:1:abc');
+    expect(claudeMessageToEvent(msgUsage({ messageId: null }), 'now', 'claude-opus-4-8', 0)).toBeNull();
   });
 
   it('priceTokens reuses the shipped normalizers + codex default (findings 4/5)', () => {
@@ -220,5 +224,66 @@ describe('#65 dual-run reconciliation — adjustments + window generation (findi
     const gen0 = sumWindow(db, RATE_TABLE, '0000-00-00', '9999-99-99', 0).usd;
     expect(noGen).toBeCloseTo(gen0, 12);
     expect(noGen).toBeGreaterThan(0);
+  });
+});
+
+describe('#65 createCostEventsTable — old-schema migration (codex-reproduced HIGH bug)', () => {
+  // The prior-commit `cost_events`: no `adjustment_usd` / `window_gen`, ts index only.
+  const OLD_SCHEMA = `
+    CREATE TABLE cost_events (
+      id TEXT PRIMARY KEY, ts TEXT NOT NULL, provider TEXT NOT NULL, model TEXT NOT NULL,
+      input_tokens INTEGER NOT NULL DEFAULT 0, cache_read_tokens INTEGER NOT NULL DEFAULT 0,
+      cache_write_tokens INTEGER NOT NULL DEFAULT 0, cache_write_5m_tokens INTEGER NOT NULL DEFAULT 0,
+      cache_write_1h_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0,
+      reasoning_tokens INTEGER NOT NULL DEFAULT 0, priced_usd REAL NOT NULL, rate_version INTEGER NOT NULL,
+      thread_id TEXT, gh_ref TEXT, created_at TEXT NOT NULL
+    );
+    CREATE INDEX cost_events_ts ON cost_events(ts);`;
+
+  it('brings a pre-columns table forward: adds BOTH columns + the gen index, then inserts/reads work', () => {
+    const old = new Database(':memory:');
+    old.exec(OLD_SCHEMA);
+    // A legacy row that predates the new columns.
+    old.prepare(
+      `INSERT INTO cost_events (id, ts, provider, model, input_tokens, priced_usd, rate_version, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run('legacy:1', '2026-08-28T00:00:00.000Z', 'codex', 'gpt-5.6-sol', 1_000_000, 5, 1, '2026-08-28T00:00:00.000Z');
+
+    // PRE-FIX: the gen index was created in the SAME batch as the table, so on this
+    // old table it threw `no such column: window_gen`, the caller swallowed it, and
+    // NEITHER column was added — every later insert/reconcile silently failed. This
+    // must not throw and must complete the migration.
+    expect(() => createCostEventsTable(old)).not.toThrow();
+
+    const cols = new Set(
+      (old.prepare("PRAGMA table_info('cost_events')").all() as Array<{ name: string }>).map((c) => c.name),
+    );
+    expect(cols.has('adjustment_usd')).toBe(true);
+    expect(cols.has('window_gen')).toBe(true);
+    // The gen index now exists (it can only be created once the column is present).
+    expect(old.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='cost_events_gen_ts'").get()).toBeDefined();
+    // The legacy row got the column defaults (adjustment 0, gen 0).
+    const legacy = old.prepare('SELECT adjustment_usd, window_gen FROM cost_events WHERE id = ?').get('legacy:1') as {
+      adjustment_usd: number;
+      window_gen: number;
+    };
+    expect(legacy.adjustment_usd).toBe(0);
+    expect(legacy.window_gen).toBe(0);
+
+    // The new write path + gen-filtered read now work against the migrated table.
+    expect(recordCostEvent(old, ev({ id: 'new:1', provider: 'codex', model: 'gpt-5.6-sol', inputTokens: 1_000_000 }), RATE_VERSION, RATE_TABLE, 'now', 3)).toBe(true);
+    expect(sumWindow(old, RATE_TABLE, '0000-00-00', '9999-99-99', 3).usd).toBeGreaterThan(0);
+    old.close();
+  });
+
+  it('is idempotent on the already-migrated (fresh) schema', () => {
+    const fresh = new Database(':memory:');
+    createCostEventsTable(fresh);
+    expect(() => createCostEventsTable(fresh)).not.toThrow(); // second call: columns present, no duplicate-add
+    const cols = new Set(
+      (fresh.prepare("PRAGMA table_info('cost_events')").all() as Array<{ name: string }>).map((c) => c.name),
+    );
+    expect(cols.has('adjustment_usd') && cols.has('window_gen')).toBe(true);
+    fresh.close();
   });
 });

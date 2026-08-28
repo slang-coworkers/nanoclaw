@@ -286,6 +286,15 @@ export interface CostCapState {
   ledgerGen?: number;
   ledgerAdjSeq?: number;
   ledgerBaselinePending?: boolean;
+  /**
+   * #65 durable ledger MIGRATION-BASELINE completion marker (schema version). Its
+   * ABSENCE is the sole trigger for the one-time migration baseline in
+   * `initCostTracking`; once set it is never re-run. Recorded atomically with the
+   * seed row + rotated generation in a single outbound-DB transaction, so a crash
+   * can neither double-seed (marker without seed) nor strand a permanent
+   * `ledger < counter` (seed without marker). Absent on a pre-#65 row.
+   */
+  ledgerBaselineVersion?: number;
 }
 
 const COST_CAP_KEY = 'cost_cap';

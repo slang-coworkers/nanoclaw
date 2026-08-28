@@ -270,11 +270,23 @@ let ledgerAdjSeq = 0;
 // the enforcement `codexLedgerBaselinePending`. Persisted so a crash before the
 // first fold still excludes that history.
 let ledgerBaselinePending = false;
+// Persisted MIGRATION-BASELINE completion marker (schema version). Its ABSENCE on
+// init is the ONLY trigger for the one-time migration baseline; presence means
+// "already baselined for this schema version" and is never re-run. This replaces
+// inferring completion from a row COUNT — a count is neither durable nor atomic
+// (a partial current-gen row would wrongly suppress the baseline, and the seed
+// insert + state writes could tear across a crash into a double-count). Undefined
+// on a pre-#65 row.
+let ledgerBaselineVersion: number | undefined;
 // Sentinel generation for pre-existing/baselined codex rows: never equals a live
 // `ledgerGen` (which starts at 0 and only increments), so a `window_gen = $gen`
 // reconcile permanently excludes them, while the rows are still durably captured
 // (first-write-wins on the id keeps them out of every later real gen too).
 const LEDGER_BASELINE_GEN = -1;
+// The migration-baseline schema version stamped by `performLedgerMigrationBaseline`.
+// Bump only if the migration itself changes shape (it never re-runs for a version
+// already recorded).
+const LEDGER_BASELINE_VERSION = 1;
 
 /**
  * Cost-accounting schema generation stamped into the persisted state. Bumped by
@@ -411,6 +423,7 @@ function initCostTracking(providerName: string): void {
   ledgerGen = persisted?.ledgerGen ?? 0;
   ledgerAdjSeq = persisted?.ledgerAdjSeq ?? 0;
   ledgerBaselinePending = persisted?.ledgerBaselinePending ?? false;
+  ledgerBaselineVersion = persisted?.ledgerBaselineVersion;
   if (costWindow === 'daily' && !(persisted?.dayKey === costDayKey)) {
     // A stale day's spend is discarded, so the codex figure attributed to it is
     // too — the ledger keeps the per-day watermarks, this is only the display total.
@@ -439,23 +452,50 @@ function initCostTracking(providerName: string): void {
     costStopRequested = true;
   }
 
-  // #65 dual-run MIGRATION BASELINE. An existing session carries persisted spend
-  // but the durable ledger has NO rows in the current generation — the table is
-  // new on this branch (empty for every pre-#65 session), so the lifetime
-  // reconcile would read `ledger=$0 counter=$10` forever. Seed ONE dollar
-  // adjustment = the persisted spend so this gen starts at ledger==counter. Guard
-  // on a zero row COUNT (not a $0 sum) so a WARM respawn whose rows are already
-  // present never double-seeds. Arm the ledger codex baseline so the first fold
-  // stamps pre-existing rollout history OUT of this gen — its dollars are already
-  // inside this one adjustment, and re-counting the repriced tokens would double
-  // it. Best-effort; a failure just leaves the pre-existing `ledger=$0` delta.
-  if (costSpentUsd > 0) {
-    try {
-      const db = getOutboundDb();
-      const genCount = (
-        db.prepare('SELECT COUNT(*) c FROM cost_events WHERE window_gen = $g').get({ $g: ledgerGen }) as { c: number }
-      ).c;
-      if (genCount === 0) {
+  // #65 dual-run MIGRATION BASELINE — runs exactly ONCE per session, gated by the
+  // ABSENCE of the persisted version marker (never by a row count). An existing
+  // session carries persisted spend while the durable ledger is empty, so the
+  // lifetime reconcile would read `ledger=$0 counter=$10` forever; the baseline
+  // seeds one adjustment = the persisted spend so the active gen starts equal.
+  if (persisted?.ledgerBaselineVersion === undefined) performLedgerMigrationBaseline();
+
+  // Publish immediately so the dashboard shows a cap even before the first turn
+  // (and so a flipped immortal flag / window is reflected).
+  persistCostCap();
+}
+
+/**
+ * The one-time #65 ledger migration baseline (finding-1 durability fix). Gated by
+ * the ABSENCE of the persisted `ledgerBaselineVersion`; `initCostTracking` calls
+ * it at most once per session.
+ *
+ * Everything commits in a SINGLE outbound-DB transaction so a crash can never
+ * leave a half-migration (a seed row without its marker → a second respawn would
+ * seed AGAIN and double-count; or a marker without its seed → a permanent
+ * `ledger < counter`). On any error the transaction rolls back the DB and we
+ * restore the in-memory state to its pre-call snapshot, so the marker stays unset
+ * and a later respawn retries cleanly.
+ *
+ * It ROTATES to a fresh generation first, so the seed lands in a provably-empty
+ * gen — a stray/partial row in the old gen (which a COUNT-based guard would have
+ * mis-read as "already seeded") cannot contaminate it. It arms `ledgerBaselinePending`
+ * so the first codex fold stamps pre-existing rollout history OUT of this gen (its
+ * dollars are already inside the single adjustment; re-counting the repriced tokens
+ * would double it). Best-effort: a failure just leaves the pre-existing `ledger=$0`
+ * delta, which the reconcile log surfaces.
+ */
+function performLedgerMigrationBaseline(): void {
+  const snapshot = { ledgerGen, ledgerAdjSeq, ledgerBaselinePending, ledgerBaselineVersion };
+  try {
+    const db = getOutboundDb();
+    db.transaction(() => {
+      // Fresh, provably-empty generation for the seed (isolates it from any stray
+      // row a partial prior write may have left in the old gen).
+      ledgerGen++;
+      ledgerBaselineVersion = LEDGER_BASELINE_VERSION;
+      // The first codex fold sentinels pre-existing rollout history out of this gen.
+      ledgerBaselinePending = true;
+      if (costSpentUsd > 0) {
         const seq = ++ledgerAdjSeq;
         recordCostEvent(
           db,
@@ -478,16 +518,20 @@ function initCostTracking(providerName: string): void {
           ledgerNow(),
           ledgerGen,
         );
-        ledgerBaselinePending = true;
       }
-    } catch {
-      /* best-effort — a ledger seed failure must not block cost tracking */
-    }
+      // Persist the seed + rotated gen + advanced seq + pending flag + marker
+      // together, inside the same transaction (persistCostCap writes session_state
+      // on this same outbound.db handle) — the atomic completion record.
+      persistCostCap();
+    })();
+  } catch {
+    // Roll back the in-memory state to match the rolled-back DB so the marker stays
+    // unset and a later respawn retries the whole migration cleanly.
+    ledgerGen = snapshot.ledgerGen;
+    ledgerAdjSeq = snapshot.ledgerAdjSeq;
+    ledgerBaselinePending = snapshot.ledgerBaselinePending;
+    ledgerBaselineVersion = snapshot.ledgerBaselineVersion;
   }
-
-  // Publish immediately so the dashboard shows a cap even before the first turn
-  // (and so a flipped immortal flag / window is reflected).
-  persistCostCap();
 }
 
 /**
@@ -597,10 +641,12 @@ function persistCostCap(): void {
     // fold must leave the successor knowing the baseline is still owed.
     codexBaselinePending: codexLedgerBaselinePending,
     // #65 durable ledger (dual-run) identity — always written so a respawn keeps
-    // the same generation/sequence and any pending ledger baseline.
+    // the same generation/sequence and any pending ledger baseline. The baseline
+    // VERSION marker is written only once set (its absence is the migration trigger).
     ledgerGen,
     ledgerAdjSeq,
     ledgerBaselinePending,
+    ...(ledgerBaselineVersion !== undefined ? { ledgerBaselineVersion } : {}),
     ...(codexUsdCharged > 0 ? { codexUsd: codexUsdCharged } : {}),
     // dayKey is present ONLY for the daily window (shared contract #1).
     ...(costWindow === 'daily' && costDayKey ? { dayKey: costDayKey } : {}),
@@ -796,7 +842,7 @@ function recordClaudeLedger(event: Extract<ProviderEvent, { type: 'message_usage
   // Same effective model the counter priced (recordMessageCost:
   // `reportedModel || getConfig().model`), so an absent model reprices at the
   // configured model in the ledger too (finding 3).
-  const ev = claudeMessageToEvent(event, ledgerNow(), event.model?.trim() || getConfig().model || '');
+  const ev = claudeMessageToEvent(event, ledgerNow(), event.model?.trim() || getConfig().model || '', ledgerGen);
   if (!ev) return; // null-id message — the counter skips it too
   try {
     recordCostEvent(getOutboundDb(), ev, RATE_VERSION, RATE_TABLE, ledgerNow(), ledgerGen);
@@ -812,6 +858,17 @@ function recordClaudeLedger(event: Extract<ProviderEvent, { type: 'message_usage
  * the reconcile counts it verbatim rather than repricing it. No-op unless the
  * charge is positive. The id draws from the persisted monotonic `ledgerAdjSeq`, so
  * a respawn never reuses one (INSERT OR IGNORE would else silently drop the row).
+ *
+ * KNOWN-ACCEPTED (dual-run) — the counter charge (`applyCostDelta`, which persists
+ * `costSpentUsd`) and this ledger write are TWO separate best-effort writes, not
+ * one transaction. The caller charges first, then records here, so a crash in the
+ * microsecond window between them loses this one adjustment row → the next
+ * reconcile shows a small `ledger < counter` delta for that single turn. That is
+ * an INVESTIGABLE delta the dual-run bake surfaces (the reconcile log line), NOT
+ * silent corruption or a mischarge — enforcement runs entirely off the counter,
+ * which is already durably persisted. Making the pair transactional is deliberate
+ * over-engineering for a validation log; the delta is one-time and self-heals at
+ * the next window reset (a fresh gen starts both at $0).
  */
 function recordLedgerAdjustment(usd: number): void {
   if (!costEnabled || !(usd > 0)) return;
@@ -1118,11 +1175,25 @@ function foldCodexCost(): void {
   // excluded by the ts-window, so they may take the live gen harmlessly.
   const ledgerBaselining = baselining || ledgerBaselinePending;
   recordCodexLedger(scan.files, ledgerBaselining ? LEDGER_BASELINE_GEN : ledgerGen);
-  // The pre-existing history for this gen has now been stamped out; the ledger
-  // baseline is a one-shot (the enforcement `baselining` flag clears separately
-  // below). The migration fold runs before the session's first turn, so there are
-  // no new-and-charged calls here to wrongly exclude.
-  ledgerBaselinePending = false;
+  // Clear the ledger baseline ONLY after a COMPLETE scan (errors === 0), mirroring
+  // the enforcement baseline's "don't finish off an incomplete scan" discipline —
+  // an incomplete first fold leaves it pending so the next complete fold re-stamps
+  // the still-unread history rather than promoting it into the reconciled gen.
+  //
+  // KNOWN-ACCEPTED (dual-run) incomplete-scan edges — each a small INVESTIGABLE
+  // reconcile delta, never a mischarge (enforcement is unaffected), and the common
+  // COMPLETE-scan path is exact:
+  //   - An unreadable rollout during the baseline fold: its history is stamped on a
+  //     later fold. If that later fold is still `ledgerBaselinePending`, it lands at
+  //     the sentinel gen (ledger slightly under counter until the watermark catches
+  //     up); if the flag has since cleared, at the live gen (slightly over). Either
+  //     way it is one boundary file, surfaced by the reconcile log.
+  //   - A mixed scan where a genuinely-NEW charged call arrives while the baseline
+  //     is still pending would stamp that call at the sentinel gen (excluded) → a
+  //     transient `ledger < counter` for that call until the next clean fold. Rare:
+  //     the migration/reset fold runs before the session's first turn, so there is
+  //     normally no new-and-charged call in flight when the flag is set.
+  if (scan.errors === 0) ledgerBaselinePending = false;
 
   // #1361: prune now takes the scan's live event-key set so an owner whose file
   // vanished but whose call still replays in a surviving fork is NOT dropped
@@ -1664,6 +1735,7 @@ export const __costCapTestHooks = {
     ledgerGen,
     ledgerAdjSeq,
     ledgerBaselinePending,
+    ledgerBaselineVersion,
     seenMessageIdCount: seenMessageIds.size,
     turnSawMessageUsage,
     turnMessageCostUsd,
@@ -1697,6 +1769,7 @@ export const __costCapTestHooks = {
     ledgerGen?: number;
     ledgerAdjSeq?: number;
     ledgerBaselinePending?: boolean;
+    ledgerBaselineVersion?: number | undefined;
     seenMessageIds?: string[];
     turnSawMessageUsage?: boolean;
     turnMessageCostUsd?: number;
@@ -1729,6 +1802,7 @@ export const __costCapTestHooks = {
     if ('ledgerGen' in p) ledgerGen = p.ledgerGen!;
     if ('ledgerAdjSeq' in p) ledgerAdjSeq = p.ledgerAdjSeq!;
     if ('ledgerBaselinePending' in p) ledgerBaselinePending = p.ledgerBaselinePending!;
+    if ('ledgerBaselineVersion' in p) ledgerBaselineVersion = p.ledgerBaselineVersion;
     if ('seenMessageIds' in p) {
       seenMessageIds.clear();
       for (const id of p.seenMessageIds!) seenMessageIds.add(id);

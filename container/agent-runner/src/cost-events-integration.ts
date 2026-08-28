@@ -22,11 +22,20 @@ export function claudeMessageToEvent(
   e: Extract<ProviderEvent, { type: 'message_usage' }>,
   ts: string,
   effectiveModel: string,
+  windowGen: number,
 ): CostEvent | null {
   if (!e.messageId) return null;
   const hasSplit = e.ephemeral1hInputTokens > 0 || e.ephemeral5mInputTokens > 0;
   return {
-    id: `claude:${e.messageId}`,
+    // GEN-SCOPED identity. A wire `message.id` is deduped within a budget window
+    // by the counter's `seenMessageIds`, which is CLEARED on `/clear`/new_session —
+    // so a replayed/reused id after a reset is charged AGAIN. A global `claude:<id>`
+    // would `INSERT OR IGNORE`-dedup against the prior window's row and leave the
+    // ledger BELOW the counter. Scoping the id to the generation re-admits it in the
+    // fresh window while still deduping repeated blocks WITHIN a window (same gen +
+    // same id). Codex keeps its cross-generation tuple identity on purpose (a fork
+    // replay must dedup across gens); only the Claude id is gen-scoped.
+    id: `claude:${windowGen}:${e.messageId}`,
     ts,
     provider: 'claude',
     // The model the COUNTER priced (= e.model || configuredModel), not `e.model

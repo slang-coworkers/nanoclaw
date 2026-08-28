@@ -159,21 +159,28 @@ export function createCostEventsTable(db: Database): void {
       created_at            TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS cost_events_ts ON cost_events(ts);
-    CREATE INDEX IF NOT EXISTS cost_events_gen_ts ON cost_events(window_gen, ts);
   `);
-  // Defensive back-compat: #1359 is unshipped, but a dev/CI outbound.db from an
-  // EARLIER #1359 checkout may hold a `cost_events` that predates these two
-  // columns (`CREATE TABLE IF NOT EXISTS` above then no-ops and would leave it
-  // stale). `ADD COLUMN` brings it forward; it throws "duplicate column name"
-  // when the column already exists (the fresh-table case), which we swallow — so
-  // this is idempotent either way. The index create above is already IF NOT EXISTS.
-  for (const col of ['adjustment_usd REAL NOT NULL DEFAULT 0', 'window_gen INTEGER NOT NULL DEFAULT 0']) {
-    try {
-      db.exec(`ALTER TABLE cost_events ADD COLUMN ${col}`);
-    } catch {
-      /* column already present — no-op */
-    }
+  // Back-compat MUST run BEFORE the generation index. #1359 is unshipped, but a
+  // dev/CI outbound.db from an EARLIER #1359 checkout can hold a `cost_events`
+  // that predates `adjustment_usd`/`window_gen` — `CREATE TABLE IF NOT EXISTS`
+  // then no-ops and leaves it stale. Decide what to add from the LIVE schema
+  // (`PRAGMA table_info`), never by catching errors: the previous version created
+  // `cost_events_gen_ts(window_gen, ts)` in the same batch as the table, so on an
+  // old table that CREATE INDEX threw `no such column: window_gen`, the whole
+  // create was swallowed by the caller, and NEITHER column was ever added — every
+  // insert/reconcile then silently failed. Add missing columns first, THEN the
+  // index (which now can't reference an absent column), and let any genuine
+  // migration error propagate instead of masquerading as "already present".
+  const columns = new Set(
+    (db.prepare("PRAGMA table_info('cost_events')").all() as Array<{ name: string }>).map((c) => c.name),
+  );
+  if (!columns.has('adjustment_usd')) {
+    db.exec('ALTER TABLE cost_events ADD COLUMN adjustment_usd REAL NOT NULL DEFAULT 0');
   }
+  if (!columns.has('window_gen')) {
+    db.exec('ALTER TABLE cost_events ADD COLUMN window_gen INTEGER NOT NULL DEFAULT 0');
+  }
+  db.exec('CREATE INDEX IF NOT EXISTS cost_events_gen_ts ON cost_events(window_gen, ts)');
 }
 
 /**
