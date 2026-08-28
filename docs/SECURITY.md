@@ -55,13 +55,21 @@ container only ever sees the paths above plus any provider-contributed mounts
 (e.g. an OpenCode XDG dir). Host application source (`src/`, `dist/`,
 `package.json`) is not reachable.
 
-Shared memory content is read only by the provider's SessionStart hook inside
-the container. Host-side project-document composers inline the repository's own
+Shared memory content is read only inside the container — by the provider's
+SessionStart hook, or by the runner building the system-prompt fallback for a
+provider that has no such hook. Host-side project-document composers inline the repository's own
 instruction sources, and read nothing the agent can author except
 `instructions.prepend.md` (opened with `O_NOFOLLOW`); they never open
 `memory/index.md` or linked agent-controlled files. A memory symlink can
 therefore reach only paths already visible inside that container, not arbitrary
 host files.
+
+The system-prompt fallback widens where that content comes to _rest_, all of it
+still inside the same container: pi writes the composed instructions to its
+config dir (`nanoclaw-system-prompt.txt`), and OpenCode carries them as ordinary
+conversation messages in its own session store. Both are the same trust boundary
+the memory files already sit behind, but a reader auditing where memory lives on
+disk should expect these copies too.
 
 **Additional-mount allowlist** — extra mounts from a group's container config
 are validated against an allowlist at `~/.config/nanoclaw/mount-allowlist.json`,

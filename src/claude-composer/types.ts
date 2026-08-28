@@ -284,6 +284,15 @@ export interface ComposeCoworkerSpineOptions {
   // rendering so cli/ncl-specific tool-instructions can be conditionally
   // omitted when the group disables CLI access.
   cliScope?: 'disabled' | 'group' | 'global';
+  // Per-server usage prose from `container.json` `mcpServers[].instructions`,
+  // keyed by server name. An external server's own tool descriptions cannot say
+  // "in THIS install, point at the staging endpoint" — that is what this carries,
+  // and it has to be in context before the agent reaches for the tool.
+  //
+  // Operator- and template-authored. The agent's `add_mcp_server` tool exposes no
+  // `instructions` field, so an agent cannot author its own; entries reach the DB
+  // only through `ncl groups config` or a template, both admin-gated.
+  mcpInstructions?: Record<string, string>;
 }
 
 export interface ComposeLegacyPromptOptions {

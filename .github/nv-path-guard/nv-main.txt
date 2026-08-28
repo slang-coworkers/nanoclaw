@@ -235,3 +235,10 @@ README_ko.md
 # that branch owns the in-repo NanoClaw dashboard (dashboard/**, port 3737),
 # a different artifact from the Grafana board on 13000.
 ops/**
+
+# OneCLI gateway skill — the container-side credential model (#1337). Restored
+# from upstream after 1240a0cf deleted the in-repo copy in favour of a runtime
+# fetch this fork never absorbed, leaving CLAUDE.md citing a path that did not
+# exist. Shared infrastructure, not project-specific: every coworker reaches
+# external APIs through this proxy.
+container/skills/onecli-gateway/**
