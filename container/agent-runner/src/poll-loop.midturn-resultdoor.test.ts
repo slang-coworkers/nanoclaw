@@ -700,13 +700,20 @@ describe('#1360 — native-codex cost settle + one-shot hard-stop deferral at th
         events: events(),
       };
 
-      await processQuery(query, CHAT_ROUTING, ['m1'], 'codex', undefined, 'prompt', undefined, false);
+      const qr = await processQuery(query, CHAT_ROUTING, ['m1'], 'codex', undefined, 'prompt', undefined, false);
 
-      // Both results queued (and flushed) a gate-refusal correction; result 2's is
-      // torn down by the hard-stop that immediately follows its flush.
-      expect(pushed.length).toBe(2); // proves the gate fired on BOTH results
+      // Result 1's gate-refusal correction was pushed (deferred → ran as result 2);
+      // result 2's correction is WITHHELD, not pushed, because the hard-stop would
+      // tear it down before it could run (#1360 re-review terminal MAJOR).
+      expect(pushed.length).toBe(1);
       expect(pulled).toBe(2); // result 1 DEFERRED (reached result 2); result 3 was never pulled
       expect(ended).toBe(true); // result 2 HARD-STOPPED the stream — the deferral did not re-arm
+      // The terminal result must NOT be silently completed: it is acked FAILED
+      // (reclaimable after a cost-cap continuation) and returned in undeliveredIds
+      // so the outer fallback markCompleted skips it…
+      expect(qr.undeliveredIds).toContain('m1');
+      // …and a durable "answer withheld — cost ceiling" notice reached the user.
+      expect(deliveredTexts().some((t) => t.toLowerCase().includes('withheld'))).toBe(true);
       expect(H.getState().costCeilingHardStop).toBe(true);
     } finally {
       if (savedRoutingState === undefined) delete process.env.ROUTING_GATE_STATE_PATH;

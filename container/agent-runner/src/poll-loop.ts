@@ -1506,6 +1506,14 @@ const SILENT_TURN_NOTICE =
   'The agent finished its turn without producing any output, so there is nothing to deliver. ' +
   'Your message was not answered — please re-send it.';
 
+// Delivered when a native-codex session hard-stops at the Tier-2 ceiling while a
+// corrective delivery retry is still queued (#1360 re-review). The retry can't
+// run (the hard stop tears the app-server down), so the answer is withheld — but
+// the inbound row is marked FAILED, not completed, so it stays reclaimable.
+const COST_CEILING_WITHHELD_NOTICE =
+  'This session reached its cost ceiling before your answer could be re-sent, so the reply was withheld. ' +
+  'It is recorded as unfinished (not silently dropped) — resume the session, or raise the ceiling, to get the answer.';
+
 /**
  * True for SQLite errors that indicate a corrupt READ view — almost always a
  * cross-mount page-cache coherency issue on Docker Desktop macOS rather than
@@ -2916,18 +2924,59 @@ export async function processQuery(
             await finalizeSilentTurn(event.text);
           }
         }
-        // Flush every correction queued by this result as ONE push (see the
-        // `corrections` note above), so the codex hard-stop below can never
-        // strand a second queued correction mid-turn. `queuedCorrection` is the
-        // per-result "did THIS result queue a correction?" the settle reads.
+        // `queuedCorrection` is the per-result "did THIS result queue a
+        // correction?" the settle below reads.
         const queuedCorrection = corrections.length > 0;
-        if (queuedCorrection) query.push(corrections.join('\n\n'));
-        // Ack the turn as completed UNLESS it was a transient a2a bounce (left
-        // pending above for the host redrive), it delivered nothing and was
-        // acked 'failed' by finalizeSilentTurn, or a silent turn is still
-        // awaiting its re-send retry. This replaces the former unconditional
-        // markCompleted at the top of the branch.
-        if (!bounced && !silentTurnOpen && undeliveredIds.length === 0) markCompleted(initialBatchIds);
+        // TERMINAL codex ceiling stop (#1360 re-review MAJOR). The ceiling is
+        // already crossed (costCeilingHardStop is latched — it never clears within
+        // a query) AND the one-shot deferral is already spent, so the settle below
+        // WILL hard-stop this result. If it ALSO queued a correction, that
+        // correction is doomed: query.end() tears the app-server down before it
+        // runs. Pushing it is futile, and leaving the batch markCompleted would
+        // silently consume an unanswered message that can never be reclaimed after
+        // a cost-cap continuation. Withhold-notice + markFailed instead. Decidable
+        // here even though codex's own fold runs in the settle below, because
+        // `ceilingDeferralUsed ⟹ costCeilingHardStop` (the deferral can only have
+        // been spent on a prior crossing, and neither flag flips back mid-query).
+        const terminalCeilingStop =
+          providerName === 'codex' && costCeilingHardStop && ceilingDeferralUsed && queuedCorrection;
+        // Flush every correction queued by this result as ONE push (see the
+        // `corrections` note above), so the codex hard-stop can never strand a
+        // second queued correction mid-turn — EXCEPT on the terminal stop, where
+        // the correction can't run at all and is handled below instead.
+        if (queuedCorrection && !terminalCeilingStop) query.push(corrections.join('\n\n'));
+        if (terminalCeilingStop) {
+          // Surface the withheld answer durably (same delivery mechanism as
+          // finalizeSilentTurn), then ack the batch FAILED — NOT completed — so
+          // the outer fallback markCompleted skips it and the row stays
+          // reclaimable. The settle below still ends the stream.
+          if (routing.channelType && routing.platformId && routing.channelType !== 'system') {
+            await writeMessageOut({
+              id: generateId(),
+              in_reply_to: routing.inReplyTo,
+              kind: 'chat',
+              platform_id: routing.platformId,
+              channel_type: routing.channelType,
+              thread_id: routing.threadId,
+              content: JSON.stringify({ text: COST_CEILING_WITHHELD_NOTICE }),
+            });
+          } else {
+            log('Cost-ceiling withheld notice has no deliverable routing — recorded in the log only');
+          }
+          for (const id of initialBatchIds) markFailed(id);
+          undeliveredIds.push(...initialBatchIds);
+          log(
+            `Cost ceiling $${costCeilingUsd.toFixed(2)} reached with a corrective retry still queued — ` +
+              `answer withheld, batch marked failed (spent=$${costSpentUsd.toFixed(2)})`,
+          );
+        } else if (!bounced && !silentTurnOpen && undeliveredIds.length === 0) {
+          // Ack the turn as completed UNLESS it was a transient a2a bounce (left
+          // pending above for the host redrive), it delivered nothing and was
+          // acked 'failed' by finalizeSilentTurn, or a silent turn is still
+          // awaiting its re-send retry. This replaces the former unconditional
+          // markCompleted at the top of the branch.
+          markCompleted(initialBatchIds);
+        }
         // A turn that delivered through the content door (not just the silent
         // branch above, which only runs for empty results) also answers the
         // batch — record it before the watermark is resampled.
