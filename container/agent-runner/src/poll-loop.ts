@@ -877,7 +877,7 @@ function foldCodexCost(): void {
     }
   }
 
-  const pruned = scan.errors === 0 ? pruneCodexLedger(new Set(scan.files.map((f) => f.key))) : 0;
+  const pruned = scan.errors === 0 ? pruneCodexLedger(new Set(scan.files.map((f) => f.key)), scan.eventKeys) : 0;
 
   if (baselining) {
     codexLedgerBaselinePending = false;
@@ -913,10 +913,25 @@ function foldCodexCost(): void {
 const CODEX_LEDGER_RETENTION_DAYS = 30;
 
 /**
+ * The date a ledger/owner entry ages against. Normally the day bucket itself,
+ * but a timestamp-less codex event buckets as `MISSING_DAY_KEY` ('unknown-day'),
+ * which never satisfies the `YYYY-MM-DD` cutoff test — so such an entry for a
+ * vanished file would live forever. Fall back to the date embedded in the
+ * rollout path (`sessions/YYYY/MM/DD/rollout-…`); returns undefined only when
+ * neither is a real date, in which case the caller KEEPS the entry (the safe
+ * direction — never prune something whose age can't be established).
+ */
+function retentionDay(day: string, fileKey: string): string | undefined {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(day)) return day;
+  const m = fileKey.match(/(?:^|[/\\])(\d{4})[/\\](\d{2})[/\\](\d{2})[/\\]/);
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : undefined;
+}
+
+/**
  * Drop watermarks for rollout files that are gone from a COMPLETE scan and whose
  * day bucket is older than the retention window. Returns how many were removed.
  */
-function pruneCodexLedger(present: Set<string>): number {
+function pruneCodexLedger(present: Set<string>, presentEventKeys: ReadonlySet<string>): number {
   const cutoff = new Date(Date.now() - CODEX_LEDGER_RETENTION_DAYS * 86_400_000).toISOString().slice(0, 10);
   let removed = 0;
   for (const k of Object.keys(codexLedger)) {
@@ -925,8 +940,27 @@ function pruneCodexLedger(present: Set<string>): number {
     const fileKey = k.slice(0, sep);
     const day = k.slice(sep + 1);
     if (present.has(fileKey)) continue; // still on disk — its watermark is load-bearing
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day >= cutoff) continue;
+    const ageDay = retentionDay(day, fileKey);
+    if (!ageDay || ageDay >= cutoff) continue;
     delete codexLedger[k];
+    removed++;
+  }
+  // Prune the OWNERS map too — it is persisted side-by-side with codexLedger in
+  // the same cost-accounting state blob and is the BIGGER of the two (one entry
+  // per codex CALL vs one per (file, day)), so leaving it unbounded is the exact
+  // persisted-state growth CODEX_LEDGER_RETENTION_DAYS exists to prevent.
+  //
+  // But an owner is load-bearing beyond its own file: it is what stops a
+  // byte-identical REPLAYED call in a SURVIVING rollout (a fork of a since-deleted
+  // parent) from being re-claimed and re-charged. So keep it while EITHER its
+  // owning file is present OR its event key still appears in a live file this
+  // scan — drop it only when the call is gone everywhere AND its day is past the
+  // retention window. Key is `codexEventKey` = `model|day|input|cached|output`.
+  for (const [k, fileKey] of codexEventOwners) {
+    if (present.has(fileKey) || presentEventKeys.has(k)) continue;
+    const ageDay = retentionDay(k.split('|')[1] ?? '', fileKey);
+    if (!ageDay || ageDay >= cutoff) continue;
+    codexEventOwners.delete(k);
     removed++;
   }
   return removed;

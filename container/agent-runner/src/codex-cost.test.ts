@@ -152,6 +152,58 @@ describe('normalizeCodexModel', () => {
     expect(normalizeCodexModel('')).toBe('');
     expect(normalizeCodexModel('claude-opus-4-8')).toBe('');
   });
+
+  // ANTI-REGRESSION GUARD for the runner↔dashboard normalizer.
+  // `normalizeCodexModel` is duplicated (Bun container vs Node host in
+  // dashboard/codex-costs.ts) and both feed cost. When they drifted, a dated
+  // snapshot id fell through to DEFAULT_CODEX_RATE on the RUNNER side (the
+  // enforcer) — up to a 25x overcharge that hard-stops a session at ~4% of its
+  // ceiling. The two tests below are DATA-DRIVEN over the whole pricing table,
+  // so a model added to CODEX_MODEL_PRICING automatically inherits both the
+  // naming and the money-path guarantee — a new entry can't ship without them.
+  // If you change one normalizer copy, change both and keep these green on both.
+  it('resolves EVERY known model across bare / prefix / dated / -latest / mixed-case forms', () => {
+    for (const base of Object.keys(CODEX_MODEL_PRICING)) {
+      expect(normalizeCodexModel(base)).toBe(base);                              // bare
+      expect(normalizeCodexModel(`azure/openai/${base}`)).toBe(base);           // provider prefix
+      expect(normalizeCodexModel(`openai/openai/${base}`)).toBe(base);          // doubled prefix
+      expect(normalizeCodexModel(`${base}-20260101`)).toBe(base);               // dated snapshot
+      expect(normalizeCodexModel(`azure/openai/${base}-20260101`)).toBe(base);  // prefix + dated
+      expect(normalizeCodexModel(`${base}-latest`)).toBe(base);                 // -latest alias
+      expect(normalizeCodexModel(`  ${base.toUpperCase()} `)).toBe(base);       // case + whitespace
+    }
+  });
+
+  it('the money-path guard: EVERY known model prices its dated/-latest form identically to bare (never DEFAULT)', () => {
+    const shape = { day: '2026-08-28', input: 1_000_000, cached: 250_000, output: 40_000 };
+    for (const base of Object.keys(CODEX_MODEL_PRICING)) {
+      const bare = priceCodexEvent({ ...shape, rawModel: base });
+      for (const variant of [`${base}-20260101`, `${base}-latest`, `azure/openai/${base}-20260101`]) {
+        expect(priceCodexEvent({ ...shape, rawModel: variant })).toBeCloseTo(bare, 12);
+      }
+    }
+    // The headline fingerprint: gpt-5.6-luna is exactly 25x cheaper than DEFAULT,
+    // so a dated luna call that fell to DEFAULT (the pre-fix bug) would be 25x more.
+    const luna = priceCodexEvent({ ...shape, cached: 0, output: 0, rawModel: 'gpt-5.6-luna-20260101' });
+    expect((shape.input * DEFAULT_CODEX_RATE.input) / luna).toBeCloseTo(25, 6);
+  });
+
+  it('a snapshot/-latest suffix on an UNKNOWN base still returns "" (never invents a match)', () => {
+    expect(normalizeCodexModel('gpt-9-imaginary-20260101')).toBe('');
+    expect(normalizeCodexModel('totally-unknown-latest')).toBe('');
+    expect(normalizeCodexModel('azure/openai/not-a-model-20260101')).toBe('');
+  });
+
+  it('does not resolve inherited Object.prototype keys (would price as NaN, silently $0)', () => {
+    // CODEX_MODEL_PRICING is a plain object; a truthy index would treat
+    // `constructor`/`toString`/`__proto__` as rates. Membership must be hasOwn.
+    expect(normalizeCodexModel('constructor')).toBe('');
+    expect(normalizeCodexModel('constructor-20260101')).toBe('');
+    expect(normalizeCodexModel('__proto__-latest')).toBe('');
+    expect(normalizeCodexModel('toString')).toBe('');
+    // …and pricing such an id falls to DEFAULT, never NaN.
+    expect(Number.isFinite(priceCodexEvent({ day: '2026-08-28', rawModel: 'constructor-20260101', input: 1_000, cached: 0, output: 0 }))).toBe(true);
+  });
 });
 
 describe('parseCodexRollout + priceCodexFiles', () => {

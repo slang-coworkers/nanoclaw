@@ -75,10 +75,13 @@ export const DEFAULT_CODEX_RATE: CodexRate = { input: 5e-6, output: 30e-6, cache
  *
  * `gpt-5.6-sol` and `gpt-5.5` are SOLVED: eight per-day rows from real prod
  * sessions fit these three rates with zero residual against `ccusage codex`.
- * The `-codex` siblings resolve to the same azure LiteLLM family and are listed
- * so a routine model switch does not raise a spurious "unknown model" warning;
- * numerically they are identical to `DEFAULT_CODEX_RATE`, so listing them
- * changes no charge either way.
+ * The rest of the family carries its OWN published rates — they are NOT all
+ * identical to `DEFAULT_CODEX_RATE`: `gpt-5.6-terra` is 2.5x cheaper, and
+ * `gpt-5.6-luna` is 25x cheaper. So resolving a model to its exact key MATTERS —
+ * a model that normalizes to '' falls to `DEFAULT_CODEX_RATE` ($5/$30) and a
+ * cheap model priced there is over-charged up to 25x (a `gpt-5.6-luna` session
+ * would hard-stop at ~4% of its ceiling). That is exactly why the normalizer
+ * strips dated/`-latest` suffixes and must stay byte-identical to the dashboard.
  *
  * Field names and keys mirror `dashboard/codex-costs.ts` (the host copy) — the
  * two tables are duplicated, not shared, for the same reason `pricing.ts` is:
@@ -122,12 +125,29 @@ export const CODEX_MODEL_PRICING: Record<string, CodexRate> = {
  */
 export function normalizeCodexModel(model: string | undefined): string {
   if (!model) return '';
-  let m = model.trim().toLowerCase();
-  // Strip any leading provider path segments (`azure/openai/`, `openai/openai/`,
-  // `openai/`) — the model id itself never contains a slash.
-  const slash = m.lastIndexOf('/');
-  if (slash >= 0) m = m.slice(slash + 1);
-  return CODEX_MODEL_PRICING[m] ? m : '';
+  // Only the last path segment names the model; everything before it is provider
+  // routing (`azure/openai/…`, `openai/openai/…`). MUST match dashboard/
+  // codex-costs.ts `normalizeCodexModel` EXACTLY — the two are duplicated (bun
+  // container vs Node host) and both feed cost. When they disagreed, a dated
+  // snapshot id (`gpt-5.6-luna-20260101`) fell through to DEFAULT_CODEX_RATE here
+  // ($5/$30) while the dashboard priced it correctly — a silent 25x overcharge
+  // (luna is 25x cheaper than DEFAULT) that hard-stops a session at ~4% of its
+  // ceiling. So strip a `-YYYYMMDD` snapshot suffix and a `-latest` suffix, same
+  // order, same fallbacks.
+  //
+  // Membership is `hasOwnProperty`, NOT a truthy index: `CODEX_MODEL_PRICING` is
+  // a plain object, so `['constructor']`/`['toString']`/`['__proto__']` inherit
+  // truthy values from Object.prototype — a wire id like `constructor-20260101`
+  // would otherwise resolve to a non-rate and price as NaN (silently $0). Both
+  // copies must gate the same way.
+  const hasRate = (key: string): boolean => Object.prototype.hasOwnProperty.call(CODEX_MODEL_PRICING, key);
+  let m = model.trim().toLowerCase().split('/').pop() || '';
+  if (hasRate(m)) return m;
+  const undated = m.replace(/-\d{8}$/, '');
+  if (hasRate(undated)) return undated;
+  m = m.replace(/-latest$/, '');
+  if (hasRate(m)) return m;
+  return '';
 }
 
 /** One billed model call, as reported by `info.last_token_usage`. */
@@ -227,6 +247,14 @@ export interface CodexScan {
    * caller still needs to know not to treat this scan as authoritative.
    */
   errors: number;
+  /**
+   * Every `codexEventKey` present in THIS scan's rollout files. The ledger prune
+   * needs it: an owner entry whose owning file has vanished may STILL be
+   * suppressing a byte-identical replayed call in a surviving file, and dropping
+   * it there would let the survivor re-claim and re-charge that call. An owner is
+   * safe to prune only when its key appears in no live file (see pruneCodexLedger).
+   */
+  eventKeys: Set<string>;
 }
 
 /** UTC day key of an ISO timestamp; '' when unparseable. */
@@ -469,7 +497,8 @@ export function scanCodexRollouts(home: string = codexHome(), owners: Map<string
     parsed.push(entry);
   }
   const { files, unpricedModels } = priceCodexFiles(parsed, owners);
-  return { files, unpricedModels, errors };
+  const eventKeys = new Set(parsed.flatMap(({ events }) => events.map(codexEventKey)));
+  return { files, unpricedModels, errors, eventKeys };
 }
 
 /**
