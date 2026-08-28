@@ -1,8 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 import { initTestSessionDb, closeSessionDb, getInboundDb, getOutboundDb } from './mailbox/sqlite/connection.js';
 import { getUndeliveredMessages } from './db/messages-out.js';
-import { processQuery } from './poll-loop.js';
+import { processQuery, __costCapTestHooks as H } from './poll-loop.js';
+import { __resetCodexCostMemo } from './codex-cost.js';
 import type { AgentQuery, ProviderEvent } from './providers/types.js';
 
 // Adversarial verification of the one-door contract for emitsMidTurnText
@@ -517,5 +521,203 @@ describe('capability=true keeps base result-door handling for door-skipped block
 
     expect(deliveredTexts()).toEqual([]);
     expect(nudges(pushes)).toHaveLength(1);
+  });
+});
+
+// ── #1360 MAJOR #3: a native-codex turn ending in ERROR must settle at the ──────
+// result boundary, not bypass it.
+//
+// Pre-fix, providers/codex.ts yielded `{type:'error'}` on turn/failed. The
+// poll-loop streaming chain handles usage/text/result but NOT error, so a failed
+// codex turn was only logged and dropped — it never reached the `result` branch,
+// so foldCodexCost() + the ceiling hard-stop never ran, costStopRequested stayed
+// false, and the poller could admit another turn past the ceiling. Post-fix the
+// provider yields a structured error-RESULT (isError:true) so the turn flows
+// through delivery + the codex result-boundary settle. This drives that exact
+// path through processQuery with a ceiling-crossing rollout on disk.
+describe('#1360 — native-codex cost settle + one-shot hard-stop deferral at the result boundary', () => {
+  const D_TODAY = new Date().toISOString().slice(0, 10);
+  let home: string;
+  let prevHome: string | undefined;
+
+  // Full pristine cost state: setState only writes the keys present, and the
+  // module globals are process-wide (they leak across sibling test files), so
+  // seeding every field keeps this test independent of run order. afterEach
+  // disables tracking again so nothing leaks out.
+  function seedCost(over: Parameters<typeof H.setState>[0] = {}): void {
+    H.setState({
+      costEnabled: true,
+      costImmortal: false,
+      costWindow: 'lifetime',
+      costDayKey: undefined,
+      costAllotmentUsd: 1000,
+      costCapUsd: 1000,
+      costSpentUsd: 0,
+      costEscalatedAt: undefined,
+      costDecision: undefined,
+      costDecidedAt: undefined,
+      costStopRequested: false,
+      costCeilingUsd: 0,
+      costCeilingAllotmentUsd: 0,
+      costCeilingEscalated: false,
+      costCeilingHardStop: false,
+      costBudgetGen: 0,
+      costEpisodeId: undefined,
+      pendingCostNudge: undefined,
+      codexLedger: {},
+      codexUsdCharged: 0,
+      codexLedgerBaselinePending: false,
+      seenMessageIds: [],
+      turnSawMessageUsage: false,
+      turnMessageCostUsd: 0,
+      turnUnpricedCount: 0,
+      turnMissingIdCount: 0,
+      turnNoUsageCount: 0,
+      codexEventOwners: {},
+      ...over,
+    });
+  }
+
+  function writeRollout(day: string, inputTokens: number): void {
+    const [y, m, d] = day.split('-');
+    const dir = path.join(home, 'sessions', y, m, d);
+    fs.mkdirSync(dir, { recursive: true });
+    const u = {
+      input_tokens: inputTokens,
+      cached_input_tokens: 0,
+      cache_write_input_tokens: 0,
+      output_tokens: 0,
+      reasoning_output_tokens: 0,
+      total_tokens: inputTokens,
+    };
+    const lines = [
+      JSON.stringify({
+        timestamp: `${day}T00:00:00.000Z`,
+        type: 'turn_context',
+        payload: { cwd: '/workspace/agent', model: 'gpt-5.6-sol' },
+      }),
+      JSON.stringify({
+        timestamp: `${day}T10:00:00.000Z`,
+        type: 'event_msg',
+        payload: { type: 'token_count', info: { total_token_usage: u, last_token_usage: u } },
+      }),
+    ];
+    fs.writeFileSync(path.join(dir, `rollout-${day}T10-00-00-err.jsonl`), lines.join('\n'));
+  }
+
+  beforeEach(() => {
+    prevHome = process.env.CODEX_HOME;
+    home = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-err-'));
+    process.env.CODEX_HOME = home;
+    __resetCodexCostMemo();
+    seedDest();
+  });
+
+  afterEach(() => {
+    if (prevHome === undefined) delete process.env.CODEX_HOME;
+    else process.env.CODEX_HOME = prevHome;
+    fs.rmSync(home, { recursive: true, force: true });
+    __resetCodexCostMemo();
+    // Disable tracking so the enabled state can't bleed into sibling files.
+    H.setState({ costEnabled: false, costStopRequested: false, costCeilingHardStop: false, codexLedger: {}, codexEventOwners: {} });
+  });
+
+  it('folds rollout spend, crosses the ceiling, hard-stops, and delivers the error notice', async () => {
+    // 1M non-cached input @ $5/M = $5 of chargeable codex spend on disk, ceiling $3.
+    seedCost({ costCeilingUsd: 3, costCeilingAllotmentUsd: 3 });
+    writeRollout(D_TODAY, 1_000_000);
+
+    let ended = false;
+    let pulled = 0;
+    async function* events(): AsyncGenerator<ProviderEvent> {
+      pulled++;
+      // What codex.ts now yields on turn/failed.
+      yield { type: 'result', text: 'Turn timed out after 300000ms', isError: true };
+      // A second turn must NOT be admitted after the ceiling hard-stop — pulling
+      // it is exactly the "admit another turn past the ceiling" regression #3 fixes.
+      pulled++;
+      yield { type: 'result', text: '<message to="discord-main">second turn</message>' };
+    }
+    const query: AgentQuery = {
+      push: () => {},
+      end: () => {
+        ended = true;
+      },
+      abort: () => {},
+      events: events(),
+    };
+
+    await processQuery(query, CHAT_ROUTING, ['m1'], 'codex', undefined, 'prompt', undefined, false);
+
+    const s = H.getState();
+    expect(s.costSpentUsd).toBeCloseTo(5, 6); // the FAILED turn's rollout was folded — the bug was it wasn't
+    expect(s.costStopRequested).toBe(true); // …and the crossing quiesced the session
+    expect(s.costCeilingHardStop).toBe(true);
+    expect(ended).toBe(true); // the settle hard-stopped the stream
+    expect(pulled).toBe(1); // the second turn was never admitted
+    // The error text reached the channel instead of being silently dropped.
+    expect(deliveredTexts().some((t) => t.includes('Turn timed out'))).toBe(true);
+  });
+
+  it('one-shot deferral: a queued correction defers the codex hard-stop exactly ONCE, then it fires', async () => {
+    // The re-review BLOCKER: the deferral flag was per-result, so EVERY
+    // gate-refused result past the ceiling earned a fresh deferral — codex could
+    // spend past the hard ceiling without bound (a delivery gate keeps denying
+    // while awaiting the fix). The fix hoists a ONE-SHOT allowance to processQuery
+    // scope. Here the ceiling is ALREADY crossed and BOTH results are refused by
+    // the chain-routing gate (each queues a corrective retry): result 1 must
+    // DEFER (no query.end → the stream reaches result 2), result 2 must HARD-STOP
+    // (query.end), and result 3 must never be pulled.
+    seedCost({ costCeilingUsd: 3, costSpentUsd: 5, costStopRequested: true, costCeilingHardStop: true });
+
+    // Each result body carries a `[Resolution]` delivery marker but the <message>
+    // tag omits `in_reply_to`, so checkRoutingGate refuses it and returns a
+    // sender-directed correction. Point the gate's denial-count state at an
+    // absent file (denials read as 0 → the soft-cap never yields), so BOTH
+    // results are refused deterministically regardless of the CWD's writability.
+    const savedRoutingState = process.env.ROUTING_GATE_STATE_PATH;
+    process.env.ROUTING_GATE_STATE_PATH = path.join(home, 'no-routing-state.json');
+    try {
+      let ended = false;
+      let pulled = 0;
+      const pushed: string[] = [];
+      async function* events(): AsyncGenerator<ProviderEvent> {
+        pulled++;
+        yield { type: 'result', text: '<message to="discord-main">[Resolution] first — deferred</message>' };
+        pulled++;
+        yield { type: 'result', text: '<message to="discord-main">[Resolution] second — hard-stops</message>' };
+        pulled++;
+        yield { type: 'result', text: '<message to="discord-main">[Resolution] third — must never run</message>' };
+      }
+      const query: AgentQuery = {
+        push: (m) => {
+          pushed.push(m);
+        },
+        end: () => {
+          ended = true;
+        },
+        abort: () => {},
+        events: events(),
+      };
+
+      const qr = await processQuery(query, CHAT_ROUTING, ['m1'], 'codex', undefined, 'prompt', undefined, false);
+
+      // Result 1's gate-refusal correction was pushed (deferred → ran as result 2);
+      // result 2's correction is WITHHELD, not pushed, because the hard-stop would
+      // tear it down before it could run (#1360 re-review terminal MAJOR).
+      expect(pushed.length).toBe(1);
+      expect(pulled).toBe(2); // result 1 DEFERRED (reached result 2); result 3 was never pulled
+      expect(ended).toBe(true); // result 2 HARD-STOPPED the stream — the deferral did not re-arm
+      // The terminal result must NOT be silently completed: it is acked FAILED
+      // (reclaimable after a cost-cap continuation) and returned in undeliveredIds
+      // so the outer fallback markCompleted skips it…
+      expect(qr.undeliveredIds).toContain('m1');
+      // …and a durable "answer withheld — cost ceiling" notice reached the user.
+      expect(deliveredTexts().some((t) => t.toLowerCase().includes('withheld'))).toBe(true);
+      expect(H.getState().costCeilingHardStop).toBe(true);
+    } finally {
+      if (savedRoutingState === undefined) delete process.env.ROUTING_GATE_STATE_PATH;
+      else process.env.ROUTING_GATE_STATE_PATH = savedRoutingState;
+    }
   });
 });
