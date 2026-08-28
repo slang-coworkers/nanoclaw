@@ -540,6 +540,9 @@ describe('#1327 — codex MCP-tool spend folded into the cap', () => {
       codexLedger: {
         // gone + ancient → pruned
         '2000/01/01/rollout-old.jsonl 2000-01-01': 3,
+        // gone + timestamp-less ('unknown-day') but path is ancient → pruned via
+        // the path-derived retention date (else it would live forever).
+        '2000/01/01/rollout-noday.jsonl unknown-day': 7,
         // gone but recent → kept (a restore is still plausible)
         [`2026/01/01/rollout-recent.jsonl ${D_TODAY}`]: 4,
       },
@@ -547,9 +550,29 @@ describe('#1327 — codex MCP-tool spend folded into the cap', () => {
     H.foldCodexCost();
     const ledger = H.getState().codexLedger;
     expect(ledger['2000/01/01/rollout-old.jsonl 2000-01-01']).toBeUndefined();
+    expect(ledger['2000/01/01/rollout-noday.jsonl unknown-day']).toBeUndefined();
     expect(ledger[`2026/01/01/rollout-recent.jsonl ${D_TODAY}`]).toBeCloseTo(4, 8);
     // …and the live file's own watermark was written, not pruned.
     expect(Object.keys(ledger).some((k) => k.includes('rollout-' + D_TODAY + 'T10-00-00-live'))).toBe(true);
+  });
+
+  it('keeps an owner whose file vanished while a live rollout still replays its call (no double-charge)', () => {
+    // Finding-2 regression. Two OLD rollouts share a byte-identical call, so the
+    // first-sorted file OWNS and bills it and the fork is deduped behind it.
+    // Delete the owner file and fold twice: pruning the owner while the fork is
+    // still on disk with the same key would let the fork re-claim and re-charge.
+    seed();
+    const call = { ts: '2000-01-01T10:00:00.000Z', input: 1_000_000 }; // ancient → inside the 30-day prune window
+    const ownerPath = writeRollout('2000-01-01', 'aaa-owner', [call]);
+    writeRollout('2000-01-01', 'zzz-fork', [call]); // identical tuple → deduped behind the owner
+    H.foldCodexCost();
+    expect(H.getState().costSpentUsd).toBeCloseTo(5, 6); // ONE call billed, not two
+
+    fs.rmSync(ownerPath);
+    __resetCodexCostMemo();
+    H.foldCodexCost(); // prune runs here — the owner must be KEPT (fork still holds the key)
+    H.foldCodexCost(); // a dropped owner would let the fork re-claim + re-charge on this fold
+    expect(H.getState().costSpentUsd).toBeCloseTo(5, 6); // still ONE call — no double charge
   });
 
   it('never prunes a watermark whose file is still on disk', () => {
