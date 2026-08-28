@@ -313,7 +313,14 @@ function initCostTracking(providerName: string): void {
   // false for it (that provider emits no `usage` event, and flipping it on would
   // start writing cost_cap rows for groups the dashboard currently renders "—"
   // for rather than a false $0). Tracked separately; #1327 does not close it.
-  costEnabled = costAllotmentUsd > 0 && providerName === 'claude';
+  // Meter both Claude (usage events + codex fold) AND native codex (fold only —
+  // the codex provider emits no usage event, so enforcement rides entirely on
+  // the turn-boundary `foldCodexCost()` + the costStopRequested gate, which is
+  // the honest turn-granular bound). #1333: a codex-primary group previously had
+  // NO cap at all. Still gated on a configured cap (`costAllotmentUsd > 0`), so a
+  // codex-primary group WITHOUT a cap stays unmetered exactly as before — this
+  // only turns enforcement on where a cap is actually set.
+  costEnabled = costAllotmentUsd > 0 && (providerName === 'claude' || providerName === 'codex');
   if (!costEnabled) return;
 
   const persisted = getCostCap();
@@ -358,7 +365,14 @@ function initCostTracking(providerName: string): void {
   codexEventOwners = persisted?.codexEventOwners ? new Map(Object.entries(persisted.codexEventOwners)) : new Map();
   codexLedgerBaselinePending = persisted
     ? (persisted.codexBaselinePending ?? persisted.codexLedger === undefined)
-    : false;
+    : // No persisted cost row = first time under cost tracking. A Claude-primary
+      // session starts with no rollout files, so it owes no baseline. But a
+      // NATIVE-CODEX session (#1333) being metered for the first time has ALREADY
+      // accumulated rollout history while it ran uncapped — it MUST baseline that
+      // history (absorb without charging) or the first fold would retroactively
+      // bill it and hard-stop it on the deploy tick. A brand-new codex session
+      // has no rollouts, so it baselines $0 (harmless).
+      providerName === 'codex';
   codexUsdCharged = persisted?.codexUsd && persisted.codexUsd > 0 ? persisted.codexUsd : 0;
   if (costWindow === 'daily' && !(persisted?.dayKey === costDayKey)) {
     // A stale day's spend is discarded, so the codex figure attributed to it is
