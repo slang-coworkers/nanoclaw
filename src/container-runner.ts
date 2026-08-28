@@ -2396,9 +2396,7 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
   // `CLAUDE_TRANSCRIPT_ROTATE_AGE_DAYS=` in host env (`??` only guards
   // `undefined`, not '') would therefore silently reactivate the exact loss
   // this line exists to stop. Forward a finite numeric string as-is, else '0'.
-  env.CLAUDE_TRANSCRIPT_ROTATE_AGE_DAYS = normalizeRotateAgeDays(
-    process.env.CLAUDE_TRANSCRIPT_ROTATE_AGE_DAYS,
-  );
+  env.CLAUDE_TRANSCRIPT_ROTATE_AGE_DAYS = normalizeRotateAgeDays(process.env.CLAUDE_TRANSCRIPT_ROTATE_AGE_DAYS);
 
   // Bypass proxy for host-local traffic (dashboard hooks, MCP proxy) only.
   // NOTE: discord.com must NOT be bypassed. The container-side slang-mcp
