@@ -18,6 +18,7 @@ import {
   armSessionLifecycle,
   assertComposedDocUsable,
   composeSessionSpec,
+  normalizeRotateAgeDays,
   parseMemoryMb,
   parsePidsLimit,
   readStandingInstructions,
@@ -69,6 +70,30 @@ describe('resolveProviderName', () => {
   it('treats empty string as unset (falls through)', () => {
     expect(resolveProviderName('', 'opencode')).toBe('opencode');
     expect(resolveProviderName(null, '')).toBe('claude');
+  });
+});
+
+describe('normalizeRotateAgeDays', () => {
+  it('defaults to "0" (age rotation disabled) when unset', () => {
+    expect(normalizeRotateAgeDays(undefined)).toBe('0');
+  });
+
+  it('maps a blank/whitespace value to "0" — NOT the container-side 14-day default', () => {
+    // The blocker: the container reader treats '' / '   ' as the 14-day
+    // default, so forwarding one silently re-enables the loss (#1327).
+    expect(normalizeRotateAgeDays('')).toBe('0');
+    expect(normalizeRotateAgeDays('   ')).toBe('0');
+  });
+
+  it('maps a non-numeric value to "0" rather than forwarding garbage', () => {
+    expect(normalizeRotateAgeDays('soon')).toBe('0');
+    expect(normalizeRotateAgeDays('14d')).toBe('0');
+  });
+
+  it('forwards a finite numeric override verbatim (trimmed)', () => {
+    expect(normalizeRotateAgeDays('60')).toBe('60');
+    expect(normalizeRotateAgeDays('  60  ')).toBe('60');
+    expect(normalizeRotateAgeDays('0')).toBe('0');
   });
 });
 
