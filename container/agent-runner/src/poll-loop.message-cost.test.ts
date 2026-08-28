@@ -855,3 +855,29 @@ describe('#1327 — persistence + respawn', () => {
     expect(H.getState().codexLedgerBaselinePending).toBe(true);
   });
 });
+
+describe('#1333 — native-codex sessions are metered (via the fold), safely', () => {
+  it('a codex-primary session WITH a cap is enabled and baselines its existing history', () => {
+    // No persisted row = first time metered. It has run uncapped and accumulated
+    // rollout history, so it MUST baseline (absorb without charging) — else the
+    // first fold retroactively bills it and hard-stops it on the deploy tick.
+    __setConfigForTest(cfg({ costCapT2Usd: 50, costCeilingT2Usd: 100 } as Partial<RunnerConfig>));
+    H.initCostTracking('codex');
+    const s = H.getState();
+    expect(s.costEnabled).toBe(true);
+    expect(s.codexLedgerBaselinePending).toBe(true);
+  });
+
+  it('a codex-primary session WITHOUT a cap stays unmetered (safe — no behavior change)', () => {
+    __setConfigForTest(cfg({ costCapT2Usd: 0 } as Partial<RunnerConfig>));
+    H.initCostTracking('codex');
+    expect(H.getState().costEnabled).toBe(false);
+  });
+
+  it('does NOT change Claude behavior: a first-time Claude session still owes no baseline', () => {
+    __setConfigForTest(cfg({ costCapT2Usd: 50, costCeilingT2Usd: 100 } as Partial<RunnerConfig>));
+    H.initCostTracking('claude');
+    expect(H.getState().costEnabled).toBe(true);
+    expect(H.getState().codexLedgerBaselinePending).toBe(false);
+  });
+});

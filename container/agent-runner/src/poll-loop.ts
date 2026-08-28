@@ -97,10 +97,13 @@ const MAILBOX_FAILURE_STREAK_EXIT = 10;
 // State is persisted to outbound.db `session_state` under the single `cost_cap`
 // JSON key (the shared contract the dashboard reads) so spend survives respawns.
 //
-// FIX #4: only the Claude provider emits 'usage' events. costEnabled therefore
-// requires providerName === 'claude'; other providers accrue nothing and would
-// otherwise paint a false-green $0, so we leave the cap disabled (no row → the
-// dashboard shows "—").
+// Enabled for the Claude AND codex providers (#1333). Claude spend accrues from
+// its 'usage' events at the turn boundary; codex never emits 'usage', so its
+// spend accrues from foldCodexCost reading the rollout files — folded at the
+// poll boundary AND settled again at each `result` (codex's turn boundary) so
+// the ceiling hard-stop is turn-granular, not merely poll-granular. A provider
+// that does neither accrues nothing and would paint a false-green $0, so the cap
+// stays disabled for it (no row → the dashboard shows "—").
 //
 // Module-level because the accounting happens inside `processQuery`'s event
 // loop (a free function) while init/override live in `runPollLoop`; one
@@ -332,9 +335,11 @@ function publishRunnerReadiness(): void {
  * cap / stop decision) survives a container respawn. Immortality comes from the
  * authoritative host-materialized config field, not the persisted row.
  *
- * FIX #4: the cap is enabled only for the Claude provider (the only one that
- * emits 'usage' events). A non-Claude group leaves costEnabled false so no
- * cost_cap row is written — the dashboard renders "—" rather than a false $0.
+ * Cost tracking is enabled only for a provider with a real accounting source:
+ * Claude prices its per-message/`usage` events (plus codex rollout folding), and
+ * native codex prices via rollout folding at the poll AND `result` boundaries.
+ * A provider with neither leaves costEnabled false so no cost_cap row is written
+ * — the dashboard renders "—" rather than a false $0.
  *
  * Window handling:
  *  - lifetime (non-immortal): adopt persisted spend/escalation as-is.
@@ -356,14 +361,16 @@ function initCostTracking(providerName: string): void {
   costCeilingAllotmentUsd = cfg.costCeilingT2Usd && cfg.costCeilingT2Usd > 0 ? cfg.costCeilingT2Usd : 0;
   costImmortal = cfg.immortal === true;
   costWindow = costImmortal ? 'daily' : 'lifetime';
-  // SCOPE (issue #1327): codex spend is folded in for sessions whose PRIMARY
-  // provider is Claude — i.e. codex reached via `mcp__codex__codex`, which is
-  // how `codex-critique` and every coworker overlay uses it. A group configured
-  // to run the codex provider NATIVELY is still unenforced: costEnabled stays
-  // false for it (that provider emits no `usage` event, and flipping it on would
-  // start writing cost_cap rows for groups the dashboard currently renders "—"
-  // for rather than a false $0). Tracked separately; #1327 does not close it.
-  costEnabled = costAllotmentUsd > 0 && providerName === 'claude';
+  // Meter both Claude (usage events + codex fold) AND native codex (fold only —
+  // the codex provider emits no usage event, so its spend accrues from
+  // `foldCodexCost()` at the poll boundary AND at each `result` (codex's turn
+  // boundary), where the ceiling hard-stop then ends the stream; the
+  // costStopRequested gate keeps subsequent polls quiesced — the honest
+  // turn-granular bound). #1333: a codex-primary group previously had NO cap at
+  // all. Still gated on a configured cap (`costAllotmentUsd > 0`), so a
+  // codex-primary group WITHOUT a cap stays unmetered exactly as before — this
+  // only turns enforcement on where a cap is actually set.
+  costEnabled = costAllotmentUsd > 0 && (providerName === 'claude' || providerName === 'codex');
   if (!costEnabled) return;
 
   // #65 dual-run: create the durable ledger table once per session. Best-effort.
@@ -408,14 +415,22 @@ function initCostTracking(providerName: string): void {
   }
   // Codex ledger (issue #1327). The baseline marker is an EXPLICIT persisted
   // flag so it survives a crash between this persist and the first fold; the
-  // ledger's absence is only the fallback for rows written before #1327. A
-  // brand-new session (no persisted row at all) owes no baseline — it has no
-  // rollout files, and charging from its first codex call is exactly right.
+  // ledger's absence is only the fallback for rows written before #1327. With no
+  // persisted row, a Claude-primary session owes no baseline (it has no rollout
+  // files); a native-codex session baselines its existing rollout history before
+  // charging new deltas — see the branch below.
   codexLedger = persisted?.codexLedger ? { ...persisted.codexLedger } : {};
   codexEventOwners = persisted?.codexEventOwners ? new Map(Object.entries(persisted.codexEventOwners)) : new Map();
   codexLedgerBaselinePending = persisted
     ? (persisted.codexBaselinePending ?? persisted.codexLedger === undefined)
-    : false;
+    : // No persisted cost row = first time under cost tracking. A Claude-primary
+      // session starts with no rollout files, so it owes no baseline. But a
+      // NATIVE-CODEX session (#1333) being metered for the first time has ALREADY
+      // accumulated rollout history while it ran uncapped — it MUST baseline that
+      // history (absorb without charging) or the first fold would retroactively
+      // bill it and hard-stop it on the deploy tick. A brand-new codex session
+      // has no rollouts, so it baselines $0 (harmless).
+      providerName === 'codex';
   codexUsdCharged = persisted?.codexUsd && persisted.codexUsd > 0 ? persisted.codexUsd : 0;
   // #65 durable ledger (dual-run) — restore the reconciliation identity alongside
   // the codex ledger so a respawn keeps the same generation, adjustment sequence,
@@ -1059,9 +1074,10 @@ function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void 
  * deploys. A brand-new session has no rollout files, so it absorbs $0 and
  * charges from its first codex call.
  *
- * Synchronous end to end — see `scanCodexRollouts`. Called only at turn
- * boundaries (before a query is built, and on the turn's aggregate `usage`
- * event), so enforcement of codex spend is turn-granular: a single turn can
+ * Synchronous end to end — see `scanCodexRollouts`. Called at turn boundaries:
+ * before a query is built, on Claude's aggregate `usage` event, and on native
+ * codex's `result` (codex emits no `usage`, so `result` IS its turn boundary).
+ * Enforcement of codex spend is therefore turn-granular: a single turn can
  * overshoot by its own codex calls. That is the honest bound; a timer here would
  * not change it, because ending a turn mid-stream is not something the runner
  * can do safely (the result/ack path owns that).
@@ -1825,6 +1841,14 @@ const SILENT_TURN_NOTICE =
   'The agent finished its turn without producing any output, so there is nothing to deliver. ' +
   'Your message was not answered — please re-send it.';
 
+// Delivered when a native-codex session hard-stops at the Tier-2 ceiling while a
+// corrective delivery retry is still queued (#1360 re-review). The retry can't
+// run (the hard stop tears the app-server down), so the answer is withheld — but
+// the inbound row is marked FAILED, not completed, so it stays reclaimable.
+const COST_CEILING_WITHHELD_NOTICE =
+  'This session reached its cost ceiling before your answer could be re-sent, so the reply was withheld. ' +
+  'It is recorded as unfinished (not silently dropped) — resume the session, or raise the ceiling, to get the answer.';
+
 /**
  * True for SQLite errors that indicate a corrupt READ view — almost always a
  * cross-mount page-cache coherency issue on Docker Desktop macOS rather than
@@ -2140,7 +2164,9 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
 
   // Cost cap (NanoClaw #1): load persisted spend so the cap survives respawns,
   // and publish the current cap state for the dashboard. Provider name gates
-  // enablement (only Claude emits the 'usage' events the cap prices — FIX #4).
+  // enablement — Claude (usage events + codex fold) and native codex (rollout
+  // fold at the poll and result boundaries) are metered; any other provider has
+  // no accounting source and stays disabled.
   initCostTracking(config.providerName);
 
   const refreshDestinations = makeDestinationsRefresher(config.systemContext);
@@ -2631,6 +2657,15 @@ export async function processQuery(
   // says a nudged turn is still awaiting its retry (so nothing is acked yet).
   let silentTurnNudged = false;
   let silentTurnOpen = false;
+  // ONE-SHOT hard-stop deferral for native codex (#1360 re-review). When a turn
+  // crosses the Tier-2 ceiling AND queued a corrective retry, the codex settle
+  // defers the hard stop ONCE so that correction can run its own turn. Hoisted to
+  // processQuery scope — deliberately NOT re-declared per result — so the
+  // allowance cannot be re-armed turn after turn: a turn that keeps getting
+  // gate-refused (the critique gate denies while awaiting approval) would
+  // otherwise defer forever and spend past the ceiling without bound. The
+  // correction's own result boundary then hard-stops regardless of what it queues.
+  let ceilingDeferralUsed = false;
   // Outbound watermark at the start of the current turn. A turn that ends with
   // no text is only truly silent if this has not moved (see the silent-turn
   // branch); resampled after every result event.
@@ -2858,6 +2893,23 @@ export async function processQuery(
         // Accumulated context must not engage a warm query by itself.
         if (!newMessages.some((m) => m.trigger === 1)) return;
 
+        // Native-codex follow-up (#1360 review, BLOCKER): never push external
+        // work into an in-flight codex query. A codex turn can cross the ceiling
+        // and hard-stop at its `result` boundary (the settle below), whose
+        // `break` finalizes the async generator and kills the codex app-server —
+        // tearing down any pushed-but-undrained turn. If we had already pushed
+        // this follow-up AND markCompleted'd it (just below), that message would
+        // be acked with no answer. Leave the rows PENDING (do not markProcessing)
+        // and end the query; the outer poll re-claims them after the turn-boundary
+        // settle — held by the cost-stop gate if the ceiling was crossed, or run
+        // in a fresh query if it was not.
+        if (providerName === 'codex') {
+          log('Codex follow-up arrived — ending the active query so it is re-claimed after the turn-boundary cost settle');
+          endedForCommand = true;
+          query.end();
+          return;
+        }
+
         const newIds = newMessages.map((m) => m.id);
         markProcessing(newIds);
 
@@ -3021,6 +3073,21 @@ export async function processQuery(
         // the trigger un-acked so the host redrive sweep re-arms it. Permanent
         // errors and non-a2a channels fall through to the normal dispatch path.
         let bounced = false;
+        // Corrective retries queued by THIS result (gate-refusal / wrap /
+        // task-block / silent-turn nudge) re-drive delivery of this turn's answer
+        // on the SAME open query. They are COLLECTED here and flushed as ONE push
+        // below (see `queuedCorrection`), because a single result can fire more
+        // than one — e.g. a gate-refusal (independent of the wrap decision) plus a
+        // wrap-nudge. Pushing them separately would let the codex hard-stop tear
+        // down a still-pending second correction; one coalesced push cannot be
+        // half-drained. For codex the `result` boundary is also the cost settle,
+        // so a queued correction defers the hard stop ONCE (see ceilingDeferralUsed);
+        // `costStopRequested` blocks NEW external work meanwhile. Inert for Claude
+        // (its hard-stop is the separate `usage`-branch check).
+        const corrections: string[] = [];
+        const pushCorrection = (message: string): void => {
+          corrections.push(message);
+        };
         // Any result closes out an open silent turn: either it delivered (and
         // acks normally below) or it was silent again (and the branch at the
         // bottom finalizes it, because silentTurnNudged is already set).
@@ -3071,7 +3138,7 @@ export async function processQuery(
           // agent so it re-sends correctly (parity with the bash-hook gates).
           // The gates' own 3-denial soft-cap bounds the re-send loop.
           if (gateRefusals?.length) {
-            query.push(`<system>${gateRefusals.join('\n\n')}</system>`);
+            pushCorrection(`<system>${gateRefusals.join('\n\n')}</system>`);
           }
           // One-door task delivery: the final text becomes the run log entry
           // while explicit append-log calls remain optional additive notes.
@@ -3135,14 +3202,14 @@ export async function processQuery(
                 : `Your response was not delivered — it was not wrapped in <message to="name">...</message> blocks. ` +
                   `All output must be wrapped: use <message to="name"> for content to send, or <internal> for scratchpad. ` +
                   `Please re-send your response with the correct wrapping.`;
-              query.push(`<system>${reason} Your destinations: ${names}.</system>`);
+              pushCorrection(`<system>${reason} Your destinations: ${names}.</system>`);
             }
             if (willRetryTaskBlocks) {
               taskBlockNudged = true;
               const names = getAllDestinations()
                 .map((d) => d.name)
                 .join(', ');
-              query.push(buildTaskBlockNudge(taskBlocks, names));
+              pushCorrection(buildTaskBlockNudge(taskBlocks, names));
             }
             // A retry result (wrapping or task-block nudge) answers the SAME
             // user prompt — keep it queued so the retry archives against it,
@@ -3180,7 +3247,7 @@ export async function processQuery(
               .map((d) => d.name)
               .join(', ');
             log('Turn produced no output at all — pushing a re-send nudge before acking anything');
-            query.push(
+            pushCorrection(
               `<system>Your last turn produced NO output — no final text and no message sent. ` +
                 `Nothing reached the user, who is still waiting on the message above. ` +
                 `Re-send your answer now, wrapped in <message to="name">...</message>. ` +
@@ -3193,12 +3260,59 @@ export async function processQuery(
             await finalizeSilentTurn(event.text);
           }
         }
-        // Ack the turn as completed UNLESS it was a transient a2a bounce (left
-        // pending above for the host redrive), it delivered nothing and was
-        // acked 'failed' by finalizeSilentTurn, or a silent turn is still
-        // awaiting its re-send retry. This replaces the former unconditional
-        // markCompleted at the top of the branch.
-        if (!bounced && !silentTurnOpen && undeliveredIds.length === 0) markCompleted(initialBatchIds);
+        // `queuedCorrection` is the per-result "did THIS result queue a
+        // correction?" the settle below reads.
+        const queuedCorrection = corrections.length > 0;
+        // TERMINAL codex ceiling stop (#1360 re-review MAJOR). The ceiling is
+        // already crossed (costCeilingHardStop is latched — it never clears within
+        // a query) AND the one-shot deferral is already spent, so the settle below
+        // WILL hard-stop this result. If it ALSO queued a correction, that
+        // correction is doomed: query.end() tears the app-server down before it
+        // runs. Pushing it is futile, and leaving the batch markCompleted would
+        // silently consume an unanswered message that can never be reclaimed after
+        // a cost-cap continuation. Withhold-notice + markFailed instead. Decidable
+        // here even though codex's own fold runs in the settle below, because
+        // `ceilingDeferralUsed ⟹ costCeilingHardStop` (the deferral can only have
+        // been spent on a prior crossing, and neither flag flips back mid-query).
+        const terminalCeilingStop =
+          providerName === 'codex' && costCeilingHardStop && ceilingDeferralUsed && queuedCorrection;
+        // Flush every correction queued by this result as ONE push (see the
+        // `corrections` note above), so the codex hard-stop can never strand a
+        // second queued correction mid-turn — EXCEPT on the terminal stop, where
+        // the correction can't run at all and is handled below instead.
+        if (queuedCorrection && !terminalCeilingStop) query.push(corrections.join('\n\n'));
+        if (terminalCeilingStop) {
+          // Surface the withheld answer durably (same delivery mechanism as
+          // finalizeSilentTurn), then ack the batch FAILED — NOT completed — so
+          // the outer fallback markCompleted skips it and the row stays
+          // reclaimable. The settle below still ends the stream.
+          if (routing.channelType && routing.platformId && routing.channelType !== 'system') {
+            await writeMessageOut({
+              id: generateId(),
+              in_reply_to: routing.inReplyTo,
+              kind: 'chat',
+              platform_id: routing.platformId,
+              channel_type: routing.channelType,
+              thread_id: routing.threadId,
+              content: JSON.stringify({ text: COST_CEILING_WITHHELD_NOTICE }),
+            });
+          } else {
+            log('Cost-ceiling withheld notice has no deliverable routing — recorded in the log only');
+          }
+          for (const id of initialBatchIds) markFailed(id);
+          undeliveredIds.push(...initialBatchIds);
+          log(
+            `Cost ceiling $${costCeilingUsd.toFixed(2)} reached with a corrective retry still queued — ` +
+              `answer withheld, batch marked failed (spent=$${costSpentUsd.toFixed(2)})`,
+          );
+        } else if (!bounced && !silentTurnOpen && undeliveredIds.length === 0) {
+          // Ack the turn as completed UNLESS it was a transient a2a bounce (left
+          // pending above for the host redrive), it delivered nothing and was
+          // acked 'failed' by finalizeSilentTurn, or a silent turn is still
+          // awaiting its re-send retry. This replaces the former unconditional
+          // markCompleted at the top of the branch.
+          markCompleted(initialBatchIds);
+        }
         // A turn that delivered through the content door (not just the silent
         // branch above, which only runs for empty results) also answers the
         // batch — record it before the watermark is resampled.
@@ -3216,6 +3330,45 @@ export async function processQuery(
         midTurnSent = 0;
         turnStartSeq = maxOutboundSeq();
         midTurnTail = '';
+        // Codex yields `result` and then stops — it never emits the `usage`
+        // event that drives the Claude turn-boundary settle above (foldCodexCost
+        // + the ceiling hard-stop). So run that settle HERE for codex: `result`
+        // IS codex's turn boundary, and this turn's output is already delivered
+        // and acked above, preserving the same ordering invariant the `usage`
+        // branch relies on. Without it, native-codex metering is only
+        // poll-granular and a single long codex turn has no per-turn bound.
+        // foldCodexCost is delta-based (per-file watermark), so this does not
+        // double-charge against the poll-loop fold that also runs for codex.
+        if (providerName === 'codex') {
+          foldCodexCost();
+          if (costCeilingHardStop) {
+            // ONE-SHOT deferral (#1360 re-review). If THIS result queued a
+            // corrective retry and the single allowance is still unspent, let
+            // that correction run its own turn before stopping — ending the
+            // stream now tears down the app-server before the correction runs and
+            // the already-markCompleted inbound row is left unanswered. SPEND the
+            // allowance so the correction's OWN result boundary hard-stops
+            // regardless of whether it queues yet another correction: at most ONE
+            // extra corrective turn past the ceiling, never an unbounded chain of
+            // gate-refusal retries (the critique gate keeps denying while awaiting
+            // approval). `costStopRequested` blocks NEW external work throughout.
+            if (queuedCorrection && !ceilingDeferralUsed) {
+              ceilingDeferralUsed = true;
+              log(
+                `Cost ceiling $${costCeilingUsd.toFixed(2)} reached but a corrective retry is queued — ` +
+                  `deferring hard-stop one turn (spent=$${costSpentUsd.toFixed(2)})`,
+              );
+            } else {
+              log(
+                `Cost ceiling $${costCeilingUsd.toFixed(2)} reached — ending stream to ` +
+                  `hard-stop (spent=$${costSpentUsd.toFixed(2)})`,
+              );
+              endedForCommand = true;
+              query.end();
+              break;
+            }
+          }
+        }
       }
     }
   } catch (err) {

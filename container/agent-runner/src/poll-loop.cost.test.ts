@@ -373,8 +373,8 @@ describe('two-tier cost cap — initCostTracking derives stop from spend-vs-ceil
   });
 });
 
-describe('two-tier cost cap — FIX #4: only the Claude provider accrues', () => {
-  it('a non-claude provider leaves the cap disabled — no accrual, no escalation', () => {
+describe('two-tier cost cap — a provider with no accounting source (e.g. OpenCode) never accrues', () => {
+  it('a provider without an accounting source leaves the cap disabled — no accrual, no escalation', () => {
     __setConfigForTest(cfg({ immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 50 }));
 
     H.initCostTracking('opencode');
