@@ -8,6 +8,7 @@ import {
   getDestinationsFingerprint,
   type DestinationEntry,
 } from './destinations.js';
+import { appendMemorySection } from './memory/context.js';
 import {
   getPendingMessages,
   markProcessing,
@@ -51,6 +52,7 @@ import {
   stripInternalTags,
   type RoutingContext,
 } from './formatter.js';
+import { appendExchange } from './conversations.js';
 import { classifyAndPrepend } from './intent-router-bridge.js';
 import { stripHarnessTagArtifacts } from './harness-tag-strip.js';
 import { isUploadTraceCommand, uploadTrace } from './upload-trace.js';
@@ -681,7 +683,11 @@ function applySetCeilingOverride(msg: MessageInRow, parsed: CostOverrideContent)
   const requestExpectedCeilingCents = Number(parsed.expectedCeilingCents);
   const requestTargetCeilingCents = Number(parsed.targetCeilingCents);
 
-  const commitOrThrow = (receipt: CostCeilingAdjustmentReceipt, newCostCap: CostCapState | undefined, logMsg: string): void => {
+  const commitOrThrow = (
+    receipt: CostCeilingAdjustmentReceipt,
+    newCostCap: CostCapState | undefined,
+    logMsg: string,
+  ): void => {
     try {
       commitCostCeilingAdjustmentOutcome({ inboundMessageId: msg.id, receipt, newCostCap });
       log(logMsg);
@@ -691,7 +697,9 @@ function applySetCeilingOverride(msg: MessageInRow, parsed: CostOverrideContent)
       // when the atomic commit itself failed. Propagating lets it be retried
       // on redelivery / recovered by clearStaleProcessingAcks() on restart,
       // rather than silently losing the request.
-      log(`set_ceiling: atomic commit FAILED for adjustment ${adjustmentId} — NOT acking (id=${msg.id}): ${String(err)}`);
+      log(
+        `set_ceiling: atomic commit FAILED for adjustment ${adjustmentId} — NOT acking (id=${msg.id}): ${String(err)}`,
+      );
       throw err;
     }
   };
@@ -725,7 +733,9 @@ function applySetCeilingOverride(msg: MessageInRow, parsed: CostOverrideContent)
   const validEpoch = requestExpectedEpochKey.length > 0;
   const validExpectedCents = Number.isInteger(requestExpectedCeilingCents) && requestExpectedCeilingCents >= 0;
   const validTargetCents =
-    Number.isInteger(requestTargetCeilingCents) && requestTargetCeilingCents >= 1 && requestTargetCeilingCents <= MAX_CEILING_CENTS;
+    Number.isInteger(requestTargetCeilingCents) &&
+    requestTargetCeilingCents >= 1 &&
+    requestTargetCeilingCents <= MAX_CEILING_CENTS;
   if (!validEpoch || !validExpectedCents || !validTargetCents) return reject('invalid_value');
 
   const liveCeilingCents = Math.round(costCeilingUsd * 100);
@@ -1116,7 +1126,11 @@ function makeDestinationsRefresher(systemContext: PollLoopConfig['systemContext'
     if (fp === last) return null;
     const firstCall = last === null;
     last = fp;
-    if (systemContext) systemContext.instructions = buildSystemPromptAddendum();
+    // Rebuild through the runner's own builder, not a bare
+    // buildSystemPromptAddendum(): that loses the assistant name, the task-vs-chat
+    // mode, and (for hookless providers) the memory section. This refresher runs
+    // once before the very first query, so anything it drops is never sent at all.
+    if (systemContext) systemContext.instructions = systemContext.rebuild();
     if (firstCall) return null;
     log('Destinations changed — refreshed system prompt + push-block');
     return buildDestinationsPushNote();
@@ -1151,6 +1165,14 @@ export interface PollLoopConfig {
   cwd: string;
   systemContext?: {
     instructions?: string;
+    /**
+     * Recompute `instructions` from scratch. Owned by the runner because only it
+     * knows the assistant name, the session mode, and whether this provider needs
+     * the memory section — and because memory must be re-read, not cached: the
+     * agent edits its own memory mid-session, and a pinned boot-time copy would
+     * go stale for the rest of the container's life.
+     */
+    rebuild(): string;
   };
   /**
    * Optional stop signal. In production the loop runs until the container
@@ -2134,12 +2156,16 @@ export async function processQuery(
             // below owns it. (It used to be tested for HERE, inside a branch
             // gated on `event.text`, which made the check dead for the exact
             // `text: null` silent turn it was written to catch.)
-            notifyExchangeComplete(onExchangeComplete, {
-              prompt: archivePrompts[0] ?? initialPrompt,
-              result: event.text,
-              continuation: queryContinuation ?? initialContinuation,
-              status: hasUnwrapped || willRetryTaskBlocks ? 'undelivered' : 'completed',
-            });
+            notifyExchangeComplete(
+              onExchangeComplete,
+              {
+                prompt: archivePrompts[0] ?? initialPrompt,
+                result: event.text,
+                continuation: queryContinuation ?? initialContinuation,
+                status: hasUnwrapped || willRetryTaskBlocks ? 'undelivered' : 'completed',
+              },
+              routing,
+            );
             if (willRetryWrapping) {
               unwrappedNudged = true;
               const destinations = getAllDestinations();
@@ -2263,13 +2289,36 @@ export async function processQuery(
 function notifyExchangeComplete(
   hook: ((exchange: ProviderExchange) => void) | undefined,
   exchange: ProviderExchange,
+  routing?: RoutingContext,
 ): void {
+  archiveExchange(exchange, routing);
   if (!hook) return;
   try {
     hook(exchange);
   } catch (err) {
     log(`onExchangeComplete failed: ${err instanceof Error ? err.message : String(err)}`);
   }
+}
+
+/**
+ * Write the exchange to `conversations/` — the folder `container/CLAUDE.md`
+ * promises every agent, regardless of provider. Done here rather than behind
+ * `onExchangeComplete` because that hook is optional and no registered provider
+ * implements it, so archiving through it would stay dead for all of them.
+ *
+ * Only `completed` exchanges, so the archive holds the conversation the agent
+ * should recall rather than every attempt at it. This is NOT because error text
+ * went undelivered — `deliverErrorResult` above sends some of it — so the
+ * archive is deliberately a partial record, not a full transcript. Task runs are
+ * skipped: they already get `tasks/<id>.md`.
+ */
+function archiveExchange(exchange: ProviderExchange, routing?: RoutingContext): void {
+  if (exchange.status !== 'completed') return;
+  if (routing?.taskRun) return;
+  appendExchange(exchange, {
+    assistantName: process.env.NANOCLAW_ASSISTANT_NAME || undefined,
+    log,
+  });
 }
 
 function handleEvent(event: ProviderEvent, _routing: RoutingContext): void {

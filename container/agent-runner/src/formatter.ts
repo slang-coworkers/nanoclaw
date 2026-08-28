@@ -130,9 +130,17 @@ export interface RoutingContext {
  */
 export function extractRouting(messages: MessageInRow[]): RoutingContext {
   const first = messages.find((m) => !isSessionEcho(m)) ?? messages[0];
+  // Session routing outranks the message's own fields. A cross-channel webhook
+  // (a github PR review, say) waking an a2a session carries github routing while
+  // the session's bound channel is agent; the poll loop's bare-text auto-route
+  // would then target github, which has no messaging group on the delivery side
+  // and fails permanently instead of retrying. threadId and inReplyTo stay
+  // per-turn, so they still come from the message.
+  const session = getSessionRouting();
+  const useSession = !!(session.channel_type && session.platform_id);
   return {
-    platformId: first?.platform_id ?? null,
-    channelType: first?.channel_type ?? null,
+    platformId: useSession ? session.platform_id : (first?.platform_id ?? null),
+    channelType: useSession ? session.channel_type : (first?.channel_type ?? null),
     threadId: first?.thread_id ?? null,
     inReplyTo: first?.id ?? null,
     // Echo rows riding along with a task must not disable one-door delivery:

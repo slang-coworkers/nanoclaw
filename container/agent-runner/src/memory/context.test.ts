@@ -36,7 +36,7 @@ describe('renderMemorySection', () => {
     fs.mkdirSync(path.join(BASE, 'memory'), { recursive: true });
     fs.writeFileSync(path.join(BASE, 'memory', 'index.md'), '# Memory Index\n');
 
-    expect(renderMemorySection(BASE)).toContain('unavailable during this hook invocation');
+    expect(renderMemorySection(BASE)).toContain('unavailable — could not read the file');
   });
 
   it('truncates each file independently without splitting a surrogate pair', () => {
