@@ -2314,6 +2314,15 @@ export async function processQuery(
   // says a nudged turn is still awaiting its retry (so nothing is acked yet).
   let silentTurnNudged = false;
   let silentTurnOpen = false;
+  // ONE-SHOT hard-stop deferral for native codex (#1360 re-review). When a turn
+  // crosses the Tier-2 ceiling AND queued a corrective retry, the codex settle
+  // defers the hard stop ONCE so that correction can run its own turn. Hoisted to
+  // processQuery scope — deliberately NOT re-declared per result — so the
+  // allowance cannot be re-armed turn after turn: a turn that keeps getting
+  // gate-refused (the critique gate denies while awaiting approval) would
+  // otherwise defer forever and spend past the ceiling without bound. The
+  // correction's own result boundary then hard-stops regardless of what it queues.
+  let ceilingDeferralUsed = false;
   // Outbound watermark at the start of the current turn. A turn that ends with
   // no text is only truly silent if this has not moved (see the silent-turn
   // branch); resampled after every result event.
@@ -2720,20 +2729,20 @@ export async function processQuery(
         // the trigger un-acked so the host redrive sweep re-arms it. Permanent
         // errors and non-a2a channels fall through to the normal dispatch path.
         let bounced = false;
-        // Corrective-retry tracker (#1360 review, MAJOR): a result-branch nudge
-        // (gate-refusal / wrap / task-block / silent-turn) re-drives delivery of
-        // THIS turn's answer on the SAME open query. For codex the `result`
-        // boundary is also the cost settle, so the C6 hard-stop below must let a
-        // queued correction reach its own `result` before ending the stream —
-        // otherwise `query.end()` tears down the app-server and the already-
-        // markCompleted inbound row is left unanswered. `costStopRequested`
-        // already blocks NEW external work while the correction finishes, so the
-        // session still quiesces. Inert for Claude (its hard-stop is the separate
-        // `usage`-branch check, which does not read this flag).
-        let correctiveRetryQueued = false;
+        // Corrective retries queued by THIS result (gate-refusal / wrap /
+        // task-block / silent-turn nudge) re-drive delivery of this turn's answer
+        // on the SAME open query. They are COLLECTED here and flushed as ONE push
+        // below (see `queuedCorrection`), because a single result can fire more
+        // than one — e.g. a gate-refusal (independent of the wrap decision) plus a
+        // wrap-nudge. Pushing them separately would let the codex hard-stop tear
+        // down a still-pending second correction; one coalesced push cannot be
+        // half-drained. For codex the `result` boundary is also the cost settle,
+        // so a queued correction defers the hard stop ONCE (see ceilingDeferralUsed);
+        // `costStopRequested` blocks NEW external work meanwhile. Inert for Claude
+        // (its hard-stop is the separate `usage`-branch check).
+        const corrections: string[] = [];
         const pushCorrection = (message: string): void => {
-          correctiveRetryQueued = true;
-          query.push(message);
+          corrections.push(message);
         };
         // Any result closes out an open silent turn: either it delivered (and
         // acks normally below) or it was silent again (and the branch at the
@@ -2907,6 +2916,12 @@ export async function processQuery(
             await finalizeSilentTurn(event.text);
           }
         }
+        // Flush every correction queued by this result as ONE push (see the
+        // `corrections` note above), so the codex hard-stop below can never
+        // strand a second queued correction mid-turn. `queuedCorrection` is the
+        // per-result "did THIS result queue a correction?" the settle reads.
+        const queuedCorrection = corrections.length > 0;
+        if (queuedCorrection) query.push(corrections.join('\n\n'));
         // Ack the turn as completed UNLESS it was a transient a2a bounce (left
         // pending above for the host redrive), it delivered nothing and was
         // acked 'failed' by finalizeSilentTurn, or a silent turn is still
@@ -2941,21 +2956,32 @@ export async function processQuery(
         // double-charge against the poll-loop fold that also runs for codex.
         if (providerName === 'codex') {
           foldCodexCost();
-          // Defer the hard stop while a corrective retry (wrap / task-block /
-          // gate-refusal / silent-turn nudge) is queued on this same query
-          // (#1360 review, MAJOR): ending the stream now would tear down the
-          // app-server before the correction runs, leaving the already-
-          // markCompleted inbound row unanswered. The correction's own `result`
-          // re-enters this block with `correctiveRetryQueued` back to false and
-          // stops then; `costStopRequested` blocks NEW external work meanwhile.
-          if (costCeilingHardStop && !correctiveRetryQueued) {
-            log(
-              `Cost ceiling $${costCeilingUsd.toFixed(2)} reached — ending stream to ` +
-                `hard-stop (spent=$${costSpentUsd.toFixed(2)})`,
-            );
-            endedForCommand = true;
-            query.end();
-            break;
+          if (costCeilingHardStop) {
+            // ONE-SHOT deferral (#1360 re-review). If THIS result queued a
+            // corrective retry and the single allowance is still unspent, let
+            // that correction run its own turn before stopping — ending the
+            // stream now tears down the app-server before the correction runs and
+            // the already-markCompleted inbound row is left unanswered. SPEND the
+            // allowance so the correction's OWN result boundary hard-stops
+            // regardless of whether it queues yet another correction: at most ONE
+            // extra corrective turn past the ceiling, never an unbounded chain of
+            // gate-refusal retries (the critique gate keeps denying while awaiting
+            // approval). `costStopRequested` blocks NEW external work throughout.
+            if (queuedCorrection && !ceilingDeferralUsed) {
+              ceilingDeferralUsed = true;
+              log(
+                `Cost ceiling $${costCeilingUsd.toFixed(2)} reached but a corrective retry is queued — ` +
+                  `deferring hard-stop one turn (spent=$${costSpentUsd.toFixed(2)})`,
+              );
+            } else {
+              log(
+                `Cost ceiling $${costCeilingUsd.toFixed(2)} reached — ending stream to ` +
+                  `hard-stop (spent=$${costSpentUsd.toFixed(2)})`,
+              );
+              endedForCommand = true;
+              query.end();
+              break;
+            }
           }
         }
       }

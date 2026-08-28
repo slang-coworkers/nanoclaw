@@ -535,7 +535,7 @@ describe('capability=true keeps base result-door handling for door-skipped block
 // provider yields a structured error-RESULT (isError:true) so the turn flows
 // through delivery + the codex result-boundary settle. This drives that exact
 // path through processQuery with a ceiling-crossing rollout on disk.
-describe('#1360 MAJOR #3 — a native-codex error turn settles cost at the result boundary', () => {
+describe('#1360 — native-codex cost settle + one-shot hard-stop deferral at the result boundary', () => {
   const D_TODAY = new Date().toISOString().slice(0, 10);
   let home: string;
   let prevHome: string | undefined;
@@ -657,5 +657,60 @@ describe('#1360 MAJOR #3 — a native-codex error turn settles cost at the resul
     expect(pulled).toBe(1); // the second turn was never admitted
     // The error text reached the channel instead of being silently dropped.
     expect(deliveredTexts().some((t) => t.includes('Turn timed out'))).toBe(true);
+  });
+
+  it('one-shot deferral: a queued correction defers the codex hard-stop exactly ONCE, then it fires', async () => {
+    // The re-review BLOCKER: the deferral flag was per-result, so EVERY
+    // gate-refused result past the ceiling earned a fresh deferral — codex could
+    // spend past the hard ceiling without bound (a delivery gate keeps denying
+    // while awaiting the fix). The fix hoists a ONE-SHOT allowance to processQuery
+    // scope. Here the ceiling is ALREADY crossed and BOTH results are refused by
+    // the chain-routing gate (each queues a corrective retry): result 1 must
+    // DEFER (no query.end → the stream reaches result 2), result 2 must HARD-STOP
+    // (query.end), and result 3 must never be pulled.
+    seedCost({ costCeilingUsd: 3, costSpentUsd: 5, costStopRequested: true, costCeilingHardStop: true });
+
+    // Each result body carries a `[Resolution]` delivery marker but the <message>
+    // tag omits `in_reply_to`, so checkRoutingGate refuses it and returns a
+    // sender-directed correction. Point the gate's denial-count state at an
+    // absent file (denials read as 0 → the soft-cap never yields), so BOTH
+    // results are refused deterministically regardless of the CWD's writability.
+    const savedRoutingState = process.env.ROUTING_GATE_STATE_PATH;
+    process.env.ROUTING_GATE_STATE_PATH = path.join(home, 'no-routing-state.json');
+    try {
+      let ended = false;
+      let pulled = 0;
+      const pushed: string[] = [];
+      async function* events(): AsyncGenerator<ProviderEvent> {
+        pulled++;
+        yield { type: 'result', text: '<message to="discord-main">[Resolution] first — deferred</message>' };
+        pulled++;
+        yield { type: 'result', text: '<message to="discord-main">[Resolution] second — hard-stops</message>' };
+        pulled++;
+        yield { type: 'result', text: '<message to="discord-main">[Resolution] third — must never run</message>' };
+      }
+      const query: AgentQuery = {
+        push: (m) => {
+          pushed.push(m);
+        },
+        end: () => {
+          ended = true;
+        },
+        abort: () => {},
+        events: events(),
+      };
+
+      await processQuery(query, CHAT_ROUTING, ['m1'], 'codex', undefined, 'prompt', undefined, false);
+
+      // Both results queued (and flushed) a gate-refusal correction; result 2's is
+      // torn down by the hard-stop that immediately follows its flush.
+      expect(pushed.length).toBe(2); // proves the gate fired on BOTH results
+      expect(pulled).toBe(2); // result 1 DEFERRED (reached result 2); result 3 was never pulled
+      expect(ended).toBe(true); // result 2 HARD-STOPPED the stream — the deferral did not re-arm
+      expect(H.getState().costCeilingHardStop).toBe(true);
+    } finally {
+      if (savedRoutingState === undefined) delete process.env.ROUTING_GATE_STATE_PATH;
+      else process.env.ROUTING_GATE_STATE_PATH = savedRoutingState;
+    }
   });
 });

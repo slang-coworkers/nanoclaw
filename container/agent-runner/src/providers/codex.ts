@@ -7,11 +7,13 @@
  * the standalone codex CLI uses, so the container and host share one
  * provider-integration story.
  *
- * Codex turns don't accept mid-turn input. Follow-up `push()` messages are
- * queued and drained after the current turn completes (same pattern as the
- * opencode provider — see poll-loop for why that's correct: the poll-loop
- * only pushes once it has new pending messages, and we only drain between
- * turns, so no message is dropped).
+ * Codex turns don't accept mid-turn input, so any `push()` is queued and drained
+ * only between turns. The poll-loop reflects this: it NEVER pushes an external
+ * follow-up into an in-flight codex query — it ends the query and leaves those
+ * messages PENDING for the next poll to re-claim (#1360). The only things pushed
+ * into a live codex query are internal corrective retries (delivery nudges) that
+ * re-drive the current turn's own answer. So a drained push is always a
+ * correction, never an unseen user message.
  */
 import fs from 'fs';
 import path from 'path';
