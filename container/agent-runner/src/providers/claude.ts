@@ -825,6 +825,19 @@ export class ClaudeProvider implements AgentProvider {
         // remaining headroom (checked between calls → best-effort, ≤ one in-flight-call
         // overshoot). Omitted (undefined) when there is no applicable ceiling.
         ...(input.maxBudgetUsd != null ? { maxBudgetUsd: input.maxBudgetUsd } : {}),
+        // Forward subagent (Task tool) text/thinking messages into this stream.
+        // Cost, not rendering, is why: by default the SDK forwards only a
+        // subagent's tool_use/tool_result blocks, so a subagent message that is
+        // pure text — typically its final answer — never reaches us and its
+        // tokens are invisible to the cost cap. Subagent transcripts are written
+        // to a SEPARATE file (`<sdk-session-id>/subagents/agent-*.jsonl`), and
+        // the on-disk route cannot attribute them: `.claude-shared` is shared by
+        // every session in the agent group, and the directory is named after the
+        // ORIGINAL sdk session id, which after a few resumes is no longer the
+        // live continuation. Forwarding is the only seam that attributes
+        // correctly. The `text` event below is gated on `parent_tool_use_id ==
+        // null` so this does NOT open a second delivery door (issue #1327).
+        forwardSubagentText: true,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         effort: this.effort as any,
         permissionMode: 'bypassPermissions',
@@ -870,14 +883,65 @@ export class ClaudeProvider implements AgentProvider {
           // result reports. Blocks split across ASSISTANT MESSAGES (a tool
           // call between them) remain unparseable mid-turn by design; the
           // poll-loop's midTurnSent===0 fallback and wrap-nudge cover that.
-          const content = (message as { message?: { content?: Array<{ type?: string; text?: string }> } }).message
-            ?.content;
-          if (Array.isArray(content)) {
+          const asst = message as {
+            parent_tool_use_id?: string | null;
+            message?: {
+              id?: string;
+              model?: string;
+              content?: Array<{ type?: string; text?: string }>;
+              usage?: {
+                input_tokens?: number;
+                output_tokens?: number;
+                cache_creation_input_tokens?: number;
+                cache_read_input_tokens?: number;
+                cache_creation?: {
+                  ephemeral_1h_input_tokens?: number;
+                  ephemeral_5m_input_tokens?: number;
+                };
+              };
+            };
+          };
+          // A subagent's messages carry `parent_tool_use_id`. They are forwarded
+          // for COST only (see forwardSubagentText above) — never for delivery:
+          // the poll-loop parses `text` events for complete <message> blocks and
+          // sends them, so letting a subagent's prose through here would deliver
+          // a nested agent's scratchpad to the user. Gating here is also
+          // behavior-preserving for the pre-#1327 default, where the only
+          // forwarded subagent blocks were tool_use/tool_result and the filter
+          // below already dropped them.
+          const isSubagent = asst.parent_tool_use_id != null;
+          const content = asst.message?.content;
+          if (!isSubagent && Array.isArray(content)) {
             const text = content
               .filter((block) => block.type === 'text' && block.text)
               .map((block) => block.text)
               .join('');
             if (text) yield { type: 'text', text };
+          }
+          // PER-MESSAGE usage — the cost cap's accounting basis (issue #1327).
+          // One assistant message per content block, all blocks of one API
+          // response repeating the same `message.id` and the same `usage`, so
+          // the consumer dedupes by id; see the ProviderEvent doc comment.
+          const mu = asst.message?.usage;
+          if (mu) {
+            yield {
+              type: 'message_usage',
+              messageId: asst.message?.id ?? null,
+              model: asst.message?.model,
+              inputTokens: mu.input_tokens ?? 0,
+              outputTokens: mu.output_tokens ?? 0,
+              cacheCreationInputTokens: mu.cache_creation_input_tokens ?? 0,
+              cacheReadInputTokens: mu.cache_read_input_tokens ?? 0,
+              ephemeral1hInputTokens: mu.cache_creation?.ephemeral_1h_input_tokens ?? 0,
+              ephemeral5mInputTokens: mu.cache_creation?.ephemeral_5m_input_tokens ?? 0,
+              isSubagent,
+            };
+          } else {
+            // A genuine assistant message with no `usage` object. Signal it so
+            // the poll-loop treats the turn as degraded and settles from the
+            // aggregate — otherwise, mixed with usage-bearing messages, this
+            // one's spend would be invisible and free (issue #1327).
+            yield { type: 'message_missing_usage', isSubagent };
           }
         } else if (message.type === 'result') {
           // `result` text exists only on subtype:"success"; error subtypes

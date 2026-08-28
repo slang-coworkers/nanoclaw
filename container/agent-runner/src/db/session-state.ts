@@ -195,6 +195,73 @@ export interface CostCapState {
   /** The current escalation episode's stable id (`esc-<sid>-<reason>-<gen>`), for
    *  host state-ingest. Present only while status is escalated/stopped. */
   episodeId?: string;
+  /**
+   * Cost-accounting schema generation (issue #1327).
+   *
+   * Absent / < 2 means `spentUsd` was accumulated by the pre-fix basis, which
+   * summed the provider's end-of-turn usage once per `query()` call. That basis
+   * double- to triple-counted (the stream emits one assistant message per
+   * content block, each repeating the same message-level usage), measured
+   * 1.7x–2.8x on real transcripts. Version 2 accumulates per assistant message,
+   * deduplicated by wire message id, and additionally folds codex MCP-tool spend
+   * from `codexLedger`.
+   *
+   * The pre-v2 figure is RETAINED rather than rescaled: the inflation factor is
+   * per-session and unknowable, and silently lowering recorded spend is the
+   * money-unsafe direction. It clears itself at the next window reset — a UTC
+   * rollover for the immortal/daily window, a `/clear` or `new_session` batch for
+   * the lifetime window.
+   */
+  accountingVersion?: number;
+  /**
+   * Absolute codex (MCP tool) spend already folded into `spentUsd`, for
+   * observability and for the dashboard's `codexUsd` column. Derived from
+   * `codexLedger`; never the enforcement source of truth.
+   */
+  codexUsd?: number;
+  /**
+   * Per-(rollout file, UTC day) codex USD already charged — the delta watermark
+   * for `$CODEX_HOME/sessions/**` (see `codex-cost.ts`).
+   *
+   * Keyed per FILE, not as one global total, deliberately: a single absolute
+   * high-water mark goes blind if the scanned total ever DROPS (a rotated or
+   * deleted rollout), because subsequent real spend has to climb back past the
+   * old mark before anything is charged. Per-file entries survive a deletion
+   * (so a reappearing file cannot re-charge) while a NEW file starts at 0 and
+   * charges from its first token.
+   *
+   * Keyed per DAY as well so the immortal daily window cannot be charged for
+   * spend that happened on a previous UTC day — the runner deliberately
+   * discards prior-day spend, and a late scan must not smuggle it into today.
+   *
+   * See `codexBaselinePending` for the one-time migration marker.
+   */
+  codexLedger?: Record<string, number>;
+  /**
+   * Permanent (codexEventKey -> owning rollout-file key) assignment. Ownership
+   * by "whichever file sorts first among the files readable this scan" moves
+   * when a file's readability flips — the true owner going unreadable lets a
+   * later-sorted file claim and charge a call, then the true owner becoming
+   * readable again re-claims it with no watermark of its own and charges it a
+   * second time. Persisted (not just in-memory) so a container restart can't
+   * reopen this window by forgetting who already owns what.
+   */
+  codexEventOwners?: Record<string, string>;
+  /**
+   * True while this session still owes a one-time codex BASELINE: its existing
+   * rollout history is absorbed into `codexLedger` without being charged, so
+   * deploying #1327 cannot retroactively bill a live session for spend it
+   * already made (which would hard-stop much of the fleet on the deploy tick).
+   *
+   * An EXPLICIT flag rather than "is `codexLedger` absent?", because the two
+   * diverge across a crash: initialization persists the cost row — and with it
+   * an empty ledger — before the first fold runs, so a container that died in
+   * that window would look already-baselined to its successor and charge the
+   * whole history. The flag is written by the same persist and only cleared once
+   * a COMPLETE scan has been absorbed. Absent on pre-#1327 rows, where the
+   * ledger's absence is the correct fallback signal.
+   */
+  codexBaselinePending?: boolean;
 }
 
 const COST_CAP_KEY = 'cost_cap';
