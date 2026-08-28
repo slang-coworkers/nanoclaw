@@ -43,6 +43,12 @@ import {
 import { getConfig } from './config.js';
 import { priceUsage } from './pricing.js';
 import { MISSING_DAY_KEY, ledgerKey, scanCodexRollouts } from './codex-cost.js';
+// #65 durable cost ledger — DUAL-RUN (additive; writes cost_events alongside the
+// live counter, changes no enforcement).
+import { createCostEventsTable, recordCostEvent, sumWindow } from './cost-events.js';
+import { claudeMessageToEvent, codexCallToEvent } from './cost-events-integration.js';
+import { RATE_TABLE, RATE_VERSION } from './cost-rate-table.js';
+import { getOutboundDb } from './mailbox/sqlite/connection.js';
 import {
   formatMessages,
   extractRouting,
@@ -315,6 +321,13 @@ function initCostTracking(providerName: string): void {
   // for rather than a false $0). Tracked separately; #1327 does not close it.
   costEnabled = costAllotmentUsd > 0 && providerName === 'claude';
   if (!costEnabled) return;
+
+  // #65 dual-run: create the durable ledger table once per session. Best-effort.
+  try {
+    createCostEventsTable(getOutboundDb());
+  } catch {
+    /* best-effort — a table-create failure must not block cost tracking */
+  }
 
   const persisted = getCostCap();
   // Budget generation is MONOTONIC across the session lifetime — adopt the persisted
@@ -670,6 +683,53 @@ function recordMessageCost(event: Extract<ProviderEvent, { type: 'message_usage'
   }
   turnMessageCostUsd += delta;
   applyCostDelta(delta);
+  recordClaudeLedger(event);
+}
+
+// ── #65 durable cost ledger — DUAL-RUN writers ─────────────────────────────
+// Additive and BEST-EFFORT: every DB touch is wrapped, because a ledger write
+// failing must never break enforcement. Enforcement still runs entirely off the
+// existing counter; these only populate `cost_events` so it can be reconciled
+// against the counter during a bake, before enforcement is flipped to derive
+// from the ledger.
+function ledgerNow(): string {
+  return new Date().toISOString();
+}
+function recordClaudeLedger(event: Extract<ProviderEvent, { type: 'message_usage' }>): void {
+  if (!costEnabled) return;
+  const ev = claudeMessageToEvent(event, ledgerNow());
+  if (!ev) return; // null-id message — the counter skips it too
+  try {
+    recordCostEvent(getOutboundDb(), ev, RATE_VERSION, RATE_TABLE, ledgerNow());
+  } catch {
+    /* best-effort */
+  }
+}
+function recordCodexLedger(files: ReturnType<typeof scanCodexRollouts>['files']): void {
+  if (!costEnabled) return;
+  try {
+    const db = getOutboundDb();
+    const now = ledgerNow();
+    // INSERT OR IGNORE on codexEventKey → re-scans and cross-file fork replays
+    // are no-ops, so writing every deduped call every fold is safe.
+    for (const f of files) for (const e of f.dedupedEvents) recordCostEvent(db, codexCallToEvent(e), RATE_VERSION, RATE_TABLE, now);
+  } catch {
+    /* best-effort */
+  }
+}
+function reconcileLedger(): void {
+  if (!costEnabled) return;
+  try {
+    const [ws, we] = costWindow === 'daily' && costDayKey ? [costDayKey, costDayKey + 'Z'] : ['0000-00-00', '9999-99-99'];
+    const { usd, unpricedModels } = sumWindow(getOutboundDb(), RATE_TABLE, (ts) => ts.slice(0, 10), ws, we);
+    log(
+      `[ledger dual-run v${RATE_VERSION}] window=${costWindow} ledger=$${usd.toFixed(4)} counter=$${costSpentUsd.toFixed(4)} ` +
+        `delta=$${(usd - costSpentUsd).toFixed(4)}` +
+        (unpricedModels.length ? ` unpriced:${unpricedModels.join(',')}` : ''),
+    );
+  } catch {
+    /* best-effort */
+  }
 }
 
 /**
@@ -877,6 +937,15 @@ function foldCodexCost(): void {
     }
   }
 
+  // #65 dual-run: durably record every deduped codex call (incl. baselined
+  // history and, once #1333 lands, native-codex). Best-effort, no enforcement
+  // effect. Deduped by codexEventKey (verified to match ccusage's tokens).
+  recordCodexLedger(scan.files);
+
+  // #1361: prune now takes the scan's live event-key set so an owner whose file
+  // vanished but whose call still replays in a surviving fork is NOT dropped
+  // (dropping it double-charges). Keep this signature — do not revert to the
+  // pre-#1361 single-arg form.
   const pruned = scan.errors === 0 ? pruneCodexLedger(new Set(scan.files.map((f) => f.key)), scan.eventKeys) : 0;
 
   if (baselining) {
@@ -2626,6 +2695,7 @@ export async function processQuery(
         // has already been delivered and acked by the time we can stop.
         foldCodexCost();
         recordTurnCost(event);
+        reconcileLedger(); // #65 dual-run: log ledger-vs-counter at the turn boundary
         // Tier-2 ceiling: end the stream now rather than merely blocking the next
         // poll, so a session past its ceiling cannot be handed more work by a
         // follow-up push. This runs at the TURN BOUNDARY, not mid-turn: `usage`
