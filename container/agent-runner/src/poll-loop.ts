@@ -712,16 +712,26 @@ function recordCodexLedger(files: ReturnType<typeof scanCodexRollouts>['files'])
     const now = ledgerNow();
     // INSERT OR IGNORE on codexEventKey → re-scans and cross-file fork replays
     // are no-ops, so writing every deduped call every fold is safe.
-    for (const f of files) for (const e of f.dedupedEvents) recordCostEvent(db, codexCallToEvent(e), RATE_VERSION, RATE_TABLE, now);
+    for (const f of files) for (const e of f.dedupedEvents) recordCostEvent(db, codexCallToEvent(e, now), RATE_VERSION, RATE_TABLE, now);
   } catch {
     /* best-effort */
   }
 }
+/**
+ * The UTC day AFTER `day` ("YYYY-MM-DD" → next "YYYY-MM-DD"), via real Date math
+ * so month/year rollover is correct. Used as the half-open daily-window END so
+ * membership is a plain `ts < nextDay` — no reliance on a sentinel char ('Z')
+ * sorting above 'T'/digits, and it composes with the indexed ts-range query.
+ */
+function nextUtcDay(day: string): string {
+  return new Date(new Date(`${day}T00:00:00.000Z`).getTime() + 86_400_000).toISOString().slice(0, 10);
+}
 function reconcileLedger(): void {
   if (!costEnabled) return;
   try {
-    const [ws, we] = costWindow === 'daily' && costDayKey ? [costDayKey, costDayKey + 'Z'] : ['0000-00-00', '9999-99-99'];
-    const { usd, unpricedModels } = sumWindow(getOutboundDb(), RATE_TABLE, (ts) => ts.slice(0, 10), ws, we);
+    const [ws, we] =
+      costWindow === 'daily' && costDayKey ? [costDayKey, nextUtcDay(costDayKey)] : ['0000-00-00', '9999-99-99'];
+    const { usd, unpricedModels } = sumWindow(getOutboundDb(), RATE_TABLE, ws, we);
     log(
       `[ledger dual-run v${RATE_VERSION}] window=${costWindow} ledger=$${usd.toFixed(4)} counter=$${costSpentUsd.toFixed(4)} ` +
         `delta=$${(usd - costSpentUsd).toFixed(4)}` +

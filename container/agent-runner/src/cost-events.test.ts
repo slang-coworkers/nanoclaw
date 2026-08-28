@@ -13,7 +13,7 @@ import { priceUsage } from './pricing.js';
 import { priceCodexEvent, codexEventKey, type CodexUsageEvent } from './codex-cost.js';
 import type { ProviderEvent } from './providers/types.js';
 
-const utcDay = (ts: string) => ts.slice(0, 10);
+const NOW = '2026-08-28T12:00:00.000Z';
 
 function ev(over: Partial<CostEvent> = {}): CostEvent {
   return {
@@ -59,7 +59,7 @@ describe('DUAL-RUN reconciliation premise: ledger $ == counter $', () => {
   it('Codex: priceTokens(codexCallToEvent) reproduces priceCodexEvent', () => {
     const call: CodexUsageEvent = { day: '2026-08-28', rawModel: 'gpt-5.6-sol', input: 10_000, cached: 8_000, output: 500 };
     const counter = priceCodexEvent(call);
-    const ledger = priceTokens(codexCallToEvent(call), RATE_TABLE).usd;
+    const ledger = priceTokens(codexCallToEvent(call, NOW), RATE_TABLE).usd;
     expect(ledger).toBeCloseTo(counter, 10);
   });
 });
@@ -74,7 +74,7 @@ describe('integration mappers', () => {
 
   it('codexCallToEvent keys by the VERIFIED tuple identity and stores NET input', () => {
     const call: CodexUsageEvent = { day: '2026-08-28', rawModel: 'gpt-5.6-sol', input: 3_000, cached: 2_000, output: 100 };
-    const e = codexCallToEvent(call);
+    const e = codexCallToEvent(call, NOW);
     expect(e.id).toBe(`codex:${codexEventKey(call)}`); // tuple, not ts
     expect(e.inputTokens).toBe(1_000); // 3000 − 2000 cached
     expect(e.cacheReadTokens).toBe(2_000);
@@ -84,15 +84,30 @@ describe('integration mappers', () => {
 describe('write path: dedup + reprice', () => {
   it('INSERT OR IGNORE dedups a re-scanned/replayed call', () => {
     const call: CodexUsageEvent = { day: '2026-08-28', rawModel: 'gpt-5.6-sol', input: 1_000, cached: 0, output: 0 };
-    expect(recordCostEvent(db, codexCallToEvent(call), RATE_VERSION, RATE_TABLE, 'now')).toBe(true);
-    expect(recordCostEvent(db, codexCallToEvent(call), RATE_VERSION, RATE_TABLE, 'now')).toBe(false);
+    expect(recordCostEvent(db, codexCallToEvent(call, NOW), RATE_VERSION, RATE_TABLE, 'now')).toBe(true);
+    expect(recordCostEvent(db, codexCallToEvent(call, NOW), RATE_VERSION, RATE_TABLE, 'now')).toBe(false);
     expect((db.prepare('SELECT COUNT(*) c FROM cost_events').get() as { c: number }).c).toBe(1);
   });
 
   it('sumWindow reprices stored tokens at the CURRENT table (dollars are a view)', () => {
-    recordCostEvent(db, codexCallToEvent({ day: '2026-08-28', rawModel: 'gpt-5.6-sol', input: 1_000_000, cached: 0, output: 0 }), RATE_VERSION, RATE_TABLE, 'now');
-    const base = sumWindow(db, RATE_TABLE, utcDay, '2026-08-28', '2026-08-29').usd;
-    const bumped = sumWindow(db, { ...RATE_TABLE, 'gpt-5.6-sol': { ...RATE_TABLE['gpt-5.6-sol'], input_cost_per_token: RATE_TABLE['gpt-5.6-sol'].input_cost_per_token * 2 } }, utcDay, '2026-08-28', '2026-08-29').usd;
+    recordCostEvent(db, codexCallToEvent({ day: '2026-08-28', rawModel: 'gpt-5.6-sol', input: 1_000_000, cached: 0, output: 0 }, NOW), RATE_VERSION, RATE_TABLE, 'now');
+    const base = sumWindow(db, RATE_TABLE, '2026-08-28', '2026-08-29').usd;
+    const bumped = sumWindow(db, { ...RATE_TABLE, 'gpt-5.6-sol': { ...RATE_TABLE['gpt-5.6-sol'], input_cost_per_token: RATE_TABLE['gpt-5.6-sol'].input_cost_per_token * 2 } }, '2026-08-28', '2026-08-29').usd;
     expect(bumped).toBeCloseTo(base * 2, 10);
+  });
+
+  it('C9: a dateless codex call buckets to the fold day (matches the counter), not out of every window', () => {
+    // Pre-fix the ts was the literal MISSING_DAY_KEY ('unknown-day'), which sorts
+    // above every real date and fell out of BOTH the daily and lifetime windows
+    // while the live counter charged it to today — a phantom ledger<counter delta
+    // the dual-run bake would chase as a pricing bug. Now it carries the fold ts.
+    const now = '2026-08-28T09:00:00.000Z';
+    const dateless: CodexUsageEvent = { day: 'unknown-day', rawModel: 'gpt-5.6-sol', input: 1_000_000, cached: 0, output: 0 };
+    const e = codexCallToEvent(dateless, now);
+    expect(e.ts).toBe(now); // bucketed to the fold time, not 'unknown-day'
+    recordCostEvent(db, e, RATE_VERSION, RATE_TABLE, now);
+    expect(sumWindow(db, RATE_TABLE, '2026-08-28', '2026-08-29').usd).toBeGreaterThan(0); // fold-day daily window
+    expect(sumWindow(db, RATE_TABLE, '0000-00-00', '9999-99-99').usd).toBeGreaterThan(0); // lifetime window
+    expect(sumWindow(db, RATE_TABLE, '2026-08-27', '2026-08-28').usd).toBe(0); // NOT charged to yesterday
   });
 });

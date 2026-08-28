@@ -191,22 +191,29 @@ export function recordCostEvent(
 /**
  * Sum the window's spend by RE-PRICING each row's stored tokens at the CURRENT
  * rate snapshot — this is what makes a rate correction reprice history for free.
- * `bucket(ts)` (defect-A convention) selects window membership at read time.
+ *
+ * Membership is a half-open `ts` range [windowStart, windowEndExclusive) pushed
+ * INTO SQL so the `cost_events_ts` index does the selection. This table is
+ * append-only and deliberately never pruned, so the previous unbounded
+ * `SELECT *` + JS filter grew O(session lifetime) on every turn. Bounds are
+ * day-strings ("YYYY-MM-DD"); every stored `ts` is a full ISO whose day prefix
+ * orders identically under SQLite's default BINARY collation, so `ts >= start`
+ * and `ts < end` select exactly the intended UTC days (dateless codex calls are
+ * stored at the fold time by codexCallToEvent, so they too carry a real date).
  * Enforcement's `costSpentUsd` is exactly this over the active window.
  */
 export function sumWindow(
   db: Database,
   table: LiteLLMRateTable,
-  bucket: (ts: string) => string,
   windowStart: string,
   windowEndExclusive: string,
 ): { usd: number; unpricedModels: string[] } {
-  const rows = db.prepare(`SELECT * FROM cost_events`).all() as Array<Record<string, unknown>>;
+  const rows = db
+    .prepare(`SELECT * FROM cost_events WHERE ts >= $start AND ts < $end`)
+    .all({ $start: windowStart, $end: windowEndExclusive }) as Array<Record<string, unknown>>;
   let usd = 0;
   const unpriced = new Set<string>();
   for (const row of rows) {
-    const day = bucket(String(row.ts));
-    if (day < windowStart || day >= windowEndExclusive) continue;
     const e = rowToEvent(row);
     const p = priceTokens(e, table);
     if (p.unpriced) unpriced.add(e.model);

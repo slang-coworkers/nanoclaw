@@ -9,7 +9,7 @@
  *                                                  codex #1333 reuses this exact
  *                                                  call site)
  */
-import { type CodexUsageEvent, MISSING_DAY_KEY, codexEventKey } from './codex-cost.js';
+import { type CodexUsageEvent, codexEventKey } from './codex-cost.js';
 import type { CostEvent } from './cost-events.js';
 import type { ProviderEvent } from './providers/types.js';
 
@@ -45,8 +45,16 @@ export function claudeMessageToEvent(
  * token; a ts-key does not). `INSERT OR IGNORE` on this id re-does the shipped
  * session-wide dedup across files for free. Net input, to match ccusage.
  */
-export function codexCallToEvent(e: CodexUsageEvent): CostEvent {
-  const ts = /^\d{4}-\d{2}-\d{2}$/.test(e.day) ? `${e.day}T00:00:00.000Z` : MISSING_DAY_KEY;
+export function codexCallToEvent(e: CodexUsageEvent, nowIso: string): CostEvent {
+  // A dateless codex call (no parseable day) buckets to "today" — the fold time
+  // (`nowIso`) — EXACTLY as the live counter charges MISSING_DAY_KEY to
+  // costDayKey (see foldCodexCost). If the ledger instead stored the literal
+  // 'unknown-day' as ts, that row would sort ABOVE every real date and fall out
+  // of BOTH the daily and lifetime windows while the counter still charged it —
+  // manufacturing a phantom ledger<counter delta the dual-run bake would chase
+  // as a pricing bug. The dedup id is the token tuple (ts-independent), so this
+  // changes windowing only, never identity.
+  const ts = /^\d{4}-\d{2}-\d{2}$/.test(e.day) ? `${e.day}T00:00:00.000Z` : nowIso;
   return {
     id: `codex:${codexEventKey(e)}`,
     ts,
