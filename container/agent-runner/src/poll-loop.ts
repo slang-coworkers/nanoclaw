@@ -91,10 +91,13 @@ const MAILBOX_FAILURE_STREAK_EXIT = 10;
 // State is persisted to outbound.db `session_state` under the single `cost_cap`
 // JSON key (the shared contract the dashboard reads) so spend survives respawns.
 //
-// FIX #4: only the Claude provider emits 'usage' events. costEnabled therefore
-// requires providerName === 'claude'; other providers accrue nothing and would
-// otherwise paint a false-green $0, so we leave the cap disabled (no row → the
-// dashboard shows "—").
+// Enabled for the Claude AND codex providers (#1333). Claude spend accrues from
+// its 'usage' events at the turn boundary; codex never emits 'usage', so its
+// spend accrues from foldCodexCost reading the rollout files — folded at the
+// poll boundary AND settled again at each `result` (codex's turn boundary) so
+// the ceiling hard-stop is turn-granular, not merely poll-granular. A provider
+// that does neither accrues nothing and would paint a false-green $0, so the cap
+// stays disabled for it (no row → the dashboard shows "—").
 //
 // Module-level because the accounting happens inside `processQuery`'s event
 // loop (a free function) while init/override live in `runPollLoop`; one
@@ -2894,6 +2897,27 @@ export async function processQuery(
         midTurnSent = 0;
         turnStartSeq = maxOutboundSeq();
         midTurnTail = '';
+        // Codex yields `result` and then stops — it never emits the `usage`
+        // event that drives the Claude turn-boundary settle above (foldCodexCost
+        // + the ceiling hard-stop). So run that settle HERE for codex: `result`
+        // IS codex's turn boundary, and this turn's output is already delivered
+        // and acked above, preserving the same ordering invariant the `usage`
+        // branch relies on. Without it, native-codex metering is only
+        // poll-granular and a single long codex turn has no per-turn bound.
+        // foldCodexCost is delta-based (per-file watermark), so this does not
+        // double-charge against the poll-loop fold that also runs for codex.
+        if (providerName === 'codex') {
+          foldCodexCost();
+          if (costCeilingHardStop) {
+            log(
+              `Cost ceiling $${costCeilingUsd.toFixed(2)} reached — ending stream to ` +
+                `hard-stop (spent=$${costSpentUsd.toFixed(2)})`,
+            );
+            endedForCommand = true;
+            query.end();
+            break;
+          }
+        }
       }
     }
   } catch (err) {
