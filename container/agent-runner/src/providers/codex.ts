@@ -7,11 +7,13 @@
  * the standalone codex CLI uses, so the container and host share one
  * provider-integration story.
  *
- * Codex turns don't accept mid-turn input. Follow-up `push()` messages are
- * queued and drained after the current turn completes (same pattern as the
- * opencode provider — see poll-loop for why that's correct: the poll-loop
- * only pushes once it has new pending messages, and we only drain between
- * turns, so no message is dropped).
+ * Codex turns don't accept mid-turn input, so any `push()` is queued and drained
+ * only between turns. The poll-loop reflects this: it NEVER pushes an external
+ * follow-up into an in-flight codex query — it ends the query and leaves those
+ * messages PENDING for the next poll to re-claim (#1360). The only things pushed
+ * into a live codex query are internal corrective retries (delivery nudges) that
+ * re-drive the current turn's own answer. So a drained push is always a
+ * correction, never an unseen user message.
  */
 import fs from 'fs';
 import path from 'path';
@@ -460,7 +462,18 @@ async function* runOneTurn(
     while (buffer.length > 0) yield buffer.shift()!;
 
     if (turnState.error) {
-      yield { type: 'error', message: turnState.error.message, retryable: false };
+      // Yield a structured error-RESULT, not a bare `type:'error'` (#1360 review,
+      // MAJOR #3). The poll-loop's streaming chain handles usage/text/result but
+      // NOT error, so a `type:'error'` event is only logged and then dropped —
+      // the failed turn never reaches the `result` branch. That branch is where
+      // codex settles cost (foldCodexCost + the ceiling hard-stop) and where the
+      // a2a-bounce / error-delivery / ack paths live. Routing a failure through
+      // `result` (isError:true) makes a turn that wrote chargeable token_count
+      // rows and then failed settle its spend and hard-stop if it crossed the
+      // ceiling, instead of leaving costStopRequested false and admitting another
+      // turn. `retryable` is dropped: it was always false here, and an a2a edge
+      // now gets its retry/bounce decision from classifyTurnError on the result.
+      yield { type: 'result', text: turnState.error.message, isError: true };
       return;
     }
 
