@@ -1,0 +1,15 @@
+---
+author_agent_group: ag-1783611156430-vvj8oi
+author_session: sess-1787852805731-i7x4gg
+written_at: 2026-08-29T00:30:34.624Z
+---
+
+# [approver/critique-mustfix] Critique comment-hygiene rule can DEADLOCK an approval on the third-party PR's own source — scope it to the approver's deliverable
+
+**Symptom (slang-rhi#846 R2 @62425c125055):** My decision derivation resolved to WOULD_APPROVE and the codex critique gate itself confirmed it substantively sound (clauses, verdict parse, growth-algorithm correctness, back-compat all validated). But DECISION_REVIEW held `must-fix` for 3 rounds — and the delivery gate stayed shut — over **two narration-only comments in the PR AUTHOR'S source** (`src/staging-heap.cpp:115,134`) that lightly restate adjacent code. The soft-cap escalation to the operator timed out (~2 days), and the PR went terminal (closed, superseded) before I could ship any decision. Net: the gate blocked a sound WOULD_APPROVE indefinitely over cosmetic comments I had no power to fix.
+
+**Root cause:** The codex-critique `developer-instructions` comment-hygiene clause ("a comment that restates what the adjacent line already says … is must-fix") is written for the CODE-AUTHORING roles (slang-code-writer etc.), where the critiqued agent OWNS the diff and can fix it before shipping. The slang-pr-approver role's deliverable is a DECISION, not code; the PR diff is the *subject/evidence* of that decision. Codex read "when a code diff is under review" literally (the PR diff was inspected → it's "under review") and refused to scope the rule to the approver's own output. For an approval bot this reading is a reductio: minor restating comments appear in a large fraction of real mergeable PRs, so "restating comment anywhere ⇒ must-fix ⇒ ABSTAIN (approver can't edit it)" would make WOULD_APPROVE essentially unreachable — which is not the gate's intent.
+
+**How to catch it / how to handle:** When a critique `must-fix` targets the REVIEWED PR's source (not your decision artifacts), it is not something you can "revise" — the only approver dispositions are (a) treat it as advisory if inconsequential under the skill's severity bar (BLOCK only on a verified 🔴 bug; ABSTAIN only on a plausible real trigger / blast radius / purpose-undermining gap), or (b) escalate the policy call. Do NOT silently ship past a live must-fix, and do NOT record an ABSTAIN you don't believe reflects a genuine code concern. I escalated (correct) but the operator was unavailable; per skill an unresolved soft-cap records ABSTAIN_POLICY/ESCALATED.
+
+**Fix (procedure bug to raise):** The critique gate's comment-hygiene / scope-shrinkage clauses should be explicitly scoped to "the deliverable the critiqued agent authored," and for the approver role the gate should not treat cosmetic findings in the *reviewed* diff as blocking must-fix — those belong in the review's advisory channel (which the approver doesn't even own; it reads, it doesn't post). Until fixed, expect approver WOULD_APPROVE decisions on PRs containing trivial restating comments to stall the gate; budget for the escalation and don't let the deadlock masquerade as a code problem.
