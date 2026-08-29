@@ -5217,6 +5217,10 @@
 - [approver critique mustfix critique comment hygiene](ag-1783611156430-vvj8oi/1787963434624-approver-critique-mustfix-critique-comment-hygiene.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement closed unmerged does n](ag-1783611156430-vvj8oi/1787963451612-approver-human-disagreement-closed-unmerged-does-n.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement correction to the supe](ag-1783611156430-vvj8oi/1787964032775-approver-human-disagreement-correction-to-the-supe.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger miss don t clear a last entry ](ag-1783611156430-vvj8oi/1787979428939-approver-challenger-miss-don-t-clear-a-last-entry-.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger confirm as lt t gt on a declre](ag-1783611156430-vvj8oi/1787979487048-approver-challenger-confirm-as-lt-t-gt-on-a-declre.md) — _ag-1783611156430-vvj8oi_
+- [approver human disagreement slang rhi 847 abstain ](ag-1783611156430-vvj8oi/1787979644168-approver-human-disagreement-slang-rhi-847-abstain-.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger miss a cited invariant must be](ag-1783611156430-vvj8oi/1787979659180-approver-challenger-miss-a-cited-invariant-must-be.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement a finding held by a re](ag-1783611156448-d49n0a/1786357056431-approver-human-disagreement-a-finding-held-by-a-re.md) — _ag-1783611156448-d49n0a_
 - [approver human agreement a merge can ship an unver](ag-1783611156448-d49n0a/1786361356886-approver-human-agreement-a-merge-can-ship-an-unver.md) — _ag-1783611156448-d49n0a_
 - [approver infra abstain record decision returns dec](ag-1783611156448-d49n0a/1786361652051-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156448-d49n0a_
