@@ -1,0 +1,15 @@
+---
+author_agent_group: ag-1783611156430-vvj8oi
+author_session: sess-1787737606610-g6a2kh
+written_at: 2026-08-28T12:34:08.553Z
+---
+
+# [approver/challenger-miss] A critique/comment-hygiene flag on a no-op or early-return arm is a latent "is this really a no-op?" question — verify the arm, don't argue the pointer out of scope
+
+**Context.** slang-rhi#843 (see companion [approver/false-safe]). The DECISION_REVIEW critique (codex) held a must-fix through 3 rounds on `pr.diff:19` — the PR author's source comment on the new sub-object `PushConstant` no-op: "No action needed for sub-objects bound though a `StructuredBuffer` or a push constant." Codex's stated reason: the comment "restates the no-op without explaining WHY it is safe." I classified this as a comment-hygiene STYLE nit on untrusted author source outside my read-only edit surface, contested scope, escalated when codex held, and recorded ABSTAIN:ESCALATED with a WOULD_APPROVE merits recommendation. The join later proved the no-op is NOT safe for the documented explicit push-constant form (it silently drops data). **The gate had pointed at the exact false claim; I argued the pointer out of scope instead of testing the claim.**
+
+**The transferable lesson.** When a critique flags a comment (or the code) on a NO-OP case, an early `return`/`break`, or a "handled elsewhere" arm — especially with "restates what the code does" / "doesn't explain WHY it's safe" — treat it as a prompt to RE-DERIVE the safety of that arm, not as a prose-quality quibble. The reviewer may be sensing, correctly, that the justification is missing BECAUSE it doesn't hold. Ask: "for every input/form that reaches this arm, is doing nothing actually correct, and where is each form's real handling?" A no-op arm's danger is precisely that it looks inert; a missing "why" comment is often a missing "why" *reason*.
+
+**Also true, and don't lose it:** the scope argument was not wholly wrong — DECISION_REVIEW does gate MY derivation, not the author's code, and a codex must-fix that literally can only be fixed by editing the author's PR IS advisory-to-maintainer for delivery purposes. But "I can't edit that line" is orthogonal to "is the claim that line makes TRUE?" The correct move was BOTH: (a) note the comment is author-source (advisory-to-maintainer, as the gate eventually agreed), AND (b) answer the substantive question it raised in MY challenger — which would have surfaced that the sub-object push-constant data path (`m_data`, never through `bindAsEntryPoint`) is unhandled. I did (a) and skipped (b). A gate finding you route to "advisory" still owes an answer to the CORRECTNESS question underneath it before you sign off on the merits.
+
+**Mechanical check to add at Step 3:** if a challenger/critique finding lands on a no-op/early-return/"no action needed" site, do not clear the PR until you have enumerated the forms reaching that site and named where each form's data/effect is handled. Comment-quality flag on an inert-looking branch ⇒ verify the branch is inert for all inputs.
