@@ -1,6 +1,6 @@
 # Remove the Codex agent provider
 
-Reverses every change `/add-codex` makes and returns every group to the default provider. Safe to run when partially installed — skip any step whose target is already absent.
+Unwires the Codex provider and returns every group to the default. Safe to run when partially installed — skip any step whose target is already absent. This removal is **non-destructive to trunk-tracked source** (see step 3): it undoes the wiring, not the files.
 
 ## 1. Switch codex groups back to the default
 
@@ -21,31 +21,28 @@ Delete (do not comment out) the `import './codex.js';` line from each of:
 - `container/agent-runner/src/providers/index.ts`
 - `setup/providers/index.ts`
 
-## 3. Delete every copied file
+Unwiring the barrels is the substance of the removal: `resolveProviderName` can no longer reach `CodexProvider`, and the setup picker no longer offers codex. Step 4 stops the CLI from being baked into the image.
+
+## 3. Leave the payload files in place
+
+**On this fork the codex payload is tracked in trunk, not copied in by `/add-codex` — and the skill carries no `nc:copy` directive that could restore it.** Deleting these files is therefore a one-way local divergence from `nv-main`: re-wiring codex later would need a `git checkout` of each path, and the next upstream sync would see them as deletions to re-resolve. Re-running `/add-codex` would NOT bring them back.
+
+Leave these alone:
+
+- `src/providers/codex.ts`
+- `container/agent-runner/src/providers/codex.ts`, `codex-app-server.ts` (+ `codex.factory.test.ts`, `codex-app-server.test.ts`)
+- `setup/providers/codex.ts` (+ `codex.test.ts`)
+
+Removing them from the fork is a source change on a reviewed branch, not a runbook step. If a previous version of this runbook already deleted them, recover with:
 
 ```bash
-rm -f src/providers/codex.ts \
-      src/providers/codex-agents-md.ts \
-      src/providers/codex-registration.test.ts \
-      src/providers/codex-host-contribution.test.ts \
-      src/providers/codex-agents-md.test.ts \
-      container/agent-runner/src/providers/codex.ts \
-      container/agent-runner/src/providers/codex-app-server.ts \
-      container/agent-runner/src/providers/exchange-archive.ts \
-      container/agent-runner/src/providers/exchange-archive.test.ts \
-      container/agent-runner/src/providers/codex-registration.test.ts \
-      container/agent-runner/src/providers/codex.factory.test.ts \
-      container/agent-runner/src/providers/codex.turns.test.ts \
-      container/agent-runner/src/providers/codex-app-server.test.ts \
-      container/agent-runner/src/providers/codex-cli-tools.test.ts \
-      setup/providers/codex.ts \
-      setup/providers/codex.test.ts \
-      setup/providers/codex-registration.test.ts
+git checkout -- src/providers/codex.ts \
+    container/agent-runner/src/providers/codex.ts \
+    container/agent-runner/src/providers/codex-app-server.ts \
+    setup/providers/codex.ts
 ```
 
-This skill itself (`.claude/skills/add-codex/`) stays — it ships with trunk so the provider can be re-added later.
-
-`container/AGENTS.md` stays only if another installed provider uses agent surfaces; otherwise remove it too.
+This skill itself (`.claude/skills/add-codex/`) also stays — it ships with trunk so the provider can be re-wired later.
 
 ## 4. Remove the CLI manifest entry
 

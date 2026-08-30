@@ -1,11 +1,10 @@
 /**
  * Codex provider setup — auth walk-through + install verification.
  *
- * Fork-local, and deliberately NOT copied from the `providers` branch: this fork
- * carries codex in trunk with its own +500-line divergence in
- * `container/agent-runner/src/providers/codex-app-server.ts`, so a re-copy would
- * revert working code. `/add-codex`'s copy fence must not list this file — a
- * guard test in `setup/providers/codex.test.ts` enforces that.
+ * This file is fork-local and must stay that way: `/add-codex` carries no copy
+ * directive, because this fork's codex payload diverges substantially from the
+ * `providers` branch and a copy would overwrite it. `setup/providers/codex.test.ts`
+ * enforces that.
  *
  * The registry (`./registry.js`) is the only reach-in: one import in the barrel,
  * and the picker renders from `listSetupProviders()`.
@@ -213,6 +212,24 @@ export async function runCodexLoginAuth(method: 'browser' | 'device'): Promise<v
   // failure branches call process.exit, which skips finally blocks, so each
   // removes it explicitly.
   const removeLoginHome = (): void => fs.rmSync(loginHome, { recursive: true, force: true });
+  // Ctrl-C during the browser/device login is the likeliest exit of all, and it
+  // reaches neither the branches below nor a finally. Re-raise after cleanup so
+  // the interrupt still reads as one to the caller's shell.
+  const handlers: Record<'SIGINT' | 'SIGTERM', () => void> = {
+    SIGINT: () => onSignal('SIGINT'),
+    SIGTERM: () => onSignal('SIGTERM'),
+  };
+  const clearSignalHandlers = (): void => {
+    process.removeListener('SIGINT', handlers.SIGINT);
+    process.removeListener('SIGTERM', handlers.SIGTERM);
+  };
+  function onSignal(sig: 'SIGINT' | 'SIGTERM'): void {
+    clearSignalHandlers();
+    removeLoginHome();
+    process.kill(process.pid, sig);
+  }
+  process.once('SIGINT', handlers.SIGINT);
+  process.once('SIGTERM', handlers.SIGTERM);
 
   const args = method === 'device' ? ['login', '--device-auth'] : ['login'];
   const start = Date.now();
@@ -221,6 +238,7 @@ export async function runCodexLoginAuth(method: 'browser' | 'device'): Promise<v
   console.log();
 
   if (code !== 0) {
+    clearSignalHandlers();
     removeLoginHome();
     setupLog.step('auth', 'failed', durationMs, { PROVIDER: 'codex', METHOD: method, EXIT_CODE: String(code) });
     p.log.error(
@@ -233,6 +251,7 @@ export async function runCodexLoginAuth(method: 'browser' | 'device'): Promise<v
 
   const authJsonPath = path.join(loginHome, 'auth.json');
   if (!fs.existsSync(authJsonPath)) {
+    clearSignalHandlers();
     removeLoginHome();
     setupLog.step('auth', 'failed', durationMs, { PROVIDER: 'codex', METHOD: method, ERROR: 'auth_json_not_found' });
     p.log.error(
@@ -259,6 +278,7 @@ export async function runCodexLoginAuth(method: 'browser' | 'device'): Promise<v
       { stdio: ['ignore', 'pipe', 'pipe'] },
     );
   } catch (err) {
+    clearSignalHandlers();
     removeLoginHome();
     setupLog.step('auth', 'failed', durationMs, { PROVIDER: 'codex', METHOD: method, ERROR: String(err) });
     p.log.error(
@@ -268,6 +288,7 @@ export async function runCodexLoginAuth(method: 'browser' | 'device'): Promise<v
     );
     process.exit(1);
   }
+  clearSignalHandlers();
   removeLoginHome();
   setupLog.step('auth', 'success', durationMs, { PROVIDER: 'codex', METHOD: method });
   p.log.success(brandBody('OpenAI account connected — credentials live in your OneCLI vault, never in the container.'));
@@ -287,14 +308,17 @@ function runInherit(cmd: string, args: string[], extraEnv?: Record<string, strin
 // ─── failure assist ──────────────────────────────────────────────────────
 
 /**
- * The Codex CLI can debug a setup failure only if the binary runs AND
- * ~/.codex/auth.json exists (API-key-only installs keep the key in the
- * OneCLI vault, so the host-side CLI has nothing to authenticate with).
+ * The Codex CLI can debug a setup failure only if the binary runs AND it has its
+ * own credentials (API-key-only installs keep the key in the OneCLI vault, so the
+ * host-side CLI has nothing to authenticate with). Honors CODEX_HOME, since the
+ * assist session inherits it — hard-coding ~/.codex would both miss a relocated
+ * home and offer the assist against a home that has no auth.json.
  */
 export function isCodexCliUsable(): boolean {
   const codexCheck = spawnSync('codex', ['--version'], { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] });
   if (codexCheck.status !== 0) return false;
-  return fs.existsSync(path.join(os.homedir(), '.codex', 'auth.json'));
+  const codexHome = process.env.CODEX_HOME?.trim() || path.join(os.homedir(), '.codex');
+  return fs.existsSync(path.join(codexHome, 'auth.json'));
 }
 
 /**
@@ -415,21 +439,50 @@ export function verifyCodexInstall(): { ok: boolean; problems: string[] } {
     }
   }
 
-  const manifestPath = path.join(root, 'container', 'cli-tools.json');
-  let hasCodexCli = false;
-  if (fs.existsSync(manifestPath)) {
-    try {
-      const tools = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Array<{ name?: string }>;
-      hasCodexCli = Array.isArray(tools) && tools.some((t) => t.name === '@openai/codex');
-    } catch {
-      hasCodexCli = false;
-    }
-  }
-  if (!hasCodexCli) {
-    problems.push('container/cli-tools.json missing the @openai/codex CLI entry');
-  }
+  // Checked against the pin in add-codex/SKILL.md, not just for the entry's
+  // presence: the SKILL.md declares itself the source of truth for the version,
+  // and the engine's json-merge is idempotent on `name` alone — so an entry left
+  // at a stale version is silently kept, and the image bakes a CLI nobody chose.
+  problems.push(...verifyCodexCliPin(root));
 
   return { ok: problems.length === 0, problems };
+}
+
+/** The `{ "name": "@openai/codex", "version": "…" }` pin add-codex/SKILL.md declares. */
+function skillPinnedCodexVersion(root: string): string | undefined {
+  const skill = path.join(root, '.claude/skills/add-codex/SKILL.md');
+  if (!fs.existsSync(skill)) return undefined;
+  const fence = fs
+    .readFileSync(skill, 'utf-8')
+    .match(/```nc:json-merge[^\n]*container\/cli-tools\.json[^\n]*\n([\s\S]*?)```/)?.[1];
+  if (!fence) return undefined;
+  try {
+    const entry = JSON.parse(fence) as { name?: string; version?: string };
+    return entry.name === '@openai/codex' ? entry.version : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function verifyCodexCliPin(root: string): string[] {
+  const manifestPath = path.join(root, 'container', 'cli-tools.json');
+  if (!fs.existsSync(manifestPath)) return ['container/cli-tools.json is missing'];
+
+  let entry: { name?: string; version?: string } | undefined;
+  try {
+    const tools = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Array<{ name?: string; version?: string }>;
+    entry = Array.isArray(tools) ? tools.find((t) => t.name === '@openai/codex') : undefined;
+  } catch {
+    return ['container/cli-tools.json is not parseable JSON'];
+  }
+  if (!entry) return ['container/cli-tools.json missing the @openai/codex CLI entry'];
+
+  const pinned = skillPinnedCodexVersion(root);
+  if (!pinned) return []; // no declared pin to compare against — presence is all we can assert
+  if (entry.version !== pinned) {
+    return [`container/cli-tools.json pins @openai/codex@${entry.version} but /add-codex declares ${pinned}`];
+  }
+  return [];
 }
 
 export async function runCodexInstallCheck(): Promise<void> {

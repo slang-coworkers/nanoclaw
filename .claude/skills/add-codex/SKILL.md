@@ -29,7 +29,7 @@ Check whether the payload is already wired (on trunk it is — see step 1). Thes
 
 ### 1. The payload ships in trunk — there is nothing to fetch
 
-**This skill deliberately carries no `nc:copy from-branch:providers` step, and re-adding one would revert working code.** The three production files above are *forks* of the `providers` branch payload, not copies of it: `codex-app-server.ts` diverges +578/−343, `container/…/codex.ts` +307/−246, `src/providers/codex.ts` +28/−113. A copy directive overwrites its destination unconditionally in **refresh** mode (`scripts/skill-apply.ts` `selfStatus`), and `/update-skills` refreshes every provider it finds in `src/providers/index.ts` — so a fence here is an armed silent revert, not a safety net. `setup/providers/codex.test.ts` fails if one reappears.
+**This skill carries no `nc:copy from-branch:providers` step, and must not gain one.** This fork's codex files are forks of the `providers` branch payload, not copies: `codex-app-server.ts`, `container/…/codex.ts` and `src/providers/codex.ts` all diverge by hundreds of lines. A `copy` directive overwrites its destination unconditionally in **refresh** mode (`scripts/skill-apply.ts` `selfStatus`), and `/update-skills` refreshes every provider it finds in `src/providers/index.ts` — so a fence here would silently revert that divergence, and tsc would stay green because upstream's versions compile. Pruning a fence to "only the files we carry" does not help: those are the diverged ones. `setup/providers/codex.test.ts` fails if a fence reappears.
 
 The payload this fork does not carry, and does not want:
 
@@ -38,9 +38,9 @@ The payload this fork does not carry, and does not want:
 | `src/providers/codex-agents-md.ts` (+ test) | CLAUDE.md is composed by the lego spine; codex gets native discovery from the `AGENTS.md → CLAUDE.md` symlink in `src/group-init.ts`. Upstream's AGENTS.md composer has no reader here. |
 | `container/AGENTS.md` | The base that composer embeds. No composer, no reader. |
 | `container/agent-runner/src/providers/exchange-archive.ts` (+ test) | Its `onExchangeComplete` hook is implemented by no provider in this fork. |
-| upstream's `codex-registration` / `codex-host-contribution` / `codex.turns` / `codex-cli-tools` tests | Superseded by this fork's own coverage: `src/providers/barrel-registration.test.ts`, `codex.factory.test.ts`, `codex-app-server.test.ts`. |
+| upstream's `codex-registration` / `codex-host-contribution` / `codex.turns` / `codex-cli-tools` tests | Covered here by `src/providers/barrel-registration.test.ts`, `codex.factory.test.ts`, `codex-app-server.test.ts`. |
 
-`setup/providers/codex.ts` is also fork-local (upstream's `verifyCodexInstall` requires `codex-agents-md.ts` and would report this working install as broken). Do not copy it either.
+`setup/providers/codex.ts` is fork-local too: upstream's `verifyCodexInstall` requires `codex-agents-md.ts`, so upstream's copy reports this working install as broken.
 
 ### 2. Wire the barrels
 

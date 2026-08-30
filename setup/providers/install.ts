@@ -46,18 +46,15 @@ function isFlowOwnedCommand(cmd: string): boolean {
 }
 
 /**
- * Did this apply actually mutate the tree?
+ * Did this apply actually mutate the tree? The caller rebuilds the container
+ * image when it did, so a false positive costs a multi-minute no-op rebuild and
+ * fails hard wherever the build can't run.
  *
- * NOT `applied.length > 0`. The engine counts a `run` directive as applied even
- * when our `exec` no-ops it (see isFlowOwnedCommand), and every provider SKILL.md
- * ends with build/test/auth runs — so `applied` is non-empty on EVERY apply,
- * including one where all four real mutations reported "already present". That
- * made the caller's image rebuild unconditional: a multi-minute no-op on each
- * `--step provider-auth <name>`, and a hard `exit 1` wherever the build can't run.
- *
- * The journal records what actually happened, so read it instead: any non-`ran`
- * entry is a file mutation, and a `ran` entry counts only if we really executed
- * it (add-opencode's `nc:dep` journals as `ran` and is a genuine mutation).
+ * Read the journal, not `applied`: the engine counts a `run` directive as applied
+ * even when `exec` above no-ops it, and every provider SKILL.md ends with
+ * build/test/auth runs — so `applied` is non-empty on every apply. In the journal,
+ * any non-`ran` entry is a file mutation, and a `ran` entry counts only if we
+ * really executed it (a `nc:dep` install journals as `ran` and is a real change).
  */
 function didMutate(result: ApplyResult): boolean {
   return result.journal.some((e) => e.op !== 'ran' || !isFlowOwnedCommand(e.cmd));
