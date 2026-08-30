@@ -6,15 +6,36 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 516 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 227 |
-| `nv-slang` | slang project spine, skills, workflows | 142 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 73 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 52 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 520 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 229 |
+| `nv-slang` | slang project spine, skills, workflows | 143 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 74 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 53 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-08-30
+
+### nv-main (4 PRs)
+- **#1378** `feat(setup): offer Dashboard at the channel step, pre-selected, merging nv-dashboard`
+- **#1382** `test(cost): behavioral cost-accounting scenarios (gating, model-switch, restart, /clear, /compact)`
+- **#1379** `sync: upstream/main 858421af into nv-main (42 commits, 19 conflicts resolved)`
+- **#1384** `feat(cost): runner↔dashboard↔ccusage parity harness (#1375)`
+
+### nv-dashboard (2 PRs)
+- **#1366** `Sync nv-dashboard with upstream/main`
+- **#1383** `feat(dashboard): period cost column + lifetime/ceiling cost-cap pill (#1334)`
+
+### nv-slang (1 PRs)
+- **#1367** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (1 PRs)
+- **#1368** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#1369** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-08-28
 
