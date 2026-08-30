@@ -10018,6 +10018,13 @@ export async function handleRequest(
       ? (periodParam as ContextPeriod)
       : '30d';
     const costByNano = sessionCostCache[period] || new Map<string, SessionCostEntry>();
+    // Lifetime (all-time) cost, independent of the selected day-window: the
+    // `'all'`-period sum of each session's day buckets — the same money the cost
+    // column prices, just unfiltered. Threaded onto the payload as `costLifetime`
+    // so the cost-cap PILL can show TOTAL spent vs its ceiling (`x / y`), where
+    // x = true lifetime total, NOT costSpent (the runner's windowed enforcement
+    // counter). The cost COLUMN above stays scoped to `period`.
+    const costByNanoAll = sessionCostCache.all || new Map<string, SessionCostEntry>();
     // p99-relative color signal for the Sessions pill (see computeCostP99ByGroup) —
     // scoped to the SAME period the request already selected, so it matches
     // whatever window (Today/7d/30d) the user is looking at. Cheap: reuses the
@@ -10062,7 +10069,12 @@ export async function handleRequest(
       // before.
       const capEntry = s.session_id ? sessionCostCapsMap.get(s.session_id) : undefined;
       const latestAdjustment = s.session_id ? latestAdjustmentBySession.get(s.session_id) : undefined;
-      Object.assign(s, buildSessionCostFields(capEntry, latestAdjustment));
+      // Lifetime total for the pill's spent number (period-independent) — from the
+      // `'all'` map, not the period map above and not the cap entry's windowed
+      // spentUsd. Undefined when this session has no scanned cost yet; the pill
+      // then falls back to costSpent so it never renders blank.
+      const cAll = s.session_id ? costByNanoAll.get(s.session_id) : undefined;
+      Object.assign(s, buildSessionCostFields(capEntry, latestAdjustment, cAll ? cAll.cost : undefined));
       // Session-precise trace deep-link. Sessions live under
       // data/v2-sessions/<agent_group_id>/… but traces live under
       // groups/<folder>/.claude-trace/session-<session_id>*.html, so map via the

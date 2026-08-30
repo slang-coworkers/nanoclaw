@@ -26,8 +26,10 @@
  * Dollar/cents convention: fields that already shipped before this feature
  * (costCap/costSpent/costCeiling) stay in DOLLARS, matching their existing wire
  * shape (nothing renders costCap today, but costSpent/costCeiling already do, in
- * dollars — see renderCostCapCell in app.js). New money fields introduced by this
- * feature are CENTS (costCeilingCents, targetCeilingCents, expectedCeilingCents),
+ * dollars — see renderCostCapCell in app.js). costLifetime is likewise DOLLARS
+ * (it's the same money the cost column already prices, just unfiltered by the
+ * day-window). New money fields introduced by this feature are CENTS
+ * (costCeilingCents, targetCeilingCents, expectedCeilingCents),
  * per the fixed wire contract's "all money in integer cents on the wire" rule for
  * the new control. costCeilingCents is DERIVED from costCeiling (one source of
  * truth: the runner's ceilingUsd), never read/stored independently.
@@ -179,6 +181,14 @@ export function usdToCents(usd: number | undefined | null): number | undefined {
 export interface SessionCostFields {
   costCap?: number;
   costSpent?: number;
+  /** The session's TOTAL LIFETIME cost in DOLLARS — the `'all'`-period sum of
+   *  its day buckets (the same money the cost column prices, just unfiltered by
+   *  the selected day-window). Distinct from costSpent, which is the runner's
+   *  internal WINDOWED enforcement counter (per-fire / per-day) — a different,
+   *  usually smaller scope. The pill renders this as its spent number (x in
+   *  "x / y ceiling"); see renderCostCapCell in app.js. Undefined when the
+   *  session has no scanned cost yet (render falls back to costSpent). */
+  costLifetime?: number;
   costStatus?: CostCapStatus;
   costCeiling?: number;
   costCeilingCents?: number;
@@ -193,10 +203,16 @@ export interface SessionCostFields {
 export function buildSessionCostFields(
   entry: SessionCostCapEntry | null | undefined,
   latestAdjustment: LatestCostAdjustment | null | undefined,
+  // The session's total lifetime cost in dollars, sourced by the caller from the
+  // `'all'`-period cost cache (NOT from the cap `entry`, whose spentUsd is the
+  // windowed enforcement counter). Undefined when the session has no scanned
+  // cost yet — the field is then omitted and the pill falls back to costSpent.
+  lifetimeUsd?: number,
 ): SessionCostFields {
   return {
     costCap: entry?.capUsd,
     costSpent: entry?.spentUsd,
+    costLifetime: typeof lifetimeUsd === 'number' && Number.isFinite(lifetimeUsd) ? lifetimeUsd : undefined,
     costStatus: entry?.status,
     costCeiling: entry?.ceilingUsd,
     costCeilingCents: usdToCents(entry?.ceilingUsd),

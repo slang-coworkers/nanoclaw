@@ -138,6 +138,31 @@ describe('buildSessionCostFields', () => {
     const withoutAdj = buildSessionCostFields({ agentGroupId: 'ag-1', epochKey: '0', updatedAt: 't' }, null);
     expect(withoutAdj.latestCostAdjustment).toBeUndefined();
   });
+  it('attaches costLifetime (dollars) from the lifetime arg — the pill spent number, distinct from the windowed costSpent', () => {
+    const fields = buildSessionCostFields(
+      { agentGroupId: 'ag-1', spentUsd: 199.35, ceilingUsd: 196.77, epochKey: '0', updatedAt: 't' },
+      null,
+      347.59,
+    );
+    // costLifetime is the TRUE all-time total (what the pill's x shows); costSpent
+    // is the runner's internal windowed enforcement counter, still carried but no
+    // longer the number the pill renders.
+    expect(fields.costLifetime).toBe(347.59);
+    expect(fields.costSpent).toBe(199.35);
+  });
+  it('omits costLifetime when no lifetime total is passed (no scanned cost yet → render falls back to costSpent)', () => {
+    const fields = buildSessionCostFields({ agentGroupId: 'ag-1', spentUsd: 5, epochKey: '0', updatedAt: 't' }, null);
+    expect(fields.costLifetime).toBeUndefined();
+    expect(JSON.parse(JSON.stringify(fields))).not.toHaveProperty('costLifetime');
+  });
+  it('drops a non-finite lifetime rather than emitting a value that would render $NaN', () => {
+    expect(buildSessionCostFields({ agentGroupId: 'ag-1', epochKey: '0', updatedAt: 't' }, null, NaN).costLifetime).toBeUndefined();
+  });
+  it('attaches costLifetime even with no cap entry (additive/harmless — the pill only renders when a status exists)', () => {
+    const fields = buildSessionCostFields(undefined, null, 12.34);
+    expect(fields.costLifetime).toBe(12.34);
+    expect(fields.costStatus).toBeUndefined();
+  });
 });
 
 describe('mapEpisodeToLatestAdjustment', () => {
