@@ -13,6 +13,7 @@
  * happily if the guard never ran. The synthetic cases prove it catches each
  * drift shape that has actually burned us in prod.
  */
+import Database from 'better-sqlite3';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -24,19 +25,25 @@ import { MODEL_PRICING } from '../container/agent-runner/src/pricing.js';
 import {
   checkTableParity,
   codexDayKey,
+  compareCounterToLedger,
   compareLeg,
+  compareLedgerToReprice,
   DEFAULT_THRESHOLDS,
+  emptyTokens,
   findDashboardPricingFiles,
   foldClaudeDaily,
   foldCodexDaily,
   isClaudeModel,
   parseArgs,
   parseCcusageJson,
+  readSessionMeters,
   repriceClaudeTranscripts,
   repriceCodexHome,
   resolveClaudeConfigDir,
+  totalTokens,
   withinSince,
   type OracleResult,
+  type TokenTotals,
 } from './cost-parity.js';
 
 const RUNNER_PRICING = path.resolve(
@@ -439,7 +446,12 @@ describe('leg 2 — Codex reprice', () => {
 
   it('reports net-of-cache input tokens, matching ccusage’s columns', () => {
     const r = repriceCodexHome(codexFixture());
-    expect(r.tokens).toEqual({ input: 600 + 1000 + 100, cached: 400 + 1000 + 0, output: 200 + 500 + 50 });
+    expect(r.tokens).toEqual({
+      input: 600 + 1000 + 100,
+      cacheRead: 400 + 1000 + 0,
+      output: 200 + 500 + 50,
+      cacheCreate: 0,
+    });
     expect(r.errors).toBe(0);
     expect(r.unpricedModels).toEqual([]);
     expect(r.byModel['gpt-5.6-sol']).toBeCloseTo(CALL1_USD + CALL2_USD + CALL3_USD, 10);
@@ -524,6 +536,16 @@ describe('foldClaudeDaily', () => {
     expect(foldClaudeDaily(parsed).zeroPriced).toEqual(['claude-sonnet-5']);
   });
 
+  it('accumulates tokens for EVERY Claude model, including the $0-priced one', () => {
+    // The tokens of an unpriced model are the only evidence it was used at all.
+    // Dropping them alongside its (zero) cost is what makes a 52x understatement
+    // look like a small, plausible bill.
+    const r = foldClaudeDaily(parsed);
+    expect(r.tokens).toEqual({ input: 1010, output: 505, cacheRead: 20000, cacheCreate: 3000 });
+    // ...and codex's tokens stay out, exactly as its dollars do.
+    expect(totalTokens(r.tokens)).toBe(1010 + 505 + 20000 + 3000);
+  });
+
   it('accepts ccusage 19+ rows keyed `period` instead of `date`', () => {
     const r = foldClaudeDaily({
       daily: [{ period: '2026-08-03', modelBreakdowns: [{ modelName: 'claude-opus-5', cost: 1 }] }],
@@ -583,6 +605,67 @@ describe('foldCodexDaily', () => {
   it('surfaces a day ccusage priced at $0 with tokens present', () => {
     expect(foldCodexDaily(parsed).zeroPriced).toEqual(['gpt-9-imaginary']);
   });
+
+  it('reads ccusage 20.x tokens, where inputTokens is ALREADY net and cache lives in cacheReadTokens', () => {
+    // Verified against a real `ccusage@20.0.19 codex daily --json --offline`
+    // run: for a wire call of input 1000 / cached 400 / output 200 it emits
+    // inputTokens 600, cacheReadTokens 400, totalTokens 1200.
+    const r = foldCodexDaily({
+      daily: [
+        {
+          date: '2026-08-01',
+          costUSD: 1,
+          totalTokens: 1200,
+          inputTokens: 600,
+          cacheReadTokens: 400,
+          cacheCreationTokens: 0,
+          outputTokens: 200,
+          reasoningOutputTokens: 0,
+          models: { 'azure/openai/gpt-5.6-sol': { totalTokens: 1200 } },
+        },
+      ],
+    });
+    expect(r.tokens).toEqual({ input: 600, cacheRead: 400, output: 200, cacheCreate: 0 });
+  });
+
+  it('still nets the LEGACY shape, where inputTokens is inclusive of cachedInputTokens', () => {
+    // Applying the legacy rule to the 20.x shape is not a rounding error: it
+    // zeroes the cache column and subtracts net-from-net. On a fixture whose
+    // DOLLARS matched to the cent it produced 2,300 tokens against a true 3,700
+    // — which is exactly why tokens are compared at all.
+    const r = foldCodexDaily({
+      daily: [
+        {
+          date: 'Aug 01, 2026',
+          costUSD: 1,
+          totalTokens: 1600,
+          inputTokens: 1000,
+          cachedInputTokens: 400,
+          outputTokens: 200,
+          models: { 'gpt-5.6-sol': { totalTokens: 1600 } },
+        },
+      ],
+    });
+    expect(r.tokens).toEqual({ input: 600, cacheRead: 400, output: 200, cacheCreate: 0 });
+  });
+
+  it('never adds reasoningOutputTokens — ccusage counts them inside outputTokens', () => {
+    const r = foldCodexDaily({
+      daily: [
+        {
+          date: '2026-08-01',
+          costUSD: 1,
+          totalTokens: 200,
+          inputTokens: 0,
+          cacheReadTokens: 0,
+          outputTokens: 200,
+          reasoningOutputTokens: 150,
+          models: {},
+        },
+      ],
+    });
+    expect(totalTokens(r.tokens)).toBe(200);
+  });
 });
 
 describe('codexDayKey', () => {
@@ -617,19 +700,25 @@ describe('parseCcusageJson', () => {
 
 // ─────────────────────────────── comparison ─────────────────────────────────
 
-function oracle(totalUsd: number, zeroPriced: string[] = []): OracleResult {
-  return { totalUsd, byDay: {}, byModel: {}, zeroPriced, days: 1 };
+/** Token totals both sides agree on, so a case can isolate the DOLLAR axis. */
+const TOK = { input: 1000, output: 200, cacheRead: 5000, cacheCreate: 300 };
+
+function oracle(totalUsd: number, zeroPriced: string[] = [], tokens: TokenTotals = { ...TOK }): OracleResult {
+  return { totalUsd, byDay: {}, byModel: {}, tokens, zeroPriced, days: 1 };
+}
+function mine(usd: number, tokens: TokenTotals = { ...TOK }): { usd: number; tokens: TokenTotals } {
+  return { usd, tokens };
 }
 
-describe('compareLeg', () => {
+describe('compareLeg — dollars', () => {
   it('passes Claude inside its 5% band', () => {
-    const c = compareLeg('claude', 102, oracle(100), DEFAULT_THRESHOLDS.claude);
+    const c = compareLeg('claude', mine(102), oracle(100), DEFAULT_THRESHOLDS.claude);
     expect(c.verdict).toBe('ok');
     expect(c.deltaPct).toBeCloseTo(2, 10);
   });
 
   it('fails Claude outside it — Claude reconciles to the cent, so 6% is a real defect', () => {
-    expect(compareLeg('claude', 106, oracle(100), DEFAULT_THRESHOLDS.claude).verdict).toBe('DRIFT');
+    expect(compareLeg('claude', mine(106), oracle(100), DEFAULT_THRESHOLDS.claude).verdict).toBe('DRIFT');
   });
 
   it('tolerates the codex date-effective residual and says WHY', () => {
@@ -637,31 +726,394 @@ describe('compareLeg', () => {
     // on others; a flat CODEX_MODEL_PRICING cannot express that. ~2% aggregate,
     // ~12% worst single session. Flagging it every run would train us to ignore
     // this harness.
-    const c = compareLeg('codex', 94, oracle(100), DEFAULT_THRESHOLDS.codex);
+    const c = compareLeg('codex', mine(94), oracle(100), DEFAULT_THRESHOLDS.codex);
     expect(c.verdict).toBe('ok');
     expect(c.notes.join('\n')).toMatch(/DATE-EFFECTIVE/);
   });
 
   it('fails codex beyond its wider band', () => {
-    expect(compareLeg('codex', 112, oracle(100), DEFAULT_THRESHOLDS.codex).verdict).toBe('DRIFT');
+    expect(compareLeg('codex', mine(112), oracle(100), DEFAULT_THRESHOLDS.codex).verdict).toBe('DRIFT');
   });
 
-  it('treats "oracle says $0 while we billed real money" as drift, not as parity', () => {
-    const c = compareLeg('claude', 12.34, oracle(0), DEFAULT_THRESHOLDS.claude);
+  it('warns that a leg is not evidence for models the oracle priced at $0', () => {
+    const c = compareLeg('claude', mine(100), oracle(100, ['claude-opus-5']), DEFAULT_THRESHOLDS.claude);
+    expect(c.verdict).toBe('ok');
+    expect(c.notes.join('\n')).toMatch(/NOT evidence/);
+    expect(c.oracleBlind).toEqual(['claude-opus-5']);
+  });
+});
+
+describe('compareLeg — tokens first, so a red run points somewhere', () => {
+  it('diagnoses RATES when tokens agree but dollars do not', () => {
+    // The 52x understatement's shape: every token accounted for, the dollars
+    // collapsed. Sending someone to audit the scanner here wastes a day.
+    const c = compareLeg('claude', mine(50), oracle(100), DEFAULT_THRESHOLDS.claude);
     expect(c.verdict).toBe('DRIFT');
+    expect(c.diagnosis).toBe('rates');
+    expect(c.tokens.match).toBe(true);
+    expect(c.notes.join('\n')).toMatch(/TOKENS AGREE, DOLLARS DO NOT/);
+  });
+
+  it('diagnoses COUNTING when the tokens themselves disagree, naming the column', () => {
+    // The 1.7–2.8x counter inflation's shape: a dedup failure, so both tokens
+    // and dollars are inflated by the same factor.
+    const c = compareLeg(
+      'claude',
+      mine(200, { ...TOK, output: TOK.output * 2 }),
+      oracle(100),
+      DEFAULT_THRESHOLDS.claude,
+    );
+    expect(c.verdict).toBe('DRIFT');
+    expect(c.diagnosis).toBe('counting');
+    expect(c.notes.join('\n')).toMatch(/TOKENS DISAGREE.*output \+100\.000%/s);
+  });
+
+  it('fails on a token gap even when the dollars happen to land inside the band', () => {
+    // Offsetting errors, or a mispriced model with a small dollar share. The
+    // dollar band alone would call this parity.
+    const c = compareLeg('codex', mine(100, { ...TOK, input: TOK.input * 2 }), oracle(100), DEFAULT_THRESHOLDS.codex);
+    expect(c.verdict).toBe('DRIFT');
+    expect(c.diagnosis).toBe('counting');
+  });
+
+  it('absorbs a sub-0.5% token wobble (one line written mid-read)', () => {
+    const c = compareLeg(
+      'claude',
+      mine(100, { ...TOK, output: TOK.output + 1 }),
+      oracle(100),
+      DEFAULT_THRESHOLDS.claude,
+    );
+    expect(c.tokens.match).toBe(true);
+    expect(c.verdict).toBe('ok');
+  });
+});
+
+describe('compareLeg — the suspicious-zero guard, both directions', () => {
+  it('flags oracle-$0 while we billed real money', () => {
+    const c = compareLeg('claude', mine(12.34), oracle(0), DEFAULT_THRESHOLDS.claude);
+    expect(c.verdict).toBe('DRIFT');
+    expect(c.diagnosis).toBe('blind');
     expect(c.deltaPct).toBeNull();
     expect(c.notes.join('\n')).toMatch(/cannot see this spend/);
   });
 
-  it('accepts a genuinely idle window (both zero)', () => {
-    expect(compareLeg('codex', 0, oracle(0), DEFAULT_THRESHOLDS.codex).verdict).toBe('ok');
+  it('flags the REVERSE — we priced $0 while the oracle billed', () => {
+    // This is the direction that actually cost us $31k of invisible spend, and
+    // the direction the first cut of this harness missed entirely.
+    const c = compareLeg('claude', mine(0), oracle(100), DEFAULT_THRESHOLDS.claude);
+    expect(c.verdict).toBe('DRIFT');
+    expect(c.diagnosis).toBe('blind');
+    expect(c.notes.join('\n')).toMatch(/WE priced \$0 .*52x understatement/s);
   });
 
-  it('warns that a leg is not evidence for models the oracle priced at $0', () => {
-    const c = compareLeg('claude', 100, oracle(100, ['claude-opus-5']), DEFAULT_THRESHOLDS.claude);
+  it('flags had-signal-but-$0 — both meters zero with tokens billed', () => {
+    // Agreement on $0 is parity only when nothing was used. With tokens on the
+    // wire it means NOBODY could price them, which reads identically to idle.
+    const c = compareLeg('codex', mine(0), oracle(0), DEFAULT_THRESHOLDS.codex);
+    expect(c.verdict).toBe('DRIFT');
+    expect(c.diagnosis).toBe('blind');
+    expect(c.notes.join('\n')).toMatch(/both meters read \$0 but .* tokens were billed/);
+  });
+
+  it('accepts a genuinely idle window — $0 AND no tokens', () => {
+    const c = compareLeg('codex', mine(0, emptyTokens()), oracle(0, [], emptyTokens()), DEFAULT_THRESHOLDS.codex);
     expect(c.verdict).toBe('ok');
-    expect(c.notes.join('\n')).toMatch(/NOT evidence/);
-    expect(c.oracleBlind).toEqual(['claude-opus-5']);
+    expect(c.diagnosis).toBe('ok');
+  });
+
+  it('fails a Claude leg whose own table could not price a model, however well the totals agree', () => {
+    // priceUsage returns $0 for an unknown model, so "agreement" here is luck:
+    // the unpriced tokens simply were not in either total.
+    const c = compareLeg('claude', mine(100), oracle(100), DEFAULT_THRESHOLDS.claude, {
+      unpricedModels: ['claude-opus-6'],
+    });
+    expect(c.verdict).toBe('DRIFT');
+    expect(c.notes.join('\n')).toMatch(/OUR table cannot price claude-opus-6/);
+  });
+
+  it('only warns for codex, which falls back to DEFAULT_CODEX_RATE rather than $0', () => {
+    const c = compareLeg('codex', mine(100), oracle(100), DEFAULT_THRESHOLDS.codex, {
+      unpricedModels: ['gpt-9-imaginary'],
+    });
+    expect(c.verdict).toBe('ok');
+    expect(c.notes.join('\n')).toMatch(/DEFAULT_CODEX_RATE/);
+  });
+});
+
+// ───────────── LEG 3: the runner's recorded meters (outbound.db) ────────────
+
+/**
+ * A stand-in outbound.db. The `cost_events` DDL is copied from the runner's
+ * `createCostEventsTable` — it cannot be imported, because that function takes a
+ * `bun:sqlite` handle. If the runner's schema changes, `readSessionMeters`'s
+ * column reads break against a REAL prod DB while this fixture keeps passing, so
+ * the assertions below stay on the columns' MEANING (net input, mutually
+ * exclusive cache-write fields) rather than merely on round-tripping.
+ */
+interface LedgerRow {
+  id: string;
+  ts: string;
+  provider?: string;
+  model?: string;
+  input?: number;
+  cacheRead?: number;
+  cacheWrite?: number;
+  cw5?: number;
+  cw1?: number;
+  output?: number;
+  priced?: number;
+  rateVersion?: number;
+  adjustment?: number;
+  windowGen?: number;
+}
+
+function outboundFixture(opts: {
+  costCap?: Record<string, unknown>;
+  events?: LedgerRow[];
+  noLedger?: boolean;
+}): string {
+  const dir = tmp('cost-parity-outbound-');
+  const dbPath = path.join(dir, 'outbound.db');
+  const db = new Database(dbPath);
+  db.exec('CREATE TABLE session_state (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+  if (opts.costCap) {
+    db.prepare("INSERT INTO session_state (key, value) VALUES ('cost_cap', ?)").run(JSON.stringify(opts.costCap));
+  }
+  if (!opts.noLedger) {
+    db.exec(`
+      CREATE TABLE cost_events (
+        id TEXT PRIMARY KEY, ts TEXT NOT NULL, provider TEXT NOT NULL, model TEXT NOT NULL,
+        input_tokens INTEGER NOT NULL DEFAULT 0, cache_read_tokens INTEGER NOT NULL DEFAULT 0,
+        cache_write_tokens INTEGER NOT NULL DEFAULT 0, cache_write_5m_tokens INTEGER NOT NULL DEFAULT 0,
+        cache_write_1h_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0,
+        reasoning_tokens INTEGER NOT NULL DEFAULT 0, priced_usd REAL NOT NULL, rate_version INTEGER NOT NULL,
+        adjustment_usd REAL NOT NULL DEFAULT 0, window_gen INTEGER NOT NULL DEFAULT 0,
+        thread_id TEXT, gh_ref TEXT, created_at TEXT NOT NULL)`);
+    const ins = db.prepare(
+      `INSERT INTO cost_events (id, ts, provider, model, input_tokens, cache_read_tokens, cache_write_tokens,
+       cache_write_5m_tokens, cache_write_1h_tokens, output_tokens, reasoning_tokens, priced_usd, rate_version,
+       adjustment_usd, window_gen, created_at)
+       VALUES (@id, @ts, @provider, @model, @input, @cacheRead, @cacheWrite, @cw5, @cw1, @output, 0, @priced,
+       @rateVersion, @adjustment, @windowGen, @ts)`,
+    );
+    for (const e of opts.events ?? []) {
+      ins.run({
+        id: e.id,
+        ts: e.ts,
+        provider: e.provider ?? 'claude',
+        model: e.model ?? 'claude-opus-5',
+        input: e.input ?? 0,
+        cacheRead: e.cacheRead ?? 0,
+        cacheWrite: e.cacheWrite ?? 0,
+        cw5: e.cw5 ?? 0,
+        cw1: e.cw1 ?? 0,
+        output: e.output ?? 0,
+        priced: e.priced ?? 0,
+        rateVersion: e.rateVersion ?? 1,
+        adjustment: e.adjustment ?? 0,
+        windowGen: e.windowGen ?? 0,
+      });
+    }
+  }
+  db.close();
+  return dbPath;
+}
+
+const LIFETIME_CAP = { capUsd: 100, spentUsd: 10, status: 'ok', immortal: true, window: 'lifetime', ledgerGen: 0 };
+
+describe('leg 3 — reading what the runner actually recorded', () => {
+  it('lifts the enforcement counter — the number the cap actually compared against', () => {
+    const p = outboundFixture({ costCap: { ...LIFETIME_CAP, ceilingUsd: 250, budgetGen: 3 } });
+    const m = readSessionMeters(p);
+    expect(m.present).toBe(true);
+    expect(m.counter).toMatchObject({ spentUsd: 10, capUsd: 100, ceilingUsd: 250, status: 'ok', budgetGen: 3 });
+  });
+
+  it('sums the ledger by provider and does NOT double-count cache writes', () => {
+    // cost-events-integration.ts writes `hasSplit ? 0 : flat`, so the flat field
+    // and the 5m/1h split are mutually exclusive per row. Summing all three is
+    // the total; treating flat as an additional column would inflate it.
+    const p = outboundFixture({
+      costCap: LIFETIME_CAP,
+      events: [
+        {
+          id: 'claude:a',
+          ts: '2026-08-01T00:00:00.000Z',
+          input: 100,
+          cacheRead: 50,
+          cacheWrite: 30,
+          output: 10,
+          priced: 4,
+        },
+        { id: 'claude:b', ts: '2026-08-01T01:00:00.000Z', input: 200, cw5: 20, cw1: 40, output: 20, priced: 5 },
+        {
+          id: 'codex:c',
+          ts: '2026-08-02T00:00:00.000Z',
+          provider: 'codex',
+          model: 'gpt-5.6-sol',
+          input: 300,
+          output: 30,
+          priced: 1,
+        },
+      ],
+    });
+    const m = readSessionMeters(p);
+    expect(m.ledger?.rows).toBe(3);
+    expect(m.ledger?.usd).toBeCloseTo(10, 10);
+    expect(m.ledger?.tokens).toEqual({ input: 600, cacheRead: 50, cacheCreate: 30 + 20 + 40, output: 60 });
+    expect(m.ledger?.byProvider.claude).toMatchObject({ rows: 2, usd: 9 });
+    expect(m.ledger?.byProvider.codex).toMatchObject({ rows: 1, usd: 1 });
+  });
+
+  it('filters the ledger by --since on the raw ts prefix', () => {
+    const p = outboundFixture({
+      costCap: LIFETIME_CAP,
+      events: [
+        { id: 'a', ts: '2026-08-01T23:59:59.999Z', priced: 7, input: 1 },
+        { id: 'b', ts: '2026-08-02T00:00:00.000Z', priced: 3, input: 1 },
+      ],
+    });
+    expect(readSessionMeters(p).ledger?.usd).toBeCloseTo(10, 10);
+    expect(readSessionMeters(p, '20260802').ledger?.usd).toBeCloseTo(3, 10);
+  });
+
+  it('reports a mixed rate_version instead of quietly summing incompatible dollars', () => {
+    const p = outboundFixture({
+      costCap: LIFETIME_CAP,
+      events: [
+        { id: 'a', ts: '2026-08-01T00:00:00.000Z', priced: 1, rateVersion: 1, input: 1 },
+        { id: 'b', ts: '2026-08-01T01:00:00.000Z', priced: 1, rateVersion: 2, input: 1 },
+      ],
+    });
+    const m = readSessionMeters(p);
+    expect(m.ledger?.rateVersions).toEqual([1, 2]);
+    expect(m.notes.join('\n')).toMatch(/spans rate_version 1, 2/);
+  });
+
+  it('flags a TOKEN row stamped $0 but not a legitimate adjustment row', () => {
+    // An adjustment row carries dollars and no tokens by design. A token row
+    // stamped $0 is a model the ledger could not price — the same failure as an
+    // unpriced model anywhere else, and just as invisible in a total.
+    const p = outboundFixture({
+      costCap: LIFETIME_CAP,
+      events: [
+        { id: 'adj', ts: '2026-08-01T00:00:00.000Z', model: 'n/a', priced: 5, adjustment: 5 },
+        { id: 'bad', ts: '2026-08-01T01:00:00.000Z', model: 'claude-opus-6', input: 900, priced: 0 },
+      ],
+    });
+    const m = readSessionMeters(p);
+    expect(m.ledger?.unpricedModels).toEqual(['claude-opus-6']);
+    expect(m.ledger?.adjustmentUsd).toBeCloseTo(5, 10);
+  });
+
+  it('degrades with a REASON, never to a confident $0', () => {
+    const missing = readSessionMeters(path.join(tmp('cost-parity-absent-'), 'outbound.db'));
+    expect(missing.present).toBe(false);
+    expect(missing.counter).toBeUndefined();
+    expect(missing.notes.join('\n')).toMatch(/no outbound\.db/);
+
+    const preLedger = readSessionMeters(outboundFixture({ costCap: LIFETIME_CAP, noLedger: true }));
+    expect(preLedger.ledger).toBeUndefined();
+    expect(preLedger.notes.join('\n')).toMatch(/predates the #65 durable ledger/);
+
+    const preCap = readSessionMeters(outboundFixture({ events: [] }));
+    expect(preCap.counter).toBeUndefined();
+    expect(preCap.notes.join('\n')).toMatch(/cost tracking never ran/);
+  });
+
+  it('accepts the session DIRECTORY as well as the db path', () => {
+    const p = outboundFixture({ costCap: LIFETIME_CAP });
+    expect(readSessionMeters(path.dirname(p)).counter?.spentUsd).toBe(10);
+  });
+});
+
+describe('leg 3 — counter vs ledger', () => {
+  const events = [{ id: 'a', ts: '2026-08-01T00:00:00.000Z', priced: 10, input: 100 }];
+
+  it('passes when enforcement and the durable record agree', () => {
+    const m = readSessionMeters(outboundFixture({ costCap: LIFETIME_CAP, events }));
+    expect(compareCounterToLedger(m, DEFAULT_THRESHOLDS.meter).verdict).toBe('ok');
+  });
+
+  it('flags charges that reached the ledger but never reached enforcement', () => {
+    const m = readSessionMeters(outboundFixture({ costCap: { ...LIFETIME_CAP, spentUsd: 4 }, events }));
+    const c = compareCounterToLedger(m, DEFAULT_THRESHOLDS.meter);
+    expect(c.verdict).toBe('DRIFT');
+    expect(c.notes.join('\n')).toMatch(/ledger > counter/);
+  });
+
+  it('flags enforcement charging more than the record can account for', () => {
+    const m = readSessionMeters(outboundFixture({ costCap: { ...LIFETIME_CAP, spentUsd: 40 }, events }));
+    const c = compareCounterToLedger(m, DEFAULT_THRESHOLDS.meter);
+    expect(c.verdict).toBe('DRIFT');
+    expect(c.notes.join('\n')).toMatch(/counter > ledger/);
+  });
+
+  it('flags a $0 counter sitting on a ledger full of real charges', () => {
+    const m = readSessionMeters(outboundFixture({ costCap: { ...LIFETIME_CAP, spentUsd: 0 }, events }));
+    const c = compareCounterToLedger(m, DEFAULT_THRESHOLDS.meter);
+    expect(c.verdict).toBe('DRIFT');
+    expect(c.notes.join('\n')).toMatch(/enforcement was blind/);
+  });
+
+  it('SKIPS a daily counter rather than comparing two different windows', () => {
+    // A daily counter covers only its dayKey; the ledger sum here does not.
+    // Reporting that difference as a delta would fire on every non-immortal
+    // session forever, which is how a check gets ignored.
+    const m = readSessionMeters(
+      outboundFixture({ costCap: { ...LIFETIME_CAP, window: 'daily', dayKey: '2026-08-01' }, events }),
+    );
+    const c = compareCounterToLedger(m, DEFAULT_THRESHOLDS.meter);
+    expect(c.verdict).toBe('skipped');
+    expect(c.notes.join('\n')).toMatch(/rerun with --since 20260801/);
+  });
+
+  it('SKIPS when --since scopes the ledger but not the lifetime counter', () => {
+    const m = readSessionMeters(outboundFixture({ costCap: LIFETIME_CAP, events }), '20260801');
+    const c = compareCounterToLedger(m, DEFAULT_THRESHOLDS.meter, '20260801');
+    expect(c.verdict).toBe('skipped');
+    expect(c.notes.join('\n')).toMatch(/different windows/);
+  });
+
+  it('notes a rotated window generation rather than reading it as a shortfall', () => {
+    const m = readSessionMeters(
+      outboundFixture({
+        costCap: { ...LIFETIME_CAP, ledgerGen: 1 },
+        events: [
+          { id: 'old', ts: '2026-08-01T00:00:00.000Z', priced: 6, input: 1, windowGen: 0 },
+          { id: 'new', ts: '2026-08-02T00:00:00.000Z', priced: 4, input: 1, windowGen: 1 },
+        ],
+      }),
+    );
+    expect(compareCounterToLedger(m, DEFAULT_THRESHOLDS.meter).notes.join('\n')).toMatch(/a \/clear rotated/);
+  });
+
+  it('skips cleanly when either meter is absent', () => {
+    const m = readSessionMeters(outboundFixture({ costCap: LIFETIME_CAP, noLedger: true }));
+    expect(compareCounterToLedger(m, DEFAULT_THRESHOLDS.meter).verdict).toBe('skipped');
+  });
+});
+
+describe('leg 3 — ledger vs reprice', () => {
+  it('passes when the recorded past and a fresh re-read agree', () => {
+    expect(compareLedgerToReprice(10, 10.05, DEFAULT_THRESHOLDS.meter).verdict).toBe('ok');
+  });
+
+  it('flags a write-path gap — spend the transcripts show that no row captured', () => {
+    // Unreachable by a reprice-vs-ccusage comparison alone: both of those would
+    // agree with each other while the system recorded nothing.
+    const c = compareLedgerToReprice(0, 12.5, DEFAULT_THRESHOLDS.meter);
+    expect(c.verdict).toBe('DRIFT');
+    expect(c.notes.join('\n')).toMatch(/rows never got written/);
+  });
+
+  it('fails a 5% gap — both sides are ours, so the band is 1%', () => {
+    expect(compareLedgerToReprice(100, 105, DEFAULT_THRESHOLDS.meter).verdict).toBe('DRIFT');
+  });
+
+  it('carries a scope note when only one provider was repriced', () => {
+    const c = compareLedgerToReprice(100, 60, DEFAULT_THRESHOLDS.meter, 'only claude was repriced');
+    expect(c.notes[0]).toMatch(/only claude was repriced/);
   });
 });
 
@@ -676,10 +1128,29 @@ describe('CLI plumbing', () => {
   });
 
   it('parses flags and strips dashes from --since', () => {
-    const a = parseArgs(['session', '--claude-dir', '/c', '--codex-home', '/x', '--since', '2026-08-01', '--json']);
-    expect(a).toMatchObject({ cmd: 'session', claudeDir: '/c', codexHome: '/x', since: '20260801', json: true });
+    const a = parseArgs([
+      'session',
+      '--claude-dir',
+      '/c',
+      '--codex-home',
+      '/x',
+      '--outbound-db',
+      '/o/outbound.db',
+      '--since',
+      '2026-08-01',
+      '--json',
+    ]);
+    expect(a).toMatchObject({
+      cmd: 'session',
+      claudeDir: '/c',
+      codexHome: '/x',
+      outboundDb: '/o/outbound.db',
+      since: '20260801',
+      json: true,
+    });
     expect(a.claudeThreshold).toBe(DEFAULT_THRESHOLDS.claude);
     expect(a.codexThreshold).toBe(DEFAULT_THRESHOLDS.codex);
+    expect(a.meterThreshold).toBe(DEFAULT_THRESHOLDS.meter);
   });
 
   it('rejects an unknown flag instead of ignoring it', () => {
