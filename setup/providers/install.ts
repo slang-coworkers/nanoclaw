@@ -45,6 +45,24 @@ function isFlowOwnedCommand(cmd: string): boolean {
   );
 }
 
+/**
+ * Did this apply actually mutate the tree?
+ *
+ * NOT `applied.length > 0`. The engine counts a `run` directive as applied even
+ * when our `exec` no-ops it (see isFlowOwnedCommand), and every provider SKILL.md
+ * ends with build/test/auth runs — so `applied` is non-empty on EVERY apply,
+ * including one where all four real mutations reported "already present". That
+ * made the caller's image rebuild unconditional: a multi-minute no-op on each
+ * `--step provider-auth <name>`, and a hard `exit 1` wherever the build can't run.
+ *
+ * The journal records what actually happened, so read it instead: any non-`ran`
+ * entry is a file mutation, and a `ran` entry counts only if we really executed
+ * it (add-opencode's `nc:dep` journals as `ran` and is a genuine mutation).
+ */
+function didMutate(result: ApplyResult): boolean {
+  return result.journal.some((e) => e.op !== 'ran' || !isFlowOwnedCommand(e.cmd));
+}
+
 export interface ProviderInstallResult {
   apply: ApplyResult;
   /** True when the engine applied at least one mutation (fresh/refreshed install). */
@@ -76,7 +94,7 @@ export async function applyProviderSkill(skillDir: string, projectRoot: string):
   const blockers = [...result.agentTasks.map((t) => t.reason), ...result.deferred];
   return {
     apply: result,
-    changed: result.applied.length > 0,
+    changed: didMutate(result),
     blockers,
   };
 }
