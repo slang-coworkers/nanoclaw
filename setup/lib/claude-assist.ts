@@ -27,6 +27,7 @@ import path from 'path';
 import * as p from '@clack/prompts';
 import k from 'kleur';
 
+import { extractClaudeOAuthToken } from './captured-token.js';
 import { ensureAnswer } from './runner.js';
 import { brandBody, fitToWidth, fmtDuration, note } from './theme.js';
 
@@ -46,17 +47,9 @@ export interface AssistContext {
 export const STEP_FILES: Record<string, string[]> = {
   bootstrap: ['setup.sh', 'setup/install-node.sh', 'nanoclaw.sh'],
   environment: ['setup/environment.ts'],
-  container: [
-    'setup/container.ts',
-    'setup/install-docker.sh',
-    'container/Dockerfile',
-  ],
+  container: ['setup/container.ts', 'setup/install-docker.sh', 'container/Dockerfile'],
   onecli: ['setup/onecli.ts'],
-  auth: [
-    'setup/auth.ts',
-    'setup/register-claude-token.sh',
-    'setup/install-claude.sh',
-  ],
+  auth: ['setup/auth.ts', 'setup/register-claude-token.sh', 'setup/install-claude.sh'],
   mounts: ['setup/mounts.ts'],
   service: ['setup/service.ts'],
   'cli-agent': ['setup/cli-agent.ts', 'scripts/init-cli-agent.ts'],
@@ -64,21 +57,21 @@ export const STEP_FILES: Record<string, string[]> = {
   channel: ['setup/auto.ts'],
   verify: ['setup/verify.ts'],
   // Channel-specific sub-steps:
-  'telegram-install': ['setup/add-telegram.sh', 'setup/channels/telegram.ts'],
+  'telegram-install': ['.claude/skills/add-telegram/SKILL.md', 'scripts/skill-apply.ts', 'setup/channels/telegram.ts'],
   'telegram-validate': ['setup/channels/telegram.ts'],
   'pair-telegram': ['setup/pair-telegram.ts', 'setup/channels/telegram.ts'],
-  'discord-install': ['setup/add-discord.sh', 'setup/channels/discord.ts'],
-  'slack-install': ['setup/add-slack.sh', 'setup/channels/slack.ts'],
+  'discord-install': ['.claude/skills/add-discord/SKILL.md', 'scripts/skill-apply.ts', 'setup/channels/discord.ts'],
+  'slack-install': ['.claude/skills/add-slack/SKILL.md', 'scripts/skill-apply.ts', 'setup/channels/slack.ts'],
   'slack-validate': ['setup/channels/slack.ts'],
-  'imessage-install': ['setup/add-imessage.sh', 'setup/channels/imessage.ts'],
-  'imessage': ['setup/channels/imessage.ts'],
-  'teams-install': ['setup/add-teams.sh', 'setup/channels/teams.ts'],
-  'teams-manifest': ['setup/lib/teams-manifest.ts', 'setup/channels/teams.ts'],
-  'init-first-agent': [
-    'scripts/init-first-agent.ts',
-    'setup/channels/telegram.ts',
-    'setup/channels/discord.ts',
+  'imessage-install': ['.claude/skills/add-imessage/SKILL.md', 'scripts/skill-apply.ts', 'scripts/photon-setup.ts'],
+  imessage: ['setup/channels/run-channel-skill.ts', 'scripts/photon-setup.ts'],
+  'teams-install': [
+    '.claude/skills/add-teams/SKILL.md',
+    'scripts/skill-apply.ts',
+    'setup/channels/run-channel-skill.ts',
   ],
+  'teams-manifest': ['setup/lib/teams-manifest.ts', 'setup/channels/teams-manifest-build.ts'],
+  'init-first-agent': ['scripts/init-first-agent.ts', 'setup/channels/telegram.ts', 'setup/channels/discord.ts'],
 };
 
 export const BIG_PICTURE_FILES = ['README.md', 'setup/auto.ts'];
@@ -89,10 +82,7 @@ export const BIG_PICTURE_FILES = ['README.md', 'setup/auto.ts'];
  * Returns `false` for every other outcome (skipped, declined, no command,
  * Claude unreachable, user chose not to run).
  */
-export async function offerClaudeAssist(
-  ctx: AssistContext,
-  projectRoot: string = process.cwd(),
-): Promise<boolean> {
+export async function offerClaudeAssist(ctx: AssistContext, projectRoot: string = process.cwd()): Promise<boolean> {
   if (process.env.NANOCLAW_SKIP_CLAUDE_ASSIST === '1') return false;
   if (!(await ensureClaudeReady(projectRoot))) return false;
 
@@ -115,10 +105,7 @@ export async function offerClaudeAssist(
     return false;
   }
 
-  note(
-    `${parsed.reason}\n\n${k.cyan('$')} ${parsed.command}`,
-    "Claude's suggestion",
-  );
+  note(`${parsed.reason}\n\n${k.cyan('$')} ${parsed.command}`, "Claude's suggestion");
 
   const run = ensureAnswer(
     await p.confirm({
@@ -130,6 +117,325 @@ export async function offerClaudeAssist(
 
   await runSuggested(parsed.command, projectRoot);
   return true;
+}
+
+/** One `git status --porcelain=v1 --untracked-files=all` entry. */
+export interface StatusEntry {
+  /** The two-character XY status code. `??` marks an untracked path. */
+  code: string;
+  /** Repo-relative path. */
+  path: string;
+}
+
+/**
+ * Everything uncommitted in the tree: staged, unstaged, AND untracked.
+ *
+ * `git diff --quiet` — the test this replaces — reports a clean tree for both of
+ * the last two. An assist that committed its merge but left a staged fixup or a
+ * half-written file behind therefore passed validation, and the setup step that
+ * consumed the "composed" tree next picked up uncommitted agent output.
+ *
+ * A `git status` that cannot run returns a synthetic entry rather than an empty
+ * list: not being able to inspect the tree must never read as "the tree is clean".
+ */
+export function worktreeResidue(projectRoot: string): StatusEntry[] {
+  const r = spawnSync('git', ['status', '--porcelain=v1', '--untracked-files=all', '-z'], {
+    cwd: projectRoot,
+    encoding: 'utf-8',
+  });
+  if (r.status !== 0) {
+    return [{ code: '!!', path: `<git status failed: ${(r.stderr ?? '').trim()}>` }];
+  }
+
+  const fields = (r.stdout ?? '').split('\0');
+  const entries: StatusEntry[] = [];
+  for (let i = 0; i < fields.length; i++) {
+    const f = fields[i];
+    if (!f) continue;
+    const code = f.slice(0, 2);
+    entries.push({ code, path: f.slice(3) });
+    // Rename/copy entries carry the ORIGINAL path as a separate NUL field.
+    if (code[0] === 'R' || code[0] === 'C') i++;
+  }
+  return entries;
+}
+
+/**
+ * Delete exactly `paths` (repo-relative), then prune any directory they emptied.
+ *
+ * Deliberately NOT `git clean -fdx`. That would also take node_modules, .env,
+ * local build caches — everything a developer's tree legitimately holds and git
+ * ignores. Destroying those to tidy up after a failed merge assist is a far worse
+ * outcome than the residue itself, so only paths this run OBSERVED appearing are
+ * removed. Anything outside `projectRoot` is refused.
+ */
+export function removeRecordedFiles(projectRoot: string, paths: string[]): void {
+  const root = path.resolve(projectRoot);
+  const inside = (abs: string): boolean => abs.startsWith(root + path.sep);
+
+  for (const rel of paths) {
+    const abs = path.resolve(root, rel);
+    if (!inside(abs)) continue;
+    // eslint-disable-next-line no-empty -- best-effort cleanup; the caller re-checks
+    try { fs.rmSync(abs, { force: true }); } catch {}
+  }
+
+  // Deepest first, so `a/b/c` is gone before we try `a/b`.
+  const dirs = [...new Set(paths.map((rel) => path.dirname(rel)))]
+    .filter((d) => d && d !== '.')
+    .sort((a, b) => b.length - a.length);
+  for (const d of dirs) {
+    let cur = path.resolve(root, d);
+    while (inside(cur)) {
+      try {
+        fs.rmdirSync(cur); // throws if the directory still holds anything
+      } catch {
+        break;
+      }
+      cur = path.dirname(cur);
+    }
+  }
+}
+
+/**
+ * Is `maybeAncestor` reachable from `descendant`?
+ *
+ * Exit status is the whole answer: 0 yes, 1 no, anything else means git could
+ * not tell us (a ref that does not exist, a broken repo). An unknown answer must
+ * read as NO — this gates whether a composition is reported successful, and
+ * "could not verify" is not "verified".
+ */
+export function isAncestor(projectRoot: string, maybeAncestor: string, descendant: string): boolean {
+  const r = spawnSync('git', ['merge-base', '--is-ancestor', maybeAncestor, descendant], {
+    cwd: projectRoot,
+    stdio: 'ignore',
+  });
+  return r.status === 0;
+}
+
+/** Everything observed about the tree after the assist ran. */
+export interface CompositionFacts {
+  built: boolean;
+  /** `git rev-parse --abbrev-ref HEAD` — the literal "HEAD" when detached. */
+  branchNow: string;
+  branchBefore: string;
+  headBefore: string;
+  headNow: string;
+  /** origin/<branch> is reachable from HEAD. */
+  overlayLanded: boolean;
+  /** headBefore is reachable from headNow. */
+  descendsFromStart: boolean;
+  residueCount: number;
+}
+
+export type CompositionFailure =
+  | 'build-failed'
+  | 'uncommitted-residue'
+  | 'branch-switched'
+  | 'detached-head'
+  | 'overlay-not-in-history'
+  | 'history-rewritten'
+  | 'no-new-commit';
+
+/**
+ * Did the assist actually do what the caller is about to rely on?
+ *
+ * Extracted as a pure function ON PURPOSE. The predicate used to be an inline
+ * `built && advanced && residue.length === 0`, which is untestable without
+ * driving a real Claude session — so the cases that mattered were never tested,
+ * and two of them were wrong. Returning the SPECIFIC failure also stops a branch
+ * switch from being reported with the same message as a merge conflict.
+ *
+ * Order matters: report the most fundamental problem first, since a rewritten
+ * history also fails the "descends from start" check and would otherwise mask it.
+ */
+export function evaluateComposition(f: CompositionFacts): CompositionFailure | null {
+  if (f.residueCount > 0) return 'uncommitted-residue';
+  if (f.branchNow === 'HEAD') return 'detached-head';
+  if (f.branchNow !== f.branchBefore) return 'branch-switched';
+  if (f.headNow === f.headBefore) return 'no-new-commit';
+  if (!f.descendsFromStart) return 'history-rewritten';
+  if (!f.overlayLanded) return 'overlay-not-in-history';
+  if (!f.built) return 'build-failed';
+  return null;
+}
+
+function formatResidue(entries: StatusEntry[]): string {
+  const shown = entries.slice(0, 10).map((e) => `  ${e.code} ${e.path}`);
+  if (entries.length > shown.length) shown.push(`  … and ${entries.length - shown.length} more`);
+  return shown.join('\n');
+}
+
+/**
+ * LLM-assisted merge fallback (opt-in; the caller gates on NANOCLAW_LLM_MERGE).
+ * Used when deterministic merge-train couldn't compose `branch` — a conflict
+ * outside nv-main's owned set, or a merge whose is_owned resolution dropped an
+ * overlay's shared-source edits so the tree no longer builds. Hands the merge to
+ * Claude to resolve keep-both, then re-validates the build OURSELVES — the build,
+ * not Claude's summary, is the source of truth. Rolls back to the clean
+ * pre-attempt tree on any failure. Returns true iff the tree is composed + builds.
+ *
+ * "Composed" means committed. Leftover staged or untracked files are a HARD
+ * failure, not a detail: the caller's next step reads the tree, and uncommitted
+ * agent output there is indistinguishable from work that landed.
+ */
+export async function composeMergeViaClaude(
+  branch: string,
+  projectRoot: string = process.cwd(),
+): Promise<boolean> {
+  // Checked before anything else, including installing/authenticating Claude:
+  // rollback restores tracked files from `startHead` and deletes untracked ones
+  // this run saw appear. Neither is safe if the tree was already dirty — we would
+  // discard the developer's uncommitted work, or fail to attribute residue.
+  const before = worktreeResidue(projectRoot);
+  if (before.length > 0) {
+    p.log.error(
+      `Not running the merge assist: ${projectRoot} has uncommitted changes, so a ` +
+        'rollback could not restore it. Commit or stash them first.',
+    );
+    p.log.message(k.dim(formatResidue(before)));
+    return false;
+  }
+
+  if (!(await ensureClaudeReady(projectRoot))) return false;
+
+  const rev = (args: string): string =>
+    execSync(`git ${args}`, { cwd: projectRoot, encoding: 'utf-8' }).trim();
+  const startHead = rev('rev-parse HEAD');
+  const currentBranch = rev('rev-parse --abbrev-ref HEAD');
+
+  await queryClaudeUnderSpinner(buildMergePrompt(branch, currentBranch, startHead), projectRoot);
+
+  // Source of truth: a committed merge that actually builds. Don't trust Claude's
+  // text — verify the tree.
+  //
+  // "HEAD moved and it builds" is NOT enough, and that was the bug. An unrelated
+  // or empty commit moves HEAD. So does switching to another branch and
+  // committing there. Both used to be reported as a successful composition of
+  // `branch`, and the caller then read a tree that never received the overlay.
+  // So verify the three things the caller actually relies on:
+  //
+  //   1. we are still on the branch we started on (not detached, not switched)
+  //   2. the requested overlay is genuinely in this history
+  //   3. it was built ON TOP of where we started, rather than by resetting away
+  //
+  // Ancestry alone is not sufficient either — `origin/<branch>` can be an
+  // ancestor while unrelated commits also landed — so (3) pins the base and the
+  // caller gets the exact range in the log.
+  const built =
+    spawnSync('pnpm', ['run', 'build'], { cwd: projectRoot, stdio: 'ignore' }).status === 0;
+  const head = rev('rev-parse HEAD');
+  const branchNow = rev('rev-parse --abbrev-ref HEAD');
+  const residue = worktreeResidue(projectRoot);
+
+  const failure = evaluateComposition({
+    built,
+    branchNow,
+    branchBefore: currentBranch,
+    headBefore: startHead,
+    headNow: head,
+    overlayLanded: isAncestor(projectRoot, `origin/${branch}`, head),
+    descendsFromStart: isAncestor(projectRoot, startHead, head),
+    residueCount: residue.length,
+  });
+
+  if (failure === null) {
+    const landed = rev(`rev-list --count ${startHead}..HEAD`);
+    p.log.success(
+      `Claude composed ${branch} and the tree builds ` +
+        `(${landed} commit(s) on ${currentBranch}, ${startHead.slice(0, 9)}..${head.slice(0, 9)}).`,
+    );
+    return true;
+  }
+
+  // Say WHICH invariant failed. "couldn't compose" with no reason is how a
+  // branch switch looked identical to a merge conflict.
+  const EXPLAIN: Record<CompositionFailure, string> = {
+    'uncommitted-residue': '', // reported in detail below, with the file list
+    'detached-head': `Claude left the repo on a detached HEAD instead of '${currentBranch}'.`,
+    'branch-switched': `Claude ended on '${branchNow}' instead of '${currentBranch}' — the composition did not land where the caller will read it.`,
+    'no-new-commit': 'Nothing was committed — the overlay was not composed.',
+    'history-rewritten': `HEAD is no longer a descendant of ${startHead.slice(0, 9)} — history was reset or rewritten rather than merged.`,
+    'overlay-not-in-history': `The tree builds, but origin/${branch} is not in HEAD's history — whatever was committed, it was not this overlay.`,
+    'build-failed': `The composed tree does not build.`,
+  };
+  if (EXPLAIN[failure]) p.log.error(`${EXPLAIN[failure]} Treating ${branch} as not composed.`);
+
+  if (residue.length > 0) {
+    // The build passing does not redeem this: a green build over uncommitted
+    // files is precisely how unreviewed agent output reached the next step.
+    p.log.error(
+      `Claude left ${residue.length} uncommitted change(s) after composing ${branch} — ` +
+        'treating that as a failed composition.',
+    );
+    p.log.message(k.dim(formatResidue(residue)));
+  }
+
+  spawnSync('git', ['merge', '--abort'], { cwd: projectRoot, stdio: 'ignore' });
+  // Get back onto the branch we started on BEFORE resetting. `reset --hard`
+  // moves whatever ref is currently checked out: if Claude switched branches (or
+  // detached), the old code reset the WRONG branch to our start commit and left
+  // the developer standing on it — destroying an unrelated branch's history
+  // while reporting a tidy rollback.
+  if (rev('rev-parse --abbrev-ref HEAD') !== currentBranch) {
+    const back = spawnSync('git', ['checkout', '--force', currentBranch], {
+      cwd: projectRoot,
+      stdio: 'ignore',
+    });
+    if (back.status !== 0) {
+      // Refuse to reset from an unknown ref. Leaving the tree visibly wrong beats
+      // silently moving a branch we did not intend to touch.
+      p.log.error(
+        `Rollback stopped: could not return to '${currentBranch}' (now on ` +
+          `'${rev('rev-parse --abbrev-ref HEAD')}'). Not resetting — resolve this by hand; ` +
+          `the pre-assist commit was ${startHead}.`,
+      );
+      return false;
+    }
+  }
+  spawnSync('git', ['reset', '--hard', startHead], { cwd: projectRoot, stdio: 'ignore' });
+  // `reset --hard` restores tracked files and leaves untracked ones exactly where
+  // they are; the pre-flight check above guarantees every untracked path here
+  // appeared during the assist, so removing precisely these is both sufficient
+  // and the most this may safely delete.
+  removeRecordedFiles(
+    projectRoot,
+    residue.filter((e) => e.code === '??').map((e) => e.path),
+  );
+
+  const after = worktreeResidue(projectRoot);
+  if (after.length > 0) {
+    p.log.warn(`Rolled back ${branch}, but the tree is still not clean — inspect it:`);
+    p.log.message(k.dim(formatResidue(after)));
+    return false;
+  }
+  p.log.warn(`Claude couldn't compose ${branch} into a building tree — rolled back.`);
+  return false;
+}
+
+function buildMergePrompt(branch: string, currentBranch: string, startHead: string): string {
+  return [
+    `Compose the NanoClaw fork overlay branch \`origin/${branch}\` into \`${currentBranch}\`.`,
+    '',
+    'Steps:',
+    `1. Run: git merge origin/${branch} --no-edit`,
+    `2. Resolve EVERY conflict by keeping BOTH sides' intent. ${branch} is an overlay whose`,
+    "   source edits ADD to nv-main's — they do not replace them. If nv-main and this branch",
+    '   both changed a symbol (e.g. in create-agent.ts, agent-groups.ts), the result must',
+    '   contain both changes. Never drop one side.',
+    '3. For pure-infra files take nv-main outright: package.json, pnpm-lock.yaml, .github/*,',
+    '   tsconfig.json, vitest.config.ts, vitest.setup.ts, versions.json.',
+    '4. Run `pnpm run build`. Fix every TypeScript error — they usually mean a file you kept',
+    '   references a symbol you dropped from another file; restore it so both sides cohere.',
+    '5. When `pnpm run build` exits 0, commit: git commit --no-edit. Do NOT push.',
+    '6. Leave NOTHING uncommitted. `git status --porcelain --untracked-files=all` must',
+    '   print nothing when you stop — no staged fixups, no scratch files, no leftover',
+    '   build artifacts. A non-empty status is treated as a failed composition and',
+    '   rolled back, however good the merge itself was.',
+    '',
+    `If you cannot make it build, run \`git reset --hard ${startHead}\`, delete any files`,
+    'you created, and stop.',
+  ].join('\n');
 }
 
 function isClaudeInstalled(): boolean {
@@ -150,12 +456,20 @@ function isClaudeAuthenticated(): boolean {
   }
 }
 
+/**
+ * True when the Claude CLI is already installed AND signed in — the only
+ * state in which a non-claude install may be offered a Claude debugger.
+ * Unlike `ensureClaudeReady`, this never prompts and has no side effects.
+ */
+export function isClaudeReady(): boolean {
+  return isClaudeInstalled() && isClaudeAuthenticated();
+}
+
 export async function ensureClaudeReady(projectRoot: string): Promise<boolean> {
   if (!isClaudeInstalled()) {
     const install = ensureAnswer(
       await p.confirm({
-        message:
-          'Claude CLI is needed to diagnose this. Install it now?',
+        message: 'Claude CLI is needed to diagnose this. Install it now?',
         initialValue: true,
       }),
     );
@@ -175,8 +489,7 @@ export async function ensureClaudeReady(projectRoot: string): Promise<boolean> {
   if (!isClaudeAuthenticated()) {
     const auth = ensureAnswer(
       await p.confirm({
-        message:
-          "Claude CLI isn't signed in. Sign in now? (a browser will open)",
+        message: "Claude CLI isn't signed in. Sign in now? (a browser will open)",
         initialValue: true,
       }),
     );
@@ -195,7 +508,9 @@ export async function ensureClaudeReady(projectRoot: string): Promise<boolean> {
       const isUtilLinux = (() => {
         try {
           return execSync('script --version 2>&1', { encoding: 'utf-8' }).includes('util-linux');
-        } catch { return false; }
+        } catch {
+          return false;
+        }
       })();
       const scriptArgs = isUtilLinux
         ? ['-q', '-c', 'claude setup-token', tmpfile]
@@ -207,17 +522,14 @@ export async function ensureClaudeReady(projectRoot: string): Promise<boolean> {
       });
 
       if (!isClaudeAuthenticated() && fs.existsSync(tmpfile)) {
-        const raw = fs.readFileSync(tmpfile, 'utf-8');
-        const stripped = raw
-          .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
-          .replace(/[\n\r]/g, '');
-        const matches = stripped.match(/(sk-ant-oat[A-Za-z0-9_-]{80,500}AA)/g);
-        if (matches) {
-          process.env.CLAUDE_CODE_OAUTH_TOKEN = matches[matches.length - 1];
-        }
+        const token = extractClaudeOAuthToken(fs.readFileSync(tmpfile, 'utf-8'));
+        if (token) process.env.CLAUDE_CODE_OAUTH_TOKEN = token;
       }
     } finally {
-      try { fs.unlinkSync(tmpfile); } catch {}
+      // eslint-disable-next-line no-empty -- best-effort temp cleanup
+      try {
+        fs.unlinkSync(tmpfile);
+      } catch {}
     }
 
     if (!isClaudeAuthenticated()) {
@@ -236,9 +548,7 @@ function buildPrompt(ctx: AssistContext, projectRoot: string): string {
     ...BIG_PICTURE_FILES,
     ...stepRefs,
     'logs/setup.log',
-    ctx.rawLogPath
-      ? path.relative(projectRoot, ctx.rawLogPath)
-      : 'logs/setup-steps/',
+    ctx.rawLogPath ? path.relative(projectRoot, ctx.rawLogPath) : 'logs/setup-steps/',
   ].filter((v, i, a) => a.indexOf(v) === i);
 
   const hintLine = ctx.hint ? `Hint shown to the user: ${ctx.hint}\n` : '';
@@ -282,10 +592,7 @@ const SPINNER_FRAMES = ['◒', '◐', '◓', '◑'];
 const HIDE_CURSOR = '\x1b[?25l';
 const SHOW_CURSOR = '\x1b[?25h';
 
-async function queryClaudeUnderSpinner(
-  prompt: string,
-  projectRoot: string,
-): Promise<string | null> {
+async function queryClaudeUnderSpinner(prompt: string, projectRoot: string): Promise<string | null> {
   const out = process.stdout;
   const start = Date.now();
   const actions: string[] = [];
@@ -346,10 +653,7 @@ async function queryClaudeUnderSpinner(
     let stderr = '';
     let settled = false;
 
-    const finish = (
-      kind: 'ok' | 'error',
-      payload: string | null,
-    ): void => {
+    const finish = (kind: 'ok' | 'error', payload: string | null): void => {
       clearInterval(frameTick);
       clearBlock();
       out.write(SHOW_CURSOR);
@@ -359,9 +663,7 @@ async function queryClaudeUnderSpinner(
         p.log.success(`${brandBody(fitToWidth('Claude replied.', suffix))}${k.dim(suffix)}`);
         resolve(payload);
       } else {
-        p.log.error(
-          `${fitToWidth("Claude couldn't help here.", suffix)}${k.dim(suffix)}`,
-        );
+        p.log.error(`${fitToWidth("Claude couldn't help here.", suffix)}${k.dim(suffix)}`);
         const tail = stderr.trim().split('\n').slice(-3).join('\n');
         if (tail) p.log.message(k.dim(tail));
         resolve(null);
@@ -374,14 +676,7 @@ async function queryClaudeUnderSpinner(
     //
     // Resume the same session on repeat invocations so Claude carries
     // context across failures in one setup run.
-    const claudeArgs = [
-      '-p',
-      '--output-format',
-      'stream-json',
-      '--verbose',
-      '--permission-mode',
-      'bypassPermissions',
-    ];
+    const claudeArgs = ['-p', '--output-format', 'stream-json', '--verbose', '--permission-mode', 'bypassPermissions'];
     if (claudeSessionId) {
       claudeArgs.push('--resume', claudeSessionId);
     }
@@ -453,8 +748,7 @@ interface StreamEvent {
   session_id?: string;
   message?: {
     content?: Array<
-      | { type: 'text'; text: string }
-      | { type: 'tool_use'; name: string; input: Record<string, unknown> }
+      { type: 'text'; text: string } | { type: 'tool_use'; name: string; input: Record<string, unknown> }
     >;
   };
 }
@@ -480,14 +774,15 @@ function handleStreamEvent(
 }
 
 function formatToolUse(name: string, input: Record<string, unknown>): string {
-  const truncate = (v: string, n: number): string =>
-    v.length > n ? v.slice(0, n) + '…' : v;
+  const truncate = (v: string, n: number): string => (v.length > n ? v.slice(0, n) + '…' : v);
   if (name === 'Read') {
     const f = String(input.file_path ?? '');
     return `Reading ${shortenPath(f)}`;
   }
   if (name === 'Bash') {
-    const cmd = String(input.command ?? '').replace(/\s+/g, ' ').trim();
+    const cmd = String(input.command ?? '')
+      .replace(/\s+/g, ' ')
+      .trim();
     return `Running ${truncate(cmd, 60)}`;
   }
   if (name === 'Grep') return `Searching for "${truncate(String(input.pattern ?? ''), 40)}"`;
@@ -500,9 +795,7 @@ function shortenPath(abs: string): string {
   return abs.startsWith(`${root}/`) ? abs.slice(root.length + 1) : abs;
 }
 
-function parseResponse(
-  raw: string,
-): { reason: string; command: string } | null {
+function parseResponse(raw: string): { reason: string; command: string } | null {
   // Accept the fields anywhere in the output — Claude sometimes wraps the
   // answer in a trailing explanation we can safely ignore.
   const reasonMatch = raw.match(/^\s*REASON:\s*(.+?)\s*$/m);

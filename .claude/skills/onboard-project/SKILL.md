@@ -1,6 +1,6 @@
 ---
 name: onboard-project
-description: "Onboard a new project into the NanoClaw lego coworker system. Generates the full skeleton: spine, capability skills (5), workflow extensions (4), coworker types (common, reader, writer), and all 16 trait bindings. Accepts a GitHub URL or local path. Uses DeepWiki for OSS GitHub repos."
+description: "Onboard a new project into the NanoClaw lego coworker system. Generates the full skeleton: spine, capability skills (5), workflow extensions (2: {project}-plan, {project}-implement), coworker types (common, reader, writer), and all 15 trait bindings. Accepts a GitHub URL or local path. Uses DeepWiki for OSS GitHub repos."
 ---
 
 # Onboard Project
@@ -45,7 +45,7 @@ ls container/skills/*/SKILL.md | while read f; do
 done
 ```
 
-Common reusable skills: `base-nanoclaw`, `plan`, `deep-research`, `codex-critique`, `investigate` (workflow), `implement` (workflow), `review` (workflow), `document` (workflow), `critique-overlay`, `plan-overlay`. These are shared across ALL projects — the new project's `coworker-types.yaml` references them, no need to generate duplicates.
+Common reusable workflows/skills: `plan` (workflow — investigate/review/research all fold into this one, keyed by `mode`), `implement` (workflow), `base-nanoclaw`, `codex-critique`. These are shared across ALL projects — the new project's `coworker-types.yaml` references them, no need to generate duplicates. The project only adds `{project}-plan` and `{project}-implement`, each `extends:`-ing the base workflow with project-specific overrides (see 2c) — never a from-scratch workflow for investigate/review/document, which are `plan` modes, not separate workflows.
 
 ### 1c. Research the codebase
 
@@ -67,11 +67,11 @@ find {PROJECT_PATH} -maxdepth 3 \( \
 **For each file found:**
 1. Read it fully
 2. Extract: build commands, test patterns, code style, architecture, debugging tools, review checklists
-3. Map to our 16 traits — each project skill/agent/command covers one or more traits
+3. Map to our 15 traits — each project skill/agent/command covers one or more traits
 
 **Especially important — project's existing skills and agents:**
 - `.claude/skills/*/SKILL.md` — the project's own automation. Reference them by name in our generated skills (e.g. "See project's `/{skill}` skill for {purpose}").
-- `.claude/agents/*.md` — review/analysis patterns. Incorporate their checklists into `{project}-review` overrides and `{project}-code-reader` review lenses.
+- `.claude/agents/*.md` — review/analysis patterns. Incorporate their checklists into `{project}-plan`'s `research` override (review is a `plan` mode) and `{project}-code-reader`'s review lenses.
 - Don't recreate what the project already has — reference it and add trait declarations.
 
 **Then read standard project files:**
@@ -97,10 +97,10 @@ for f in container/skills/*/SKILL.md; do
 done
 ```
 
-**Already covered by base skills (don't regenerate):**
-- `plan` → `plan.research`
-- `codex-critique` → `critique`
-- `deep-research` → `plan.research`
+**Already covered by base workflows/skills (don't regenerate):**
+- `plan` workflow → investigate/review/research modes (`{project}-plan` extends it, overriding only the `research` step)
+- `implement` workflow → reproduce/change/verify (`{project}-implement` extends it)
+- `codex-critique` → `critique` trait
 
 ### 1d. Incorporate project's existing skills, agents, and commands
 
@@ -108,11 +108,11 @@ The project's own AI config is the best source for building our skills. The prio
 
 **Strategy: reference first, build only when missing.**
 
-For each of the 16 traits, check if the project already has a skill/agent/command covering it:
+For each of the 15 traits, check if the project already has a skill/agent/command covering it:
 
 1. **Project has a matching skill** (`.claude/skills/*/SKILL.md`) → reference it by name in our generated skill body: "See project's `/repro-remix` skill for RTX Remix testing." Add the project skill's knowledge to the relevant NanoClaw skill.
 
-2. **Project has matching agents** (`.claude/agents/*.md`) → extract their review checklists, patterns, and focus areas. Incorporate into our `{project}-review` workflow overrides and `{project}-code-reader` review lenses section.
+2. **Project has matching agents** (`.claude/agents/*.md`) → extract their review checklists, patterns, and focus areas. Incorporate into `{project}-plan`'s `research` override (review is a `plan` mode, not a separate workflow) and `{project}-code-reader`'s review lenses section.
 
 3. **Project has commands** (`.claude/commands/*.md`) → reference in the relevant skill body.
 
@@ -206,7 +206,7 @@ Create all files. Use `{project}` as the prefix. Use `{Project}` (capitalized) i
 - `{dir2}/` — {purpose}
 ...
 - `{test_dir}/` — tests. See `/{project}-build` to build/test.
-- `.github/workflows/` — CI. See `/{project}-investigate` for CI issues.
+- `.github/workflows/` — CI. See `/{project}-plan` (mode: investigate) for CI issues.
 ```
 
 **`README.md`** — Brief:
@@ -216,7 +216,7 @@ Create all files. Use `{project}` as the prefix. Use `{Project}` (capitalized) i
 {Project} project spine under the lego coworker model. Provides identity, invariants, context, and coworker types ({project}-common, {project}-reader, {project}-writer).
 ```
 
-**`coworker-types.yaml`**:
+**`coworker-types.yaml`**: `{project}-common` binds the traits `plan` (`requires: [issues.read, code.read, doc.read]`) and `implement` (`requires: [code.read, code.edit, test.run, test.gen, repo.pr]`) actually declare. There is no `investigate`/`review`/`document` base workflow to reference — those are `plan` modes (see `container/workflows/plan/WORKFLOW.md`), not separate workflows; a project only ever adds `{project}-plan` and `{project}-implement` (2c). `deep-research`, `critique-overlay`, and `plan-overlay` are not real skills/overlays in this registry — don't reference them. If the project needs review-stage gating, use `required_critique_stages` (see `slang-triage`/`slang-fixer` in `container/spines/slang/coworker-types.yaml` for the working pattern), not an `overlays:` entry.
 ```yaml
 {project}-common:
   description: "{Project} spine — identity, API invariants, repo layout."
@@ -231,14 +231,7 @@ Create all files. Use `{project}` as the prefix. Use `{Project}` (capitalized) i
     - {project}-build
     - {project}-code-reader
     - {project}-github
-    - deep-research
     - codex-critique
-  workflows:
-    - investigate
-    - review
-  overlays:
-    - critique-overlay
-    - plan-overlay
   mcpServers:
     deepwiki:
       type: http
@@ -249,31 +242,25 @@ Create all files. Use `{project}` as the prefix. Use `{Project}` (capitalized) i
     code: {project}-code-reader
     doc: {project}-code-reader
     test: {project}-build
-    plan: deep-research
     critique: codex-critique
 
 {project}-reader:
-  description: "Read-only {Project} coworker — investigate issues, review PRs, research codebase. Cannot edit code or create PRs."
+  description: "Read-only {Project} coworker — plan, investigate, review, research. Cannot edit code or create PRs."
   project: {project}
   extends: {project}-common
   workflows:
-    - {project}-investigate
-    - {project}-review
+    - {project}-plan
 
 {project}-writer:
-  description: "Write-capable {Project} coworker — investigate, implement, review, document. Can edit code, write tests, create PRs."
+  description: "Write-capable {Project} coworker — plan + implement. Can edit code, write tests, create PRs."
   project: {project}
   extends: {project}-common
   skills:
     - {project}-code-writer
     - {project}-docs
   workflows:
-    - {project}-investigate
+    - {project}-plan
     - {project}-implement
-    - implement
-    - document
-    - {project}-review
-    - {project}-document
   bindings:
     code: {project}-code-writer
     test: {project}-build
@@ -339,22 +326,37 @@ allowed-tools: Bash(git:*), Bash(gh:*), Read, Grep, Glob
 ```
 Body: Repo URL, clone command, PR process (from `PR_PROCESS`), issue conventions, CI rerun commands.
 
-### 2c. Workflow extensions (4 workflows)
+### 2c. Workflow extensions (2 workflows)
 
-**`container/workflows/{project}-investigate/WORKFLOW.md`**:
+There are exactly two base workflows to extend: `plan` (mode-keyed — investigate, review, and research are `mode` values of the SAME workflow, not separate ones) and `implement`. **Never generate `{project}-investigate`, `{project}-review`, or `{project}-document` workflows or an `extends: investigate|review|document` — those base workflows don't exist in this registry and the composer throws a hard "extends target not found" error at compose time if referenced.** Override only the step anchors that exist on the parent (`research` on `plan`; `reproduce`/`change`/`verify` on `implement` — see `container/workflows/plan/WORKFLOW.md` and `container/workflows/implement/WORKFLOW.md` for the full anchor list); an override key that doesn't match a parent step id is silently never applied, so a typo'd anchor is easy to miss — copy the exact ids from the base file.
+
+Mirror the real, composer-validated examples in `container/spines/slang/` (`slang-plan`, `slang-implement`) — the templates below follow their exact shape.
+
+**`container/workflows/{project}-plan/WORKFLOW.md`**:
 ```yaml
 ---
-name: {project}-investigate
+name: {project}-plan
 type: workflow
-description: "Investigate a {Project} issue. Specialized steps for {Project} codebase."
-extends: investigate
-requires: [issues.read, code.read, doc.read, plan.research]
+description: "Plan, investigate, review, or research {Project} tasks. Augments the base plan workflow with {Project}-specific research."
+extends: plan
+requires: [issues.read, code.read, doc.read]
 uses:
-  skills: [{project}-build, {project}-code-reader, {project}-github, deep-research]
+  skills: [{project}-code-reader, {project}-github]
   workflows: []
 overrides:
-  classify: "Classify by {Project} subsystem: {list key subsystems from analysis}."
-  investigate: "Use /{project}-code-reader for code, /{project}-build for repro, /{project}-github for CI logs, /deep-research for architecture."
+  research: |
+    **Research** — Gather evidence from {Project} source and (if OSS) upstream docs.
+
+    Local code: spawn an `Agent` subagent to explore the {Project} checkout for <target> — subsystems: {list key subsystems from analysis}. Focus: {list debugging tools / architecture entry points from analysis}.
+
+    {If the project has DeepWiki coverage (OSS GitHub repo):}
+    ```
+    mcp__deepwiki__ask_question("{owner}/{repo}", "<question about target derived from the task>")
+    ```
+
+    CI issues: use `/{project}-github` for CI logs and history.
+
+    Merge findings before Synthesize. Stay read-only throughout.
 ---
 ```
 
@@ -371,41 +373,8 @@ uses:
   workflows: []
 overrides:
   reproduce: "Write a failing test in `{TEST_DIR}` that demonstrates the issue. Commit the failing test first."
-  patch: "Use /{project}-code-writer. Keep changes minimal and within one subsystem."
-  validate: "Build: `{BUILD_CMD}`. Test: `{TEST_CMD}`. Format: `{format_cmd}`. Check for regressions."
----
-```
-
-**`container/workflows/{project}-review/WORKFLOW.md`**:
-```yaml
----
-name: {project}-review
-type: workflow
-description: "Review a {Project} change against project conventions."
-extends: review
-requires: [repo.read, code.read, doc.read]
-uses:
-  skills: [{project}-code-reader, {project}-github]
-  workflows: []
-overrides:
-  assess: "Check against {Project} conventions: {list key style rules, API rules, test requirements from analysis}."
----
-```
-
-**`container/workflows/{project}-document/WORKFLOW.md`**:
-```yaml
----
-name: {project}-document
-type: workflow
-description: "Update {Project} documentation after a change or for a doc gap."
-extends: document
-requires: [code.read, doc.read, doc.write, repo.pr]
-uses:
-  skills: [{project}-docs, {project}-code-reader, {project}-github]
-  workflows: []
-overrides:
-  survey: "Check {DOC_DIR} for existing docs. Use /{project}-code-reader to understand the code being documented."
-  draft: "Use /{project}-docs for writing. Follow {Project} doc conventions: {doc style from analysis}."
+  change: "Use /{project}-code-writer. Keep changes minimal and within one subsystem. Conventions to check: {list key style rules, API rules from analysis}."
+  verify: "Build: `{BUILD_CMD}`. Test: `{TEST_CMD}`. Format: `{format_cmd}`. Check for regressions."
 ---
 ```
 
@@ -443,7 +412,7 @@ Report to the user:
 
 Ask if they want pre-packaged coworker bundles in `coworkers/` (triage agent, fixer agent).
 
-## Reference: All 16 traits
+## Reference: All 15 traits
 
 | # | Trait | Domain | Skill | Binding level |
 |---|-------|--------|-------|---------------|
@@ -461,5 +430,6 @@ Ask if they want pre-packaged coworker bundles in `coworkers/` (triage agent, fi
 | 12 | `ci.rerun` | ci | `{project}-github` | auto (repo domain) |
 | 13 | `doc.read` | doc | `{project}-code-reader` | common |
 | 14 | `doc.write` | doc | `{project}-docs` | writer override |
-| 15 | `plan.research` | plan | `deep-research` | common |
-| 16 | `critique` | critique | `codex-critique` | common |
+| 15 | `critique` | critique | `codex-critique` | common |
+
+There is no `plan` trait domain — investigate/review/research are `mode` values of the single `plan` workflow (`requires: [issues.read, code.read, doc.read]`), not a bindable trait.

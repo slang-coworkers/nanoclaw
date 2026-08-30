@@ -8,6 +8,19 @@ src/channels/dashboard.*
 .claude/skills/add-dashboard/**
 
 # Dashboard-owned DB migrations and shared CLAUDE.md:
+#
+# Renumbered from 022 into the 900+ fork range (88c1bf5a) because version 22 is
+# nv-main's 022-messaging-group-detached. The OLD path stays listed so the
+# rename's deletion side passes path-guard; drop it once that has landed.
 src/db/migrations/022-session-hidden.ts
+src/db/migrations/941-session-hidden.ts
+# 023-sidebar-group.ts is being DELETED here: it duplicates nv-main's
+# 928-sidebar-group.ts AND shares its `name`, and the runner dedups on
+# `applied.has(migration.name)`, so one of the two could never record.
+# Allowlisted so path-guard permits the deletion.
+src/db/migrations/023-sidebar-group.ts
+# The sidebar_group assertions this branch added to the shared DB suite. Same
+# owner as the migration that creates the column.
+src/db/db-v2.test.ts
 groups/global/CLAUDE.md
 src/claude-md-compose.ts

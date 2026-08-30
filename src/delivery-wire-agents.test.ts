@@ -35,8 +35,8 @@ function now(): string {
   return new Date().toISOString();
 }
 
-function seedGroups(admin = true): void {
-  createAgentGroup({
+async function seedGroups(admin = true): Promise<void> {
+  await createAgentGroup({
     id: 'ag-main',
     name: 'Main',
     folder: 'main',
@@ -47,7 +47,7 @@ function seedGroups(admin = true): void {
     allowed_mcp_tools: null,
     created_at: now(),
   });
-  createAgentGroup({
+  await createAgentGroup({
     id: 'ag-a',
     name: 'Worker A',
     folder: 'worker-a',
@@ -58,7 +58,7 @@ function seedGroups(admin = true): void {
     allowed_mcp_tools: null,
     created_at: now(),
   });
-  createAgentGroup({
+  await createAgentGroup({
     id: 'ag-b',
     name: 'Worker B',
     folder: 'worker-b',
@@ -71,15 +71,15 @@ function seedGroups(admin = true): void {
   });
 }
 
-function seedAdminDestinations(): void {
-  createDestination({
+async function seedAdminDestinations(): Promise<void> {
+  await createDestination({
     agent_group_id: 'ag-main',
     local_name: 'worker-a',
     target_type: 'agent',
     target_id: 'ag-a',
     created_at: now(),
   });
-  createDestination({
+  await createDestination({
     agent_group_id: 'ag-main',
     local_name: 'worker-b',
     target_type: 'agent',
@@ -105,30 +105,30 @@ function readSystemMessages(session: Session): string[] {
 }
 
 describe('wire_agents host action', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
     fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
-    const db = initTestDb();
-    runMigrations(db);
+    const db = await initTestDb();
+    await runMigrations(db);
   });
 
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
   });
 
   it('creates bidirectional peer links and refreshes active destination maps', async () => {
-    seedGroups(true);
-    seedAdminDestinations();
+    await seedGroups(true);
+    await seedAdminDestinations();
 
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-a',
       local_name: 'parent',
       target_type: 'agent',
       target_id: 'ag-main',
       created_at: now(),
     });
-    createDestination({
+    await createDestination({
       agent_group_id: 'ag-b',
       local_name: 'parent',
       target_type: 'agent',
@@ -136,25 +136,19 @@ describe('wire_agents host action', () => {
       created_at: now(),
     });
 
-    const { session: mainSession } = resolveSession('ag-main', null, null, 'agent-shared');
-    const { session: sessionA } = resolveSession('ag-a', null, null, 'agent-shared');
-    const { session: sessionB } = resolveSession('ag-b', null, null, 'agent-shared');
-    writeDestinations('ag-a', sessionA.id);
-    writeDestinations('ag-b', sessionB.id);
+    const { session: mainSession } = await resolveSession('ag-main', null, null, 'agent-shared');
+    const { session: sessionA } = await resolveSession('ag-a', null, null, 'agent-shared');
+    const { session: sessionB } = await resolveSession('ag-b', null, null, 'agent-shared');
+    await writeDestinations('ag-a', sessionA.id);
+    await writeDestinations('ag-b', sessionB.id);
 
-    const inDb = openInboundDb(mainSession.agent_group_id, mainSession.id);
-    try {
-      await __testHooks.handleSystemAction(
-        { action: 'wire_agents', agentA: 'worker-a', agentB: 'worker-b' },
-        mainSession,
-        inDb,
-      );
-    } finally {
-      inDb.close();
-    }
+    await __testHooks.handleSystemAction(
+      { action: 'wire_agents', agentA: 'worker-a', agentB: 'worker-b' },
+      mainSession,
+    );
 
-    const aToB = getDestinationByTarget('ag-a', 'agent', 'ag-b');
-    const bToA = getDestinationByTarget('ag-b', 'agent', 'ag-a');
+    const aToB = await getDestinationByTarget('ag-a', 'agent', 'ag-b');
+    const bToA = await getDestinationByTarget('ag-b', 'agent', 'ag-a');
     expect(aToB).toBeDefined();
     expect(bToA).toBeDefined();
 
@@ -179,56 +173,38 @@ describe('wire_agents host action', () => {
   });
 
   it('is idempotent when called repeatedly for the same pair', async () => {
-    seedGroups(true);
-    seedAdminDestinations();
-    const { session: mainSession } = resolveSession('ag-main', null, null, 'agent-shared');
+    await seedGroups(true);
+    await seedAdminDestinations();
+    const { session: mainSession } = await resolveSession('ag-main', null, null, 'agent-shared');
 
-    const db1 = openInboundDb(mainSession.agent_group_id, mainSession.id);
-    try {
-      await __testHooks.handleSystemAction(
-        { action: 'wire_agents', agentA: 'worker-a', agentB: 'worker-b' },
-        mainSession,
-        db1,
-      );
-    } finally {
-      db1.close();
-    }
+    await __testHooks.handleSystemAction(
+      { action: 'wire_agents', agentA: 'worker-a', agentB: 'worker-b' },
+      mainSession,
+    );
 
-    const db2 = openInboundDb(mainSession.agent_group_id, mainSession.id);
-    try {
-      await __testHooks.handleSystemAction(
-        { action: 'wire_agents', agentA: 'worker-a', agentB: 'worker-b' },
-        mainSession,
-        db2,
-      );
-    } finally {
-      db2.close();
-    }
+    await __testHooks.handleSystemAction(
+      { action: 'wire_agents', agentA: 'worker-a', agentB: 'worker-b' },
+      mainSession,
+    );
 
-    const aLinks = getDestinations('ag-a').filter((d) => d.target_type === 'agent' && d.target_id === 'ag-b');
-    const bLinks = getDestinations('ag-b').filter((d) => d.target_type === 'agent' && d.target_id === 'ag-a');
+    const aLinks = (await getDestinations('ag-a')).filter((d) => d.target_type === 'agent' && d.target_id === 'ag-b');
+    const bLinks = (await getDestinations('ag-b')).filter((d) => d.target_type === 'agent' && d.target_id === 'ag-a');
     expect(aLinks).toHaveLength(1);
     expect(bLinks).toHaveLength(1);
   });
 
   it('rejects non-admin callers', async () => {
-    seedGroups(false);
-    seedAdminDestinations();
-    const { session: mainSession } = resolveSession('ag-main', null, null, 'agent-shared');
+    await seedGroups(false);
+    await seedAdminDestinations();
+    const { session: mainSession } = await resolveSession('ag-main', null, null, 'agent-shared');
 
-    const inDb = openInboundDb(mainSession.agent_group_id, mainSession.id);
-    try {
-      await __testHooks.handleSystemAction(
-        { action: 'wire_agents', agentA: 'worker-a', agentB: 'worker-b' },
-        mainSession,
-        inDb,
-      );
-    } finally {
-      inDb.close();
-    }
+    await __testHooks.handleSystemAction(
+      { action: 'wire_agents', agentA: 'worker-a', agentB: 'worker-b' },
+      mainSession,
+    );
 
-    expect(getDestinationByTarget('ag-a', 'agent', 'ag-b')).toBeUndefined();
-    expect(getDestinationByTarget('ag-b', 'agent', 'ag-a')).toBeUndefined();
+    expect(await getDestinationByTarget('ag-a', 'agent', 'ag-b')).toBeUndefined();
+    expect(await getDestinationByTarget('ag-b', 'agent', 'ag-a')).toBeUndefined();
     const systemMessages = readSystemMessages(mainSession);
     expect(systemMessages.some((m) => m.includes('admin permission required'))).toBe(true);
   });

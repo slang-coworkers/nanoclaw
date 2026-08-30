@@ -1,24 +1,60 @@
 import fs from 'fs';
 import path from 'path';
 
-import { DATA_DIR, GROUPS_DIR } from './config.js';
+import { resolveMirroredSkillScope } from './claude-composer.js';
+import { DATA_DIR, DEFAULT_AGENT_PROVIDER, GROUPS_DIR } from './config.js';
+import { getDb } from './db/connection.js';
 import { ensureContainerConfig } from './db/container-configs.js';
+import { PERSONA_PREPEND_FILE, stageGroupPersona } from './group-persona.js';
 import { log } from './log.js';
+import { providerProvidesAgentSurfaces } from './providers/provider-container-registry.js';
 import type { AgentGroup } from './types.js';
+
+// Effectively "never" — Claude Code's own cleanupPeriodDays setting prunes
+// ~/.claude/projects/*.jsonl at CLI startup (default 30 when unset). Every
+// active group was silently losing its own transcript history to this on a
+// rolling 30-day window — the file NanoClaw's own cost accounting (dashboard
+// + fleet ccusage reporting) reads as its source of truth. Proven on prod:
+// oldest-surviving-transcript date tracked (today − 30d) exactly, across
+// every busy group; idle groups (whose `claude` never restarts to run the
+// sweep) kept full history back to April. See issue #1327.
+const CLEANUP_PERIOD_DAYS_NEVER = 3650;
 
 const DEFAULT_SETTINGS_JSON =
   JSON.stringify(
     {
+      cleanupPeriodDays: CLEANUP_PERIOD_DAYS_NEVER,
       sandbox: {
         enabled: false,
       },
       preferences: {
         reasoningEffort: 'max',
       },
+      // OKF (`memory/`, injected by the agent-runner's SessionStart hook) is the
+      // only memory system. Claude Code's native auto-memory is off via BOTH
+      // switches: `autoMemoryEnabled` is settings-level, the env var runtime, and
+      // leaving either unset means "whatever the CLI defaults to" — not a promise
+      // that survives a CLI upgrade. Two systems writing memory into one context
+      // window is the collision this avoids; OKF also survives a provider switch
+      // and is budget-capped per file, neither of which the native store offers.
+      //
+      // NEW groups only. Existing groups keep their settings.json — they are
+      // flipped by `migrateClaudeMemorySettings`, which MUST run only after
+      // `/migrate-memory` has carried their native memories into OKF.
+      autoMemoryEnabled: false,
       env: {
         CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
-        CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
+        CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1',
       },
+      // Strip Claude Code's native Workflow tool — the single largest tool
+      // schema on every turn (~26KB) — because NanoClaw orchestrates its own
+      // sessions (a2a messaging + host-side orchestration), so it is dead
+      // weight. Matches merged upstream #3031 ("lean harness defaults"), whose
+      // group-init.ts delta our fork's diverged copy dropped on the Aug-5 sync.
+      // NEW groups only; existing groups keep their settings.json (never
+      // regenerated) — re-enable per group by editing that group's
+      // .claude-shared/settings.json and restarting.
+      disableWorkflows: true,
       hooks: {
         PreCompact: [
           {
@@ -88,15 +124,39 @@ export function refreshMirror(src: string, dst: string): boolean {
  * agent.md siblings are kept current automatically so upstream skill
  * changes propagate without a manual refresh tool.
  */
-export function initGroupFilesystem(group: AgentGroup, opts?: { instructions?: string }): void {
+export async function initGroupFilesystem(
+  group: AgentGroup,
+  opts?: { instructions?: string; provider?: string | null },
+): Promise<void> {
   const projectRoot = process.cwd();
   const initialized: string[] = [];
+
+  // `opts.provider` absent means "caller has no provider opinion" — for a
+  // brand-new group that resolves to the instance default, so the scaffold and
+  // the stamped config row both match it. A caller that knows the provider
+  // (subagent → parent's, spawn → resolved, setup → operator's pick) passes it
+  // explicitly — including `claude` — which pins the group and skips the
+  // default. ensureContainerConfig is INSERT OR IGNORE, so this only stamps a
+  // genuinely new group; existing rows are never touched.
+  const providerHint = (opts?.provider ?? DEFAULT_AGENT_PROVIDER).toLowerCase();
+
+  // Default agent surfaces apply unless the provider declares (at registration)
+  // that it provides its own.
+  const defaultSurfaces = !providerProvidesAgentSurfaces(providerHint);
 
   // 1. groups/<folder>/ — group memory + working dir
   const groupDir = path.resolve(GROUPS_DIR, group.folder);
   if (!fs.existsSync(groupDir)) {
     fs.mkdirSync(groupDir, { recursive: true });
     initialized.push('groupDir');
+  }
+
+  // plugins/ always exists (even for plugin-less groups) so the read-only
+  // plugins mount in container-runner.ts is unconditional.
+  const pluginsDir = path.join(groupDir, 'plugins');
+  if (!fs.existsSync(pluginsDir)) {
+    fs.mkdirSync(pluginsDir, { recursive: true });
+    initialized.push('plugins/');
   }
 
   // groups/<folder>/memory/ — agent-writable per-group notes (triage memos,
@@ -112,103 +172,171 @@ export function initGroupFilesystem(group: AgentGroup, opts?: { instructions?: s
   // groups/<folder>/CLAUDE.md is composed by composeCoworkerClaudeMd in
   // container-runner.ts on every wake — for both 'main' (flat body +
   // additive fragments) and typed coworkers (full spine). The host never
-  // hand-writes the file here. The pre-lego '.claude-global.md' symlink
-  // and '@./.claude-global.md' @-import are retired; if any install still
-  // has them, scripts/migrate-global-to-shared.ts cleans them up.
+  // hand-writes the file here.
 
-  // groups/<folder>/.instructions.md — user-owned instructions.
-  // CLAUDE.md is system-composed from templates + .instructions.md on every wake.
-  const instructionsFile = path.join(groupDir, '.instructions.md');
-  if (!fs.existsSync(instructionsFile) && opts?.instructions) {
-    fs.writeFileSync(instructionsFile, opts.instructions + '\n');
-    initialized.push('.instructions.md');
+  // Seed/instructions. Standing instructions live in `instructions.prepend.md`,
+  // composed into CLAUDE.md on every wake. A creator may instead drop a
+  // provider-agnostic neutral `.seed.md`; consume it here (placement deferred to
+  // first spawn, where the DB-resolved provider is known). `opts.instructions`
+  // wins if passed inline. For a surfaces-owning (non-default, e.g. codex)
+  // provider, ALSO land the seed in the memory scaffold's conventional file so
+  // that agent reads it on its first turn (it composes no persona file).
+  const neutralSeedFile = path.join(groupDir, '.seed.md');
+  const seed =
+    opts?.instructions ??
+    (fs.existsSync(neutralSeedFile) ? fs.readFileSync(neutralSeedFile, 'utf-8').trimEnd() : undefined);
+
+  // Canonical name, not the legacy `.instructions.md`: seeding the legacy file
+  // handed every fresh group a surface that the first spawn immediately
+  // migrated away. `stageGroupPersona` is no-clobber, so an existing persona
+  // (or a re-run) is never overwritten.
+  if (seed && stageGroupPersona(groupDir, seed)) {
+    initialized.push(PERSONA_PREPEND_FILE);
+  }
+
+  if (!defaultSurfaces && seed) {
+    const seedFile = path.join(groupDir, 'memory', 'memories', 'imported-agent-memory.md');
+    if (!fs.existsSync(seedFile)) {
+      fs.mkdirSync(path.dirname(seedFile), { recursive: true });
+      fs.writeFileSync(seedFile, seed + '\n');
+      initialized.push('memory/memories/imported-agent-memory.md');
+    }
+  }
+
+  // The neutral seed is single-use — drop it once placed.
+  if (fs.existsSync(neutralSeedFile)) {
+    fs.rmSync(neutralSeedFile);
+    initialized.push('.seed.md consumed');
   }
 
   // Ensure container_configs row exists in the DB. Idempotent — no-op if
-  // the row already exists (e.g. created by backfill or group creation).
-  ensureContainerConfig(group.id);
+  // the row already exists (e.g. created by backfill or group creation). On a
+  // fresh row, stamp the resolved provider hint so a new group is created on
+  // the instance default (or the caller's explicit pick).
+  await ensureContainerConfig(group.id, providerHint);
   initialized.push('container_configs');
 
   // 2. data/v2-sessions/<id>/.claude-shared/ — Claude state + per-group skills
-  const claudeDir = path.join(DATA_DIR, 'v2-sessions', group.id, '.claude-shared');
-  if (!fs.existsSync(claudeDir)) {
-    fs.mkdirSync(claudeDir, { recursive: true });
-    initialized.push('.claude-shared');
-  }
-
-  const settingsFile = path.join(claudeDir, 'settings.json');
-  if (!fs.existsSync(settingsFile)) {
-    fs.writeFileSync(settingsFile, DEFAULT_SETTINGS_JSON);
-    initialized.push('settings.json');
-  } else {
-    ensurePreCompactHook(settingsFile, initialized);
-  }
-
-  // mtime-based mirror: re-copy any skill whose source tree is newer than
-  // the destination. This fixes silent skill-mirror staleness — prior
-  // copy-once-at-init left existing groups stuck on old skill versions
-  // indefinitely after upstream changes.
-  const skillsDst = path.join(claudeDir, 'skills');
-  const skillsSrc = path.join(projectRoot, 'container', 'skills');
-  if (fs.existsSync(skillsSrc)) {
-    fs.mkdirSync(skillsDst, { recursive: true });
-    for (const skill of fs.readdirSync(skillsSrc)) {
-      const src = path.join(skillsSrc, skill);
-      const dst = path.join(skillsDst, skill);
-      const existed = fs.existsSync(dst);
-      if (refreshMirror(src, dst)) {
-        initialized.push(existed ? `skills/${skill} (refreshed)` : `skills/${skill}`);
-      }
+  if (defaultSurfaces) {
+    const claudeDir = path.join(DATA_DIR, 'v2-sessions', group.id, '.claude-shared');
+    if (!fs.existsSync(claudeDir)) {
+      fs.mkdirSync(claudeDir, { recursive: true });
+      initialized.push('.claude-shared');
     }
-  }
 
-  // 2b. data/v2-sessions/<id>/.claude-shared/agents/ — subagent definitions.
-  // A sibling `agent.md` inside any skill or overlay dir is copied as a
-  // subagent definition. Overlays like `codex-critique` ship both an
-  // OVERLAY.md (compose-time body) and an agent.md (runtime subagent).
-  // mtime-refreshed on each wake for the same reason as skills/.
-  const agentsDst = path.join(claudeDir, 'agents');
-  fs.mkdirSync(agentsDst, { recursive: true });
-  for (const subdir of ['skills', 'overlays']) {
-    const srcRoot = path.join(projectRoot, 'container', subdir);
-    if (!fs.existsSync(srcRoot)) continue;
-    for (const entry of fs.readdirSync(srcRoot)) {
-      const agentFile = path.join(srcRoot, entry, 'agent.md');
-      if (fs.existsSync(agentFile)) {
-        const dst = path.join(agentsDst, `${entry}.md`);
+    const settingsFile = path.join(claudeDir, 'settings.json');
+    if (!fs.existsSync(settingsFile)) {
+      fs.writeFileSync(settingsFile, DEFAULT_SETTINGS_JSON);
+      initialized.push('settings.json');
+    } else {
+      ensurePreCompactHook(settingsFile, initialized);
+      ensureCleanupPeriodDays(settingsFile, initialized);
+    }
+
+    // mtime-based mirror: re-copy any skill whose source tree is newer than
+    // the destination. This fixes silent skill-mirror staleness — prior
+    // copy-once-at-init left existing groups stuck on old skill versions
+    // indefinitely after upstream changes.
+    //
+    // SCOPED (Tier 2): only the coworker type's own resolved skills plus the
+    // always-on floor are mirrored. Claude Code lists every mirrored skill's
+    // name + description in the per-turn preamble, so an unscoped mirror makes
+    // e.g. a slang coworker pay for every `nanoclaw-*` skill on every turn.
+    // `resolveMirroredSkillScope` fails open — an untyped group, a flat type
+    // (`main`), or any resolution error yields `dirs: null` = mirror all.
+    //
+    // The resolved scope is held here (null = unscoped) because the
+    // subagent-definition mirror below reuses it: `agents/` must never
+    // advertise a subagent whose skill dir was scoped out.
+    let mirroredSkillDirs: Set<string> | null = null;
+    const skillsDst = path.join(claudeDir, 'skills');
+    const skillsSrc = path.join(projectRoot, 'container', 'skills');
+    if (fs.existsSync(skillsSrc)) {
+      fs.mkdirSync(skillsDst, { recursive: true });
+      const scope = resolveMirroredSkillScope(projectRoot, group.coworker_type);
+      if (scope.degraded) {
+        log.warn('Skills mirror falling back to mirror-all', {
+          group: group.name,
+          id: group.id,
+          coworker_type: group.coworker_type,
+          reason: scope.reason,
+        });
+      }
+      for (const skill of fs.readdirSync(skillsSrc)) {
+        if (scope.dirs && !scope.dirs.has(skill)) continue;
+        const src = path.join(skillsSrc, skill);
+        const dst = path.join(skillsDst, skill);
         const existed = fs.existsSync(dst);
-        const srcMtime = latestMtimeMs(agentFile);
-        const dstMtime = latestMtimeMs(dst);
-        if (dstMtime < srcMtime) {
-          fs.copyFileSync(agentFile, dst);
-          initialized.push(existed ? `agents/${entry}.md (refreshed)` : `agents/${entry}.md`);
+        if (refreshMirror(src, dst)) {
+          initialized.push(existed ? `skills/${skill} (refreshed)` : `skills/${skill}`);
+        }
+      }
+      // Prune skills that are no longer in scope. Without this, a group that
+      // was mirrored before scoping (or whose coworker_type changed) keeps
+      // paying for skills it can't invoke — the mirror is copy-forward only.
+      if (scope.dirs) {
+        for (const existing of fs.readdirSync(skillsDst)) {
+          if (scope.dirs.has(existing)) continue;
+          fs.rmSync(path.join(skillsDst, existing), { recursive: true, force: true });
+          initialized.push(`skills/${existing} (pruned — out of type scope)`);
+        }
+      }
+      mirroredSkillDirs = scope.dirs;
+    }
+
+    // 2b. data/v2-sessions/<id>/.claude-shared/agents/ — subagent definitions.
+    // A sibling `agent.md` inside any skill or overlay dir is copied as a
+    // subagent definition. Overlays like `codex-critique` ship both an
+    // OVERLAY.md (compose-time body) and an agent.md (runtime subagent).
+    // mtime-refreshed on each wake for the same reason as skills/.
+    //
+    // Scoped in lockstep with skills/: a skill dir the type doesn't get can't
+    // contribute a subagent either. `overlays/` stays unscoped — overlays are
+    // selected per agent-group (agent_groups.overlays), not by coworker type.
+    const agentSourceAllowed = (subdir: string, entry: string): boolean =>
+      subdir !== 'skills' || mirroredSkillDirs === null || mirroredSkillDirs.has(entry);
+    const agentsDst = path.join(claudeDir, 'agents');
+    fs.mkdirSync(agentsDst, { recursive: true });
+    for (const subdir of ['skills', 'overlays']) {
+      const srcRoot = path.join(projectRoot, 'container', subdir);
+      if (!fs.existsSync(srcRoot)) continue;
+      for (const entry of fs.readdirSync(srcRoot)) {
+        if (!agentSourceAllowed(subdir, entry)) continue;
+        const agentFile = path.join(srcRoot, entry, 'agent.md');
+        if (fs.existsSync(agentFile)) {
+          const dst = path.join(agentsDst, `${entry}.md`);
+          const existed = fs.existsSync(dst);
+          const srcMtime = latestMtimeMs(agentFile);
+          const dstMtime = latestMtimeMs(dst);
+          if (dstMtime < srcMtime) {
+            fs.copyFileSync(agentFile, dst);
+            initialized.push(existed ? `agents/${entry}.md (refreshed)` : `agents/${entry}.md`);
+          }
         }
       }
     }
-  }
 
-  // Prune mirrors for agent.md files removed upstream so stale definitions
-  // (e.g. sandbox:'read-only' from an old codex-critique) can't persist.
-  for (const existing of fs.readdirSync(agentsDst)) {
-    const name = existing.replace(/\.md$/, '');
-    const stillExists = ['skills', 'overlays'].some((sub) =>
-      fs.existsSync(path.join(projectRoot, 'container', sub, name, 'agent.md')),
-    );
-    if (!stillExists) {
-      fs.rmSync(path.join(agentsDst, existing));
-      initialized.push(`agents/${existing} (pruned orphan)`);
+    // Prune mirrors for agent.md files removed upstream so stale definitions
+    // (e.g. sandbox:'read-only' from an old codex-critique) can't persist.
+    // Also prunes definitions whose skill dir went out of type scope.
+    for (const existing of fs.readdirSync(agentsDst)) {
+      const name = existing.replace(/\.md$/, '');
+      const stillExists = ['skills', 'overlays'].some(
+        (sub) =>
+          agentSourceAllowed(sub, name) && fs.existsSync(path.join(projectRoot, 'container', sub, name, 'agent.md')),
+      );
+      if (!stillExists) {
+        fs.rmSync(path.join(agentsDst, existing));
+        initialized.push(`agents/${existing} (pruned orphan)`);
+      }
     }
-  }
+  } // end if (defaultSurfaces) — claude-shared skill/agent mirrors
 
-  // 3. data/v2-sessions/<id>/agent-runner-src/ — per-group source copy
-  const groupRunnerDir = path.join(DATA_DIR, 'v2-sessions', group.id, 'agent-runner-src');
-  if (!fs.existsSync(groupRunnerDir)) {
-    const agentRunnerSrc = path.join(projectRoot, 'container', 'agent-runner', 'src');
-    if (fs.existsSync(agentRunnerSrc)) {
-      fs.cpSync(agentRunnerSrc, groupRunnerDir, { recursive: true });
-      initialized.push('agent-runner-src/');
-    }
-  }
+  // No per-group agent-runner copy. `container-runner.ts` bind-mounts
+  // `container/agent-runner/src` itself at /app/src, read-only, for every group.
+  // Existing `data/v2-sessions/<id>/agent-runner-src/` dirs are left in place
+  // (they are simply no longer mounted) so a rollback needs no restore, and
+  // deleting an agent's files is not this function's call to make.
 
   // 4. Codex provider: symlinks + disable overlays (hooks not supported)
   // Codex CLI doesn't execute settings.json hooks, so overlay enforcement
@@ -218,12 +346,9 @@ export function initGroupFilesystem(group: AgentGroup, opts?: { instructions?: s
   if (group.agent_provider === 'codex') {
     if (group.disable_overlays !== 1) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const Database = require('better-sqlite3');
-        const dbPath = path.join(DATA_DIR, 'v2.db');
-        const db = new Database(dbPath);
-        db.prepare('UPDATE agent_groups SET disable_overlays = 1 WHERE id = ?').run(group.id);
-        db.close();
+        // Goes through the async central-DB driver rather than a private
+        // better-sqlite3 handle: `updateAgentGroup` does not expose this column.
+        await getDb().run('UPDATE agent_groups SET disable_overlays = 1 WHERE id = ?', group.id);
         initialized.push('disable_overlays=1 (codex: hooks unsupported)');
       } catch {
         /* non-critical — overlays just render uselessly */
@@ -286,6 +411,37 @@ function ensurePreCompactHook(settingsFile: string, initialized: string[]): void
 
     fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
     initialized.push('settings.json (added PreCompact hook)');
+  } catch {
+    // Don't break init if settings.json is malformed — it'll use whatever's there.
+  }
+}
+
+/**
+ * Patch an existing settings.json to raise cleanupPeriodDays if it's absent
+ * or still at a value that lets Claude Code's own startup sweep prune
+ * transcript history (default 30 days when unset). Runs on every group init
+ * (every wake) so pre-existing groups self-heal without a restart-only
+ * migration. See issue #1327 — this is the fix for the fleet-wide
+ * transcript-loss bug, not a preference.
+ */
+export function ensureCleanupPeriodDays(settingsFile: string, initialized: string[]): void {
+  try {
+    const raw = fs.readFileSync(settingsFile, 'utf-8');
+    const settings = JSON.parse(raw);
+
+    // Only a JSON object can carry a cleanupPeriodDays key. A non-object root
+    // (array, null, primitive) is not a valid Claude settings.json anyway, and
+    // assigning a property to it either throws (null/primitive) or is dropped
+    // by stringify (array) — which would rewrite the file yet record a bogus
+    // success. Leave it untouched instead.
+    if (settings === null || typeof settings !== 'object' || Array.isArray(settings)) return;
+
+    const current = settings.cleanupPeriodDays;
+    if (typeof current === 'number' && current >= CLEANUP_PERIOD_DAYS_NEVER) return;
+
+    settings.cleanupPeriodDays = CLEANUP_PERIOD_DAYS_NEVER;
+    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+    initialized.push(`settings.json (cleanupPeriodDays -> ${CLEANUP_PERIOD_DAYS_NEVER})`);
   } catch {
     // Don't break init if settings.json is malformed — it'll use whatever's there.
   }

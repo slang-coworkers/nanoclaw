@@ -89,6 +89,17 @@ export interface CoworkerTypeEntry {
   // across the extends chain. Per-skill @version in workflow `uses:` overrides.
   skillSource?: string;
 
+  // Compose-time substitution values. A shared workflow/overlay body can write
+  // `{{vars.repo}}` and the composer replaces it with this map's value when
+  // rendering for THIS coworker — including inside fenced code blocks (unlike
+  // the runtime `{{target}}` placeholders, which render as `<target>`). Merged
+  // leaf-wins across the extends chain, so a project-common type declares
+  // `vars: { repo: shader-slang/slang, fixer: slang-fixer }` once and every
+  // subtype inherits it. Lets one base workflow serve multiple projects that
+  // differ only in hard-coded strings. A referenced-but-undeclared var is a
+  // compose-time error (caught by validate:templates).
+  vars?: Record<string, string>;
+
   // Trait bindings: abstract trait name → concrete skill name that provides it.
   // Leaf-wins across the type chain. Lets a type inherit a workflow that
   // declares `requires: [repo.pr]` without hard-coding which skill satisfies it.
@@ -108,6 +119,19 @@ export interface CoworkerTypeEntry {
   // /workspace/agent/. Empty / unset = legacy mode (any 1 critique round
   // suffices). YAML key: `required_critique_stages`.
   requiredCritiqueStages?: string[];
+
+  // Extra delivery-marker labels for the critique gate, ADDITIVE to the
+  // built-in vocabulary ([Fix Report] etc. — defaults can be extended, never
+  // removed, so config tampering can only widen the gate). Plain labels, no
+  // brackets; sanitized to [A-Za-z0-9 _-]. Union across the type chain;
+  // materialized with the bash patterns below to
+  // <groupDir>/.critique-delivery-markers. YAML key: `delivery_markers`.
+  deliveryMarkers?: string[];
+
+  // Extra Bash PR/egress patterns (POSIX ERE fragments) for the critique
+  // gate, additive to the built-ins (gh pr create, …/pulls,
+  // createPullRequest). YAML key: `pr_command_patterns`.
+  prCommandPatterns?: string[];
 
   // MCP servers to inject into containers for this coworker type.
   // Shallow merge across the extends chain (leaf wins per server name).
@@ -231,6 +255,10 @@ export interface CoworkerManifest {
   bindings: Record<string, string>;
   customizations: WorkflowCustomization[];
 
+  // Compose-time `{{vars.KEY}}` substitution values, merged leaf-wins across
+  // the type chain. See CoworkerTypeEntry.vars.
+  vars: Record<string, string>;
+
   // MCP servers from the type registry (merged across extends chain).
   mcpServers: Record<string, McpServerTypeConfig>;
 
@@ -256,6 +284,15 @@ export interface ComposeCoworkerSpineOptions {
   // rendering so cli/ncl-specific tool-instructions can be conditionally
   // omitted when the group disables CLI access.
   cliScope?: 'disabled' | 'group' | 'global';
+  // Per-server usage prose from `container.json` `mcpServers[].instructions`,
+  // keyed by server name. An external server's own tool descriptions cannot say
+  // "in THIS install, point at the staging endpoint" — that is what this carries,
+  // and it has to be in context before the agent reaches for the tool.
+  //
+  // Operator- and template-authored. The agent's `add_mcp_server` tool exposes no
+  // `instructions` field, so an agent cannot author its own; entries reach the DB
+  // only through `ncl groups config` or a template, both admin-gated.
+  mcpInstructions?: Record<string, string>;
 }
 
 export interface ComposeLegacyPromptOptions {

@@ -28,9 +28,7 @@ describe('findOrphanGroupDirs', () => {
 
   function stubDb(knownFolders: string[]): Parameters<typeof import('./orphan-groups.js').findOrphanGroupDirs>[0] {
     return {
-      prepare: () => ({
-        all: () => knownFolders.map((folder) => ({ folder })),
-      }),
+      all: async () => knownFolders.map((folder) => ({ folder })),
     } as unknown as Parameters<typeof import('./orphan-groups.js').findOrphanGroupDirs>[0];
   }
 
@@ -41,7 +39,7 @@ describe('findOrphanGroupDirs', () => {
 
     await withConfig(async () => {
       const { findOrphanGroupDirs } = await import('./orphan-groups.js');
-      const orphans = findOrphanGroupDirs(stubDb(['known']));
+      const orphans = await findOrphanGroupDirs(stubDb(['known']));
       expect(orphans).toEqual(['orphan-a', 'orphan-b']);
     });
   });
@@ -53,7 +51,7 @@ describe('findOrphanGroupDirs', () => {
 
     await withConfig(async () => {
       const { findOrphanGroupDirs } = await import('./orphan-groups.js');
-      const orphans = findOrphanGroupDirs(stubDb([]));
+      const orphans = await findOrphanGroupDirs(stubDb([]));
       expect(orphans).toEqual(['orphan']);
     });
   });
@@ -64,7 +62,7 @@ describe('findOrphanGroupDirs', () => {
 
     await withConfig(async () => {
       const { findOrphanGroupDirs } = await import('./orphan-groups.js');
-      const orphans = findOrphanGroupDirs(stubDb(['a', 'b']));
+      const orphans = await findOrphanGroupDirs(stubDb(['a', 'b']));
       expect(orphans).toEqual([]);
     });
   });
@@ -74,7 +72,7 @@ describe('findOrphanGroupDirs', () => {
 
     await withConfig(async () => {
       const { findOrphanGroupDirs } = await import('./orphan-groups.js');
-      const orphans = findOrphanGroupDirs(stubDb(['a']));
+      const orphans = await findOrphanGroupDirs(stubDb(['a']));
       expect(orphans).toEqual([]);
     });
   });

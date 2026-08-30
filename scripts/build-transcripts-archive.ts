@@ -10,6 +10,7 @@
  *   pnpm exec tsx scripts/build-transcripts-archive.ts \
  *     [--output /tmp/all-transcripts-html] \
  *     [--limit-per-group N]    # cap sessions per group (default: all)
+ *     [--since-hours H]        # only sessions whose last activity is within H hours (default: no time filter)
  *
  * Output layout:
  *   <output>/
@@ -41,6 +42,8 @@ for (let i = 0; i < args.length; i++) {
 }
 const OUT_DIR = argMap.get('output') ?? '/tmp/all-transcripts-html';
 const LIMIT_PER_GROUP = argMap.has('limit-per-group') ? parseInt(argMap.get('limit-per-group')!) : 0;
+const SINCE_HOURS = argMap.has('since-hours') ? parseFloat(argMap.get('since-hours')!) : 0;
+const SINCE_MS = SINCE_HOURS > 0 ? Date.now() - SINCE_HOURS * 3600 * 1000 : 0;
 
 if (!fs.existsSync(RENDERER)) {
   console.error(`renderer not found: ${RENDERER}`);
@@ -131,7 +134,12 @@ for (const g of groups) {
   const rows = sessionsByGroup.get(g.id) ?? [];
   const decorated = rows.map((s) => ({ s, t: activityFor(g, s).max }));
   decorated.sort((a, b) => b.t - a.t);
-  const sorted = decorated.map((d) => d.s);
+  let sorted = decorated.map((d) => d.s);
+  if (SINCE_MS > 0) {
+    const filtered: Session[] = [];
+    for (const d of decorated) if (d.t >= SINCE_MS) filtered.push(d.s);
+    sorted = filtered;
+  }
   sessionsByGroup.set(g.id, LIMIT_PER_GROUP > 0 ? sorted.slice(0, LIMIT_PER_GROUP) : sorted);
 }
 

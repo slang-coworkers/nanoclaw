@@ -1,3 +1,5 @@
+import type { MemorySessionHookRegistration } from '../memory/session-hook.js';
+
 export interface AgentProvider {
   /**
    * True if the provider's underlying SDK handles slash commands natively and
@@ -5,6 +7,43 @@ export interface AgentProvider {
    * slash commands like any other chat message.
    */
   readonly supportsNativeSlashCommands: boolean;
+
+  /**
+   * Optional capability: true when the provider surfaces EVERY assistant text
+   * segment as a streamed `text` event before the turn's `result` — so the
+   * result text is always a repeat of a segment that already streamed
+   * (empirically: the SDK result is exactly the last streamed segment). When
+   * declared, mid-turn streaming becomes the SINGLE content door: the
+   * poll-loop delivers complete <message> blocks at parse time from the
+   * streamed events (assembling blocks split across segments), and the
+   * final-result handler never delivers content — error results are
+   * surfaced, and a turn that delivered nothing while its result still
+   * carries content gets the wrap-nudge so the retry streams through the
+   * mid-turn door. Providers that omit this (or set false) keep the single
+   * result-door delivery path: text events are delivery-inert and blocks in
+   * the final result text are delivered from there.
+   */
+  readonly emitsMidTurnText?: boolean;
+
+  /**
+   * Register shared memory through the provider's native session-start
+   * mechanism. Returns whether the provider has one: `false` means the runner
+   * must deliver memory some other way (it falls back to the system prompt),
+   * so a provider without a session-start mechanism is a no-op that returns
+   * false, never a silent one.
+   */
+  registerMemorySessionHook(hook: MemorySessionHookRegistration): boolean;
+
+  /**
+   * Optional. Called by the poll-loop after each completed exchange (a
+   * result, a wrapping retry, or an error). Providers whose harness keeps no
+   * on-disk transcript implement this to persist exchanges themselves (e.g.
+   * markdown into the agent's `conversations/` dir); providers that persist
+   * and archive their own transcript (e.g. the Claude Agent SDK's `.jsonl`)
+   * omit it. Best-effort: the loop catches and logs anything it throws. The
+   * implementation lives with the provider, never in the runner.
+   */
+  onExchangeComplete?(exchange: ProviderExchange): void;
 
   /** Start a new query. Returns a handle for streaming input and output. */
   query(input: QueryInput): AgentQuery;
@@ -14,6 +53,31 @@ export interface AgentProvider {
    * (missing transcript, unknown session, etc.) and should be cleared.
    */
   isSessionInvalid(err: unknown): boolean;
+
+  /**
+   * Optional pre-resume maintenance. Given the stored continuation token,
+   * decide whether its backing transcript has grown too large or too old to
+   * resume cheaply. Return a non-null reason string to tell the caller to drop
+   * the continuation and start a fresh session (the provider archives any
+   * recoverable summary first); return null to keep resuming.
+   *
+   * Guards the cold-resume failure mode: a long-lived hub session accumulates
+   * days of history — including base64 image blocks the agent Read — and the
+   * SDK reloads the whole .jsonl on every resume. Past a threshold the first
+   * turn alone can exceed the host's idle ceiling, so the container is killed
+   * before it ever replies. Providers without an on-disk transcript omit this.
+   */
+  maybeRotateContinuation?(continuation: string, cwd: string): string | null;
+}
+
+/** One prompt/result round-trip, as reported to `onExchangeComplete`. */
+export interface ProviderExchange {
+  /** The user prompt this exchange answers (never an internal retry nudge). */
+  prompt: string;
+  result: string | null;
+  /** Continuation/thread id in effect for the exchange, if any. */
+  continuation?: string;
+  status: 'completed' | 'undelivered' | 'error';
 }
 
 /**
@@ -35,6 +99,11 @@ export interface ProviderOptions {
    * through to the underlying SDK. If omitted, the SDK default is used.
    */
   effort?: string;
+  /**
+   * Fallback model to use when the primary model is unavailable (429/503).
+   * Passed through to the underlying SDK.
+   */
+  fallbackModel?: string;
 }
 
 export interface QueryInput {
@@ -57,6 +126,17 @@ export interface QueryInput {
   systemContext?: {
     instructions?: string;
   };
+
+  /**
+   * Per-turn spend ceiling in USD (the Tier-2 cost ceiling's remaining headroom).
+   * A provider that supports it (Claude → `maxBudgetUsd`) ends the in-flight query
+   * once this turn's cost reaches it — a SOFT brake on runaway spend. Best-effort:
+   * the SDK checks between calls, so a turn may overshoot by ≤ one in-flight call;
+   * `recordTurnCost` remains the canonical spend basis and the sole close decider.
+   * Undefined = no applicable ceiling (disabled, no ceiling, or an immortal group,
+   * which is never hard-stopped).
+   */
+  maxBudgetUsd?: number;
 }
 
 /**
@@ -71,9 +151,10 @@ export interface QueryInput {
 export type McpServerConfig =
   | {
       /** stdio transport */
+      type?: 'stdio';
       command: string;
-      args: string[];
-      env: Record<string, string>;
+      args?: string[];
+      env?: Record<string, string>;
       /**
        * Env-var names to forward by NAME (not value) to the subprocess.
        * Codex's TOML writer emits `env_vars = [...]`; codex-cli resolves
@@ -85,6 +166,20 @@ export type McpServerConfig =
        * those providers keep secrets in-process only, never on disk.
        */
       envInherit?: string[];
+      /**
+       * Container-side root of the plugin this server shipped in, recorded by
+       * the host at stamp time. Consumed (and stripped) by plugin-mcp.ts,
+       * which expands ${PLUGIN_ROOT}/${PLUGIN_DATA} and injects both env vars
+       * before the config reaches a provider.
+       */
+      pluginRoot?: string;
+      /**
+       * Working directory for the server process. By the time a provider sees
+       * it, plugin-mcp.ts has resolved it to an absolute container path.
+       * A provider whose runtime cannot set a spawn directory must shim it
+       * (cwd-shim.ts) or drop it — never launch in the wrong directory.
+       */
+      cwd?: string;
     }
   | {
       /** http (streamable) transport */
@@ -116,9 +211,28 @@ export interface AgentQuery {
 
 export type ProviderEvent =
   | { type: 'init'; continuation: string }
-  | { type: 'result'; text: string | null }
+  /**
+   * A completed turn. `isError` is set when the underlying SDK flagged the
+   * turn as an error (e.g. a non-retryable Anthropic 403 billing_error). The
+   * poll-loop uses it to surface the result text to the user instead of
+   * dropping it as un-wrapped scratchpad, and to skip the re-wrap nudge.
+   */
+  | { type: 'result'; text: string | null; isError?: boolean }
+  /**
+   * An assistant text segment emitted mid-turn (e.g. between tool calls).
+   * The SDK's final `result` carries only the LAST assistant text, so a
+   * complete <message to="..."> block composed before a trailing tool call
+   * never reaches the result event. For providers declaring
+   * `emitsMidTurnText`, the poll-loop scans these segments for closed
+   * message blocks and delivers them as they are emitted (chat runs only,
+   * with cross-segment assembly of split blocks); the final result never
+   * delivers content — repeats are inert there, and an undelivered turn
+   * gets the wrap-nudge instead.
+   */
+  | { type: 'text'; text: string }
   | { type: 'error'; message: string; retryable: boolean; classification?: string }
   | { type: 'progress'; message: string }
+  | { type: 'file'; path: string }
   /**
    * Per-turn usage accounting. Emitted once after a turn completes when the
    * underlying provider surfaces token/cost numbers. Lets the poll-loop log
@@ -139,6 +253,55 @@ export type ProviderEvent =
       numTurns: number;
       sessionId: string | null;
     }
+  /**
+   * PER-MESSAGE usage — one per assistant message the provider streams, carrying
+   * that message's OWN `usage` and the wire id that identifies it.
+   *
+   * This is the cost-cap's primary accounting basis (issue #1327). The
+   * end-of-turn `usage` event above is NOT a safe basis: the underlying stream
+   * emits one assistant message per CONTENT BLOCK (thinking / text / tool_use
+   * are separate messages) and every block of one API response repeats the same
+   * `message.id` AND the same message-level `usage`. Measured on real prod
+   * transcripts, summing those without deduplication double- to triple-counts
+   * (1.7x–2.8x; the reported session ran 2.1x over its true cost and enforced
+   * its ceiling that much too early).
+   *
+   * `messageId` is the dedup key. A consumer MUST ignore a repeat of an id it
+   * already charged, and MUST NOT charge an event whose id is null (it cannot be
+   * deduplicated) — see `recordMessageCost` in poll-loop.ts.
+   *
+   * `model` is the model that actually served THIS message, which is not
+   * necessarily the configured one (fallback model, a subagent on a cheaper
+   * model, …). Providers that cannot supply a value pass undefined and the
+   * consumer falls back to the configured model.
+   */
+  | {
+      type: 'message_usage';
+      /** Wire message id — the dedup key. Null when the provider has none. */
+      messageId: string | null;
+      /** Model that served this message; undefined → consumer uses the configured one. */
+      model: string | undefined;
+      inputTokens: number;
+      outputTokens: number;
+      cacheCreationInputTokens: number;
+      cacheReadInputTokens: number;
+      ephemeral1hInputTokens: number;
+      ephemeral5mInputTokens: number;
+      /** True when this message was produced by a Task-tool subagent. */
+      isSubagent: boolean;
+    }
+  /**
+   * A genuine assistant message the provider could NOT attach per-message
+   * `usage` to. Distinct from `message_usage` with a null id (usage present,
+   * id absent): here there is no usage at all, so there is nothing to price
+   * per-message. The consumer must treat the turn as degraded and settle from
+   * the end-of-turn aggregate `usage` event — otherwise a turn that mixes
+   * usage-bearing and usage-less assistant messages would look fully accounted
+   * (some message priced, no explicit gap) and skip the fallback, making the
+   * usage-less message's spend free. Empirically the Claude SDK attaches usage
+   * to every assistant message, so this is a money-safe guard, not a hot path.
+   */
+  | { type: 'message_missing_usage'; isSubagent: boolean }
   /**
    * Liveness signal. Providers MUST yield this on every underlying SDK
    * event (tool call, thinking, partial message, anything) so the

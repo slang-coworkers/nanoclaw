@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import { composeCoworkerSpine } from '../src/claude-composer.js';
+import { writeComposedDocument } from '../src/group-persona.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '..');
@@ -29,7 +30,12 @@ for (const { rel, coworkerType } of targets) {
       console.log(`ok    ${rel}`);
     }
   } else {
-    fs.writeFileSync(filePath, composed);
+    // groups/* is gitignored, so groups/main/ doesn't exist on a fresh clone —
+    // and rebuild:claude can run before setup scaffolds it (e.g. the setup
+    // project-integrations step runs merge-train, whose tail calls this). Create
+    // the target dir so the write can't ENOENT.
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    writeComposedDocument(filePath, composed);
     console.log(`updated ${rel}`);
   }
 }

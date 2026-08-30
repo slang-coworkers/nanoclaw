@@ -22,16 +22,22 @@ vi.mock('./container-config.js', () => ({
   materializeContainerJson: () => ({ additionalMounts: [], packages: { apt: [], npm: [] }, mcpServers: {} }),
 }));
 
+// Mirrors the async DbDriver surface gatherAdminUserIds uses; `hasTable: false`
+// short-circuits it, so `all` is only here to keep the shape honest.
 vi.mock('./db/connection.js', () => ({
-  getDb: () => ({ prepare: () => ({ all: () => [] }) }),
-  hasTable: () => false,
+  getDb: () => ({ hasTable: () => Promise.resolve(false), all: () => Promise.resolve([]) }),
 }));
 
 vi.mock('./session-manager.js', () => ({
   sessionDir: (ag: string, sid: string) => `/tmp/data/v2-sessions/${ag}/${sid}`,
+  heartbeatPath: (ag: string, sid: string) => `/tmp/data/v2-sessions/${ag}/${sid}/.heartbeat`,
+}));
+
+// The session DB paths moved out of session-manager into the sqlite mailbox
+// driver (`8e97fefa`); mock them where they now live.
+vi.mock('./mailbox/sqlite/paths.js', () => ({
   inboundDbPath: (ag: string, sid: string) => `/tmp/data/v2-sessions/${ag}/${sid}/inbound.db`,
   outboundDbPath: (ag: string, sid: string) => `/tmp/data/v2-sessions/${ag}/${sid}/outbound.db`,
-  heartbeatPath: (ag: string, sid: string) => `/tmp/data/v2-sessions/${ag}/${sid}/.heartbeat`,
 }));
 
 import { buildLocalAgentEnv, killLocalAgent, type LocalAgentContext, type LocalAgentHandle } from './local-runner.js';
@@ -76,8 +82,8 @@ function makeCtx(overrides: Partial<LocalAgentContext> = {}): LocalAgentContext 
 }
 
 describe('buildLocalAgentEnv', () => {
-  it('composes session DB paths, workspace paths, MCP proxy URL', () => {
-    const env = buildLocalAgentEnv(makeCtx(), {
+  it('composes session DB paths, workspace paths, MCP proxy URL', async () => {
+    const env = await buildLocalAgentEnv(makeCtx(), {
       groupDir: '/tmp/groups/acme',
       sessDir: '/tmp/data/v2-sessions/ag-1/sess-1',
       globalDir: '/tmp/groups/global',
@@ -97,11 +103,11 @@ describe('buildLocalAgentEnv', () => {
     expect(env.NANOCLAW_ALLOWED_MCP_TOOLS).toBe('["mcp__github__list"]');
   });
 
-  it('appends local bypass entries to inherited NO_PROXY rather than overwriting', () => {
+  it('appends local bypass entries to inherited NO_PROXY rather than overwriting', async () => {
     const originalNoProxy = process.env.NO_PROXY;
     process.env.NO_PROXY = 'corp.internal,metrics.corp';
     try {
-      const env = buildLocalAgentEnv(makeCtx(), {
+      const env = await buildLocalAgentEnv(makeCtx(), {
         groupDir: '/tmp/groups/acme',
         sessDir: '/tmp/data/v2-sessions/ag-1/sess-1',
         globalDir: null,
@@ -118,8 +124,8 @@ describe('buildLocalAgentEnv', () => {
     }
   });
 
-  it('provider contribution env overrides placeholders', () => {
-    const env = buildLocalAgentEnv(makeCtx({ contribution: { env: { XDG_DATA_HOME: '/tmp/xdg' } } }), {
+  it('provider contribution env overrides placeholders', async () => {
+    const env = await buildLocalAgentEnv(makeCtx({ contribution: { env: { XDG_DATA_HOME: '/tmp/xdg' } } }), {
       groupDir: '/tmp/groups/acme',
       sessDir: '/tmp/data/v2-sessions/ag-1/sess-1',
       globalDir: null,

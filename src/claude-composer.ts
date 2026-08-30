@@ -13,11 +13,19 @@ export { readCoworkerTypes, readSkillCatalog } from './claude-composer/registry.
 export {
   getAppliedOverlayNames,
   injectOverlays,
+  materializeCritiqueDeliveryMarkers,
   materializeCritiqueRequiredStages,
   materializeOverlayMarkers,
   resolveCoworkerManifest,
   resolveTypeChain,
 } from './claude-composer/resolve.js';
+export {
+  MIRROR_FLOOR_SKILLS,
+  resolveAllowedSkillNames,
+  resolveCoworkerSkillNames,
+  resolveMirroredSkillScope,
+} from './claude-composer/skill-scope.js';
+export type { MirroredSkillScope } from './claude-composer/skill-scope.js';
 export type {
   ComposeCoworkerSpineOptions,
   ComposeLegacyPromptOptions,
@@ -43,6 +51,7 @@ export function composeCoworkerSpine(options: ComposeCoworkerSpineOptions): stri
     disableOverlays: options.disableOverlays === true,
     overlays: options.overlays,
     cliScope: options.cliScope,
+    mcpInstructions: options.mcpInstructions,
   });
 }
 

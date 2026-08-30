@@ -13,15 +13,14 @@
  */
 import fs from 'fs';
 
-import type Database from 'better-sqlite3';
-
 import { GROUPS_DIR } from './config.js';
+import type { DbDriver } from './db/driver.js';
 import { log } from './log.js';
 
-export function findOrphanGroupDirs(db: Database.Database): string[] {
+export async function findOrphanGroupDirs(db: DbDriver): Promise<string[]> {
   if (!fs.existsSync(GROUPS_DIR)) return [];
   const known = new Set<string>(
-    (db.prepare('SELECT folder FROM agent_groups').all() as { folder: string }[]).map((r) => r.folder),
+    (await db.all<{ folder: string }>('SELECT folder FROM agent_groups')).map((r) => r.folder),
   );
   const orphans: string[] = [];
   for (const entry of fs.readdirSync(GROUPS_DIR, { withFileTypes: true })) {
@@ -32,8 +31,8 @@ export function findOrphanGroupDirs(db: Database.Database): string[] {
   return orphans.sort();
 }
 
-export function logOrphanGroupDirs(db: Database.Database): void {
-  const orphans = findOrphanGroupDirs(db);
+export async function logOrphanGroupDirs(db: DbDriver): Promise<void> {
+  const orphans = await findOrphanGroupDirs(db);
   if (orphans.length === 0) return;
   log.warn('Orphan group directories detected — delete manually if not needed', {
     count: orphans.length,

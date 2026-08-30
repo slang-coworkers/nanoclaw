@@ -241,6 +241,7 @@ export function resolveCoworkerManifest(
   const skillNames: string[] = [];
   const overlayNames: string[] = [];
   const bindings: Record<string, string> = {};
+  const vars: Record<string, string> = {};
   const mcpServers: Record<string, import('./types.js').McpServerTypeConfig> = {};
   let manifestProject: string | undefined;
   let flat = false;
@@ -276,6 +277,11 @@ export function resolveCoworkerManifest(
       if (entry.bindings) {
         for (const [trait, skillName] of Object.entries(entry.bindings)) {
           bindings[trait] = skillName;
+        }
+      }
+      if (entry.vars) {
+        for (const [key, value] of Object.entries(entry.vars)) {
+          vars[key] = value; // leaf-wins: chain is base→leaf
         }
       }
       if (entry.mcpServers) {
@@ -322,6 +328,7 @@ export function resolveCoworkerManifest(
       skills: [],
       tools: [],
       bindings: {},
+      vars,
       customizations: [],
       mcpServers,
       flat: true,
@@ -358,6 +365,18 @@ export function resolveCoworkerManifest(
       const uses = [...meta.uses.skills, ...meta.uses.workflows];
       // Inherit steps + step bodies + prologue + epilogue from parent
       // workflow if this child has none of its own.
+      // A declared `extends:` parent MUST resolve. Previously a missing parent
+      // was silently skipped (the `&& catalog[...]` guard below), producing an
+      // empty-body workflow with no error — e.g. onboard-project generating
+      // `extends: investigate` after that base workflow was consolidated into
+      // `plan`. Fail loudly so the composer and validate:templates catch it,
+      // the same way an unknown skill ref already throws.
+      if (meta.extendsWorkflow && !catalog[meta.extendsWorkflow]) {
+        throw new Error(
+          `Workflow '${name}' extends '${meta.extendsWorkflow}' but no workflow with that name is ` +
+            `registered — extends targets must resolve (was the parent renamed or removed?).`,
+        );
+      }
       let steps = meta.steps;
       let stepBodies = meta.stepBodies;
       let prologue = meta.prologue;
@@ -366,8 +385,13 @@ export function resolveCoworkerManifest(
         const parent = catalog[meta.extendsWorkflow];
         steps = parent.steps;
         stepBodies = { ...parent.stepBodies };
-        if (!prologue) prologue = parent.prologue;
-        if (!epilogue) epilogue = parent.epilogue;
+        // Combine parent + child framing rather than letting the child shadow
+        // the parent. A child that authors its own body (e.g. `slangpy-implement`'s
+        // `## PR-review-fix mode` mode-deltas, captured as the child's epilogue)
+        // must NOT drop the parent's epilogue (`## Mode invariants` etc.). Parent
+        // framing comes first, then the child's specialization.
+        prologue = [parent.prologue, prologue].filter(Boolean).join('\n\n') || undefined;
+        epilogue = [parent.epilogue, epilogue].filter(Boolean).join('\n\n') || undefined;
       }
       workflowEntries.push({
         name: meta.name,
@@ -572,6 +596,7 @@ export function resolveCoworkerManifest(
     skills: skillEntries,
     tools: [...tools].sort(),
     bindings: resolvedBindings,
+    vars,
     customizations,
     mcpServers,
     flat: false,
@@ -696,7 +721,9 @@ export function getAppliedOverlayNames(
   // primitive for hooks; CLAUDE.md splicing is a separate concern
   // (anchor-driven). An overlay with empty applies-to (e.g. critique-gate)
   // has no spine prose but must still materialize its MARKER so the hook
-  // first-line gate passes.
+  // first-line gate passes. Overlays are selected per agent-group from the
+  // dashboard (agent_groups.overlays → opts.overlays), never declared on the
+  // coworker type.
   if (opts.overlays) {
     for (const name of opts.overlays) {
       if (catalog[name]?.type === 'overlay') seen.add(name);
@@ -775,4 +802,50 @@ export function materializeCritiqueRequiredStages(
     // Cycle or unknown type — fall through to empty (legacy gate mode).
   }
   fs.writeFileSync(filePath, JSON.stringify([...stages]) + '\n');
+}
+
+/**
+ * Union `delivery_markers` / `pr_command_patterns` across the coworker-type
+ * chain and write them to `<groupDir>/.critique-delivery-markers` as
+ * `{"message_markers": [...], "bash_patterns": [...]}`. The gates
+ * (gate-critique-on-deliver.sh + poll-loop's checkCritiqueGate) union the
+ * file with their built-in vocabulary — extensions are ADDITIVE only, so the
+ * defaults can never be configured (or tampered) away.
+ *
+ * No declarations → remove any stale file; absent file = built-in vocabulary
+ * only. Idempotent, safe on every spawn.
+ *
+ * NOT gated on the `critique-gate` overlay (unlike materializeCritiqueRequiredStages):
+ * the delivery vocabulary feeds the ALWAYS-ON routing gate, which applies to
+ * every role — including non-critique-gated ones (triager, reviewer). Since
+ * the built-in floor now carries only the general primitives, a non-gated
+ * role's role-specific marker (e.g. a reviewer's [Review Verdict]) would go
+ * unrecognized by routing unless its file is materialized regardless of the
+ * critique-gate overlay. `appliedOverlays` is retained for call-site symmetry.
+ */
+export function materializeCritiqueDeliveryMarkers(
+  coworkerType: string,
+  types: Record<string, CoworkerTypeEntry>,
+  _appliedOverlays: string[],
+  groupDir: string,
+): void {
+  const filePath = path.join(groupDir, '.critique-delivery-markers');
+  const remove = (): void => {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  };
+  const markers = new Set<string>();
+  const patterns = new Set<string>();
+  try {
+    for (const entry of resolveTypeChain(types, coworkerType)) {
+      for (const m of entry.deliveryMarkers ?? []) markers.add(m);
+      for (const p of entry.prCommandPatterns ?? []) patterns.add(p);
+    }
+  } catch {
+    // Cycle or unknown type — treat as no extensions.
+  }
+  if (markers.size === 0 && patterns.size === 0) {
+    remove();
+    return;
+  }
+  fs.writeFileSync(filePath, JSON.stringify({ message_markers: [...markers], bash_patterns: [...patterns] }) + '\n');
 }

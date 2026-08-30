@@ -10,7 +10,7 @@ import path from 'path';
 import { backfillAgentsSymlinks } from './agents-symlink-backfill.js';
 import { backfillContainerConfigs } from './backfill-container-configs.js';
 import {
-  AGENT_RUNTIME,
+  CENTRAL_DB_PATH,
   DASHBOARD_INGRESS_HOST,
   DASHBOARD_INGRESS_PORT,
   DATA_DIR,
@@ -19,35 +19,31 @@ import {
   validateContainerTimeouts,
 } from './config.js';
 import { enforceStartupBackoff, resetCircuitBreaker } from './circuit-breaker.js';
-import { initDb, getDb } from './db/connection.js';
+import { adoptRunningSessions } from './container-runner.js';
+import { closeDb, initDb, getDb } from './db/connection.js';
 import { runMigrations } from './db/migrations/index.js';
+import { getSessionDriver } from './drivers/index.js';
 import { runGlobalToSharedMigration } from './migrations/global-to-shared.js';
 import { getMessagingGroupsByChannel, getMessagingGroupAgents } from './db/messaging-groups.js';
-import { ensureContainerRuntimeRunning, cleanupOrphans } from './container-runtime.js';
 import { startActiveDeliveryPoll, startSweepDeliveryPoll, setDeliveryAdapter, stopDeliveryPolls } from './delivery.js';
 import { startHostSweep, stopHostSweep } from './host-sweep.js';
+import { startHostModules, stopHostModules } from './host-lifecycle.js';
+import { registerCostApproval } from './modules/cost-approval/index.js';
 import { routeInbound } from './router.js';
 import { log } from './log.js';
 import { startMcpServers, getRunningServerNames, getServerUpstreamPort } from './mcp-registry.js';
 import { startMcpAuthProxy, setUpstreamPortResolver, discoverTools } from './mcp-auth-proxy.js';
 import { startDashboardIngress } from './dashboard-ingress.js';
 import { startGitHubWebhookServer, type GitHubWebhookServerHandle } from './github-webhook-server.js';
+import { enforceUpgradeTripwire } from './upgrade-state.js';
 
-// Response + shutdown registries live in response-registry.ts to break the
+// Response registry lives in response-registry.ts to break the
 // circular import cycle: src/index.ts imports src/modules/index.js for side
-// effects, and the modules call registerResponseHandler/onShutdown at top
-// level — which would hit a TDZ error if the arrays lived here. Re-exported
-// here so existing callers see the same surface.
-import {
-  registerResponseHandler,
-  getResponseHandlers,
-  onShutdown,
-  getShutdownCallbacks,
-  type ResponsePayload,
-  type ResponseHandler,
-} from './response-registry.js';
-export { registerResponseHandler, onShutdown };
-export type { ResponsePayload, ResponseHandler };
+// effects, and the modules call registerResponseHandler at top level — which
+// would hit a TDZ error if the array lived here.
+import { getResponseHandlers, type ResponsePayload } from './response-registry.js';
+
+const hostAbortController = new AbortController();
 
 async function dispatchResponse(payload: ResponsePayload): Promise<void> {
   for (const handler of getResponseHandlers()) {
@@ -65,8 +61,8 @@ async function dispatchResponse(payload: ResponsePayload): Promise<void> {
 // Channel skills uncomment lines in channels/index.ts to enable them.
 import './channels/index.js';
 
-// Modules barrel — default modules (typing, mount-security) ship here; skills
-// append registry-based modules. Imported for side effects (registrations).
+// Modules barrel — imports registration modules, including the singular
+// mailbox composition slot. Imported for side effects.
 import './modules/index.js';
 
 // CLI command barrel — populates the `ncl` registry before the CLI server
@@ -77,9 +73,9 @@ import { startCliServer, stopCliServer } from './cli/socket-server.js';
 
 import type { ChannelAdapter, ChannelSetup } from './channels/adapter.js';
 import {
+  createChannelDeliveryAdapter,
   initChannelAdapters,
   teardownChannelAdapters,
-  getChannelAdapter,
   getActiveAdapters,
 } from './channels/channel-registry.js';
 
@@ -144,11 +140,14 @@ async function main(): Promise<void> {
   // 0b. Circuit breaker — backoff on rapid restarts
   await enforceStartupBackoff();
 
+  // 0.5 Upgrade tripwire — refuse to start if this install was updated
+  // outside the sanctioned path (raw `git pull` instead of /update-nanoclaw).
+  enforceUpgradeTripwire();
+
   // 1. Init central DB
-  const dbPath = path.join(DATA_DIR, 'v2.db');
-  const db = initDb(dbPath);
-  runMigrations(db);
-  log.info('Central DB ready', { path: dbPath });
+  const db = await initDb(CENTRAL_DB_PATH, { role: 'host' });
+  await runMigrations(db, undefined, { mode: 'auto' });
+  log.info('Central DB ready', { dialect: db.dialect });
 
   // 1b. One-time filesystem+DB migration: demote groups/global/ to
   // data/shared/. Idempotent via marker file. Must run AFTER schema
@@ -162,7 +161,8 @@ async function main(): Promise<void> {
 
   // 1c. Backfill container_configs from legacy container.json files.
   // Idempotent — skips groups that already have a config row.
-  backfillContainerConfigs();
+  if (db.dialect === 'sqlite') await backfillContainerConfigs();
+  else log.info('Skipping local container.json backfill for non-local central DB');
 
   // 1c-bis. Backfill AGENTS.md / .agents symlinks for codex-mode skill
   // discovery. group-init.ts creates these for new groups; this catches
@@ -174,6 +174,44 @@ async function main(): Promise<void> {
     log.warn('agents-symlink-backfill threw', { err: String(err) });
   }
 
+  // Reset stale container_status from a previous host run BEFORE the reconcile
+  // below. On an unclean shutdown, sessions are left at container_status
+  // 'running'/'idle'; no container is actually alive this early in startup
+  // (the runtime + spawns happen in section 2), so the rows are stale. The
+  // reconcile's live-session preflight keys on this column, so without the
+  // reset it would spuriously abort on every first restart after a crash.
+  // Idempotent and safe to run here — duplicated cheaply below is harmless,
+  // but doing it first is what makes the auto-reconcile reliable.
+  await getDb().run("UPDATE sessions SET container_status = 'stopped' WHERE container_status IN ('running', 'idle')");
+
+  // 1c-ter. Reconcile split gh-issue/gh-pr coworker sessions. Older installs
+  // accumulated multiple sessions per coworker for one GitHub issue/PR (a
+  // webhook session + one a2a session per sender); the `resolveSession`
+  // `^gh-(issue|pr)-` collapse stops new splits, this merges the existing ones
+  // into the canonical session. Idempotent (a no-op once collapsed) and safe to
+  // run at startup: containers haven't spawned yet AND stale running-status was
+  // just cleared above, so the live-session preflight passes; it backs up
+  // v2.db + mutated session DBs before writing. Never blocks startup — a
+  // failure is logged and swallowed.
+  try {
+    const { reconcileGhSessions } = await import('./reconcile-gh-sessions.js');
+    const res = await reconcileGhSessions({
+      dataDir: DATA_DIR,
+      apply: true,
+      log: (line) => log.info('reconcile-gh-sessions', { line }),
+    });
+    if (res.merged > 0) {
+      log.info('Reconciled split gh sessions', {
+        groups: res.groups,
+        merged: res.merged,
+        inRows: res.inRows,
+        outRows: res.outRows,
+      });
+    }
+  } catch (err) {
+    log.warn('reconcile-gh-sessions threw', { err: String(err) });
+  }
+
   // 1d. Orphan-dir reconciler (task #40). `groups/<folder>/` directories
   // can be left behind when a coworker is deleted via the dashboard API
   // with `deleteData=false` (the default — the delete path preserves WIP
@@ -183,17 +221,20 @@ async function main(): Promise<void> {
   // be in there.
   try {
     const { logOrphanGroupDirs } = await import('./orphan-groups.js');
-    logOrphanGroupDirs(db);
+    await logOrphanGroupDirs(db);
   } catch (err) {
     log.warn('orphan-groups scan threw', { err: String(err) });
   }
 
-  // 2. Container runtime
-  ensureContainerRuntimeRunning();
-  cleanupOrphans();
-
-  // Reset stale container_status from previous host runs
-  getDb().prepare("UPDATE sessions SET container_status = 'stopped' WHERE container_status = 'running'").run();
+  // 2. Session runtime: prove it is reachable, then reconcile what survived a
+  // restart. Adoption replaces the old reap-everything cleanup — a session that
+  // is still running keeps running, and only true orphans are stopped.
+  await getSessionDriver().ensureReady?.();
+  await adoptRunningSessions();
+  // Reset stale container_status from previous host runs. Kept AFTER adoption so
+  // it only clears rows adoption did not claim; repeated from the pre-reconcile
+  // reset above as the canonical post-runtime reset — idempotent.
+  await getDb().run("UPDATE sessions SET container_status = 'stopped' WHERE container_status = 'running'");
 
   // 2b. MCP server stack (registry + auth proxy)
   const mcpStack = await startMcpServers(MCP_PROXY_PORT + 100);
@@ -221,6 +262,9 @@ async function main(): Promise<void> {
       onInbound(platformId, threadId, message) {
         routeInbound({
           channelType: adapter.channelType,
+          // The one host-side stamping seam: adapters stay instance-blind,
+          // the host stamps the receiving instance on every inbound event.
+          instance: adapter.instance ?? adapter.channelType,
           platformId,
           threadId,
           message: {
@@ -313,45 +357,66 @@ async function main(): Promise<void> {
     onCredentialRejectFn: async (_credentialId: string) => {
       log.debug('Dashboard credential reject — response registry not yet implemented');
     },
+    onCostOverrideFn: async (sessionId: string, decision: 'continue' | 'stop') => {
+      // Pill = the SECONDARY surface, but with the SAME money-safety as the card.
+      //  1. A live PENDING episode → route through its CAS (at-most-once decision + fence).
+      //  2. No pending, but the session HAS a (resolved) episode → route with THAT episode's
+      //     epoch as the fence. This is the P0 fix: a bare unfenced override here would let a
+      //     pill Continue double-grant after a card Continue already rotated the generation.
+      //     The fence makes a duplicate/stale press a no-op, while a genuine reversal (the
+      //     generation is unchanged after a Stop) still applies.
+      //  3. No episode ever (stale runner / never escalated) → the legacy unconditional
+      //     override — the ONLY place an unfenced override is allowed.
+      const { getPendingEpisodeForSession, getLatestEpisodeForSession } =
+        await import('./db/cost-escalation-episodes.js');
+      const pending = await getPendingEpisodeForSession(sessionId);
+      if (pending) {
+        const { decideCostEpisode } = await import('./modules/cost-approval/index.js');
+        await decideCostEpisode(pending.episode_id, decision, 'dashboard:pill');
+        return;
+      }
+      const { routeCostOverrideToSession } = await import('./router.js');
+      const latest = await getLatestEpisodeForSession(sessionId);
+      await routeCostOverrideToSession({
+        sessionId,
+        decision,
+        ...(latest ? { epochKey: latest.epoch_key } : {}),
+      });
+    },
+    onSetCeilingFn: async (raw: unknown) => {
+      const { submitCostCeilingAdjustment } = await import('./modules/cost-ceiling-adjustment/index.js');
+      return submitCostCeilingAdjustment(raw);
+    },
   });
 
   // 3c. GitHub webhook server (publicly exposed, HMAC-validated)
   githubWebhookHandle = startGitHubWebhookServer();
 
-  // 4. Delivery adapter bridge — dispatches to channel adapters
-  const deliveryAdapter = {
-    async deliver(
-      channelType: string,
-      platformId: string,
-      threadId: string | null,
-      kind: string,
-      content: string,
-      files?: import('./channels/adapter.js').OutboundFile[],
-    ): Promise<string | undefined> {
-      const adapter = getChannelAdapter(channelType);
-      if (!adapter) {
-        log.warn('No adapter for channel type', { channelType });
-        return;
-      }
-      return adapter.deliver(platformId, threadId, { kind, content: JSON.parse(content), files });
-    },
-    async setTyping(channelType: string, platformId: string, threadId: string | null): Promise<void> {
-      const adapter = getChannelAdapter(channelType);
-      await adapter?.setTyping?.(platformId, threadId);
-    },
-  };
-  setDeliveryAdapter(deliveryAdapter);
+  // 4. Delivery adapter bridge — dispatches to channel adapters. The registry
+  // factory owns exact-instance resolution (a named instance never sends
+  // through a sibling bot of the same platform) and raises
+  // MissingChannelAdapterError so an offline adapter takes the retry path.
+  setDeliveryAdapter(createChannelDeliveryAdapter());
 
-  // 5. Start delivery polls
+  // 5. Start registered host modules. Imports only registered callbacks; the
+  // actual work begins here, after DB + delivery are ready and before polls.
+  await startHostModules({ db, signal: hostAbortController.signal });
+
+  // 6. Start delivery polls
   startActiveDeliveryPoll();
   startSweepDeliveryPoll();
   log.info('Delivery polls started');
 
-  // 6. Start host sweep
+  // 7. Start host sweep
   startHostSweep();
   log.info('Host sweep started');
 
-  // 7. Start the `ncl` CLI socket server (data/ncl.sock).
+  // Cost-approval escalation card: log the active mode (S1 read-only vs S2 interactive).
+  // The ingest handler (delivery.ts), reconciler (host-sweep), and bridge interceptor are
+  // wired independently; this is the single place the flag state is announced at boot.
+  await registerCostApproval();
+
+  // 8. Start the `ncl` CLI socket server (data/ncl.sock).
   await startCliServer();
 
   log.info('NanoClaw running');
@@ -361,11 +426,11 @@ async function main(): Promise<void> {
  * Refresh all active adapters with updated conversation configs from the DB.
  * Called when messaging_group_agents wiring changes (e.g., create_agent).
  */
-export function refreshAdapterConversations(): void {
+export async function refreshAdapterConversations(): Promise<void> {
   for (const adapter of getActiveAdapters()) {
     const a = adapter as ChannelAdapter & { updateConversations?(configs: ConversationConfig[]): void };
     if (a.updateConversations) {
-      const configs = buildConversationConfigs(a.channelType);
+      const configs = await buildConversationConfigs(a.channelType);
       a.updateConversations(configs);
       log.debug('Adapter conversations refreshed', { channel: a.channelType, count: configs.length });
     }
@@ -373,12 +438,12 @@ export function refreshAdapterConversations(): void {
 }
 
 /** Build ConversationConfig[] for a channel type from the central DB. */
-function buildConversationConfigs(channelType: string): ConversationConfig[] {
-  const groups = getMessagingGroupsByChannel(channelType);
+async function buildConversationConfigs(channelType: string): Promise<ConversationConfig[]> {
+  const groups = await getMessagingGroupsByChannel(channelType);
   const configs: ConversationConfig[] = [];
 
   for (const mg of groups) {
-    const agents = getMessagingGroupAgents(mg.id);
+    const agents = await getMessagingGroupAgents(mg.id);
     for (const agent of agents) {
       configs.push({
         platformId: mg.platform_id,
@@ -403,13 +468,8 @@ async function shutdown(signal: string): Promise<void> {
   } catch {
     /* ignore */
   }
-  for (const cb of getShutdownCallbacks()) {
-    try {
-      await cb();
-    } catch (err) {
-      log.error('Shutdown callback threw', { err });
-    }
-  }
+  hostAbortController.abort();
+  await stopHostModules();
   stopDeliveryPolls();
   stopHostSweep();
   mcpProxyHandle?.stop();
@@ -420,13 +480,17 @@ async function shutdown(signal: string): Promise<void> {
   try {
     await teardownChannelAdapters();
   } finally {
+    await closeDb();
+    // Always reset on graceful shutdown — even if teardown threw, we got here
+    // via SIGTERM/SIGINT, not a crash, so the next start shouldn't be counted
+    // as one.
     resetCircuitBreaker();
     process.exit(0);
   }
 }
 
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('SIGINT', () => void shutdown('SIGINT'));
 
 main().catch((err) => {
   log.fatal('Startup failed', { err });

@@ -1,7 +1,19 @@
 import { findByRouting } from './destinations.js';
 import type { MessageInRow } from './db/messages-in.js';
 import { getSessionRouting } from './db/session-routing.js';
-import { TIMEZONE, formatLocalTime } from './timezone.js';
+import { TIMEZONE, formatLocalTime, formatLocalStamp } from './timezone.js';
+
+/**
+ * channel_type marking cross-session context copies (accumulate fan-out from
+ * the agent group's other sessions). Echo rows are ambient context only: they
+ * never provide reply routing, never count as commands, and render as
+ * <cross-session-context> blocks.
+ */
+export const SESSION_ECHO_CHANNEL = 'session-echo';
+
+export function isSessionEcho(msg: MessageInRow): boolean {
+  return msg.channel_type === SESSION_ECHO_CHANNEL;
+}
 
 /**
  * Command categories for messages starting with '/'.
@@ -12,7 +24,7 @@ import { TIMEZONE, formatLocalTime } from './timezone.js';
  */
 export type CommandCategory = 'admin' | 'filtered' | 'passthrough' | 'none';
 
-const ADMIN_COMMANDS = new Set(['/remote-control', '/clear', '/compact', '/context', '/cost', '/files']);
+const ADMIN_COMMANDS = new Set(['/remote-control', '/clear', '/compact', '/context', '/cost', '/files', '/upload-trace']);
 const FILTERED_COMMANDS = new Set(['/help', '/login', '/logout', '/doctor', '/config', '/start']);
 
 export interface CommandInfo {
@@ -38,7 +50,9 @@ export function categorizeMessage(msg: MessageInRow): CommandInfo {
   const text = (content.text || '').trim();
   const senderId = extractSenderId(msg, content);
 
-  if (!text.startsWith('/')) {
+  // Cross-session echo rows are ambient copies of another conversation —
+  // a copied "/clear" etc. must never execute here.
+  if (isSessionEcho(msg) || !text.startsWith('/')) {
     return { category: 'none', command: '', text, senderId };
   }
 
@@ -62,6 +76,7 @@ export function categorizeMessage(msg: MessageInRow): CommandInfo {
  * before messages reach the container.
  */
 export function isClearCommand(msg: MessageInRow): boolean {
+  if (isSessionEcho(msg)) return false;
   const content = parseContent(msg.content);
   const text = (content.text || '').trim();
   return text.toLowerCase().startsWith('/clear');
@@ -99,19 +114,40 @@ export interface RoutingContext {
   channelType: string | null;
   threadId: string | null;
   inReplyTo: string | null;
+  /** Batch is a task run. One-door delivery: only an explicitly addressed tool
+   *  delivers from a task session; final-text `<message to>` blocks are inert
+   *  and the final text auto-appends to the series run log. */
+  taskRun: boolean;
 }
 
 /**
  * Extract routing context from a batch of messages.
- * Uses the first message's routing fields.
+ * Uses the first non-echo message's routing fields — a cross-session echo
+ * row must never decide where the reply goes (its routing is NULL by
+ * contract, but even a malformed row with routing set is skipped). Falls
+ * back to the plain first row if the batch is somehow all echo (shouldn't
+ * happen — echo rows never trigger).
  */
 export function extractRouting(messages: MessageInRow[]): RoutingContext {
-  const first = messages[0];
+  const first = messages.find((m) => !isSessionEcho(m)) ?? messages[0];
+  // Session routing outranks the message's own fields. A cross-channel webhook
+  // (a github PR review, say) waking an a2a session carries github routing while
+  // the session's bound channel is agent; the poll loop's bare-text auto-route
+  // would then target github, which has no messaging group on the delivery side
+  // and fails permanently instead of retrying. threadId and inReplyTo stay
+  // per-turn, so they still come from the message.
+  const session = getSessionRouting();
+  const useSession = !!(session.channel_type && session.platform_id);
   return {
-    platformId: first?.platform_id ?? null,
-    channelType: first?.channel_type ?? null,
+    platformId: useSession ? session.platform_id : (first?.platform_id ?? null),
+    channelType: useSession ? session.channel_type : (first?.channel_type ?? null),
     threadId: first?.thread_id ?? null,
     inReplyTo: first?.id ?? null,
+    // Echo rows riding along with a task must not disable one-door delivery:
+    // taskRun as long as at least one task row and no non-task/non-echo row.
+    taskRun:
+      messages.some((m) => m.kind === 'task') &&
+      messages.every((m) => m.kind === 'task' || isSessionEcho(m)),
   };
 }
 
@@ -166,19 +202,19 @@ export function formatMessages(messages: MessageInRow[]): string {
 }
 
 function formatChatMessages(messages: MessageInRow[], sessionThreadId: string | null): string {
-  if (messages.length === 1) {
-    return formatSingleChat(messages[0], sessionThreadId);
-  }
-
-  const lines = ['<messages>'];
-  for (const msg of messages) {
-    lines.push(formatSingleChat(msg, sessionThreadId));
-  }
-  lines.push('</messages>');
-  return lines.join('\n');
+  // Each `<message id="..." from="...">...</message>` block is self-contained;
+  // concatenating them reads to the agent as a sequence of distinct messages.
+  // Earlier revisions wrapped multi-message batches in an outer `<messages>`
+  // envelope, but the Claude Agent SDK responded to that shape with a
+  // synthetic stub (`model: "<synthetic>"`, `content: "No response
+  // requested."`) instead of calling the API — see #2555 for the full trace.
+  // The fix is simply to drop the wrapper; the single-message path (which
+  // already worked) is now just the N=1 case of the same code.
+  return messages.map((m) => formatSingleChat(m, sessionThreadId)).join('\n');
 }
 
 function formatSingleChat(msg: MessageInRow, sessionThreadId: string | null): string {
+  if (isSessionEcho(msg)) return formatEchoMessage(msg);
   const content = parseContent(msg.content);
   const sender = content.sender || content.author?.fullName || content.author?.userName || 'Unknown';
   const time = formatLocalTime(msg.timestamp, TIMEZONE);
@@ -190,7 +226,9 @@ function formatSingleChat(msg: MessageInRow, sessionThreadId: string | null): st
       ? ` thread="${escapeXml(msg.thread_id)}"`
       : '';
   const replyPrefix = formatReplyContext(content.replyTo);
+  const linksSuffix = formatLinks(content.links, text);
   const attachmentsSuffix = formatAttachments(content.attachments);
+  const appContextSuffix = formatAppContext(content.app_context);
 
   // Engine-synthesized system notifications (channelType='system' OR
   // sender='system') get rendered as <system-notification>, NOT as a
@@ -212,7 +250,31 @@ function formatSingleChat(msg: MessageInRow, sessionThreadId: string | null): st
 
   const fromAttr = originAttr(msg);
 
-  return `<message${idAttr}${fromAttr} sender="${escapeXml(sender)}" time="${escapeXml(time)}"${threadAttr}${replyAttr}>${replyPrefix}${escapeXml(text)}${attachmentsSuffix}</message>`;
+  return `<message${idAttr}${fromAttr} sender="${escapeXml(sender)}" time="${escapeXml(time)}"${threadAttr}${replyAttr}>${replyPrefix}${escapeXml(text)}${linksSuffix}${attachmentsSuffix}${appContextSuffix}</message>`;
+}
+
+/**
+ * Render a cross-session context copy. No id/reply_to attributes — echo rows
+ * are ambient context, not addressable messages. `from` is the human label of
+ * the source conversation (e.g. "#Pixel room", "DM with Gavriel") written by
+ * the host at fan-out time; content.text is already truncated host-side.
+ */
+function formatEchoMessage(msg: MessageInRow): string {
+  const content = parseContent(msg.content);
+  const label = content.echo?.label || 'another conversation';
+  const sender = content.sender || 'Unknown';
+  const time = formatLocalStamp(new Date(msg.timestamp), TIMEZONE);
+  // Timeline rows are the conversation's own preceding history — FIRST-CLASS
+  // context this thread continues from (the agent's own posts render as
+  // sender="you"), unlike cross-session-context ambient echoes from other
+  // live surfaces which must never be acted on in-place. dm-timeline = a DM's
+  // timeline; channel-timeline = a group conversation's (per-thread groups).
+  if (content.echo?.surface === 'dm-timeline' || content.echo?.surface === 'channel-timeline') {
+    const who = (content as { self?: boolean }).self ? 'you' : sender;
+    const tag = content.echo.surface === 'channel-timeline' ? 'channel-history' : 'dm-history';
+    return `<${tag} sender="${escapeXml(who)}" time="${escapeXml(time)}">${escapeXml(content.text || '')}</${tag}>`;
+  }
+  return `<cross-session-context from="${escapeXml(label)}" sender="${escapeXml(sender)}" time="${escapeXml(time)}">${escapeXml(content.text || '')}</cross-session-context>`;
 }
 
 /**
@@ -232,13 +294,39 @@ function originAttr(msg: MessageInRow): string {
 function formatTaskMessage(msg: MessageInRow): string {
   const content = parseContent(msg.content);
   const from = originAttr(msg);
-  const time = formatLocalTime(msg.timestamp, TIMEZONE);
+  const time = formatLocalTime(msg.process_after ?? msg.timestamp, TIMEZONE);
+  const currentTime = new Date().toLocaleString('en-US', {
+    timeZone: TIMEZONE,
+    dateStyle: 'full',
+    timeStyle: 'short',
+  });
   const parts: string[] = [];
   if (content.scriptOutput) {
     parts.push('Script output:', JSON.stringify(content.scriptOutput, null, 2), '');
   }
-  parts.push('Instructions:', content.prompt || '');
-  return `<task${from} time="${escapeXml(time)}">${parts.join('\n')}</task>`;
+  parts.push('Instructions:', stripLegacyTaskContract(content.prompt || ''));
+  return `<task${from} time="${escapeXml(time)}" current_time="${escapeXml(currentTime)}">${parts.join('\n')}</task>`;
+}
+
+const LEGACY_TASK_CONTRACT_MARKERS = [
+  '\n\n[A task serves the user two separate ways —',
+  '\n\n[Task delivery contract:',
+];
+
+/**
+ * PR #2981 persisted its generated delivery contract inside each task prompt.
+ * New sessions receive the contract from their runtime system prompt instead.
+ * Strip only a known generated suffix, at read time, so existing task rows stay
+ * compatible without a session-DB migration or contradictory model guidance.
+ */
+export function stripLegacyTaskContract(prompt: string): string {
+  if (!prompt.trimEnd().endsWith(']')) return prompt;
+
+  let contractStart = -1;
+  for (const marker of LEGACY_TASK_CONTRACT_MARKERS) {
+    contractStart = Math.max(contractStart, prompt.lastIndexOf(marker));
+  }
+  return contractStart >= 0 ? prompt.slice(0, contractStart).trimEnd() : prompt;
 }
 
 function formatWebhookMessage(msg: MessageInRow): string {
@@ -271,6 +359,37 @@ function formatReplyContext(replyTo: any): string {
   const text = replyTo.text;
   if (!sender || !text) return '';
   return `\n  <quoted_message from="${escapeXml(sender)}">${escapeXml(text)}</quoted_message>\n`;
+}
+
+/**
+ * Render agent-mode app context — the entities the user was viewing when
+ * they sent this message (content.app_context = { entities: [{ type, id },
+ * …] }, attached by the chat-sdk bridge). One compact line inside the
+ * message block; malformed/empty context renders nothing.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function formatAppContext(appContext: any): string {
+  if (!appContext || !Array.isArray(appContext.entities)) return '';
+  const items = appContext.entities
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((e: any) => typeof e?.type === 'string' && e.type && typeof e?.id === 'string' && e.id)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((e: any) => `${e.type} ${e.id}`);
+  if (items.length === 0) return '';
+  return `\n(viewing: ${escapeXml(items.join(', '))})`;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function formatLinks(links: any[] | undefined, text: string): string {
+  if (!Array.isArray(links) || links.length === 0) return '';
+  const urls = [
+    ...new Set(
+      links.flatMap((link) =>
+        typeof link?.url === 'string' && link.url && !text.includes(link.url) ? [link.url] : [],
+      ),
+    ),
+  ];
+  return urls.length === 0 ? '' : `\n${urls.map((url) => `[link: ${escapeXml(url)}]`).join('\n')}`;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

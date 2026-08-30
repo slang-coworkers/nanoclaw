@@ -1,7 +1,7 @@
 /**
  * Read/write helpers for the sdk_session_routes mapping table.
  *
- * See src/db/migrations/018-sdk-session-routes.ts for schema + rationale.
+ * See src/db/migrations/918-sdk-session-routes.ts for schema + rationale.
  */
 import type Database from 'better-sqlite3';
 

@@ -1,3 +1,4 @@
+import { addColumnIfMissing } from './column-guard.js';
 import type { Migration } from './index.js';
 
 /**
@@ -10,12 +11,13 @@ import type { Migration } from './index.js';
 export const migration006: Migration = {
   version: 6,
   name: 'coworker-fields',
-  up(db) {
-    db.exec(`
-      ALTER TABLE agent_groups ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;
-      ALTER TABLE agent_groups ADD COLUMN container_config TEXT;
-      ALTER TABLE agent_groups ADD COLUMN coworker_type TEXT;
-      ALTER TABLE agent_groups ADD COLUMN allowed_mcp_tools TEXT;
-    `);
+  async up(db) {
+    // One ALTER per column rather than a single multi-statement exec: the
+    // batch aborted partway on any column that already existed, leaving the
+    // rest unapplied. addColumnIfMissing makes each independently idempotent.
+    await addColumnIfMissing(db, 'agent_groups', 'is_admin INTEGER NOT NULL DEFAULT 0');
+    await addColumnIfMissing(db, 'agent_groups', 'container_config TEXT');
+    await addColumnIfMissing(db, 'agent_groups', 'coworker_type TEXT');
+    await addColumnIfMissing(db, 'agent_groups', 'allowed_mcp_tools TEXT');
   },
 };

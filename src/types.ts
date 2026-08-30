@@ -9,11 +9,18 @@ export interface AgentGroup {
   agent_provider: string | null;
   container_config: string | null; // JSON: { additionalMounts, timeout }
   coworker_type: string | null; // coworker-types.yaml key, e.g. "slang-reader" or "slang-writer"
-  allowed_mcp_tools: string | null; // JSON: string[] of allowed MCP tool names
+  // MCP tool policy — resolved ONLY through src/mcp-allowlist.ts, which owns
+  // the three states: NULL = inherited (coworker-type manifest, or every
+  // discovered tool for an admin group), '*' = unrestricted, JSON string[] =
+  // an explicit list. NULL and '*' are NOT the same thing.
+  allowed_mcp_tools: string | null;
   overlays: string | null; // JSON: string[] of overlay names (e.g. ["critique-gate", "buddy-monitor"])
   routing: string; // 'direct' | 'internal'
   disable_overlays: number; // 0 | 1 — when 1, skip overlay hook injection
+  paused: number; // 0 | 1 — operator kill switch. When 1 the host refuses to spawn ANY container for this group, enforced in wakeContainer so every wake path (router fanout, a2a/host-direct, host-sweep, task fires) honours it. Inbound messages still accumulate; unpausing resumes them.
   created_at: string;
+  /** Dashboard sidebar grouping: NULL/'prod' = shared prod group; else a user id. */
+  sidebar_group?: string | null;
 }
 
 /** Per-agent-group container runtime config. Source of truth in the DB;
@@ -32,15 +39,31 @@ export interface ContainerConfigRow {
   packages_npm: string; // JSON: string[]
   additional_mounts: string; // JSON: AdditionalMountConfig[]
   cli_scope: string; // 'disabled' | 'group' | 'global'
+  timezone: string | null; // IANA id; NULL = follow the install-global timezone
+  /**
+   * Session isolation tier ('container' | 'vm') — see SessionSpec.runtimeTier.
+   * Optional on the TS type because the trunk schema does not carry the
+   * column: a deployment whose driver realizes more than one tier adds it,
+   * and `SELECT *` rows surface it here. Absent means the default tier.
+   */
+  runtime_tier?: string | null;
   updated_at: string;
 }
 
-export type UnknownSenderPolicy = 'strict' | 'request_approval' | 'public';
+export type UnknownSenderPolicy = 'strict' | 'request_approval' | 'decline_notify' | 'public';
 
 export interface MessagingGroup {
   id: string;
   channel_type: string;
   platform_id: string;
+  /**
+   * Adapter-instance name. Defaults to channel_type (the "default instance").
+   * Column is NOT NULL (migration 016 backfills instance = channel_type);
+   * optional on the TS type per the denied_at convention so fixtures that
+   * build MessagingGroup objects don't need updating — createMessagingGroup
+   * stamps the default.
+   */
+  instance?: string;
   name: string | null;
   is_group: number; // 0 | 1
   admin_user_id?: string | null;
@@ -55,8 +78,24 @@ export interface MessagingGroup {
    * the column itself defaults to NULL in SQLite.
    */
   denied_at?: string | null;
+  /**
+   * When set, our own bot has LEFT the platform channel this row maps to
+   * (written by a channel membership module, migration 022) — the wiring
+   * survives, but delivery/typing should skip the row until the bot rejoins
+   * (which clears it). Optional on the TS type per the denied_at convention.
+   */
+  detached_at?: string | null;
   created_at: string;
 }
+
+// Re-exported so importers (including upstream code pulled in on an update)
+// resolve these symbols. The fork widened the underlying unions vs upstream
+// ('always'/'never' engage modes, 'admin-only' sender scope); keeping the
+// aliases — and referencing them from the interface below — restores the
+// single source of truth and prevents a broken import on the next upstream pull.
+export type EngageMode = 'always' | 'pattern' | 'mention' | 'mention-sticky' | 'never';
+export type SenderScope = 'all' | 'known' | 'admin-only';
+export type IgnoredMessagePolicy = 'drop' | 'accumulate';
 
 export interface MessagingGroupAgent {
   id: string;
@@ -66,10 +105,19 @@ export interface MessagingGroupAgent {
   response_scope?: 'all' | 'triggered' | 'allowlisted';
   session_mode: 'shared' | 'per-thread' | 'agent-shared';
   priority: number;
-  engage_mode: 'always' | 'pattern' | 'mention' | 'mention-sticky' | 'never';
+  engage_mode: EngageMode;
   engage_pattern: string | null;
-  sender_scope: 'all' | 'known' | 'admin-only' | null;
-  ignored_message_policy: 'drop' | 'accumulate' | null;
+  sender_scope: SenderScope | null;
+  ignored_message_policy: IgnoredMessagePolicy | null;
+  /**
+   * Per-wiring thread-policy override (migration 019). NULL = inherit the
+   * channel adapter's declared default for the wiring's context (DM vs
+   * group); 1/0 = explicit override, hard-ANDed with the adapter's raw
+   * capability at router fanout (resolveThreadPolicy). Optional on the TS
+   * type per the denied_at convention so pre-migration fixtures don't need
+   * updating.
+   */
+  threads?: number | null;
   created_at: string;
 }
 
@@ -91,7 +139,7 @@ export interface Session {
 // ── Session DB entities ──
 
 export type MessageInKind = 'chat' | 'chat-sdk' | 'task' | 'webhook' | 'system';
-export type MessageInStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type MessageInStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
 
 export interface MessageIn {
   id: string;
@@ -148,11 +196,27 @@ export interface PendingApproval {
   agent_group_id: string | null;
   channel_type: string | null;
   platform_id: string | null;
+  /**
+   * Adapter instance the card was delivered through (migration 023). NULL
+   * reads as the default instance (= channel_type). Delivery dispatch is
+   * exact-key, so any follow-up edit to the card must address the identity
+   * that posted it, not just the platform.
+   */
+  instance: string | null;
   platform_message_id: string | null;
+  /**
+   * For OneCLI credential rows, the gateway's request TTL. For a module
+   * approval held by "Reject with reason…", the deadline after which the
+   * host sweep finalizes a plain reject (set by markApprovalAwaitingReason).
+   */
   expires_at: string | null;
-  status: 'pending' | 'approved' | 'rejected' | 'expired';
-  title: string | null;
-  options_json: string | null;
+  status: 'pending' | 'approved' | 'rejected' | 'expired' | 'awaiting_reason';
+  title: string;
+  /** Original approval-card body, retained when the card reaches a terminal state. */
+  question: string;
+  options_json: string;
+  /** When set, only this exact user may resolve the approval. */
+  approver_user_id: string | null;
 }
 
 // ── Pending credentials (central DB) ──
@@ -217,5 +281,12 @@ export interface AgentDestination {
   local_name: string;
   target_type: 'channel' | 'agent';
   target_id: string;
+  created_at: string;
+}
+
+export interface AgentMessagePolicy {
+  from_agent_group_id: string;
+  to_agent_group_id: string;
+  approver: string;
   created_at: string;
 }

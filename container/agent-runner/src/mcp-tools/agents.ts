@@ -5,8 +5,11 @@
  * send_message(to="agent-name") since agents and channels share the
  * unified destinations namespace.
  *
- * create_agent is admin-only. Non-admin containers never see this tool
- * (see mcp-tools/index.ts). The host re-checks permission on receive.
+ * create_agent writes central-DB state. The host authorizes it by CLI scope:
+ * trusted owner agent groups (scope 'global') create directly; confined groups
+ * require admin approval (see src/modules/agent-to-agent/create-agent.ts). This
+ * tool just writes the outbound request; authorization is enforced host-side,
+ * not here — the container is untrusted and cannot be relied on to gate itself.
  */
 import { writeMessageOut } from '../db/messages-out.js';
 import { registerTools } from './server.js';
@@ -32,7 +35,7 @@ export const createAgent: McpToolDefinition = {
   tool: {
     name: 'create_agent',
     description:
-      'Create a new child agent with a given name. The name you choose becomes the destination name you use to message this agent. Admin-only. Fire-and-forget — you will receive a notification when the agent is created.',
+      'Create a long-lived companion sub-agent (research assistant, task manager, specialist) — the name becomes your destination for it. May require admin approval before the agent is created. Fire-and-forget.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -71,6 +74,11 @@ export const createAgent: McpToolDefinition = {
           description:
             'Compose-time overlay names (e.g., ["critique-gate", "buddy-monitor"]). Overlays inject quality gates into workflows. Optional — defaults to none; operators can configure later via dashboard.',
         },
+        group: {
+          type: 'string',
+          description:
+            'Dashboard sidebar group for this coworker: "prod" for the shared group (default), or a user id (e.g. "dashboard:user1") to scope it under a specific user.',
+        },
       },
       required: ['name'],
     },
@@ -80,7 +88,7 @@ export const createAgent: McpToolDefinition = {
     if (!name) return err('name is required');
 
     const requestId = generateId();
-    writeMessageOut({
+    await writeMessageOut({
       id: requestId,
       kind: 'system',
       content: JSON.stringify({
@@ -93,6 +101,7 @@ export const createAgent: McpToolDefinition = {
         instructionOverlay: (args.instructionOverlay as string) || null,
         agentProvider: (args.agentProvider as string) || null,
         overlays: (args.overlays as string[]) || null,
+        group: (args.group as string) || null,
       }),
     });
 

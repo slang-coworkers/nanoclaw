@@ -2,6 +2,7 @@ import * as fs from 'fs';
 
 import { createOpencodeClient, createOpencodeServer, type OpencodeClient } from '@opencode-ai/sdk';
 
+import type { MemorySessionHookRegistration } from '../memory/session-hook.js';
 import { registerProvider } from './provider-registry.js';
 import type { AgentProvider, AgentQuery, ProviderEvent, ProviderOptions, QueryInput } from './types.js';
 import { mcpServersToOpenCodeConfig } from './mcp-to-opencode.js';
@@ -28,10 +29,7 @@ type OpencodeServerHandle = { url: string; close: () => void };
  * spawning `opencode serve` ENOENTs (RC-H2). `createOpencodeServer` gives
  * us the same HTTP surface with none of the PATH dependency.
  */
-async function startOpencodeServer(
-  config: Record<string, unknown>,
-  timeoutMs = 10_000,
-): Promise<OpencodeServerHandle> {
+async function startOpencodeServer(config: Record<string, unknown>, timeoutMs = 10_000): Promise<OpencodeServerHandle> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -84,7 +82,9 @@ function buildOpenCodeConfig(options: ProviderOptions): Record<string, unknown> 
   const proxyUrl = process.env.ANTHROPIC_BASE_URL;
 
   const providerModelId = model ? model.replace(new RegExp(`^${escapeRegExp(provider)}/`), '') : undefined;
-  const providerSmallModelId = smallModel ? smallModel.replace(new RegExp(`^${escapeRegExp(provider)}/`), '') : undefined;
+  const providerSmallModelId = smallModel
+    ? smallModel.replace(new RegExp(`^${escapeRegExp(provider)}/`), '')
+    : undefined;
   const modelsToRegister = [providerModelId, providerSmallModelId]
     .filter(Boolean)
     .filter((mid, i, a) => a.indexOf(mid as string) === i);
@@ -204,6 +204,12 @@ export class OpenCodeProvider implements AgentProvider {
 
   constructor(options: ProviderOptions = {}) {
     this.options = options;
+  }
+
+  // The hook is a Claude Code mechanism with no OpenCode equivalent; returning
+  // false makes the runner deliver memory through the system prompt instead.
+  registerMemorySessionHook(_hook: MemorySessionHookRegistration): boolean {
+    return false;
   }
 
   isSessionInvalid(err: unknown): boolean {
@@ -389,7 +395,11 @@ export class OpenCodeProvider implements AgentProvider {
 
     return {
       push: (message: string) => {
-        pending.push(wrapPromptWithContext(message, systemInstructions));
+        // No `systemInstructions` on a push: this session already carries them
+        // from its opening prompt, and the addendum now includes the memory
+        // section for this provider — re-sending would stack a stale copy per
+        // message. (The CLAUDE.md half of the wrapper is pre-existing.)
+        pending.push(wrapPromptWithContext(message));
         kick();
       },
       end: () => {

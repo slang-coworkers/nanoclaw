@@ -12,44 +12,47 @@ You'll see a pixel-art isometric office with agent characters and a real-time ac
 
 ### Talk to the Orchestrator
 
-Click **Orchestrator** in the Coworkers tab. Andy is the coordinator — it creates coworkers, routes messages, reads reports, and synthesizes across agents.
+Click **Orchestrator** in the Coworkers tab. The Orchestrator is the coordinator — it creates coworkers, routes messages, reads reports, and synthesizes across agents.
 
 ```
-What's the current CI status?          → Andy reads CI coworker's report
-Create a perf agent for linkAndOptimizeIR  → Andy spawns a specialist
-@SlangMaintainer daily 24h             → Routes directly to maintainer (fastest)
-Summarize what all coworkers found     → Andy reads all reports and synthesizes
+What's the current CI status?          → Reads CI babysitter's report
+Create a perf agent for linkAndOptimizeIR  → Spawns a specialist
+@slang-triager triage issue #10744     → Routes directly to triager (fastest)
+Summarize what all coworkers found     → Reads all reports and synthesizes
 ```
 
 ### Talk to a coworker directly
 
 Click any coworker in the sidebar. Messages go directly — Orchestrator is not involved.
 
-| Coworker | Trigger | Example prompts |
-|----------|---------|----------------|
-| Slang Maintainer | `@SlangMaintainer` | `daily 24h`, `What's blocking CI?`, `Check PR #10744` |
-| Slang Triage | `@SlangTriage` | `Run triage now`, `What issues are unassigned?`, `approve 10747` |
-| Slang CI | `@SlangCI` | `CI status`, `What's failing?`, `Full digest` |
-| Slang Discord | `@SlangDiscord` | `Any unanswered questions?`, `Summarize #slang-discussion` |
-| Orphan PR Tracker | `@SlangPRs` | `Scan now`, `Show critical PRs` |
-| GPU Optimizer | `@GPUOpt` | `Profile this kernel`, `Analyze CUDA performance` |
+| Coworker | Trigger | Role |
+|----------|---------|------|
+| Slang Maintainer | `@SlangMaintainer` | Daily activity report, CI health, Discord monitoring |
+| Slang Discord Support | `@SlangDiscordSupport` | Discord community support, unanswered questions |
+| Slang CI Babysitter | `@CIBabysitter` | CI health, merge queue, workflow failures |
+| slang-triager | `@slang-triager` | Issue triage for shader-slang/slang |
+| slang-fixer | `@slang-fixer` | Implement fixes for triaged Slang issues |
+| slang-reviewer | `@slang-reviewer` | PR review for shader-slang/slang |
+| slangpy-triager | `@slangpy-triager` | Issue triage for shader-slang/slangpy |
+| slangpy-fixer | `@slangpy-fixer` | Implement fixes for triaged SlangPy issues |
+| slangpy-reviewer | `@slangpy-reviewer` | PR review for shader-slang/slangpy |
 
 ### Routing rule
 
-- `@CoworkerName` in Orchestrator chat = routed directly (fastest)
+- `@coworker-name` in Orchestrator chat = routed directly (fastest)
 - Click into coworker's chat = direct conversation
-- Plain text to Orchestrator = Andy handles it (may delegate)
+- Plain text to Orchestrator = Orchestrator handles it (may delegate)
 
 ## Automated Schedules
 
 | Coworker | Schedule | What |
 |----------|----------|------|
-| Maintainer | Daily 4:30 UTC | Activity report — GitHub, Discord, Slack (3 repos, 3 Slack channels) |
-| CI | Every 2h + daily 6:00 UTC | Silent health check + daily digest with trends |
-| Triage | Every 2h | Issue scan, classify, gap analysis, attempt fixes |
-| Discord | Every 6h | Channel scan, surface unanswered questions |
-| Orphan PR | Daily 16:00 UTC | Orphan/stale PR scan across slang, slang-rhi, slangpy |
-| Orchestrator | Weekly Sun 6:00 UTC | Curate shared learnings index |
+| Maintainer | `*/10 * * * *` (heartbeat) | CI health + Discord new messages pre-check; wakes agent only when actionable |
+| Discord Support | `*/5 * * * *` (heartbeat) | Discord channel scan, pending summons, CI thresholds; wakes only when needed |
+| Funnel refresh | `17 */6 * * *` (crontab) | Dashboard funnel panel data refresh (`reports/funnel.json`) |
+| Skills refresh | `37 * * * *` (crontab) | `scripts/refresh-skills-cron.sh` — fetches external skills from `shader-slang/slang-skills` into `container/skills/`, then mirrors them into every group's bind-mounted `.claude-shared/`. Running containers pick the new skills up with no restart |
+
+The heartbeat scripts run lightweight shell checks (Discord API, CI health snapshot, summon requests) and only wake the agent when thresholds are crossed or actionable items exist. This minimizes API credit consumption.
 
 Reports lead with **action items** (what needs human attention), then activity summary.
 
@@ -92,7 +95,7 @@ What it generates:
 |----------|-------|------|
 | Spine fragments | 3 | `identity/`, `invariants/`, `context/` |
 | Capability skills | 5 | `{project}-build`, `{project}-code-reader`, `{project}-code-writer`, `{project}-docs`, `{project}-github` |
-| Workflow extensions | 1 | `{project}-implement` (extends base `/implement` with project-specific reproduce/change/verify overrides) |
+| Workflow extensions | 4 | `{project}-plan`, `{project}-implement`, `{project}-triage-issue`, `{project}-pr-review` |
 | Coworker types | 3+ | `{project}-common`, `{project}-reader`, `{project}-writer` (plus specialized types if skill clusters warrant it) |
 
 ### Two-step flow
@@ -114,7 +117,7 @@ Or explicitly:
 ```
 mcp__nanoclaw__create_agent(
   name: "Compiler Specialist",
-  coworkerType: "slang-compiler",
+  coworkerType: "slang-writer",
   instructionOverlay: "thorough-analyst",
   instructions: "Focus on generic type inference in the IR."
 )
@@ -123,7 +126,7 @@ mcp__nanoclaw__create_agent(
 | Field | Required | Purpose |
 |-------|----------|---------|
 | `name` | yes | Becomes the @mention trigger and destination name |
-| `coworkerType` | no | Role from `coworker-types.json` (sets templates + allowed MCP tools) |
+| `coworkerType` | no | Role from `coworker-types.yaml` (sets templates + allowed MCP tools) |
 | `instructionOverlay` | no | Communication style: `thorough-analyst` (default), `terse-reporter`, `code-reviewer`, `ci-focused` |
 | `instructions` | no | Custom instructions appended after overlay |
 | `allowedMcpTools` | no | Override MCP tool allowlist |
@@ -138,7 +141,7 @@ By default, coworkers can only talk to the Orchestrator (parent). Use **peer wir
 
 Ask the Orchestrator:
 ```
-Wire slang-compiler and slang-language so they can share findings directly.
+Wire slang-fixer and slang-triager so they can share findings directly.
 ```
 
 The Orchestrator calls `wire_agents`, and both agents get each other in their destination maps.
@@ -146,8 +149,8 @@ The Orchestrator calls `wire_agents`, and both agents get each other in their de
 ### How it works after wiring
 
 ```
-Compiler:  <message to="slang-language">Is this a type inference issue?</message>
-Language:  <message to="slang-compiler">Yes, the generic constraint is wrong at line 42.</message>
+Fixer:   <message to="slang-triager">Is this a type inference issue?</message>
+Triager: <message to="slang-fixer">Yes, the generic constraint is wrong at line 42.</message>
 ```
 
 Messages flow directly — no routing through the Orchestrator.
@@ -155,7 +158,7 @@ Messages flow directly — no routing through the Orchestrator.
 ### When to wire
 
 - Investigation tasks where agents need to share findings in real-time
-- Multi-step pipelines (e.g., compiler builds → quality tests)
+- Multi-step pipelines (e.g., triager → fixer handoff)
 - Any time "ask the Orchestrator to relay" adds unnecessary latency
 
 ### Communication patterns
@@ -167,13 +170,56 @@ Messages flow directly — no routing through the Orchestrator.
 | Broadcast | Orchestrator sends to multiple children |
 | Pipeline | Wire A→B→C for sequential handoffs |
 
+### Current Wirings (prod)
+
+The Orchestrator can reach all active agents. Peer wirings between specialists:
+
+| Source | Can message | Purpose |
+|--------|-------------|---------|
+| slang-triager | slang-fixer | Hand off triaged issues for fixing |
+| slang-fixer | slang-triager, slang-reviewer | Request triage context; request review |
+| slang-reviewer | slang-fixer | Send review feedback back to fixer |
+| slangpy-triager | slangpy-fixer | Hand off triaged issues for fixing |
+| slangpy-fixer | slangpy-triager, slangpy-reviewer | Request triage context; request review |
+| slangpy-reviewer | slangpy-fixer | Send review feedback back to fixer |
+| Slang Maintainer | slang-fixer (as "slang-writer") | Delegate implementation tasks |
+| Slang Discord Support | Orchestrator | Escalate questions |
+
+Every agent also has a dashboard channel destination (for the Pixel Office UI) and an `agent-mg-a2a` channel (the GitHub webhook routing channel).
+
+## Issue Supervision (`/supervise-issues`)
+
+The `supervise-issues` container skill provides automated oversight of in-flight GitHub issue chains. It tracks every issue that has been routed to a coworker (triager/fixer) and ensures nothing falls through the cracks.
+
+### What it does
+
+- **Builds a live status table** from `ncl sessions list --thread-prefix "gh-issue-"` — discovers all active issue chains every tick
+- **Classifies** each chain: dispatched → triaging → fixing → reviewing → pr_open → awaiting_human → silent → closed
+- **Nudges** silent chains (no activity for N hours) by messaging the responsible coworker
+- **Enforces the prime directive**: every chain must have a resumable GitHub artifact (open PR, issue comment, or triage report) so a human can land on it and pick up
+- **Tracks no-PR chains** — issues that were triaged but handed off to external contributors or maintainers
+- **Detects superseded PRs** — when a maintainer ships their own fix while our PR was in progress
+- **GC sweep** — reclaims abandoned fixer worktrees
+
+### Scheduling
+
+Designed for `schedule_task` with a 6-hour cron (`0 */6 * * *`). Each tick runs in a fresh session (`new_session: true`) and is gated by a delta check — if nothing changed since the last tick, it's a no-op.
+
+### State
+
+Persists to `memory/supervisor-state.json` in the orchestrator's workspace. Tracks per-chain: `lastState`, `lastActivityAt`, `lastPrState`, last comment seen.
+
+### Output
+
+Reports lead with **NEW** and **UPDATED** chains (what moved since last tick), then collapse unchanged rows. Surfaces blockers and missing-artifact chains prominently.
+
 ## Repos & Channels Monitored
 
 **GitHub**: shader-slang/slang, shader-slang/slang-rhi, shader-slang/slangpy
 
-**Slack**: Configure channel IDs in your `.env` or group CLAUDE.md
+**Discord**: #slang-support, #slang-discussion, #slangpy-support (plus threads)
 
-**Discord**: Configure channel IDs in your `.env` or group CLAUDE.md
+**Slack**: Configure channel IDs in your `.env` or group CLAUDE.md
 
 ## Tips
 
@@ -207,17 +253,27 @@ Each `nv-*` branch carries only its own files. Merging them into `nv-coworkers` 
 
 ### Coworker Types (Lego Registry)
 
-Types are defined in `container/{spines,skills}/*/coworker-types.yaml`. The extends chain composes identity, invariants, context, workflows, skills, overlays, and bindings.
+Types are defined in `container/spines/*/coworker-types.yaml`. The extends chain composes identity, invariants, context, workflows, skills, overlays, and bindings.
 
 | Type | Role | Extends |
 |------|------|---------|
 | `base-common` | Universal spine (safety, truth, scope) | — |
-| `slang-common` | Slang compiler spine (identity, invariants) | `base-common` |
-| `slang-reader` | Read-only: plan / investigate / review / research via `/plan` | `slang-common` |
-| `slang-writer` | Write-capable: `/plan` + `/slang-implement` | `slang-common` |
-|
-|
-| `main` | Flat admin orchestrator body composed from the base spine's `main` entry (there is no separate `global` type — `groups/global/CLAUDE.md` was retired; the base spine is merged directly into `groups/main/CLAUDE.md`). | — (flat — no `extends`) |
+| `default` | Untyped fallback (slim, no project skills) | `base-common` |
+| `slang-common` | Slang compiler spine (identity, invariants, ABI) | `base-common` |
+| `slang-reader` | Read-only: plan / investigate / review via `/slang-plan` | `slang-common` |
+| `slang-writer` | Write-capable: `/slang-plan` + `/slang-implement` | `slang-common` |
+| `slang-maintainer` | Recurring maintenance (no code changes) | `slang-reader` |
+| `slang-triage` | Issue triage specialist | `slang-reader` |
+| `slang-fixer` | Issue fixer (A/B test mode, no push/PR) | `slang-writer` |
+| `slang-reviewer` | PR review runner | `slang-reader` |
+| `slang-discord` | Discord support (read-only, no posting) | `slang-reader` |
+| `slangpy-common` | SlangPy identity & repo layout | `base-common` |
+| `slangpy-reader` | Read-only SlangPy investigator | `slangpy-common` |
+| `slangpy-writer` | Write-capable SlangPy implementer | `slangpy-common` |
+| `slangpy-triage` | SlangPy issue triage | `slangpy-reader` |
+| `slangpy-fixer` | SlangPy issue fixer | `slangpy-writer` |
+| `slangpy-reviewer` | SlangPy PR reviewer | `slangpy-reader` |
+| `main` | Flat admin orchestrator (no `extends` — verbatim body) | — (flat) |
 
 Validate types: `npm run validate:templates`. Rebuild checked-in prompts: `npm run rebuild:claude`.
 
@@ -288,15 +344,25 @@ agent:
   folder: "folder-slug"
   coworkerType: "type-from-registry"
   agentProvider: null          # "claude" (default) or "codex"
+  routing: direct              # "direct" or "internal"
 requires:
   coworkerTypes:
     - "type-name"              # must resolve in the lego registry
 instructions: |
   Domain-specific instructions.
 trigger: "@folder-slug\\b"
+destinations:                  # optional
+  - name: "orchestrator"
+    type: agent
+    targetFolder: main
 scheduledTasks:                # optional
-  - cron: "0 9 * * 1-5"
-    prompt: "Run daily triage"
+  - name: heartbeat
+    scheduleType: cron
+    scheduleValue: "*/10 * * * *"
+    contextMode: isolated
+    script: |
+      #!/bin/bash
+      # Pre-check script; agent wakes only if script exits 0
 memory:                        # optional (export snapshot)
   files:
     - path: "memory/report.md"
@@ -313,6 +379,36 @@ memory:                        # optional (export snapshot)
 
 Sessions are created lazily on first message. The dashboard API eagerly creates sessions after coworker creation to support immediate memory/task imports.
 
+### Capability Skills (container/skills/)
+
+Skills loaded inside agent containers at runtime:
+
+| Skill | Purpose |
+|-------|---------|
+| `base-nanoclaw` | Core NanoClaw container primitives |
+| `buddy` | Pair-programming assistant |
+| `codex-critique` | Critique stage gates (PLAN_REVIEW, CODE_REVIEW, etc.) |
+| `self-customize` | Agent self-modification tools |
+| `agent-browser` | In-container web browsing |
+| `slack-formatting` | Slack message formatting |
+| `whatsapp-formatting` | WhatsApp message formatting |
+| `welcome` | First-run welcome flow |
+| `slang-build` | Build the Slang compiler from source |
+| `slang-code-reader` | Navigate/search the Slang codebase |
+| `slang-code-writer` | Write/modify Slang source code |
+| `slang-docs` | Slang documentation workflows |
+| `slang-github` | GitHub integration for shader-slang/slang |
+| `slang-github-webhook` | GitHub webhook routing for Slang PRs/issues |
+| `slang-maintainer-tools` | Maintainer reporting tools |
+| `slang-pr-review-runner` | Structured PR review workflow |
+| `slang-clarity-review-runner` | Clarity-focused PR review |
+| `slangpy-build` | Build SlangPy from source |
+| `slangpy-code-reader` | Navigate/search the SlangPy codebase |
+| `slangpy-code-writer` | Write/modify SlangPy source code |
+| `slangpy-docs` | SlangPy documentation workflows |
+| `slangpy-github` | GitHub integration for shader-slang/slangpy |
+| `supervise-issues` | Cross-repo issue supervision |
+
 ---
 
 ## v2 Changelog
@@ -325,7 +421,7 @@ Sessions are created lazily on first message. The dashboard API eagerly creates 
 - **Flat type detection** — `FLAT_COWORKER_TYPES` set ensures `main`/`global` agents get their CLAUDE.md + symlink even when `coworker_type` is set.
 - **Container env forwarding** — `ANTHROPIC_MODEL`, `CODEX_*`, caching, and effort-level vars passed into containers.
 - **Drift detection tests** — `claude-composer-scenarios.test.ts` compares `groups/*/CLAUDE.md` against `composeCoworkerSpine()` output.
-- **Onboard-project skill** — generates a complete lego project skeleton (spine, 5 capability skills, a `{project}-implement` workflow extension, 3+ coworker types) for any GitHub repo or local path. Analyzes existing AI config, CI, and build files; reuses base skills where possible.
+- **Onboard-project skill** — generates a complete lego project skeleton (spine, 5 capability skills, workflow extensions, 3+ coworker types) for any GitHub repo or local path. Analyzes existing AI config, CI, and build files; reuses base skills where possible.
 - **Onboard-coworker skill** — scans YAML bundles + lego registry, creates agents via dashboard API or `create_agent` MCP tool.
 - **Split-commit skill** — interactive skill for splitting mixed-concern commits into per-bucket branches with independent topology support.
 
@@ -339,8 +435,14 @@ Sessions are created lazily on first message. The dashboard API eagerly creates 
 
 ### Slang Support (nv-slang)
 
-- **Slang MCP server** — Python-based MCP server with 14 tools for GitHub, Discord, Slack, and GitLab integration.
-- **Coworker types — `slang-reader` (`/plan` only, read-only) and `slang-writer` (`/plan` + `/slang-implement`, full write) with lego spine composition.
-- **Container skills** — explore, build, fix, maintain, and CI health workflows for the Slang compiler repo.
-- **Pre-packaged bundles** — 4 YAML bundles in `coworkers/` for one-click coworker creation via `/onboard-coworker`.
-- **Scheduled tasks** — triage (weekday 9am), maintainer sweep (every 10 min) imported from bundles.
+- **Slang MCP server** — Python-based MCP server with tools for GitHub, Discord, Slack, and GitLab integration.
+- **Coworker types** — full hierarchy: `slang-common` → `slang-reader` / `slang-writer` → specialized types (`slang-triage`, `slang-fixer`, `slang-reviewer`, `slang-maintainer`, `slang-discord`) with lego spine composition.
+- **Container skills** — explore, build, fix, maintain, review, and CI health workflows for the Slang compiler repo.
+- **Pre-packaged bundles** — 4 YAML bundles in `coworkers/` (maintainer, triage, fixer, discord-support).
+- **Heartbeat-driven schedules** — lightweight shell pre-checks wake agents only when actionable (CI failures, new Discord messages, pending summons).
+
+### SlangPy Support (nv-slangpy)
+
+- **SlangPy spine** — `slangpy-common` → `slangpy-reader` / `slangpy-writer` → `slangpy-triage`, `slangpy-fixer`, `slangpy-reviewer`.
+- **Container skills** — build, code-reader, code-writer, docs, github for shader-slang/slangpy.
+- **Live agents** — `slangpy-triager`, `slangpy-fixer`, `slangpy-reviewer` running in prod.

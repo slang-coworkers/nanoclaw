@@ -10,11 +10,12 @@
  */
 import type { IncomingMessage, ServerResponse } from 'http';
 
-import { VALID_INSTANCE_SLUGS } from '../../config.js';
+import { INSTANCE_SLUG, VALID_INSTANCE_SLUGS } from '../../config.js';
 import { getDb } from '../../db/connection.js';
+import { getSession } from '../../db/sessions.js';
 import { log } from '../../log.js';
 import { TRUST_SIGNATURE_HEADER, verifyTrustedSignature } from './register-client.js';
-import { upsertPrMapping } from './store.js';
+import { claimPrMapping } from './store.js';
 
 const MAX_BODY_SIZE = 64 * 1024; // 64 KB; payload is small JSON
 
@@ -108,20 +109,45 @@ export async function handleRegisterPr(req: IncomingMessage, res: ServerResponse
     return;
   }
 
-  upsertPrMapping(getDb(), {
-    repo,
-    prNumber,
-    ownerInstance,
-    agentGroupId,
-    sessionId,
-    threadId,
-  });
+  // A LOCAL claim arriving over the wire is the one case this endpoint can
+  // check: the ids belong to this install's DB, so they must resolve and the
+  // session must belong to the group it claims. Foreign claims carry the
+  // PEER's ids — opaque here by design, which is what `owner_instance` is for
+  // — so there is nothing to validate and validating would break the flow.
+  if (ownerInstance === INSTANCE_SLUG) {
+    const local = await getSession(sessionId);
+    if (!local || local.agent_group_id !== agentGroupId) {
+      log.error('register-pr: rejected a local claim whose session does not belong to the claimed group', {
+        repo,
+        pr: prNumber,
+        agent_group_id: agentGroupId,
+        session_id: sessionId,
+        sessionExists: Boolean(local),
+      });
+      writeJson(res, 403, { error: 'session does not belong to the claimed agent group' });
+      return;
+    }
+  }
+
+  const claim = await claimPrMapping(getDb(), { repo, prNumber, ownerInstance, agentGroupId, sessionId, threadId });
+
+  if (claim.outcome === 'rejected') {
+    // 409, not 200-with-a-lie: the peer has to be able to tell that its
+    // registration did not take, or it reports a wired PR that is not wired.
+    writeJson(res, 409, {
+      error: 'pr already claimed',
+      held_by: { owner_instance: claim.prior.owner_instance, agent_group_id: claim.prior.agent_group_id },
+      remedy: `ncl pr-mappings remap --repo ${repo} --pr ${prNumber} …`,
+    });
+    return;
+  }
 
   log.info('register-pr: mapping recorded', {
     repo,
     pr: prNumber,
     owner: ownerInstance,
     session: sessionId,
+    outcome: claim.outcome,
   });
-  writeJson(res, 200, { ok: true });
+  writeJson(res, 200, { ok: true, outcome: claim.outcome });
 }

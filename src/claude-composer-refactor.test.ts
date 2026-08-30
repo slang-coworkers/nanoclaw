@@ -1371,3 +1371,371 @@ describe('R19: disableOverlays option strips every overlay gate and the Gate Pro
     expect(withoutOverlays).toMatch(/^### \/build$/m);
   });
 });
+
+describe('R25: prologue numbered-bold bullets never parse as steps', () => {
+  // The step parser (src/claude-composer/registry.ts) gates its `N. **Title**`
+  // scan to the `## Steps` region. Numbered-bold bullets that appear in a
+  // workflow's PROLOGUE (mode-delta notes like `1. **Reproduce/Setup** — …`)
+  // are framing, not steps, and must not be parsed as such. Two failure modes
+  // this pins:
+  //   - In workflows WITH `## Steps`, phantom prologue steps offset every real
+  //     step number (slang-fix-issue regression).
+  //   - In `extends:` workflows WITHOUT `## Steps`, any parsed step makes
+  //     `steps` non-empty, which suppresses inheritance of the parent's
+  //     procedure (resolve.ts `if (steps.length === 0 && extendsWorkflow …)`),
+  //     dropping the whole parent procedure (slangpy-implement regression).
+
+  // 1) On-disk parser-behavior guard: for every real WORKFLOW.md, the parsed
+  // step set must equal exactly the numbered-bold lines INSIDE its `## Steps`
+  // section (from the heading to the next H2). Numbered-bold lines anywhere
+  // else — prologue mode-deltas, trailing `## Mode invariants` enumerations —
+  // must NOT be parsed as steps. This is asserted against the parser's own
+  // output (`readSkillCatalog`), so it is independent of which branch the
+  // workflow sources came from (CI composes a merged nv-* tree where a given
+  // workflow's content cleanup may live in a sibling branch's PR).
+  it('parsed steps match exactly the numbered-bold lines inside `## Steps`', () => {
+    const catalog = readSkillCatalog(REPO_ROOT);
+    const offenders: string[] = [];
+    for (const meta of Object.values(catalog)) {
+      if (meta.type !== 'workflow') continue;
+      const text = fs.readFileSync(meta.path, 'utf-8');
+      const body = text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '');
+      const stepsHeading = body.match(/^##\s+Steps\s*$/m);
+      // Count numbered-bold lines strictly within the `## Steps` section.
+      let expectedCount = 0;
+      if (stepsHeading) {
+        const regionStart = (stepsHeading.index ?? 0) + stepsHeading[0].length;
+        const after = body.slice(regionStart);
+        const nextH2 = after.match(/\n##\s+(?!#)/);
+        const region = nextH2 ? after.slice(0, nextH2.index ?? 0) : after;
+        expectedCount = (region.match(/^\s*\d+\.\s+\*\*[^*]+\*\*/gm) ?? []).length;
+      }
+      // The parser's own steps[] for this workflow (NOT inherited — meta.steps
+      // is the workflow's locally-parsed set before resolve.ts inheritance).
+      if (meta.steps.length !== expectedCount) {
+        offenders.push(
+          `${meta.name}: parser produced ${meta.steps.length} step(s) but the \`## Steps\` ` +
+            `section has ${expectedCount} numbered-bold line(s) — a bullet outside the section ` +
+            `was mis-parsed (or a real step was missed).`,
+        );
+      }
+    }
+
+    expect(
+      offenders,
+      offenders.length === 0 ? '' : 'Step parse mismatch:\n' + offenders.map((o) => `  - ${o}`).join('\n'),
+    ).toEqual([]);
+  });
+
+  // 2) Synthetic inheritance test (hermetic): a child workflow that `extends:` a
+  // parent, has NO `## Steps`, and carries a prologue numbered-bold bullet must
+  // inherit the PARENT's steps — not parse its own prologue bullet as the only
+  // step (which would suppress inheritance entirely).
+  it('extends-child with a prologue `N. **Foo**` bullet inherits the parent procedure', () => {
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeWorkflow(
+      root,
+      'parent-proc',
+      [
+        '# Parent',
+        '',
+        '## Steps',
+        '',
+        '1. **Alpha** {#alpha} — PARENT_ALPHA_BODY.',
+        '',
+        '2. **Beta** {#beta} — PARENT_BETA_BODY.',
+        '',
+        '3. **Gamma** {#gamma} — PARENT_GAMMA_BODY.',
+        '',
+        '4. **Delta** {#delta} — PARENT_DELTA_BODY.',
+        '',
+        '5. **Epsilon** {#epsilon} — PARENT_EPSILON_BODY.',
+        '',
+        '6. **Zeta** {#zeta} — PARENT_ZETA_BODY.',
+        '',
+      ].join('\n'),
+    );
+    // Child: extends parent, NO `## Steps`, prologue with a numbered-bold bullet.
+    writeWorkflow(
+      root,
+      'child-proc',
+      [
+        '# Child Mode',
+        '',
+        'Mode-delta framing for this child:',
+        '',
+        '1. **Foo** — phantom prologue bullet that must NOT become a step.',
+        '',
+        '2. **Bar** — another phantom prologue bullet.',
+        '',
+      ].join('\n'),
+      { extends: 'parent-proc' },
+    );
+    writeProjectType(root, 'probe:\n  extends: base-common\n  description: "Probe."\n  workflows: [child-proc]\n');
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+
+    // The child section must show the PARENT's six step headers, contiguously.
+    const childStart = spine.indexOf('### /child-proc');
+    expect(childStart).toBeGreaterThanOrEqual(0);
+    const childEnd = spine.indexOf('\n## ', childStart);
+    const childSection = spine.slice(childStart, childEnd === -1 ? undefined : childEnd);
+
+    expect(childSection).toMatch(/^#### 1\. Alpha$/m);
+    expect(childSection).toMatch(/^#### 6\. Zeta$/m);
+    expect(childSection).toContain('PARENT_ALPHA_BODY');
+    expect(childSection).toContain('PARENT_ZETA_BODY');
+    // The prologue bullet must NOT have been promoted to a step header.
+    expect(childSection).not.toMatch(/^#### \d+\. Foo$/m);
+    expect(childSection).not.toMatch(/^#### \d+\. Bar$/m);
+  });
+
+  // 2b) An extends-child with NO `## Steps` may still author its OWN body
+  // sections (mode-deltas, peer-review notes). Inheriting the parent's steps
+  // must NOT drop that content — it renders as the epilogue, after the
+  // inherited steps. This pins the regression where gating step parsing to the
+  // `## Steps` region left positions empty and skipped prologue/epilogue
+  // extraction entirely, silently dropping `slangpy-implement`'s body.
+  it('extends-child with no `## Steps` keeps its own body content (renders after inherited steps)', () => {
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeWorkflow(
+      root,
+      'parent-proc',
+      ['# Parent', '', '## Steps', '', '1. **Alpha** {#alpha} — PARENT_ALPHA_BODY.', ''].join('\n'),
+    );
+    // Child: extends parent, NO `## Steps`, but authors its own `## Section`.
+    writeWorkflow(
+      root,
+      'child-proc',
+      [
+        '# Child Mode',
+        '',
+        '## PR-review-fix mode',
+        '',
+        'CHILD_OWN_BODY_MARKER — this section must survive inheritance.',
+        '',
+        '## Peer review',
+        '',
+        'CHILD_PEER_REVIEW_MARKER.',
+        '',
+      ].join('\n'),
+      { extends: 'parent-proc' },
+    );
+    writeProjectType(root, 'probe:\n  extends: base-common\n  description: "Probe."\n  workflows: [child-proc]\n');
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+
+    const childStart = spine.indexOf('### /child-proc');
+    expect(childStart).toBeGreaterThanOrEqual(0);
+    const childEnd = spine.indexOf('\n## ', childStart);
+    const childSection = spine.slice(childStart, childEnd === -1 ? undefined : childEnd);
+
+    // Inherited step is present...
+    expect(childSection).toMatch(/^#### 1\. Alpha$/m);
+    // ...AND the child's own body sections survived.
+    expect(childSection).toContain('CHILD_OWN_BODY_MARKER');
+    expect(childSection).toContain('CHILD_PEER_REVIEW_MARKER');
+    // Body sections render after the inherited step, not before it.
+    expect(childSection.indexOf('CHILD_OWN_BODY_MARKER')).toBeGreaterThan(childSection.indexOf('#### 1. Alpha'));
+  });
+
+  // 2c) Explicit structural invariant the parser depends on: a workflow either
+  // declares its own `## Steps`, or it declares `extends:` to inherit one. A
+  // workflow with neither parses to zero steps AND inherits nothing — its
+  // procedure would vanish. Pin the contract so it can't be violated on disk.
+  it('every on-disk workflow either has `## Steps` or declares `extends:`', () => {
+    const workflowsDir = path.join(REPO_ROOT, 'container', 'workflows');
+    if (!fs.existsSync(workflowsDir)) return;
+
+    const offenders: string[] = [];
+    for (const name of fs.readdirSync(workflowsDir)) {
+      const wfPath = path.join(workflowsDir, name, 'WORKFLOW.md');
+      if (!fs.existsSync(wfPath)) continue;
+      const text = fs.readFileSync(wfPath, 'utf-8');
+      const hasSteps = /^##\s+Steps\s*$/m.test(text);
+      const fm = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+      const hasExtends = fm ? /^extends:\s*\S+/m.test(fm[1]) : false;
+      if (!hasSteps && !hasExtends) {
+        offenders.push(`${name}: no \`## Steps\` heading and no \`extends:\` — its procedure renders empty`);
+      }
+    }
+
+    expect(
+      offenders,
+      offenders.length === 0
+        ? ''
+        : 'Workflow(s) with neither own steps nor inheritance:\n' + offenders.map((o) => `  - ${o}`).join('\n'),
+    ).toEqual([]);
+  });
+
+  // 3) Contiguous numbering: a workflow that HAS `## Steps` plus a prologue
+  // numbered-bold bullet must render its real steps as 1..N with no phantom
+  // prologue step offsetting the numbering.
+  it('workflow with `## Steps` plus a prologue bullet renders contiguous 1..N steps', () => {
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeWorkflow(
+      root,
+      'flow-proc',
+      [
+        '# Flow Mode',
+        '',
+        'Mode-delta framing:',
+        '',
+        '1. **Reproduce/Setup** — phantom prologue note, not a real step.',
+        '',
+        '## Steps',
+        '',
+        '1. **RealOne** {#realone} — REAL_ONE_BODY.',
+        '',
+        '2. **RealTwo** {#realtwo} — REAL_TWO_BODY.',
+        '',
+        '3. **RealThree** {#realthree} — REAL_THREE_BODY.',
+        '',
+      ].join('\n'),
+    );
+    writeProjectType(root, 'probe:\n  extends: base-common\n  description: "Probe."\n  workflows: [flow-proc]\n');
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+
+    const flowStart = spine.indexOf('### /flow-proc');
+    expect(flowStart).toBeGreaterThanOrEqual(0);
+    const flowEnd = spine.indexOf('\n## ', flowStart);
+    const flowSection = spine.slice(flowStart, flowEnd === -1 ? undefined : flowEnd);
+
+    // Real steps render contiguously 1..3 — the prologue bullet did not offset them.
+    const stepHeaders = [...flowSection.matchAll(/^#### (\d+)\. (.+)$/gm)].map((m) => `${m[1]}:${m[2].trim()}`);
+    expect(stepHeaders).toEqual(['1:RealOne', '2:RealTwo', '3:RealThree']);
+    // Sanity: the prologue bullet survives as prose but never as a step header.
+    expect(flowSection).toContain('Reproduce/Setup');
+    expect(flowSection).not.toMatch(/^#### \d+\. Reproduce/m);
+  });
+
+  // 4) A numbered-bold list in a TRAILING H2 block (e.g. `## Mode invariants`)
+  // after the `## Steps` section must not be parsed as steps. The step scan is
+  // bounded to the Steps section (heading → next H2), so the real steps render
+  // 1..N and the trailing enumeration survives as epilogue prose.
+  it('numbered-bold list in a trailing `## Mode invariants` block is not parsed as steps', () => {
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeWorkflow(
+      root,
+      'tail-proc',
+      [
+        '# Tail',
+        '',
+        '## Steps',
+        '',
+        '1. **RealOne** {#realone} — REAL_ONE_BODY.',
+        '',
+        '2. **RealTwo** {#realtwo} — REAL_TWO_BODY.',
+        '',
+        '## Mode invariants',
+        '',
+        '1. **Invariant A** — must hold across all modes.',
+        '',
+        '2. **Invariant B** — also load-bearing.',
+        '',
+      ].join('\n'),
+    );
+    writeProjectType(root, 'probe:\n  extends: base-common\n  description: "Probe."\n  workflows: [tail-proc]\n');
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+
+    const start = spine.indexOf('### /tail-proc');
+    const end = spine.indexOf('\n## ', start);
+    const sec = spine.slice(start, end === -1 ? undefined : end);
+
+    // Exactly the two real steps render as headers — not the invariant bullets.
+    const stepHeaders = [...sec.matchAll(/^#### (\d+)\. (.+)$/gm)].map((m) => `${m[1]}:${m[2].trim()}`);
+    expect(stepHeaders).toEqual(['1:RealOne', '2:RealTwo']);
+    // The invariant enumeration survives as epilogue prose.
+    expect(sec).toContain('Invariant A');
+    expect(sec).toContain('Invariant B');
+    expect(sec).not.toMatch(/^#### \d+\. Invariant/m);
+  });
+
+  // 5) BLOCKER regression: when an `extends:` child has its own body (captured
+  // as the child's epilogue) AND the parent ALSO has an epilogue, BOTH must
+  // survive — the child must not shadow the parent's epilogue. Pins the
+  // resolve.ts inheritance fix (concatenate parent + child framing).
+  it('extends-child with own body keeps BOTH parent and child epilogue', () => {
+    const root = makeTempProject();
+    writeSpineBase(root);
+    // Parent has a step AND a trailing `## Mode invariants` epilogue.
+    writeWorkflow(
+      root,
+      'parent-proc',
+      [
+        '# Parent',
+        '',
+        '## Steps',
+        '',
+        '1. **Alpha** {#alpha} — PARENT_ALPHA_BODY.',
+        '',
+        '## Mode invariants',
+        '',
+        'PARENT_EPILOGUE_MARKER — load-bearing across modes.',
+        '',
+      ].join('\n'),
+    );
+    // Child: extends parent, NO `## Steps`, authors its own body section.
+    writeWorkflow(
+      root,
+      'child-proc',
+      ['# Child', '', '## PR-review-fix mode', '', 'CHILD_EPILOGUE_MARKER — child specialization.', ''].join('\n'),
+      { extends: 'parent-proc' },
+    );
+    writeProjectType(root, 'probe:\n  extends: base-common\n  description: "Probe."\n  workflows: [child-proc]\n');
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+
+    const start = spine.indexOf('### /child-proc');
+    const end = spine.indexOf('\n## ', start);
+    const sec = spine.slice(start, end === -1 ? undefined : end);
+
+    // Inherited step present...
+    expect(sec).toMatch(/^#### 1\. Alpha$/m);
+    // ...and BOTH epilogues survive — parent's must not be dropped by the child.
+    expect(sec).toContain('PARENT_EPILOGUE_MARKER');
+    expect(sec).toContain('CHILD_EPILOGUE_MARKER');
+    // Parent framing renders before the child's specialization.
+    expect(sec.indexOf('PARENT_EPILOGUE_MARKER')).toBeLessThan(sec.indexOf('CHILD_EPILOGUE_MARKER'));
+  });
+
+  // 6) An INDENTED numbered-bold sub-list inside a step body (enumerated
+  // sub-steps) must NOT be promoted to a top-level step — step headers are
+  // anchored to column 0. Without this, a step containing `   1. **Sub A**`
+  // would phantom-split into extra steps and renumber everything after it.
+  it('indented numbered-bold sub-list inside a step body is not parsed as a step', () => {
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeWorkflow(
+      root,
+      'sub-proc',
+      [
+        '# Sub',
+        '',
+        '## Steps',
+        '',
+        '1. **Setup** {#setup} — do the thing. Sub-steps:',
+        '   1. **Inner A** — first inner detail.',
+        '   2. **Inner B** — second inner detail.',
+        '',
+        '2. **Finish** {#finish} — wrap up.',
+        '',
+      ].join('\n'),
+    );
+    writeProjectType(root, 'probe:\n  extends: base-common\n  description: "Probe."\n  workflows: [sub-proc]\n');
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+
+    const start = spine.indexOf('### /sub-proc');
+    const end = spine.indexOf('\n## ', start);
+    const sec = spine.slice(start, end === -1 ? undefined : end);
+
+    // Exactly the two top-level steps render as headers — not the inner bullets.
+    const stepHeaders = [...sec.matchAll(/^#### (\d+)\. (.+)$/gm)].map((m) => `${m[1]}:${m[2].trim()}`);
+    expect(stepHeaders).toEqual(['1:Setup', '2:Finish']);
+    // The inner sub-list survives as prose inside the Setup step body.
+    expect(sec).toContain('Inner A');
+    expect(sec).toContain('Inner B');
+    expect(sec).not.toMatch(/^#### \d+\. Inner/m);
+  });
+});

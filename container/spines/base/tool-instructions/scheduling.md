@@ -19,4 +19,4 @@ Test the script directly before scheduling. Skip it for tasks that need judgment
 
 Each fire runs in a fresh session by default — system prompt cached, prior conversation history discarded. This is what you want for heartbeat/cron tasks: cost stays flat, context doesn't drift.
 
-Opt out with `new_session: false` only when a multi-fire workflow genuinely relies on in-conversation memory across fires. If state can live in files (`CLAUDE.local.md`, `/workspace/agent/`, shared learnings), keep the default. Toggle on existing tasks with `update_task({ taskId, new_session: false })`.
+Opt out with `new_session: false` only when a multi-fire workflow genuinely relies on in-conversation memory across fires. If state can live in files (your `/workspace/agent/memory/` OKF tree, other `/workspace/agent/` files, shared learnings), keep the default. Toggle on existing tasks with `update_task({ taskId, new_session: false })`.

@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   getAppliedOverlayNames,
+  materializeCritiqueDeliveryMarkers,
   materializeCritiqueRequiredStages,
   materializeOverlayMarkers,
 } from './claude-composer.js';
@@ -414,5 +415,120 @@ describe('materializeCritiqueRequiredStages', () => {
     const written = JSON.parse(fs.readFileSync(path.join(groupDir, '.critique-required-stages'), 'utf8'));
     expect(written).toEqual([]);
     fs.rmSync(groupDir, { recursive: true, force: true });
+  });
+});
+
+// `delivery_markers` / `pr_command_patterns` declared per coworker-type in
+// coworker-types.yaml, unioned across the extends chain and materialized to
+// `<groupDir>/.critique-delivery-markers`. These prove the YAML-key → parse →
+// sanitize → materialize path end-to-end (the gate-level tests only exercise
+// a synthetic marker file). The built-in vocabulary is NOT declared here —
+// it lives in the hooks; these entries are ADDITIVE, so a role only needs an
+// entry for a NEW delivery shape.
+describe('materializeCritiqueDeliveryMarkers', () => {
+  function writeTypesYaml(spineName: string, types: Record<string, Record<string, unknown>>): void {
+    const dir = path.join(tmpRoot, 'container', 'spines', spineName);
+    fs.mkdirSync(dir, { recursive: true });
+    const lines: string[] = [];
+    for (const [name, body] of Object.entries(types)) {
+      lines.push(`${name}:`);
+      for (const [k, v] of Object.entries(body)) {
+        lines.push(`  ${k}: ${JSON.stringify(v)}`);
+      }
+    }
+    fs.writeFileSync(path.join(dir, 'coworker-types.yaml'), lines.join('\n') + '\n');
+  }
+
+  it('writes the file even WITHOUT critique-gate when markers are declared (feeds the always-on routing gate)', async () => {
+    // Post floor-slim: delivery vocabulary is NOT gated on the critique-gate
+    // overlay — a non-critique-gated role (triager/reviewer) still needs its
+    // role markers materialized so the always-on routing gate recognizes them.
+    writeTypesYaml('dm1', { 'm-type': { description: 'x', delivery_markers: ['Weekly Report'] } });
+    const groupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'group-'));
+    const { readCoworkerTypes } = await import('./claude-composer.js');
+    materializeCritiqueDeliveryMarkers('m-type', readCoworkerTypes(tmpRoot), [], groupDir); // [] = no critique-gate
+    const written = JSON.parse(fs.readFileSync(path.join(groupDir, '.critique-delivery-markers'), 'utf8'));
+    expect(new Set(written.message_markers)).toEqual(new Set(['Weekly Report']));
+    fs.rmSync(groupDir, { recursive: true, force: true });
+  });
+
+  it('removes a stale file when the type declares NO markers', async () => {
+    writeTypesYaml('dm2', { 'm-type': { description: 'no vocab' } });
+    const groupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'group-'));
+    fs.writeFileSync(path.join(groupDir, '.critique-delivery-markers'), '{"message_markers":["STALE"]}');
+    const { readCoworkerTypes } = await import('./claude-composer.js');
+    materializeCritiqueDeliveryMarkers('m-type', readCoworkerTypes(tmpRoot), [], groupDir);
+    expect(fs.existsSync(path.join(groupDir, '.critique-delivery-markers'))).toBe(false);
+    fs.rmSync(groupDir, { recursive: true, force: true });
+  });
+
+  it('writes declared markers + patterns when opted in', async () => {
+    writeTypesYaml('dm3', {
+      'm-type': {
+        description: 'x',
+        delivery_markers: ['Weekly Report', 'Status Digest'],
+        pr_command_patterns: ['glab mr create'],
+      },
+    });
+    const groupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'group-'));
+    const { readCoworkerTypes } = await import('./claude-composer.js');
+    materializeCritiqueDeliveryMarkers('m-type', readCoworkerTypes(tmpRoot), ['critique-gate'], groupDir);
+    const written = JSON.parse(fs.readFileSync(path.join(groupDir, '.critique-delivery-markers'), 'utf8'));
+    expect(new Set(written.message_markers)).toEqual(new Set(['Weekly Report', 'Status Digest']));
+    expect(written.bash_patterns).toEqual(['glab mr create']);
+    fs.rmSync(groupDir, { recursive: true, force: true });
+  });
+
+  it('unions markers across the extends chain', async () => {
+    writeTypesYaml('dm4', {
+      base: { description: 'base', delivery_markers: ['Base Report'] },
+      child: { extends: 'base', description: 'child', delivery_markers: ['Child Report'] },
+    });
+    const groupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'group-'));
+    const { readCoworkerTypes } = await import('./claude-composer.js');
+    materializeCritiqueDeliveryMarkers('child', readCoworkerTypes(tmpRoot), ['critique-gate'], groupDir);
+    const written = JSON.parse(fs.readFileSync(path.join(groupDir, '.critique-delivery-markers'), 'utf8'));
+    expect(new Set(written.message_markers)).toEqual(new Set(['Base Report', 'Child Report']));
+    fs.rmSync(groupDir, { recursive: true, force: true });
+  });
+
+  it('rejects markers with regex metacharacters (sanitization at the registry)', async () => {
+    writeTypesYaml('dm5', {
+      'm-type': {
+        description: 'x',
+        // ".*" / "[x]" would be catastrophic if spliced into the gate's ERE alternation.
+        delivery_markers: ['Good Marker', '.*', '[evil]', 'has|pipe', 'Also OK'],
+      },
+    });
+    const groupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'group-'));
+    const { readCoworkerTypes } = await import('./claude-composer.js');
+    materializeCritiqueDeliveryMarkers('m-type', readCoworkerTypes(tmpRoot), ['critique-gate'], groupDir);
+    const written = JSON.parse(fs.readFileSync(path.join(groupDir, '.critique-delivery-markers'), 'utf8'));
+    expect(new Set(written.message_markers)).toEqual(new Set(['Good Marker', 'Also OK']));
+    fs.rmSync(groupDir, { recursive: true, force: true });
+  });
+
+  it('writes no file when opted in but nothing declared (built-ins only)', async () => {
+    writeTypesYaml('dm6', { 'm-type': { description: 'no vocab' } });
+    const groupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'group-'));
+    const { readCoworkerTypes } = await import('./claude-composer.js');
+    materializeCritiqueDeliveryMarkers('m-type', readCoworkerTypes(tmpRoot), ['critique-gate'], groupDir);
+    expect(fs.existsSync(path.join(groupDir, '.critique-delivery-markers'))).toBe(false);
+    fs.rmSync(groupDir, { recursive: true, force: true });
+  });
+});
+
+// Contract: the SHIPPED base-common declares the standard chain-role delivery
+// vocabulary. The built-in gate floor carries only the general primitives
+// (Resolution/handoff); every project role inherits these standard markers via
+// `extends: base-common`, so deleting one here silently un-gates that marker
+// for every fixer/reviewer/triager across all project spines.
+describe('base-common standard delivery vocabulary (shipped contract)', () => {
+  it('declares the five standard chain-role markers', async () => {
+    const { readCoworkerTypes } = await import('./claude-composer.js');
+    const types = readCoworkerTypes(process.cwd());
+    expect(new Set(types['base-common']?.deliveryMarkers ?? [])).toEqual(
+      new Set(['Fix Report', 'Fix Review Request', 'Review Verdict', 'Triage Resolution', 'Triage handoff']),
+    );
   });
 });

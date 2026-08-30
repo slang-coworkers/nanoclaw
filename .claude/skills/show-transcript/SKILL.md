@@ -59,12 +59,13 @@ ss -tln | grep ":8080" || echo "port free"
 ```bash
 pnpm exec tsx scripts/build-transcripts-archive.ts \
   --output /tmp/all-transcripts-html \
-  --limit-per-group 5
+  --since-hours 24
 ```
 
 Flags:
 - `--output <dir>` — output dir, default `/tmp/all-transcripts-html`. The script `rm -rf`s it first.
-- `--limit-per-group <N>` — cap to N most recent NanoClaw sessions per group. Omit (or `--limit-per-group 0`) to render everything (slower; first run is ~3-5 min).
+- `--since-hours <H>` — only sessions whose last activity is within H hours (default: no time filter). Recommended for the regular cron — keeps the archive focused on what happened today and the build fast.
+- `--limit-per-group <N>` — cap to N most recent NanoClaw sessions per group (default: all). Combine with `--since-hours` if you want both bounds.
 
 ### 3. Serve
 

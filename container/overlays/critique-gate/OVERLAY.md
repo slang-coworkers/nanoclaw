@@ -13,4 +13,4 @@ uses:
   skills: [codex-critique]
 ---
 
-This overlay carries no agent-facing prose. Activation lives in the sibling `MARKER` file (per delta v3 Change 4) which the composer materializes to `/workspace/agent/.overlay-critique-gate`. The hook `container/hooks/gate-critique-on-deliver.sh` first-line tests for that file; without it the hook is a silent no-op. The agent learns about `/codex-critique` via the `codex-critique` skill — there is nothing to splice into the spine here.
+No agent-facing prose. Activation lives in the sibling `MARKER`, materialized to `/workspace/agent/.overlay-critique-gate`. The hook `container/hooks/gate-critique-on-deliver.sh` first-line tests for that file; without it it's a silent no-op. The agent learns `/codex-critique` via the `codex-critique` skill — nothing to splice into the spine.

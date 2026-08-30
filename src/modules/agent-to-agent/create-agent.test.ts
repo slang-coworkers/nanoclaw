@@ -1,183 +1,335 @@
+/**
+ * Tests for create_agent host-side authorization.
+ *
+ * Regression guard for the audit finding: `create_agent` is a privileged
+ * central-DB write with no host-side authz. Authorization is the guard's
+ * `agents.create` decision — trusted owner agent groups ('global') create
+ * directly; confined groups ('group', the default and the prompt-injection
+ * victim) hold for admin approval. These tests drive the REAL wrapped
+ * delivery action (the only reachable path) and the approve continuation's
+ * grant-carrying re-entry.
+ */
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-let _tempDir = '';
-vi.mock('../../config.js', () => ({
+import type { PendingApproval, Session } from '../../types.js';
+
+// performCreateAgent writes .instructions.md directly under GROUPS_DIR/<folder>,
+// and the folder-dedupe loop is disk-aware (A4), so both need GROUPS_DIR pointed
+// at a temp root. Lazy getters — read at call time, after the beforeEach sets
+// _tmp, which is per-run so concurrent files cannot collide on a fixed path.
+// Mirrors the agent-route.test.ts config mock pattern. The original module is
+// spread in first so every other config export keeps its real value.
+let _tmp = '';
+vi.mock('../../config.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../config.js')>()),
   get GROUPS_DIR() {
-    return path.join(_tempDir, 'groups');
+    return path.join(_tmp, 'groups');
   },
   get DATA_DIR() {
-    return path.join(_tempDir, 'data');
+    return path.join(_tmp, 'data');
   },
 }));
 
+// Mocks for the collaborators the branch decides between / depends on.
+// vi.hoisted: the module barrel import below runs before this file's const
+// initializers, and the mock factories close over this state.
+const {
+  mockRequestApproval,
+  mockGetContainerConfig,
+  mockCreateAgentGroup,
+  mockInitGroupFilesystem,
+  mockWriteDestinations,
+  mockNotifyWrite,
+  liveApprovals,
+  approvalHandlers,
+} = vi.hoisted(() => ({
+  mockRequestApproval: vi.fn().mockResolvedValue(undefined),
+  mockGetContainerConfig: vi.fn(),
+  mockCreateAgentGroup: vi.fn(),
+  mockInitGroupFilesystem: vi.fn(),
+  mockWriteDestinations: vi.fn(),
+  mockNotifyWrite: vi.fn(),
+  liveApprovals: new Map<string, import('../../types.js').PendingApproval>(),
+  approvalHandlers: new Map<string, (ctx: Record<string, unknown>) => Promise<void>>(),
+}));
+
+vi.mock('../approvals/index.js', () => ({
+  requestApproval: (...a: unknown[]) => mockRequestApproval(...a),
+  notifyAgent: vi.fn(),
+  registerApprovalHandler: (action: string, handler: (ctx: Record<string, unknown>) => Promise<void>) => {
+    approvalHandlers.set(action, handler);
+  },
+}));
+vi.mock('../../db/container-configs.js', () => ({
+  getContainerConfig: (...a: unknown[]) => mockGetContainerConfig(...a),
+  ensureContainerConfig: () => {},
+}));
+vi.mock('../../db/agent-groups.js', () => ({
+  getAgentGroup: (id: string) => ({ id, name: id.toUpperCase(), folder: id, agent_provider: null, created_at: '' }),
+  getAgentGroupByFolder: () => undefined,
+  createAgentGroup: (...a: unknown[]) => mockCreateAgentGroup(...a),
+}));
 vi.mock('../../group-init.js', () => ({
-  initGroupFilesystem: vi.fn(),
+  initGroupFilesystem: (...a: unknown[]) => mockInitGroupFilesystem(...a),
 }));
-
-vi.mock('../../container-runner.js', () => ({
-  wakeContainer: vi.fn(async () => {}),
-}));
-
-vi.mock('../../session-manager.js', () => ({
-  writeSessionMessage: vi.fn(),
-}));
-
-vi.mock('../../claude-composer.js', () => ({
-  readCoworkerTypes: vi.fn(() => ({
-    main: { base: true },
-    'slang-reader': {},
-  })),
-}));
-
 vi.mock('./write-destinations.js', () => ({
-  writeDestinations: vi.fn(),
+  writeDestinations: (...a: unknown[]) => mockWriteDestinations(...a),
 }));
-
-vi.mock('../../log.js', () => ({
-  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+vi.mock('./db/agent-destinations.js', () => ({
+  getDestinationByName: () => undefined,
+  createDestination: vi.fn(),
+  hasDestination: () => true,
+  normalizeName: (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
 }));
-
+// notifyAgent writes to the session inbound.db + wakes the container; stub both.
+// delivery.ts and agent-route.ts pull more session-manager exports at import time.
+vi.mock('../../session-manager.js', () => ({
+  writeSessionMessage: (...a: unknown[]) => mockNotifyWrite(...a),
+  openInboundDb: vi.fn(),
+  openOutboundDb: vi.fn(),
+  clearOutbox: vi.fn(),
+  readOutboxFiles: vi.fn().mockReturnValue([]),
+  resolveSession: vi.fn(),
+  sessionDir: vi.fn().mockReturnValue('/tmp/nowhere'),
+}));
+vi.mock('../../container-runner.js', () => ({
+  wakeContainer: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('../../db/sessions.js', () => ({
+  getSession: (id: string) => ({ id, agent_group_id: 'ag-1' }),
+  getPendingApproval: (id: string) => liveApprovals.get(id),
+  getRunningSessions: () => [],
+  getActiveSessions: () => [],
+  createPendingQuestion: vi.fn(),
+}));
+// performCreateAgent wires the new coworker's own dashboard channel; stub the
+// messaging-groups DB layer so it doesn't reach the (uninitialized) real DB.
+vi.mock('../../db/messaging-groups.js', () => ({
+  getMessagingGroupByPlatform: () => undefined,
+  createMessagingGroup: vi.fn(),
+  getMessagingGroupAgents: () => [],
+  createMessagingGroupAgent: vi.fn(),
+}));
+// performCreateAgent dynamically imports the host entry point to refresh adapter
+// conversations; stub it so the test never loads the real process graph.
 vi.mock('../../index.js', () => ({
   refreshAdapterConversations: vi.fn(),
 }));
 
-import { initTestDb, closeDb } from '../../db/connection.js';
-import { runMigrations } from '../../db/migrations/index.js';
-import { createAgentGroup, getAgentGroupByFolder } from '../../db/agent-groups.js';
-import { createMessagingGroup, createMessagingGroupAgent, getMessagingGroupAgents } from '../../db/messaging-groups.js';
-import { createSession } from '../../db/sessions.js';
-import { getDestinationByTarget } from './db/agent-destinations.js';
-import { handleCreateAgent } from './create-agent.js';
-import type { Session } from '../../types.js';
+// The a2a module barrel registers ./guard.js (catalog entries) and the
+// guard-wrapped create_agent delivery action — the path under test.
+import './index.js';
+import { getDeliveryAction } from '../../delivery.js';
 
-let tempDir: string;
-const realCwd = process.cwd();
+const SESSION = { id: 'sess-1', agent_group_id: 'ag-1' } as Session;
 
-function setupFixtures(): { parentGroup: ReturnType<typeof getAgentGroupByFolder>; session: Session; mgId: string } {
-  const now = new Date().toISOString();
-  const parentId = 'ag-parent-001';
-  const mgId = 'mg-test-001';
-  const sessionId = 'sess-test-001';
+async function runCreateAgent(content: Record<string, unknown>): Promise<void> {
+  const wrapped = getDeliveryAction('create_agent');
+  expect(wrapped).toBeDefined();
+  await wrapped!(content, SESSION);
+}
 
-  createAgentGroup({
-    id: parentId,
-    name: 'Orchestrator',
-    folder: 'main',
-    is_admin: 1,
-    coworker_type: 'main',
-    routing: 'direct',
-    created_at: now,
-  });
-
-  createMessagingGroup({
-    id: mgId,
-    channel_type: 'dashboard',
-    platform_id: 'dashboard:main',
-    name: 'Dashboard Main',
-    is_group: 1,
-    unknown_sender_policy: 'public',
-    admin_user_id: null,
-    created_at: now,
-  });
-
-  createMessagingGroupAgent({
-    id: 'mga-test-001',
-    messaging_group_id: mgId,
-    agent_group_id: parentId,
-    engage_mode: 'always',
-    engage_pattern: null,
-    sender_scope: 'all',
-    ignored_message_policy: 'drop',
-    session_mode: 'shared',
-    priority: 0,
-    created_at: now,
-  } as never);
-
-  const session: Session = {
-    id: sessionId,
-    agent_group_id: parentId,
-    messaging_group_id: mgId,
-    thread_id: null,
-    agent_provider: null,
-    status: 'active',
-    container_status: 'running',
-    last_active: now,
-    created_at: now,
-  };
-  createSession(session);
-
-  return { parentGroup: getAgentGroupByFolder('main'), session, mgId };
+function liveGrant(approvalId: string, payload: Record<string, unknown>): PendingApproval {
+  const row = {
+    approval_id: approvalId,
+    session_id: SESSION.id,
+    request_id: approvalId,
+    action: 'create_agent',
+    payload: JSON.stringify(payload),
+    created_at: new Date().toISOString(),
+    agent_group_id: 'ag-1',
+    channel_type: null,
+    platform_id: null,
+    platform_message_id: null,
+    expires_at: null,
+    status: 'pending',
+    title: '',
+    options_json: '[]',
+    approver_user_id: null,
+  } as PendingApproval;
+  liveApprovals.set(approvalId, row);
+  return row;
 }
 
 beforeEach(() => {
-  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'create-agent-test-'));
-  _tempDir = tempDir;
-  fs.mkdirSync(path.join(tempDir, 'groups', 'templates', 'instructions'), { recursive: true });
-  process.chdir(tempDir);
-
-  const db = initTestDb();
-  runMigrations(db);
+  vi.clearAllMocks();
+  _tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'create-agent-test-'));
+  fs.mkdirSync(path.join(_tmp, 'groups'), { recursive: true });
+  // The real initGroupFilesystem creates GROUPS_DIR/<folder>; mirror that so the
+  // subsequent direct .instructions.md write in performCreateAgent finds the dir.
+  mockInitGroupFilesystem.mockImplementation((group: { folder: string }) => {
+    fs.mkdirSync(path.join(_tmp, 'groups', group.folder), { recursive: true });
+  });
+  liveApprovals.clear();
 });
 
 afterEach(() => {
-  closeDb();
-  process.chdir(realCwd);
-  fs.rmSync(tempDir, { recursive: true, force: true });
+  vi.restoreAllMocks();
+  if (_tmp) fs.rmSync(_tmp, { recursive: true, force: true });
 });
 
-describe('handleCreateAgent', () => {
-  it('default (no internalOnly) sets routing=direct and creates own dashboard channel', async () => {
-    const { session, mgId } = setupFixtures();
+describe('create_agent — guard-based authorization (wrapped delivery action)', () => {
+  it('global scope: creates directly, no approval requested', async () => {
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'global' });
 
-    await handleCreateAgent({ name: 'Test Worker', requestId: 'req-1' }, session);
+    await runCreateAgent({ name: 'Scout', instructions: 'help' });
 
-    const child = getAgentGroupByFolder('test-worker');
-    expect(child).toBeDefined();
-    expect(child!.routing).toBe('direct');
-
-    const agents = getMessagingGroupAgents(mgId);
-    const childWiring = agents.find((a) => a.agent_group_id === child!.id);
-    expect(childWiring).toBeDefined();
-    expect(childWiring!.engage_mode).toBe('pattern');
-    expect(childWiring!.engage_pattern).toBe('@test-worker\\b');
+    expect(mockRequestApproval).not.toHaveBeenCalled();
+    expect(mockCreateAgentGroup).toHaveBeenCalledTimes(1);
+    expect(mockInitGroupFilesystem).toHaveBeenCalledTimes(1);
   });
 
-  it('internalOnly=true sets routing=internal', async () => {
-    const { session } = setupFixtures();
+  it('child inherits the creator provider (codex parent → codex child)', async () => {
+    // A subagent must run on the same authenticated runtime as its creator —
+    // on a codex-only install a claude default would 401. The provider is
+    // passed to initGroupFilesystem, which stamps the child's config row.
+    // Red-on-delete: dropping the inheritance lets the child fall through to the
+    // instance default instead of codex.
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'global', provider: 'codex' });
 
-    await handleCreateAgent(
-      { name: 'Internal Bot', instructions: null, internalOnly: true, requestId: 'req-2' },
-      session,
+    await runCreateAgent({ name: 'Scout', instructions: 'help' });
+
+    expect(mockInitGroupFilesystem).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ provider: 'codex' }),
     );
-
-    const child = getAgentGroupByFolder('internal-bot');
-    expect(child).toBeDefined();
-    expect(child!.routing).toBe('internal');
   });
 
-  it('creates bidirectional destinations between parent and child', async () => {
-    const { parentGroup, session } = setupFixtures();
+  it('claude creator pins the child to claude, not the instance default', async () => {
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'global' }); // parent has no explicit provider
 
-    await handleCreateAgent({ name: 'Destination Test', requestId: 'req-3' }, session);
+    await runCreateAgent({ name: 'Scout', instructions: 'help' });
 
-    const child = getAgentGroupByFolder('destination-test');
-    expect(child).toBeDefined();
-
-    expect(getDestinationByTarget(parentGroup!.id, 'agent', child!.id)).toBeDefined();
-    expect(getDestinationByTarget(child!.id, 'agent', parentGroup!.id)).toBeDefined();
+    // The child inherits the parent's EFFECTIVE provider (claude), passed
+    // explicitly so it never falls through to a non-claude instance default.
+    expect(mockInitGroupFilesystem).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ provider: 'claude' }),
+    );
   });
 
-  it('grants the child a channel destination back to the parent messaging group', async () => {
-    const { session, mgId } = setupFixtures();
+  it('group scope (default): requires approval, does NOT create directly', async () => {
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'group' });
 
-    await handleCreateAgent({ name: 'Channel Dest', requestId: 'req-4' }, session);
+    await runCreateAgent({ name: 'Scout', instructions: 'help' });
 
-    const child = getAgentGroupByFolder('channel-dest');
-    expect(child).toBeDefined();
-    expect(getDestinationByTarget(child!.id, 'channel', mgId)).toBeDefined();
+    expect(mockRequestApproval).toHaveBeenCalledTimes(1);
+    expect(mockRequestApproval.mock.calls[0][0]).toMatchObject({ action: 'create_agent' });
+    expect(mockCreateAgentGroup).not.toHaveBeenCalled();
+    expect(mockInitGroupFilesystem).not.toHaveBeenCalled();
+  });
+
+  it('missing config: fails closed to approval (no direct create)', async () => {
+    mockGetContainerConfig.mockReturnValue(undefined);
+
+    await runCreateAgent({ name: 'Scout' });
+
+    expect(mockRequestApproval).toHaveBeenCalledTimes(1);
+    expect(mockCreateAgentGroup).not.toHaveBeenCalled();
+  });
+
+  it('disabled/other scope: requires approval', async () => {
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'disabled' });
+
+    await runCreateAgent({ name: 'Scout' });
+
+    expect(mockRequestApproval).toHaveBeenCalledTimes(1);
+    expect(mockCreateAgentGroup).not.toHaveBeenCalled();
+  });
+
+  it('empty name: neither creates nor requests approval', async () => {
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'global' });
+
+    await runCreateAgent({ name: '' });
+
+    expect(mockRequestApproval).not.toHaveBeenCalled();
+    expect(mockCreateAgentGroup).not.toHaveBeenCalled();
+  });
+
+  it('skips deleted-group residue on disk when minting the folder (A4)', async () => {
+    // groups/scout exists on disk but no DB row claims it (the mocked
+    // getAgentGroupByFolder always returns undefined) — exactly the state
+    // `ncl groups delete` leaves behind. The dedupe loop must treat disk
+    // presence as taken and mint scout-2, never adopt the residue.
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'global' });
+    fs.mkdirSync(path.join(_tmp, 'groups', 'scout'), { recursive: true });
+    await runCreateAgent({ name: 'Scout', instructions: 'help' });
+
+    expect(mockCreateAgentGroup).toHaveBeenCalledTimes(1);
+    expect(mockCreateAgentGroup.mock.calls[0][0]).toMatchObject({ folder: 'scout-2' });
+  });
+});
+
+describe('create_agent — approved replay (grant-carrying re-entry)', () => {
+  it('valid grant executes exactly once — decide hold is satisfied, create runs', async () => {
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'group' });
+    const payload = { name: 'Scout', instructions: 'help' };
+    const approval = liveGrant('appr-ca-1', payload);
+
+    const continuation = approvalHandlers.get('create_agent');
+    expect(continuation).toBeDefined();
+    await continuation!({ session: SESSION, payload, approval, userId: 'telegram:admin', notify: vi.fn() });
+
+    expect(mockCreateAgentGroup).toHaveBeenCalledTimes(1);
+    expect(mockRequestApproval).not.toHaveBeenCalled(); // no second card
+  });
+
+  it('dead grant (row already resolved) refuses the replay', async () => {
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'group' });
+    const payload = { name: 'Scout', instructions: 'help' };
+    const approval = liveGrant('appr-ca-2', payload);
+    liveApprovals.delete('appr-ca-2'); // resolution consumed the row
+
+    await approvalHandlers.get('create_agent')!({
+      session: SESSION,
+      payload,
+      approval,
+      userId: 'telegram:admin',
+      notify: vi.fn(),
+    });
+
+    expect(mockCreateAgentGroup).not.toHaveBeenCalled();
+    expect(mockRequestApproval).not.toHaveBeenCalled(); // refused, not re-held
+  });
+
+  it('mismatched grant (approved for a different name) refuses the replay', async () => {
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'group' });
+    const approval = liveGrant('appr-ca-3', { name: 'OtherAgent' });
+
+    await approvalHandlers.get('create_agent')!({
+      session: SESSION,
+      payload: { name: 'Scout' },
+      approval,
+      userId: 'telegram:admin',
+      notify: vi.fn(),
+    });
+
+    expect(mockCreateAgentGroup).not.toHaveBeenCalled();
+    expect(mockRequestApproval).not.toHaveBeenCalled();
+  });
+});
+
+describe('create_agent — sidebar_group threading (nv-dashboard overlay)', () => {
+  beforeEach(() => {
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'global' });
+  });
+
+  it('threads content.group into the new group as sidebar_group', async () => {
+    await runCreateAgent({ name: 'Scout', instructions: 'help', group: 'dashboard:user1' });
+    expect(mockCreateAgentGroup).toHaveBeenCalledWith(expect.objectContaining({ sidebar_group: 'dashboard:user1' }));
+  });
+
+  it('treats "prod" (the shared group) as sidebar_group null', async () => {
+    await runCreateAgent({ name: 'Scout', instructions: 'help', group: 'prod' });
+    expect(mockCreateAgentGroup).toHaveBeenCalledWith(expect.objectContaining({ sidebar_group: null }));
+  });
+
+  it('defaults sidebar_group to null when no group is given', async () => {
+    await runCreateAgent({ name: 'Scout', instructions: 'help' });
+    expect(mockCreateAgentGroup).toHaveBeenCalledWith(expect.objectContaining({ sidebar_group: null }));
   });
 });

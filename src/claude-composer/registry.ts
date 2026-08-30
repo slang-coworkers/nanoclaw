@@ -85,6 +85,18 @@ export function readCoworkerTypes(projectRoot = process.cwd()): Record<string, C
         if (Array.isArray(rawStages)) {
           entry.requiredCritiqueStages = rawStages.map(String).filter((s) => /^[A-Z_]+$/.test(s));
         }
+        // Critique-gate vocabulary extensions. Marker labels are sanitized to
+        // a regex-metachar-free charset — they get spliced into an ERE
+        // alternation by the gate. Bash patterns are operator-authored ERE
+        // fragments and pass through as-is (same trust level as the YAML).
+        const rawMarkers = (raw as Record<string, unknown>)['delivery_markers'];
+        if (Array.isArray(rawMarkers)) {
+          entry.deliveryMarkers = rawMarkers.map(String).filter((m) => /^[A-Za-z0-9][A-Za-z0-9 _-]*$/.test(m));
+        }
+        const rawPatterns = (raw as Record<string, unknown>)['pr_command_patterns'];
+        if (Array.isArray(rawPatterns)) {
+          entry.prCommandPatterns = rawPatterns.map(String).filter((p) => p.trim().length > 0);
+        }
         registry[name] = registry[name] ? mergeTypeEntries(registry[name], entry, name) : entry;
       }
     }
@@ -129,7 +141,10 @@ function mergeTypeEntries(base: CoworkerTypeEntry, addon: CoworkerTypeEntry, typ
     // resolveCritiqueRequiredStages walking the chain — that's separate
     // from this base+addon merge for redeclarations of the same type.
     requiredCritiqueStages: [...(base.requiredCritiqueStages || []), ...(addon.requiredCritiqueStages || [])],
+    deliveryMarkers: [...(base.deliveryMarkers || []), ...(addon.deliveryMarkers || [])],
+    prCommandPatterns: [...(base.prCommandPatterns || []), ...(addon.prCommandPatterns || [])],
     bindings: { ...(base.bindings || {}), ...(addon.bindings || {}) },
+    vars: { ...(base.vars || {}), ...(addon.vars || {}) },
     mcpServers: { ...(base.mcpServers || {}), ...(addon.mcpServers || {}) },
   };
 }
@@ -250,13 +265,50 @@ function parseSkillMeta(filePath: string, forcedType?: SkillMeta['type']): Skill
     // or synthesize one from the title. Synthesized ids let workflows
     // skip anchors when no overlay/override needs to target the step,
     // without losing the step's prose from the rendered output.
-    const stepHeaderRe = /^(\s*\d+\.\s+\*\*([^*]+)\*\*)(?:\s*\{#([a-z0-9-]+)\})?/gm;
+    //
+    // The step header MUST start at column 0 (no leading whitespace). Top-level
+    // workflow steps are always col-0; an INDENTED `N. **Bold**` line is a
+    // sub-list inside a step body (e.g. enumerated sub-steps) and must NOT be
+    // promoted to a step — otherwise it would phantom-split the parent step.
+    const stepHeaderRe = /^(\d+\.\s+\*\*([^*]+)\*\*)(?:\s*\{#([a-z0-9-]+)\})?/gm;
     const positions: { id: string; index: number }[] = [];
     const usedIds = new Set<string>();
-    for (const m of body.matchAll(stepHeaderRe)) {
-      const explicit = m[3];
-      const title = m[2].trim();
-      let id = explicit;
+    // Gate the step-header scan to the `## Steps` region. Numbered-bold
+    // bullets in a workflow's PROLOGUE (mode-delta notes like
+    // `1. **Step 1** — …` or `1. **Reproduce/Setup** — …`) are framing, not
+    // real steps, and must NOT be parsed as steps:
+    //   - In workflows WITH a `## Steps` heading, phantom prologue steps would
+    //     offset every real step's number.
+    //   - In `extends:` workflows WITHOUT their own `## Steps` heading, any
+    //     parsed step makes `steps` non-empty, which suppresses inheritance of
+    //     the parent's procedure at resolve.ts (`if (steps.length === 0 && …)`).
+    // So: if `## Steps` is found, scan ONLY from that heading onward (offsetting
+    // match indices back into full-`body` coordinates so the prologue/epilogue/
+    // stepBodies slicing below — which keys off absolute `body` indices —
+    // keeps working unchanged). If NOT found, parse ZERO steps, letting
+    // `extends:` workflows inherit the parent (resolve.ts), exactly as
+    // `slang-implement`/`slang-plan` already do.
+    const stepsHeadingMatch = body.match(/^##\s+Steps\s*$/m);
+    type RawStep = { id?: string; title: string; index: number };
+    const rawSteps: RawStep[] = [];
+    if (stepsHeadingMatch) {
+      const stepsRegionStart = stepsHeadingMatch.index ?? 0;
+      // Bound the scan to the `## Steps` SECTION — from the heading to the next
+      // H2 (`## Mode invariants`, `## Notes`, etc.) or EOF. A numbered-bold list
+      // in a trailing H2 block (e.g. an enumerated invariant) must NOT be parsed
+      // as steps. The text after the region is handled as epilogue below.
+      const afterHeading = body.slice(stepsRegionStart + stepsHeadingMatch[0].length);
+      const nextH2 = afterHeading.match(/\n##\s+(?!#)/);
+      const stepsRegionEnd =
+        nextH2 != null ? stepsRegionStart + stepsHeadingMatch[0].length + (nextH2.index ?? 0) : body.length;
+      const stepsRegion = body.slice(stepsRegionStart, stepsRegionEnd);
+      for (const m of stepsRegion.matchAll(stepHeaderRe)) {
+        rawSteps.push({ id: m[3], title: m[2].trim(), index: (m.index ?? 0) + stepsRegionStart });
+      }
+    }
+    for (const raw of rawSteps) {
+      const title = raw.title;
+      let id = raw.id;
       if (!id) {
         const base =
           title
@@ -271,9 +323,10 @@ function parseSkillMeta(filePath: string, forcedType?: SkillMeta['type']): Skill
       }
       usedIds.add(id);
       steps.push(id);
-      // Anchor at the start of the header match so per-step body extraction
-      // below slices from the numbered-bullet line as before.
-      positions.push({ id, index: m.index ?? 0 });
+      // Anchor at the start of the header match (already in full-`body`
+      // coordinates) so per-step body extraction below slices from the
+      // numbered-bullet line as before.
+      positions.push({ id, index: raw.index });
     }
     // Extract per-step body: from the step's list-item start (back up to the
     // start of the numbered bullet line) until the next step's bullet start.
@@ -329,6 +382,18 @@ function parseSkillMeta(filePath: string, forcedType?: SkillMeta['type']): Skill
       const epilogueStart = nextHeading ? last.index + (nextHeading.index ?? 0) + 1 : body.length;
       const epilogueRaw = body.slice(epilogueStart).trim();
       if (epilogueRaw) epilogue = epilogueRaw;
+    } else if (!stepsHeadingMatch) {
+      // No `## Steps` heading → this workflow parses zero own steps and
+      // inherits its procedure from `extends:` (resolve.ts). But it may still
+      // author its OWN body sections (e.g. `slangpy-implement`'s
+      // `## PR-review-fix mode` / `## PR follow-up` mode-deltas). Those are not
+      // steps, but they MUST survive: render the whole body (minus the leading
+      // H1) as the epilogue so it lands after the inherited parent steps.
+      // Without this, an extends-only workflow with a body silently loses it.
+      const stripped = body
+        .replace(/^\s*#\s+[^\n]*\n/, '') // drop the workflow's own H1
+        .trim();
+      if (stripped) epilogue = stripped;
     }
   }
 

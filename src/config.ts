@@ -28,9 +28,44 @@ const envConfig = readEnvFile([
   'INSTANCE_FORWARD_TARGETS',
   'AGENT_RUNTIME',
   'AGENT_HOST_GATEWAY',
+  'ROUTE_ISSUES_TO',
+  'ROUTE_READY_PRS_TO',
+  'APPROVER_CI_GATE',
+  'APPROVAL_LEDGER_WRITERS',
+  'CI_GATE_REQUIRED_SUITE',
+  'CI_GATE_REQUIRED_CHECK_RUN',
+  'DEFAULT_AGENT_PROVIDER',
+  'CONTAINER_CPU_LIMIT',
+  'CONTAINER_MEMORY_LIMIT',
+  'CONTAINER_PIDS_LIMIT',
+  'NANOCLAW_EGRESS_LOCKDOWN',
+  'NANOCLAW_EGRESS_NETWORK',
+  'ONECLI_GATEWAY_CONTAINER',
 ]);
 
+/**
+ * @deprecated WhatsApp adapter copies now read the ASSISTANT_NAME .env key
+ * directly. Re-export retained one release for stale adapter copies
+ * (origin/channels whatsapp.ts:42 imports it); scheduled for deletion.
+ */
 export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || envConfig.ASSISTANT_NAME || 'Andy';
+
+// Instance-wide default agent provider for newly created groups. `claude` (the
+// built-in provider) when unset, so existing installs are unaffected on upgrade.
+// Applied only at group-creation time (stamped onto the config row) — never in
+// provider resolution — so existing groups are never retroactively flipped.
+// Per-group `ncl groups config update --provider` still overrides it.
+export const DEFAULT_AGENT_PROVIDER = (
+  process.env.DEFAULT_AGENT_PROVIDER ||
+  envConfig.DEFAULT_AGENT_PROVIDER ||
+  'claude'
+).toLowerCase();
+
+/**
+ * @deprecated WhatsApp adapter copies now read the ASSISTANT_HAS_OWN_NUMBER
+ * .env key directly. Re-export retained one release for stale adapter copies
+ * (origin/channels whatsapp.ts:42 imports it); scheduled for deletion.
+ */
 export const ASSISTANT_HAS_OWN_NUMBER =
   (process.env.ASSISTANT_HAS_OWN_NUMBER || envConfig.ASSISTANT_HAS_OWN_NUMBER) === 'true';
 export const POLL_INTERVAL = 2000;
@@ -47,6 +82,13 @@ export const STORE_DIR = path.resolve(PROJECT_ROOT, 'store');
 export const GROUPS_DIR = path.resolve(PROJECT_ROOT, 'groups');
 export const DATA_DIR = path.resolve(PROJECT_ROOT, 'data');
 export const SHARED_DIR = path.resolve(DATA_DIR, 'shared');
+export const CENTRAL_DB_PATH = path.join(DATA_DIR, 'v2.db');
+// Local agent-template library. Committed but ships empty (+ README). Resolved
+// once at load. Override to another LOCAL path via NANOCLAW_TEMPLATES_DIR; never
+// a remote URL, never an ncl flag, never runtime-mutable.
+export const TEMPLATES_DIR = process.env.NANOCLAW_TEMPLATES_DIR
+  ? path.resolve(process.env.NANOCLAW_TEMPLATES_DIR)
+  : path.resolve(PROJECT_ROOT, 'templates');
 
 // Agent runtime selector — 'docker' (default, spawns containers) or 'local'
 // (spawns node agent-runner processes directly, each in a git worktree).
@@ -71,15 +113,29 @@ export const AGENT_HOST_GATEWAY =
 export const CONTAINER_IMAGE_BASE = process.env.CONTAINER_IMAGE_BASE || getContainerImageBase(PROJECT_ROOT);
 export const CONTAINER_IMAGE = process.env.CONTAINER_IMAGE || getDefaultContainerImage(PROJECT_ROOT);
 export const CONTAINER_PREFIX = process.env.CONTAINER_PREFIX || envConfig.CONTAINER_PREFIX || 'nanoclaw';
-// Install slug — stamped onto every spawned container via --label so
-// cleanupOrphans only reaps containers from this install, not peers.
+// Install slug — the session key's install component, stamped onto every
+// runtime object via the canonical `nanoclaw-install` label so adoption and
+// reaping only ever see this install's sessions, not a peer's.
 export const INSTALL_SLUG = getInstallSlug(PROJECT_ROOT);
 export const CONTAINER_INSTALL_LABEL = `nanoclaw-install=${INSTALL_SLUG}`;
 export const CONTAINER_TIMEOUT = parseInt(process.env.CONTAINER_TIMEOUT || '1800000', 10);
-export const CONTAINER_MAX_OUTPUT_SIZE = parseInt(process.env.CONTAINER_MAX_OUTPUT_SIZE || '10485760', 10); // 10MB default
 export const ONECLI_URL = process.env.ONECLI_URL || envConfig.ONECLI_URL;
 export const ONECLI_API_KEY = process.env.ONECLI_API_KEY || envConfig.ONECLI_API_KEY;
 export const MAX_MESSAGES_PER_PROMPT = Math.max(1, parseInt(process.env.MAX_MESSAGES_PER_PROMPT || '10', 10) || 10);
+
+// Runaway detector (non-blocking): surface an admin card when a session
+// processes many turns in a window while producing almost no output — the
+// "stuck in an echo loop emitting 'Ignored.'" signature. NEVER auto-stops;
+// only a human clicking the card's Stop button kills the session.
+export const RUNAWAY_WINDOW_S = Math.max(60, parseInt(process.env.RUNAWAY_WINDOW_S || '600', 10) || 600);
+export const RUNAWAY_TURNS = Math.max(2, parseInt(process.env.RUNAWAY_TURNS || '40', 10) || 40);
+// Total new messages_out content (bytes) over the window below which output is
+// considered "near-zero". A genuinely busy session easily clears this.
+export const RUNAWAY_MAX_OUTPUT_BYTES = Math.max(
+  0,
+  parseInt(process.env.RUNAWAY_MAX_OUTPUT_BYTES || '2000', 10) || 2000,
+);
+
 export const IPC_POLL_INTERVAL = 1000;
 // Idle grace period. Default is 25% below CONTAINER_TIMEOUT so the idle
 // sweeper always has a window before the hard kill, even when operators
@@ -127,23 +183,26 @@ export function validateContainerTimeouts(
   return { ok: true };
 }
 export const MAX_CONCURRENT_CONTAINERS = Math.max(1, parseInt(process.env.MAX_CONCURRENT_CONTAINERS || '5', 10) || 5);
+// Per-container resource caps, passed through to `docker run`. Default empty =
+// no flag added = today's unbounded behavior (don't OOM existing OSS workloads).
+// Operators opt in: CONTAINER_CPU_LIMIT=2, CONTAINER_MEMORY_LIMIT=8g.
+export const CONTAINER_CPU_LIMIT = process.env.CONTAINER_CPU_LIMIT || envConfig.CONTAINER_CPU_LIMIT || '';
+export const CONTAINER_MEMORY_LIMIT = process.env.CONTAINER_MEMORY_LIMIT || envConfig.CONTAINER_MEMORY_LIMIT || '';
 
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+// Fork-bomb backstop. cgroups v2 counts THREADS, not processes, and Chromium is
+// thread-hungry — a browsing agent with several tabs open runs into the high
+// hundreds. Keep well above that; too low a cap kills the container mid-turn or
+// blocks it from spawning subprocesses, and neither is reported as a PID limit.
+// Empty = no cap.
+export const CONTAINER_PIDS_LIMIT = process.env.CONTAINER_PIDS_LIMIT ?? envConfig.CONTAINER_PIDS_LIMIT ?? '2048';
 
-export function buildTriggerPattern(trigger: string): RegExp {
-  return new RegExp(`^${escapeRegex(trigger.trim())}\\b`, 'i');
-}
-
-export const DEFAULT_TRIGGER = `@${ASSISTANT_NAME}`;
-
-export function getTriggerPattern(trigger?: string): RegExp {
-  const normalizedTrigger = trigger?.trim();
-  return buildTriggerPattern(normalizedTrigger || DEFAULT_TRIGGER);
-}
-
-export const TRIGGER_PATTERN = buildTriggerPattern(DEFAULT_TRIGGER);
+// Egress lockdown — force all agent traffic through the OneCLI gateway on a
+// no-internet Docker network. Off by default; consumed by src/egress-lockdown.ts.
+export const EGRESS_LOCKDOWN = (process.env.NANOCLAW_EGRESS_LOCKDOWN || envConfig.NANOCLAW_EGRESS_LOCKDOWN) === 'true';
+export const EGRESS_NETWORK =
+  process.env.NANOCLAW_EGRESS_NETWORK || envConfig.NANOCLAW_EGRESS_NETWORK || 'nanoclaw-egress';
+export const ONECLI_GATEWAY_CONTAINER =
+  process.env.ONECLI_GATEWAY_CONTAINER || envConfig.ONECLI_GATEWAY_CONTAINER || 'onecli';
 
 // MCP proxy
 export const MCP_PROXY_PORT = parseInt(process.env.MCP_PROXY_PORT || envConfig.MCP_PROXY_PORT || '3100', 10);
@@ -239,6 +298,128 @@ function parseForwardTargets(raw: string): Record<string, string> {
 }
 export const INSTANCE_FORWARD_TARGETS = parseForwardTargets(
   process.env.INSTANCE_FORWARD_TARGETS || envConfig.INSTANCE_FORWARD_TARGETS || '',
+);
+
+// Dev-routing: forward every `issues` event (action=opened) to a peer
+// instance instead of handling locally. Used while the issue-triage
+// orchestrator path is still being shaped — we want issues to land in
+// the dev install (lego) for testing, not in prod's orchestrator.
+//
+// Set the env var to a slug that ALSO appears in INSTANCE_FORWARD_TARGETS
+// (so the forwarder knows where to send it). Empty/unset = local handling
+// (issues go to this instance's orchestrator). PR-comment events are
+// unaffected — only `issues` flows through this gate.
+//
+// Example on prod:
+//   INSTANCE_FORWARD_TARGETS=lego=http://127.0.0.1:3843/webhook/github
+//   ROUTE_ISSUES_TO=lego
+//
+// On lego (or any non-canonical instance), leave unset.
+export const ROUTE_ISSUES_TO = (process.env.ROUTE_ISSUES_TO || envConfig.ROUTE_ISSUES_TO || '').trim();
+
+// Dev-route PR `ready_for_review` (draft→ready) events to a peer instance,
+// which hands them to a PR-approver coworker. Same trust-channel mechanism as
+// ROUTE_ISSUES_TO: set to a slug that ALSO appears in INSTANCE_FORWARD_TARGETS.
+// Empty/unset = handle locally (deliver to the local slang-pr-approver group,
+// or warn-and-drop if that group is absent).
+//
+// Example on prod:
+//   INSTANCE_FORWARD_TARGETS=lego=http://127.0.0.1:3843/webhook/github
+//   ROUTE_READY_PRS_TO=lego
+//
+// On lego (the consumer), leave unset so it delivers locally.
+export const ROUTE_READY_PRS_TO = (process.env.ROUTE_READY_PRS_TO || envConfig.ROUTE_READY_PRS_TO || '').trim();
+
+// Host-side CI gate for PR-approver delivery. When on, a reviewable PR
+// (ready_for_review / opened / synchronize) is PARKED (pending_reviewable_prs)
+// instead of immediately minting an approver session; it is released only when
+// a required CI check_suite reports success for the parked head. This both
+// debounces synchronize bursts (one decision on the settled head) and defers
+// the (expensive) approver run until CI is actually green — replacing the
+// in-session `ci_green_on_sha` self-check that was blind to Actions check-runs.
+// Default OFF so existing installs are unaffected until explicitly enabled.
+export const APPROVER_CI_GATE = /^(1|true|yes|on)$/i.test(
+  (process.env.APPROVER_CI_GATE || envConfig.APPROVER_CI_GATE || '').trim(),
+);
+
+/**
+ * Cost-cap escalation APPROVAL CARD (NanoClaw #1 cost cap, Option 2) — staged rollout.
+ * OFF (default): S1 — episodes are recorded (`cost_escalation_episodes`) and rendered
+ * read-only, but NO card is delivered, NO decision is actioned, and `maxBudgetUsd` is
+ * not enforced. Behavior is byte-for-byte the pre-card cost cap. ON: S2 — the full
+ * card + compare-and-set resolver + effect/receipt reconciler + expiry + native
+ * ceiling bound activate together, acting only on episodes created after activation.
+ * Default OFF so existing installs are unaffected until explicitly enabled.
+ */
+export const COST_APPROVAL_CARD = /^(1|true|yes|on)$/i.test(
+  (process.env.COST_APPROVAL_CARD || envConfig.COST_APPROVAL_CARD || '').trim(),
+);
+
+/**
+ * Agent groups permitted to append to the approval-decision ledger — the
+ * `record_decision` capability, enforced at the host boundary by
+ * `approval_ledger.record_decision` (src/modules/approval-ledger/guard.ts).
+ *
+ * Comma-separated agent-group ids and/or folders (folders match
+ * case-insensitively), e.g. `slang-pr-approver,slangpy-pr-approver`.
+ *
+ * UNSET MEANS NO CONTAINER MAY WRITE. That is deliberate: the ledger is the
+ * evidence humans use to calibrate how far to trust the approver bots, so
+ * "who may write to it" is an operator decision, not something a container can
+ * assert about itself. `coworker_type` is NOT accepted as the signal — the
+ * same reasoning container-runner.ts already applies to the shared-bucket
+ * mount ("trust ONLY is_admin, not coworker_type": an import that sets
+ * coworker_type must not confer privilege).
+ *
+ * A denial is logged at error level naming this variable, so an install that
+ * upgrades without setting it sees exactly why the ledger stopped filling.
+ *
+ * Read through `approvalLedgerWriters()` rather than captured at import, so a
+ * value supplied via the process environment is honoured without a restart
+ * ordering dependency (and so tests can set it).
+ */
+export function approvalLedgerWriters(): string[] {
+  return (process.env.APPROVAL_LEDGER_WRITERS || envConfig.APPROVAL_LEDGER_WRITERS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+// Which check_suite must be green to RELEASE a parked PR. Matches the suite's
+// GitHub App slug (check_suite.app.slug) or, as a fallback, a substring of the
+// app name — case-insensitive. This guards against the documented false-safe
+// where a trivial suite (CLA/lint/CodeRabbit) goes green while the real build
+// never dispatched: only the named build suite counts as "CI passed". When
+// unset, ANY successful check_suite releases (loosest; not recommended for a
+// repo with multiple suites). Example: CI_GATE_REQUIRED_SUITE=github-actions
+export const CI_GATE_REQUIRED_SUITE = (process.env.CI_GATE_REQUIRED_SUITE || envConfig.CI_GATE_REQUIRED_SUITE || '')
+  .trim()
+  .toLowerCase();
+
+// Optional precise gate: a PER-REPO check-RUN name that must be green before a
+// parked PR for that repo releases (e.g. slang's `check-ci` aggregate build/test
+// roll-up). The check_suite=success webhook wakes the host, but on repos where
+// every Actions workflow shares one app slug, the suite alone can't distinguish
+// the real build from a trivial green; check_run events aren't delivered (only
+// check_suite is). So for a listed repo the host queries `gh` for the named
+// check-run's conclusion at the head and releases only if it's green.
+//
+// Format: comma-separated `owner/repo=check-name` pairs (check names are
+// case-exact and repo-specific — slang uses `check-ci`, nanoclaw uses `ci`).
+// A repo NOT listed here falls back to the suite-slug gate (CI_GATE_REQUIRED_SUITE)
+// — so leaving a repo out never wedges its PRs. Requires the host's `gh` CLI to
+// be authenticated (read-only). Unset = suite-slug gate for all repos.
+// Example: CI_GATE_REQUIRED_CHECK_RUN=shader-slang/slang=check-ci
+export const CI_GATE_REQUIRED_CHECK_RUN: Record<string, string> = Object.fromEntries(
+  (process.env.CI_GATE_REQUIRED_CHECK_RUN || envConfig.CI_GATE_REQUIRED_CHECK_RUN || '')
+    .split(',')
+    .map((pair) => pair.trim())
+    .filter(Boolean)
+    .map((pair) => {
+      const i = pair.indexOf('=');
+      return i > 0 ? [pair.slice(0, i).trim(), pair.slice(i + 1).trim()] : ['', ''];
+    })
+    .filter(([repo, name]) => repo && name),
 );
 
 // Timezone for scheduled tasks, message formatting, etc.

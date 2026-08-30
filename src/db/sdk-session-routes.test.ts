@@ -9,9 +9,21 @@ import {
   stampLiveRouteValidated,
   touchRouteLastSeen,
 } from './sdk-session-routes.js';
-import { migration018 } from './migrations/018-sdk-session-routes.js';
+import { SqliteDriver } from './drivers/sqlite.js';
+import { migration918 } from './migrations/918-sdk-session-routes.js';
 
-function freshDb(): Database.Database {
+/**
+ * migration918 is declared as the `Migration` union, whose `up` takes either the
+ * portable driver or a raw SQLite handle. Narrow on the discriminant so the test
+ * hands it the driver its own implementation actually accepts; the route helpers
+ * under test still take the raw handle.
+ */
+async function runMigration918(raw: Database.Database): Promise<void> {
+  if (migration918.sqliteOnly) throw new Error('migration918 is portable — expected the DbDriver signature');
+  await migration918.up(new SqliteDriver(raw));
+}
+
+async function freshDb(): Promise<Database.Database> {
   const db = new Database(':memory:');
   // The validated stamp joins sessions + agent_groups, so seed both when
   // testing it. Other helpers don't touch those tables.
@@ -19,7 +31,7 @@ function freshDb(): Database.Database {
     CREATE TABLE agent_groups (id TEXT PRIMARY KEY, folder TEXT NOT NULL);
     CREATE TABLE sessions (id TEXT PRIMARY KEY, agent_group_id TEXT NOT NULL);
   `);
-  migration018.up(db);
+  await runMigration918(db);
   return db;
 }
 
@@ -30,8 +42,8 @@ function seedSession(db: Database.Database, sessionId: string, agentGroupId: str
 
 describe('sdk-session-routes helpers', () => {
   let db: Database.Database;
-  beforeEach(() => {
-    db = freshDb();
+  beforeEach(async () => {
+    db = await freshDb();
     // Seed the referenced rows so FK constraints pass for the basic
     // helper tests — the validated-stamp tests reseed via seedSession
     // for their own scenarios.
@@ -140,8 +152,8 @@ describe('sdk-session-routes helpers', () => {
     expect(rs).toEqual(['sdk-b', 'sdk-a']); // ordered by first_seen_at asc
   });
 
-  it('migration018 is idempotent', () => {
-    expect(() => migration018.up(db)).not.toThrow();
+  it('migration918 is idempotent', async () => {
+    await expect(runMigration918(db)).resolves.toBeUndefined();
     const cols = db.prepare('PRAGMA table_info(sdk_session_routes)').all() as Array<{ name: string }>;
     expect(cols.map((c) => c.name).sort()).toEqual(
       [

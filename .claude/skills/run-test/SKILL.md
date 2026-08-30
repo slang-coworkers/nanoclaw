@@ -364,16 +364,16 @@ agent-browser wait --load networkidle
 **BX09 — seamless peer refresh:**
 
 ```bash
-ADMIN_AG=$(sqlite3 data/v2.db "SELECT id FROM agent_groups WHERE is_admin=1 LIMIT 1;")
-ADMIN_SESSION=$(sqlite3 data/v2.db "SELECT id FROM sessions WHERE agent_group_id='$ADMIN_AG' AND status='active' ORDER BY created_at DESC LIMIT 1;")
+ADMIN_AG=$(pnpm exec tsx scripts/q.ts data/v2.db "SELECT id FROM agent_groups WHERE is_admin=1 LIMIT 1;")
+ADMIN_SESSION=$(pnpm exec tsx scripts/q.ts data/v2.db "SELECT id FROM sessions WHERE agent_group_id='$ADMIN_AG' AND status='active' ORDER BY created_at DESC LIMIT 1;")
 SESSION_DB="data/v2-sessions/$ADMIN_AG/$ADMIN_SESSION/inbound.db"
 
-before=$(sqlite3 "$SESSION_DB" "SELECT COUNT(*) FROM destinations;")
+before=$(pnpm exec tsx scripts/q.ts "$SESSION_DB" "SELECT COUNT(*) FROM destinations;")
 # Create a new coworker via the dashboard API (use your auth token if set).
 curl -fsSL -X POST "http://localhost:$DASHBOARD_PORT/api/coworkers" \
   -H 'content-type: application/json' \
   -d '{"name":"BX09Temp","folder":"bx09-temp","routing":"internal"}'
-after=$(sqlite3 "$SESSION_DB" "SELECT COUNT(*) FROM destinations;")
+after=$(pnpm exec tsx scripts/q.ts "$SESSION_DB" "SELECT COUNT(*) FROM destinations;")
 test "$after" -gt "$before" || { echo "BX09 FAIL: destinations not refreshed"; exit 1; }
 # Cleanup
 curl -fsSL -X DELETE "http://localhost:$DASHBOARD_PORT/api/coworkers/bx09-temp"

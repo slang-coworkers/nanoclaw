@@ -23,11 +23,13 @@ import {
   MCP_PROXY_PORT,
   TIMEZONE,
 } from './config.js';
-import { materializeContainerJson } from './container-config.js';
-import { getDb, hasTable } from './db/connection.js';
+import { getDb } from './db/connection.js';
+import type { SupervisedHandle } from './drivers/session-events.js';
+import type { SessionExecSpec, SessionFailure, SessionKey, SessionStatus } from './drivers/types.js';
 import { log } from './log.js';
 import type { ProviderContainerContribution } from './providers/provider-container-registry.js';
-import { heartbeatPath, inboundDbPath, outboundDbPath, sessionDir } from './session-manager.js';
+import { inboundDbPath, outboundDbPath } from './mailbox/sqlite/paths.js';
+import { heartbeatPath, sessionDir } from './session-manager.js';
 import type { AgentGroup, Session } from './types.js';
 
 /** Entry point the `bun` spawn targets. */
@@ -48,18 +50,78 @@ export interface LocalAgentHandle {
   name: string;
 }
 
-function gatherAdminUserIds(agentGroup: AgentGroup): string[] {
-  if (!hasTable(getDb(), 'user_roles')) return [];
+/**
+ * Adapt a spawned bun child to the `SupervisedHandle` the host lifecycle takes.
+ *
+ * The host no longer tracks a `ChildProcess` — `ActiveSessionRuntime` holds a
+ * handle and `killContainer` drives `handle.stop()`. Presenting local mode
+ * through the same interface is what lets it reuse `registerRuntime`,
+ * `finishAndResolve` and the exit-callback drain unchanged, instead of
+ * threading a second termination path through every call site.
+ *
+ * `prepare`/`start` have no local analogue: the process is already running by
+ * the time this wraps it, so `start()` is a no-op and `status()` reports from
+ * the child's own exit state.
+ */
+export function superviseLocalAgent(key: SessionKey, handle: LocalAgentHandle): SupervisedHandle {
+  const proc = handle.process;
+  let stopRequested = false;
+  let terminalCb: ((failure?: SessionFailure) => void) | undefined;
+  let terminalFired = false;
+
+  const fireTerminal = (failure?: SessionFailure): void => {
+    // At most once, and never for an end the host asked for — the same contract
+    // the driver's own supervision honors, so stop-intent suppression stays in
+    // one place.
+    if (terminalFired || stopRequested) return;
+    terminalFired = true;
+    terminalCb?.(failure);
+  };
+
+  proc.once('exit', (code) => {
+    fireTerminal({ kind: 'started-then-died', retryable: false, exitCode: code ?? undefined });
+  });
+  proc.once('error', (err) => {
+    log.error('Local agent process error', { sessionId: key.sessionId, err });
+    fireTerminal({ kind: 'unknown', retryable: false, opaqueRef: String(err) });
+  });
+
+  return {
+    key,
+    name: handle.name,
+    start: () => Promise.resolve(),
+    status: (): Promise<SessionStatus> =>
+      Promise.resolve(proc.exitCode === null && proc.signalCode === null ? { phase: 'running' } : { phase: 'stopped' }),
+    stop: (reason: string): Promise<void> => {
+      stopRequested = true;
+      log.info('Stopping local agent', { sessionId: key.sessionId, name: handle.name, reason });
+      return killLocalAgent(handle);
+    },
+    // A local agent is a plain host process — there is no attach transport to
+    // describe. Refusing is the honest answer; a fabricated argv would make
+    // shell-exec fail confusingly at spawn time instead of here.
+    execSpec: (): SessionExecSpec => {
+      throw new Error('interactive exec is not available for AGENT_RUNTIME=local sessions');
+    },
+    onTerminal: (cb) => {
+      terminalCb = cb;
+    },
+  };
+}
+
+async function gatherAdminUserIds(agentGroup: AgentGroup): Promise<string[]> {
   const db = getDb();
-  const owners = db
-    .prepare("SELECT user_id FROM user_roles WHERE role = 'owner' AND agent_group_id IS NULL")
-    .all() as Array<{ user_id: string }>;
-  const globalAdmins = db
-    .prepare("SELECT user_id FROM user_roles WHERE role = 'admin' AND agent_group_id IS NULL")
-    .all() as Array<{ user_id: string }>;
-  const scopedAdmins = db
-    .prepare("SELECT user_id FROM user_roles WHERE role = 'admin' AND agent_group_id = ?")
-    .all(agentGroup.id) as Array<{ user_id: string }>;
+  if (!(await db.hasTable('user_roles'))) return [];
+  const owners = await db.all<{ user_id: string }>(
+    "SELECT user_id FROM user_roles WHERE role = 'owner' AND agent_group_id IS NULL",
+  );
+  const globalAdmins = await db.all<{ user_id: string }>(
+    "SELECT user_id FROM user_roles WHERE role = 'admin' AND agent_group_id IS NULL",
+  );
+  const scopedAdmins = await db.all<{ user_id: string }>(
+    "SELECT user_id FROM user_roles WHERE role = 'admin' AND agent_group_id = ?",
+    agentGroup.id,
+  );
   const ids = new Set<string>();
   for (const r of owners) ids.add(r.user_id);
   for (const r of globalAdmins) ids.add(r.user_id);
@@ -72,10 +134,10 @@ function gatherAdminUserIds(agentGroup: AgentGroup): string[] {
  * sets via `-e`, adapted to host paths. Caller provides groupDir + sessDir so
  * this function is trivially testable.
  */
-export function buildLocalAgentEnv(
+export async function buildLocalAgentEnv(
   ctx: LocalAgentContext,
   paths: { groupDir: string; sessDir: string; globalDir: string | null; outboxDir: string },
-): NodeJS.ProcessEnv {
+): Promise<NodeJS.ProcessEnv> {
   const { session, agentGroup, provider, contribution, proxyToken, allowedTools, mcpServers } = ctx;
 
   // Start from the host env so proxy / CA cert / bun tooling all work as on
@@ -164,7 +226,7 @@ export function buildLocalAgentEnv(
     for (const [k, v] of Object.entries(contribution.env)) env[k] = v;
   }
 
-  const adminIds = gatherAdminUserIds(agentGroup);
+  const adminIds = await gatherAdminUserIds(agentGroup);
   if (adminIds.length > 0) {
     env.NANOCLAW_ADMIN_USER_IDS = adminIds.join(',');
   }
@@ -194,14 +256,6 @@ export function buildLocalAgentEnv(
     env.DASHBOARD_URL = `http://${AGENT_HOST_GATEWAY}:${DASHBOARD_PORT}`;
   }
 
-  const containerConfig = materializeContainerJson(agentGroup.id);
-  if (containerConfig.imageTag) {
-    log.debug('container.json imageTag is ignored in local mode', {
-      folder: agentGroup.folder,
-      imageTag: containerConfig.imageTag,
-    });
-  }
-
   return env;
 }
 
@@ -210,7 +264,7 @@ export function buildLocalAgentEnv(
  * Resolves with a handle once spawn completes; rejects if `bun` can't be
  * started. Bun is required because the agent-runner imports `bun:sqlite`.
  */
-export function spawnLocalAgent(ctx: LocalAgentContext): Promise<LocalAgentHandle> {
+export async function spawnLocalAgent(ctx: LocalAgentContext): Promise<LocalAgentHandle> {
   const { session, agentGroup } = ctx;
 
   const sessDir = sessionDir(agentGroup.id, session.id);
@@ -219,7 +273,7 @@ export function spawnLocalAgent(ctx: LocalAgentContext): Promise<LocalAgentHandl
   const globalDir = fs.existsSync(globalDirRaw) ? globalDirRaw : null;
   const outboxDir = path.join(sessDir, 'outbox');
 
-  const env = buildLocalAgentEnv(ctx, { groupDir, sessDir, globalDir, outboxDir });
+  const env = await buildLocalAgentEnv(ctx, { groupDir, sessDir, globalDir, outboxDir });
   const name = `${agentGroup.folder}-${Date.now()}`;
 
   return new Promise((resolve, reject) => {

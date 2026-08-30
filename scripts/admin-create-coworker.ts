@@ -64,9 +64,9 @@ async function main() {
 
   // Open central DB (same path the orchestrator uses)
   const dbPath = path.join(DATA_DIR, 'v2.db');
-  initDb(dbPath);
+  await initDb(dbPath);
 
-  const mg = getMessagingGroupByPlatform(args.mgChannel, args.mgPlatform);
+  const mg = await getMessagingGroupByPlatform(args.mgChannel, args.mgPlatform);
   if (!mg) throw new Error(`messaging group not found: ${args.mgChannel}/${args.mgPlatform}`);
 
   const localName = normalizeName(args.name);
@@ -83,15 +83,17 @@ async function main() {
     container_config: null,
     coworker_type: args.type,
     allowed_mcp_tools: null,
+    overlays: null,
     routing: 'direct',
     disable_overlays: 0,
+    paused: 0,
     created_at: now,
   };
-  createAgentGroup(group);
-  initGroupFilesystem(group, {});
+  await createAgentGroup(group);
+  await initGroupFilesystem(group, {});
 
   // Wire to the CLI messaging group with engage_mode=pattern + @<localName>
-  createMessagingGroupAgent({
+  await createMessagingGroupAgent({
     id: `mga-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     messaging_group_id: mg.id,
     agent_group_id: id,
@@ -105,8 +107,8 @@ async function main() {
   } as never);
 
   // Channel destination so outbound messages can route
-  const destName = allocateDestinationName(id, `${mg.name || mg.channel_type}-${mg.channel_type}`);
-  createDestination({
+  const destName = await allocateDestinationName(id, `${mg.name || mg.channel_type}-${mg.channel_type}`);
+  await createDestination({
     agent_group_id: id,
     local_name: destName,
     target_type: 'channel',

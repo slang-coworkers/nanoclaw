@@ -1,11 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 
-import { initTestSessionDb, closeSessionDb, getInboundDb } from './db/connection.js';
-import {
-  buildSystemPromptAddendum,
-  getAllDestinations,
-  getDestinationsFingerprint,
-} from './destinations.js';
+import { closeSessionDb, getInboundDb, initTestSessionDb } from './mailbox/sqlite/connection.js';
+import { buildSystemPromptAddendum, getAllDestinations, getDestinationsFingerprint } from './destinations.js';
 
 beforeEach(() => {
   initTestSessionDb();
@@ -22,6 +18,18 @@ function insertDest(name: string, displayName: string = name): void {
        VALUES (?, ?, 'channel', 'discord', 'chan', NULL)`,
     )
     .run(name, displayName);
+}
+
+// Upstream helper (used by the SessionMode-aware system-prompt tests). Kept
+// alongside insertDest — nv-main's fingerprint tests use insertDest; upstream's
+// task-vs-chat tests use seedDestination with explicit channel/platform.
+function seedDestination(name: string, displayName: string, channelType: string, platformId: string): void {
+  getInboundDb()
+    .prepare(
+      `INSERT INTO destinations (name, display_name, type, channel_type, platform_id, agent_group_id)
+       VALUES (?, ?, 'channel', ?, ?, NULL)`,
+    )
+    .run(name, displayName, channelType, platformId);
 }
 
 describe('destinations fingerprint', () => {
@@ -81,5 +89,18 @@ describe('buildSystemPromptAddendum reflects live destinations table', () => {
     expect(getAllDestinations().map((d) => d.name)).toEqual(['alpha']);
     insertDest('beta');
     expect(getAllDestinations().map((d) => d.name).sort()).toEqual(['alpha', 'beta']);
+  });
+
+  it('gives task sessions only explicit-tool delivery instructions', () => {
+    seedDestination('casa', 'Casa', 'whatsapp', 'group-1@g.us');
+
+    const prompt = buildSystemPromptAddendum('Casa', { kind: 'task', taskId: 'daily-briefing-a25c' });
+
+    expect(prompt).toContain('isolated task run');
+    expect(prompt).toContain('send_message({ to: "name"');
+    expect(prompt).toContain('tasks/daily-briefing-a25c.md');
+    expect(prompt).toContain('Only notify someone when the task asks');
+    expect(prompt).not.toContain('<message to=');
+    expect(prompt).not.toContain('default to addressing');
   });
 });

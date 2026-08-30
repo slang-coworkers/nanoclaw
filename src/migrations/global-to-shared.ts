@@ -112,6 +112,14 @@ function applyMigration(projectRoot: string): MigrationLog {
   if (fs.existsSync(dbPath)) {
     let db: Database.Database | null = null;
     try {
+      // Back up the central DB before the destructive UPDATE/DELETE. This runs
+      // once at boot (marker-guarded) and DELETEs agent_groups rows; a plain
+      // file copy is the cheap undo if the migration or a later step goes wrong.
+      const backupPath = `${dbPath}.pre-global-to-shared.bak`;
+      if (!fs.existsSync(backupPath)) {
+        fs.copyFileSync(dbPath, backupPath);
+        log.actions.push(`DB: backed up ${dbPath} → ${backupPath} before global→shared`);
+      }
       db = new Database(dbPath);
       const txn = db.transaction(() => {
         const u = db!.prepare("UPDATE agent_groups SET coworker_type = 'default' WHERE coworker_type = 'global'").run();

@@ -9,10 +9,15 @@
 import fs from 'fs';
 import path from 'path';
 
-import { getCurrentInReplyTo } from '../current-batch.js';
 import { findByName, findByRouting, getAllDestinations } from '../destinations.js';
-import { getMessageInBySeq, getUnrespondedInboundsFromThread, hasInboundFromThread, type MessageInRow } from '../db/messages-in.js';
+import {
+  getMessageInBySeq,
+  getUnrespondedInboundsFromThread,
+  hasInboundFromThread,
+  type MessageInRow,
+} from '../db/messages-in.js';
 import { getMessageIdBySeq, getRoutingBySeq, hasOutboundToThread, writeMessageOut } from '../db/messages-out.js';
+import { getCurrentInReplyTo } from '../db/session-state.js';
 import { getSessionRouting } from '../db/session-routing.js';
 import { auditCompletionMarkers, auditMetaAck } from './gate-audit.js';
 import { registerTools } from './server.js';
@@ -43,10 +48,7 @@ function destinationList(): string {
 /**
  * Resolve a destination name to routing fields.
  *
- * If `to` is omitted, use the session's default reply routing (channel +
- * thread the conversation is in) — the agent replies in place.
- *
- * If `to` is specified, look up the named destination. If it resolves to
+ * Look up the explicitly named destination. If it resolves to
  * the same channel the session is bound to, the session's thread_id is
  * preserved so replies land in the correct thread.
  *
@@ -65,9 +67,10 @@ function destinationList(): string {
 function resolveRouting(
   to: string | undefined,
   explicitThreadId: string | null,
-):
-  | { channel_type: string; platform_id: string; thread_id: string | null; resolvedName: string }
-  | { error: string } {
+): { channel_type: string; platform_id: string; thread_id: string | null; resolvedName: string } | { error: string } {
+  // nv-main keeps `to` OPTIONAL (upstream made it required): the fork's
+  // chain-communication model relies on a bare send defaulting to the current
+  // conversation + thread propagation (see CLAUDE.md "Sending messages").
   if (!to) {
     // Default: reply to whatever thread/channel this session is bound to.
     const session = getSessionRouting();
@@ -96,8 +99,7 @@ function resolveRouting(
     // If the destination is the same channel the session is bound to,
     // preserve the thread_id so replies land in the correct thread.
     const session = getSessionRouting();
-    const sameChannel =
-      session.channel_type === dest.channelType && session.platform_id === dest.platformId;
+    const sameChannel = session.channel_type === dest.channelType && session.platform_id === dest.platformId;
     const threadId = explicitThreadId ?? (sameChannel ? session.thread_id : null);
     return {
       channel_type: dest.channelType!,
@@ -141,9 +143,7 @@ function normalizeThreadIdArg(raw: unknown): { ok: true; value: string | null } 
  * the model gets actionable feedback in a multi-thread batch instead of
  * silently mis-routing.
  */
-function resolveInReplyTo(
-  raw: unknown,
-): { ok: true; row: MessageInRow | null } | { ok: false; error: string } {
+function resolveInReplyTo(raw: unknown): { ok: true; row: MessageInRow | null } | { ok: false; error: string } {
   if (raw === undefined || raw === null) return { ok: true, row: null };
   const seq = typeof raw === 'number' ? raw : Number(raw);
   if (!Number.isInteger(seq) || seq <= 0) {
@@ -231,7 +231,7 @@ function applyInReplyToDefaults(
   // Pass inbound's thread_id as the "explicit" thread arg so resolveRouting
   // uses it instead of falling through to session-thread auto-propagation.
   // Caller's explicit thread_id arg always wins.
-  const resolvedThread = threadIdArg !== null ? threadIdArg : inReplyRow.thread_id ?? null;
+  const resolvedThread = threadIdArg !== null ? threadIdArg : (inReplyRow.thread_id ?? null);
   return { to: resolvedTo, threadId: resolvedThread };
 }
 
@@ -264,11 +264,7 @@ function autoResolveInReplyForPeerThread(
   // unresponded-inbound check below is the deterministic signal — it
   // already filters out inbounds we've already replied to, so continuation
   // (all replied) naturally returns 0 candidates and falls through.
-  const candidates = getUnrespondedInboundsFromThread(
-    routing.channel_type,
-    routing.platform_id,
-    routing.thread_id,
-  );
+  const candidates = getUnrespondedInboundsFromThread(routing.channel_type, routing.platform_id, routing.thread_id);
   if (candidates.length === 0) return { row: null, error: null };
   if (candidates.length === 1) return { row: candidates[0], error: null };
   // Multiple unresponded inbounds — REJECT to force the agent to disambiguate.
@@ -290,7 +286,11 @@ export const sendMessage: McpToolDefinition = {
     inputSchema: {
       type: 'object' as const,
       properties: {
-        to: { type: 'string', description: 'Destination name (e.g., "family", "worker-1"). Optional if you have only one destination, or if `in_reply_to` is set (defaults to that inbound\'s source).' },
+        to: {
+          type: 'string',
+          description:
+            'Destination name (e.g., "family", "worker-1"). Optional if you have only one destination, or if `in_reply_to` is set (defaults to that inbound\'s source).',
+        },
         text: { type: 'string', description: 'Message content' },
         thread_id: {
           type: 'string',
@@ -343,7 +343,7 @@ export const sendMessage: McpToolDefinition = {
         : null;
 
     const id = generateId();
-    const seq = writeMessageOut({
+    const seq = await writeMessageOut({
       id,
       kind: 'chat',
       platform_id: routing.platform_id,
@@ -354,7 +354,9 @@ export const sendMessage: McpToolDefinition = {
     });
 
     const wasAutoResolved = effectiveInReplyRow && effectiveInReplyRow !== inReplyRow;
-    log(`send_message: #${seq} → ${routing.resolvedName}${routing.thread_id ? ` (thread=${routing.thread_id})` : ''}${effectiveInReplyRow ? ` (in_reply_to=${effectiveInReplyRow.seq}${wasAutoResolved ? ' auto' : ''})` : ''}`);
+    log(
+      `send_message: #${seq} → ${routing.resolvedName}${routing.thread_id ? ` (thread=${routing.thread_id})` : ''}${effectiveInReplyRow ? ` (in_reply_to=${effectiveInReplyRow.seq}${wasAutoResolved ? ' auto' : ''})` : ''}`,
+    );
     const baseMsg = `Message sent to ${routing.resolvedName} (id: ${seq})`;
     const audits: string[] = [];
     const completionAudit = auditCompletionMarkers(text);
@@ -369,18 +371,22 @@ export const sendMessage: McpToolDefinition = {
 export const sendFile: McpToolDefinition = {
   tool: {
     name: 'send_file',
-    description: 'Send a file to a named destination. If you have only one destination, you can omit `to`. Same in_reply_to semantics as send_message — pass `in_reply_to=<id>` to attach the file as a reply to a specific inbound message.',
+    description:
+      'Send a file to a named destination. If you have only one destination, you can omit `to`. Same in_reply_to semantics as send_message — pass `in_reply_to=<id>` to attach the file as a reply to a specific inbound message.',
     inputSchema: {
       type: 'object' as const,
       properties: {
-        to: { type: 'string', description: 'Destination name. Optional if you have only one destination, or if `in_reply_to` is set.' },
+        to: {
+          type: 'string',
+          description: 'Destination name. Optional if you have only one destination, or if `in_reply_to` is set.',
+        },
         path: { type: 'string', description: 'File path (relative to /workspace/agent/ or absolute)' },
         text: { type: 'string', description: 'Optional accompanying message' },
         filename: { type: 'string', description: 'Display name (default: basename of path)' },
         thread_id: {
           type: 'string',
           description:
-            'Optional thread identifier. Same semantics as send_message: defaults to `in_reply_to`\'s thread when set, otherwise the current session\'s thread_id.',
+            "Optional thread identifier. Same semantics as send_message: defaults to `in_reply_to`'s thread when set, otherwise the current session's thread_id.",
         },
         in_reply_to: {
           type: 'integer',
@@ -445,7 +451,7 @@ export const sendFile: McpToolDefinition = {
     };
     if (targetSessionId) fileContent.target_session_id = targetSessionId;
 
-    writeMessageOut({
+    await writeMessageOut({
       id,
       kind: 'chat',
       platform_id: routing.platform_id,
@@ -456,7 +462,9 @@ export const sendFile: McpToolDefinition = {
     });
 
     const wasAutoResolvedFile = effectiveInReplyRow && effectiveInReplyRow !== inReplyRow;
-    log(`send_file: ${id} → ${routing.resolvedName} (${filename})${effectiveInReplyRow ? ` (in_reply_to=${effectiveInReplyRow.seq}${wasAutoResolvedFile ? ' auto' : ''})` : ''}`);
+    log(
+      `send_file: ${id} → ${routing.resolvedName} (${filename})${effectiveInReplyRow ? ` (in_reply_to=${effectiveInReplyRow.seq}${wasAutoResolvedFile ? ' auto' : ''})` : ''}`,
+    );
     return ok(`File sent to ${routing.resolvedName} (id: ${id}, filename: ${filename})`);
   },
 };
@@ -488,7 +496,7 @@ export const addReaction: McpToolDefinition = {
     }
 
     const id = generateId();
-    writeMessageOut({
+    await writeMessageOut({
       id,
       kind: 'chat',
       platform_id: routing.platform_id,
@@ -537,4 +545,72 @@ const reportPrCreated: McpToolDefinition = {
   },
 };
 
-registerTools([sendMessage, sendFile, addReaction, reportPrCreated]);
+const recordDecision: McpToolDefinition = {
+  tool: {
+    name: 'record_decision',
+    description:
+      'Record one PR-approval decision to the host approval_decisions ledger. Host-owned + auditable; survives container exit. The host ENFORCES that your agent group holds the ledger-writer capability — a call from any other group is denied and you are told so; this is not an honour-system restriction. APPEND-ONLY: one row per (repo, pr, commit_sha), first write wins. Repeating an identical decision is a harmless no-op; a DIFFERENT decision for the same commit is refused — record the new head instead. This is the ledger append gated by the critique stages; call it only after the recorded verdicts exist. The human review outcome is joined automatically by the host from GitHub, so there is nothing for you to report about it.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        repo: { type: 'string', description: 'Repository in owner/name format (e.g. shader-slang/slang)' },
+        pr_number: { type: 'number', description: 'PR number' },
+        commit_sha: { type: 'string', description: 'The reviewed commit (R0 in historical mode; head in live)' },
+        mode: { type: 'string', description: 'historical | live | live_late' },
+        decision: {
+          type: 'string',
+          description: 'Closed enum: WOULD_APPROVE | BLOCK | ABSTAIN_POLICY',
+        },
+        reason_code: { type: 'string', description: 'e.g. CLAUSE_FAIL:<name>, OPEN_GAP, REVIEW_DOC_MISSING' },
+        review_diff_hash: { type: 'string', description: 'The diff_hash the review doc reported reviewing' },
+        policy_version: { type: 'string', description: 'APPROVAL_POLICY policy_version' },
+        clauses: { description: 'The clauses.json evidence (object or JSON string)' },
+        challenger: { description: 'Challenger finding or CHALLENGER_CLEAN (object or JSON string)' },
+        ts: { type: 'string', description: 'ISO timestamp of the decision' },
+      },
+      required: ['repo', 'pr_number', 'commit_sha', 'decision'],
+    },
+  },
+  async handler(args) {
+    const repo = typeof args.repo === 'string' ? args.repo.trim() : '';
+    const prNumber = typeof args.pr_number === 'number' ? args.pr_number : NaN;
+    const commitSha = typeof args.commit_sha === 'string' ? args.commit_sha.trim() : '';
+    const decision = typeof args.decision === 'string' ? args.decision.trim() : '';
+    if (!repo || !Number.isFinite(prNumber) || !commitSha || !decision) {
+      return err('repo (string), pr_number (number), commit_sha (string), decision (string) are required');
+    }
+
+    const seq = writeMessageOut({
+      id: generateId(),
+      kind: 'system',
+      platform_id: null,
+      channel_type: null,
+      thread_id: null,
+      content: JSON.stringify({
+        action: 'record_decision',
+        repo,
+        pr_number: prNumber,
+        commit_sha: commitSha,
+        mode: args.mode,
+        decision,
+        reason_code: args.reason_code,
+        review_diff_hash: args.review_diff_hash,
+        policy_version: args.policy_version,
+        clauses: args.clauses,
+        challenger: args.challenger,
+        ts: args.ts,
+      }),
+    });
+
+    log(`record_decision: #${seq} → ${repo}#${prNumber}@${commitSha.slice(0, 12)} = ${decision}`);
+    return ok(`Decision recorded: ${repo}#${prNumber}@${commitSha.slice(0, 12)} = ${decision}`);
+  },
+};
+
+// `record_human_verdict` is deliberately NOT registered. The human review
+// outcome is stamped host-side from the GitHub webhook that observed it
+// (notifyApproverOfTerminalPr), keyed by the delivery id; the host guard denies
+// the container-originated action outright. Offering a tool whose every call is
+// refused would just burn approver turns. The host-side denial remains as
+// defence in depth for container images built before this change.
+registerTools([sendMessage, sendFile, addReaction, reportPrCreated, recordDecision]);

@@ -23,6 +23,12 @@ import {
   stopServer,
 } from './mcp-registry.js';
 
+// Upper bound on a proxied MCP request body. Tool-call args are small; this is
+// a DoS backstop so a prompt-injected agent can't exhaust host memory by
+// streaming an unbounded body at the proxy. Generous enough not to clip a
+// legitimate large tool-call payload.
+const MAX_MCP_BODY_BYTES = 32 * 1024 * 1024;
+
 // ── Token registry ──────────────────────────────────────────────────────────
 
 interface TokenEntry {
@@ -61,6 +67,31 @@ export function registerContainerToken(groupFolder: string, allowedMcpTools: str
 /** Remove a token when the container exits. */
 export function revokeContainerToken(token: string): void {
   tokens.delete(token);
+}
+
+/**
+ * Re-scope every live token belonging to a group, without respawning it.
+ *
+ * `registerContainerToken` snapshots the allow-list into the token at spawn, so
+ * editing `agent_groups.allowed_mcp_tools` alone changes nothing for a container
+ * that is already running — the operator would have to restart it, killing work
+ * in flight. This applies the new list to the running container immediately.
+ *
+ * Returns the number of tokens re-scoped (0 if the group has none live).
+ */
+export function updateContainerTokenScope(groupFolder: string, allowedMcpTools: string[]): number {
+  const scopedNames = allowedMcpTools
+    .filter((t) => t.startsWith('mcp__') && !t.startsWith('mcp__nanoclaw__'))
+    .map((t) => t.split('__').slice(1).join('__'));
+  let n = 0;
+  for (const entry of tokens.values()) {
+    if (entry.groupFolder !== groupFolder) continue;
+    // Mutate in place: the container holds the bearer token itself, so the token
+    // string must not change — only what it authorises.
+    entry.allowedTools = new Set(scopedNames);
+    n++;
+  }
+  return n;
 }
 
 // ── Tool discovery ──────────────────────────────────────────────────────────
@@ -382,8 +413,27 @@ export function startMcpAuthProxy(
 
     // ── Collect request body for tool ACL check ─────────────────────
     const chunks: Buffer[] = [];
-    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    let bodyLen = 0;
+    let bodyTooLarge = false;
+    req.on('data', (chunk: Buffer) => {
+      bodyLen += chunk.length;
+      if (bodyLen > MAX_MCP_BODY_BYTES) {
+        if (!bodyTooLarge) {
+          bodyTooLarge = true;
+          log.warn('MCP auth proxy: request body exceeds cap, rejecting', {
+            group: entry.groupFolder,
+            cap: MAX_MCP_BODY_BYTES,
+          });
+          res.writeHead(413, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'request body too large' }));
+          req.destroy();
+        }
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on('end', () => {
+      if (bodyTooLarge) return;
       const body = Buffer.concat(chunks);
 
       // Check tool-level ACL on tools/call requests and track tools/list for filtering
@@ -391,29 +441,38 @@ export function startMcpAuthProxy(
       if (body.length > 0) {
         try {
           const parsed = JSON.parse(body.toString());
-          if (parsed.method === 'tools/call' && parsed.params?.name) {
-            const toolName: string = parsed.params.name;
-            const scopedKey = serverName ? `${serverName}__${toolName}` : toolName;
-            if (!entry.allowedTools.has(scopedKey)) {
-              log.warn('MCP auth proxy: tool call blocked', {
-                group: entry.groupFolder,
-                tool: scopedKey,
-              });
-              res.writeHead(403, { 'Content-Type': 'application/json' });
-              res.end(
-                JSON.stringify({
-                  jsonrpc: '2.0',
-                  id: parsed.id,
-                  error: {
-                    code: -32600,
-                    message: `Tool "${toolName}" is not authorized for this agent on server "${serverName}"`,
-                  },
-                }),
-              );
-              return;
+          // A JSON-RPC batch is a top-level array; a single call is an object.
+          // Enforce the tool ACL on EVERY tools/call in the payload — otherwise
+          // a container scoped to one tool could smuggle a disallowed call
+          // through by wrapping it in a batch array (parsed.method is undefined
+          // for an array, which the old single-object check skipped entirely).
+          const messages: Array<Record<string, unknown>> = Array.isArray(parsed) ? parsed : [parsed];
+          for (const m of messages) {
+            const params = m?.params as { name?: string } | undefined;
+            if (m?.method === 'tools/call' && params?.name) {
+              const toolName: string = params.name;
+              const scopedKey = serverName ? `${serverName}__${toolName}` : toolName;
+              if (!entry.allowedTools.has(scopedKey)) {
+                log.warn('MCP auth proxy: tool call blocked', {
+                  group: entry.groupFolder,
+                  tool: scopedKey,
+                });
+                res.writeHead(403, { 'Content-Type': 'application/json' });
+                res.end(
+                  JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: m.id ?? null,
+                    error: {
+                      code: -32600,
+                      message: `Tool "${toolName}" is not authorized for this agent on server "${serverName}"`,
+                    },
+                  }),
+                );
+                return;
+              }
+            } else if (m?.method === 'tools/list') {
+              isToolsList = true;
             }
-          } else if (parsed.method === 'tools/list') {
-            isToolsList = true;
           }
         } catch {
           // Not valid JSON — pass through
@@ -485,7 +544,7 @@ export function startMcpAuthProxy(
               // hit this deadline. Logged at INFO so it's traceable but not
               // alarming. A real problem (Python MCP genuinely hung mid-call)
               // would manifest as repeated firings on a NEW session each time.
-              log.info('MCP auth proxy: response stream deadline (5m)', {
+              log.debug('MCP auth proxy: response stream deadline (5m)', {
                 server: serverName,
                 path: upstreamPath,
               });
@@ -503,7 +562,7 @@ export function startMcpAuthProxy(
 
       proxyReq.on('timeout', () => {
         // See response-stream deadline above — same expected-behavior story.
-        log.info('MCP auth proxy: upstream request timeout (5m)', { server: serverName, path: upstreamPath });
+        log.debug('MCP auth proxy: upstream request timeout (5m)', { server: serverName, path: upstreamPath });
         proxyReq.destroy();
         if (!res.headersSent) {
           res.writeHead(504, { 'Content-Type': 'application/json' });

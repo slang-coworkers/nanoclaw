@@ -25,6 +25,74 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$PROJECT_ROOT"
 
+# ─── --slack-agents: former testing flag, accepted and ignored ─────────
+# The managed Slack experience is simply the default; the flag that once
+# enabled it is swallowed so older invocations keep working.
+_filtered_args=()
+for arg in "$@"; do
+  if [ "$arg" = "--slack-agents" ]; then
+    :
+  else
+    _filtered_args+=("$arg")
+  fi
+done
+set -- ${_filtered_args[@]+"${_filtered_args[@]}"}
+unset _filtered_args
+
+# ─── --help: show usage without bootstrapping ──────────────────────────
+for arg in "$@"; do
+  if [ "$arg" = "--help" ] || [ "$arg" = "-h" ]; then
+    if command -v node >/dev/null 2>&1 && [ -x "$PROJECT_ROOT/node_modules/.bin/tsx" ]; then
+      exec "$PROJECT_ROOT/node_modules/.bin/tsx" "$PROJECT_ROOT/setup/auto.ts" "$@"
+    fi
+    echo "Usage: bash nanoclaw.sh [options]"
+    echo ""
+    echo "  --template-path <ref>  Create or update an agent from templates/<ref>"
+    echo "  --uninstall            Uninstall this NanoClaw copy"
+    echo "  --help, -h             Show this help without installing dependencies"
+    exit 0
+  fi
+done
+
+# ─── --uninstall: short-circuit before any setup work ──────────────────
+# Never install dependencies just to uninstall. With the TS toolchain
+# present, hand straight off to setup:auto (the flow lives in
+# setup/uninstall/); without it, print manual cleanup guidance. Runs
+# before diagnostics.sh is sourced so a pure uninstall doesn't emit
+# setup_launched, and before all pre-flights/bootstrap.
+for arg in "$@"; do
+  if [ "$arg" = "--uninstall" ]; then
+    # exec tsx directly rather than `pnpm run -- …`: pnpm passes the `--`
+    # separator through to the script, where the flag parser treats
+    # everything after it as positional args and the flags get dropped.
+    # Gate on node (tsx's shebang interpreter) — pnpm isn't used here.
+    if command -v node >/dev/null 2>&1 && [ -x "$PROJECT_ROOT/node_modules/.bin/tsx" ]; then
+      exec "$PROJECT_ROOT/node_modules/.bin/tsx" "$PROJECT_ROOT/setup/auto.ts" "$@"
+    fi
+    export NANOCLAW_PROJECT_ROOT="$PROJECT_ROOT"
+    # shellcheck source=setup/lib/install-slug.sh
+    source "$PROJECT_ROOT/setup/lib/install-slug.sh"
+    UNINSTALL_RUNTIME="${CONTAINER_RUNTIME:-docker}"
+    echo "Can't run the uninstaller: dependencies are missing (node_modules/)."
+    echo "Either re-run 'bash nanoclaw.sh' once to restore them, or clean up manually:"
+    echo ""
+    if [ "$(uname -s)" = "Darwin" ]; then
+      echo "  launchctl unload ~/Library/LaunchAgents/$(launchd_label).plist"
+      echo "  rm -f ~/Library/LaunchAgents/$(launchd_label).plist"
+    else
+      echo "  systemctl --user disable --now $(systemd_unit).service"
+      echo "  rm -f ~/.config/systemd/user/$(systemd_unit).service && systemctl --user daemon-reload"
+    fi
+    echo "  $UNINSTALL_RUNTIME ps -aq --filter label=nanoclaw-install=$(_nanoclaw_install_slug) | xargs -r $UNINSTALL_RUNTIME rm -f"
+    echo "  $UNINSTALL_RUNTIME rmi $(container_image_base):latest"
+    echo "  rm -f ~/.local/bin/ncl    # only if it points at this folder"
+    echo "  rm -rf \"$(dirname "$PROJECT_ROOT")/.nanoclaw-updates/$(_nanoclaw_install_slug)\""
+    echo ""
+    echo "Then back up $PROJECT_ROOT/.env if you need the keys, and delete the folder."
+    exit 1
+  fi
+done
+
 LOGS_DIR="$PROJECT_ROOT/logs"
 STEPS_DIR="$LOGS_DIR/setup-steps"
 PROGRESS_LOG="$LOGS_DIR/setup.log"
@@ -369,5 +437,6 @@ fi
 # --silent suppresses pnpm's `> nanoclaw@2.0.0 setup:auto / > tsx setup/auto.ts`
 # preamble so the flow continues visually from "Basics installed" straight
 # into setup:auto's spinner. exec so signals (Ctrl-C) propagate directly.
-# `-- "$@"` forwards any flags (e.g. --onecli-api-host) to setup:auto.
-exec pnpm --silent run setup:auto -- "$@"
+# pnpm forwards arguments after the script name directly. Passing an extra
+# `--` would reach setup:auto and make its parser stop before our flags.
+exec pnpm --silent run setup:auto "$@"

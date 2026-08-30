@@ -28,14 +28,27 @@ import { getDeliveryAdapter } from '../../delivery.js';
 import { wakeContainer } from '../../container-runner.js';
 import { log } from '../../log.js';
 import { writeSessionMessage } from '../../session-manager.js';
-import type { MessagingGroup, Session } from '../../types.js';
+import type { MessagingGroup, PendingApproval, Session } from '../../types.js';
 import { getAdminsOfAgentGroup, getGlobalAdmins, getOwners } from '../permissions/db/user-roles.js';
 import { ensureUserDm } from '../permissions/user-dm.js';
 
-/** Two-button approval UI — the only options the primitive supports today. */
+/**
+ * Card value for the "Reject with reason…" button. Selecting it doesn't
+ * finalize the reject — it holds the row and captures the approver's next DM
+ * as a one-line reason relayed to the requesting agent. See reason-capture.ts.
+ */
+export const REJECT_WITH_REASON_VALUE = 'reject_with_reason';
+
+/**
+ * Three-button approval UI. Plain Reject is the instant fast path; "Reject with
+ * reason…" opts into the reason-capture flow. Shared by every module approval
+ * (create_agent, install_packages, add_mcp_server); OneCLI credential cards
+ * keep their own two-button set in onecli-approvals.ts.
+ */
 const APPROVAL_OPTIONS: RawOption[] = [
-  { label: 'Approve', selectedLabel: '✅ Approved', value: 'approve' },
-  { label: 'Reject', selectedLabel: '❌ Rejected', value: 'reject' },
+  { label: 'Approve', selectedLabel: '✅ Approved', value: 'approve', style: 'primary' },
+  { label: 'Reject', selectedLabel: '❌ Rejected', value: 'reject', style: 'danger' },
+  { label: 'Reject with reason…', selectedLabel: '📝 Rejected (awaiting reason)', value: REJECT_WITH_REASON_VALUE },
 ];
 
 // ── Approval handler registry ──
@@ -46,10 +59,16 @@ const APPROVAL_OPTIONS: RawOption[] = [
 export interface ApprovalHandlerContext {
   session: Session;
   payload: Record<string, unknown>;
+  /**
+   * The verified approval row — the grant an approved continuation carries
+   * when it re-enters its guarded entry point. Still live here; resolution
+   * deletes it after the handler returns, so a grant executes exactly once.
+   */
+  approval: PendingApproval;
   /** User ID of the admin who approved. Empty string if unknown. */
   userId: string;
   /** Send a system chat message to the requesting agent's session. */
-  notify: (text: string) => void;
+  notify: (text: string) => Promise<void>;
 }
 
 export type ApprovalHandler = (ctx: ApprovalHandlerContext) => Promise<void>;
@@ -67,13 +86,57 @@ export function getApprovalHandler(action: string): ApprovalHandler | undefined 
   return approvalHandlers.get(action);
 }
 
+// ── Approval-resolved callbacks ──
+// Modules that want to observe approval resolution (any action, approve or
+// reject) register here at import time. The response handler fires every
+// registered callback after the admin's decision is applied — e.g. a module
+// clearing an "awaiting approval" status indicator it set when the card went
+// out. Callback errors are logged and isolated; they never block resolution.
+//
+// Only authorized clicks resolve an approval (the response handler's
+// isAuthorizedApprovalClick gate runs first), so callbacks never fire for
+// unauthorized responses.
+
+export interface ApprovalResolvedEvent {
+  approval: PendingApproval;
+  session: Session;
+  outcome: 'approve' | 'reject';
+  /** Namespaced user ID (`<channel>:<handle>`) of the resolving admin. Empty string if unknown. */
+  userId: string;
+}
+
+export type ApprovalResolvedHandler = (event: ApprovalResolvedEvent) => Promise<void> | void;
+
+const approvalResolvedHandlers: ApprovalResolvedHandler[] = [];
+
+export function registerApprovalResolvedHandler(handler: ApprovalResolvedHandler): void {
+  approvalResolvedHandlers.push(handler);
+}
+
+/** Fire every registered approval-resolved callback. Called by the response handler. */
+export async function notifyApprovalResolved(event: ApprovalResolvedEvent): Promise<void> {
+  for (const handler of approvalResolvedHandlers) {
+    try {
+      await handler(event);
+      // eslint-disable-next-line no-catch-all/no-catch-all -- isolation is the contract: one bad callback must not block resolution or other callbacks
+    } catch (err) {
+      log.error('Approval-resolved handler threw', {
+        approvalId: event.approval.approval_id,
+        action: event.approval.action,
+        outcome: event.outcome,
+        err,
+      });
+    }
+  }
+}
+
 // ── Approver picking ──
 
 /**
  * Ordered list of user IDs eligible to approve an action for the given agent
  * group. Preference: admins @ that group → global admins → owners.
  */
-export function pickApprover(agentGroupId: string | null): string[] {
+export async function pickApprover(agentGroupId: string | null): Promise<string[]> {
   const approvers: string[] = [];
   const seen = new Set<string>();
   const add = (id: string): void => {
@@ -84,10 +147,10 @@ export function pickApprover(agentGroupId: string | null): string[] {
   };
 
   if (agentGroupId) {
-    for (const r of getAdminsOfAgentGroup(agentGroupId)) add(r.user_id);
+    for (const r of await getAdminsOfAgentGroup(agentGroupId)) add(r.user_id);
   }
-  for (const r of getGlobalAdmins()) add(r.user_id);
-  for (const r of getOwners()) add(r.user_id);
+  for (const r of await getGlobalAdmins()) add(r.user_id);
+  for (const r of await getOwners()) add(r.user_id);
 
   return approvers;
 }
@@ -126,8 +189,8 @@ function channelTypeOf(userId: string): string {
 // ── Request API ──
 
 /** Send a system chat to the agent's session. Used by callers and by the response handler. */
-export function notifyAgent(session: Session, text: string): void {
-  writeSessionMessage(session.agent_group_id, session.id, {
+export async function notifyAgent(session: Session, text: string): Promise<void> {
+  await writeSessionMessage(session.agent_group_id, session.id, {
     id: `sys-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     kind: 'chat',
     timestamp: new Date().toISOString(),
@@ -139,10 +202,8 @@ export function notifyAgent(session: Session, text: string): void {
     threadId: null,
     content: JSON.stringify({ text, sender: 'system', senderId: 'system' }),
   });
-  const fresh = getSession(session.id);
-  if (fresh) {
-    wakeContainer(fresh).catch((err) => log.error('Failed to wake container after notification', { err }));
-  }
+  const fresh = await getSession(session.id);
+  if (fresh) await wakeContainer(fresh);
 }
 
 export interface RequestApprovalOptions {
@@ -156,6 +217,8 @@ export interface RequestApprovalOptions {
   title: string;
   /** Card body shown to the admin. */
   question: string;
+  /** Deliver the card to this specific user instead of all of the session group's admins. */
+  approverUserId?: string;
 }
 
 /**
@@ -165,21 +228,21 @@ export interface RequestApprovalOptions {
  * approval handler for this action via the response dispatcher.
  */
 export async function requestApproval(opts: RequestApprovalOptions): Promise<void> {
-  const { session, action, payload, title, question, agentName } = opts;
+  const { session, action, payload, title, question, agentName, approverUserId } = opts;
 
-  const approvers = pickApprover(session.agent_group_id);
+  const approvers = approverUserId ? [approverUserId] : await pickApprover(session.agent_group_id);
   if (approvers.length === 0) {
-    notifyAgent(session, `${action} failed: no owner or admin configured to approve.`);
+    await notifyAgent(session, `${action} failed: no owner or admin configured to approve.`);
     return;
   }
 
   const originChannelType = session.messaging_group_id
-    ? (getMessagingGroup(session.messaging_group_id)?.channel_type ?? '')
+    ? ((await getMessagingGroup(session.messaging_group_id))?.channel_type ?? '')
     : '';
 
   const approvalId = `appr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const normalizedOptions = normalizeOptions(APPROVAL_OPTIONS);
-  createPendingApproval({
+  await createPendingApproval({
     approval_id: approvalId,
     session_id: session.id,
     request_id: approvalId,
@@ -191,13 +254,15 @@ export async function requestApproval(opts: RequestApprovalOptions): Promise<voi
     platform_id: null,
     platform_message_id: null,
     title,
+    question,
     options_json: JSON.stringify(normalizedOptions),
+    approver_user_id: approverUserId ?? null,
   });
 
   const target = await pickApprovalDelivery(approvers, originChannelType);
   if (!target) {
     log.warn('No DM channel for approval delivery — row persisted for dashboard', { action, approvalId });
-    notifyAgent(session, `${action} pending — awaiting admin review via dashboard.`);
+    await notifyAgent(session, `${action} pending — awaiting admin review via dashboard.`);
     return;
   }
 
@@ -217,14 +282,18 @@ export async function requestApproval(opts: RequestApprovalOptions): Promise<voi
           options: APPROVAL_OPTIONS,
         }),
       );
-      updatePendingApprovalDelivery(approvalId, {
+      await updatePendingApprovalDelivery(approvalId, {
         channel_type: target.messagingGroup.channel_type,
         platform_id: target.messagingGroup.platform_id,
         platform_message_id: null,
       });
     } catch (err) {
+      // nv-main keeps upstream's fail-closed delete in the DM-only case, but
+      // this fork has a dashboard that can surface a persisted pending row, so
+      // the row is retained (via updatePendingApprovalDelivery above) rather
+      // than deleted — an admin can still act on it from the dashboard.
       log.error('Failed to deliver approval card — row persisted for dashboard', { action, approvalId, err });
-      notifyAgent(session, `${action} pending — DM delivery failed, awaiting admin review via dashboard.`);
+      await notifyAgent(session, `${action} pending — DM delivery failed, awaiting admin review via dashboard.`);
       return;
     }
   }

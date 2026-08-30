@@ -1,165 +1,265 @@
 /**
- * AP03 regression: handleApprovalsResponse must return promptly even when
- * wakeContainer (which it fires post-state-transition) is slow. Before the
- * fix it awaited wakeContainer inline, so a container-spawn-bound wake
- * caused the dashboard's 5s fetch timeout to fire while the approval had
- * already been applied — client saw 500 on a successful action.
+ * Regression coverage for approval response authorization.
+ *
+ * Approval cards may be delivered to an admin DM, but the callback payload is
+ * still untrusted input. The response handler must not dispatch sensitive
+ * approval handlers merely because a response carries a valid questionId.
  */
+import * as fs from 'fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-let slowResolve: () => void = () => {};
-let wakeContainerMock: (...args: unknown[]) => Promise<void>;
+import { initTestDb, closeDb, runMigrations } from '../../db/index.js';
+import { createAgentGroup } from '../../db/agent-groups.js';
+import { createSession, createPendingApproval, getPendingApproval } from '../../db/sessions.js';
+import { upsertUser } from '../permissions/db/users.js';
+import { grantRole } from '../permissions/db/user-roles.js';
 
 vi.mock('../../container-runner.js', () => ({
-  wakeContainer: (...args: unknown[]) => wakeContainerMock(...args),
+  wakeContainer: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../../db/sessions.js', () => ({
-  getPendingApproval: vi.fn(),
-  deletePendingApproval: vi.fn(),
-  getSession: vi.fn(),
-}));
-
-vi.mock('../../session-manager.js', () => ({
-  writeSessionMessage: vi.fn(),
-}));
-
-vi.mock('./primitive.js', async () => {
-  const actual = await vi.importActual<Record<string, unknown>>('./primitive.js');
-  return {
-    ...actual,
-    getApprovalHandler: vi.fn(),
-    pickApprover: vi.fn(() => []),
-  };
+vi.mock('../../config.js', async () => {
+  const actual = await vi.importActual('../../config.js');
+  return { ...actual, DATA_DIR: '/tmp/nanoclaw-test-approval-response-authz' };
 });
 
-vi.mock('./onecli-approvals.js', () => ({
-  ONECLI_ACTION: 'onecli_credential',
-  resolveOneCLIApproval: vi.fn(() => false),
-}));
+const TEST_DIR = '/tmp/nanoclaw-test-approval-response-authz';
 
-describe('AP03: handleApprovalsResponse does not block on wakeContainer', () => {
-  let wakeCalls = 0;
-  beforeEach(() => {
-    wakeCalls = 0;
-    wakeContainerMock = () => {
-      wakeCalls++;
-      return new Promise<void>((resolve) => {
-        slowResolve = resolve;
-      });
-    };
+function now() {
+  return new Date().toISOString();
+}
+
+beforeEach(async () => {
+  if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true, force: true });
+  fs.mkdirSync(TEST_DIR, { recursive: true });
+  const db = await initTestDb();
+  await runMigrations(db);
+
+  await createAgentGroup({ id: 'ag-1', name: 'Agent', folder: 'agent', agent_provider: null, created_at: now() });
+  await createSession({
+    id: 'sess-1',
+    agent_group_id: 'ag-1',
+    messaging_group_id: null,
+    thread_id: null,
+    agent_provider: null,
+    status: 'active',
+    container_status: 'stopped',
+    last_active: now(),
+    created_at: now(),
   });
+});
 
-  afterEach(() => {
-    slowResolve();
-    vi.clearAllMocks();
-  });
+afterEach(async () => {
+  await closeDb();
+  if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true, force: true });
+});
 
-  it('Approve path returns within 200ms even when wakeContainer hangs', async () => {
+describe('approval response authorization', () => {
+  it('ignores a valid approval id clicked by a non-admin user', async () => {
+    const { registerApprovalHandler } = await import('./primitive.js');
     const { handleApprovalsResponse } = await import('./response-handler.js');
-    const sessionsMod = (await import('../../db/sessions.js')) as unknown as {
-      getPendingApproval: ReturnType<typeof vi.fn>;
-      deletePendingApproval: ReturnType<typeof vi.fn>;
-      getSession: ReturnType<typeof vi.fn>;
-    };
-    const primitiveMod = (await import('./primitive.js')) as unknown as {
-      getApprovalHandler: ReturnType<typeof vi.fn>;
-    };
+    const handler = vi.fn().mockResolvedValue(undefined);
+    registerApprovalHandler('install_packages', handler);
 
-    sessionsMod.getPendingApproval.mockReturnValue({
-      approval_id: 'a1',
+    await createPendingApproval({
+      approval_id: 'appr-1',
       session_id: 'sess-1',
-      agent_group_id: 'ag-1',
+      request_id: 'appr-1',
       action: 'install_packages',
-      payload: '{"pkg":"cowsay"}',
-      created_at: new Date().toISOString(),
-      status: 'pending',
-      channel_type: null,
-      platform_id: null,
-      platform_message_id: null,
-      expires_at: null,
-      title: 't',
-      options_json: '[]',
-    });
-    sessionsMod.getSession.mockReturnValue({
-      id: 'sess-1',
-      agent_group_id: 'ag-1',
-      messaging_group_id: null,
-      thread_id: null,
-      status: 'active',
-      container_status: 'idle',
-      last_active: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      agent_provider: 'claude',
-    });
-    primitiveMod.getApprovalHandler.mockReturnValue(async () => {
-      /* instant handler */
+      payload: JSON.stringify({ packages: ['left-pad'] }),
+      created_at: now(),
+      title: 'Install packages',
+      options_json: JSON.stringify([]),
     });
 
-    const started = Date.now();
-    await handleApprovalsResponse({
-      questionId: 'a1',
+    const claimed = await handleApprovalsResponse({
+      questionId: 'appr-1',
       value: 'approve',
-      userId: 'dashboard-admin',
-      channelType: 'dashboard',
-      platformId: 'dashboard',
+      userId: 'stranger',
+      channelType: 'telegram',
+      platformId: 'dm-stranger',
       threadId: null,
     });
-    const elapsed = Date.now() - started;
 
-    expect(elapsed).toBeLessThan(200);
-    expect(wakeCalls).toBe(1);
-    expect(sessionsMod.deletePendingApproval).toHaveBeenCalledWith('a1');
+    expect(claimed).toBe(true);
+    expect(handler).not.toHaveBeenCalled();
+    expect(await getPendingApproval('appr-1')).toBeDefined();
   });
 
-  it('Reject path also fire-and-forgets the wake', async () => {
+  it('allows an owner/admin click to dispatch the registered approval handler', async () => {
+    await upsertUser({ id: 'telegram:owner', kind: 'telegram', display_name: 'Owner', created_at: now() });
+    await grantRole({
+      user_id: 'telegram:owner',
+      role: 'owner',
+      agent_group_id: null,
+      granted_by: null,
+      granted_at: now(),
+    });
+
+    const { registerApprovalHandler } = await import('./primitive.js');
     const { handleApprovalsResponse } = await import('./response-handler.js');
-    const sessionsMod = (await import('../../db/sessions.js')) as unknown as {
-      getPendingApproval: ReturnType<typeof vi.fn>;
-      deletePendingApproval: ReturnType<typeof vi.fn>;
-      getSession: ReturnType<typeof vi.fn>;
-    };
+    const handler = vi.fn().mockResolvedValue(undefined);
+    registerApprovalHandler('install_packages_allowed', handler);
 
-    sessionsMod.getPendingApproval.mockReturnValue({
-      approval_id: 'a2',
-      session_id: 'sess-2',
-      agent_group_id: 'ag-1',
-      action: 'install_packages',
-      payload: '{}',
-      created_at: new Date().toISOString(),
-      status: 'pending',
-      channel_type: null,
-      platform_id: null,
-      platform_message_id: null,
-      expires_at: null,
-      title: 't',
-      options_json: '[]',
-    });
-    sessionsMod.getSession.mockReturnValue({
-      id: 'sess-2',
-      agent_group_id: 'ag-1',
-      messaging_group_id: null,
-      thread_id: null,
-      status: 'active',
-      container_status: 'idle',
-      last_active: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      agent_provider: 'claude',
+    await createPendingApproval({
+      approval_id: 'appr-2',
+      session_id: 'sess-1',
+      request_id: 'appr-2',
+      action: 'install_packages_allowed',
+      payload: JSON.stringify({ packages: ['left-pad'] }),
+      created_at: now(),
+      title: 'Install packages',
+      options_json: JSON.stringify([]),
     });
 
-    const started = Date.now();
-    await handleApprovalsResponse({
-      questionId: 'a2',
-      value: 'reject',
-      userId: 'dashboard-admin',
-      channelType: 'dashboard',
-      platformId: 'dashboard',
+    const claimed = await handleApprovalsResponse({
+      questionId: 'appr-2',
+      value: 'approve',
+      userId: 'owner',
+      channelType: 'telegram',
+      platformId: 'dm-owner',
       threadId: null,
     });
-    const elapsed = Date.now() - started;
 
-    expect(elapsed).toBeLessThan(200);
-    expect(wakeCalls).toBe(1);
-    expect(sessionsMod.deletePendingApproval).toHaveBeenCalledWith('a2');
+    expect(claimed).toBe(true);
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ userId: 'telegram:owner' }));
+    expect(await getPendingApproval('appr-2')).toBeUndefined();
+  });
+
+  it('lets only one concurrent approval response run the action handler', async () => {
+    await upsertUser({ id: 'telegram:owner-race', kind: 'telegram', display_name: 'Owner', created_at: now() });
+    await grantRole({
+      user_id: 'telegram:owner-race',
+      role: 'owner',
+      agent_group_id: null,
+      granted_by: null,
+      granted_at: now(),
+    });
+
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { registerApprovalHandler } = await import('./primitive.js');
+    const { handleApprovalsResponse } = await import('./response-handler.js');
+    const handler = vi.fn(async () => held);
+    registerApprovalHandler('approval_race_action', handler);
+    await createPendingApproval({
+      approval_id: 'appr-race',
+      session_id: 'sess-1',
+      request_id: 'appr-race',
+      action: 'approval_race_action',
+      payload: JSON.stringify({}),
+      created_at: now(),
+      title: 'Race approval',
+      options_json: JSON.stringify([]),
+    });
+    const response = {
+      questionId: 'appr-race',
+      value: 'approve',
+      userId: 'owner-race',
+      channelType: 'telegram',
+      platformId: 'dm-owner-race',
+      threadId: null,
+    };
+
+    const first = handleApprovalsResponse(response);
+    const second = handleApprovalsResponse(response);
+    await vi.waitFor(() => expect(handler).toHaveBeenCalledTimes(1));
+    release();
+    await Promise.all([first, second]);
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(await getPendingApproval('appr-race')).toBeUndefined();
+  });
+
+  it('allows global admins to resolve approvals without a session-scoped agent group', async () => {
+    await upsertUser({
+      id: 'telegram:global-admin',
+      kind: 'telegram',
+      display_name: 'Global Admin',
+      created_at: now(),
+    });
+    await grantRole({
+      user_id: 'telegram:global-admin',
+      role: 'admin',
+      agent_group_id: null,
+      granted_by: null,
+      granted_at: now(),
+    });
+
+    const { registerApprovalHandler } = await import('./primitive.js');
+    const { handleApprovalsResponse } = await import('./response-handler.js');
+    const handler = vi.fn().mockResolvedValue(undefined);
+    registerApprovalHandler('global_admin_allowed', handler);
+
+    await createPendingApproval({
+      approval_id: 'appr-3',
+      session_id: 'sess-1',
+      agent_group_id: null,
+      request_id: 'appr-3',
+      action: 'global_admin_allowed',
+      payload: JSON.stringify({ packages: ['left-pad'] }),
+      created_at: now(),
+      title: 'Install packages',
+      options_json: JSON.stringify([]),
+    });
+
+    const claimed = await handleApprovalsResponse({
+      questionId: 'appr-3',
+      value: 'approve',
+      userId: 'global-admin',
+      channelType: 'telegram',
+      platformId: 'dm-global-admin',
+      threadId: null,
+    });
+
+    expect(claimed).toBe(true);
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(await getPendingApproval('appr-3')).toBeUndefined();
+  });
+
+  it('an approval with approver_user_id is resolvable by that user, not a non-assignee', async () => {
+    const { registerApprovalHandler } = await import('./primitive.js');
+    const { handleApprovalsResponse } = await import('./response-handler.js');
+    const handler = vi.fn().mockResolvedValue(undefined);
+    registerApprovalHandler('assigned_approver_action', handler);
+
+    await createPendingApproval({
+      approval_id: 'appr-4',
+      session_id: 'sess-1',
+      request_id: 'appr-4',
+      action: 'assigned_approver_action',
+      payload: JSON.stringify({}),
+      created_at: now(),
+      title: 'Assigned approval',
+      options_json: JSON.stringify([]),
+      approver_user_id: 'telegram:dana',
+    });
+
+    // A non-assignee (no global/owner role) cannot resolve it.
+    await handleApprovalsResponse({
+      questionId: 'appr-4',
+      value: 'approve',
+      userId: 'stranger',
+      channelType: 'telegram',
+      platformId: 'dm-stranger',
+      threadId: null,
+    });
+    expect(handler).not.toHaveBeenCalled();
+    expect(await getPendingApproval('appr-4')).toBeDefined();
+
+    // The named approver resolves it.
+    await handleApprovalsResponse({
+      questionId: 'appr-4',
+      value: 'approve',
+      userId: 'dana',
+      channelType: 'telegram',
+      platformId: 'dm-dana',
+      threadId: null,
+    });
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(await getPendingApproval('appr-4')).toBeUndefined();
   });
 });

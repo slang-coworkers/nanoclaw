@@ -6,49 +6,57 @@
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 
-import { deleteOrphanProcessingClaims, getProcessingClaims } from './db/session-db.js';
+// Bounce claims stay free functions on the SQLite driver — the wrapped mailbox
+// surface has no operation for them (see the import comment in host-sweep.ts).
+import { getBouncedClaims } from './mailbox/sqlite/session-db.js';
 import {
   ABSOLUTE_CEILING_MS,
   CLAIM_STUCK_MS,
+  _redriveBouncedA2aForTesting,
   _resetStuckProcessingRowsForTesting,
   decideStuckAction,
   parseSqliteUtc,
+  shouldCloseTaskSession,
 } from './host-sweep.js';
 import type { Session } from './types.js';
+import { parseIsoTimestamp } from './mailbox/model.js';
+import { wrapSqliteInbound, wrapSqliteOutbound } from './mailbox/sqlite/index.js';
 
 const BASE = Date.parse('2026-04-20T12:00:00.000Z');
+const JUST_WITHIN_CEILING_MS = ABSOLUTE_CEILING_MS - 1;
+const JUST_OVER_CEILING_MS = ABSOLUTE_CEILING_MS + 1;
 
 function claim(id: string, offsetMs: number) {
-  return { message_id: id, status_changed: new Date(BASE - offsetMs).toISOString() };
+  return { messageId: id, statusChanged: new Date(BASE - offsetMs).toISOString() };
 }
 
 describe('decideStuckAction', () => {
-  it('returns ok when heartbeat is fresh and no claims', () => {
+  it('returns ok when heartbeat is within the absolute ceiling', () => {
     expect(
       decideStuckAction({
         now: BASE,
-        heartbeatMtimeMs: BASE - 5_000,
+        heartbeatMtimeMs: BASE - JUST_WITHIN_CEILING_MS,
         containerState: null,
         claims: [],
       }),
     ).toEqual({ action: 'ok' });
   });
 
-  it('returns kill-ceiling when heartbeat older than 30 min', () => {
-    const heartbeatMtimeMs = BASE - ABSOLUTE_CEILING_MS - 1_000;
+  it('returns kill-ceiling when heartbeat exceeds the absolute ceiling', () => {
     const res = decideStuckAction({
       now: BASE,
-      heartbeatMtimeMs,
+      heartbeatMtimeMs: BASE - JUST_OVER_CEILING_MS,
       containerState: null,
       claims: [],
     });
-    expect(res.action).toBe('kill-ceiling');
-    if (res.action !== 'kill-ceiling') return;
-    expect(res.ceilingMs).toBe(ABSOLUTE_CEILING_MS);
-    expect(res.heartbeatAgeMs).toBeGreaterThan(ABSOLUTE_CEILING_MS);
+    expect(res).toEqual({
+      action: 'kill-ceiling',
+      heartbeatAgeMs: JUST_OVER_CEILING_MS,
+      ceilingMs: ABSOLUTE_CEILING_MS,
+    });
   });
 
-  it('skips the ceiling check when no heartbeat file exists (fresh container not yet ticked)', () => {
+  it('skips the ceiling check when no heartbeat file exists and no fallback is known', () => {
     // A freshly-spawned container hasn't produced any SDK events yet, so no
     // heartbeat. Prior behavior treated this as infinitely stale and killed
     // every container within seconds of spawn. With no claims either, we
@@ -56,6 +64,46 @@ describe('decideStuckAction', () => {
     const res = decideStuckAction({
       now: BASE,
       heartbeatMtimeMs: 0,
+      containerState: null,
+      claims: [],
+    });
+    expect(res.action).toBe('ok');
+  });
+
+  it('does not kill a spawn within the absolute ceiling when heartbeat is absent', () => {
+    const res = decideStuckAction({
+      now: BASE,
+      heartbeatMtimeMs: 0,
+      containerStartedAtMs: BASE - JUST_WITHIN_CEILING_MS,
+      containerState: null,
+      claims: [],
+    });
+    expect(res.action).toBe('ok');
+  });
+
+  it('kills on ceiling using container spawn time when heartbeat never ticked', () => {
+    // Regression: a container spawns, finds nothing that warrants an SDK
+    // event, and sits idle indefinitely with no heartbeat file ever created.
+    // Prior behavior exempted it from the ceiling check forever.
+    const res = decideStuckAction({
+      now: BASE,
+      heartbeatMtimeMs: 0,
+      containerStartedAtMs: BASE - JUST_OVER_CEILING_MS,
+      containerState: null,
+      claims: [],
+    });
+    expect(res).toEqual({
+      action: 'kill-ceiling',
+      heartbeatAgeMs: JUST_OVER_CEILING_MS,
+      ceilingMs: ABSOLUTE_CEILING_MS,
+    });
+  });
+
+  it('prefers a heartbeat over the container spawn time', () => {
+    const res = decideStuckAction({
+      now: BASE,
+      heartbeatMtimeMs: BASE - JUST_WITHIN_CEILING_MS,
+      containerStartedAtMs: BASE - JUST_OVER_CEILING_MS,
       containerState: null,
       claims: [],
     });
@@ -83,9 +131,9 @@ describe('decideStuckAction', () => {
       // 45 min — over the default ceiling, but under the Bash timeout
       heartbeatMtimeMs: BASE - 45 * 60 * 1000,
       containerState: {
-        current_tool: 'Bash',
-        tool_declared_timeout_ms: twoHrMs,
-        tool_started_at: new Date(BASE - 45 * 60 * 1000).toISOString(),
+        currentTool: 'Bash',
+        toolDeclaredTimeoutMs: twoHrMs,
+        toolStartedAt: parseIsoTimestamp(new Date(BASE - 45 * 60 * 1000).toISOString()),
       },
       claims: [],
     });
@@ -134,9 +182,9 @@ describe('decideStuckAction', () => {
       // 5 min since claim, over the 60s default but under the declared Bash timeout
       heartbeatMtimeMs: BASE - 5 * 60 * 1000 - 5_000,
       containerState: {
-        current_tool: 'Bash',
-        tool_declared_timeout_ms: tenMinMs,
-        tool_started_at: new Date(BASE - 5 * 60 * 1000).toISOString(),
+        currentTool: 'Bash',
+        toolDeclaredTimeoutMs: tenMinMs,
+        toolStartedAt: parseIsoTimestamp(new Date(BASE - 5 * 60 * 1000).toISOString()),
       },
       claims: [claim('msg-1', 5 * 60 * 1000)],
     });
@@ -148,7 +196,7 @@ describe('decideStuckAction', () => {
       now: BASE,
       heartbeatMtimeMs: BASE - 5_000,
       containerState: null,
-      claims: [{ message_id: 'x', status_changed: 'not-a-date' }],
+      claims: [{ messageId: 'x', statusChanged: 'not-a-date' }],
     });
     expect(res.action).toBe('ok');
   });
@@ -165,7 +213,7 @@ describe('decideStuckAction', () => {
       now: BASE,
       heartbeatMtimeMs: 0,
       containerState: null,
-      claims: [{ message_id: 'sqlite-fmt', status_changed: sqliteTimestamp }],
+      claims: [{ messageId: 'sqlite-fmt', statusChanged: sqliteTimestamp }],
     });
     expect(res.action).toBe('ok');
   });
@@ -201,9 +249,9 @@ describe('parseSqliteUtc', () => {
 // container, breaking the loop atomically.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function makeSessionDbs(): { inDb: Database.Database; outDb: Database.Database } {
-  const inDb = new Database(':memory:');
-  inDb.exec(`
+function makeSessionDbs() {
+  const rawIn = new Database(':memory:');
+  rawIn.exec(`
     CREATE TABLE messages_in (
       id            TEXT PRIMARY KEY,
       seq           INTEGER UNIQUE,
@@ -221,15 +269,18 @@ function makeSessionDbs(): { inDb: Database.Database; outDb: Database.Database }
       content       TEXT NOT NULL
     );
   `);
-  const outDb = new Database(':memory:');
-  outDb.exec(`
+  const rawOut = new Database(':memory:');
+  rawOut.exec(`
     CREATE TABLE processing_ack (
       message_id     TEXT PRIMARY KEY,
       status         TEXT NOT NULL,
       status_changed TEXT NOT NULL
     );
   `);
-  return { inDb, outDb };
+  return {
+    inDb: Object.assign(wrapSqliteInbound(rawIn), { prepare: rawIn.prepare.bind(rawIn) }),
+    outDb: Object.assign(wrapSqliteOutbound(rawOut), { prepare: rawOut.prepare.bind(rawOut) }),
+  };
 }
 
 function fakeSession(): Session {
@@ -254,7 +305,7 @@ describe('deleteOrphanProcessingClaims', () => {
     outDb.prepare("INSERT INTO processing_ack VALUES ('m-done', 'completed', ?)").run(ts);
     outDb.prepare("INSERT INTO processing_ack VALUES ('m-fail', 'failed', ?)").run(ts);
 
-    const removed = deleteOrphanProcessingClaims(outDb);
+    const removed = outDb.deleteOrphanProcessingClaims();
 
     expect(removed).toBe(1);
     const remaining = outDb.prepare('SELECT message_id, status FROM processing_ack ORDER BY message_id').all();
@@ -266,7 +317,7 @@ describe('deleteOrphanProcessingClaims', () => {
 
   it('returns 0 when nothing to clear', () => {
     const { outDb } = makeSessionDbs();
-    expect(deleteOrphanProcessingClaims(outDb)).toBe(0);
+    expect(outDb.deleteOrphanProcessingClaims()).toBe(0);
   });
 });
 
@@ -286,13 +337,13 @@ describe('resetStuckProcessingRows — orphan claim cleanup', () => {
     outDb.prepare("INSERT INTO processing_ack VALUES ('m-1', 'processing', ?)").run(claimedAt);
 
     // Sanity: the orphan claim is what would trip claim-stuck.
-    expect(getProcessingClaims(outDb)).toHaveLength(1);
+    expect(outDb.getProcessingClaims()).toHaveLength(1);
 
     _resetStuckProcessingRowsForTesting(inDb, outDb, fakeSession(), 'absolute-ceiling');
 
     // Regression assertion: orphan claim is gone — next sweep tick will see
     // an empty claims list and not kill the freshly respawned container.
-    expect(getProcessingClaims(outDb)).toEqual([]);
+    expect(outDb.getProcessingClaims()).toEqual([]);
 
     // And the message itself was rescheduled with backoff (existing behavior).
     const row = inDb.prepare('SELECT status, tries, process_after FROM messages_in WHERE id = ?').get('m-1') as {
@@ -322,7 +373,7 @@ describe('resetStuckProcessingRows — orphan claim cleanup', () => {
 
     _resetStuckProcessingRowsForTesting(inDb, outDb, fakeSession(), 'claim-stuck');
 
-    expect(getProcessingClaims(outDb)).toEqual([]);
+    expect(outDb.getProcessingClaims()).toEqual([]);
     const row = inDb.prepare('SELECT tries FROM messages_in WHERE id = ?').get('m-2') as { tries: number };
     expect(row.tries).toBe(1); // not bumped, the skip path held
   });
@@ -366,5 +417,215 @@ describe('parseSqliteUtc', () => {
     // bare string returns different values depending on the host TZ.)
     const bare = '2026-04-20T12:00:00';
     expect(parseSqliteUtc(bare)).toBe(Date.parse(bare + 'Z'));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// a2a bounce redrive (Part b). The container marks a bounced handoff with a
+// distinct processing_ack status; the host re-arms the still-pending trigger
+// with an outage-scale backoff, or dead-letters once the per-class budget is
+// spent. Tested via the _redriveBouncedA2aForTesting shim (injected writable DB
+// + dead-letter spy) so we touch no filesystem or delivery modules.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function makeA2aSessionDbs(): { inDb: Database.Database; outDb: Database.Database } {
+  const inDb = new Database(':memory:');
+  inDb.exec(`
+    CREATE TABLE messages_in (
+      id                TEXT PRIMARY KEY,
+      seq               INTEGER UNIQUE,
+      kind              TEXT NOT NULL,
+      timestamp         TEXT NOT NULL,
+      status            TEXT DEFAULT 'pending',
+      process_after     TEXT,
+      tries             INTEGER DEFAULT 0,
+      trigger           INTEGER NOT NULL DEFAULT 1,
+      platform_id       TEXT,
+      channel_type      TEXT,
+      thread_id         TEXT,
+      source_session_id TEXT,
+      content           TEXT NOT NULL
+    );
+  `);
+  const outDb = new Database(':memory:');
+  outDb.exec(`
+    CREATE TABLE processing_ack (
+      message_id     TEXT PRIMARY KEY,
+      status         TEXT NOT NULL,
+      status_changed TEXT NOT NULL
+    );
+  `);
+  return { inDb, outDb };
+}
+
+function insertBounce(
+  inDb: Database.Database,
+  outDb: Database.Database,
+  id: string,
+  status: 'bounced-transient' | 'bounced-unknown',
+  opts: { tries?: number; channelType?: string; processAfter?: string; sourceSessionId?: string } = {},
+) {
+  inDb
+    .prepare(
+      `INSERT INTO messages_in (id, seq, kind, timestamp, status, process_after, tries, channel_type, thread_id, source_session_id, content)
+       VALUES (?, ?, 'chat', ?, 'pending', ?, ?, ?, 'gh-issue-o/r-12097', ?, '{}')`,
+    )
+    .run(
+      id,
+      Math.floor(Math.random() * 1e9),
+      new Date().toISOString(),
+      opts.processAfter ?? null,
+      opts.tries ?? 0,
+      opts.channelType ?? 'agent',
+      opts.sourceSessionId ?? 'sess-source',
+    );
+  outDb.prepare('INSERT INTO processing_ack VALUES (?, ?, ?)').run(id, status, new Date().toISOString());
+}
+
+function inRow(inDb: Database.Database, id: string) {
+  return inDb.prepare('SELECT status, tries, process_after FROM messages_in WHERE id = ?').get(id) as {
+    status: string;
+    tries: number;
+    process_after: string | null;
+  };
+}
+
+const noopDeadLetter = () => {};
+
+describe('redriveBouncedA2a', () => {
+  it('re-arms a transient bounce with backoff and clears the marker', () => {
+    const { inDb, outDb } = makeA2aSessionDbs();
+    insertBounce(inDb, outDb, 'h1', 'bounced-transient', { tries: 0 });
+
+    _redriveBouncedA2aForTesting(inDb, outDb, fakeSession(), noopDeadLetter);
+
+    const row = inRow(inDb, 'h1');
+    expect(row.status).toBe('pending'); // still claimable — NOT failed/completed
+    expect(row.tries).toBe(1);
+    expect(row.process_after).not.toBeNull();
+    // process_after is in the future (backoff applied) …
+    expect(parseSqliteUtc(row.process_after!)).toBeGreaterThan(Date.now());
+    // … and the marker was cleared only after re-arming.
+    expect(getBouncedClaims(outDb)).toEqual([]);
+  });
+
+  it('dead-letters a transient bounce once A2A_MAX_TRIES is spent', () => {
+    const { inDb, outDb } = makeA2aSessionDbs();
+    insertBounce(inDb, outDb, 'h2', 'bounced-transient', { tries: 12 }); // >= A2A_MAX_TRIES
+    const calls: string[] = [];
+
+    _redriveBouncedA2aForTesting(inDb, outDb, fakeSession(), (_s, r) => calls.push(r.id));
+
+    expect(inRow(inDb, 'h2').status).toBe('failed');
+    expect(calls).toEqual(['h2']);
+    expect(getBouncedClaims(outDb)).toEqual([]);
+  });
+
+  it('dead-letters an UNKNOWN bounce fast (A2A_UNKNOWN_MAX_TRIES=2)', () => {
+    const { inDb, outDb } = makeA2aSessionDbs();
+    // 2 tries already spent → unknown budget exhausted, transient would not be.
+    insertBounce(inDb, outDb, 'h3', 'bounced-unknown', { tries: 2 });
+    const calls: string[] = [];
+
+    _redriveBouncedA2aForTesting(inDb, outDb, fakeSession(), (_s, r) => calls.push(r.id));
+
+    expect(inRow(inDb, 'h3').status).toBe('failed');
+    expect(calls).toEqual(['h3']);
+  });
+
+  it('unknown bounce still re-arms while under its small budget', () => {
+    const { inDb, outDb } = makeA2aSessionDbs();
+    insertBounce(inDb, outDb, 'h3b', 'bounced-unknown', { tries: 1 }); // < 2
+    _redriveBouncedA2aForTesting(inDb, outDb, fakeSession(), noopDeadLetter);
+    expect(inRow(inDb, 'h3b').status).toBe('pending');
+    expect(inRow(inDb, 'h3b').tries).toBe(2);
+  });
+
+  it('is idempotent: a bounce already scheduled for the future is left alone', () => {
+    const { inDb, outDb } = makeA2aSessionDbs();
+    const future = new Date(Date.now() + 60_000).toISOString();
+    insertBounce(inDb, outDb, 'h4', 'bounced-transient', { tries: 3, processAfter: future });
+
+    _redriveBouncedA2aForTesting(inDb, outDb, fakeSession(), noopDeadLetter);
+
+    // tries NOT bumped, marker left in place for a later tick.
+    expect(inRow(inDb, 'h4').tries).toBe(3);
+    expect(getBouncedClaims(outDb).map((c) => c.message_id)).toEqual(['h4']);
+  });
+
+  it('backoff is capped at 1h per step', () => {
+    const { inDb, outDb } = makeA2aSessionDbs();
+    // tries=10 → 60s * 2^10 ≈ 17h uncapped; must cap at 1h.
+    insertBounce(inDb, outDb, 'h5', 'bounced-transient', { tries: 10 });
+    const before = Date.now();
+    _redriveBouncedA2aForTesting(inDb, outDb, fakeSession(), noopDeadLetter);
+    const pa = parseSqliteUtc(inRow(inDb, 'h5').process_after!);
+    expect(pa - before).toBeLessThanOrEqual(3_600_000 + 5_000); // cap + slack
+    expect(pa - before).toBeGreaterThan(3_500_000);
+  });
+
+  it('reclaims a bounced TASK claim (channel_type NULL) so the container can poll it again', () => {
+    // Regression (prod 2026-07-17..08-04): a `*/5` task bounced transiently and
+    // its ack row survived 18 days. getPendingMessages filters on ackedIds, so
+    // the container reported "0 pending" forever while messages_in stayed
+    // 'pending' and tries stayed 0; handleRecurrence only advances a series on
+    // completion, so the whole schedule froze. Tasks never set
+    // platform/channel/thread, so channel_type is NULL — not the 'agent' edge.
+    const { inDb, outDb } = makeA2aSessionDbs();
+    const past = new Date(Date.now() - 3_600_000).toISOString();
+    inDb
+      .prepare(
+        `INSERT INTO messages_in (id, seq, kind, timestamp, status, process_after, tries, channel_type, thread_id, source_session_id, content)
+         VALUES ('task-frozen', 5242, 'task', ?, 'pending', ?, 0, NULL, NULL, NULL, '{}')`,
+      )
+      .run(new Date().toISOString(), past);
+    outDb
+      .prepare("INSERT INTO processing_ack VALUES ('task-frozen', 'bounced-transient', ?)")
+      .run(new Date().toISOString());
+
+    _redriveBouncedA2aForTesting(inDb, outDb, fakeSession(), noopDeadLetter);
+
+    // The claim is gone — that is what makes the row pollable again.
+    expect(getBouncedClaims(outDb)).toEqual([]);
+    // The row itself is untouched: still pending and still due, so the next
+    // poll picks it up. No a2a backoff applies to a task.
+    const row = inRow(inDb, 'task-frozen');
+    expect(row.status).toBe('pending');
+    expect(row.process_after).toBe(past);
+  });
+
+  it('does nothing when there are no bounced claims', () => {
+    const { inDb, outDb } = makeA2aSessionDbs();
+    // A normal completed row must be ignored (not a bounce).
+    inDb
+      .prepare(
+        "INSERT INTO messages_in (id, seq, kind, timestamp, status, channel_type, content) VALUES ('ok', 1, 'chat', ?, 'pending', 'agent', '{}')",
+      )
+      .run(new Date().toISOString());
+    outDb.prepare("INSERT INTO processing_ack VALUES ('ok', 'completed', ?)").run(new Date().toISOString());
+
+    _redriveBouncedA2aForTesting(inDb, outDb, fakeSession(), noopDeadLetter);
+
+    expect(inRow(inDb, 'ok').status).toBe('pending');
+    expect(inRow(inDb, 'ok').tries).toBe(0);
+  });
+});
+
+describe('shouldCloseTaskSession', () => {
+  it('closes a spent per-task session (no live tasks, no container)', () => {
+    expect(shouldCloseTaskSession('system:tasks:task-1', false, 0)).toBe(true);
+  });
+
+  it('keeps it while a task is still live (recurring re-armed, or pending/paused)', () => {
+    expect(shouldCloseTaskSession('system:tasks:task-1', false, 1)).toBe(false);
+  });
+
+  it('keeps it while its container is running (mid-fire)', () => {
+    expect(shouldCloseTaskSession('system:tasks:task-1', true, 0)).toBe(false);
+  });
+
+  it('never touches non-task sessions', () => {
+    expect(shouldCloseTaskSession('telegram:12345', false, 0)).toBe(false);
+    expect(shouldCloseTaskSession(null, false, 0)).toBe(false);
   });
 });

@@ -1,9 +1,9 @@
 {
   "name": "nanoclaw",
-  "version": "2.0.64",
-  "description": "Personal Claude assistant. Lightweight, secure, customizable.",
+  "version": "2.3.0",
+  "description": "Personal AI assistant. Lightweight, secure, customizable.",
   "type": "module",
-  "packageManager": "pnpm@10.33.0",
+  "packageManager": "pnpm@10.34.5",
   "main": "dist/index.js",
   "bin": {
     "ncl": "bin/ncl"
@@ -13,14 +13,21 @@
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
+    "typecheck:all": "node scripts/typecheck-gate.mjs",
+    "check:runtime-deps": "node scripts/check-runtime-resolvable.mjs",
+    "mailbox-model:generate": "cp src/mailbox/model.ts container/agent-runner/src/mailbox/model.generated.ts",
+    "mailbox-model:check": "cmp src/mailbox/model.ts container/agent-runner/src/mailbox/model.generated.ts",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:fix": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
+    "stdin-json:generate": "sh scripts/sync-stdin-json.sh",
+    "stdin-json:check": "sh scripts/sync-stdin-json.sh --check",
     "prepare": "husky",
     "setup": "tsx setup/index.ts",
     "setup:auto": "tsx setup/auto.ts",
     "ncl": "tsx src/cli/client.ts",
     "setup:local": "tsx setup/index.ts --step local",
+    "migrate": "tsx scripts/migrate.ts",
     "chat": "tsx scripts/chat.ts",
     "auth": "tsx src/whatsapp-auth.ts",
     "validate:templates": "tsx scripts/validate-templates.ts",
@@ -33,16 +40,18 @@
     "test:watch": "HTTP_PROXY= HTTPS_PROXY= http_proxy= https_proxy= NODE_USE_ENV_PROXY= NO_PROXY='*' vitest"
   },
   "dependencies": {
-    "@chat-adapter/telegram": "4.27.0",
+    "@chat-adapter/telegram": "4.29.0",
     "@clack/core": "^1.2.0",
     "@clack/prompts": "^1.2.0",
-    "@onecli-sh/sdk": "^0.5.0",
-    "better-sqlite3": "11.10.0",
-    "chat": "^4.27.0",
+    "@onecli-sh/sdk": "2.2.1",
+    "better-sqlite3": "13.0.3",
+    "ccusage": "20.0.19",
+    "chat": "4.29.0",
     "cron-parser": "5.5.0",
     "kleur": "^4.1.5",
     "supergateway": "^3.4.3",
-    "tar-stream": "^3.1.8"
+    "tar-stream": "^3.1.8",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
@@ -61,6 +70,6 @@
     "vitest": "^4.0.18"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   }
 }
