@@ -15,7 +15,7 @@
  * The response handler is registered via core's `registerResponseHandler`;
  * core iterates handlers and the first one to return `true` claims the response.
  */
-import { wakeContainer } from '../../container-runner.js';
+import { requestWake } from '../../request-wake.js';
 import {
   deletePendingApproval,
   getPendingApproval,
@@ -39,16 +39,16 @@ import { armReasonCapture } from './reason-capture.js';
 const LOCAL_APPROVER_SENDERS = new Set(['dashboard-admin', 'cli-admin', 'system']);
 
 /**
- * fork override (nv): AP03 — fire wakeContainer without blocking the caller.
+ * fork override (nv): AP03 — fire the wake without blocking the caller.
  * Approval acceptance is a fast DB transition; the subsequent wake can take
  * seconds-to-tens-of-seconds (image pull, migration check, MCP discovery).
  * Blocking the HTTP chain on it caused the dashboard's 5s AbortSignal to fire
  * and return a 500 even though the approval had already been applied. Errors
  * are logged (never swallowed); the approval is already settled in the DB.
  */
-function fireAndForgetWake(session: Parameters<typeof wakeContainer>[0], approvalId: string): void {
-  void wakeContainer(session).catch((err) => {
-    log.warn('Post-approval wakeContainer failed — state is already settled', {
+function fireAndForgetWake(session: Parameters<typeof requestWake>[0], approvalId: string): void {
+  void requestWake(session, 'approval-response').catch((err) => {
+    log.warn('Post-approval wake failed — state is already settled', {
       approvalId,
       sessionId: session.id,
       err: err instanceof Error ? err.message : String(err),
