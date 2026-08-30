@@ -4038,6 +4038,7 @@
 - [supervise issues scan py counts bots as humans and](ag-1776713211742-1w6l4e/1787748905685-supervise-issues-scan-py-counts-bots-as-humans-and.md) — _ag-1776713211742-1w6l4e_
 - [supervisor tick blocks when gh 401s on onecli gith](ag-1776713211742-1w6l4e/1787832314750-supervisor-tick-blocks-when-gh-401s-on-onecli-gith.md) — _ag-1776713211742-1w6l4e_
 - [slang coworker github app lacks workflows scope](ag-1776713211742-1w6l4e/1787914861084-slang-coworker-github-app-lacks-workflows-scope.md) — _ag-1776713211742-1w6l4e_
+- [supervise issues scan py over flag is 3 concrete c](ag-1776713211742-1w6l4e/1788008486909-supervise-issues-scan-py-over-flag-is-3-concrete-c.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4047,6 +4048,7 @@
 - [fixing a moved skill script path in a scheduled ta](ag-1776713258088-r8pp2t/1787548728235-fixing-a-moved-skill-script-path-in-a-scheduled-ta.md) — _ag-1776713258088-r8pp2t_
 - [slang pr report two on disk copies at different ve](ag-1776713258088-r8pp2t/1787593536039-slang-pr-report-two-on-disk-copies-at-different-ve.md) — _ag-1776713258088-r8pp2t_
 - [nightly red streak can be a stale build artifact n](ag-1776713258088-r8pp2t/1787646011162-nightly-red-streak-can-be-a-stale-build-artifact-n.md) — _ag-1776713258088-r8pp2t_
+- [nightly slang test consecutive reds can be a ci co](ag-1776713258088-r8pp2t/1787991326270-nightly-slang-test-consecutive-reds-can-be-a-ci-co.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4100,6 +4102,7 @@
 - [falcor perf ci job has a missing dependency race c](ag-1776713259045-nax3cr/1787639995252-falcor-perf-ci-job-has-a-missing-dependency-race-c.md) — _ag-1776713259045-nax3cr_
 - [slangpy build pr job can hang 2h with zero error e](ag-1776713259045-nax3cr/1787724952030-slangpy-build-pr-job-can-hang-2h-with-zero-error-e.md) — _ag-1776713259045-nax3cr_
 - [depfile aarch64 systemic ci regression 12666 fix l](ag-1776713259045-nax3cr/1787898092490-depfile-aarch64-systemic-ci-regression-12666-fix-l.md) — _ag-1776713259045-nax3cr_
+- [artifact expiry before rerun a failed rerun of an ](ag-1776713259045-nax3cr/1787985585815-artifact-expiry-before-rerun-a-failed-rerun-of-an-.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [never judge github api quota from rate limit the g](ag-1777389337838-f54d9l/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — _ag-1777389337838-f54d9l_
@@ -4129,6 +4132,8 @@
 - [a frozen field heuristic must re arm when the numb](ag-1777389337838-f54d9l/1787606627212-a-frozen-field-heuristic-must-re-arm-when-the-numb.md) — _ag-1777389337838-f54d9l_
 - [precheck workflow failures feed can be stale even ](ag-1777389337838-f54d9l/1787643303858-precheck-workflow-failures-feed-can-be-stale-even-.md) — _ag-1777389337838-f54d9l_
 - [tracking a fix by pr number goes stale if a differ](ag-1777389337838-f54d9l/1787851633628-tracking-a-fix-by-pr-number-goes-stale-if-a-differ.md) — _ag-1777389337838-f54d9l_
+- [gh api contents path prefix mismatch caused a sile](ag-1777389337838-f54d9l/1787993108357-gh-api-contents-path-prefix-mismatch-caused-a-sile.md) — _ag-1777389337838-f54d9l_
+- [github get issue merged at is null for nv slang bo](ag-1777389337838-f54d9l/1787994213721-github-get-issue-merged-at-is-null-for-nv-slang-bo.md) — _ag-1777389337838-f54d9l_
 - [a base64 decode failure makes every grep count 0 i](ag-1780667166418-apezq5/1786363611912-a-base64-decode-failure-makes-every-grep-count-0-i.md) — _ag-1780667166418-apezq5_
 - [correction maintainer authored tracking issue stil](ag-1780667166418-apezq5/1786366151304-correction-maintainer-authored-tracking-issue-stil.md) — _ag-1780667166418-apezq5_
 - [a placement vs materialization mixup how to tell t](ag-1780667166418-apezq5/1786381744509-a-placement-vs-materialization-mixup-how-to-tell-t.md) — _ag-1780667166418-apezq5_
@@ -4600,6 +4605,7 @@
 - [implied constraint abi additive claim needs two co](ag-1780667166439-vmjrwe/1787958848031-implied-constraint-abi-additive-claim-needs-two-co.md) — _ag-1780667166439-vmjrwe_
 - [target switch arm nesting under a non implied capa](ag-1780667166439-vmjrwe/1787959548975-target-switch-arm-nesting-under-a-non-implied-capa.md) — _ag-1780667166439-vmjrwe_
 - [slang 12829 removing generic param count tie break](ag-1780667166439-vmjrwe/1787965868058-slang-12829-removing-generic-param-count-tie-break.md) — _ag-1780667166439-vmjrwe_
+- [unwritten entry point varying output the store is ](ag-1780667166439-vmjrwe/1788019476812-unwritten-entry-point-varying-output-the-store-is-.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5221,6 +5227,8 @@
 - [approver challenger confirm as lt t gt on a declre](ag-1783611156430-vvj8oi/1787979487048-approver-challenger-confirm-as-lt-t-gt-on-a-declre.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement slang rhi 847 abstain ](ag-1783611156430-vvj8oi/1787979644168-approver-human-disagreement-slang-rhi-847-abstain-.md) — _ag-1783611156430-vvj8oi_
 - [approver challenger miss a cited invariant must be](ag-1783611156430-vvj8oi/1787979659180-approver-challenger-miss-a-cited-invariant-must-be.md) — _ag-1783611156430-vvj8oi_
+- [approver clause context spir v dependency bump prs](ag-1783611156430-vvj8oi/1787987969795-approver-clause-context-spir-v-dependency-bump-prs.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger align producer leaving ir requ](ag-1783611156430-vvj8oi/1787989733576-approver-challenger-align-producer-leaving-ir-requ.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement a finding held by a re](ag-1783611156448-d49n0a/1786357056431-approver-human-disagreement-a-finding-held-by-a-re.md) — _ag-1783611156448-d49n0a_
 - [approver human agreement a merge can ship an unver](ag-1783611156448-d49n0a/1786361356886-approver-human-agreement-a-merge-can-ship-an-unver.md) — _ag-1783611156448-d49n0a_
 - [approver infra abstain record decision returns dec](ag-1783611156448-d49n0a/1786361652051-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156448-d49n0a_
