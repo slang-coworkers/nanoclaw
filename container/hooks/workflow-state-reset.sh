@@ -9,15 +9,20 @@
 # 3. Idle timer (>10min since last activity) → full reset
 # 4. Otherwise — follow-up message within same task → no reset
 set -euo pipefail
+# Env-addressable workspace roots so hooks work both in Docker (where
+# /workspace is mounted) and AGENT_RUNTIME=local (where the bun child carries
+# WORKSPACE_SESSION/WORKSPACE_AGENT pointing at the session and group dirs).
+WS_SESSION="${WORKSPACE_SESSION:-/workspace}"
+WS_AGENT="${WORKSPACE_AGENT:-/workspace/agent}"
 
 # Subagents (CLAUDE_CODE_FORK_SUBAGENT=1) must not reset the parent's state.
-# They share /workspace/.claude/workflow-state.json with the parent and run
+# They share $WS_SESSION/.claude/workflow-state.json with the parent and run
 # within the scope of the parent's already-approved plan.
 if [ "${CLAUDE_CODE_FORK_SUBAGENT:-0}" = "1" ]; then
   exit 0
 fi
 
-STATE="/workspace/.claude/workflow-state.json"
+STATE="$WS_SESSION/.claude/workflow-state.json"
 INPUT=$(cat)
 
 PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty')

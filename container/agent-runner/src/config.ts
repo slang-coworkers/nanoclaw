@@ -6,10 +6,15 @@
  * instead of environment variables.
  */
 import fs from 'fs';
+import path from 'path';
 
 import type { McpServerConfig } from './providers/types.js';
 
-const CONFIG_PATH = '/workspace/agent/container.json';
+// WORKSPACE_AGENT overrides the default /workspace/agent mount for
+// AGENT_RUNTIME=local on the host. Default stays put so Docker mode is
+// unaffected.
+const WORKSPACE_AGENT = process.env.WORKSPACE_AGENT || '/workspace/agent';
+const CONFIG_PATH = path.join(WORKSPACE_AGENT, 'container.json');
 
 export interface RunnerConfig {
   provider: string;

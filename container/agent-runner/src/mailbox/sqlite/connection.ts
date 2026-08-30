@@ -19,8 +19,12 @@
  */
 import { Database } from 'bun:sqlite';
 
-const DEFAULT_INBOUND_PATH = '/workspace/inbound.db';
-const DEFAULT_OUTBOUND_PATH = '/workspace/outbound.db';
+// Session DB paths are env-addressable so AGENT_RUNTIME=local on the host can
+// point at real per-session paths under `data/v2-sessions/...`. Defaults match
+// the Docker volume-mount points so container mode is unaffected. The heartbeat
+// path is env-addressable in heartbeat.ts, which owns that file.
+const DEFAULT_INBOUND_PATH = process.env.SESSION_INBOUND_DB_PATH || '/workspace/inbound.db';
+const DEFAULT_OUTBOUND_PATH = process.env.SESSION_OUTBOUND_DB_PATH || '/workspace/outbound.db';
 
 let _inbound: Database | null = null;
 let _outbound: Database | null = null;

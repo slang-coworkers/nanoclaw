@@ -226,7 +226,12 @@ export function killCodexAppServer(server: AppServer): void {
 // so we replicate the same enforcement by intercepting approval requests
 // (≈ PreToolUse) and completion notifications (≈ PostToolUse).
 
-const STATE_PATH = '/workspace/.claude/workflow-state.json';
+// Path roots, env-addressable for AGENT_RUNTIME=local. Defaults match the
+// Docker mount layout (/workspace is the session dir, /workspace/agent is
+// the group dir) so container mode is unaffected.
+const WORKSPACE_AGENT = process.env.WORKSPACE_AGENT || '/workspace/agent';
+const WORKSPACE_SESSION = process.env.WORKSPACE_SESSION || '/workspace';
+const STATE_PATH = path.join(WORKSPACE_SESSION, '.claude', 'workflow-state.json');
 const PLAN_EDIT_LIMIT = 15;
 const CRITIQUE_EDIT_LIMIT = 3;
 
@@ -235,17 +240,20 @@ const CRITIQUE_EDIT_LIMIT = 3;
 // authoritative allowlist for the Claude path; diverging here would cause
 // stale-plan/critique counters to fire on bookkeeping writes that the
 // shell hook would have let through (RC-M3).
+// Paths are env-addressable (WORKSPACE_AGENT/SESSION) so AGENT_RUNTIME=local
+// works outside /workspace without diverging from docker mode.
 const BOOKKEEPING_DIRS = [
-  '/workspace/agent/plans/',
-  '/workspace/agent/reports/',
-  '/workspace/agent/critiques/',
-  '/workspace/agent/memory/',
-  '/workspace/agent/conversations/',
-  '/workspace/agent/fixes/',
-  '/workspace/agent/reviews/',
-  '/workspace/.claude/',
+  `${WORKSPACE_AGENT}/plans/`,
+  `${WORKSPACE_AGENT}/reports/`,
+  `${WORKSPACE_AGENT}/critiques/`,
+  `${WORKSPACE_AGENT}/memory/`,
+  `${WORKSPACE_AGENT}/conversations/`,
+  `${WORKSPACE_AGENT}/fixes/`,
+  `${WORKSPACE_AGENT}/reviews/`,
+  `${WORKSPACE_SESSION}/.claude/`,
+
 ];
-const BOOKKEEPING_FILES = ['/workspace/agent/CLAUDE.local.md'];
+const BOOKKEEPING_FILES = [`${WORKSPACE_AGENT}/CLAUDE.local.md`];
 
 interface WorkflowState {
   task_id: string;
@@ -329,7 +337,7 @@ export function attachCodexAutoApproval(server: AppServer, hookConfig?: HookConf
             log(`[hooks] Plan gate: blocking edit to ${filePath} — no plan written`);
             sendCodexResponse(server, req.id, {
               decision: 'reject',
-              reason: 'Write a plan to /workspace/agent/reports/ before editing source files.',
+              reason: `Write a plan to ${WORKSPACE_AGENT}/reports/ before editing source files.`,
             });
             return;
           }
@@ -337,10 +345,11 @@ export function attachCodexAutoApproval(server: AppServer, hookConfig?: HookConf
             log(`[hooks] Plan gate: blocking edit to ${filePath} — plan stale (${state.edits_since_plan} edits)`);
             sendCodexResponse(server, req.id, {
               decision: 'reject',
-              reason: `Plan is stale (${state.edits_since_plan} edits since last plan). Write an updated plan to /workspace/agent/reports/ before continuing.`,
+              reason: `Plan is stale (${state.edits_since_plan} edits since last plan). Write an updated plan to ${WORKSPACE_AGENT}/reports/ before continuing.`,
             });
             return;
           }
+
 
         }
 
@@ -409,7 +418,10 @@ export function attachCodexAutoApproval(server: AppServer, hookConfig?: HookConf
         const filePath = item.path || '';
 
         // Plan tracker: writing to reports/ (new canonical) or plans/ (legacy) sets plan_written
-        if (filePath.includes('/workspace/agent/reports/') || filePath.includes('/workspace/agent/plans/')) {
+        if (
+          filePath.includes(`${WORKSPACE_AGENT}/reports/`) ||
+          filePath.includes(`${WORKSPACE_AGENT}/plans/`)
+        ) {
           state.plan_written = true;
           state.plan_stale = false;
           state.edits_since_plan = 0;
@@ -417,6 +429,7 @@ export function attachCodexAutoApproval(server: AppServer, hookConfig?: HookConf
           writeState(state);
           return;
         }
+
 
         // Edit counter: non-bookkeeping edits
         if (!isBookkeeping(filePath)) {
@@ -667,7 +680,7 @@ export function writeCodexMcpConfigToml(
 
   // Trust the agent workspace and any additional directories (cloned repos).
   // Dedupe: only append if not already present in the preserved config.
-  const trustPaths = ['/workspace/agent', ...(additionalDirectories ?? [])];
+  const trustPaths = [WORKSPACE_AGENT, ...(additionalDirectories ?? [])];
   for (const trustPath of trustPaths) {
     const tomlKey = `[projects."${trustPath}"]`;
     if (existingNonMcp.includes(tomlKey)) continue;

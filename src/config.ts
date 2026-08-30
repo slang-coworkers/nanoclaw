@@ -26,6 +26,8 @@ const envConfig = readEnvFile([
   'INTERNAL_REGISTER_URL',
   'INTERNAL_REGISTER_SECRET',
   'INSTANCE_FORWARD_TARGETS',
+  'AGENT_RUNTIME',
+  'AGENT_HOST_GATEWAY',
   'ROUTE_ISSUES_TO',
   'ROUTE_READY_PRS_TO',
   'APPROVER_CI_GATE',
@@ -87,6 +89,24 @@ export const CENTRAL_DB_PATH = path.join(DATA_DIR, 'v2.db');
 export const TEMPLATES_DIR = process.env.NANOCLAW_TEMPLATES_DIR
   ? path.resolve(process.env.NANOCLAW_TEMPLATES_DIR)
   : path.resolve(PROJECT_ROOT, 'templates');
+
+// Agent runtime selector — 'docker' (default, spawns containers) or 'local'
+// (spawns node agent-runner processes directly, each in a git worktree).
+// The `remove-docker` feature skill flips this to 'local'. Docker remains
+// the supported default for production use.
+function resolveAgentRuntime(): 'docker' | 'local' {
+  const raw = (process.env.AGENT_RUNTIME || envConfig.AGENT_RUNTIME || 'docker').trim().toLowerCase();
+  return raw === 'local' ? 'local' : 'docker';
+}
+export const AGENT_RUNTIME: 'docker' | 'local' = resolveAgentRuntime();
+
+// Host gateway address the in-container agent-runner uses to reach the host
+// MCP proxy. Docker routes through `host.docker.internal`; local processes
+// loop back through 127.0.0.1. Override via env for non-standard setups.
+export const AGENT_HOST_GATEWAY =
+  process.env.AGENT_HOST_GATEWAY ||
+  envConfig.AGENT_HOST_GATEWAY ||
+  (AGENT_RUNTIME === 'local' ? '127.0.0.1' : 'host.docker.internal');
 
 // Per-checkout image tag so two installs on the same host don't share
 // `nanoclaw-agent:latest` and clobber each other on rebuild.

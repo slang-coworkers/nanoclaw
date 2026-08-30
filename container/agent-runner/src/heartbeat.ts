@@ -1,6 +1,8 @@
 import fs from 'fs';
 
-const HEARTBEAT_PATH = '/workspace/.heartbeat';
+// Env-addressable so AGENT_RUNTIME=local can point at the real per-session
+// path; the default is the Docker mount point, so container mode is unaffected.
+const HEARTBEAT_PATH = process.env.SESSION_HEARTBEAT_PATH || '/workspace/.heartbeat';
 
 export function touchHeartbeat(): void {
   const now = new Date();

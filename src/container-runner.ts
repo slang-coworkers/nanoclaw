@@ -11,6 +11,7 @@ import { exec } from 'child_process';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'node:url';
 import { promisify } from 'util';
 
 import {
@@ -27,6 +28,8 @@ import {
 } from './claude-composer.js';
 import { assertWithinDocSizeCap } from './claude-composer/doc-size-cap.js';
 import {
+  AGENT_HOST_GATEWAY,
+  AGENT_RUNTIME,
   CONTAINER_CPU_LIMIT,
   CONTAINER_IMAGE,
   CONTAINER_IMAGE_BASE,
@@ -56,6 +59,21 @@ import { getContainerConfig, updateContainerConfigScalars } from './db/container
 // networkArgsFor, readonlyMountArgs → MountSpec + mountArgs, stopContainer →
 // SessionHandle.stop()).
 import { CONTAINER_RUNTIME_BIN } from './container-runtime.js';
+import { spawnLocalAgent, superviseLocalAgent } from './local-runner.js';
+
+// Hook scripts live at `/app/hooks/` inside the container image, and at
+// `container/hooks/` in the source tree. In AGENT_RUNTIME=local the bun child
+// runs on the host and has no `/app/hooks/` — anchor the path off this source
+// file (module-relative, not cwd-based) so hook injection survives any cwd.
+const HOOKS_DIR =
+  AGENT_RUNTIME === 'local'
+    ? path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'container', 'hooks')
+    : '/app/hooks';
+
+/** POSIX single-quote escape: wrap in `'…'`, replace internal `'` with `'\''`. */
+function shellSingleQuote(s: string): string {
+  return `'${s.replace(/'/g, `'\\''`)}'`;
+}
 import { getAgentGroup } from './db/agent-groups.js';
 import { getDb, hasTable } from './db/connection.js';
 import { getSession } from './db/sessions.js';
@@ -806,6 +824,54 @@ async function spawnContainer(session: Session): Promise<void> {
   const mcpPolicy = resolveMcpPolicy(agentGroup);
   const proxyToken = registerContainerToken(agentGroup.folder, mcpPolicy.externalTools);
 
+  // Local-runtime path: spawn the agent-runner as a bun child on the host.
+  // Docker-specific work (spec composition, mounts, gateway contribution) is
+  // skipped — local mode inherits host env for proxy/CA. The child is wrapped as
+  // a SupervisedHandle so it registers and terminates through exactly the same
+  // lifecycle as a driver-realized session (registerRuntime → onTerminal →
+  // finishAndResolve), rather than carrying its own parallel teardown.
+  if (AGENT_RUNTIME === 'local') {
+    const localMcpServers = { ...resolveTypeManifest(agentGroup).mcpServers, ...containerConfig.mcpServers };
+    fs.rmSync(heartbeatPath(agentGroup.id, session.id), { force: true });
+    let localHandle;
+    try {
+      localHandle = await spawnLocalAgent({
+        session,
+        agentGroup,
+        provider,
+        contribution,
+        proxyToken,
+        allowedTools: mcpPolicy.externalTools,
+        mcpServers: localMcpServers,
+      });
+    } catch (err) {
+      revokeContainerToken(proxyToken);
+      log.error('Local agent spawn failed', { sessionId: session.id, err });
+      throw err;
+    }
+    const supervised = superviseLocalAgent(
+      { installSlug: INSTALL_SLUG, agentGroupId: agentGroup.id, sessionId: session.id },
+      localHandle,
+    );
+    const localRuntime = registerRuntime(session.id, supervised, localHandle.name, false, crypto.randomUUID());
+    // Same teardown bookkeeping the docker path registers, drained by `finish`
+    // on every terminal route.
+    localRuntime.exitCallbacks.push(() => {
+      revokeContainerToken(proxyToken);
+      spawnedClaudeMdHash.delete(session.id);
+    });
+    supervised.onTerminal((failure?: SessionFailure) => {
+      void finishAndResolve(session.id, failure);
+    });
+    localHandle.process.stderr?.on('data', (data) => {
+      for (const line of data.toString().trim().split('\n')) {
+        if (line) log.debug(line, { agent: agentGroup.folder });
+      }
+    });
+    await markContainerRunning(session.id);
+    return;
+  }
+
   // A fresh random nonce for THIS spawn (NanoClaw #1 "set ceiling v2" readiness
   // handshake — see getActiveContainerInstanceId's doc comment above).
   const instanceId = crypto.randomUUID();
@@ -1012,7 +1078,7 @@ async function finish(sessionId: string, runtime: ActiveSessionRuntime, failure?
   }
 }
 
-/** Kill a container for a session. */
+/** Kill a container (or local process) for a session. */
 export function killContainer(sessionId: string, reason: string, onExit?: () => void): void {
   const entry = activeContainers.get(sessionId);
   if (!entry) return;
@@ -1020,7 +1086,9 @@ export function killContainer(sessionId: string, reason: string, onExit?: () => 
   // Upstream's exitCallbacks array replaces the fork's
   // `entry.process.once('exit', ...)`: there is no ChildProcess here any more,
   // and `finish` drains these on EVERY terminal path with its own try/catch
-  // per callback (so a throwing callback no longer loses the rest).
+  // per callback (so a throwing callback no longer loses the rest). A local
+  // session needs no branch here — `superviseLocalAgent` presents the bun child
+  // as a handle whose `stop()` is `killLocalAgent`.
   if (onExit) {
     entry.exitCallbacks.push(onExit);
   }
@@ -1362,10 +1430,15 @@ export async function buildMounts(
   // .claude-shared/settings.json, so reading it here would ENOENT-crash the
   // spawn. Claude hooks are only meaningful when the agent runs on Claude
   // surfaces in the first place.
+  //
+  // Works in both AGENT_RUNTIME=docker and =local: docker routes
+  // `host.docker.internal` through the container's host-gateway alias; local
+  // uses 127.0.0.1 via `AGENT_HOST_GATEWAY`. Hook-script paths resolve from
+  // `HOOKS_DIR` (module-relative in local mode, `/app/hooks` in docker).
   const dashboardPort = DASHBOARD_PORT ? String(DASHBOARD_PORT) : '';
   if (defaultSurfaces && dashboardPort) {
     const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
-    const hookUrl = `http://host.docker.internal:${dashboardPort}/api/hook-event`;
+    const hookUrl = `http://${AGENT_HOST_GATEWAY}:${dashboardPort}/api/hook-event`;
     if (!settings.hooks) settings.hooks = {};
     // Dedupe + drop stale-ref pass over every hook event. Two failure modes
     // it heals:
@@ -1534,8 +1607,10 @@ export async function buildMounts(
     // Overlay hook injection: enforce plan/critique gates via runtime hooks.
     // Uses resolveOverlayHookFlags() so agent_groups.disable_overlays=1 skips
     // injection entirely — matches the compose-time contract in PR #97.
-    const hooksDir = path.join(process.cwd(), 'container', 'hooks');
-    if (fs.existsSync(hooksDir)) {
+    // HOOKS_DIR is module-relative in local mode (see top of file); docker
+    // mode has it baked at /app/hooks inside the image. Feature-detect so
+    // hook injection is a no-op if the hooks tree is missing on disk.
+    if (fs.existsSync(HOOKS_DIR)) {
       const { hasPlan, hasCritique } = resolveOverlayHookFlags(agentGroup);
 
       const hasCmd = (event: string, cmd: string): boolean =>
@@ -1547,7 +1622,13 @@ export async function buildMounts(
         if (!settings.hooks.UserPromptSubmit) settings.hooks.UserPromptSubmit = [];
         if (!hasCmd('UserPromptSubmit', 'workflow-state-reset.sh')) {
           settings.hooks.UserPromptSubmit.push({
-            hooks: [{ type: 'command', command: 'bash /app/hooks/workflow-state-reset.sh', timeout: 5 }],
+            hooks: [
+              {
+                type: 'command',
+                command: `bash ${shellSingleQuote(`${HOOKS_DIR}/workflow-state-reset.sh`)}`,
+                timeout: 5,
+              },
+            ],
           });
         }
         // Intent router: LLM-based workflow classification on each user message.
@@ -1562,7 +1643,7 @@ export async function buildMounts(
             hooks: [
               {
                 type: 'command',
-                command: `OVERLAY_WORKFLOWS='${routingTable}' bash /app/hooks/intent-router.sh`,
+                command: `OVERLAY_WORKFLOWS='${routingTable}' bash ${shellSingleQuote(`${HOOKS_DIR}/intent-router.sh`)}`,
                 timeout: 8,
               },
             ],
@@ -1582,7 +1663,7 @@ export async function buildMounts(
           hooks: [
             {
               type: 'command',
-              command: 'bash /app/hooks/buddy-inject.sh',
+              command: `bash ${shellSingleQuote(`${HOOKS_DIR}/buddy-inject.sh`)}`,
               timeout: 3,
             },
           ],
@@ -1594,7 +1675,7 @@ export async function buildMounts(
           hooks: [
             {
               type: 'command',
-              command: 'bash /app/hooks/spawn-buddy.sh',
+              command: `bash ${shellSingleQuote(`${HOOKS_DIR}/spawn-buddy.sh`)}`,
               timeout: 3,
             },
           ],
@@ -1607,7 +1688,7 @@ export async function buildMounts(
         if (!settings.hooks.PostToolUse) settings.hooks.PostToolUse = [];
         settings.hooks.PostToolUse.push({
           matcher: 'Bash',
-          hooks: [{ type: 'command', command: 'bash /app/hooks/pr-auto-map.sh', timeout: 5 }],
+          hooks: [{ type: 'command', command: `bash ${shellSingleQuote(`${HOOKS_DIR}/pr-auto-map.sh`)}`, timeout: 5 }],
         });
       }
 
@@ -1634,7 +1715,7 @@ export async function buildMounts(
             hooks: [
               {
                 type: 'command',
-                command: `OVERLAY_HAS_PLAN=${hasPlan ? '1' : '0'} bash /app/hooks/gate-plan.sh`,
+                command: `OVERLAY_HAS_PLAN=${hasPlan ? '1' : '0'} bash ${shellSingleQuote(`${HOOKS_DIR}/gate-plan.sh`)}`,
                 timeout: 5,
               },
             ],
@@ -1667,7 +1748,9 @@ export async function buildMounts(
         if (!hasCmd('PostToolUse', 'plan-tracker.sh')) {
           settings.hooks.PostToolUse.push({
             matcher: 'Write',
-            hooks: [{ type: 'command', command: 'bash /app/hooks/plan-tracker.sh', timeout: 5 }],
+            hooks: [
+              { type: 'command', command: `bash ${shellSingleQuote(`${HOOKS_DIR}/plan-tracker.sh`)}`, timeout: 5 },
+            ],
           });
         }
       }
@@ -1680,7 +1763,9 @@ export async function buildMounts(
         if (!hasCmd('PostToolUse', 'track-critique.sh')) {
           settings.hooks.PostToolUse.push({
             matcher: 'mcp__codex__codex|mcp__codex__codex-reply',
-            hooks: [{ type: 'command', command: 'bash /app/hooks/track-critique.sh', timeout: 5 }],
+            hooks: [
+              { type: 'command', command: `bash ${shellSingleQuote(`${HOOKS_DIR}/track-critique.sh`)}`, timeout: 5 },
+            ],
           });
         }
       }
@@ -1692,7 +1777,9 @@ export async function buildMounts(
         if (!hasCmd('PostToolUse', 'track-edits.sh')) {
           settings.hooks.PostToolUse.push({
             matcher: 'Edit|Write|MultiEdit|NotebookEdit|Bash',
-            hooks: [{ type: 'command', command: 'bash /app/hooks/track-edits.sh', timeout: 5 }],
+            hooks: [
+              { type: 'command', command: `bash ${shellSingleQuote(`${HOOKS_DIR}/track-edits.sh`)}`, timeout: 5 },
+            ],
           });
         }
         log.debug('Overlay hooks injected', { folder: agentGroup.folder, plan: hasPlan, critique: hasCritique });
@@ -1700,6 +1787,25 @@ export async function buildMounts(
     }
 
     fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+
+    // Local mode view: the Claude SDK reads `user` settings from
+    // `$HOME/.claude/settings.json`. Docker mode satisfies this by mounting
+    // `claudeDir` (which holds `settings.json` at its root) onto
+    // `/home/node/.claude`, so the file ends up at `/home/node/.claude/settings.json`.
+    // Local mode sets HOME=claudeDir directly (no remap), so the SDK
+    // resolves `$HOME/.claude/settings.json` inside claudeDir's own nested
+    // `.claude/` state dir — missing the hooks entirely. Point a symlink
+    // at the real file so both runtimes see the same view.
+    if (AGENT_RUNTIME === 'local') {
+      const nestedSettingsLink = path.join(claudeDir, '.claude', 'settings.json');
+      fs.mkdirSync(path.dirname(nestedSettingsLink), { recursive: true });
+      try {
+        fs.unlinkSync(nestedSettingsLink);
+      } catch {
+        /* no prior link */
+      }
+      fs.symlinkSync(path.join('..', 'settings.json'), nestedSettingsLink);
+    }
   }
   // Claude state dir — only for providers using the default Claude surfaces.
   // Under `dataRoot/v2-sessions/<group>`, so 'group-state' is what the policy
@@ -2536,6 +2642,13 @@ const execAsync = promisify(exec);
 
 /** Build a per-agent-group Docker image with custom packages. */
 export async function buildAgentGroupImage(agentGroupId: string): Promise<void> {
+  if (AGENT_RUNTIME === 'local') {
+    // Local mode has no container image — custom packages must be installed
+    // on the host directly. Log and return so callers (dashboard approvals)
+    // don't error out; the package list is still persisted in container.json.
+    log.info('buildAgentGroupImage skipped in local mode', { agentGroupId });
+    return;
+  }
   const agentGroup = await getAgentGroup(agentGroupId);
   if (!agentGroup) throw new Error('Agent group not found');
 

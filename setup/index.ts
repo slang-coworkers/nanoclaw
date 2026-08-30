@@ -21,6 +21,7 @@ const STEPS: Record<
   'set-env': () => import('./set-env.js'),
   environment: () => import('./environment.js'),
   container: () => import('./container.js'),
+  local: () => import('./local.js'),
   register: () => import('./register.js'),
   'pair-telegram': () => import('./pair-telegram.js'),
   'pair-dial': () => import('./pair-dial.js'),
