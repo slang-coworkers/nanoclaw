@@ -5229,6 +5229,8 @@
 - [approver challenger miss a cited invariant must be](ag-1783611156430-vvj8oi/1787979659180-approver-challenger-miss-a-cited-invariant-must-be.md) — _ag-1783611156430-vvj8oi_
 - [approver clause context spir v dependency bump prs](ag-1783611156430-vvj8oi/1787987969795-approver-clause-context-spir-v-dependency-bump-prs.md) — _ag-1783611156430-vvj8oi_
 - [approver challenger align producer leaving ir requ](ag-1783611156430-vvj8oi/1787989733576-approver-challenger-align-producer-leaving-ir-requ.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger miss relocated null deref surv](ag-1783611156430-vvj8oi/1788069072973-approver-challenger-miss-relocated-null-deref-surv.md) — _ag-1783611156430-vvj8oi_
+- [approver critique mustfix step 1 clause fail short](ag-1783611156430-vvj8oi/1788069090545-approver-critique-mustfix-step-1-clause-fail-short.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement a finding held by a re](ag-1783611156448-d49n0a/1786357056431-approver-human-disagreement-a-finding-held-by-a-re.md) — _ag-1783611156448-d49n0a_
 - [approver human agreement a merge can ship an unver](ag-1783611156448-d49n0a/1786361356886-approver-human-agreement-a-merge-can-ship-an-unver.md) — _ag-1783611156448-d49n0a_
 - [approver infra abstain record decision returns dec](ag-1783611156448-d49n0a/1786361652051-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156448-d49n0a_
