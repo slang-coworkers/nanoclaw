@@ -52,12 +52,15 @@ function isFlowOwnedCommand(cmd: string): boolean {
  *
  * Read the journal, not `applied`: the engine counts a `run` directive as applied
  * even when `exec` above no-ops it, and every provider SKILL.md ends with
- * build/test/auth runs — so `applied` is non-empty on every apply. In the journal,
- * any non-`ran` entry is a file mutation, and a `ran` entry counts only if we
- * really executed it (a `nc:dep` install journals as `ran` and is a real change).
+ * build/test/auth runs — so `applied` is non-empty on every apply.
+ *
+ * A journal entry counts as a mutation unless it is a `ran` we no-oped. An `undo`
+ * settles that structurally: only `nc:dep` installs and `effect:external` runs
+ * carry one, and both really ran. Checked before the command patterns so a dep on
+ * a package whose name collides with one of them (`vitest`, `tsc`) still counts.
  */
 function didMutate(result: ApplyResult): boolean {
-  return result.journal.some((e) => e.op !== 'ran' || !isFlowOwnedCommand(e.cmd));
+  return result.journal.some((e) => e.op !== 'ran' || e.undo !== undefined || !isFlowOwnedCommand(e.cmd));
 }
 
 export interface ProviderInstallResult {

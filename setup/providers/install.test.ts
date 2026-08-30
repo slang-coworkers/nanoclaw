@@ -58,10 +58,10 @@ describe('applyProviderSkill on an already-installed provider', () => {
     const { changed, blockers, apply } = await applyProviderSkill('.claude/skills/add-codex', scratchRoot());
 
     expect(blockers).toEqual([]);
-    // `applied` is non-empty here: the engine counts the build/test/auth runs
-    // that isFlowOwnedCommand no-ops. Reading it as "changed" made
-    // `--step provider-auth codex` rebuild the image on every run, and exit 1
-    // wherever the build cannot run. The journal is the honest record.
+    // `applied` counts the flow-owned build/test/auth runs that `exec` no-ops,
+    // so it is non-empty even here; only the journal identifies real mutations.
+    // The caller rebuilds the container image when `changed`, so a false positive
+    // costs a no-op rebuild and fails hard wherever the build can't run.
     expect(apply.applied.length).toBeGreaterThan(0);
     expect(changed).toBe(false);
   });
@@ -94,9 +94,10 @@ describe('applyProviderSkill on an already-installed provider', () => {
 
 describe('the real repo tree satisfies the skill', () => {
   // The state the setup flow actually meets on trunk: nothing left to mutate, so
-  // `--step provider-auth codex` reaches auth without rebuilding the image. Run
-  // against a mirror of the REAL barrels and manifest — a drifted barrel line or
-  // manifest pin fails here instead of surprising the operator mid-setup.
+  // `--step provider-auth codex` reaches auth without rebuilding the image. Uses
+  // the REAL barrels, so a dropped import line fails here. (A drifted CLI *pin*
+  // does NOT: keyed json-merge skips on `name` alone. verifyCodexInstall reports
+  // that — see codex.test.ts.)
   it('needs no mutation, so provider-auth skips the image rebuild', async () => {
     const root = mirrorOfRealWiring();
 

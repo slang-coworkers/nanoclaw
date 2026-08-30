@@ -1,9 +1,10 @@
 import { EventEmitter } from 'events';
 import fs from 'fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { describe, expect, it, vi } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 
 // Mock child_process so runCodexLoginAuth never spawns a real codex CLI; the
 // spawn stand-in plays `codex login` writing auth.json into whatever
@@ -20,34 +21,62 @@ vi.mock('child_process', () => ({
 // Keep the auth flow's structured logging out of logs/setup.log.
 vi.mock('../logs.js', () => ({ step: vi.fn(), userInput: vi.fn() }));
 
-// Imports ONLY the barrel, like src/providers/barrel-registration.test.ts: the
-// `import './codex.js'` line in index.ts is the load-bearing wiring, and a test
-// that imported codex.js directly would stay green after someone deleted it.
-import './index.js';
+// Barrel-driven registration lives in ./barrel-registration.test.ts — importing
+// codex.js here self-registers the provider, so a registration assertion in this
+// file would survive deletion of the barrel's import line.
 import { buildCodexFailurePrompt, runCodexLoginAuth, verifyCodexInstall } from './codex.js';
-import { getSetupProvider, listSetupProviders } from './registry.js';
 
 const ROOT = process.cwd();
+const scratches: string[] = [];
 
-describe('setup provider barrel', () => {
-  it('registers codex via the barrel (guards the import line)', () => {
-    expect(listSetupProviders().map((e) => e.value)).toContain('codex');
-  });
-
-  it('exposes the three hooks the setup flow dispatches on', () => {
-    const entry = getSetupProvider('codex');
-
-    // Absent runAuth, `--step provider-auth codex` stops at setup/provider-auth.ts:84
-    // ("uses the standard auth flow") and never reaches the vault walk-through.
-    expect(typeof entry?.runAuth).toBe('function');
-    expect(typeof entry?.runInstallCheck).toBe('function');
-    expect(typeof entry?.offerFailureAssist).toBe('function');
-  });
-
-  it('resolves case-insensitively, matching how resolveProviderName normalizes', () => {
-    expect(getSetupProvider('CODEX')?.value).toBe('codex');
-  });
+afterAll(() => {
+  for (const dir of scratches) rmSync(dir, { recursive: true, force: true });
 });
+
+/** Scratch tree that satisfies verifyCodexInstall, so a case can break one thing. */
+function wiredRoot(): string {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'codex-verify-'));
+  scratches.push(root);
+
+  for (const file of [
+    'src/providers/codex.ts',
+    'container/agent-runner/src/providers/codex.ts',
+    'container/agent-runner/src/providers/codex-app-server.ts',
+  ]) {
+    mkdirSync(path.join(root, path.dirname(file)), { recursive: true });
+    fs.writeFileSync(path.join(root, file), '');
+  }
+  for (const barrel of [
+    'src/providers/index.ts',
+    'container/agent-runner/src/providers/index.ts',
+    'setup/providers/index.ts',
+  ]) {
+    mkdirSync(path.join(root, path.dirname(barrel)), { recursive: true });
+    fs.writeFileSync(path.join(root, barrel), "import './codex.js';\n");
+  }
+  mkdirSync(path.join(root, 'container'), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, 'container/cli-tools.json'),
+    JSON.stringify([{ name: '@openai/codex', version: '1.2.3' }]),
+  );
+  mkdirSync(path.join(root, '.claude/skills/add-codex'), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, '.claude/skills/add-codex/SKILL.md'),
+    '```nc:json-merge into:container/cli-tools.json key:name\n{ "name": "@openai/codex", "version": "1.2.3" }\n```\n',
+  );
+  return root;
+}
+
+/** verifyCodexInstall reads process.cwd(), so a scratch root needs a chdir. */
+function verifyIn(root: string): ReturnType<typeof verifyCodexInstall> {
+  const cwd = process.cwd();
+  try {
+    process.chdir(root);
+    return verifyCodexInstall();
+  } finally {
+    process.chdir(cwd);
+  }
+}
 
 describe('verifyCodexInstall', () => {
   it('passes on this fork tree', () => {
@@ -65,19 +94,46 @@ describe('verifyCodexInstall', () => {
     expect(verifyCodexInstall().ok).toBe(true);
   });
 
-  it('checks the CLI pin against the version /add-codex declares', () => {
-    const skill = fs.readFileSync(path.join(ROOT, '.claude/skills/add-codex/SKILL.md'), 'utf-8');
-    const declared = JSON.parse(
-      skill.match(/```nc:json-merge[^\n]*container\/cli-tools\.json[^\n]*\n([\s\S]*?)```/)![1],
-    ) as { version: string };
-    const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'container/cli-tools.json'), 'utf-8')) as Array<{
-      name: string;
-      version: string;
-    }>;
+  it('passes on a fully wired scratch tree', () => {
+    expect(verifyIn(wiredRoot())).toEqual({ ok: true, problems: [] });
+  });
 
-    // The engine's json-merge is idempotent on `name` alone, so a drifted
-    // version is never repaired by re-applying the skill — only reported here.
-    expect(manifest.find((t) => t.name === '@openai/codex')?.version).toBe(declared.version);
+  // The engine's json-merge is idempotent on `name` alone, so re-applying the
+  // skill never repairs a drifted version — reporting it here is the only signal.
+  it('reports a CLI pin that disagrees with the version /add-codex declares', () => {
+    const root = wiredRoot();
+    fs.writeFileSync(
+      path.join(root, 'container/cli-tools.json'),
+      JSON.stringify([{ name: '@openai/codex', version: '9.9.9' }]),
+    );
+
+    const { ok, problems } = verifyIn(root);
+
+    expect(ok).toBe(false);
+    expect(problems).toEqual(['container/cli-tools.json pins @openai/codex@9.9.9 but /add-codex declares 1.2.3']);
+  });
+
+  it('reports a missing setup barrel import — the gap that broke provider-auth', () => {
+    const root = wiredRoot();
+    fs.writeFileSync(path.join(root, 'setup/providers/index.ts'), '// no codex line\n');
+
+    expect(verifyIn(root).problems).toEqual(['missing barrel import in setup/providers/index.ts']);
+  });
+
+  it('reports a skill that declares no parseable pin', () => {
+    const root = wiredRoot();
+    fs.writeFileSync(path.join(root, '.claude/skills/add-codex/SKILL.md'), 'no fence here\n');
+
+    expect(verifyIn(root).problems).toEqual([
+      '/add-codex declares no parseable @openai/codex pin — the CLI version has no source of truth',
+    ]);
+  });
+
+  it('checks presence only when the tree carries no /add-codex to declare a pin', () => {
+    const root = wiredRoot();
+    rmSync(path.join(root, '.claude'), { recursive: true, force: true });
+
+    expect(verifyIn(root)).toEqual({ ok: true, problems: [] });
   });
 });
 
@@ -145,21 +201,64 @@ describe('runCodexLoginAuth', () => {
     // The isolated dir holds a live credential — gone once vaulted.
     expect(fs.existsSync(codexHome!)).toBe(false);
   });
+
+  // Ctrl-C mid-login must not strand the credential dir, and must kill the child
+  // BEFORE deleting it: `codex login` writes auth.json on its own schedule, so
+  // cleanup around a live child re-creates the credential with nobody left to
+  // remove it. Asserted by ordering, not just by the dir being gone.
+  it('kills the login child before removing CODEX_HOME on SIGINT', async () => {
+    mockSpawnSync.mockReturnValue({ status: 0, stdout: '', stderr: '' });
+    mockExecFileSync.mockReturnValue('');
+
+    const order: string[] = [];
+    let codexHome: string | undefined;
+    // Stands in for `process.kill`: the real one would take down vitest. The
+    // re-raise is what turns the handler back into an interrupt for the caller.
+    const killSpy = vi.spyOn(process, 'kill').mockImplementation((pid, signal) => {
+      order.push(`re-raise:${String(signal)}`);
+      return true;
+    });
+
+    mockSpawn.mockImplementation((...args: unknown[]) => {
+      const opts = args[2] as { env?: NodeJS.ProcessEnv };
+      codexHome = opts.env!.CODEX_HOME;
+      const child = Object.assign(new EventEmitter(), {
+        exitCode: null as number | null,
+        signalCode: null as string | null,
+        kill: (sig: string) => {
+          order.push(`kill:${sig}`);
+          // A killed child writes nothing further; record the dir's state at the
+          // moment of death so a delete-then-kill ordering is detectable.
+          order.push(`home-exists-at-kill:${fs.existsSync(codexHome!)}`);
+          child.exitCode = 137;
+          setImmediate(() => child.emit('exit', null, sig));
+          return true;
+        },
+      });
+      // The login is still running when the interrupt lands — never resolves.
+      setImmediate(() => process.emit('SIGINT'));
+      return child;
+    });
+
+    const login = runCodexLoginAuth('browser');
+    await new Promise((r) => setTimeout(r, 60));
+
+    expect(order).toEqual(['kill:SIGKILL', 'home-exists-at-kill:true', 're-raise:SIGINT']);
+    expect(fs.existsSync(codexHome!)).toBe(false);
+
+    killSpy.mockRestore();
+    void login; // the login promise never settles: the real process would be dead
+  });
 });
 
 /**
- * `/add-codex` must carry no `nc:copy` directive. Its prose once said not to
- * re-copy the payload while its fence listed it anyway; the engine executes
- * directives, not prose. Two mechanisms make a fence here destructive:
+ * `/add-codex` must carry no `nc:copy` directive — not even one pruned to the
+ * files this fork does carry, since those are the diverged ones.
  *
- *   - `selfStatus` returns `apply` unconditionally for `copy` in refresh mode,
- *     and `detectInstalledSkills` reads `src/providers/index.ts` — so
- *     `/update-skills` overwrites the destinations even when all are present.
- *   - This fork's codex files diverge substantially from the `providers` branch,
- *     and the upstream versions compile, so tsc stays green through the revert.
- *
- * A fence pruned to "only the files we carry" would still overwrite exactly the
- * diverged ones, so the invariant is no fence at all.
+ * `selfStatus` returns `apply` unconditionally for `copy` in refresh mode, and
+ * `detectInstalledSkills` reads `src/providers/index.ts`, so `/update-skills`
+ * would overwrite this fork's codex implementations with upstream's even though
+ * every destination is present — and tsc stays green, because upstream's compile.
  */
 describe('add-codex carries no copy fence', () => {
   const skill = fs.readFileSync(path.join(ROOT, '.claude/skills/add-codex/SKILL.md'), 'utf-8');

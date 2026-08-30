@@ -213,18 +213,25 @@ export async function runCodexLoginAuth(method: 'browser' | 'device'): Promise<v
   // removes it explicitly.
   const removeLoginHome = (): void => fs.rmSync(loginHome, { recursive: true, force: true });
   // Ctrl-C during the browser/device login is the likeliest exit of all, and it
-  // reaches neither the branches below nor a finally. Re-raise after cleanup so
-  // the interrupt still reads as one to the caller's shell.
+  // reaches neither the branches below nor a finally. The child must die BEFORE
+  // the directory goes: `codex login` writes auth.json on its own schedule, so
+  // deleting around a live child re-creates the credential with no one left to
+  // clean it up. Re-raise afterwards so the interrupt still reads as one.
+  let loginChild: ReturnType<typeof spawn> | undefined;
   const handlers: Record<'SIGINT' | 'SIGTERM', () => void> = {
-    SIGINT: () => onSignal('SIGINT'),
-    SIGTERM: () => onSignal('SIGTERM'),
+    SIGINT: () => void onSignal('SIGINT'),
+    SIGTERM: () => void onSignal('SIGTERM'),
   };
   const clearSignalHandlers = (): void => {
     process.removeListener('SIGINT', handlers.SIGINT);
     process.removeListener('SIGTERM', handlers.SIGTERM);
   };
-  function onSignal(sig: 'SIGINT' | 'SIGTERM'): void {
+  async function onSignal(sig: 'SIGINT' | 'SIGTERM'): Promise<void> {
     clearSignalHandlers();
+    if (loginChild && loginChild.exitCode === null && loginChild.signalCode === null) {
+      loginChild.kill('SIGKILL');
+      await waitForExit(loginChild, 2000);
+    }
     removeLoginHome();
     process.kill(process.pid, sig);
   }
@@ -233,7 +240,9 @@ export async function runCodexLoginAuth(method: 'browser' | 'device'): Promise<v
 
   const args = method === 'device' ? ['login', '--device-auth'] : ['login'];
   const start = Date.now();
-  const code = await runInherit('codex', args, { CODEX_HOME: loginHome });
+  const code = await runInherit('codex', args, { CODEX_HOME: loginHome }, (child) => {
+    loginChild = child;
+  });
   const durationMs = Date.now() - start;
   console.log();
 
@@ -294,14 +303,43 @@ export async function runCodexLoginAuth(method: 'browser' | 'device'): Promise<v
   p.log.success(brandBody('OpenAI account connected — credentials live in your OneCLI vault, never in the container.'));
 }
 
-function runInherit(cmd: string, args: string[], extraEnv?: Record<string, string>): Promise<number> {
+/**
+ * `onSpawn` hands the caller the child handle. A signal handler that deletes the
+ * login's CODEX_HOME must first stop the child: `codex login` writes auth.json on
+ * its own schedule, so cleaning up around a still-running child re-creates the
+ * live credential in a directory nobody will delete again.
+ */
+function runInherit(
+  cmd: string,
+  args: string[],
+  extraEnv?: Record<string, string>,
+  onSpawn?: (child: ReturnType<typeof spawn>) => void,
+): Promise<number> {
   return new Promise((resolve) => {
     const child = spawn(cmd, args, {
       stdio: 'inherit',
       env: extraEnv ? { ...process.env, ...extraEnv } : process.env,
     });
+    onSpawn?.(child);
     child.on('close', (code) => resolve(code ?? 1));
     child.on('error', () => resolve(1));
+  });
+}
+
+/**
+ * Wait for a killed child to actually exit, so cleanup can't race its last write.
+ * Bounded: a child ignoring SIGKILL must not hang the interrupt path forever.
+ */
+async function waitForExit(child: ReturnType<typeof spawn>, timeoutMs: number): Promise<void> {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  await new Promise<void>((resolve) => {
+    const done = (): void => {
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(done, timeoutMs);
+    child.once('exit', done);
+    child.once('error', done);
   });
 }
 
@@ -425,9 +463,9 @@ export function verifyCodexInstall(): { ok: boolean; problems: string[] } {
     if (!fs.existsSync(path.join(root, file))) problems.push(`missing file: ${file}`);
   }
 
-  // The setup barrel is in the list because its absence IS the bug this file
-  // exists to fix: without the line, `--step provider-auth codex` reports
-  // "codex did not register" and exits 1 on an otherwise healthy install.
+  // All three barrels, including the setup one: `--step provider-auth <name>`
+  // resolves the provider through `setup/providers/index.ts`, so a missing line
+  // there fails standalone auth on an otherwise healthy install.
   for (const barrel of [
     'src/providers/index.ts',
     'container/agent-runner/src/providers/index.ts',
@@ -477,8 +515,17 @@ function verifyCodexCliPin(root: string): string[] {
   }
   if (!entry) return ['container/cli-tools.json missing the @openai/codex CLI entry'];
 
+  // A tree with no /add-codex (someone vendored the payload without the skill)
+  // has no declaration to check against, which is not itself a broken install —
+  // but a skill that IS present and declares no parseable pin has lost the
+  // version source of truth, so say so rather than silently checking less.
+  const skillPath = path.join(root, '.claude/skills/add-codex/SKILL.md');
   const pinned = skillPinnedCodexVersion(root);
-  if (!pinned) return []; // no declared pin to compare against — presence is all we can assert
+  if (!pinned) {
+    return fs.existsSync(skillPath)
+      ? ['/add-codex declares no parseable @openai/codex pin — the CLI version has no source of truth']
+      : [];
+  }
   if (entry.version !== pinned) {
     return [`container/cli-tools.json pins @openai/codex@${entry.version} but /add-codex declares ${pinned}`];
   }
