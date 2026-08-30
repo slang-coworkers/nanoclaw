@@ -239,13 +239,17 @@ describe('runCodexLoginAuth', () => {
           kill: (sig: string) => {
             order.push(`kill:${sig}`);
             order.push(`home-exists-at-kill:${fs.existsSync(codexHome!)}`);
-            child.signalCode = sig;
-            // A real killed child emits `exit`, then `close` — and `close` is
-            // what resolves runInherit with a non-zero code.
-            setImmediate(() => {
+            // signalCode stays null until the child actually exits, exactly as
+            // node reports it. Setting it here would let waitForExit return on
+            // its fast path and the test would pass with the wait deleted.
+            setTimeout(() => {
+              order.push('child-exited');
+              child.signalCode = sig;
+              // A real killed child emits `exit`, then `close`; `close` is what
+              // resolves runInherit with a non-zero code.
               child.emit('exit', null, sig);
               child.emit('close', null, sig);
-            });
+            }, 15);
             return true;
           },
         });
@@ -256,7 +260,9 @@ describe('runCodexLoginAuth', () => {
       void runCodexLoginAuth('browser');
       await new Promise((r) => setTimeout(r, 80));
 
-      expect(order).toEqual([`kill:SIGKILL`, 'home-exists-at-kill:true', `re-raise:${signal}`]);
+      // `child-exited` before the re-raise is the assertion that the production
+      // code awaits the exit; drop the await and the re-raise lands before it.
+      expect(order).toEqual(['kill:SIGKILL', 'home-exists-at-kill:true', 'child-exited', `re-raise:${signal}`]);
       expect(fs.existsSync(codexHome!)).toBe(false);
       // The interrupt owns the exit: no sign-in-failed message, no exit(1).
       expect(errorSpy).not.toHaveBeenCalled();
