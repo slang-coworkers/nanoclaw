@@ -5,6 +5,7 @@ import {
   parseProjectsEnv,
   runProjectIntegrations,
   composeBranch,
+  integrateDashboardCore,
   type ProjectOption,
 } from './project-integrations.js';
 
@@ -77,13 +78,17 @@ describe('PROJECTS catalog', () => {
     }
   });
 
-  it('offers slang, slangpy, dashboard, and nanoclaw', () => {
-    expect(PROJECTS.map((p) => p.value).sort()).toEqual(['dashboard', 'nanoclaw', 'slang', 'slangpy']);
+  it('offers slang, slangpy, and nanoclaw (dashboard lives at the channel step)', () => {
+    expect(PROJECTS.map((p) => p.value).sort()).toEqual(['nanoclaw', 'slang', 'slangpy']);
   });
 
-  it('dashboard is the only default-selected overlay', () => {
+  it('does not include dashboard — it is merged from the channel step instead', () => {
+    expect(PROJECTS.map((p) => p.value)).not.toContain('dashboard');
+  });
+
+  it('has no pre-selected default overlay (all are opt-in)', () => {
     const defaults = PROJECTS.filter((p) => p.default).map((p) => p.value);
-    expect(defaults).toEqual(['dashboard']);
+    expect(defaults).toEqual([]);
   });
 });
 
@@ -100,19 +105,20 @@ describe('parseProjectsEnv', () => {
   });
 
   it('matches by full branch name too', () => {
-    const got = parseProjectsEnv('nv-dashboard');
-    expect(got?.map((p) => p.value)).toEqual(['dashboard']);
+    const got = parseProjectsEnv('nv-slang');
+    expect(got?.map((p) => p.value)).toEqual(['slang']);
   });
 
-  it('ignores unknown tokens and tolerates whitespace', () => {
-    const got = parseProjectsEnv(' slang , nope , dashboard ');
-    expect(got?.map((p) => p.value)).toEqual(['dashboard', 'slang']);
+  it('ignores unknown tokens (including dashboard) and tolerates whitespace', () => {
+    // dashboard is no longer a project — it's a channel-step pick — so it's ignored here.
+    const got = parseProjectsEnv(' slang , nope , dashboard , slangpy ');
+    expect(got?.map((p) => p.value)).toEqual(['slang', 'slangpy']);
   });
 
   it('preserves catalog order regardless of input order', () => {
-    // catalog order is dashboard, slang, slangpy, nanoclaw — input order ignored
-    const got = parseProjectsEnv('slang,dashboard');
-    expect(got?.map((p) => p.value)).toEqual(['dashboard', 'slang']);
+    // catalog order is slang, slangpy, nanoclaw — input order ignored
+    const got = parseProjectsEnv('slangpy,slang');
+    expect(got?.map((p) => p.value)).toEqual(['slang', 'slangpy']);
   });
 });
 
@@ -159,15 +165,51 @@ describe('runProjectIntegrations', () => {
   it('collects failures without aborting the remaining merges', async () => {
     const calls: string[] = [];
     const res = await runProjectIntegrations({
-      select: async () => pick('slang', 'slangpy', 'dashboard'),
+      select: async () => pick('slang', 'slangpy', 'nanoclaw'),
       merge: (branch) => {
         calls.push(branch);
-        return branch === 'nv-dashboard' ? 1 : 0; // dashboard "conflicts"
+        return branch === 'nv-nanoclaw' ? 1 : 0; // nanoclaw "conflicts"
       },
     });
     // All three were attempted (in catalog order) — a failure does not short-circuit.
-    expect(calls).toEqual(['nv-dashboard', 'nv-slang', 'nv-slangpy']);
+    expect(calls).toEqual(['nv-slang', 'nv-slangpy', 'nv-nanoclaw']);
     expect(res.merged).toEqual(['nv-slang', 'nv-slangpy']);
-    expect(res.failed).toEqual(['nv-dashboard']);
+    expect(res.failed).toEqual(['nv-nanoclaw']);
+  });
+});
+
+describe('integrateDashboardCore (channel-step Dashboard pick)', () => {
+  it('is a no-op when nv-dashboard is already merged', async () => {
+    let composes = 0;
+    const outcome = await integrateDashboardCore({
+      alreadyMerged: () => true,
+      compose: () => {
+        composes++;
+        return 0;
+      },
+    });
+    expect(outcome).toBe('already');
+    expect(composes).toBe(0);
+  });
+
+  it('composes nv-dashboard when absent and reports merged on success', async () => {
+    const calls: string[] = [];
+    const outcome = await integrateDashboardCore({
+      alreadyMerged: () => false,
+      compose: (b) => {
+        calls.push(b);
+        return 0;
+      },
+    });
+    expect(outcome).toBe('merged');
+    expect(calls).toEqual(['nv-dashboard']);
+  });
+
+  it('reports failed when the compose returns non-zero', async () => {
+    const outcome = await integrateDashboardCore({
+      alreadyMerged: () => false,
+      compose: async () => 1,
+    });
+    expect(outcome).toBe('failed');
   });
 });

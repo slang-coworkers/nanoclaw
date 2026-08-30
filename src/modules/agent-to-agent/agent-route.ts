@@ -33,7 +33,7 @@ import {
   getMessagingGroupByPlatform,
 } from '../../db/messaging-groups.js';
 import { getSession } from '../../db/sessions.js';
-import { wakeContainer } from '../../container-runner.js';
+import { requestWake } from '../../request-wake.js';
 import { log } from '../../log.js';
 import { resolveSession, sessionDir, withExistingMailboxSession, writeSessionMessage } from '../../session-manager.js';
 import { GuardDenyError, guard } from '../../guard/index.js';
@@ -518,7 +518,7 @@ async function deliverAncestorReply(
     forwardedFileCount: countForwardedFiles(forwardedReplyContent),
   });
   const freshAncestor = await getSession(ancestorSession.id);
-  if (freshAncestor) await wakeContainer(freshAncestor);
+  if (freshAncestor) await requestWake(freshAncestor, 'inbound-message');
 }
 
 export async function routeAgentMessage(
@@ -853,7 +853,7 @@ export async function performAgentRoute(
   }
 
   const fresh = await getSession(targetSession.id);
-  if (fresh) await wakeContainer(fresh);
+  if (fresh) await requestWake(fresh, 'inbound-message');
 }
 
 /**
