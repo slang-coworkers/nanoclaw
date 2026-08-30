@@ -60,6 +60,8 @@ interface FakeSession {
   // dash-1 set-ceiling-v2 fields (see session-cost-caps.ts buildSessionCostFields).
   costStatus?: string;
   costSpent?: number;
+  // Total lifetime spend — the pill's spent number (dash-display). See renderCostCapCell.
+  costLifetime?: number;
   costCeiling?: number;
   costCeilingCents?: number;
   costImmortal?: boolean;
@@ -359,5 +361,79 @@ describe('renderCostCapCell / renderCostCeilingControl — cost-ceiling states',
         expect(entries[i][1], `${entries[i][0]} vs ${entries[j][0]} must render differently`).not.toBe(entries[j][1]);
       }
     }
+  });
+});
+
+// ── dash-display: the cost-cap pill's spent number (x in "x / y ceiling") is the
+// session's TOTAL LIFETIME cost (s.costLifetime), NOT the runner's windowed
+// enforcement counter (s.costSpent); the green COST column stays the SELECTED
+// PERIOD total (s.cost). Fallback to costSpent when lifetime isn't scanned yet. ──
+describe('renderCostCapCell — pill shows lifetime total, cost column shows period (dash-display)', () => {
+  const { render } = buildRenderer();
+
+  function renderOne(over: Partial<FakeSession>): string {
+    const adminState = {
+      sessions: [session({ session_id: 'sess-1', group_folder: 'ag-1', group_name: 'Coworker', ...over })],
+    };
+    const sessionsView = { period: '30d', sort: 'cost', filter: 'all', groupFilter: 'all', unavailable: null };
+    return render(adminState, sessionsView);
+  }
+
+  it('(a) stopped pill shows lifetime-total / ceiling — the true money spent, not the windowed costSpent', () => {
+    // costSpent (199.35) = runner's windowed enforcement counter; costLifetime
+    // (347.59) = true all-time total. The pill must read $347.59 / $196.77.
+    const html = renderOne({ costStatus: 'stopped', costSpent: 199.35, costLifetime: 347.59, costCeiling: 196.77 });
+    expect(html).toContain('$347.59'); // x = lifetime total
+    expect(html).toContain('/ $196.77 ceiling'); // y = ceiling
+    expect(html).not.toContain('$199.35'); // NOT the windowed enforcement counter
+    expect(html).toContain('stopped');
+  });
+
+  it('(a) healthy pill likewise shows the lifetime total, not costSpent', () => {
+    const html = renderOne({ costStatus: 'ok', costSpent: 50, costLifetime: 320, costCeiling: 196.77 });
+    expect(html).toContain('$320.00');
+    expect(html).not.toContain('$50.00');
+    expect(html).toContain('/ $196.77 ceiling');
+  });
+
+  it('(c) falls back to costSpent when costLifetime is absent (a live cap with no scanned cost yet)', () => {
+    const html = renderOne({ costStatus: 'stopped', costSpent: 199.35, costCeiling: 196.77 }); // costLifetime undefined
+    expect(html).toContain('$199.35');
+    expect(html).toContain('/ $196.77 ceiling');
+  });
+
+  it('immortal (daily window): informational lifetime-total / ceiling /day, still no "stopped"', () => {
+    const html = renderOne({
+      costStatus: 'ok',
+      costImmortal: true,
+      costWindow: 'daily',
+      costSpent: 40,
+      costLifetime: 500,
+      costCeiling: 196.77,
+    });
+    expect(html).toContain('$500.00');
+    expect(html).toContain('/ $196.77 ceiling /day');
+    expect(html).toContain('∞');
+    // Not the red stopped pill (that label is `> stopped</span>`; the bare word
+    // "stopped" also appears in the table's filter chip + header tooltip, so match
+    // the pill fragment, not the word). Immortal also never gets a Continue/Stop.
+    expect(html).not.toContain('stopped</span>');
+    expect(html).not.toContain('data-action="cost-override"');
+  });
+
+  it('(b) the green COST column reflects the selected period (s.cost), independent of the lifetime pill', () => {
+    // s.cost (12.34) is the period total the server scoped to ?period=; costLifetime
+    // (999) is all-time. They are different fields and must render independently:
+    // the cost column shows the period value, the pill shows the lifetime value.
+    const html = renderOne({
+      cost: 12.34,
+      claudeUsd: 12.34,
+      costStatus: 'stopped',
+      costSpent: 5,
+      costLifetime: 999,
+      costCeiling: 196.77,
+    });
+    expect(html).toContain('$12.34'); // cost column = selected period
+    expect(html).toContain('$999.00'); // pill = lifetime total
   });
 });

@@ -5835,8 +5835,18 @@ async function pollCeilingUntilTerminal(sid) {
 // hit its ceiling. Immortal (orchestrator/admin) never stops — no buttons, ever,
 // matching the runner's own "immortal is never quiesced" invariant. A
 // daily-window cap (immortal's per-DAY visibility bound) renders "/day". Shared
-// contract with the host: s.costStatus / s.costSpent / s.costCap / s.costCeiling
-// / s.costP99 / s.costImmortal / s.costWindow.
+// contract with the host: s.costStatus / s.costSpent / s.costLifetime / s.costCap
+// / s.costCeiling / s.costP99 / s.costImmortal / s.costWindow.
+//
+// Pill spent number: the pill reads "x / y ceiling" where x = the session's
+// TOTAL LIFETIME cost (s.costLifetime — all-time, every day) and y = the current
+// ceiling (s.costCeiling, which already reflects any Continue-raises). x is NOT
+// s.costSpent: that's the runner's internal WINDOWED enforcement counter (per-
+// fire / per-day), a different, usually smaller scope that confusingly diverged
+// from the ceiling. Enforcement is unchanged — the dashboard just stops SHOWING
+// the windowed counter and shows the true total instead. Fallback: if
+// s.costLifetime is absent (a live cap with no scanned cost yet) the pill falls
+// back to s.costSpent so it never renders blank.
 //
 // dash-1 set-ceiling-v2: the live ceiling now renders for EVERY status, not
 // just 'stopped' — a healthy row used to show spend but not the number it was
@@ -5873,7 +5883,11 @@ function renderCostCell(s) {
 function renderCostCapCell(s) {
   const status = s.costStatus;
   if (!status) return '<span style="color:#64748B">—</span>';
-  const spent = typeof s.costSpent === 'number' ? fmtUsd(s.costSpent) : '?';
+  // x in "x / y ceiling" = the session's TOTAL LIFETIME spend (s.costLifetime),
+  // NOT the windowed enforcement counter (s.costSpent). Fall back to costSpent
+  // only when the lifetime total isn't available yet, so the pill never blanks.
+  const spentNum = typeof s.costLifetime === 'number' ? s.costLifetime : s.costSpent;
+  const spent = typeof spentNum === 'number' ? fmtUsd(spentNum) : '?';
   const perDay = s.costWindow === 'daily' ? ' /day' : '';
   const immortalMark = s.costImmortal
     ? '<span title="immortal (orchestrator/admin) — never stopped" style="color:var(--text-muted)"> ∞</span>'
