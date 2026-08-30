@@ -42,7 +42,7 @@ import { BACK_TO_CHANNEL_SELECTION } from './lib/back-nav.js';
 // extensions (setup/channels/companions.ts) before running its install skill
 // — the wizard itself stays free of channel-specific imports.
 import { runChannelSkillWithPreStep } from './channels/run-channel-skill.js';
-import { run as runProjectIntegrationsStep } from './project-integrations.js';
+import { run as runProjectIntegrationsStep, integrateDashboard } from './project-integrations.js';
 import {
   channelDmLabel,
   initialChannelOptions,
@@ -695,11 +695,17 @@ async function main(): Promise<void> {
     // its first prompt and bounce the user back to the chooser without
     // restarting setup. Channels not yet wired with the back option just
     // return void and the loop exits after one pass.
+    //
+    // Dashboard is pre-selected on first entry (the recommended default). Once
+    // integrated, the default shifts to a chat channel so a re-loop doesn't
+    // re-offer it. Picking Dashboard merges nv-dashboard and loops back so the
+    // user can also connect a messaging app in the same pass.
+    let dashboardIntegrated = false;
     let backed = true;
     while (backed) {
       backed = false;
-      channelChoice = await askChannelChoice();
-      if (channelChoice !== 'skip' && channelChoice !== 'other') {
+      channelChoice = await askChannelChoice(dashboardIntegrated ? 'slack' : 'dashboard');
+      if (channelChoice !== 'skip' && channelChoice !== 'other' && channelChoice !== 'dashboard') {
         await resolveDisplayName();
       }
       // Initialized, not just declared: the `skip` branch below assigns nothing,
@@ -708,6 +714,9 @@ async function main(): Promise<void> {
       let result: void | typeof BACK_TO_CHANNEL_SELECTION = undefined;
       if (channelChoice === 'other') {
         result = await askOtherChannelName();
+      } else if (channelChoice === 'dashboard') {
+        result = await integrateDashboardChoice();
+        dashboardIntegrated = true;
       } else if (channelChoice === 'skip') {
         p.log.info(
           brandBody(
@@ -1858,16 +1867,48 @@ async function askDisplayName(fallback: string): Promise<string> {
   return value;
 }
 
-async function askChannelChoice(): Promise<ChannelChoice> {
+async function askChannelChoice(initialValue?: ChannelChoice): Promise<ChannelChoice> {
   const choice = ensureAnswer(
     await brightSelect<ChannelChoice>({
       message: 'Want to chat with your assistant from your phone?',
       options: initialChannelOptions(),
+      initialValue,
     }),
   );
   setupLog.userInput('channel_choice', String(choice));
   phEmit('channel_chosen', { channel: String(choice) });
   return choice;
+}
+
+/**
+ * The channel-step "Dashboard" pick: merge the nv-dashboard overlay (pixel UI +
+ * cost observability) through the same merge-train tiers the project step uses.
+ * It's a host-only overlay, so merge-train's host build is enough — no container
+ * rebuild. Always loops back to the chooser so the user can also connect a chat
+ * channel in the same pass; re-runs are idempotent (see `integrateDashboard`).
+ */
+async function integrateDashboardChoice(): Promise<typeof BACK_TO_CHANNEL_SELECTION> {
+  p.log.info(
+    brandBody(
+      wrapForGutter(
+        'Merging the Dashboard overlay (nv-dashboard) — pixel UI + cost observability. ' +
+          'This runs the merge-train and a host build; it can take a minute.',
+        4,
+      ),
+    ),
+  );
+  const outcome = await integrateDashboard();
+  if (outcome === 'merged') {
+    p.log.success('Dashboard merged (nv-dashboard). Restart the service to load it, then open the viewer.');
+  } else if (outcome === 'already') {
+    p.log.info('Dashboard (nv-dashboard) is already integrated — nothing to merge.');
+  } else {
+    p.log.warn(
+      `Could not compose nv-dashboard — the merge was rolled back (conflict outside nv-main's owned set, ` +
+        'or the composed tree failed to build). Resolve manually with `bash setup/merge-train.sh nv-dashboard`.',
+    );
+  }
+  return BACK_TO_CHANNEL_SELECTION;
 }
 
 async function askOtherChannelName(): Promise<void | typeof BACK_TO_CHANNEL_SELECTION> {
