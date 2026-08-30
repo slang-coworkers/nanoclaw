@@ -293,6 +293,7 @@ async function main(): Promise<void> {
     model: config.model,
     effort: config.effort,
     fallbackModel: config.fallbackModel,
+    fastMode: config.fastMode,
   });
 
   // Wire the shared memory tree into the provider's native session-start

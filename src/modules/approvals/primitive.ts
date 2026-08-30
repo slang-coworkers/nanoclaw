@@ -25,7 +25,7 @@ import { normalizeOptions, type RawOption } from '../../channels/ask-question.js
 import { getMessagingGroup } from '../../db/messaging-groups.js';
 import { createPendingApproval, getSession, updatePendingApprovalDelivery } from '../../db/sessions.js';
 import { getDeliveryAdapter } from '../../delivery.js';
-import { wakeContainer } from '../../container-runner.js';
+import { requestWake } from '../../request-wake.js';
 import { log } from '../../log.js';
 import { writeSessionMessage } from '../../session-manager.js';
 import type { MessagingGroup, PendingApproval, Session } from '../../types.js';
@@ -160,21 +160,23 @@ export async function pickApprover(agentGroupId: string | null): Promise<string[
  * pair we can actually deliver to. Returns null if nobody is reachable.
  *
  * Tie-break: prefer approvers reachable on the same channel kind as the
- * origin; else first in list. Resolution uses ensureUserDm, which may
- * trigger a platform openDM call on cache miss.
+ * origin; else first in list. A same-channel origin resolves through its
+ * exact adapter instance.
  */
 export async function pickApprovalDelivery(
   approvers: string[],
   originChannelType: string,
+  originInstance?: string,
 ): Promise<{ userId: string; messagingGroup: MessagingGroup } | null> {
   if (originChannelType) {
     for (const userId of approvers) {
       if (channelTypeOf(userId) !== originChannelType) continue;
-      const mg = await ensureUserDm(userId);
+      const mg = await ensureUserDm(userId, originInstance === undefined ? undefined : { instance: originInstance });
       if (mg) return { userId, messagingGroup: mg };
     }
   }
   for (const userId of approvers) {
+    if (originChannelType && channelTypeOf(userId) === originChannelType) continue;
     const mg = await ensureUserDm(userId);
     if (mg) return { userId, messagingGroup: mg };
   }
@@ -203,7 +205,7 @@ export async function notifyAgent(session: Session, text: string): Promise<void>
     content: JSON.stringify({ text, sender: 'system', senderId: 'system' }),
   });
   const fresh = await getSession(session.id);
-  if (fresh) await wakeContainer(fresh);
+  if (fresh) await requestWake(fresh, 'inbound-message');
 }
 
 export interface RequestApprovalOptions {
@@ -236,9 +238,15 @@ export async function requestApproval(opts: RequestApprovalOptions): Promise<voi
     return;
   }
 
-  const originChannelType = session.messaging_group_id
-    ? ((await getMessagingGroup(session.messaging_group_id))?.channel_type ?? '')
-    : '';
+  const origin = session.messaging_group_id ? await getMessagingGroup(session.messaging_group_id) : undefined;
+  const originChannelType = origin?.channel_type ?? '';
+
+  // Resolve delivery BEFORE persisting so the row can record the identity the
+  // card was routed to (upstream). A null target is NOT fatal here, which is the
+  // fork's divergence: the row is still written and stays actionable from the
+  // dashboard, so an install with no DM channel queues approvals instead of
+  // failing them outright.
+  const target = await pickApprovalDelivery(approvers, originChannelType, origin?.instance);
 
   const approvalId = `appr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const normalizedOptions = normalizeOptions(APPROVAL_OPTIONS);
@@ -256,10 +264,11 @@ export async function requestApproval(opts: RequestApprovalOptions): Promise<voi
     title,
     question,
     options_json: JSON.stringify(normalizedOptions),
-    approver_user_id: approverUserId ?? null,
+    // The DM'd approver is the identity this card was routed to; recording it
+    // makes resolution exact — only that user may decide the row.
+    approver_user_id: approverUserId ?? target?.userId ?? null,
   });
 
-  const target = await pickApprovalDelivery(approvers, originChannelType);
   if (!target) {
     log.warn('No DM channel for approval delivery — row persisted for dashboard', { action, approvalId });
     await notifyAgent(session, `${action} pending — awaiting admin review via dashboard.`);
@@ -281,6 +290,8 @@ export async function requestApproval(opts: RequestApprovalOptions): Promise<voi
           question,
           options: APPROVAL_OPTIONS,
         }),
+        undefined,
+        target.messagingGroup.instance,
       );
       await updatePendingApprovalDelivery(approvalId, {
         channel_type: target.messagingGroup.channel_type,
