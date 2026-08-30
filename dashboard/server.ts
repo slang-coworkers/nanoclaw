@@ -3405,19 +3405,94 @@ function normalizeCcusageEntryUnfiltered(raw: Record<string, unknown>): CcusageD
 }
 
 /**
- * Normalise a @ccusage/codex daily entry to the shared CcusageDayEntry shape.
+ * ISO day key for a `ccusage codex` date field.
  *
- * Invariant: @ccusage/codex reports `inputTokens` *inclusive* of
- * `cachedInputTokens` (mirrors the raw OpenAI `input_tokens` field, which
- * includes cached). The Anthropic-side `ccusage` feed is non-cached. To keep
- * the two comparable in the Metrics UI — and avoid visually double-counting
- * cached tokens across the INPUT and CACHE READ columns — subtract the
- * cached subset before surfacing `inputTokens`. Pricing is unaffected:
- * @ccusage/codex computes `costUSD` internally with the correct split.
+ * ccusage 20.0.19 emits an ISO `"2026-08-01"`; the older `@ccusage/codex`
+ * emitted a human `"Apr 06, 2026"`. `new Date(str)` handles both, but NOT
+ * identically: an ISO date-only string is parsed as UTC, while a human one is
+ * parsed as LOCAL midnight and then shifted by `toISOString()`. So on a host
+ * east of UTC the legacy form slides back a day (Asia/Calcutta turns
+ * "Aug 01, 2026" into 2026-07-31), which silently moves a whole day of spend
+ * across every `--since` boundary and across the daily chart's buckets.
+ *
+ * Anchoring the parse at UTC makes both forms mean the calendar day ccusage
+ * meant, on any host. Prod runs Etc/UTC, so this is latent there and live on
+ * every non-UTC box (the lego/dev instance among them).
  */
-function normalizeCodexEntry(raw: Record<string, unknown>): CcusageDayEntry {
-  // Codex dates come as "Apr 06, 2026"; convert to ISO "2026-04-06" so they merge with Claude entries.
-  const date = new Date(raw.date as string).toISOString().slice(0, 10);
+export function codexDayKey(raw: unknown): string {
+  if (typeof raw !== 'string' || raw === '') return '';
+  const iso = /^(\d{4}-\d{2}-\d{2})/.exec(raw);
+  if (iso) return iso[1];
+  const d = new Date(`${raw} UTC`);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+}
+
+/**
+ * Tokens out of one `ccusage codex daily` row, across BOTH field shapes.
+ *
+ * ccusage 20.0.19 (the pinned version) emits `inputTokens` ALREADY NET of cache
+ * plus a sibling `cacheReadTokens` — the same column names the Claude feed uses.
+ * The older `@ccusage/codex` emitted a wire-faithful `inputTokens` INCLUSIVE of
+ * cache alongside `cachedInputTokens`, which had to be subtracted; that is the
+ * rule this function used to apply unconditionally.
+ *
+ * Against the 20.x shape that rule is not a rounding error. `cachedInputTokens`
+ * is absent, so it reads 0: the CACHE READ column renders 0 for every Codex
+ * coworker, and `inputTokens` is "netted" a second time against nothing. The
+ * input/cache/output columns then no longer sum to the `totalTokens` shown
+ * beside them. Measured on a real `ccusage@20.0.19 codex daily --json --offline`
+ * run — input 1000 / cached 400 / output 200 per call — the row emits
+ * `inputTokens: 600, cacheReadTokens: 400, totalTokens: 1200`, and the old rule
+ * reported 600/0/200 against a true 600/400/200.
+ *
+ * COST IS UNAFFECTED either way (`costUSD` is taken verbatim), which is exactly
+ * why this went unnoticed: the dollars were right and only the attribution was
+ * wrong. `scripts/cost-parity.ts` found it by comparing TOKENS before dollars.
+ *
+ * Discriminate on which field is PRESENT, not on a version number: this shape
+ * has already changed once.
+ */
+function codexRowTokens(raw: Record<string, unknown>): {
+  inputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+  outputTokens: number;
+} {
+  const input = (raw.inputTokens as number) || 0;
+  const outputTokens = (raw.outputTokens as number) || 0;
+  if (raw.cacheReadTokens !== undefined) {
+    // ccusage 20+: already net, cache reads in their own field. `cacheCreation
+    // Tokens` is present (and 0 — codex has no cache-write tier) so read it
+    // rather than hardcoding, in case that ever stops being true.
+    return {
+      inputTokens: input,
+      cacheReadTokens: (raw.cacheReadTokens as number) || 0,
+      cacheCreationTokens: (raw.cacheCreationTokens as number) || 0,
+      outputTokens,
+    };
+  }
+  // Legacy @ccusage/codex: inputTokens is inclusive of the cached subset.
+  const cached = (raw.cachedInputTokens as number) || 0;
+  return {
+    inputTokens: Math.max(0, input - cached),
+    cacheReadTokens: cached,
+    cacheCreationTokens: 0,
+    outputTokens,
+  };
+}
+
+/**
+ * Normalise a `ccusage codex daily` entry to the shared CcusageDayEntry shape.
+ *
+ * Tokens are surfaced NET of cache on both providers, so the Metrics UI's INPUT
+ * and CACHE READ columns mean the same thing for Claude and Codex and cached
+ * tokens are not visually double-counted. See `codexRowTokens` for why the two
+ * ccusage shapes both have to be handled, and `codexDayKey` for the date.
+ * Pricing is untouched: ccusage computes `costUSD` internally with the correct
+ * split and it is taken verbatim.
+ */
+export function normalizeCodexEntry(raw: Record<string, unknown>): CcusageDayEntry {
+  const date = codexDayKey(raw.date);
   const totalCost = (raw.costUSD as number) || 0;
   const totalTokens = (raw.totalTokens as number) || 0;
   const models = (raw.models || {}) as Record<string, Record<string, unknown>>;
@@ -3427,25 +3502,11 @@ function normalizeCodexEntry(raw: Record<string, unknown>): CcusageDayEntry {
     const modelTokens = (m.totalTokens as number) || 0;
     // Allocate cost proportionally by tokens; exact when there's one model.
     const cost = totalTokens > 0 ? (modelTokens / totalTokens) * totalCost : 0;
-    const mCacheRead = (m.cachedInputTokens as number) || 0;
-    const mRawInput = (m.inputTokens as number) || 0;
-    return {
-      modelName,
-      inputTokens: Math.max(0, mRawInput - mCacheRead),
-      outputTokens: (m.outputTokens as number) || 0,
-      cacheCreationTokens: 0,
-      cacheReadTokens: mCacheRead,
-      cost,
-    };
+    return { modelName, ...codexRowTokens(m), cost };
   });
-  const cacheRead = (raw.cachedInputTokens as number) || 0;
-  const rawInput = (raw.inputTokens as number) || 0;
   return {
     date,
-    inputTokens: Math.max(0, rawInput - cacheRead),
-    outputTokens: (raw.outputTokens as number) || 0,
-    cacheCreationTokens: 0,
-    cacheReadTokens: cacheRead,
+    ...codexRowTokens(raw),
     totalTokens,
     totalCost,
     modelsUsed: modelNames,
