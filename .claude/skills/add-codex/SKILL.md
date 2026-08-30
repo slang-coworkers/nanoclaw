@@ -7,7 +7,7 @@ description: Use Codex (OpenAI's codex app-server) as a full agent provider — 
 
 > Shortcut: `pnpm exec tsx setup/index.ts --step provider-auth codex` performs this whole install (barrels, CLI manifest entry, image rebuild) plus auth in one command. The steps below are the same operations, for agent-driven or manual application.
 
-NanoClaw selects each group's agent backend from `container_configs.provider` (default `claude`). This fork carries the Codex payload in trunk, so this skill wires and authenticates rather than fetching: confirm the payload, append one import to each of the three provider barrels, add the pinned Codex CLI to the container manifest (`container/cli-tools.json`), rebuild, then run the vault auth walk-through.
+NanoClaw resolves each group's agent backend through three tiers — `sessions.agent_provider` → `agent_groups.agent_provider` → `container_configs.provider` → `claude` (see **Use it** below). This fork carries the Codex payload in trunk, so this skill wires and authenticates rather than fetching: confirm the payload, append one import to each of the three provider barrels, add the pinned Codex CLI to the container manifest (`container/cli-tools.json`), rebuild, then run the vault auth walk-through.
 
 The provider runs `codex app-server` as a child process speaking JSON-RPC over stdio: native streaming, MCP tools, server-side conversation history (the continuation is a thread id, no on-disk transcript). This replaced the earlier `@openai/codex-sdk` library integration, which is gone — no dependency on it remains in `container/agent-runner/package.json`, and any lockfile still naming `@openai/codex-sdk` is stale and should be deleted, not reinstalled from. Credentials are **vault-only**: OneCLI serves a sentinel `auth.json` stub into the container and swaps the real ChatGPT token or API key on the wire — no key in `.env`, nothing readable in the container.
 
@@ -107,10 +107,13 @@ ncl groups config update --id <group-id> --provider codex
 ncl groups restart --id <group-id>
 ```
 
-Switching is an operator action — run it from the host. Every provider uses the
-same `memory/` tree, so memory carries across automatically. Run
-`/migrate-memory` only when upgrading a group that still has legacy `.seed.md`,
-`CLAUDE.local.md`, or unindexed imported memory. See
+Switching is an operator action — run it from the host.
+
+**The provider resolves through three tiers, highest first** (`resolveProviderName` in `src/container-runner.ts`): `sessions.agent_provider` → `agent_groups.agent_provider` → `container_configs.provider` → `"claude"`. The command above writes the lowest tier, so a group carrying `agent_groups.agent_provider` (what `ncl groups get` shows as `agent_provider`, and what the dashboard's picker sets) keeps that value regardless. Check with `ncl groups get --id <group-id>`; clear a stale override with `ncl groups update --id <group-id> --agent-provider ''` (empty resolves as unset). Switching *away* from codex has the same trap — see [REMOVE.md](REMOVE.md).
+
+Every provider uses the same `memory/` tree, so memory carries across
+automatically. Run `/migrate-memory` only when upgrading a group that still has
+legacy `.seed.md`, `CLAUDE.local.md`, or unindexed imported memory. See
 [docs/provider-migration.md](../../docs/provider-migration.md).
 
 ### Default new groups to codex (optional)

@@ -218,6 +218,12 @@ export async function runCodexLoginAuth(method: 'browser' | 'device'): Promise<v
   // deleting around a live child re-creates the credential with no one left to
   // clean it up. Re-raise afterwards so the interrupt still reads as one.
   let loginChild: ReturnType<typeof spawn> | undefined;
+  // Killing the child makes runInherit resolve non-zero, which would otherwise
+  // send the interrupt down the ordinary sign-in-failed path — printing "couldn't
+  // complete the sign-in" and calling process.exit(1) before the re-raise, so a
+  // Ctrl-C reported itself as a login failure. `interrupted` latches first, and
+  // the normal path below refuses to interpret a killed child at all.
+  let interrupted = false;
   const handlers: Record<'SIGINT' | 'SIGTERM', () => void> = {
     SIGINT: () => void onSignal('SIGINT'),
     SIGTERM: () => void onSignal('SIGTERM'),
@@ -227,6 +233,7 @@ export async function runCodexLoginAuth(method: 'browser' | 'device'): Promise<v
     process.removeListener('SIGTERM', handlers.SIGTERM);
   };
   async function onSignal(sig: 'SIGINT' | 'SIGTERM'): Promise<void> {
+    interrupted = true;
     clearSignalHandlers();
     if (loginChild && loginChild.exitCode === null && loginChild.signalCode === null) {
       loginChild.kill('SIGKILL');
@@ -244,6 +251,9 @@ export async function runCodexLoginAuth(method: 'browser' | 'device'): Promise<v
     loginChild = child;
   });
   const durationMs = Date.now() - start;
+  // The re-raised signal is what ends the process; hand it a promise that never
+  // settles rather than racing it with a failure message and a different exit code.
+  if (interrupted) await new Promise<never>(() => {});
   console.log();
 
   if (code !== 0) {

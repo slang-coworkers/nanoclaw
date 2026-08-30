@@ -4,6 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync } from 'fs';
 import os from 'os';
 import path from 'path';
 
+import * as p from '@clack/prompts';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
 // Mock child_process so runCodexLoginAuth never spawns a real codex CLI; the
@@ -202,53 +203,69 @@ describe('runCodexLoginAuth', () => {
     expect(fs.existsSync(codexHome!)).toBe(false);
   });
 
-  // Ctrl-C mid-login must not strand the credential dir, and must kill the child
-  // BEFORE deleting it: `codex login` writes auth.json on its own schedule, so
-  // cleanup around a live child re-creates the credential with nobody left to
-  // remove it. Asserted by ordering, not just by the dir being gone.
-  it('kills the login child before removing CODEX_HOME on SIGINT', async () => {
-    mockSpawnSync.mockReturnValue({ status: 0, stdout: '', stderr: '' });
-    mockExecFileSync.mockReturnValue('');
+  // Ctrl-C / SIGTERM mid-login has two failure modes, and the mock below models
+  // the real child lifecycle (`exit` THEN `close`) because the second one only
+  // appears once `close` fires:
+  //   1. deleting CODEX_HOME while the child still runs — it rewrites auth.json
+  //      and the credential is stranded. Caught by the at-kill dir state.
+  //   2. letting the killed child's non-zero exit reach the ordinary
+  //      sign-in-failed path, which prints a misleading error and exits 1 with
+  //      the wrong code. Caught by asserting nothing after the re-raise runs.
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    it(`kills the login child, then removes CODEX_HOME, and lets ${signal} decide the exit`, async () => {
+      mockSpawnSync.mockReturnValue({ status: 0, stdout: '', stderr: '' });
+      mockExecFileSync.mockReturnValue('');
 
-    const order: string[] = [];
-    let codexHome: string | undefined;
-    // Stands in for `process.kill`: the real one would take down vitest. The
-    // re-raise is what turns the handler back into an interrupt for the caller.
-    const killSpy = vi.spyOn(process, 'kill').mockImplementation((pid, signal) => {
-      order.push(`re-raise:${String(signal)}`);
-      return true;
-    });
-
-    mockSpawn.mockImplementation((...args: unknown[]) => {
-      const opts = args[2] as { env?: NodeJS.ProcessEnv };
-      codexHome = opts.env!.CODEX_HOME;
-      const child = Object.assign(new EventEmitter(), {
-        exitCode: null as number | null,
-        signalCode: null as string | null,
-        kill: (sig: string) => {
-          order.push(`kill:${sig}`);
-          // A killed child writes nothing further; record the dir's state at the
-          // moment of death so a delete-then-kill ordering is detectable.
-          order.push(`home-exists-at-kill:${fs.existsSync(codexHome!)}`);
-          child.exitCode = 137;
-          setImmediate(() => child.emit('exit', null, sig));
-          return true;
-        },
+      const order: string[] = [];
+      let codexHome: string | undefined;
+      // Stands in for process.kill (the real one would take down vitest) and for
+      // process.exit, whose absence from `order` is the point of case 2.
+      const killSpy = vi.spyOn(process, 'kill').mockImplementation((_pid, sig) => {
+        order.push(`re-raise:${String(sig)}`);
+        return true;
       });
-      // The login is still running when the interrupt lands — never resolves.
-      setImmediate(() => process.emit('SIGINT'));
-      return child;
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+        order.push(`process.exit:${code}`);
+        return undefined as never;
+      }) as never);
+      const errorSpy = vi.spyOn(p.log, 'error').mockImplementation(() => {});
+
+      mockSpawn.mockImplementation((...args: unknown[]) => {
+        const opts = args[2] as { env?: NodeJS.ProcessEnv };
+        codexHome = opts.env!.CODEX_HOME;
+        const child = Object.assign(new EventEmitter(), {
+          exitCode: null as number | null,
+          signalCode: null as string | null,
+          kill: (sig: string) => {
+            order.push(`kill:${sig}`);
+            order.push(`home-exists-at-kill:${fs.existsSync(codexHome!)}`);
+            child.signalCode = sig;
+            // A real killed child emits `exit`, then `close` — and `close` is
+            // what resolves runInherit with a non-zero code.
+            setImmediate(() => {
+              child.emit('exit', null, sig);
+              child.emit('close', null, sig);
+            });
+            return true;
+          },
+        });
+        setImmediate(() => process.emit(signal));
+        return child;
+      });
+
+      void runCodexLoginAuth('browser');
+      await new Promise((r) => setTimeout(r, 80));
+
+      expect(order).toEqual([`kill:SIGKILL`, 'home-exists-at-kill:true', `re-raise:${signal}`]);
+      expect(fs.existsSync(codexHome!)).toBe(false);
+      // The interrupt owns the exit: no sign-in-failed message, no exit(1).
+      expect(errorSpy).not.toHaveBeenCalled();
+
+      killSpy.mockRestore();
+      exitSpy.mockRestore();
+      errorSpy.mockRestore();
     });
-
-    const login = runCodexLoginAuth('browser');
-    await new Promise((r) => setTimeout(r, 60));
-
-    expect(order).toEqual(['kill:SIGKILL', 'home-exists-at-kill:true', 're-raise:SIGINT']);
-    expect(fs.existsSync(codexHome!)).toBe(false);
-
-    killSpy.mockRestore();
-    void login; // the login promise never settles: the real process would be dead
-  });
+  }
 });
 
 /**

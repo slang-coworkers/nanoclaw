@@ -4,18 +4,34 @@ Returns every group to Claude and stops new groups defaulting to Codex.
 
 **On this fork, "remove" means unconfigure, not unwire.** Codex ships in trunk here: `src/providers/codex.ts`, `container/agent-runner/src/providers/codex.ts` + `codex-app-server.ts`, `setup/providers/codex.ts`, and the `@openai/codex` entry in `container/cli-tools.json` are all tracked files, and `/add-codex` carries no `nc:copy` directive that could restore them. Deleting them — or deleting the three barrel imports — is a local divergence from `nv-main` that re-running this skill will NOT undo, and it turns the test suite red: codex is asserted across ~20 host and ~16 container test files (`src/providers/barrel-registration.test.ts`, `container/…/providers/factory.test.ts`, `setup/provider-contract.test.ts`, `setup/providers/*`, the cost and mcp-policy suites, …). Those failures are the suite correctly reporting a half-removed trunk feature.
 
-Steps 1–3 are the whole runbook. Everything after is only for a fork that has decided to drop codex from trunk for good.
+Everything above the divider is the whole runbook. The section after it is only for a fork that has decided to drop codex from trunk for good.
 
 ## 1. Switch codex groups back to Claude
 
-Each group's `memory/` tree stays on disk and readable; run `/migrate-memory` per group if its memory should carry back to Claude — see [docs/provider-migration.md](../../docs/provider-migration.md).
+**The provider resolves through three tiers, highest first** (`resolveProviderName`, `src/container-runner.ts`):
+
+```
+sessions.agent_provider → agent_groups.agent_provider → container_configs.provider → "claude"
+```
+
+`ncl groups config update --provider` writes only the LOWEST tier. If a group also carries `agent_groups.agent_provider = 'codex'` — what `ncl groups get` reports as `agent_provider`, and what the dashboard's provider picker sets — that value still wins and the group comes back on codex after a restart. Clear the higher tier too:
 
 ```bash
 ncl groups list
-# for each group whose config shows provider=codex:
+ncl groups get --id <group-id>          # check the agent_provider field
+
+# clear the group-level override, then set the base. An empty value is stored as
+# an empty string, which resolveProviderName treats as unset and falls through.
+ncl groups update --id <group-id> --agent-provider ''
 ncl groups config update --id <group-id> --provider claude
 ncl groups restart --id <group-id>
+
+ncl groups get --id <group-id>          # agent_provider now empty
 ```
+
+The session tier (`sessions.agent_provider`) is written NULL at creation and nothing in this fork sets it, so there is normally nothing to clear there; `ncl sessions get <id>` shows it if you want to confirm.
+
+Each group's `memory/` tree stays on disk and readable; run `/migrate-memory` per group if its memory should carry back to Claude — see [docs/provider-migration.md](../../docs/provider-migration.md).
 
 ## 2. Reset the instance default
 
