@@ -43,6 +43,8 @@ export interface RunnerConfig {
    * NANOCLAW_COST_T2_CEILING_USD. 0/undefined = no ceiling (escalate-only).
    */
   costCeilingT2Usd?: number;
+  /** API fast serving tier (host-configured; see the host's container-config). */
+  fastMode?: boolean;
 }
 
 const DEFAULT_MAX_MESSAGES = 10;
@@ -84,6 +86,7 @@ export function loadConfig(): RunnerConfig {
     immortal: raw.immortal === true,
     costCapT2Usd: resolveCostCapT2Usd(raw.costCapT2Usd),
     costCeilingT2Usd: resolveCostCeilingT2Usd(raw.costCeilingT2Usd),
+    fastMode: raw.fastMode === true || undefined,
   };
 
   return _config;

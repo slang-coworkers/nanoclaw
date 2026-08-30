@@ -2,12 +2,19 @@
  * Setup wizard step: optional project integrations.
  *
  * After the coworker infrastructure (nv-main) is merged, this offers the
- * project overlay branches (Slang, SlangPy, Dashboard, …) as a clack
+ * project overlay branches (Slang, SlangPy, NanoClaw, …) as a clack
  * multiselect. Each selected project is merged via `setup/merge-train.sh
  * <branch>`, which is idempotent and auto-resolves nv-main-owned infra
  * conflicts. Nothing is fork-specific for the user: they run the same vanilla
  * setup; this step only appears once nv-main is present, and only lists project
  * branches that actually exist on `origin`.
+ *
+ * Dashboard (nv-dashboard) is deliberately NOT in this multiselect — it's
+ * offered at the channel step (setup/channels/initial-setup.ts), pre-selected,
+ * and merged on demand via `integrateDashboard()` below, which reuses the exact
+ * same merge tiers. nv-dashboard is a host-only overlay (0 container files), so
+ * merge-train's host build is sufficient — no container rebuild is needed even
+ * though the channel step runs after the image is built.
  *
  * Non-interactive: NANOCLAW_PROJECTS="slang,slangpy" (comma-separated values or
  * branch names) skips the prompt. Empty/unset with no TTY → no-op.
@@ -44,18 +51,12 @@ export interface ProjectOption {
 
 /**
  * The project overlays offered at setup time. Data-driven — add a row to extend.
- * Dashboard (the observability viewer) is pre-selected by default; the others
- * are opt-in. Slang / SlangPy / NanoClaw are clean additive overlays; Dashboard
- * edits shared host src and may need manual conflict resolution, hence the hint.
+ * All are opt-in (no pre-selected default). Slang / SlangPy / NanoClaw are clean
+ * additive overlays. Dashboard is handled separately at the channel step — it
+ * edits shared host src and may need manual conflict resolution — via
+ * `integrateDashboard()`, so it is intentionally absent from this catalog.
  */
 export const PROJECTS: ProjectOption[] = [
-  {
-    value: 'dashboard',
-    branch: 'nv-dashboard',
-    label: 'Dashboard (viewer)',
-    hint: 'observability viewer — selected by default; may need manual conflict resolution',
-    default: true,
-  },
   {
     value: 'slang',
     branch: 'nv-slang',
@@ -215,6 +216,43 @@ function mergeViaMergeTrain(branch: string): Promise<number> {
     runMergeTrain: (b) => spawnSync('bash', ['setup/merge-train.sh', b], { cwd: root, stdio: 'inherit' }).status ?? 1,
     llmCompose: (b) => composeMergeViaClaude(b, root),
     llmEnabled: process.env.NANOCLAW_LLM_MERGE === '1',
+  });
+}
+
+export type DashboardOutcome = 'merged' | 'already' | 'failed';
+
+/**
+ * Idempotent integrate core for the channel-step "Dashboard" pick. Pure over its
+ * injected deps so it is unit-testable without git: if the overlay is already in
+ * HEAD it is a no-op ('already'); otherwise it composes nv-dashboard through the
+ * same merge tiers the project step uses and reports the outcome.
+ */
+export async function integrateDashboardCore(deps: {
+  alreadyMerged: () => boolean;
+  compose: (branch: string) => number | Promise<number>;
+}): Promise<DashboardOutcome> {
+  if (deps.alreadyMerged()) return 'already';
+  const status = await deps.compose('nv-dashboard');
+  return status === 0 ? 'merged' : 'failed';
+}
+
+/** True iff origin/nv-dashboard is already an ancestor of HEAD (fetches first). */
+function dashboardAlreadyMerged(root: string): boolean {
+  spawnSync('git', ['fetch', 'origin', 'nv-dashboard'], { cwd: root, stdio: 'ignore' });
+  const res = spawnSync('git', ['merge-base', '--is-ancestor', 'origin/nv-dashboard', 'HEAD'], { cwd: root });
+  return res.status === 0;
+}
+
+/**
+ * Real wiring for the channel-step Dashboard pick: merge nv-dashboard through the
+ * same merge tiers as the project step. nv-dashboard is a host-only overlay, so
+ * merge-train's host build is sufficient — no container rebuild. Idempotent
+ * across re-selection within a run and across re-runs (the ancestor pre-check).
+ */
+export function integrateDashboard(root = repoRoot()): Promise<DashboardOutcome> {
+  return integrateDashboardCore({
+    alreadyMerged: () => dashboardAlreadyMerged(root),
+    compose: (branch) => mergeViaMergeTrain(branch),
   });
 }
 

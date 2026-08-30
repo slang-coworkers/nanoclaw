@@ -36,7 +36,7 @@ import {
 } from '../../db/messaging-groups.js';
 import { getContainerConfig } from '../../db/container-configs.js';
 import { getSession } from '../../db/sessions.js';
-import { wakeContainer } from '../../container-runner.js';
+import { requestWake } from '../../request-wake.js';
 import { groupFolderExistsOnDisk } from '../../group-folder.js';
 import { initGroupFilesystem } from '../../group-init.js';
 import { PERSONA_PREPEND_FILE } from '../../group-persona.js';
@@ -67,7 +67,7 @@ async function notifyAgent(session: Session, text: string): Promise<void> {
     content: JSON.stringify({ text, sender: 'system', senderId: 'system' }),
   });
   const fresh = await getSession(session.id);
-  if (fresh) await wakeContainer(fresh);
+  if (fresh) await requestWake(fresh, 'agent-created');
 }
 
 /** Guard precheck: malformed requests are answered without ever creating a hold. */
