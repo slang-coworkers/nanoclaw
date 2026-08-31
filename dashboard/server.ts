@@ -45,6 +45,7 @@ import { Worker } from 'node:worker_threads';
 
 import { initDb as initSrcDb } from '../src/db/connection.js';
 import { CONTAINER_RUNTIME_BIN } from '../src/container-runtime.js';
+import { CONTAINER_INSTALL_LABEL } from '../src/config.js';
 import { refreshDestinationsForAgentGroup } from '../src/modules/agent-to-agent/write-destinations.js';
 import { CANONICAL_DECISIONS, canonicalizeDecision } from '../src/modules/approvals/decision.js';
 import { kbDoctorUnavailable, readKbDoctorArtifact, type KbDoctorView } from './kb-doctor-artifact.js';
@@ -4147,8 +4148,12 @@ function getContainerNameFilter(): string {
 }
 
 function refreshContainerStatus(): void {
-  const filter = getContainerNameFilter();
-  exec(`docker ps --filter name=${filter} --format "{{.Names}}" 2>/dev/null`, { timeout: 3000 }, (_err, stdout) => {
+  // 2.3.0 renamed docker containers to `ncl-<install>-<session>` (folder/prefix
+  // live only in labels now). Filter by the stable install label and read the
+  // logical `nanoclaw-container-name` (nc-prod-<folder>-<session>) so the name
+  // parsing below (matchContainerName) keeps working. Old `--filter name=<prefix>`
+  // matched 0 and made the dashboard show "No containers running".
+  exec(`docker ps --filter label=${CONTAINER_INSTALL_LABEL} --format '{{.Label "nanoclaw-container-name"}}' 2>/dev/null`, { timeout: 3000 }, (_err, stdout) => {
     runningContainers.clear();
     if (stdout) {
       for (const name of stdout.trim().split('\n')) {
@@ -12710,7 +12715,7 @@ export async function handleRequest(
       );
     };
     exec(
-      `docker ps --filter name=${getContainerNameFilter()}${folderHyphenated}- --format '{{.Names}}'`,
+      `docker ps --filter label=${CONTAINER_INSTALL_LABEL} --filter label=nanoclaw-group-folder=${folder} --format '{{.Label "nanoclaw-container-name"}}'`,
       (_err, stdout) => {
         const containers = (stdout || '').trim().split('\n').filter(Boolean);
         if (containers.length === 0) {
@@ -13042,7 +13047,7 @@ export async function handleRequest(
             // Running containers
             try {
               const raw = execSync(
-                `docker ps --filter name=${getContainerNameFilter()} --format "{{.Names}}|{{.Status}}|{{.Networks}}"`,
+                `docker ps --filter label=${CONTAINER_INSTALL_LABEL} --format '{{.Label "nanoclaw-container-name"}}|{{.Status}}|{{.Networks}}'`,
                 { stdio: 'pipe', encoding: 'utf-8', timeout: 5000 },
               ).trim();
               const containers = raw
