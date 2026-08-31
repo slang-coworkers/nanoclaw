@@ -10,6 +10,7 @@ import path from 'path';
 import { backfillAgentsSymlinks } from './agents-symlink-backfill.js';
 import { backfillContainerConfigs } from './backfill-container-configs.js';
 import {
+  AGENT_RUNTIME,
   CENTRAL_DB_PATH,
   DASHBOARD_INGRESS_HOST,
   DASHBOARD_INGRESS_PORT,
@@ -229,8 +230,16 @@ async function main(): Promise<void> {
   // 2. Session runtime: prove it is reachable, then reconcile what survived a
   // restart. Adoption replaces the old reap-everything cleanup — a session that
   // is still running keeps running, and only true orphans are stopped.
-  await getSessionDriver().ensureReady?.();
-  await adoptRunningSessions();
+  //
+  // Skipped entirely under AGENT_RUNTIME=local: agents are bun child processes
+  // of this host, so the container driver is never consulted to spawn them and
+  // its readiness probe is a fatal check for a runtime this mode does not use.
+  // Adoption is skipped for the same reason — a local agent dies with its parent,
+  // so there is nothing from a previous host run to re-attach to.
+  if (AGENT_RUNTIME !== 'local') {
+    await getSessionDriver().ensureReady?.();
+    await adoptRunningSessions();
+  }
   // Reset stale container_status from previous host runs. Kept AFTER adoption so
   // it only clears rows adoption did not claim; repeated from the pre-reconcile
   // reset above as the canonical post-runtime reset — idempotent.
