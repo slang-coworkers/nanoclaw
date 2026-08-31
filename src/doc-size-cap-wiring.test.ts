@@ -118,8 +118,13 @@ describe('the cap sits on the render seam', () => {
 
   // The seam is what makes spawn and the sweep agree. If the cap were applied at
   // one write site only, the sweep would hash a document spawn would reject.
+  // Both staleness paths still reach it, but only one takes `.hash` inline now:
+  // `recomposeAndUpdateHash` destructures it, because it also returns the hash to
+  // its caller for the restart decision. Matching the call rather than the
+  // destructuring shape keeps the invariant (both go through the seam) without
+  // pinning one call's syntax.
   it('is reached by the staleness paths through the same seam', () => {
-    expect(SOURCE.match(/await renderComposedDocument\(ag\)\)\.hash/g)).toHaveLength(2);
+    expect(SOURCE.match(/renderComposedDocument\(ag\)/g)).toHaveLength(2);
   });
 });
 

@@ -32,16 +32,21 @@ describe('one render seam', () => {
     expect(SOURCE.match(/composeCoworkerSpine\(/g) ?? []).toHaveLength(0);
   });
 
-  it('is reached by both spawn paths', () => {
-    const uses = SOURCE.match(/await renderComposedDocument\(agentGroup\)/g) ?? [];
-
-    expect(uses).toHaveLength(2);
+  // ONE, down from two. The typed and untyped publication arms were collapsed:
+  // they differed only in the coworker type they named, and `composeOptionsFor`
+  // already resolves an untyped group to the 'default' leaf. Two near-identical
+  // arms was the shape that let their behaviour drift, which is what this test now
+  // pins — a second arm reappearing is the regression.
+  it('is reached by one shared publication path, not one per coworker kind', () => {
+    expect(SOURCE.match(/await renderComposedDocument\(agentGroup\)/g) ?? []).toHaveLength(1);
   });
 
-  it('is reached by both staleness-hash paths', () => {
-    const uses = SOURCE.match(/await renderComposedDocument\(ag\)\)\.hash/g) ?? [];
-
-    expect(uses).toHaveLength(2);
+  // The sweep renders for a hash and publishes nothing, so `recomposeAndUpdateHash`
+  // is now the only `(ag)` caller — `detectStaleContainers` reaches the seam through
+  // its own call. Both still go through the seam, which is the invariant; the count
+  // dropped because the sweep stopped being a publisher.
+  it('is reached by the staleness paths through the same seam', () => {
+    expect(SOURCE.match(/renderComposedDocument\(ag\)/g) ?? []).toHaveLength(2);
   });
 
   // No hash may be computed from a locally-composed string: that is exactly the
@@ -49,12 +54,20 @@ describe('one render seam', () => {
   it('computes no sha256 outside the seam except the on-disk baselines', () => {
     const hashes = SOURCE.match(/createHash\('sha256'\)/g) ?? [];
 
-    // TWO, down from three. The seam no longer hashes anything itself — the
-    // assembler returns the digest of the bytes it just produced, so the file and
-    // the hash provably come from one render. The two that remain both read from
-    // DISK: one at spawn (hashes the file it just wrote), one in the host-restart
-    // fallback that re-derives a baseline for a container this process didn't spawn.
+    // TWO, and both read from DISK — which is the whole point: no hash is computed
+    // from a locally-composed string, so nothing can disagree with the assembler.
+    //
+    //   1. `assertComposedDocUsable` — digests the RETAINED document when a render
+    //      or publication fails, so the caller reports the bytes actually on disk.
+    //   2. the host-restart fallback — re-derives a baseline for a container this
+    //      process did not spawn, so a restart doesn't make it invisible to the
+    //      stale check.
+    //
+    // Spawn's own re-read is gone: it takes the digest from the seam now, which is
+    // the digest of the exact bytes handed to `writeComposedDocument`. Re-reading
+    // could only disagree, and did whenever the file predated the spawn.
     expect(hashes).toHaveLength(2);
+    expect(SOURCE).not.toMatch(/readFileSync\(path\.join\(GROUPS_DIR, agentGroup\.folder, 'CLAUDE\.md'\)\)/);
   });
 });
 
@@ -82,12 +95,20 @@ describe('stale comments removed', () => {
     expect(SOURCE).not.toMatch(/@-import prefixes/);
   });
 
-  // Replacing the file cannot update a live container: the composed document is a
-  // file bind mount, so the established mount keeps the old inode. Correctness
-  // depends on the caller killing the container.
-  it('records that a recompose needs a container kill to take effect', () => {
+  // Stronger than the old assertion, which only required a COMMENT saying a
+  // recompose needs a kill to take effect. The sweep now publishes nothing at all —
+  // no document, no markers — so the caveat is structural rather than documented:
+  // there is nothing for a running container to fail to see. Asserted on the code,
+  // not on prose, because a comment cannot regress.
+  it('does not publish from the staleness path', () => {
     const fn = SOURCE.slice(SOURCE.indexOf('export async function recomposeAndUpdateHash'));
+    const body = fn.slice(0, fn.indexOf('\n}\n'));
 
-    expect(fn.slice(0, fn.indexOf('\n}\n'))).toMatch(/does NOT update a RUNNING container/);
+    expect(body).not.toMatch(/composeCoworkerClaudeMd\(/);
+    expect(body).not.toMatch(/writeComposedDocument\(/);
+    expect(body).not.toMatch(/materialize/);
+    // And it still records the hash — without that, a sweep tick inside the async
+    // shutdown window re-detects the old hash and fires a second kill.
+    expect(body).toMatch(/spawnedClaudeMdHash\.set/);
   });
 });
