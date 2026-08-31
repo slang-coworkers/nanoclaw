@@ -32,7 +32,7 @@ import { backfillNewSession, fanInboundMessage } from './modules/cross-session-c
 import { startTypingRefresh, stopTypingRefresh } from './modules/typing/index.js';
 import { log } from './log.js';
 import { resolveSession, writeSessionMessage, writeOutboundDirect } from './session-manager.js';
-import { wakeContainer } from './container-runner.js';
+import { requestWake } from './request-wake.js';
 import { getSession } from './db/sessions.js';
 import type { AgentGroup, MessagingGroup, MessagingGroupAgent, Session } from './types.js';
 import type { InboundEvent } from './channels/adapter.js';
@@ -706,14 +706,11 @@ async function deliverToAgent(
     );
     const freshSession = await getSession(session.id);
     if (freshSession) {
-      try {
-        await wakeContainer(freshSession);
-      } catch {
-        // wakeContainer rejects on transient spawn failure (host-sweep
-        // retries). Stop the typing indicator we just started so it
-        // doesn't leak; the inbound row stays pending.
-        stopTypingRefresh(freshSession.id);
-      }
+      const woke = await requestWake(freshSession, 'inbound-message');
+      // requestWake never throws — it returns false on transient spawn
+      // failure (host-sweep retries). Stop the typing indicator we just
+      // started so it doesn't leak; the inbound row stays pending.
+      if (!woke) stopTypingRefresh(freshSession.id);
     }
   }
 }
@@ -800,7 +797,7 @@ export async function routeInboundToSession(opts: {
   startTypingRefresh(session.id, session.agent_group_id, 'dashboard', 'dashboard:admin', session.thread_id ?? null);
   const freshSession = await getSession(session.id);
   if (freshSession) {
-    await wakeContainer(freshSession);
+    await requestWake(freshSession, 'inbound-message');
   }
 }
 
@@ -856,6 +853,6 @@ export async function routeCostOverrideToSession(opts: {
 
   const freshSession = await getSession(session.id);
   if (freshSession) {
-    await wakeContainer(freshSession);
+    await requestWake(freshSession, 'inbound-message');
   }
 }
