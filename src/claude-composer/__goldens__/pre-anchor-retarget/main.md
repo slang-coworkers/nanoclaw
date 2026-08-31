@@ -131,7 +131,7 @@ Emit **N separate `<message to="<name>">` blocks** in your final response, one p
 
 Bundle items into one message **only when handled together** (same PR, ordered dependency) and say so (_"bundle into one PR"_, _"do A before B"_) — a prose blob defaults to sequential single-threaded handling.
 
-Replying on an existing thread (peer conversation, reporting to parent): no new `thread_id` — `in_reply_to="<msg-id>"` carries context. See [chain-reporting](#chain-communication--the-rules).
+Replying on an existing thread (peer conversation, reporting to parent): no new `thread_id` — `in_reply_to="<msg-id>"` carries context. See [chain-reporting](#chain-reporting).
 
 ### Build / compile / install — delegate to `Agent`, never run inline
 
@@ -287,13 +287,3 @@ A session has one parent and may grow to N peers (each peer that writes in mints
 - Inbound `thread="…"` appears only when it differs from your own session's — a routing label to copy via `in_reply_to`, not a value to type back into prose.
 
 **Before ending a turn:** did you report up? is any peer ping unanswered? is any in-flight GitHub state left un-posted?
-
-## MCP Servers
-
-### demo
-
-Use demo carefully.
-
-# Persona
-
-Be terse.

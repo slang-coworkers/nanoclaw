@@ -1145,7 +1145,11 @@ function emitGate(
     // pointer so the agent still sees the gate marker.
     return (
       `#### ⟐ ${label} (${where})\n\n` +
-      `Apply the **${label}** protocol (see the shared **Gate Protocol** section below).`
+      // "above", not "below": this pointer is emitted INSIDE a workflow body, and
+      // the shared `## Gate Protocol` section is pushed before `## Workflows`
+      // (`:991` then `:995`) — so it precedes every workflow that points at it. The
+      // old wording sent the reader forward past the end of the document.
+      `Apply the **${label}** protocol (see the shared **Gate Protocol** section above).`
     );
   }
 

@@ -54,8 +54,12 @@ describe('composed-document byte parity', () => {
     const digests: Record<string, string> = {
       'base-common': 'bbf5bfaf85f610b4',
       'base-common.persona': '9ece3c38c976fefa',
-      main: '8e211971538d2721',
-      'main.persona': '9b26d62cc42dca1a',
+      // `main` and `main.persona` moved ONCE, deliberately: the `agents.md` anchor
+      // retarget. Every other digest is unchanged from the 3267493f capture, which
+      // is what bounds the content phase — see `anchor-retarget.test.ts` for the
+      // proof that the change is exactly that one substitution.
+      main: 'abaecd63bd33b299',
+      'main.persona': '8129ebe911b83bec',
       default: 'e54e91ce72b8021c',
       'default.persona': 'cce70e837641f8da',
     };
