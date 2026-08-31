@@ -57,6 +57,14 @@ export class ProjectDocTooLargeError extends Error {
     readonly bytes: number,
     readonly maxBytes: number,
     readonly sections: { section: string; bytes: number }[],
+    /**
+     * Sections the cap ladder already evicted before giving up. Carried on the
+     * error because that is the only path it can travel: on
+     * drop-some-then-still-fail the eviction list exists solely inside
+     * `renderProjectDoc`, which throws, so a caller wanting to report what was
+     * attempted has nowhere else to read it from.
+     */
+    readonly dropped: readonly string[] = [],
   ) {
     super(
       `Composed document is ${bytes} bytes, over the ${maxBytes}-byte cap. ` +
