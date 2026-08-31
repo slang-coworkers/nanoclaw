@@ -13,9 +13,15 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { SERVICE_NAME_CAVEAT, getLaunchdLabel, getSystemdUnit, serviceRestartHint } from './install-slug.js';
+import {
+  SERVICE_NAME_CAVEAT,
+  getInstallSlug,
+  getLaunchdLabel,
+  getSystemdUnit,
+  serviceRestartHint,
+} from './install-slug.js';
 
 describe('serviceRestartHint', () => {
   it('gives each platform its own finder, under its own command', () => {
@@ -93,5 +99,30 @@ describe('single source of the restart guidance', () => {
         `That is how the guidance diverged before — one copy was corrected and the other kept ` +
         `printing an unqualified unit name. Use the helper.`,
     ).toEqual([]);
+  });
+});
+
+afterEach(() => {
+  delete process.env.NANOCLAW_INSTALL_ID;
+});
+
+describe('getInstallSlug', () => {
+  it('derives from the project root when NANOCLAW_INSTALL_ID is unset', () => {
+    const slug = getInstallSlug('/some/checkout');
+    expect(slug).toMatch(/^[0-9a-f]{8}$/);
+    expect(getInstallSlug('/some/checkout')).toBe(slug);
+    expect(getInstallSlug('/other/checkout')).not.toBe(slug);
+  });
+
+  it('honors a valid NANOCLAW_INSTALL_ID override', () => {
+    process.env.NANOCLAW_INSTALL_ID = 'prod-eks_1';
+    expect(getInstallSlug('/some/checkout')).toBe('prod-eks_1');
+  });
+
+  it('rejects label-unsafe overrides', () => {
+    for (const bad of ['UPPER', '-leading', 'has space', 'a'.repeat(33), 'dot.dot']) {
+      process.env.NANOCLAW_INSTALL_ID = bad;
+      expect(() => getInstallSlug('/some/checkout'), bad).toThrow(/NANOCLAW_INSTALL_ID/);
+    }
   });
 });
