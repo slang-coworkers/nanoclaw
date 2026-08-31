@@ -262,7 +262,11 @@ describe('size-cap pressure is reported', () => {
 
     expect(fallback).toBeGreaterThan(-1);
     expect(fallback).toBeLessThan(report);
-    expect(RUNNER.match(/reportProjectDocPressure\(/g) ?? []).toHaveLength(2);
+    // One call, and it is inside the publisher. Counting the whole FILE instead
+    // (declaration + call = 2) passes for the regression this is meant to catch:
+    // move the declaration to another module, import it, add a render-path call,
+    // and the file still holds two matches.
+    expect(compose.match(/reportProjectDocPressure\(/g) ?? []).toHaveLength(1);
   });
 
   // Not in the render: the sweep calls that every 60s, so a near-cap document would
@@ -278,6 +282,7 @@ describe('size-cap pressure is reported', () => {
     // bare name — this file and the runner both mention the helper in prose
     // explaining why it is gone.
     expect(render).not.toMatch(/assertWithinDocSizeCap\(/);
+    expect(render).not.toMatch(/reportProjectDocPressure\(/);
   });
 
   // The helper had no production caller once the cap moved into the assembler, and
