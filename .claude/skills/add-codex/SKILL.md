@@ -5,9 +5,9 @@ description: Use Codex (OpenAI's codex app-server) as a full agent provider — 
 
 # Codex agent provider
 
-> Shortcut: `pnpm exec tsx setup/index.ts --step provider-auth codex` performs this whole install (manifest-driven from the providers branch: files, barrels, CLI manifest entry, image rebuild) plus auth in one command. The steps below are the same operations, for agent-driven or manual application.
+> Shortcut: `pnpm exec tsx setup/index.ts --step provider-auth codex` performs this whole install (barrels, CLI manifest entry, image rebuild) plus auth in one command. The steps below are the same operations, for agent-driven or manual application.
 
-NanoClaw selects each group's agent backend from `container_configs.provider` (default `claude`). This skill installs the Codex provider: copy the payload from the `providers` branch, append one import to each of the three provider barrels, add the pinned Codex CLI to the container manifest (`container/cli-tools.json`), rebuild, then run the vault auth walk-through.
+NanoClaw resolves each group's agent backend through three tiers — `sessions.agent_provider` → `agent_groups.agent_provider` → `container_configs.provider` → `claude` (see **Use it** below). This fork carries the Codex payload in trunk, so this skill wires and authenticates rather than fetching: confirm the payload, append one import to each of the three provider barrels, add the pinned Codex CLI to the container manifest (`container/cli-tools.json`), rebuild, then run the vault auth walk-through.
 
 The provider runs `codex app-server` as a child process speaking JSON-RPC over stdio: native streaming, MCP tools, server-side conversation history (the continuation is a thread id, no on-disk transcript). This replaced the earlier `@openai/codex-sdk` library integration, which is gone — no dependency on it remains in `container/agent-runner/package.json`, and any lockfile still naming `@openai/codex-sdk` is stale and should be deleted, not reinstalled from. Credentials are **vault-only**: OneCLI serves a sentinel `auth.json` stub into the container and swaps the real ChatGPT token or API key on the wire — no key in `.env`, nothing readable in the container.
 
@@ -17,43 +17,34 @@ The mechanical steps under **Install** carry `nc:` directive fences: an agent re
 
 ### Pre-flight
 
-Check whether the payload is already wired (a prior apply, or a trunk that still carries it). These are the markers that mean installed — skip to **Authenticate**:
+Check whether the payload is already wired (on trunk it is — see step 1). These are the markers that mean installed — skip to **Authenticate**:
 
 - `src/providers/codex.ts`
 - `container/agent-runner/src/providers/codex.ts` and `codex-app-server.ts`
-- `import './codex.js';` in `src/providers/index.ts` and `container/agent-runner/src/providers/index.ts`
+- `setup/providers/codex.ts` — the picker entry + vault auth walk-through
+- `import './codex.js';` in all three barrels: `src/providers/index.ts`, `container/agent-runner/src/providers/index.ts`, `setup/providers/index.ts`
 - an `@openai/codex` entry in `container/cli-tools.json`
 
-**nv-main carries a reduced payload, and that is deliberate** — do not read the missing files as a broken install and re-copy over them. This fork does not carry `src/providers/codex-agents-md.ts`, `container/AGENTS.md`, `setup/providers/codex.ts`, or `container/agent-runner/src/providers/exchange-archive.ts`, and `setup/providers/index.ts` has no codex line. Re-copying the full payload onto a working fork reintroduces `exchange-archive.ts`, whose `onExchangeComplete` hook no production provider here implements.
+`verifyCodexInstall` in `setup/providers/codex.ts` checks exactly this list; `--step provider-auth codex` runs it as the install check.
 
-### 1. Fetch and copy the payload
+### 1. The payload ships in trunk — there is nothing to fetch
 
-Fetch the `providers` branch and copy the Codex payload into all three trees (additive — overwrite each file, never merge the branch). The host files are the provider contribution + the AGENTS.md spec (composition itself lives in trunk's `src/claude-composer/spine.ts`) + their guards; the container files are the provider runtime (turn loop, JSON-RPC wrapper, native memory SessionStart hook, per-exchange archiver) + their guards; the setup file is the picker entry + vault auth walk-through; `container/AGENTS.md` is the runtime-contract base the composed AGENTS.md embeds.
+**This skill carries no `nc:copy from-branch:providers` step, and must not gain one.** This fork's codex files are forks of the `providers` branch payload, not copies: `codex-app-server.ts`, `container/…/codex.ts` and `src/providers/codex.ts` all diverge by hundreds of lines. A `copy` directive overwrites its destination unconditionally in **refresh** mode (`scripts/skill-apply.ts` `selfStatus`), and `/update-skills` refreshes every provider it finds in `src/providers/index.ts` — so a fence here would silently revert that divergence, and tsc would stay green because upstream's versions compile. Pruning a fence to "only the files we carry" does not help: those are the diverged ones. `setup/providers/codex.test.ts` fails if a fence reappears.
 
-```nc:copy from-branch:providers
-src/providers/codex.ts
-src/providers/codex-agents-md.ts
-src/providers/codex-registration.test.ts
-src/providers/codex-host-contribution.test.ts
-src/providers/codex-agents-md.test.ts
-container/agent-runner/src/providers/codex.ts
-container/agent-runner/src/providers/codex-app-server.ts
-container/agent-runner/src/providers/exchange-archive.ts
-container/agent-runner/src/providers/exchange-archive.test.ts
-container/agent-runner/src/providers/codex-registration.test.ts
-container/agent-runner/src/providers/codex.factory.test.ts
-container/agent-runner/src/providers/codex.turns.test.ts
-container/agent-runner/src/providers/codex-app-server.test.ts
-container/agent-runner/src/providers/codex-cli-tools.test.ts
-setup/providers/codex.ts
-setup/providers/codex.test.ts
-setup/providers/codex-registration.test.ts
-container/AGENTS.md
-```
+The payload this fork does not carry, and does not want:
+
+| Not carried | Why |
+|---|---|
+| `src/providers/codex-agents-md.ts` (+ test) | CLAUDE.md is composed by the lego spine; codex gets native discovery from the `AGENTS.md → CLAUDE.md` symlink in `src/group-init.ts`. Upstream's AGENTS.md composer has no reader here. |
+| `container/AGENTS.md` | The base that composer embeds. No composer, no reader. |
+| `container/agent-runner/src/providers/exchange-archive.ts` (+ test) | Its `onExchangeComplete` hook is implemented by no provider in this fork. |
+| upstream's `codex-registration` / `codex-host-contribution` / `codex.turns` / `codex-cli-tools` tests | Covered here by `src/providers/barrel-registration.test.ts`, `codex.factory.test.ts`, `codex-app-server.test.ts`. |
+
+`setup/providers/codex.ts` is fork-local too: upstream's `verifyCodexInstall` requires `codex-agents-md.ts`, so upstream's copy reports this working install as broken.
 
 ### 2. Wire the barrels
 
-Append the self-registration import to each of the three provider barrels (skipped if the line is already present). Each barrel-registration test imports its real barrel and asserts `codex` is registered — they go red the moment a barrel line is missing or drifts.
+Append the self-registration import to each of the three provider barrels (skipped if the line is already present — which is the normal state on trunk; these stay so a deleted line self-heals). Each barrel-registration test imports its real barrel and asserts `codex` is registered — they go red the moment a barrel line is missing or drifts.
 
 ```nc:append to:src/providers/index.ts
 import './codex.js';
@@ -91,7 +82,7 @@ pnpm exec tsc -p container/agent-runner/tsconfig.json --noEmit
 ### 5. Validate
 
 ```nc:run effect:test
-pnpm vitest run src/providers/codex-registration.test.ts src/providers/codex-host-contribution.test.ts src/providers/codex-agents-md.test.ts setup/providers/
+pnpm vitest run src/providers/barrel-registration.test.ts setup/providers/
 ```
 ```nc:run effect:test
 cd container/agent-runner && bun test src/providers/
@@ -116,10 +107,13 @@ ncl groups config update --id <group-id> --provider codex
 ncl groups restart --id <group-id>
 ```
 
-Switching is an operator action — run it from the host. Every provider uses the
-same `memory/` tree, so memory carries across automatically. Run
-`/migrate-memory` only when upgrading a group that still has legacy `.seed.md`,
-`CLAUDE.local.md`, or unindexed imported memory. See
+Switching is an operator action — run it from the host.
+
+**The provider resolves through three tiers, highest first** (`resolveProviderName` in `src/container-runner.ts`): `sessions.agent_provider` → `agent_groups.agent_provider` → `container_configs.provider` → `"claude"`. The command above writes the lowest tier, so a group carrying `agent_groups.agent_provider` (what `ncl groups get` shows as `agent_provider`, and what the dashboard's picker sets) keeps that value regardless. Check with `ncl groups get --id <group-id>`; clear a stale override with `ncl groups update --id <group-id> --agent-provider ''` (empty resolves as unset). Switching *away* from codex has the same trap — see [REMOVE.md](REMOVE.md).
+
+Every provider uses the same `memory/` tree, so memory carries across
+automatically. Run `/migrate-memory` only when upgrading a group that still has
+legacy `.seed.md`, `CLAUDE.local.md`, or unindexed imported memory. See
 [docs/provider-migration.md](../../docs/provider-migration.md).
 
 ### Default new groups to codex (optional)
