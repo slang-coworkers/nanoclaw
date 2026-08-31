@@ -266,6 +266,59 @@ describe('diagnostics', () => {
 
     expect(sum + Buffer.byteLength(MARKER, 'utf-8') + 2).toBe(Buffer.byteLength(content, 'utf-8'));
   });
+
+  // Same identity, final section ending in whitespace the assembly trims. This is
+  // the case a per-section constant cannot express: `renderSection(s).length + 1`
+  // charges the last section bytes that are not in the document, and no fixed
+  // adjustment predicts how many, because it depends on how much trailing
+  // whitespace the body happens to carry. Only slicing the final render is right.
+  it('charges no section for bytes the trim removed', () => {
+    const { content, diagnostics } = render([title(), body('A', 'aaa'), body('Tail', 'tail   \n\n')]);
+    const sum = diagnostics.sections.reduce((n, s) => n + s.bytes, 0);
+
+    expect(sum + Buffer.byteLength(MARKER, 'utf-8') + 2).toBe(Buffer.byteLength(content, 'utf-8'));
+  });
+
+  // The consequence of getting the above wrong: eviction ranks by these counts, so
+  // an overcounted section is evicted ahead of a genuinely larger one and the
+  // document loses content that was never the problem.
+  //
+  // 'Padded' is LAST, which is the only position where trailing whitespace is
+  // trimmed. Its raw body is the longest (160 bytes), so ranking by
+  // `renderSection` picks it first; its contribution to the document is the
+  // smallest (100 bytes), so ranking by the final render picks 'Big'. The
+  // assertion is on the FIRST victim — that is where the two orderings differ.
+  it('ranks eviction by bytes present in the final render, not by raw body length', () => {
+    const sections = [
+      title(),
+      body('Big', 'b'.repeat(120), { droppable: true }),
+      body('Padded', 'p'.repeat(100) + ' '.repeat(60), { droppable: true }),
+    ];
+    const unbounded = Buffer.byteLength(render(sections).content, 'utf-8');
+
+    expect(render(sections, unbounded - 1).dropped[0]).toBe('Big');
+  });
+
+  // After a partial eviction the notice is a real section in the measured
+  // document. Omitting it from the refusal made the reported per-section bytes
+  // fail to account for the total the same error reports.
+  it('includes the omission notice in the refusal diagnostics', () => {
+    let err: unknown;
+    try {
+      render([title(), body('Core', 'c'.repeat(400)), body('Droppable', 'd'.repeat(400), { droppable: true })], 300);
+    } catch (e) {
+      err = e;
+    }
+
+    expect(err).toBeInstanceOf(ProjectDocTooLargeError);
+    const e = err as ProjectDocTooLargeError;
+    expect(e.dropped).toEqual(['Droppable']);
+    expect(e.sections.map((s) => s.section)).toContain('Omitted for size');
+    expect(e.sections.reduce((n, s) => n + s.bytes, 0) + Buffer.byteLength(MARKER, 'utf-8') + 2).toBe(e.bytes);
+    // The eviction list has to reach the LOG, and every logger formats this error
+    // by message (`log.ts:20`) — a property alone never appears.
+    expect(e.message).toMatch(/Already evicted before giving up: Droppable/);
+  });
 });
 
 describe('stripFencedBlocks', () => {
@@ -273,5 +326,29 @@ describe('stripFencedBlocks', () => {
     const lines = stripFencedBlocks('a\n```\nb\n```\nc\n~~~\n```\nd\n~~~\ne');
 
     expect(lines.filter(Boolean)).toEqual(['a', 'c', 'e']);
+  });
+
+  // A closing fence carries nothing but the fence and whitespace. Treating
+  // '```not-close' as a closer ends the block early, so a heading still inside the
+  // code block is read as the document's H1 — the validator then accepts a fake
+  // title, or rejects a real one.
+  it('does not let fence-looking content close a fence', () => {
+    expect(stripFencedBlocks('```\n```not-close\n# fake\n```')).not.toContain('# fake');
+  });
+
+  // Four spaces make an indented code block, not a fence. Treating it as an opener
+  // swallows the rest of the document and hides the real H1.
+  it('does not open a fence at four spaces of indent', () => {
+    expect(stripFencedBlocks('    ```\n# Real')).toContain('# Real');
+  });
+
+  it('still opens a fence at three spaces of indent', () => {
+    expect(stripFencedBlocks('   ```\n# hidden\n   ```\n# Real')).toEqual(['# Real']);
+  });
+
+  // An info string may not contain a backtick on a backtick fence, so this opens
+  // nothing and the heading after it is ordinary content.
+  it('does not open a backtick fence whose info string contains a backtick', () => {
+    expect(stripFencedBlocks('```a`b\n# Real')).toContain('# Real');
   });
 });

@@ -366,29 +366,48 @@ const wakePromises = new Map<string, Promise<boolean>>();
  * group from `init-first-agent` got no persona at all. Silently.
  *
  * `.instructions.md` was the fork's parallel surface. Rather than read both
- * forever — two names for one concept is what caused this — migrate it once,
- * on the spawn that finds it, and read only the canonical file afterwards.
- * The rename is skipped when both exist: that means someone wrote the
- * canonical file too, and clobbering it would lose the newer intent.
+ * forever — two names for one concept is what caused this — migrate it once, on
+ * the spawn that finds it, and read only the canonical file afterwards.
+ *
+ * READ-ONLY, and that is load-bearing. Four call sites need standing
+ * instructions: the two spawn paths and the two staleness-hash paths. The sweep
+ * hashes every group's candidate document every 60 seconds, so a rename in here
+ * meant the "pure" render mutated the shared group directory on a timer — the one
+ * thing the seam's design and `composed-doc-render-seam.test.ts` both claim it
+ * does not do. The rename now lives in `migrateStandingInstructions`, called once
+ * from the publication path, which is the only caller allowed to write.
  */
 export function readStandingInstructions(groupDir: string, instructionsPath: string): string | null {
-  const canonical = path.join(groupDir, PERSONA_PREPEND_FILE);
-  if (fs.existsSync(instructionsPath) && !fs.existsSync(canonical)) {
-    try {
-      fs.renameSync(instructionsPath, canonical);
-      log.info('Migrated .instructions.md to instructions.prepend.md', { dir: groupDir });
-    } catch (err) {
-      // Leave the legacy file alone and fall back to reading it directly — a
-      // failed rename must not cost the group its persona this spawn.
-      log.warn('Could not migrate .instructions.md; reading it in place', { dir: groupDir, err });
-      try {
-        return fs.readFileSync(instructionsPath, 'utf-8');
-      } catch {
-        return null;
-      }
-    }
+  const canonical = readGroupPersona(groupDir);
+  if (canonical !== null) return canonical;
+
+  // Canonical file absent: fall back to the legacy name in place. Migration is
+  // publication's job, so a group still on the legacy file composes identically
+  // either side of the rename and the hashes agree across it.
+  try {
+    return fs.readFileSync(instructionsPath, 'utf-8');
+  } catch {
+    return null;
   }
-  return readGroupPersona(groupDir);
+}
+
+/**
+ * Perform the one-time `.instructions.md` → `instructions.prepend.md` rename.
+ *
+ * Skipped when the canonical file also exists: that means someone wrote it too,
+ * and clobbering it would lose the newer intent. A failure is not fatal —
+ * `readStandingInstructions` still finds the legacy file, so the group keeps its
+ * persona this spawn and the rename is retried on the next one.
+ */
+export function migrateStandingInstructions(groupDir: string, instructionsPath: string): void {
+  const canonical = path.join(groupDir, PERSONA_PREPEND_FILE);
+  if (!fs.existsSync(instructionsPath) || fs.existsSync(canonical)) return;
+  try {
+    fs.renameSync(instructionsPath, canonical);
+    log.info('Migrated .instructions.md to instructions.prepend.md', { dir: groupDir });
+  } catch (err) {
+    log.warn('Could not migrate .instructions.md; reading it in place', { dir: groupDir, err });
+  }
 }
 
 /**
@@ -644,6 +663,12 @@ async function composeCoworkerClaudeMd(agentGroup: AgentGroup): Promise<Publishe
     }
   }
 
+  // Converge the two standing-instruction filenames, here and nowhere else. The
+  // read path is shared with the 60s staleness sweep, so a rename inside it turned
+  // every hash comparison into a write against the shared group directory.
+  // Publication runs once per spawn and already owns the writes.
+  migrateStandingInstructions(groupDir, instructionsPath);
+
   // ONE publication path for typed and untyped groups. They were two
   // near-identical arms differing only in the coworker type they named, and
   // `composeOptionsFor` already resolves an untyped group to the 'default' leaf —
@@ -706,11 +731,34 @@ async function composeCoworkerClaudeMd(agentGroup: AgentGroup): Promise<Publishe
     };
   }
 
-  log.debug('CLAUDE.md composed from lego spine', {
-    folder: agentGroup.folder,
-    coworkerType,
-    dropped: rendered.dropped.length > 0 ? rendered.dropped : undefined,
-  });
+  // Size-cap pressure is reported HERE, not in the render seam.
+  //
+  // At base this warning came from `assertWithinDocSizeCap`, which spawn called
+  // inside `renderComposedDocument`. Moving the cap into the render made that
+  // helper's last production caller disappear, so until this block existed a group
+  // could sit one byte under the cap, or silently lose whole sections to eviction,
+  // with nothing in the log — the diagnostics were computed and thrown away.
+  //
+  // It cannot go back into the render: the 60s sweep renders every group to
+  // compare hashes, so a near-cap document would repeat the same warning forever.
+  // Publication happens once per spawn, which is exactly the rate this should fire
+  // at, and by here the document and its markers are both on disk.
+  const { diagnostics } = rendered;
+  if (diagnostics.nearCap || rendered.dropped.length > 0 || diagnostics.structurallyOmitted.length > 0) {
+    log.warn('Composed document is under size-cap pressure', {
+      folder: agentGroup.folder,
+      coworkerType,
+      bytes: diagnostics.bytes,
+      maxBytes: diagnostics.maxBytes,
+      dropped: rendered.dropped.length > 0 ? rendered.dropped : undefined,
+      structurallyOmitted:
+        diagnostics.structurallyOmitted.length > 0 ? diagnostics.structurallyOmitted : undefined,
+      largestSections: diagnostics.sections.slice(0, 5),
+    });
+  } else {
+    log.debug('CLAUDE.md composed from lego spine', { folder: agentGroup.folder, coworkerType });
+  }
+
   return {
     published: true,
     content: rendered.content,

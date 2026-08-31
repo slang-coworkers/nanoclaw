@@ -18,6 +18,7 @@ import {
   armSessionLifecycle,
   assertComposedDocUsable,
   composeSessionSpec,
+  migrateStandingInstructions,
   normalizeRotateAgeDays,
   parseMemoryMb,
   parsePidsLimit,
@@ -706,28 +707,26 @@ describe('readStandingInstructions', () => {
     expect(readStandingInstructions(dir, path.join(dir, '.instructions.md'))?.trim()).toBe('you are terse');
   });
 
-  it('migrates a legacy .instructions.md onto the canonical name, once', () => {
+  // READ-ONLY, and this is the assertion that keeps it that way. The rename used
+  // to live in here, which meant the 60s staleness sweep — four render call sites
+  // share this helper — mutated the shared group directory every pass, on a timer,
+  // while the seam's tests claimed it published nothing.
+  it('reads a legacy .instructions.md in place, without renaming it', () => {
     const dir = tmpGroupDir();
     const dotfile = path.join(dir, '.instructions.md');
-    const canonical = path.join(dir, 'instructions.prepend.md');
     fs.writeFileSync(dotfile, 'legacy persona\n');
 
     expect(readStandingInstructions(dir, dotfile)?.trim()).toBe('legacy persona');
-    // Converged: one file, and the legacy name is gone so it cannot drift.
-    expect(fs.existsSync(dotfile)).toBe(false);
-    expect(fs.readFileSync(canonical, 'utf-8').trim()).toBe('legacy persona');
-    // Idempotent — a second spawn is a plain read.
-    expect(readStandingInstructions(dir, dotfile)?.trim()).toBe('legacy persona');
+    expect(fs.existsSync(dotfile)).toBe(true);
+    expect(fs.existsSync(path.join(dir, 'instructions.prepend.md'))).toBe(false);
   });
 
-  it('does not clobber an existing canonical file when both are present', () => {
+  it('prefers the canonical file over a stale legacy one', () => {
     const dir = tmpGroupDir();
     const dotfile = path.join(dir, '.instructions.md');
     fs.writeFileSync(dotfile, 'stale legacy\n');
     fs.writeFileSync(path.join(dir, 'instructions.prepend.md'), 'current persona\n');
 
-    // Both present means someone wrote the canonical file too; renaming over it
-    // would discard the newer intent.
     expect(readStandingInstructions(dir, dotfile)?.trim()).toBe('current persona');
     expect(fs.existsSync(dotfile)).toBe(true);
   });
@@ -748,5 +747,52 @@ describe('readStandingInstructions', () => {
     // can author, so a symlink must not become an arbitrary-file read into the
     // system prompt.
     expect(readStandingInstructions(dir, path.join(dir, '.instructions.md'))).toBeNull();
+  });
+});
+
+// The write half, split out of `readStandingInstructions` so that rendering — which
+// the 60s sweep does for every group — cannot mutate the group directory. Called
+// from the publication path only.
+describe('migrateStandingInstructions', () => {
+  function tmpGroupDir(): string {
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'ncl-migrate-'));
+  }
+
+  it('renames the legacy file onto the canonical name, once', () => {
+    const dir = tmpGroupDir();
+    const dotfile = path.join(dir, '.instructions.md');
+    const canonical = path.join(dir, 'instructions.prepend.md');
+    fs.writeFileSync(dotfile, 'legacy persona\n');
+
+    migrateStandingInstructions(dir, dotfile);
+
+    // Converged: one file, and the legacy name is gone so it cannot drift.
+    expect(fs.existsSync(dotfile)).toBe(false);
+    expect(fs.readFileSync(canonical, 'utf-8').trim()).toBe('legacy persona');
+
+    // Idempotent, and the persona reads the same either side of the migration —
+    // which is what lets the sweep's hash agree with spawn's across it.
+    migrateStandingInstructions(dir, dotfile);
+    expect(readStandingInstructions(dir, dotfile)?.trim()).toBe('legacy persona');
+  });
+
+  it('does not clobber an existing canonical file when both are present', () => {
+    const dir = tmpGroupDir();
+    const dotfile = path.join(dir, '.instructions.md');
+    fs.writeFileSync(dotfile, 'stale legacy\n');
+    fs.writeFileSync(path.join(dir, 'instructions.prepend.md'), 'current persona\n');
+
+    migrateStandingInstructions(dir, dotfile);
+
+    expect(fs.existsSync(dotfile)).toBe(true);
+    expect(fs.readFileSync(path.join(dir, 'instructions.prepend.md'), 'utf-8').trim()).toBe('current persona');
+  });
+
+  it('writes nothing when there is no legacy file', () => {
+    const dir = tmpGroupDir();
+
+    migrateStandingInstructions(dir, path.join(dir, '.instructions.md'));
+
+    expect(fs.readdirSync(dir)).toEqual([]);
   });
 });

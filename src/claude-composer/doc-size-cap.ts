@@ -72,7 +72,11 @@ export class ProjectDocTooLargeError extends Error {
         `Largest sections: ${sections
           .slice(0, 3)
           .map((s) => `${s.section} (${s.bytes}B)`)
-          .join(', ')}.`,
+          .join(', ')}.` +
+        // In the message, not only as a property: every logger this error reaches
+        // formats it via `String(err)` or name/message/stack (`log.ts:20`), so a
+        // field alone never reaches the log line that reports the refusal.
+        (dropped.length > 0 ? ` Already evicted before giving up: ${dropped.join(', ')}.` : ''),
     );
     this.name = 'ProjectDocTooLargeError';
   }

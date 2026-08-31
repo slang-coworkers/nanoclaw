@@ -16,9 +16,29 @@
 import crypto from 'crypto';
 import fs from 'fs';
 
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
+import { renderComposedDocument } from './container-runner.js';
+import { closeDb, initTestDb } from './db/connection.js';
+import { runMigrations } from './db/migrations/index.js';
+import type { AgentGroup } from './types.js';
+
+vi.mock('./log.js', () => ({
+  log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), fatal: vi.fn() },
+}));
 
 const SOURCE = fs.readFileSync(new URL('./container-runner.ts', import.meta.url), 'utf-8');
+
+// The seam reads the group's `cli_scope` through `getContainerConfig`, so a live
+// driver is required. No rows are seeded: a group with no `container_configs` row
+// resolves to the 'group' default, which is what this case expects.
+beforeAll(async () => {
+  await runMigrations(await initTestDb());
+});
+
+afterAll(async () => {
+  await closeDb();
+});
 
 describe('one render seam', () => {
   // The seam itself composes; nothing else in the runner should. The composer
@@ -72,16 +92,21 @@ describe('one render seam', () => {
 });
 
 describe('hash/content agreement', () => {
-  // Pure property, no DB needed: whatever the seam returns as `hash` must be the
-  // digest of what it returns as `content`. Both staleness paths compare hashes
-  // produced this way against a baseline hashed from the file on disk, so the two
-  // encodings have to agree.
-  it('hashes the exact bytes it returns', () => {
-    const content = '<!-- Composed at spawn — do not edit -->\n\n# Body\n';
-    const viaString = crypto.createHash('sha256').update(content).digest('hex');
-    const viaBuffer = crypto.createHash('sha256').update(Buffer.from(content)).digest('hex');
+  // Whatever the seam returns as `hash` must be the digest of what it returns as
+  // `content`. Both staleness paths compare a hash produced this way against a
+  // baseline hashed from the file on disk, so a disagreement makes every sweep see
+  // permanent drift and respawn the container every 60 seconds, forever.
+  //
+  // This calls the seam. It used to assert that sha256-of-string equals
+  // sha256-of-Buffer for a hand-written constant — a property of Node's crypto
+  // module, true no matter what this file does. The seam could have returned a
+  // hardcoded hash and it would still have passed.
+  it('hashes the exact bytes it returns', async () => {
+    const rendered = await renderComposedDocument({ folder: 'seam-hash', name: 'Seam', coworker_type: 'main' } as AgentGroup);
 
-    expect(viaString).toBe(viaBuffer);
+    expect(rendered.hash).toBe(crypto.createHash('sha256').update(rendered.content).digest('hex'));
+    // Guards against agreeing on emptiness: two digests of '' are also equal.
+    expect(rendered.content.length).toBeGreaterThan(0);
   });
 });
 

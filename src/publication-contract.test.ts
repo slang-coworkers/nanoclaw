@@ -206,3 +206,52 @@ describe('the sweep gates its restart on the outcome', () => {
     expect(body).toMatch(/CLAUDE\.md refresh failed for session/);
   });
 });
+
+describe('rendering does not write', () => {
+  // The sweep renders every group's candidate document every 60 seconds purely to
+  // compare hashes. Anything the RENDER path writes therefore lands on the shared
+  // group directory on a timer, for containers running a different document — the
+  // exact hazard the sweep was made non-publishing to close.
+  //
+  // The rename was inside `readStandingInstructions`, which all four render call
+  // sites share, so property 1 above held for the document and the markers but not
+  // for the group directory as a whole.
+  it('the standing-instructions read path performs no rename', () => {
+    const read = fnBody(RUNNER, 'export function readStandingInstructions');
+
+    expect(read).not.toMatch(/renameSync|writeFileSync|copyFileSync|mkdirSync/);
+  });
+
+  it('the migration lives in its own function, called only from publication', () => {
+    expect(fnBody(RUNNER, 'export function migrateStandingInstructions')).toMatch(/renameSync\(/);
+
+    // One caller, and it is the publisher. `renderComposedDocument` reaching it
+    // would put the write back on the sweep's path by a different route.
+    expect(RUNNER.match(/migrateStandingInstructions\(groupDir, instructionsPath\)/g) ?? []).toHaveLength(1);
+    expect(fnBody(RUNNER, 'export async function renderComposedDocument')).not.toMatch(/migrateStandingInstructions/);
+    expect(fnBody(RUNNER, 'async function composeCoworkerClaudeMd')).toMatch(/migrateStandingInstructions\(/);
+  });
+});
+
+describe('size-cap pressure is reported', () => {
+  // At base, spawn called `assertWithinDocSizeCap` inside the render, and that
+  // helper emitted the near-cap warning. Moving the cap into the assembler removed
+  // its last production caller, so a group could sit one byte under the cap — or
+  // lose whole sections to eviction — with nothing in the log: the diagnostics were
+  // computed and then discarded.
+  const compose = fnBody(RUNNER, 'async function composeCoworkerClaudeMd');
+
+  it('warns from the publication path on near-cap, eviction, or structural omission', () => {
+    expect(compose).toMatch(/log\.warn\('Composed document is under size-cap pressure'/);
+    expect(compose).toMatch(/diagnostics\.nearCap/);
+    expect(compose).toMatch(/rendered\.dropped\.length > 0/);
+    expect(compose).toMatch(/diagnostics\.structurallyOmitted\.length > 0/);
+  });
+
+  // Not in the render: the sweep calls that every 60s, so a near-cap document would
+  // repeat the same warning until someone fixed it. Publication runs once per
+  // spawn, which is the rate this should fire at.
+  it('does not warn from the render seam', () => {
+    expect(fnBody(RUNNER, 'export async function renderComposedDocument')).not.toMatch(/log\.(warn|error)\(/);
+  });
+});

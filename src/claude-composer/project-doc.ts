@@ -90,19 +90,32 @@ export interface RenderedProjectDoc {
  * (`spine.ts:190`/`:244`, `runtime-contract.ts:64`). A tilde-fenced block is
  * valid CommonMark, so a title check built on backticks alone would accept
  * `~~~\n# fake\n~~~` as the document's H1.
+ *
+ * Three CommonMark rules this has to honor, each of which flips a title verdict
+ * the wrong way when dropped:
+ *
+ *  - A closing fence carries nothing but the fence and whitespace. `` ```not-close ``
+ *    is fence CONTENT, and treating it as a closer ends the block early — so a
+ *    `# heading` still inside the code block becomes the document's H1.
+ *  - At most three spaces of indent open a fence; four make an indented code
+ *    block. Treating `    ```{.js}` as an opener swallows the rest of the
+ *    document, hiding the real H1 and failing a valid section.
+ *  - An info string may not contain a backtick on a backtick fence, so
+ *    `` ```a`b `` opens nothing.
  */
 export function stripFencedBlocks(md: string): string[] {
   const out: string[] = [];
-  let fence: string | undefined;
+  let fence: { char: string; length: number } | undefined;
   for (const line of md.split('\n')) {
-    const open = line.match(/^\s*(```+|~~~+)/);
+    const m = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
     if (fence) {
-      // Only the same marker type closes a fence; a ``` inside a ~~~ block is content.
-      if (open && open[1][0] === fence[0] && open[1].length >= fence.length) fence = undefined;
+      if (m && m[1][0] === fence.char && m[1].length >= fence.length && /^[ \t\r]*$/.test(m[2])) {
+        fence = undefined;
+      }
       continue;
     }
-    if (open) {
-      fence = open[1];
+    if (m && (m[1][0] === '~' || !m[2].includes('`'))) {
+      fence = { char: m[1][0], length: m[1].length };
       continue;
     }
     out.push(line);
@@ -212,32 +225,56 @@ function renderSection(s: ComposedSection): string {
 }
 
 function assemble(marker: string, sections: readonly ComposedSection[]): string {
-  return [marker, ...sections.map(renderSection)].join('\n\n').trimEnd() + '\n';
+  return measure(marker, sections).content;
 }
 
 /**
- * Per-section byte counts derived from the FINAL render, not re-measured.
+ * Assemble once, and derive every per-section byte count by SLICING that result.
  *
- * Ownership: every non-final section owns its trailing `\n\n`; the final section
- * owns the single terminal `\n` that `.trimEnd() + '\n'` leaves; the marker owns
- * its own `\n\n`. So `sum(sections) + markerBytes + 2 === total`.
+ * Ownership: each section owns its own bytes plus the `\n\n` that follows it,
+ * clipped at the trim boundary; the final section owns whatever survives the trim
+ * plus the single terminal `\n`. So `sum(sections) + markerBytes + 2 === total`.
  *
- * Deriving from the assembled string rather than summing `renderSection` + 2 is
- * what makes that identity hold at the tail: the naive form charges the last
- * section two newlines the trim has already removed, and the resulting off-by-one
- * would silently misreport which section to blame for an overflow.
+ * Slicing is what makes that identity hold, and re-measuring is what broke it
+ * twice. `renderSection(s).length + 2` charges the last section two newlines the
+ * trim has already removed; adding `+ 1` for the final section fixes only the case
+ * where that section ends in a non-space character. A section whose body ends in
+ * spaces or blank lines — `'tail   \n\n'` — has those bytes trimmed too, and no
+ * per-section constant can predict how many. The overcount then propagates into
+ * eviction: the ladder picks the section with the largest count, so a body padded
+ * with trailing whitespace can outrank a genuinely larger one and be evicted in
+ * its place, dropping content that was not the problem.
  */
 function measure(
   marker: string,
   sections: readonly ComposedSection[],
-): { total: number; sections: { readonly name: string; readonly bytes: number }[] } {
+): { content: string; total: number; sections: { readonly name: string; readonly bytes: number }[] } {
   const rendered = sections.map(renderSection);
-  const total = Buffer.byteLength(assemble(marker, sections), 'utf-8');
-  const counts = rendered.map((text, i) => ({
-    name: sections[i].name,
-    bytes: Buffer.byteLength(text, 'utf-8') + (i === rendered.length - 1 ? 1 : SEPARATOR_BYTES),
-  }));
-  return { total, sections: counts };
+  const raw = [marker, ...rendered].join('\n\n');
+  const kept = raw.trimEnd().length;
+  const content = raw.slice(0, kept) + '\n';
+
+  // Character offset of each section's block within `raw`, marker first.
+  const starts: number[] = [];
+  let at = marker.length + SEPARATOR_BYTES;
+  for (const text of rendered) {
+    starts.push(at);
+    at += text.length + SEPARATOR_BYTES;
+  }
+
+  const counts = rendered.map((_, i) => {
+    const from = Math.min(starts[i], kept);
+    const to = i === rendered.length - 1 ? kept : Math.min(starts[i + 1], kept);
+    // The terminal `\n` replaces everything the trim removed, so the final
+    // section owns exactly one byte for it.
+    const terminal = i === rendered.length - 1 ? 1 : 0;
+    return {
+      name: sections[i].name,
+      bytes: Buffer.byteLength(raw.slice(from, to), 'utf-8') + terminal,
+    };
+  });
+
+  return { content, total: Buffer.byteLength(content, 'utf-8'), sections: counts };
 }
 
 /**
@@ -272,18 +309,23 @@ export function renderProjectDoc(marker: string, spec: ProjectDocSpec): Rendered
   const structurallyOmitted: string[] = [];
   const { maxBytes } = spec;
 
-  let content = assemble(marker, live);
+  let current = measure(marker, withNotice(live, dropped));
   if (maxBytes !== undefined) {
-    while (Buffer.byteLength(content, 'utf-8') > maxBytes) {
-      // Rendered block bytes, not body length: a section's heading and separator
-      // are real bytes in the document, and ranking by body alone picks the
-      // wrong victim when headings differ in size.
+    while (current.total > maxBytes) {
+      // Ranked by the bytes this section actually contributes to the document —
+      // the same slice-derived counts the diagnostics report. Re-measuring
+      // `renderSection` instead would rank by bytes the trim removes, so a
+      // section padded with trailing whitespace could outrank a larger one and be
+      // evicted in its place. The `live` list and `current.sections` are
+      // index-aligned only while the notice is absent, which is why the lookup is
+      // by name.
+      const bytesOf = new Map(current.sections.map((s) => [s.name, s.bytes]));
       let victim = -1;
       let victimBytes = -1;
       for (let i = 0; i < live.length; i++) {
         const s = live[i];
         if (!s.droppable) continue;
-        const bytes = Buffer.byteLength(renderSection(s), 'utf-8') + SEPARATOR_BYTES;
+        const bytes = bytesOf.get(s.name) ?? 0;
         if (bytes > victimBytes) {
           victim = i;
           victimBytes = bytes;
@@ -296,10 +338,14 @@ export function renderProjectDoc(marker: string, spec: ProjectDocSpec): Rendered
         // leaving the agent with NO instructions. Refusing lets
         // `assertComposedDocUsable` keep an existing group on its previous
         // document and refuse a fresh spawn loudly.
+        //
+        // Diagnostics carry the notice too: after a partial eviction it is a real
+        // section in the measured document, and omitting it made the reported
+        // per-section bytes fail to account for the total the same error reports.
         throw new ProjectDocTooLargeError(
-          Buffer.byteLength(content, 'utf-8'),
+          current.total,
           maxBytes,
-          sectionDiagnostics(marker, live).map((s) => ({ section: s.name, bytes: s.bytes })),
+          current.sections.map((s) => ({ section: s.name, bytes: s.bytes })),
           dropped,
         );
       }
@@ -307,13 +353,14 @@ export function renderProjectDoc(marker: string, spec: ProjectDocSpec): Rendered
       dropped.push(live[victim].name);
       live.splice(victim, 1);
       pruneEmptyGroups(live, structurallyOmitted);
-      content = assemble(marker, withNotice(live, dropped));
+      current = measure(marker, withNotice(live, dropped));
     }
   }
 
-  // One measurement of the final section list feeds both the total and the
-  // per-section counts, so the sum identity holds by construction.
-  const final = measure(marker, withNotice(live, dropped));
+  // One measurement feeds the content, the total, and the per-section counts, so
+  // the sum identity holds by construction.
+  const final = current;
+  const content = final.content;
 
   return {
     content,
@@ -360,13 +407,6 @@ function withNotice(live: readonly ComposedSection[], dropped: readonly string[]
   const personaIndex = live.findIndex((s) => s.role === 'persona');
   if (personaIndex === -1) return [...live, notice];
   return [...live.slice(0, personaIndex), notice, ...live.slice(personaIndex)];
-}
-
-function sectionDiagnostics(
-  marker: string,
-  sections: readonly ComposedSection[],
-): { readonly name: string; readonly bytes: number }[] {
-  return [...measure(marker, sections).sections].sort((a, b) => b.bytes - a.bytes);
 }
 
 export { PROJECT_DOC_MAX_BYTES };
