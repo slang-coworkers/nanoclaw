@@ -1,6 +1,7 @@
 import type { BACK_TO_CHANNEL_SELECTION } from '../lib/back-nav.js';
 
 export type ChannelChoice =
+  | 'dashboard'
   | 'telegram'
   | 'discord'
   | 'whatsapp'
@@ -23,6 +24,11 @@ type ChannelRunner = (
 
 export function initialChannelOptions(): { value: ChannelChoice; label: string; hint?: string }[] {
   return [
+    {
+      value: 'dashboard',
+      label: 'Yes, add the Dashboard (viewer)',
+      hint: 'pixel UI + cost observability — selected by default; merges nv-dashboard',
+    },
     { value: 'slack', label: 'Yes, connect Slack', hint: 'NEW!! one-click install' },
     {
       value: 'mattermost',
