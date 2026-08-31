@@ -54,7 +54,15 @@ describe('cap ladder, wired through the real producers', () => {
     // the operator's instructions and invert the last-word precedence the spine
     // documents. The persona must still close the document.
     expect(out.content.trimEnd().endsWith('Be terse.')).toBe(true);
-    expect(out.content.indexOf('Omitted for size')).toBeLessThan(out.content.indexOf('Be terse.'));
+
+    const notice = out.content.indexOf('Omitted for size');
+    const persona = out.content.indexOf('Be terse.');
+
+    // Presence first: -1 precedes every real offset, so a bare comparison passes
+    // when the notice is not emitted at all.
+    expect(notice).toBeGreaterThan(-1);
+    expect(persona).toBeGreaterThan(-1);
+    expect(notice).toBeLessThan(persona);
   });
 
   it('names what it dropped, so an operator can see why guidance vanished', () => {

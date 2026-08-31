@@ -206,14 +206,25 @@ describe('cap ladder', () => {
       body: 'PERSONA-BODY',
     };
     const { content } = render([title(), header, big('a', 4000), persona], 3000);
+    const notice = content.indexOf('Omitted for size');
+    const body_ = content.indexOf('PERSONA-BODY');
 
-    expect(content.indexOf('Omitted for size')).toBeLessThan(content.indexOf('PERSONA-BODY'));
+    // Presence first: `indexOf` returns -1 when the notice is absent, and -1
+    // precedes every real offset, so a bare `toBeLessThan` passes when notice
+    // generation is deleted — the exact regression this names.
+    expect(notice).toBeGreaterThan(-1);
+    expect(body_).toBeGreaterThan(-1);
+    expect(notice).toBeLessThan(body_);
   });
 
   it('places the notice last when there is no persona', () => {
     const { content } = render([title(), header, big('a', 4000), body('Tail', 'TAIL-BODY')], 3000);
+    const notice = content.indexOf('Omitted for size');
+    const tail = content.indexOf('TAIL-BODY');
 
-    expect(content.indexOf('TAIL-BODY')).toBeLessThan(content.indexOf('Omitted for size'));
+    expect(notice).toBeGreaterThan(-1);
+    expect(tail).toBeGreaterThan(-1);
+    expect(tail).toBeLessThan(notice);
   });
 
   it('drops a group header once its last member is evicted, and reports it as structural', () => {
@@ -297,6 +308,41 @@ describe('diagnostics', () => {
     const unbounded = Buffer.byteLength(render(sections).content, 'utf-8');
 
     expect(render(sections, unbounded - 1).dropped[0]).toBe('Big');
+  });
+
+  // Nothing requires section names to be unique — two MCP servers, two skills —
+  // and a name-keyed byte lookup collapses duplicates onto one count. Measured
+  // with that bug: the ladder evicted the 100-byte section while the 1000-byte one
+  // with the same name survived, so the document stayed over the cap for an extra
+  // round and lost the wrong content.
+  it('ranks duplicate-named droppable sections independently', () => {
+    const sections = [
+      title(),
+      body('dup', 'S'.repeat(100), { droppable: true }),
+      body('dup', 'L'.repeat(1000), { droppable: true }),
+    ];
+    const unbounded = Buffer.byteLength(render(sections).content, 'utf-8');
+
+    const { content } = render(sections, unbounded - 1);
+
+    expect(content).not.toContain('LLLL');
+    expect(content).toContain('SSSS');
+  });
+
+  // The message says "Largest sections" and shows only the top three, so document
+  // order can name three small ones and omit the culprit — leaving an operator to
+  // guess against a 4 MB file.
+  it('orders refusal diagnostics largest-first', () => {
+    let err: unknown;
+    try {
+      render([title(), body('Tiny A', 'a'), body('Tiny B', 'b'), body('Culprit', 'c'.repeat(5000))], 300);
+    } catch (e) {
+      err = e;
+    }
+
+    const e = err as ProjectDocTooLargeError;
+    expect(e.sections[0].section).toBe('Culprit');
+    expect(e.message).toMatch(/Largest sections: Culprit/);
   });
 
   // After a partial eviction the notice is a real section in the measured

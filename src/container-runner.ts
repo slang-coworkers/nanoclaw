@@ -80,7 +80,12 @@ import { GROUP_FOLDER_LABEL, labelValueLegal, specInvalid } from './drivers/type
 import type { ContainerSpec, MountSpec, SessionFailure, SessionSpec } from './drivers/types.js';
 import { getGatewayProvider, type GatewayContribution } from './gateway-providers/index.js';
 import { initGroupFilesystem } from './group-init.js';
-import { PERSONA_PREPEND_FILE, isComposedDocument, readGroupPersona, writeComposedDocument } from './group-persona.js';
+import {
+  PERSONA_PREPEND_FILE,
+  isComposedDocument,
+  readStandingInstructionsFile,
+  writeComposedDocument,
+} from './group-persona.js';
 import { getAgentMailbox } from './mailbox/index.js';
 import { stopTypingRefresh } from './modules/typing/index.js';
 import { log } from './log.js';
@@ -378,17 +383,20 @@ const wakePromises = new Map<string, Promise<boolean>>();
  * from the publication path, which is the only caller allowed to write.
  */
 export function readStandingInstructions(groupDir: string, instructionsPath: string): string | null {
-  const canonical = readGroupPersona(groupDir);
-  if (canonical !== null) return canonical;
+  // PRESENCE decides precedence, not content. A canonical file that exists but
+  // yields nothing usable — empty, whitespace-only, a directory, a symlink — must
+  // not hand precedence back to a stale legacy file. The rename made that
+  // unreachable at base; reading both files makes it reachable again.
+  const canonical = readStandingInstructionsFile(path.join(groupDir, PERSONA_PREPEND_FILE));
+  if (canonical.present) return canonical.content;
 
-  // Canonical file absent: fall back to the legacy name in place. Migration is
-  // publication's job, so a group still on the legacy file composes identically
-  // either side of the rename and the hashes agree across it.
-  try {
-    return fs.readFileSync(instructionsPath, 'utf-8');
-  } catch {
-    return null;
-  }
+  // Same no-follow reader for the legacy name. Both files sit in the read-WRITE
+  // group mount and both land verbatim in the composed system prompt, so both
+  // need the same guard: a plain `readFileSync` here lets a symlinked
+  // `.instructions.md` read an arbitrary host file into the next document.
+  // Measured, before this call went through the guard: a symlink to a file
+  // outside the group dir was returned as the persona.
+  return readStandingInstructionsFile(instructionsPath).content;
 }
 
 /**
@@ -751,8 +759,7 @@ async function composeCoworkerClaudeMd(agentGroup: AgentGroup): Promise<Publishe
       bytes: diagnostics.bytes,
       maxBytes: diagnostics.maxBytes,
       dropped: rendered.dropped.length > 0 ? rendered.dropped : undefined,
-      structurallyOmitted:
-        diagnostics.structurallyOmitted.length > 0 ? diagnostics.structurallyOmitted : undefined,
+      structurallyOmitted: diagnostics.structurallyOmitted.length > 0 ? diagnostics.structurallyOmitted : undefined,
       largestSections: diagnostics.sections.slice(0, 5),
     });
   } else {

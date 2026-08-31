@@ -40,7 +40,6 @@
  * that can actually absorb the overflow (GAP-4, step 6). The cap is the
  * prerequisite for that, not a replacement for it.
  */
-import { log } from '../log.js';
 
 /**
  * Claude Code's documented limit. Not configurable: it is a property of the
@@ -48,9 +47,6 @@ import { log } from '../log.js';
  * raise it past the point where the CLI stops reading the file.
  */
 export const PROJECT_DOC_MAX_BYTES = 4 * 1024 * 1024;
-
-/** Warn while there is still headroom, so pressure is visible before it is fatal. */
-const WARN_BYTES = PROJECT_DOC_MAX_BYTES - PROJECT_DOC_MAX_BYTES / 8;
 
 export class ProjectDocTooLargeError extends Error {
   constructor(
@@ -79,58 +75,5 @@ export class ProjectDocTooLargeError extends Error {
         (dropped.length > 0 ? ` Already evicted before giving up: ${dropped.join(', ')}.` : ''),
     );
     this.name = 'ProjectDocTooLargeError';
-  }
-}
-
-/**
- * Split a rendered document into its `##` sections for diagnostics only. Good
- * enough to name the culprit in a log line; not used to decide anything, so a
- * `## …` inside a fenced block only mislabels a byte count.
- */
-function sectionBytes(content: string): { section: string; bytes: number }[] {
-  return content
-    .split(/\n(?=## )/)
-    .map((chunk) => ({
-      section: chunk.startsWith('## ') ? chunk.slice(3, chunk.indexOf('\n')) : '(preamble)',
-      bytes: Buffer.byteLength(chunk, 'utf-8'),
-    }))
-    .sort((a, b) => b.bytes - a.bytes);
-}
-
-/**
- * Throw if `content` would be silently ignored by the consumer; warn when it is
- * within an eighth of the cap.
- *
- * Called before publication, deliberately: the caller's `catch` routes to
- * `assertComposedDocUsable`, which keeps an existing group on its previous
- * document and refuses a fresh spawn that has none. Checking after the atomic
- * write would publish the unusable document first and defeat both.
- *
- * Pure with respect to `content`, which the staleness sweep depends on: spawn and
- * `detectStaleContainers` hash the same composed string through
- * `renderComposedDocument`, so a size decision that varied between the two calls
- * would make the digests disagree forever and respawn the container every 60s.
- */
-export function assertWithinDocSizeCap(content: string, folder: string): void {
-  const bytes = Buffer.byteLength(content, 'utf-8');
-  if (bytes > PROJECT_DOC_MAX_BYTES) {
-    const sections = sectionBytes(content);
-    log.error('Composed document exceeds the size cap — refusing to publish it', {
-      folder,
-      bytes,
-      maxBytes: PROJECT_DOC_MAX_BYTES,
-      sections: sections.slice(0, 5),
-    });
-    throw new ProjectDocTooLargeError(bytes, PROJECT_DOC_MAX_BYTES, sections);
-  }
-
-  if (bytes >= WARN_BYTES) {
-    log.warn('Composed document is near its size cap', {
-      folder,
-      bytes,
-      warnBytes: WARN_BYTES,
-      maxBytes: PROJECT_DOC_MAX_BYTES,
-      sections: sectionBytes(content).slice(0, 5),
-    });
   }
 }

@@ -102,7 +102,11 @@ describe('hash/content agreement', () => {
   // module, true no matter what this file does. The seam could have returned a
   // hardcoded hash and it would still have passed.
   it('hashes the exact bytes it returns', async () => {
-    const rendered = await renderComposedDocument({ folder: 'seam-hash', name: 'Seam', coworker_type: 'main' } as AgentGroup);
+    const rendered = await renderComposedDocument({
+      folder: 'seam-hash',
+      name: 'Seam',
+      coworker_type: 'main',
+    } as AgentGroup);
 
     expect(rendered.hash).toBe(crypto.createHash('sha256').update(rendered.content).digest('hex'));
     // Guards against agreeing on emptiness: two digests of '' are also equal.

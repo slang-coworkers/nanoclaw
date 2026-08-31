@@ -731,6 +731,44 @@ describe('readStandingInstructions', () => {
     expect(fs.existsSync(dotfile)).toBe(true);
   });
 
+  // PRESENCE decides precedence, not content. Reading both files (rather than
+  // renaming, which made this unreachable) reintroduces the case where an
+  // existing-but-empty canonical file hands precedence back to a stale legacy one —
+  // resurrecting instructions an operator deliberately emptied.
+  it('does not resurrect legacy instructions when the canonical file is empty', () => {
+    const dir = tmpGroupDir();
+    const dotfile = path.join(dir, '.instructions.md');
+    fs.writeFileSync(path.join(dir, 'instructions.prepend.md'), '   \n');
+    fs.writeFileSync(dotfile, 'stale legacy\n');
+
+    expect(readStandingInstructions(dir, dotfile)).toBeNull();
+  });
+
+  // Both files sit in the group directory, which is mounted READ-WRITE into the
+  // container, and both land verbatim in the next composed system prompt. A plain
+  // `readFileSync` on the legacy name therefore turns "edit your own persona" into
+  // an arbitrary host-file read; measured before the fix, this returned the target
+  // file's contents.
+  it('does not follow a symlinked legacy instructions file', () => {
+    const dir = tmpGroupDir();
+    const outside = path.join(dir, 'SECRET.md');
+    fs.writeFileSync(outside, 'host secret\n');
+    const dotfile = path.join(dir, '.instructions.md');
+    fs.symlinkSync(outside, dotfile);
+
+    expect(readStandingInstructions(dir, dotfile)).toBeNull();
+  });
+
+  it('trims the legacy file the same way as the canonical one', () => {
+    const dir = tmpGroupDir();
+    const dotfile = path.join(dir, '.instructions.md');
+    fs.writeFileSync(dotfile, '  legacy  \n\n');
+
+    // Untrimmed content would compose to different bytes either side of the
+    // migration, so spawn's hash and the sweep's would disagree across it.
+    expect(readStandingInstructions(dir, dotfile)).toBe('legacy');
+  });
+
   it('returns null when the group has neither', () => {
     const dir = tmpGroupDir();
 

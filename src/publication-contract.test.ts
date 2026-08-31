@@ -251,7 +251,29 @@ describe('size-cap pressure is reported', () => {
   // Not in the render: the sweep calls that every 60s, so a near-cap document would
   // repeat the same warning until someone fixed it. Publication runs once per
   // spawn, which is the rate this should fire at.
-  it('does not warn from the render seam', () => {
-    expect(fnBody(RUNNER, 'export async function renderComposedDocument')).not.toMatch(/log\.(warn|error)\(/);
+  it('does not warn from the render seam, directly or indirectly', () => {
+    const render = fnBody(RUNNER, 'export async function renderComposedDocument');
+
+    expect(render).not.toMatch(/log\.(warn|error)\(/);
+    // Named explicitly because the regression is a RESTORED call, not a new one:
+    // `assertWithinDocSizeCap` logged on the caller's behalf, so a direct-call-only
+    // assertion stays green when that line comes back. Matching the CALL, not the
+    // bare name — this file and the runner both mention the helper in prose
+    // explaining why it is gone.
+    expect(render).not.toMatch(/assertWithinDocSizeCap\(/);
+  });
+
+  // The helper had no production caller once the cap moved into the assembler, and
+  // its policy is the OPPOSITE of the current one: refuse a whole oversized
+  // document rather than evict what can be shed. Leaving it exported invites a
+  // caller back to the superseded behaviour.
+  it('the superseded standalone cap check is gone from the tree', () => {
+    const capModule = fs.readFileSync(new URL('./claude-composer/doc-size-cap.ts', import.meta.url), 'utf-8');
+
+    expect(capModule).not.toMatch(/function assertWithinDocSizeCap/);
+    // The cap value and the error type are still the shared vocabulary; only the
+    // check and its now-unreachable helpers went.
+    expect(capModule).toMatch(/export const PROJECT_DOC_MAX_BYTES/);
+    expect(capModule).toMatch(/export class ProjectDocTooLargeError/);
   });
 });

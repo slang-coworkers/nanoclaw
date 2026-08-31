@@ -309,23 +309,31 @@ export function renderProjectDoc(marker: string, spec: ProjectDocSpec): Rendered
   const structurallyOmitted: string[] = [];
   const { maxBytes } = spec;
 
-  let current = measure(marker, withNotice(live, dropped));
+  // The exact list that was measured, kept alongside the measurement. `live` and
+  // `current.sections` are index-aligned only while the notice is absent, so the
+  // ranking below needs a way back from a live section to its measured bytes.
+  let measured = withNotice(live, dropped);
+  let current = measure(marker, measured);
+
   if (maxBytes !== undefined) {
     while (current.total > maxBytes) {
       // Ranked by the bytes this section actually contributes to the document —
       // the same slice-derived counts the diagnostics report. Re-measuring
-      // `renderSection` instead would rank by bytes the trim removes, so a
-      // section padded with trailing whitespace could outrank a larger one and be
-      // evicted in its place. The `live` list and `current.sections` are
-      // index-aligned only while the notice is absent, which is why the lookup is
-      // by name.
-      const bytesOf = new Map(current.sections.map((s) => [s.name, s.bytes]));
+      // `renderSection` instead ranks by bytes the trim removes, so a section
+      // padded with trailing whitespace could outrank a larger one and be evicted
+      // in its place.
+      //
+      // Keyed by section OBJECT, not by name: nothing requires section names to be
+      // unique (two MCP servers, two skills), and a name-keyed map collapses
+      // duplicates onto one count — measured, the ladder then evicted a 100-byte
+      // section while a 1000-byte one with the same name survived.
+      const bytesOf = new Map(measured.map((s, i) => [s, current.sections[i].bytes]));
       let victim = -1;
       let victimBytes = -1;
       for (let i = 0; i < live.length; i++) {
         const s = live[i];
         if (!s.droppable) continue;
-        const bytes = bytesOf.get(s.name) ?? 0;
+        const bytes = bytesOf.get(s) ?? 0;
         if (bytes > victimBytes) {
           victim = i;
           victimBytes = bytes;
@@ -342,10 +350,13 @@ export function renderProjectDoc(marker: string, spec: ProjectDocSpec): Rendered
         // Diagnostics carry the notice too: after a partial eviction it is a real
         // section in the measured document, and omitting it made the reported
         // per-section bytes fail to account for the total the same error reports.
+        // Sorted largest-first because the message calls them "Largest sections"
+        // and only shows the top three — document order would name three small
+        // ones and omit the culprit.
         throw new ProjectDocTooLargeError(
           current.total,
           maxBytes,
-          current.sections.map((s) => ({ section: s.name, bytes: s.bytes })),
+          [...current.sections].sort((a, b) => b.bytes - a.bytes).map((s) => ({ section: s.name, bytes: s.bytes })),
           dropped,
         );
       }
@@ -353,7 +364,8 @@ export function renderProjectDoc(marker: string, spec: ProjectDocSpec): Rendered
       dropped.push(live[victim].name);
       live.splice(victim, 1);
       pruneEmptyGroups(live, structurallyOmitted);
-      current = measure(marker, withNotice(live, dropped));
+      measured = withNotice(live, dropped);
+      current = measure(marker, measured);
     }
   }
 
