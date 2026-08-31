@@ -281,6 +281,28 @@ describe('parseCodexRollout + priceCodexFiles', () => {
     expect(c.totalUsd).toBeCloseTo(15, 6);
   });
 
+  it('prices each call under the model in effect when a rollout switches between two KNOWN, differently-priced models', () => {
+    // The case above switches to an UNKNOWN model that happens to price at the same
+    // default rate, so it can't tell per-model pricing from a blanket rate. This one
+    // switches between two KNOWN ids with different published rates, so a blanket
+    // per-file rate would be provably wrong.
+    const content = [
+      turnContext(`${D1}T01:00:00.000Z`, 'gpt-5.6-sol'), // input $5/Mtok
+      tokenCount(`${D1}T01:00:01.000Z`, { input: 1_000_000 }),
+      turnContext(`${D1}T01:00:02.000Z`, 'gpt-5.2-codex'), // input $1.75/Mtok (codex-tuned, cheaper)
+      tokenCount(`${D1}T01:00:03.000Z`, { input: 1_000_000 }),
+    ].join('\n');
+    const c = costOf(content);
+    const sol = priceCodexEvent({ day: D1, rawModel: 'gpt-5.6-sol', input: 1_000_000, cached: 0, output: 0 });
+    const codex = priceCodexEvent({ day: D1, rawModel: 'gpt-5.2-codex', input: 1_000_000, cached: 0, output: 0 });
+    expect(sol).toBeGreaterThan(codex); // the two rates genuinely differ
+    expect(c.unpriced).toEqual([]); // both models are known
+    // Each leg priced under its OWN model, then summed — not one blanket rate.
+    expect(c.totalUsd).toBeCloseTo(sol + codex, 9);
+    expect(c.totalUsd).not.toBeCloseTo(sol * 2, 6);
+    expect(c.totalUsd).not.toBeCloseTo(codex * 2, 6);
+  });
+
   it('charges an unknown model at the default rate rather than $0', () => {
     const content = [
       turnContext(`${D1}T01:00:00.000Z`, 'gpt-9-unreleased'),
