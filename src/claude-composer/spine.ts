@@ -7,7 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 
-import type { ComposedSectionInput } from './project-doc.js';
+import { type ComposedSectionInput, renderProjectDoc } from './project-doc.js';
 import { readCoworkerTypes, readSkillCatalog } from './registry.js';
 import { injectOverlays, resolveCoworkerManifest } from './resolve.js';
 import { RUNTIME_CONTRACT_SECTION, renderRuntimeContract } from './runtime-contract.js';
@@ -570,6 +570,15 @@ function emitDiscoveredProjectFragments(types: Record<string, CoworkerTypeEntry>
   return lines.join('\n');
 }
 
+/**
+ * The string form, for the callers that only ever wanted a document.
+ *
+ * Assembly belongs to `renderProjectDoc` now, so this delegates rather than
+ * joining anything itself — one assembler, whether a caller wants bytes or
+ * sections. Deliberately passes NO cap: these are author-time and script callers
+ * (`validate-templates`, `rebuild-claude-md`), where refusing to render an
+ * oversized document would report a size problem as a missing document.
+ */
 export function renderCoworkerSpine(
   projectRoot: string,
   coworkerType: string,
@@ -581,6 +590,31 @@ export function renderCoworkerSpine(
     mcpInstructions?: Record<string, string>;
   } = {},
 ): string {
+  return renderProjectDoc(composedDocHeader(), {
+    fileName: 'CLAUDE.md',
+    extraSections: asNonEmpty(renderCoworkerSections(projectRoot, coworkerType, extraInstructions, opts)),
+  }).content;
+}
+
+/**
+ * The same composition, stopping one step short of a document.
+ *
+ * This is the seam. Producers describe sections; the caller chooses the cap and
+ * what to do when it is exceeded. `container-runner.ts` passes one, because a
+ * spawned agent whose document Claude Code silently skips in full is exactly the
+ * failure the cap exists to prevent.
+ */
+export function renderCoworkerSections(
+  projectRoot: string,
+  coworkerType: string,
+  extraInstructions: string | null | undefined,
+  opts: {
+    disableOverlays?: boolean;
+    overlays?: string[];
+    cliScope?: 'disabled' | 'group' | 'global';
+    mcpInstructions?: Record<string, string>;
+  } = {},
+): ComposedSectionInput[] {
   // cliScope gates inclusion of the `ncl-*.md` tool-instruction fragments.
   //   'disabled' → strip every ncl-*.md from context (agent has no CLI access)
   //   'group'    → keep ncl-group.md, drop ncl-global.md
@@ -684,7 +718,7 @@ export function renderCoworkerSpine(
     // Section boundaries are H2 headings inside each fragment — no `---`
     // separators. Horizontal rules between every fragment created visual
     // noise without adding structure that the headings didn't already carry.
-    return renderDocument(sectionsToParts(flatSections));
+    return flatSections;
   }
 
   // Sections rather than raw strings: `sectionsToParts` below flattens them back
@@ -1025,14 +1059,15 @@ export function renderCoworkerSpine(
     });
   }
 
-  return renderDocument(sectionsToParts(sections));
+  return sections;
 }
 
 /**
- * The single place a composed document becomes a string. Both the flat and the
- * inherited path route through here so neither can lose the marker — `main` is
- * `flat: true` and returns early, which is exactly how the first attempt at this
- * missed the admin orchestrator.
+ * The composed-document header, prepended by the assembler.
+ *
+ * Both the flat and the inherited path route through one assembler now, so
+ * neither can lose the marker — `main` is `flat: true` and returns early, which
+ * is exactly how the first attempt at this missed the admin orchestrator.
  *
  * The marker makes the document self-identifying as composer output. Two
  * consumers depend on it: the persona migration in `container-runner.ts` (a
@@ -1041,9 +1076,8 @@ export function renderCoworkerSpine(
  * memory). It deliberately carries no timestamp — the composed text feeds a
  * sha256 staleness comparison, so a clock would make every spawn look stale.
  */
-function renderDocument(parts: string[]): string {
-  const header = `${COMPOSED_DOC_MARKER} — do not edit; edit instructions.prepend.md -->`;
-  return [header, ...parts].join('\n\n').trimEnd() + '\n';
+export function composedDocHeader(): string {
+  return `${COMPOSED_DOC_MARKER} — do not edit; edit instructions.prepend.md -->`;
 }
 
 /** An ordinary non-droppable `##` section — the shape most producers want. */
@@ -1052,26 +1086,19 @@ function section(name: string, body: string): ComposedSectionInput {
 }
 
 /**
- * Flatten sections back into the `parts` array `renderDocument` consumes.
+ * Narrow to the non-empty tuple `ProjectDocSpec` requires.
  *
- * Temporary, and deliberately so: it lets the producers move to sections in one
- * step that provably changes no byte, before `renderProjectDoc` takes over
- * assembly in a later step. A titled section becomes the same two entries the
- * hand-written code pushed (`'## Name'`, then the body), which is what makes the
- * equivalence exact rather than merely close — including the empty-body case,
- * where pushing a lone heading is what the old code did too.
+ * A producer that returned nothing would otherwise compose a header-only
+ * document, which `assertComposedDocUsable` accepts as usable (it checks
+ * `trim().length > 0`) — so a group would spawn with no instructions at all, and
+ * silently. `renderProjectDoc` re-checks; this exists so the type is honest at
+ * the call site rather than relying on a cast.
  */
-function sectionsToParts(sections: readonly ComposedSectionInput[]): string[] {
-  const parts: string[] = [];
-  for (const s of sections) {
-    if (s.heading.kind === 'verbatim') {
-      parts.push(s.body);
-      continue;
-    }
-    parts.push(`${'#'.repeat(s.heading.level)} ${s.name}`);
-    if (s.body) parts.push(s.body);
-  }
-  return parts;
+export function asNonEmpty(
+  sections: ComposedSectionInput[],
+): readonly [ComposedSectionInput, ...ComposedSectionInput[]] {
+  if (sections.length === 0) throw new Error('Composed document has no sections');
+  return sections as [ComposedSectionInput, ...ComposedSectionInput[]];
 }
 
 // Emit a gate block. Uses stage-aware rendering when the overlay body

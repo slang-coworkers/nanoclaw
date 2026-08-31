@@ -15,18 +15,21 @@ import path from 'path';
 import { promisify } from 'util';
 
 import {
-  composeCoworkerSpine,
+  asNonEmpty,
+  composedDocHeader,
   getAppliedOverlayNames,
   materializeCritiqueDeliveryMarkers,
   materializeCritiqueRequiredStages,
   materializeOverlayMarkers,
   readCoworkerTypes,
   readSkillCatalog,
+  renderCoworkerSections,
   resolveCoworkerManifest,
   type CoworkerTypeEntry,
   type SkillMeta,
 } from './claude-composer.js';
-import { assertWithinDocSizeCap } from './claude-composer/doc-size-cap.js';
+import { PROJECT_DOC_MAX_BYTES } from './claude-composer/doc-size-cap.js';
+import { renderProjectDoc, type CapDiagnostics } from './claude-composer/project-doc.js';
 import {
   CONTAINER_CPU_LIMIT,
   CONTAINER_IMAGE,
@@ -473,17 +476,47 @@ function readMcpInstructions(rawMcpServers: string | undefined, groupName: strin
  * Both staleness paths and the spawn hash agree by construction rather than by
  * four separate call sites happening to stay in sync.
  */
-export async function renderComposedDocument(
-  agentGroup: AgentGroup,
-): Promise<{ content: string; hash: string; opts: Awaited<ReturnType<typeof composeOptionsFor>> }> {
+export async function renderComposedDocument(agentGroup: AgentGroup): Promise<{
+  content: string;
+  hash: string;
+  dropped: readonly string[];
+  diagnostics: CapDiagnostics;
+  opts: Awaited<ReturnType<typeof composeOptionsFor>>;
+}> {
   const opts = await composeOptionsFor(agentGroup);
-  const content = composeCoworkerSpine(opts);
+  // Cap applied by the assembler now, which is what makes eviction possible: the
+  // ladder drops the largest droppable section (per-server MCP guidance) before
+  // concluding the document cannot fit, instead of refusing outright. Only when
+  // nothing droppable is left does it throw, and the caller's `catch` still routes
+  // to `assertComposedDocUsable`.
+  //
   // Here rather than at the write sites: this seam is the one place both spawn
   // paths and both staleness paths pass through, so an oversized document can
-  // never reach `writeComposedDocument`, and the sweep sees the same refusal
-  // instead of hashing a document that spawn would reject.
-  assertWithinDocSizeCap(content, agentGroup.folder);
-  return { content, hash: crypto.createHash('sha256').update(content).digest('hex'), opts };
+  // never reach `writeComposedDocument`, and the sweep sees the same decision
+  // instead of hashing a document spawn would reject.
+  const rendered = renderProjectDoc(composedDocHeader(), {
+    fileName: 'CLAUDE.md',
+    maxBytes: PROJECT_DOC_MAX_BYTES,
+    extraSections: asNonEmpty(
+      renderCoworkerSections(process.cwd(), opts.coworkerType, opts.extraInstructions, {
+        disableOverlays: opts.disableOverlays,
+        overlays: opts.overlays,
+        cliScope: opts.cliScope,
+        mcpInstructions: opts.mcpInstructions,
+      }),
+    ),
+  });
+
+  return {
+    content: rendered.content,
+    // Of the bytes just assembled, not of a second composition: the file and the
+    // hash come from one render, so an input edited between two calls can no
+    // longer make `spawnedClaudeMdHash` describe a document never published.
+    hash: rendered.hash,
+    dropped: rendered.dropped,
+    diagnostics: rendered.diagnostics,
+    opts,
+  };
 }
 
 export function assertComposedDocUsable(claudeMdPath: string, agentGroup: AgentGroup, err: unknown): void {

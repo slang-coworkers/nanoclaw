@@ -21,11 +21,15 @@ import { describe, expect, it } from 'vitest';
 const SOURCE = fs.readFileSync(new URL('./container-runner.ts', import.meta.url), 'utf-8');
 
 describe('one render seam', () => {
-  // The seam itself calls the composer; nothing else in the runner should.
-  it('is the only composeCoworkerSpine call site in the runner', () => {
-    const calls = SOURCE.match(/composeCoworkerSpine\(/g) ?? [];
-
-    expect(calls).toHaveLength(1);
+  // The seam itself composes; nothing else in the runner should. The composer
+  // entry point changed from `composeCoworkerSpine` (string) to
+  // `renderCoworkerSections` + `renderProjectDoc` (sections, then assembly), so
+  // both halves are pinned — a second producer call is the hazard, whichever name
+  // it uses.
+  it('is the only composer call site in the runner', () => {
+    expect(SOURCE.match(/renderCoworkerSections\(/g) ?? []).toHaveLength(1);
+    expect(SOURCE.match(/renderProjectDoc\(/g) ?? []).toHaveLength(1);
+    expect(SOURCE.match(/composeCoworkerSpine\(/g) ?? []).toHaveLength(0);
   });
 
   it('is reached by both spawn paths', () => {
@@ -42,12 +46,15 @@ describe('one render seam', () => {
 
   // No hash may be computed from a locally-composed string: that is exactly the
   // divergence this seam exists to prevent.
-  it('computes no sha256 outside the seam except the on-disk baseline', () => {
+  it('computes no sha256 outside the seam except the on-disk baselines', () => {
     const hashes = SOURCE.match(/createHash\('sha256'\)/g) ?? [];
 
-    // One in the seam, one at spawn (hashes the file it just wrote), one in the
-    // host-restart fallback that re-derives the baseline from disk.
-    expect(hashes).toHaveLength(3);
+    // TWO, down from three. The seam no longer hashes anything itself — the
+    // assembler returns the digest of the bytes it just produced, so the file and
+    // the hash provably come from one render. The two that remain both read from
+    // DISK: one at spawn (hashes the file it just wrote), one in the host-restart
+    // fallback that re-derives a baseline for a container this process didn't spawn.
+    expect(hashes).toHaveLength(2);
   });
 });
 
