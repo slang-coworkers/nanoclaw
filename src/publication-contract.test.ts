@@ -241,11 +241,28 @@ describe('size-cap pressure is reported', () => {
   // computed and then discarded.
   const compose = fnBody(RUNNER, 'async function composeCoworkerClaudeMd');
 
-  it('warns from the publication path on near-cap, eviction, or structural omission', () => {
-    expect(compose).toMatch(/log\.warn\('Composed document is under size-cap pressure'/);
-    expect(compose).toMatch(/diagnostics\.nearCap/);
-    expect(compose).toMatch(/rendered\.dropped\.length > 0/);
-    expect(compose).toMatch(/diagnostics\.structurallyOmitted\.length > 0/);
+  // WHERE it is called from. That it fires on the right condition is asserted
+  // behaviourally against a mocked logger in `container-runner.test.ts` — a source
+  // regex passes for logging that is dead or triggered by the wrong test.
+  it('is reported from the publication path, after the markers', () => {
+    const markers = compose.indexOf('materializeOverlayMarkers(');
+    const report = compose.indexOf('reportProjectDocPressure(');
+
+    expect(markers).toBeGreaterThan(-1);
+    expect(report).toBeGreaterThan(-1);
+    expect(markers).toBeLessThan(report);
+  });
+
+  it('is not reported from a failed publication', () => {
+    // `published: false` returns through `assertComposedDocUsable`, which logs the
+    // failure itself. Reporting pressure there would describe a document that was
+    // never written.
+    const fallback = compose.indexOf('assertComposedDocUsable(');
+    const report = compose.indexOf('reportProjectDocPressure(');
+
+    expect(fallback).toBeGreaterThan(-1);
+    expect(fallback).toBeLessThan(report);
+    expect(RUNNER.match(/reportProjectDocPressure\(/g) ?? []).toHaveLength(2);
   });
 
   // Not in the render: the sweep calls that every 60s, so a near-cap document would

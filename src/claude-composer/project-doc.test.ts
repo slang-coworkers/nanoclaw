@@ -329,6 +329,24 @@ describe('diagnostics', () => {
     expect(content).toContain('SSSS');
   });
 
+  // Nor by object identity: a producer may push one section object twice, and any
+  // keyed lookup collapses both occurrences onto a single count — `Map.set` keeps
+  // whichever it saw last. Occurrence-index alignment removes the assumption.
+  //
+  // The two occurrences must MEASURE differently for the collapse to change the
+  // answer, which is why the shared body carries trailing whitespace: only the
+  // final position is trimmed, so occurrence 1 contributes ~500 bytes and
+  // occurrence 3 contributes ~100. A keyed lookup records 100 for both, ranks
+  // 'medium' (300) highest, and evicts it — while the 500-byte occurrence that
+  // actually blew the budget stays.
+  it('ranks repeated section references as distinct occurrences', () => {
+    const shared = body('same', 'S'.repeat(100) + ' '.repeat(400), { droppable: true });
+    const sections = [title(), shared, body('medium', 'M'.repeat(300), { droppable: true }), shared];
+    const unbounded = Buffer.byteLength(render(sections).content, 'utf-8');
+
+    expect(render(sections, unbounded - 1).dropped[0]).toBe('same');
+  });
+
   // The message says "Largest sections" and shows only the top three, so document
   // order can name three small ones and omit the culprit — leaving an operator to
   // guess against a 4 MB file.

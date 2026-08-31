@@ -13,6 +13,7 @@ import path from 'path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { CONTAINER_CPU_LIMIT, CONTAINER_MEMORY_LIMIT } from './config.js';
+import type { CapDiagnostics } from './claude-composer/project-doc.js';
 import type { ContainerConfig } from './container-config.js';
 import {
   armSessionLifecycle,
@@ -23,6 +24,7 @@ import {
   parseMemoryMb,
   parsePidsLimit,
   readStandingInstructions,
+  reportProjectDocPressure,
   resolveProviderName,
   syncSkillSymlinks,
   toMountSpecs,
@@ -781,10 +783,91 @@ describe('readStandingInstructions', () => {
     fs.writeFileSync(secret, 'not the persona\n');
     fs.symlinkSync(secret, path.join(dir, 'instructions.prepend.md'));
 
-    // readGroupPersona opens O_NOFOLLOW: the persona is the one input an agent
-    // can author, so a symlink must not become an arbitrary-file read into the
-    // system prompt.
+    // O_NOFOLLOW: the persona is the one input an agent can author, so a symlink
+    // must not become an arbitrary-file read into the system prompt.
     expect(readStandingInstructions(dir, path.join(dir, '.instructions.md'))).toBeNull();
+  });
+
+  // A symlinked canonical file is PRESENT — ELOOP is not ENOENT — so it must not
+  // hand precedence to the legacy file either. Without a legacy file on disk the
+  // case above cannot tell the two contracts apart: it passes whether the symlink
+  // is treated as present-but-unreadable or as absent.
+  it('does not fall back to legacy when the canonical path is a symlink', () => {
+    const dir = tmpGroupDir();
+    const secret = path.join(dir, 'secret.md');
+    fs.writeFileSync(secret, 'not the persona\n');
+    fs.symlinkSync(secret, path.join(dir, 'instructions.prepend.md'));
+    const dotfile = path.join(dir, '.instructions.md');
+    fs.writeFileSync(dotfile, 'stale legacy\n');
+
+    expect(readStandingInstructions(dir, dotfile)).toBeNull();
+  });
+
+  // Same contract for the other non-ENOENT shapes: a directory at either name is
+  // present and unusable, never a reason to read the other file.
+  it('does not fall back to legacy when the canonical path is a directory', () => {
+    const dir = tmpGroupDir();
+    fs.mkdirSync(path.join(dir, 'instructions.prepend.md'));
+    const dotfile = path.join(dir, '.instructions.md');
+    fs.writeFileSync(dotfile, 'stale legacy\n');
+
+    expect(readStandingInstructions(dir, dotfile)).toBeNull();
+  });
+});
+
+// Behavioural, against the mocked logger. These three cases came from
+// `doc-size-cap.test.ts`, where they exercised `assertWithinDocSizeCap` — the
+// helper the cap-in-assembler move made unreachable. Source-text assertions in
+// `publication-contract.test.ts` pin WHERE the reporting lives; these pin that it
+// fires on the right condition, which a regex cannot.
+describe('reportProjectDocPressure', () => {
+  function rendered(over: Partial<CapDiagnostics> & { dropped?: string[] } = {}) {
+    const { dropped = [], ...diag } = over;
+    return {
+      dropped,
+      diagnostics: {
+        bytes: 1000,
+        maxBytes: 4 * 1024 * 1024,
+        sections: [{ name: 'A', bytes: 1000 }],
+        nearCap: false,
+        structurallyOmitted: [],
+        ...diag,
+      } as CapDiagnostics,
+    };
+  }
+
+  it('warns exactly once near the cap', () => {
+    vi.mocked(log.warn).mockClear();
+
+    reportProjectDocPressure('g', 'default', rendered({ nearCap: true }));
+
+    expect(log.warn).toHaveBeenCalledOnce();
+    expect(vi.mocked(log.warn).mock.calls[0][1]).toMatchObject({ folder: 'g', coworkerType: 'default' });
+  });
+
+  it('warns when sections were evicted even with headroom', () => {
+    vi.mocked(log.warn).mockClear();
+
+    reportProjectDocPressure('g', 'default', rendered({ dropped: ['MCP Server: huge'] }));
+
+    expect(log.warn).toHaveBeenCalledOnce();
+    expect(vi.mocked(log.warn).mock.calls[0][1]).toMatchObject({ dropped: ['MCP Server: huge'] });
+  });
+
+  it('warns when a group header was structurally omitted', () => {
+    vi.mocked(log.warn).mockClear();
+
+    reportProjectDocPressure('g', 'default', rendered({ structurallyOmitted: ['MCP Servers'] }));
+
+    expect(log.warn).toHaveBeenCalledOnce();
+  });
+
+  it('stays quiet with headroom and nothing dropped', () => {
+    vi.mocked(log.warn).mockClear();
+
+    reportProjectDocPressure('g', 'default', rendered());
+
+    expect(log.warn).not.toHaveBeenCalled();
   });
 });
 

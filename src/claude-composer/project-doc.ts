@@ -323,17 +323,20 @@ export function renderProjectDoc(marker: string, spec: ProjectDocSpec): Rendered
       // padded with trailing whitespace could outrank a larger one and be evicted
       // in its place.
       //
-      // Keyed by section OBJECT, not by name: nothing requires section names to be
-      // unique (two MCP servers, two skills), and a name-keyed map collapses
-      // duplicates onto one count — measured, the ladder then evicted a 100-byte
-      // section while a 1000-byte one with the same name survived.
-      const bytesOf = new Map(measured.map((s, i) => [s, current.sections[i].bytes]));
+      // Aligned by OCCURRENCE, not by identity. `measured` is `live` plus at most
+      // one notice, so dropping the notice's entry restores index alignment with
+      // `live` exactly. Any keyed lookup assumes sections are distinguishable:
+      // nothing requires names to be unique (two MCP servers, two skills), and
+      // nothing requires the objects themselves to be distinct either — a producer
+      // may legitimately push one object twice. Both collapse to one count, and a
+      // collapsed count evicts the wrong section.
+      const liveBytes = current.sections.filter((_, i) => measured[i].role !== 'notice');
       let victim = -1;
       let victimBytes = -1;
       for (let i = 0; i < live.length; i++) {
         const s = live[i];
         if (!s.droppable) continue;
-        const bytes = bytesOf.get(s) ?? 0;
+        const bytes = liveBytes[i].bytes;
         if (bytes > victimBytes) {
           victim = i;
           victimBytes = bytes;

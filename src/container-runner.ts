@@ -612,6 +612,46 @@ export type PublishedProjectDoc =
   /** `content`/`hash` describe the RETAINED document, still on disk. */
   | { published: false; content: string; hash: string; attemptedDropped: readonly string[] };
 
+/**
+ * Report size-cap pressure after a successful publication.
+ *
+ * At base this warning came from `assertWithinDocSizeCap`, which spawn called
+ * inside `renderComposedDocument`. Moving the cap into the assembler removed that
+ * helper's last production caller, so until this existed a group could sit one
+ * byte under the cap, or silently lose whole sections to eviction, with nothing in
+ * the log — the diagnostics were computed and thrown away.
+ *
+ * It cannot live in the render: the 60s sweep renders every group to compare
+ * hashes, so a near-cap document would repeat the same warning forever.
+ * Publication happens once per spawn, which is the rate this should fire at.
+ *
+ * A separate exported function rather than an inline block so the three
+ * conditions can be asserted behaviourally against a mocked logger. Asserting
+ * them by matching the runner's source text passes for logging that is dead or
+ * fires on the wrong condition.
+ */
+export function reportProjectDocPressure(
+  folder: string,
+  coworkerType: string,
+  rendered: { dropped: readonly string[]; diagnostics: CapDiagnostics },
+): void {
+  const { diagnostics } = rendered;
+  if (diagnostics.nearCap || rendered.dropped.length > 0 || diagnostics.structurallyOmitted.length > 0) {
+    log.warn('Composed document is under size-cap pressure', {
+      folder,
+      coworkerType,
+      bytes: diagnostics.bytes,
+      maxBytes: diagnostics.maxBytes,
+      dropped: rendered.dropped.length > 0 ? rendered.dropped : undefined,
+      structurallyOmitted: diagnostics.structurallyOmitted.length > 0 ? diagnostics.structurallyOmitted : undefined,
+      largestSections: diagnostics.sections.slice(0, 5),
+    });
+    return;
+  }
+
+  log.debug('CLAUDE.md composed from lego spine', { folder, coworkerType });
+}
+
 async function composeCoworkerClaudeMd(agentGroup: AgentGroup): Promise<PublishedProjectDoc> {
   const groupDir = path.resolve(GROUPS_DIR, agentGroup.folder);
   const claudeMdPath = path.join(groupDir, 'CLAUDE.md');
@@ -739,32 +779,8 @@ async function composeCoworkerClaudeMd(agentGroup: AgentGroup): Promise<Publishe
     };
   }
 
-  // Size-cap pressure is reported HERE, not in the render seam.
-  //
-  // At base this warning came from `assertWithinDocSizeCap`, which spawn called
-  // inside `renderComposedDocument`. Moving the cap into the render made that
-  // helper's last production caller disappear, so until this block existed a group
-  // could sit one byte under the cap, or silently lose whole sections to eviction,
-  // with nothing in the log — the diagnostics were computed and thrown away.
-  //
-  // It cannot go back into the render: the 60s sweep renders every group to
-  // compare hashes, so a near-cap document would repeat the same warning forever.
-  // Publication happens once per spawn, which is exactly the rate this should fire
-  // at, and by here the document and its markers are both on disk.
-  const { diagnostics } = rendered;
-  if (diagnostics.nearCap || rendered.dropped.length > 0 || diagnostics.structurallyOmitted.length > 0) {
-    log.warn('Composed document is under size-cap pressure', {
-      folder: agentGroup.folder,
-      coworkerType,
-      bytes: diagnostics.bytes,
-      maxBytes: diagnostics.maxBytes,
-      dropped: rendered.dropped.length > 0 ? rendered.dropped : undefined,
-      structurallyOmitted: diagnostics.structurallyOmitted.length > 0 ? diagnostics.structurallyOmitted : undefined,
-      largestSections: diagnostics.sections.slice(0, 5),
-    });
-  } else {
-    log.debug('CLAUDE.md composed from lego spine', { folder: agentGroup.folder, coworkerType });
-  }
+  // After the markers, so the log describes a fully published document.
+  reportProjectDocPressure(agentGroup.folder, coworkerType, rendered);
 
   return {
     published: true,
