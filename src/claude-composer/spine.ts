@@ -7,11 +7,16 @@
 import fs from 'fs';
 import path from 'path';
 
+import type { ComposedSectionInput } from './project-doc.js';
 import { readCoworkerTypes, readSkillCatalog } from './registry.js';
 import { injectOverlays, resolveCoworkerManifest } from './resolve.js';
 import { RUNTIME_CONTRACT_SECTION, renderRuntimeContract } from './runtime-contract.js';
 import type { CoworkerManifest, CoworkerTypeEntry, SkillMeta } from './types.js';
 import { COMPOSED_DOC_MARKER } from '../group-persona.js';
+
+/** The MCP wrapper's heading, and the group key tying its servers to it. */
+const MCP_SECTION = 'MCP Servers';
+const MCP_GROUP = 'mcp';
 
 function indentBlock(text: string, spaces: number): string {
   const pad = ' '.repeat(spaces);
@@ -219,16 +224,29 @@ function demoteHeadings(md: string, levels: number): string {
  * heading.
  */
 function renderMcpInstructions(mcpInstructions: Record<string, string> | undefined): string | undefined {
-  if (!mcpInstructions) return undefined;
+  const blocks = mcpServerBlocks(mcpInstructions);
+  return blocks.length > 0 ? blocks.map((b) => b.body).join('\n\n') : undefined;
+}
 
-  const blocks: string[] = [];
+/**
+ * The same blocks, still addressable per server.
+ *
+ * Each server is already an independent `### <name>` block over a sorted key
+ * order, so per-server granularity costs nothing here — and it is what lets the
+ * cap ladder evict one oversized server's guidance without deleting every other
+ * server's. Whole-section eviction would.
+ */
+function mcpServerBlocks(mcpInstructions: Record<string, string> | undefined): { name: string; body: string }[] {
+  if (!mcpInstructions) return [];
+
+  const blocks: { name: string; body: string }[] = [];
   for (const name of Object.keys(mcpInstructions).sort()) {
     const body = mcpInstructions[name]?.trim();
     if (!body) continue;
-    blocks.push(`### ${name}\n\n${normalizeFragment(body, 4)}`);
+    blocks.push({ name, body: `### ${name}\n\n${normalizeFragment(body, 4)}` });
   }
 
-  return blocks.length > 0 ? blocks.join('\n\n') : undefined;
+  return blocks;
 }
 
 // Normalize a fragment so its top heading sits at `targetMinLevel`. Computes
@@ -621,43 +639,86 @@ export function renderCoworkerSpine(
     // Same section, same reason, on this path too: `main` is the only flat type,
     // and an admin orchestrator with wired MCP servers needs their usage prose as
     // much as a typed coworker does.
-    const flatMcp = renderMcpInstructions(opts.mcpInstructions);
-    if (flatMcp) bodies.push(`## MCP Servers\n\n${flatMcp}`);
+    // Everything on this path is verbatim: flat bodies carry their own headings,
+    // and the identity body owns the document's `# Title` (`main-body.md:1`).
+    // One lifecycle rule, two renderings — the wrapper is a `group-header` here
+    // too, but `verbatim`, because its body already carries `## MCP Servers`.
+    const flatSections: ComposedSectionInput[] = bodies.map((b, i) =>
+      i === 0
+        ? { role: 'title', droppable: false, name: manifest.title, heading: { kind: 'verbatim' }, body: b }
+        : { role: 'body', droppable: false, name: `flat-${i}`, heading: { kind: 'verbatim' }, body: b },
+    );
+
+    const flatMcp = mcpServerBlocks(opts.mcpInstructions);
+    if (flatMcp.length > 0) {
+      flatSections.push({
+        role: 'group-header',
+        droppable: false,
+        group: MCP_GROUP,
+        name: MCP_SECTION,
+        heading: { kind: 'verbatim' },
+        body: `## ${MCP_SECTION}`,
+      });
+      for (const block of flatMcp) {
+        flatSections.push({
+          role: 'body',
+          droppable: true,
+          group: MCP_GROUP,
+          name: `MCP Server: ${block.name}`,
+          heading: { kind: 'verbatim' },
+          body: block.body,
+        });
+      }
+    }
+
     const extra = extraInstructions?.trim();
-    if (extra) bodies.push(extra);
+    if (extra) {
+      flatSections.push({
+        role: 'persona',
+        droppable: false,
+        name: 'Additional Instructions',
+        heading: { kind: 'verbatim' },
+        body: extra,
+      });
+    }
     // Section boundaries are H2 headings inside each fragment — no `---`
     // separators. Horizontal rules between every fragment created visual
     // noise without adding structure that the headings didn't already carry.
-    return renderDocument(bodies);
+    return renderDocument(sectionsToParts(flatSections));
   }
 
-  const parts: string[] = [];
-  parts.push(`# ${manifest.title}`);
+  // Sections rather than raw strings: `sectionsToParts` below flattens them back
+  // into the `parts` shape `renderDocument` still consumes, so this step changes
+  // no composed byte while giving the cap ladder something it can rank and evict.
+  const sections: ComposedSectionInput[] = [];
+  sections.push({
+    role: 'title',
+    droppable: false,
+    name: manifest.title,
+    heading: { kind: 'titled', level: 1 },
+    body: '',
+  });
 
   // Before Identity, matching the §4.3 ownership table and upstream's composer:
   // the contract states environment facts (where attachments land, where memory
   // lives) that hold for every coworker, so they precede this type's own
   // material rather than trailing it.
   if (contract) {
-    parts.push(`## ${RUNTIME_CONTRACT_SECTION}`);
-    parts.push(contract);
+    sections.push(section(RUNTIME_CONTRACT_SECTION, contract));
   }
 
   // Fragments are normalized to start at h3 so they nest correctly under
   // their ## h2 wrapper regardless of how they were authored. Without this,
   // fragments authored at # or ## (e.g. context/chain-reporting.md, slang's
   // skill-discovery.md) leak their headings out to the top of the document.
-  parts.push('## Identity');
-  parts.push(normalizeFragment(manifest.identity, 3));
+  sections.push(section('Identity', normalizeFragment(manifest.identity, 3)));
 
   if (manifest.invariants.length > 0) {
-    parts.push('## Invariants');
-    parts.push(manifest.invariants.map((f) => normalizeFragment(f, 3)).join('\n\n'));
+    sections.push(section('Invariants', manifest.invariants.map((f) => normalizeFragment(f, 3)).join('\n\n')));
   }
 
   if (manifest.context.length > 0) {
-    parts.push('## Context');
-    parts.push(manifest.context.map((f) => normalizeFragment(f, 3)).join('\n\n'));
+    sections.push(section('Context', manifest.context.map((f) => normalizeFragment(f, 3)).join('\n\n')));
   }
 
   // Build name lookups for slash-rewrite. Three distinct resolutions:
@@ -699,14 +760,16 @@ export function renderCoworkerSpine(
       if (!label) label = `Run /${w.name}`;
       routeLines.push(`- ${label} → \`/${w.name}\` workflow`);
     }
-    parts.push('## How to Work');
-    parts.push(
-      routeLines.join('\n') +
-        '\n\nAlways start with a workflow. Never jump straight to code.' +
-        '\nWorkflow bodies are embedded below — follow the steps inline. Workflows are not slash commands.' +
-        (extraInstructions?.trim()
-          ? '\nYour role-specific standing orders: [Additional Instructions](#additional-instructions)'
-          : ''),
+    sections.push(
+      section(
+        'How to Work',
+        routeLines.join('\n') +
+          '\n\nAlways start with a workflow. Never jump straight to code.' +
+          '\nWorkflow bodies are embedded below — follow the steps inline. Workflows are not slash commands.' +
+          (extraInstructions?.trim()
+            ? '\nYour role-specific standing orders: [Additional Instructions](#additional-instructions)'
+            : ''),
+      ),
     );
   }
 
@@ -888,13 +951,14 @@ export function renderCoworkerSpine(
         blocks.push(`### ${title} Gate Protocol\n\n${demoteHeadings(pieces, 2)}`);
       }
       if (blocks.length > 0) {
-        parts.push('## Gate Protocol');
-        parts.push(blocks.join('\n\n'));
+        // Never droppable: these carry mandatory safety gates, so evicting them
+        // to fit a size cap would silently disable enforcement the document
+        // still claims applies. Deliberate divergence from upstream's ranking.
+        sections.push(section('Gate Protocol', blocks.join('\n\n')));
       }
     }
 
-    parts.push('## Workflows');
-    parts.push(wfOutput);
+    sections.push(section('Workflows', wfOutput));
   }
 
   // --- Skills ---
@@ -904,12 +968,14 @@ export function renderCoworkerSpine(
   // heading (Repo, Code, Test, …), unbound skills (e.g. `base-nanoclaw` host
   // tools) land under "Other" so they're still visible to the reader.
   if (manifest.skills.length > 0) {
-    parts.push('## Skills');
-    parts.push(
-      renderCategorizedList(
-        manifest.skills,
-        (s) => s.provides,
-        (s) => `- \`/${s.name}\` — ${s.description}`,
+    sections.push(
+      section(
+        'Skills',
+        renderCategorizedList(
+          manifest.skills,
+          (s) => s.provides,
+          (s) => `- \`/${s.name}\` — ${s.description}`,
+        ),
       ),
     );
   }
@@ -919,20 +985,47 @@ export function renderCoworkerSpine(
   // Per-server MCP guidance, after Skills because it is the same kind of thing
   // (how to use a tool you have) and before Additional Instructions so the
   // operator's persona still has the last word.
-  const mcpSection = renderMcpInstructions(opts.mcpInstructions);
-  if (mcpSection) {
-    parts.push('## MCP Servers');
-    parts.push(mcpSection);
+  // Grouped, not one block: the wrapper is a `group-header` and each server is a
+  // droppable member of that group. The header is built ONLY when it has at least
+  // one member, so a group with no configured servers is absent rather than
+  // reported as "omitted for size" — every in-tree type wires none, and the
+  // ladder must not log a phantom omission on each of their spawns.
+  const mcpBlocks = mcpServerBlocks(opts.mcpInstructions);
+  if (mcpBlocks.length > 0) {
+    sections.push({
+      role: 'group-header',
+      droppable: false,
+      group: MCP_GROUP,
+      name: MCP_SECTION,
+      heading: { kind: 'titled', level: 2 },
+      body: '',
+    });
+    for (const block of mcpBlocks) {
+      sections.push({
+        role: 'body',
+        droppable: true,
+        group: MCP_GROUP,
+        // Upstream's naming, so an eviction log line reads the same on both.
+        name: `MCP Server: ${block.name}`,
+        heading: { kind: 'verbatim' },
+        body: block.body,
+      });
+    }
   }
 
   if (extraInstructions?.trim()) {
-    parts.push('## Additional Instructions');
-    // Normalize so any operator-authored `## Foo` headings nest under our
-    // `## Additional Instructions` wrapper (they should be `### Foo`).
-    parts.push(normalizeFragment(extraInstructions.trim(), 3));
+    sections.push({
+      role: 'persona',
+      droppable: false,
+      name: 'Additional Instructions',
+      heading: { kind: 'titled', level: 2 },
+      // Normalize so any operator-authored `## Foo` headings nest under our
+      // `## Additional Instructions` wrapper (they should be `### Foo`).
+      body: normalizeFragment(extraInstructions.trim(), 3),
+    });
   }
 
-  return renderDocument(parts);
+  return renderDocument(sectionsToParts(sections));
 }
 
 /**
@@ -951,6 +1044,34 @@ export function renderCoworkerSpine(
 function renderDocument(parts: string[]): string {
   const header = `${COMPOSED_DOC_MARKER} — do not edit; edit instructions.prepend.md -->`;
   return [header, ...parts].join('\n\n').trimEnd() + '\n';
+}
+
+/** An ordinary non-droppable `##` section — the shape most producers want. */
+function section(name: string, body: string): ComposedSectionInput {
+  return { role: 'body', droppable: false, name, heading: { kind: 'titled', level: 2 }, body };
+}
+
+/**
+ * Flatten sections back into the `parts` array `renderDocument` consumes.
+ *
+ * Temporary, and deliberately so: it lets the producers move to sections in one
+ * step that provably changes no byte, before `renderProjectDoc` takes over
+ * assembly in a later step. A titled section becomes the same two entries the
+ * hand-written code pushed (`'## Name'`, then the body), which is what makes the
+ * equivalence exact rather than merely close — including the empty-body case,
+ * where pushing a lone heading is what the old code did too.
+ */
+function sectionsToParts(sections: readonly ComposedSectionInput[]): string[] {
+  const parts: string[] = [];
+  for (const s of sections) {
+    if (s.heading.kind === 'verbatim') {
+      parts.push(s.body);
+      continue;
+    }
+    parts.push(`${'#'.repeat(s.heading.level)} ${s.name}`);
+    if (s.body) parts.push(s.body);
+  }
+  return parts;
 }
 
 // Emit a gate block. Uses stage-aware rendering when the overlay body
