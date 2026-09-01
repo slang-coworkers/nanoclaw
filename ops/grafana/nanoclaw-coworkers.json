@@ -3483,7 +3483,7 @@
           "alias": "total"
         },
         {
-          "refId": "A",
+          "refId": "B",
           "datasource": {
             "type": "influxdb",
             "uid": "PF3A0F3054C0DA367"
@@ -3494,7 +3494,7 @@
           "alias": "claude"
         },
         {
-          "refId": "A",
+          "refId": "C",
           "datasource": {
             "type": "influxdb",
             "uid": "PF3A0F3054C0DA367"
