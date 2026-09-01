@@ -16,7 +16,7 @@ Your scope is **`global`** — unrestricted. You can read and modify any agent g
 | `members`                                   | `list`, `add`, `remove`                                                                                                                                     | Unprivileged group access gate.                          |
 | `destinations`                              | `list`, `add`, `remove`                                                                                                                                     | Where an agent group can send messages.                  |
 | `sessions`                                  | `list`, `get`, `messages`                                                                                                                                   | Active sessions (read-only).                             |
-| `cost-cap`                                  | `get`, `set`, `clear`, `status`, `escalations`                                                                                                              | Runtime Tier-2 cost-cap policy (fleet ceiling + per-group cap/ceiling overrides) plus read-only per-session `status` (live) and `escalations` (spent/cap/ceiling + decision state). **Global/elevated only.** |
+| `cost-cap`                                  | `get`, `set`, `clear`, `status`, `escalations`, `sessions`, `continue`, `stop`, `set-ceiling`                                                              | Runtime Tier-2 cost-cap policy (fleet ceiling + per-group cap/ceiling overrides); cost views (`status` live per-session, `escalations` tripped tail, `sessions` full distribution + p50/p90/p95); escalation resolution (`continue`/`stop`/`set-ceiling`). **Global/elevated only.** |
 | `policies`                                  | `list`, `set`, `remove`                                                                                                                                     | Agent-to-agent approval gates, per (from → to) pair. Operator-only — agents cannot gate their own connections. |
 | `pr-mappings`                               | `list`, `remap`                                                                                                                                             | PR→session routing rows. `remap` reassigns one deliberately (approval-gated). |
 | `user-dms`, `dropped-messages`, `approvals` | `list`, `get`                                                                                                                                               | Diagnostic views (read-only).                            |
@@ -53,16 +53,33 @@ ncl cost-cap clear [--group <folder>]           # remove an override → env/thr
 
 ### Inspecting cost spend & escalations
 
-`status` and `escalations` are read-only (no approval). Use them to see what a session actually spent and which sessions are blocked on a cost decision.
+`status`, `escalations`, and `sessions` are read-only (no approval). Use them to see what a session actually spent, which sessions are blocked on a cost decision, and the full per-group cost distribution.
 
 ```bash
 ncl cost-cap status --session <sid>          # one session's LIVE cost state (ok|warn|escalated|stopped)
 ncl cost-cap escalations --state stopped     # sessions hard-blocked awaiting a Continue/Stop decision
 ncl cost-cap escalations --group <folder>    # a coworker's escalation history (spent/cap/ceiling)
 ncl cost-cap escalations --author <gh-login> # escalations on a GitHub user's issue/PR threads
+ncl cost-cap sessions                        # per-group cost aggregates + p50/p90/p95/max (default 30d)
+ncl cost-cap sessions --group <folder> --period 7d   # one group, 7-day window
+ncl cost-cap sessions --group <folder> --sessions    # the raw per-session list (ranked desc) instead
 ```
 
-`escalations` lists per-session `spent`/`cap`/`ceiling` + `decision_state` + coworker + (for GitHub-thread sessions) the issue/PR author — the "which sessions were cost-stopped and how much did they cost" view. Pair a `stopped` row with the dashboard Continue/Stop (or a `cost_override`).
+`escalations` lists per-session `spent`/`cap`/`ceiling` + `decision_state` + coworker + (for GitHub-thread sessions) the issue/PR author — the "which sessions were cost-stopped and how much did they cost" view.
+
+`sessions` is the **full cost distribution** (not just the tripped tail): per group with any priced session it reports `{sessions, total_usd, p50, p90, p95, max}` over that group's `cost>0` sessions, sorted by total spend. Percentiles use the nearest-rank method — the same one the host uses for its p90 cap auto-sourcing — so a `p95` you read here is a real observed session cost you can hand straight to `set-ceiling`. Reads the dashboard's priced-cost API, so the dashboard must be installed/running. `--period` accepts `1d|7d|30d|all`.
+
+### Resolving cost escalations
+
+`continue`, `stop`, and `set-ceiling` resolve an escalation — the elevated ncl equivalents of the dashboard's Continue / Stop / +− ceiling control. Same money-safety as the dashboard: `continue`/`stop` route through the shared decision path (a live pending episode resolves via its at-most-once CAS + epoch fence; otherwise the override is fenced by the session's latest episode epoch, so a duplicate press can't double-grant). `set-ceiling` reads the live epoch itself and submits through the ledger's `UNIQUE(session_id, epoch)` CAS — if the session moved (stale epoch), a card/another request already claimed it, or the runner is too old, it FAILS LOUDLY instead of over-raising.
+
+```bash
+ncl cost-cap continue --session <sid>              # resume a session stopped at its ceiling (raise by one allotment)
+ncl cost-cap stop --session <sid>                  # quiesce a running, non-immortal session (manual kill switch)
+ncl cost-cap set-ceiling --session <sid> --ceiling 300   # set an EXACT live Tier-2 ceiling in USD (raise or lower)
+```
+
+Typical flow: `escalations --state stopped` to find a blocked session → `sessions --group <folder>` to get that group's p95 → `set-ceiling --session <sid> --ceiling <p95>` (or `continue` for a one-allotment bump). `set-ceiling` is capped at $1000.00 and refuses immortal (admin/main) sessions.
 
 ### Cross-group operations
 

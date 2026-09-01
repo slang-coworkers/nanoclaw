@@ -19,6 +19,8 @@
  * a running session on its next restart. To apply immediately, restart the group
  * (`ncl groups restart --id <group-id>`).
  */
+import { randomUUID } from 'crypto';
+
 import { registerResource } from '../crud.js';
 import {
   clearCostCapPolicy,
@@ -34,6 +36,15 @@ import {
   type CostDecisionState,
   type EscalationListRow,
 } from '../../db/cost-escalation-episodes.js';
+import {
+  aggregateSessionCosts,
+  fetchSessionCosts,
+  rankSessionCosts,
+  COST_PERIODS,
+  type CostPeriod,
+  type GroupCostAggregate,
+  type SessionCostListEntry,
+} from '../cost-cap-sessions.js';
 
 /** Who is making the change, for the row's audit column. */
 function actorLabel(ctx: { caller: string; agentGroupId?: string } | undefined): string {
@@ -346,6 +357,218 @@ registerResource({
           );
         }
         return lines.join('\n');
+      },
+    },
+    sessions: {
+      access: 'open',
+      description:
+        'Per-session cost DISTRIBUTION + percentiles — the surface a coworker needs to compute a per-group ' +
+        'p95 and set a sane ceiling (escalations only shows the tripped tail). Reads the authoritative ' +
+        'transcript-priced per-session cost from the local dashboard `GET /api/sessions` (the same source ' +
+        'ops/metrics collect_cost() reads; requires /add-dashboard installed + running). Default output: ' +
+        "per-group aggregates {group, sessions, total_usd, p50, p90, p95, max} over each group's cost>0 " +
+        'sessions, sorted by total spend. Percentiles use the NEAREST-RANK method (sort asc, index ' +
+        'floor(p*(n-1))) — the same method the host uses for cost-thresholds.json p90, so every value is a ' +
+        'real observed session cost. Filters: --group <folder>, --period (1d|7d|30d|all, default 30d); ' +
+        '--sessions emits the raw per-session list instead of aggregates.',
+      args: [
+        { name: 'group', type: 'string', description: 'Filter to one group workspace folder.' },
+        { name: 'period', type: 'string', description: 'Day-window: 1d|7d|30d|all (default 30d).', default: '30d' },
+        {
+          name: 'sessions',
+          type: 'boolean',
+          description: 'Emit the raw per-session cost list (ranked desc) instead of per-group aggregates.',
+        },
+      ],
+      examples: [
+        'ncl cost-cap sessions',
+        'ncl cost-cap sessions --group slang-fixer --period 7d',
+        'ncl cost-cap sessions --group slang-fixer --sessions --json',
+      ],
+      handler: async (args) => {
+        const period = String(args.period ?? '30d').trim() as CostPeriod;
+        if (!COST_PERIODS.includes(period)) {
+          throw new Error(`--period must be one of: ${COST_PERIODS.join(', ')}`);
+        }
+        const group = typeof args.group === 'string' && args.group.trim() ? args.group.trim() : undefined;
+        const { sessions, costUnavailable } = await fetchSessionCosts(period);
+        if (args.sessions === true) {
+          const list = rankSessionCosts(sessions, { group });
+          return { period, group: group ?? null, costUnavailable, count: list.length, sessions: list };
+        }
+        const groups = aggregateSessionCosts(sessions, { group });
+        return {
+          period,
+          group: group ?? null,
+          costUnavailable,
+          method: 'nearest-rank (sort asc, index floor(p*(n-1)))',
+          groups,
+        };
+      },
+      formatHuman: (data) => {
+        const d = data as {
+          period: string;
+          group: string | null;
+          costUnavailable?: string | null;
+          method?: string;
+          groups?: GroupCostAggregate[];
+          count?: number;
+          sessions?: SessionCostListEntry[];
+        };
+        // Surface the dashboard's "pricing absent" reason so a $0/empty result is
+        // never mistaken for "no spend" when it actually means "no cost data".
+        const warn = d.costUnavailable ? `⚠ cost data may be unavailable: ${d.costUnavailable}\n` : '';
+        if (d.sessions) {
+          if (d.sessions.length === 0) return `${warn}No priced sessions in the last ${d.period}.`;
+          const lines = [`${warn}${d.count} priced session${d.count === 1 ? '' : 's'} (${d.period}):`];
+          for (const s of d.sessions) {
+            lines.push(`  ${usd(s.cost)}  ${s.session_id} · ${s.group}${s.status ? ` · ${s.status}` : ''}`);
+          }
+          return lines.join('\n');
+        }
+        const groups = d.groups ?? [];
+        if (groups.length === 0) return `${warn}No priced sessions in the last ${d.period}.`;
+        const lines = [`${warn}Per-group cost over ${d.period} (percentiles: nearest-rank):`];
+        for (const g of groups) {
+          lines.push(
+            `  ${g.group}: ${g.sessions} sessions, total ${usd(g.total_usd)} — ` +
+              `p50 ${usd(g.p50)} · p90 ${usd(g.p90)} · p95 ${usd(g.p95)} · max ${usd(g.max)}`,
+          );
+        }
+        return lines.join('\n');
+      },
+    },
+    continue: {
+      access: 'open',
+      description:
+        "Resolve a cost escalation by CONTINUING a session — the elevated ncl equivalent of the dashboard's " +
+        'Continue. Routes through the SAME money-safe decision path as the pill (`applyCostOverrideDecision`): ' +
+        'a live pending episode resolves via its at-most-once CAS + epoch fence; otherwise the override is ' +
+        "fenced by the session's latest episode epoch so a duplicate/stale press can never double-grant. On a " +
+        'session that is actually stopped at its ceiling this resumes it (the runner raises the cap by one ' +
+        'allotment); to set an EXACT ceiling instead, use `set-ceiling`.',
+      args: [{ name: 'session', type: 'string', description: 'Session ID.', required: true }],
+      examples: ['ncl cost-cap continue --session <session-id>'],
+      handler: async (args, ctx) => {
+        const sessionId = String(args.session ?? '').trim();
+        if (!sessionId) throw new Error('--session is required');
+        const { applyCostOverrideDecision } = await import('../../modules/cost-approval/index.js');
+        await applyCostOverrideDecision(sessionId, 'continue', `ncl:${actorLabel(ctx)}`);
+        return { session_id: sessionId, decision: 'continue', ok: true };
+      },
+      formatHuman: (data) => {
+        const d = data as { session_id: string };
+        return `Continue routed to session ${d.session_id}.`;
+      },
+    },
+    stop: {
+      access: 'open',
+      description:
+        "Resolve a cost escalation by STOPPING a session — the elevated ncl equivalent of the dashboard's Stop. " +
+        'Routes through the SAME money-safe decision path as the pill (see `continue`): a genuine manual kill ' +
+        'switch that quiesces a running, non-immortal session (recorded-only for immortal sessions, which never ' +
+        'quiesce). Money-safe under duplicate/stale presses via the same episode epoch fence.',
+      args: [{ name: 'session', type: 'string', description: 'Session ID.', required: true }],
+      examples: ['ncl cost-cap stop --session <session-id>'],
+      handler: async (args, ctx) => {
+        const sessionId = String(args.session ?? '').trim();
+        if (!sessionId) throw new Error('--session is required');
+        const { applyCostOverrideDecision } = await import('../../modules/cost-approval/index.js');
+        await applyCostOverrideDecision(sessionId, 'stop', `ncl:${actorLabel(ctx)}`);
+        return { session_id: sessionId, decision: 'stop', ok: true };
+      },
+      formatHuman: (data) => {
+        const d = data as { session_id: string };
+        return `Stop routed to session ${d.session_id}.`;
+      },
+    },
+    'set-ceiling': {
+      access: 'open',
+      description:
+        "Set a session's LIVE Tier-2 hard ceiling to an EXACT USD value (NanoClaw #1, set-ceiling v2) — the " +
+        'elevated ncl equivalent of the dashboard +/- control. Reads the live epoch + current ceiling itself, ' +
+        'then submits through the existing `submitCostCeilingAdjustment` flow, whose ' +
+        'UNIQUE(session_id, expected_epoch_key) ledger CAS is the concurrency control: MONEY-SAFE, never a ' +
+        'double-grant. If the session moved since the read (stale epoch), or a card/another request already ' +
+        'claimed the epoch, or the runner is too old / not ready, this FAILS LOUDLY (non-2xx) rather than ' +
+        'over-raising. Works on a stopped session (raise + resume) or a healthy one (proactive raise/lower). ' +
+        'Max $1000.00; immortal (admin/main) sessions are refused.',
+      args: [
+        { name: 'session', type: 'string', description: 'Session ID.', required: true },
+        {
+          name: 'ceiling',
+          type: 'number',
+          description: 'Exact target Tier-2 ceiling in USD (> 0, <= 1000). Converted to integer cents.',
+          required: true,
+        },
+      ],
+      examples: [
+        'ncl cost-cap set-ceiling --session <session-id> --ceiling 300',
+        'ncl cost-cap set-ceiling --session <session-id> --ceiling 42.50 --json',
+      ],
+      handler: async (args, ctx) => {
+        const sessionId = String(args.session ?? '').trim();
+        if (!sessionId) throw new Error('--session is required');
+        const ceilingUsd = Number(args.ceiling);
+        if (!Number.isFinite(ceilingUsd) || ceilingUsd <= 0) throw new Error('--ceiling must be a number > 0');
+        const targetCeilingCents = Math.round(ceilingUsd * 100);
+        if (targetCeilingCents < 1 || targetCeilingCents > 100_000) {
+          throw new Error('--ceiling must be between $0.01 and $1000.00');
+        }
+
+        // Read LIVE epoch + ceiling to build the optimistic CAS precondition —
+        // the same values the dashboard browser reads from /api/sessions.
+        // submitCostCeilingAdjustment RE-READS and RE-VALIDATES these
+        // authoritatively (409 'stale' if they moved between now and the ledger
+        // insert), so this is the precondition, not a trusted bypass of it.
+        const live = await readSessionCostCapStatus(sessionId);
+        if (live.status === 'unknown') {
+          throw new Error(
+            `session ${sessionId} has no live cost-cap state (not spawned, non-Claude provider, or pre-cost-cap runner)`,
+          );
+        }
+        if (live.immortal === true) {
+          throw new Error('immortal (admin/main) sessions cannot be quiesced/adjusted by this control');
+        }
+        if (typeof live.ceiling_usd !== 'number' || live.ceiling_usd <= 0) {
+          throw new Error('this session has no live Tier-2 ceiling configured');
+        }
+        if (typeof live.budget_gen !== 'number') {
+          throw new Error('no live budget generation reported for this session');
+        }
+        const expectedEpochKey = String(live.budget_gen);
+        const expectedCeilingCents = Math.round(live.ceiling_usd * 100);
+        if (targetCeilingCents === expectedCeilingCents) {
+          throw new Error(`--ceiling ${usd(ceilingUsd)} equals the current live ceiling — nothing to change`);
+        }
+
+        const requestId = `cca-${randomUUID()}`;
+        const { submitCostCeilingAdjustment } = await import('../../modules/cost-ceiling-adjustment/index.js');
+        const result = await submitCostCeilingAdjustment(
+          { protocolVersion: 2, requestId, sessionId, targetCeilingCents, expectedEpochKey, expectedCeilingCents },
+          `ncl:${actorLabel(ctx)}`,
+        );
+
+        // MONEY-SAFE: surface any non-accept status as a thrown error instead of
+        // pretending success. 200 = idempotent-terminal, 202 = accepted/enqueued.
+        if (result.status !== 200 && result.status !== 202) {
+          const err = typeof result.body.error === 'string' ? result.body.error : `http_${result.status}`;
+          const msg = typeof result.body.message === 'string' ? result.body.message : '';
+          throw new Error(`set-ceiling refused (${result.status} ${err})${msg ? `: ${msg}` : ''}`);
+        }
+        return {
+          session_id: sessionId,
+          requestId,
+          targetCeilingUsd: ceilingUsd,
+          targetCeilingCents,
+          status: result.status,
+          result: result.body,
+        };
+      },
+      formatHuman: (data) => {
+        const d = data as { session_id: string; targetCeilingUsd: number; status: number };
+        const verb = d.status === 200 ? 'already recorded' : 'submitted';
+        return `Set-ceiling ${verb}: session ${d.session_id} → ${usd(d.targetCeilingUsd)} ceiling.`;
       },
     },
   },
