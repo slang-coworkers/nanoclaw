@@ -175,6 +175,18 @@ export interface CostCapState {
    * this widening is behavior-preserving for existing readers.
    */
   ceilingUsd: number;
+  /**
+   * Set-ceiling control protocol version this runner build speaks, published on
+   * EVERY cost_cap write (NanoClaw #1, "set ceiling v2"). This is the capability
+   * signal the dashboard's live per-session ceiling control gates on: it reads
+   * this field out of the cost_cap blob and only renders the +/-/Apply stepper
+   * once it sees `>= 2` — an absent/`< 2` value renders "ceiling control: not yet
+   * available (runner not upgraded)" instead (see dashboard `deriveControlVersion`
+   * / `renderCostCeilingControl`). Kept in lockstep with the separate
+   * `cost_control_protocol` readiness handshake's `version` (both stamp
+   * `COST_CONTROL_PROTOCOL_VERSION`). Absent on pre-set-ceiling runners.
+   */
+  protocolVersion?: number;
   /** UTC day ("YYYY-MM-DD") the daily spend belongs to. Present only when window === 'daily'. */
   dayKey?: string;
   escalatedAt?: string;
