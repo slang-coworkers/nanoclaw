@@ -36,13 +36,39 @@ vi.mock('../session-cost-cap.js', () => ({
   readSessionCostCapStatus: (...a: unknown[]) => mockReadSessionCostCapStatus(...a),
 }));
 
-import './cost-cap.js'; // side-effect: registers cost-cap-{get,set,clear,status}
+// `set-ceiling` dynamic-imports submitCostCeilingAdjustment; mock it so the
+// verb's OWN logic (live-epoch read → cents conversion → money-safe failure
+// surfacing) is what's under test, not the full ledger/runner flow (which has
+// its own tests in db/cost-ceiling-adjustments.test.ts + the module test).
+const mockSubmitCostCeilingAdjustment = vi.fn();
+vi.mock('../../modules/cost-ceiling-adjustment/index.js', () => ({
+  submitCostCeilingAdjustment: (...a: unknown[]) => mockSubmitCostCeilingAdjustment(...a),
+}));
+
+// `continue`/`stop` dynamic-import the shared decision path; mock it so we
+// assert the delegation (session + decision + ncl: actor tag) without the
+// episode CAS / router (covered by cost-approval's own tests).
+const mockApplyCostOverrideDecision = vi.fn();
+vi.mock('../../modules/cost-approval/index.js', () => ({
+  applyCostOverrideDecision: (...a: unknown[]) => mockApplyCostOverrideDecision(...a),
+}));
+
+import './cost-cap.js'; // side-effect: registers cost-cap-{get,set,clear,status,sessions,continue,stop,set-ceiling}
 import { commandGuard, lookup } from '../registry.js';
 import { guard, type GuardActor } from '../../guard/index.js';
 import type { CallerContext } from '../frame.js';
 
 const AGENT: GuardActor = { kind: 'agent', agentGroupId: 'ag-orchestrator', sessionId: 's' };
-const COMMANDS = ['cost-cap-set', 'cost-cap-get', 'cost-cap-clear', 'cost-cap-status'] as const;
+const COMMANDS = [
+  'cost-cap-set',
+  'cost-cap-get',
+  'cost-cap-clear',
+  'cost-cap-status',
+  'cost-cap-sessions',
+  'cost-cap-continue',
+  'cost-cap-stop',
+  'cost-cap-set-ceiling',
+] as const;
 
 describe('cost-cap scope gate (elevated only)', () => {
   beforeEach(() => mockGetContainerConfig.mockReset());
@@ -139,5 +165,118 @@ describe('cost-cap status', () => {
       cap_usd: 10,
       spent_usd: 10.2,
     });
+  });
+});
+
+describe('cost-cap set-ceiling — live-epoch CAS precondition + money-safe failure surfacing', () => {
+  const HOST: CallerContext = { caller: 'host' };
+  const run = async (raw: Record<string, unknown>) => {
+    const cmd = lookup('cost-cap-set-ceiling');
+    if (!cmd) throw new Error('cost-cap-set-ceiling not registered');
+    return cmd.handler(cmd.parseArgs(raw), HOST);
+  };
+
+  // A healthy live session: ceiling $150, budget generation 3.
+  const liveOk = { session_id: 's1', agent_group_id: 'ag-1', status: 'ok', ceiling_usd: 150, budget_gen: 3 };
+
+  beforeEach(() => {
+    mockReadSessionCostCapStatus.mockReset();
+    mockSubmitCostCeilingAdjustment.mockReset();
+  });
+
+  it('reads live epoch/ceiling and submits protocolVersion:2 set_ceiling with the CAS precondition + cents', async () => {
+    mockReadSessionCostCapStatus.mockResolvedValue(liveOk);
+    mockSubmitCostCeilingAdjustment.mockResolvedValue({ status: 202, body: { ok: true, adjustmentId: 'cca-x' } });
+
+    const res = (await run({ session: 's1', ceiling: '300' })) as Record<string, unknown>;
+
+    expect(mockSubmitCostCeilingAdjustment).toHaveBeenCalledTimes(1);
+    const [payload, requestedBy] = mockSubmitCostCeilingAdjustment.mock.calls[0] as [Record<string, unknown>, string];
+    expect(payload).toMatchObject({
+      protocolVersion: 2,
+      sessionId: 's1',
+      targetCeilingCents: 30000, // $300 -> cents
+      expectedEpochKey: '3', // String(budget_gen) — the CAS epoch fence
+      expectedCeilingCents: 15000, // live ceiling * 100 — the CAS precondition
+    });
+    expect(String(payload.requestId)).toMatch(/^cca-/); // module's adjustmentId format
+    expect(requestedBy).toMatch(/^ncl:/);
+    expect(res).toMatchObject({ session_id: 's1', targetCeilingCents: 30000, status: 202 });
+  });
+
+  it('FAILS LOUDLY on a stale-epoch 409 rather than reporting success (no silent over-raise)', async () => {
+    mockReadSessionCostCapStatus.mockResolvedValue(liveOk);
+    mockSubmitCostCeilingAdjustment.mockResolvedValue({
+      status: 409,
+      body: { ok: false, error: 'stale', message: 'the session moved since this value was read' },
+    });
+    await expect(run({ session: 's1', ceiling: '300' })).rejects.toThrow(/set-ceiling refused \(409 stale\)/);
+  });
+
+  it('FAILS LOUDLY on an epoch_conflict 409 (another request already claimed the epoch)', async () => {
+    mockReadSessionCostCapStatus.mockResolvedValue(liveOk);
+    mockSubmitCostCeilingAdjustment.mockResolvedValue({
+      status: 409,
+      body: { ok: false, error: 'epoch_conflict', winner: 'cca-other' },
+    });
+    await expect(run({ session: 's1', ceiling: '300' })).rejects.toThrow(/set-ceiling refused \(409 epoch_conflict\)/);
+  });
+
+  it('refuses a no-op where target equals the live ceiling (never submits)', async () => {
+    mockReadSessionCostCapStatus.mockResolvedValue(liveOk); // live 150
+    await expect(run({ session: 's1', ceiling: '150' })).rejects.toThrow(/equals the current live ceiling/);
+    expect(mockSubmitCostCeilingAdjustment).not.toHaveBeenCalled();
+  });
+
+  it('refuses an immortal session before ever submitting', async () => {
+    mockReadSessionCostCapStatus.mockResolvedValue({ ...liveOk, immortal: true });
+    await expect(run({ session: 's1', ceiling: '300' })).rejects.toThrow(/immortal/);
+    expect(mockSubmitCostCeilingAdjustment).not.toHaveBeenCalled();
+  });
+
+  it('refuses when there is no live cost state, or no live ceiling', async () => {
+    mockReadSessionCostCapStatus.mockResolvedValue({ session_id: 's1', agent_group_id: 'ag-1', status: 'unknown' });
+    await expect(run({ session: 's1', ceiling: '300' })).rejects.toThrow(/no live cost-cap state/);
+
+    mockReadSessionCostCapStatus.mockResolvedValue({ ...liveOk, ceiling_usd: 0 });
+    await expect(run({ session: 's1', ceiling: '300' })).rejects.toThrow(/no live Tier-2 ceiling/);
+    expect(mockSubmitCostCeilingAdjustment).not.toHaveBeenCalled();
+  });
+
+  it('validates --ceiling bounds before ever reading live state', async () => {
+    await expect(run({ session: 's1', ceiling: '0' })).rejects.toThrow(/--ceiling must be a number > 0/);
+    await expect(run({ session: 's1', ceiling: '1001' })).rejects.toThrow(/between \$0.01 and \$1000.00/);
+    expect(mockReadSessionCostCapStatus).not.toHaveBeenCalled();
+  });
+});
+
+describe('cost-cap continue / stop — delegate to the shared money-safe decision path', () => {
+  const HOST: CallerContext = { caller: 'host' };
+  const run = async (verb: 'continue' | 'stop', raw: Record<string, unknown>) => {
+    const cmd = lookup(`cost-cap-${verb}`);
+    if (!cmd) throw new Error(`cost-cap-${verb} not registered`);
+    return cmd.handler(cmd.parseArgs(raw), HOST);
+  };
+
+  beforeEach(() => mockApplyCostOverrideDecision.mockReset());
+
+  it('continue routes decision=continue with an ncl: actor tag', async () => {
+    mockApplyCostOverrideDecision.mockResolvedValue(undefined);
+    const res = await run('continue', { session: 's1' });
+    expect(mockApplyCostOverrideDecision).toHaveBeenCalledWith('s1', 'continue', expect.stringMatching(/^ncl:/));
+    expect(res).toMatchObject({ session_id: 's1', decision: 'continue', ok: true });
+  });
+
+  it('stop routes decision=stop with an ncl: actor tag', async () => {
+    mockApplyCostOverrideDecision.mockResolvedValue(undefined);
+    const res = await run('stop', { session: 's1' });
+    expect(mockApplyCostOverrideDecision).toHaveBeenCalledWith('s1', 'stop', expect.stringMatching(/^ncl:/));
+    expect(res).toMatchObject({ session_id: 's1', decision: 'stop', ok: true });
+  });
+
+  it('requires --session', () => {
+    const cmd = lookup('cost-cap-continue');
+    if (!cmd) throw new Error('cost-cap-continue not registered');
+    expect(() => cmd.parseArgs({})).toThrow(/--session is required/);
   });
 });
