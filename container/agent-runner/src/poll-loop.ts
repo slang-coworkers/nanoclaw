@@ -299,6 +299,16 @@ const LEDGER_BASELINE_VERSION = 1;
  */
 const COST_ACCOUNTING_VERSION = 2;
 
+/**
+ * Set-ceiling control wire-protocol version this runner build speaks (NanoClaw
+ * #1, "set ceiling v2"). Stamped into BOTH the `cost_control_protocol` readiness
+ * handshake (`version`) and every persisted `cost_cap` blob (`protocolVersion`),
+ * so the two never drift. The dashboard's ceiling control gates on the cost_cap
+ * copy: it renders the live stepper only once it reads `>= 2`, otherwise it shows
+ * "ceiling control: not yet available (runner not upgraded)".
+ */
+const COST_CONTROL_PROTOCOL_VERSION = 2;
+
 /** Current UTC day as "YYYY-MM-DD" — the daily-window bucket key. */
 function utcDayKey(): string {
   return new Date().toISOString().slice(0, 10);
@@ -327,7 +337,7 @@ function utcDayKey(): string {
 function publishRunnerReadiness(): void {
   const runnerInstanceId = process.env.NANOCLAW_RUNNER_INSTANCE_ID || '';
   if (!runnerInstanceId) return;
-  setCostControlProtocol({ version: 2, runnerInstanceId, readyAt: new Date().toISOString() });
+  setCostControlProtocol({ version: COST_CONTROL_PROTOCOL_VERSION, runnerInstanceId, readyAt: new Date().toISOString() });
 }
 
 /**
@@ -642,6 +652,11 @@ function persistCostCap(): void {
     // at all" from "cost tracking is on but no ceiling is configured." Every
     // existing reader already treats an omitted value and 0 identically.
     ceilingUsd: costCeilingUsd,
+    // Set-ceiling capability signal (NanoClaw #1, "set ceiling v2"). ALWAYS
+    // published so the dashboard's live ceiling control can tell an upgraded
+    // runner (renders the stepper) from a pre-set-ceiling one (renders "not yet
+    // available"). Mirrors the cost_control_protocol handshake's version.
+    protocolVersion: COST_CONTROL_PROTOCOL_VERSION,
     // Always publish the live budget generation so the host reads the same gen the
     // runner is fencing on (it stamps overrides with it via the escalation episode).
     budgetGen: costBudgetGen,
@@ -1671,6 +1686,9 @@ function applySetCeilingOverride(msg: MessageInRow, parsed: CostOverrideContent)
     immortal: costImmortal,
     window: costWindow,
     ceilingUsd: costCeilingUsd,
+    // Keep the set-ceiling capability signal present on this write too, so the
+    // atomic commit path never drops it (persistCostCap always publishes it).
+    protocolVersion: COST_CONTROL_PROTOCOL_VERSION,
     budgetGen: costBudgetGen,
     ...(costWindow === 'daily' && costDayKey ? { dayKey: costDayKey } : {}),
     ...(costEscalatedAt ? { escalatedAt: costEscalatedAt } : {}),
@@ -1725,6 +1743,7 @@ export const __costCapTestHooks = {
   initCostTracking,
   emitCostEscalation,
   publishRunnerReadiness,
+  persistCostCap,
   reconcileLedger,
   getState: () => ({
     costEnabled,
