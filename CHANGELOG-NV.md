@@ -6,15 +6,48 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 520 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 229 |
-| `nv-slang` | slang project spine, skills, workflows | 143 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 74 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 53 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 531 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 232 |
+| `nv-slang` | slang project spine, skills, workflows | 144 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 75 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 54 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-09-01
+
+### nv-main (8 PRs)
+- **#1396** `supervise-issues: raise worktree-GC pressure gate 25→150 GB (pooled-disk safety)`
+- **#1398** `ops(metrics): restore the influx push pipeline + add cost metrics/panels`
+- **#1399** `fix(runner): publish set-ceiling protocolVersion in the cost_cap blob`
+- **#1401** `` feat(cost-cap): `ncl cost-cap escalations` — per-session cost + state list ``
+- **#1400** `ops(launchable): add prod host-move tooling + crontab restore`
+- **#1402** `feat(scripts): coworker-mcp — MCP server to talk to coworkers + inspect cost`
+- **#1403** `ops(onecli): capture per-request cost into request_logs (cost-per-coworker input)`
+- **#1404** `feat(cost-cap): coworker verbs — sessions distribution + escalation resolution`
+
+## 📅 2026-08-31
+
+### nv-main (3 PRs)
+- **#1386** `fix(setup): make --step provider-auth codex work on this fork's tree`
+- **#1393** `fix(drivers): route proxy-stub creds via contributedEnv so agent wakes pass the secret-shaped-env guardrail`
+- **#1395** `fix(funnel): await initDb() so the funnel snapshot regenerates`
+
+### nv-dashboard (3 PRs)
+- **#1389** `Sync nv-dashboard with upstream/main`
+- **#1385** `fix(dashboard): codex cache-read tokens read as 0 on ccusage 20.x (+ UTC day key)`
+- **#1394** `fix(dashboard): filter running containers by nanoclaw-install label, not name prefix`
+
+### nv-slang (1 PRs)
+- **#1390** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (1 PRs)
+- **#1391** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#1392** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-08-30
 
