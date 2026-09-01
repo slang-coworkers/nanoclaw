@@ -16,7 +16,7 @@ Your scope is **`global`** — unrestricted. You can read and modify any agent g
 | `members`                                   | `list`, `add`, `remove`                                                                                                                                     | Unprivileged group access gate.                          |
 | `destinations`                              | `list`, `add`, `remove`                                                                                                                                     | Where an agent group can send messages.                  |
 | `sessions`                                  | `list`, `get`, `messages`                                                                                                                                   | Active sessions (read-only).                             |
-| `cost-cap`                                  | `get`, `set`, `clear`                                                                                                                                       | Runtime Tier-2 cost-cap policy — fleet ceiling + per-group cap/ceiling overrides. **Global/elevated only.** |
+| `cost-cap`                                  | `get`, `set`, `clear`, `status`, `escalations`                                                                                                              | Runtime Tier-2 cost-cap policy (fleet ceiling + per-group cap/ceiling overrides) plus read-only per-session `status` (live) and `escalations` (spent/cap/ceiling + decision state). **Global/elevated only.** |
 | `policies`                                  | `list`, `set`, `remove`                                                                                                                                     | Agent-to-agent approval gates, per (from → to) pair. Operator-only — agents cannot gate their own connections. |
 | `pr-mappings`                               | `list`, `remap`                                                                                                                                             | PR→session routing rows. `remap` reassigns one deliberately (approval-gated). |
 | `user-dms`, `dropped-messages`, `approvals` | `list`, `get`                                                                                                                                               | Diagnostic views (read-only).                            |
@@ -50,6 +50,19 @@ ncl cost-cap clear [--group <folder>]           # remove an override → env/thr
 ```
 
 `--group <folder>` is the group's workspace folder. This surface is elevated-only (global scope / host operator); group-scoped agents can't reach it.
+
+### Inspecting cost spend & escalations
+
+`status` and `escalations` are read-only (no approval). Use them to see what a session actually spent and which sessions are blocked on a cost decision.
+
+```bash
+ncl cost-cap status --session <sid>          # one session's LIVE cost state (ok|warn|escalated|stopped)
+ncl cost-cap escalations --state stopped     # sessions hard-blocked awaiting a Continue/Stop decision
+ncl cost-cap escalations --group <folder>    # a coworker's escalation history (spent/cap/ceiling)
+ncl cost-cap escalations --author <gh-login> # escalations on a GitHub user's issue/PR threads
+```
+
+`escalations` lists per-session `spent`/`cap`/`ceiling` + `decision_state` + coworker + (for GitHub-thread sessions) the issue/PR author — the "which sessions were cost-stopped and how much did they cost" view. Pair a `stopped` row with the dashboard Continue/Stop (or a `cost_override`).
 
 ### Cross-group operations
 

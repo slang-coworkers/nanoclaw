@@ -29,6 +29,11 @@ import {
 } from '../../db/cost-cap-policy.js';
 import { resolveCostCapT2Usd, resolveCostCeilingT2Usd } from '../../container-config.js';
 import { readSessionCostCapStatus, type SessionCostCapView } from '../session-cost-cap.js';
+import {
+  listEscalationEpisodes,
+  type CostDecisionState,
+  type EscalationListRow,
+} from '../../db/cost-escalation-episodes.js';
 
 /** Who is making the change, for the row's audit column. */
 function actorLabel(ctx: { caller: string; agentGroupId?: string } | undefined): string {
@@ -48,6 +53,27 @@ function policyView(row: CostCapPolicyRow) {
     cap_usd: row.cap_usd,
     updated_at: row.updated_at,
     updated_by: row.updated_by,
+  };
+}
+
+/** An escalation episode rendered for JSON/human output (the `escalations` verb). */
+function escalationView(r: EscalationListRow) {
+  return {
+    session_id: r.session_id,
+    short_id: r.short_id,
+    coworker: r.group_folder,
+    reason: r.reason,
+    window: r.window,
+    spent_usd: r.spent_usd,
+    cap_usd: r.cap_usd,
+    ceiling_usd: r.ceiling_usd,
+    immortal: r.immortal === 1,
+    decision_state: r.decision_state,
+    gh_author: r.gh_author,
+    gh: r.gh_repo && r.gh_number != null ? `${r.gh_repo}#${r.gh_number}` : null,
+    created_at: r.created_at,
+    resolved_at: r.resolved_at,
+    resolved_by: r.resolved_by,
   };
 }
 
@@ -266,6 +292,60 @@ registerResource({
         if (typeof d.ceiling_usd === 'number' && d.ceiling_usd > 0) parts.push(`ceiling=${usd(d.ceiling_usd)}`);
         if (d.decision) parts.push(`decision=${d.decision}${d.decided_at ? ` at ${d.decided_at}` : ''}`);
         return `Session ${d.session_id} (${d.agent_group_id}): ${parts.join(' ')}`;
+      },
+    },
+    escalations: {
+      access: 'open',
+      description:
+        'List cost-escalation episodes — per session: spent/cap/ceiling, decision_state ' +
+        "('pending' | 'continued' | 'stopped' | 'expired' | 'superseded' | 'observed'), reason (cap|ceiling), " +
+        'immortal, the coworker, and — when the session sits on a GitHub thread — the issue/PR author. This is ' +
+        'the LIST behind "which sessions were cost-stopped and how much did they cost"; pair it with ' +
+        '`cost-cap status --session` (one session, LIVE) and the dashboard Continue/Stop. Filters: --state, ' +
+        '--session, --group (coworker folder), --author (GitHub login), --limit.',
+      args: [
+        { name: 'state', type: 'string', description: 'pending|continued|stopped|expired|superseded|observed' },
+        { name: 'session', type: 'string', description: 'filter to one session id' },
+        { name: 'group', type: 'string', description: 'filter by coworker workspace folder' },
+        { name: 'author', type: 'string', description: 'filter by GitHub author (via gh_thread_origin)' },
+        { name: 'limit', type: 'number', description: 'max rows (default 50, max 500)' },
+      ],
+      examples: [
+        'ncl cost-cap escalations --state stopped',
+        'ncl cost-cap escalations --group slang-fixer',
+        'ncl cost-cap escalations --author tangent-vector --json',
+      ],
+      handler: async (args) => {
+        const STATES: CostDecisionState[] = ['pending', 'continued', 'stopped', 'expired', 'superseded', 'observed'];
+        const trim = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+        const stateRaw = trim(args.state);
+        if (stateRaw && !STATES.includes(stateRaw as CostDecisionState)) {
+          throw new Error(`--state must be one of: ${STATES.join(', ')}`);
+        }
+        const rows = await listEscalationEpisodes({
+          state: stateRaw as CostDecisionState | undefined,
+          sessionId: trim(args.session),
+          groupFolder: trim(args.group),
+          ghAuthor: trim(args.author),
+          limit: args.limit !== undefined ? Number(args.limit) : undefined,
+        });
+        return { count: rows.length, escalations: rows.map(escalationView) };
+      },
+      formatHuman: (data) => {
+        const d = data as { count: number; escalations: ReturnType<typeof escalationView>[] };
+        if (d.count === 0) return 'No cost escalations match.';
+        const lines = [`${d.count} escalation${d.count === 1 ? '' : 's'}:`];
+        for (const e of d.escalations) {
+          const parts: string[] = [`spent=${e.spent_usd != null ? usd(e.spent_usd) : '?'}`];
+          if (e.cap_usd != null) parts.push(`cap=${usd(e.cap_usd)}`);
+          if (e.ceiling_usd != null && e.ceiling_usd > 0) parts.push(`ceiling=${usd(e.ceiling_usd)}`);
+          if (e.immortal) parts.push('immortal');
+          const who = e.gh_author ? ` by ${e.gh_author}${e.gh ? ` (${e.gh})` : ''}` : '';
+          lines.push(
+            `  [${e.decision_state}] ${e.session_id} · ${e.coworker ?? '?'} · ${e.reason}/${e.window} · ${parts.join(' ')}${who}`,
+          );
+        }
+        return lines.join('\n');
       },
     },
   },
