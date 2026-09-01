@@ -25,7 +25,7 @@ const TOKEN = process.env.COWORKER_MCP_TOKEN || '';
 const DASH_SECRET = process.env.NANOCLAW_DASHBOARD_SECRET || '';
 const NCL_BIN = process.env.NCL_BIN || 'ncl';
 const ALLOWED_ORIGINS = new Set((process.env.COWORKER_MCP_ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean));
-const SERVER_INFO = { name: 'nanoclaw-coworkers', version: '0.3.0' };
+const SERVER_INFO = { name: 'nanoclaw-coworkers', version: '0.4.0' };
 const SUPPORTED_PROTOCOLS = new Set(['2025-06-18', '2025-03-26', '2024-11-05']);
 const DEFAULT_PROTOCOL = '2025-06-18';
 const MAX_OUT = 100_000;
@@ -258,6 +258,37 @@ const TOOLS = [
         return okText(parsed && parsed.data ? parsed.data : parsed); // unwrap ncl --json {ok,data}
       } catch (e) {
         return okText({ error: 'escalations unavailable', detail: String(e?.message || e).slice(0, 200) });
+      }
+    },
+  },
+  {
+    name: 'cost_per_coworker',
+    description:
+      'V2: exact cost per coworker (agent group) from the inference gateway — the litellm per-request $ the OneCLI gateway records into request_logs, rolled up by coworker. Not a token estimate; date-correct; covers Claude + Codex (both route through the gateway). Optional group (coworker folder) + period (e.g. 30d, 24h; default all-time). Read host-side only.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        group: { type: 'string', description: 'coworker folder filter (one coworker)' },
+        period: { type: 'string', description: 'lookback window: <n>d or <n>h (e.g. 30d, 24h). Default all-time.' },
+      },
+      additionalProperties: false,
+    },
+    async run(a) {
+      const cmd = ['cost-cap', 'coworkers', '--json'];
+      if (str(a.group)) cmd.push('--group', reqStr(a.group, 'group'));
+      if (str(a.period)) cmd.push('--period', reqStr(a.period, 'period'));
+      try {
+        const { stdout } = await execFileP(NCL_BIN, cmd, { timeout: 20000 });
+        let parsed;
+        try {
+          parsed = JSON.parse(stdout);
+        } catch {
+          parsed = { raw: String(stdout).slice(0, 4000) };
+        }
+        if (parsed && parsed.ok === false) return okText({ error: parsed.error?.message || 'ncl error' });
+        return okText(parsed && parsed.data ? parsed.data : parsed); // unwrap ncl --json {ok,data}
+      } catch (e) {
+        return okText({ error: 'cost_per_coworker unavailable', detail: String(e?.message || e).slice(0, 200) });
       }
     },
   },

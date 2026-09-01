@@ -45,6 +45,7 @@ import {
   type GroupCostAggregate,
   type SessionCostListEntry,
 } from '../cost-cap-sessions.js';
+import { readCostPerCoworker, type CostPerCoworkerResult } from '../cost-per-coworker.js';
 
 /** Who is making the change, for the row's audit column. */
 function actorLabel(ctx: { caller: string; agentGroupId?: string } | undefined): string {
@@ -53,6 +54,13 @@ function actorLabel(ctx: { caller: string; agentGroupId?: string } | undefined):
 
 function usd(n: number): string {
   return `$${n.toFixed(2)}`;
+}
+
+/** Observed-cost formatter — keeps enough precision that sub-cent spend doesn't render as $0.00. */
+function money(n: number): string {
+  if (n >= 1) return `$${n.toFixed(2)}`;
+  if (n >= 0.01) return `$${n.toFixed(4)}`;
+  return `$${n.toFixed(6)}`;
 }
 
 /** A DB override row rendered for JSON output (nulls kept explicit). */
@@ -569,6 +577,45 @@ registerResource({
         const d = data as { session_id: string; targetCeilingUsd: number; status: number };
         const verb = d.status === 200 ? 'already recorded' : 'submitted';
         return `Set-ceiling ${verb}: session ${d.session_id} → ${usd(d.targetCeilingUsd)} ceiling.`;
+      },
+    },
+    coworkers: {
+      access: 'open',
+      description:
+        "Cost per coworker (agent group), from the inference gateway's EXACT per-request cost — the litellm " +
+        'number the OneCLI gateway captures into request_logs (header x-litellm-response-cost-original), rolled ' +
+        "up by agent group. Not a token estimate: it is the billing system's own figure, date-correct, covering " +
+        'both Claude and Codex (both route through the gateway). Read HOST-SIDE only — a cli_scope=global caller ' +
+        'gets back just the numbers, never OneCLI DB access. Needs the gateway capture flag ' +
+        '(ONECLI_CAPTURE_RESPONSE_HEADERS) + ONECLI_PG_CONTAINER; reports configured:false when unset. ' +
+        'Filters: --group (coworker folder), --period (e.g. 30d, 24h; default all-time).',
+      args: [
+        { name: 'group', type: 'string', description: 'filter to one coworker workspace folder' },
+        {
+          name: 'period',
+          type: 'string',
+          description: 'lookback window: <n>d or <n>h (e.g. 30d, 24h). Default: all-time.',
+        },
+      ],
+      examples: [
+        'ncl cost-cap coworkers',
+        'ncl cost-cap coworkers --period 7d',
+        'ncl cost-cap coworkers --group slang-fixer --json',
+      ],
+      handler: async (args) => {
+        const trim = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+        return readCostPerCoworker({ period: trim(args.period), groupFolder: trim(args.group) });
+      },
+      formatHuman: (data) => {
+        const d = data as CostPerCoworkerResult;
+        if (!d.configured) return d.note ?? 'Cost source not configured.';
+        if (d.coworkers.length === 0) return d.note ?? 'No captured cost rows.';
+        const lines = [`Cost per coworker (${d.period}, source: ${d.source}) — total ${money(d.totalUsd)}:`];
+        for (const c of d.coworkers) {
+          const who = c.folder ?? (c.name || c.groupId);
+          lines.push(`  ${who}: ${money(c.costUsd)} · ${c.calls} call${c.calls === 1 ? '' : 's'}`);
+        }
+        return lines.join('\n');
       },
     },
   },
