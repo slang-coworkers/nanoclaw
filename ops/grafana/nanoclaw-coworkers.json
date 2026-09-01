@@ -171,7 +171,7 @@
           "resultFormat": "time_series"
         }
       ],
-      "description": "Running containers with no heartbeat for over an hour — liveness is not progress."
+      "description": "Running containers with no heartbeat for over an hour \u2014 liveness is not progress."
     },
     {
       "type": "stat",
@@ -2850,7 +2850,7 @@
     },
     {
       "type": "row",
-      "title": "Wire-mix — model tier per coworker",
+      "title": "Wire-mix \u2014 model tier per coworker",
       "id": 45,
       "collapsed": false,
       "panels": [],
@@ -2875,7 +2875,7 @@
         "x": 0,
         "y": 36
       },
-      "description": "Each coworker's configured model tier, from container_configs (the value `ncl groups config update --model` writes, materialized to container.json and passed to the SDK as the query model). An empty Model means the group inherits the host/provider default, shown as tier 'default' rather than a guessed tier. Activity (5m) is the rolling hook-event count — an approximate turn/work proxy, NOT billed cost. Scan the Tier column for drift.",
+      "description": "Each coworker's configured model tier, from container_configs (the value `ncl groups config update --model` writes, materialized to container.json and passed to the SDK as the query model). An empty Model means the group inherits the host/provider default, shown as tier 'default' rather than a guessed tier. Activity (5m) is the rolling hook-event count \u2014 an approximate turn/work proxy, NOT billed cost. Scan the Tier column for drift.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -3100,7 +3100,7 @@
         "x": 19,
         "y": 36
       },
-      "description": "How many coworkers are configured on each model tier right now (nanoclaw_tier.coworkers). Makes tiering drift obvious: if a coworker flips opus↔sonnet, the bar counts move.",
+      "description": "How many coworkers are configured on each model tier right now (nanoclaw_tier.coworkers). Makes tiering drift obvious: if a coworker flips opus\u2194sonnet, the bar counts move.",
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -3148,6 +3148,515 @@
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "$tag_tier"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "\ud83d\udcb5 Cost (today, priced from transcripts \u2014 Claude + Codex)",
+      "id": 49,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 90
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Fleet cost today",
+      "id": 50,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 0,
+        "y": 91
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "mappings": [],
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#199e70"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#199e70",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "no data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"usd\") FROM \"nanoclaw_cost\" WHERE (\"scope\" = 'fleet') AND $timeFilter GROUP BY time($__interval) fill(previous)",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "description": "Sum of every session's USD accrued so far today (period=1d), priced from transcript JSONL. Resets at 00:00 UTC."
+    },
+    {
+      "type": "stat",
+      "title": "Claude today",
+      "id": 51,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 5,
+        "y": 91
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "mappings": [],
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#3987e5",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "no data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"claude_usd\") FROM \"nanoclaw_cost\" WHERE (\"scope\" = 'fleet') AND $timeFilter GROUP BY time($__interval) fill(previous)",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "description": "Claude half of today's fleet spend."
+    },
+    {
+      "type": "stat",
+      "title": "Codex today",
+      "id": 52,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 10,
+        "y": 91
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "mappings": [],
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#d95926",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "no data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"codex_usd\") FROM \"nanoclaw_cost\" WHERE (\"scope\" = 'fleet') AND $timeFilter GROUP BY time($__interval) fill(previous)",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "description": "Codex half of today's fleet spend."
+    },
+    {
+      "type": "stat",
+      "title": "Active sessions",
+      "id": 53,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 15,
+        "y": 91
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": [],
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#3987e5",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "no data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"active_sessions\") FROM \"nanoclaw_cost\" WHERE (\"scope\" = 'fleet') AND $timeFilter GROUP BY time($__interval) fill(previous)",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "description": "Sessions whose container_status is running, right now."
+    },
+    {
+      "type": "timeseries",
+      "title": "Fleet cost today over time",
+      "id": 54,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 95
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "lineInterpolation": "smooth",
+            "axisSoftMin": 0,
+            "gradientMode": "opacity"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "no data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"usd\") FROM \"nanoclaw_cost\" WHERE (\"scope\" = 'fleet') AND $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "total"
+        },
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"claude_usd\") FROM \"nanoclaw_cost\" WHERE (\"scope\" = 'fleet') AND $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "claude"
+        },
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"codex_usd\") FROM \"nanoclaw_cost\" WHERE (\"scope\" = 'fleet') AND $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "codex"
+        }
+      ],
+      "description": "Intraday cumulative spend. fill(none): a collector gap shows as a break, never a plausible dip to zero."
+    },
+    {
+      "type": "bargauge",
+      "title": "Cost by coworker today",
+      "id": 55,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 95
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#199e70"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#199e70",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "no data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "valueMode": "text",
+        "minVizWidth": 8,
+        "minVizHeight": 12,
+        "sizing": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"usd\") FROM \"nanoclaw_cost\" WHERE (\"scope\" = 'group') AND $timeFilter GROUP BY \"group\"",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "$tag_group"
+        }
+      ],
+      "description": "One bar per coworker; zero-cost coworkers emit nothing (so 'no data' != 'spent zero')."
+    },
+    {
+      "type": "table",
+      "title": "Top sessions by cost today",
+      "id": 56,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 103
+      },
+      "description": "Per-session breakdown, top-100 by USD (collector cardinality cap; overflow count emitted as scope=session_overflow).",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "no data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": true,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        },
+        "sortBy": [
+          {
+            "displayName": "usd",
+            "desc": true
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "group": "Coworker",
+              "session": "Session",
+              "last": "usd",
+              "last_1": "claude",
+              "last_2": "codex"
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"usd\"), last(\"claude_usd\"), last(\"codex_usd\") FROM \"nanoclaw_cost\" WHERE (\"scope\" = 'session') AND $timeFilter GROUP BY \"session\",\"group\"",
+          "rawQuery": true,
+          "resultFormat": "table"
         }
       ]
     }
