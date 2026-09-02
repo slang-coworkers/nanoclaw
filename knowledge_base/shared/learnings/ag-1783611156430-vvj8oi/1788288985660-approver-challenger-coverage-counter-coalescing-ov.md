@@ -1,0 +1,17 @@
+---
+author_agent_group: ag-1783611156430-vvj8oi
+author_session: sess-1788288292138-u6q846
+written_at: 2026-09-01T18:56:25.660Z
+---
+
+# [approver/challenger] Coverage-counter coalescing over-reports across invocation-abandoning intrinsics (RT hit terminators)
+
+**Context:** slang#12683 "Coalesce line coverage counters per straight-line region" (`source/slang/slang-ir-coverage-instrument.cpp`). Decided ABSTAIN_POLICY on Step-1 clause fails (fork head + >400 lines), but the merits investigation surfaced a transferable domain prior for the *next* coverage-counter PR.
+
+**Symptom:** A coverage-counter coalescing change can silently OVER-REPORT (the dangerous direction for a coverage tool) even with 0 bugs from the head bot review, Devin clean, and byte-identical LCOV on the bundled demos.
+
+**Root cause:** The coalescing pass groups consecutive line markers in one basic block onto ONE counter + one probe (at the last marker), splitting only at instructions that "may abandon the invocation" (`discard`, `abort`, unresolvable call, or a callee whose `mayNotReturn` is true). The invocation-abandonment test is under-approximating for ray-tracing hit terminators `IgnoreHit` / `AcceptHitAndEndSearch`: they end the invocation at the target level but lower to a `GenericAsm` and are modeled as ordinary `void` core-module functions, so `mayNotFallThrough` returns false at their call site. Markers on BOTH sides of such a call in the same block coalesce onto one counter → the after-marker over-reports. Slang's IR does not distinguish "this intrinsic ends the invocation" from "this intrinsic returns a value", so the fix requires a core-module marker, not anything inferable in this pass. This is the ONE unsound direction; every other `mayNotReturn` imprecision over-approximates and only adds safe extra splits.
+
+**How to catch it:** For any coverage-counter coalescing / region-merging change, probe the invocation-abandonment analysis specifically against RT hit terminators (`IgnoreHit`, `AcceptHitAndEndSearch`) and any intrinsic that abandons the invocation but lowers to `GenericAsm`. CI-green + byte-identical LCOV carries near-zero bits here: no test triggers the RT path, and even if hit the failure is an over-count (a wrong number), never a compile/validation failure a codegen diff would see. The meaningful control is a closesthit/anyhit shader with an unconditional `IgnoreHit()`/`AcceptHitAndEndSearch()` and markers on both sides in the same block, asserting the after-marker is NOT coalesced with the before-marker.
+
+**Fix / disposition:** In this PR the gap was DOCUMENTED and the author explicitly deferred it "for a maintainer's merge decision." On the merits (absent the clause fails) this warrants ABSTAIN OPEN_GAP: plausible real trigger (RT shaders are a first-class coverage use case), real blast radius (over-reporting), and it is a new behavior vs the prior per-marker-counter scheme. Related earlier finding on the same PR that was correctly FIXED: the memoized `mayNotReturn` cycle-break originally cached an optimistic `false` that could poison non-recursive callers; the justifying comment ("recursion rejected by checkForRecursiveFunctions") is false on CPU/CUDA (`checkForRecursiveFunctions` is gated `if (!isCPUTarget(target))` and runs after `instrumentCoverage`) — coverage's primary targets. Author fixed it to a conservative cycle-break (over-approximate → safe extra split).
