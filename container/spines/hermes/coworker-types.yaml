@@ -1,0 +1,168 @@
+# Hermes Agent project spine — the meta team that PORTS NanoClaw coworker
+# capabilities into Hermes as Hermes PLUGINS (never a bridge). Target is
+# NousResearch/hermes-agent at release tag v2026.8.31 (v0.21.0), mounted
+# read-only at /workspace/extra/hermes-release; the fork lives at
+# /workspace/agent/hermes-agent with one worktree per target.
+#
+# The three role types (hermes-architect / hermes-builder / hermes-reviewer)
+# sit under hermes-common the way slang-triage / slang-fixer / slang-reviewer
+# sit under slang-common. Wiring is architect <-> builder <-> reviewer only.
+#
+# NOT type keys — set per agent group after create_agent:
+#   overlays (critique-gate / plan-gate) -> agent_groups.overlays via create_agent({overlays})
+#   cli_scope                            -> ncl groups config update --id <g> --cli-scope disabled|group
+#   apt packages (ripgrep ffmpeg make python3-dev libffi-dev procps xz-utils)
+#                                        -> ncl groups config add-package / install_packages
+#   the read-only release mount          -> additional_mounts (lands under /workspace/extra/<name>)
+
+hermes-common:
+  description: "Hermes Agent spine — plugin-first port; identity, plugin-contract invariants, release-tree layout + testbed recipe."
+  project: hermes
+  extends: base-common
+  # Compose-time substitution values for shared workflow bodies:
+  # hermes-spec-requirement extends the generic triage-issue template
+  # ({{vars.repo}} / {{vars.project}} / {{vars.fixer}}); hermes-plan,
+  # hermes-implement and hermes-review write {{vars.release_tree}} /
+  # {{vars.release_tag}} once. Spine fragments (identity/invariants/context)
+  # are NOT var-substituted — they spell the paths out literally.
+  vars:
+    repo: NousResearch/hermes-agent
+    project: hermes
+    fixer: hermes-builder
+    release_tag: v2026.8.31
+    release_tree: /workspace/extra/hermes-release
+  identity: container/spines/hermes/identity/engineer.md
+  invariants:
+    # Stable plugin/CLI/config surfaces + additive-compat + test-contract rules.
+    - container/spines/hermes/invariants/public-api.md
+    # Every capability is a plugin; diffs outside plugins/** website/docs/**
+    # tests/** need an ADR section titled CORE-CHANGE citing the blocking
+    # release file:line; the release tree is the only citation source.
+    - container/spines/hermes/invariants/plugin-first.md
+  context:
+    - container/spines/hermes/context/layout.md
+    # uv recipe, HERMES_HOME=/workspace/agent/.hermes-testbed, run_tests.sh
+    # under env -i, doctor --ci, worktree-per-target, apt gaps, chunked runs.
+    - container/spines/hermes/context/testbed.md
+  skills:
+    - hermes-build
+    - hermes-code-reader
+    - hermes-github
+    - codex-critique
+  mcpServers:
+    # Advisory only — the release tree is the citation source (plugin-first.md);
+    # a DeepWiki claim that disagrees with the tree is flagged, not trusted.
+    deepwiki:
+      type: http
+      url: https://mcp.deepwiki.com/mcp
+  bindings:
+    repo: hermes-github
+    issues: hermes-github
+    code: hermes-code-reader
+    doc: hermes-code-reader
+    test: hermes-build
+    critique: codex-critique
+
+hermes-reader:
+  description: "Read-only Hermes coworker — plan, investigate, review, research. Cannot edit code or create PRs."
+  project: hermes
+  extends: hermes-common
+  workflows:
+    - hermes-plan
+
+hermes-writer:
+  description: "Write-capable Hermes coworker — plan + implement. Can edit code, write tests, create PRs."
+  project: hermes
+  extends: hermes-common
+  skills:
+    - hermes-code-writer
+    - hermes-docs
+  workflows:
+    - hermes-plan
+    - hermes-implement
+  bindings:
+    code: hermes-code-writer
+    test: hermes-build
+    doc: hermes-docs
+
+hermes-architect:
+  description: "Reads the pinned Hermes release tree (DeepWiki advisory); writes the ADR + a runnable acceptance test per requirement row and hands off to hermes-builder. Read-only on the fork — no push, no PR."
+  project: hermes
+  extends: hermes-reader
+  invariants:
+    # Always-in-context so it survives compaction: no git push, no PR, no
+    # GitHub write endpoint; results travel as messages + send_file.
+    - container/spines/hermes/invariants/no-push.md
+  workflows:
+    # extends triage-issue: input is a requirement row (FR-x / SR-x), not a
+    # GitHub issue; research = release tree first, DeepWiki second; classify =
+    # PORT-as-plugin | CORE-CHANGE | BRIDGE(reject); the closed loop
+    # (wait for [Fix Report] -> forward [Triage Resolution] up) is inherited.
+    - hermes-spec-requirement
+  # The architect owns the diagnosis + plan half of the chain: DIAGNOSIS_REVIEW
+  # vets the requirement reading and the plugin-surface choice, PLAN_REVIEW vets
+  # the ADR + acceptance test, OUTPUT_REVIEW vets the handoff message itself.
+  required_critique_stages: [DIAGNOSIS_REVIEW, PLAN_REVIEW, OUTPUT_REVIEW]
+  # Novel marker (schema: CoworkerTypeEntry.deliveryMarkers, additive to the
+  # base-common vocabulary). ROUTING RULE — honor the always-on chain-routing
+  # gate (gate-chain-routing.sh / checkRoutingGate): a marker-prefixed send
+  # without in_reply_to is denied, and a fresh delegation to a peer has no
+  # in_reply_to by definition. So [Spec handoff] is the architect's gated
+  # terminal REPORT UP to the orchestrator, sent as a reply
+  # (in_reply_to=<the requirement dispatch>); the delegation DOWN to
+  # hermes-builder is an UNMARKED fresh message (to="hermes-builder",
+  # thread_id="hermes-<req-id>") + send_file of the ADR and acceptance test,
+  # sent only after the gated [Spec handoff] was accepted. [Report] stays the
+  # ungated status channel.
+  delivery_markers:
+    - Spec handoff
+  # Data-level backstop for no-push.md: routes any `git push` through the
+  # critique gate's Bash matcher. This is a speed bump, not a hard block —
+  # the gate allows the command once the required stages are recorded, and
+  # three denials open an escalation card to an admin. The hard rule is the
+  # invariant; keep fork write credentials out of this group's OneCLI scope.
+  pr_command_patterns: ['git push']
+
+hermes-builder:
+  description: "Implements the plugin in the Hermes fork worktree, writes tests, runs `hermes plugins doctor --ci` + scripts/run_tests.sh, opens a DRAFT PR to the fork only, and requests peer review from hermes-reviewer before reporting."
+  project: hermes
+  extends: hermes-writer
+  invariants:
+    # Always-in-context so it survives compaction (unlike the workflow step):
+    # [Fix Review Request] -> hermes-reviewer first; [Fix Report] up only after
+    # [Review Verdict] APPROVE (max 2 rounds, then blocked + escalate).
+    - container/spines/hermes/invariants/peer-review.md
+  # Builder reads the architect's ADR, commits to it, edits source, ships a
+  # Fix Report. PLAN_REVIEW catches a wrong plugin surface before code is
+  # written; CODE_REVIEW catches diff issues (incl. any out-of-surface hunk
+  # lacking a CORE-CHANGE ADR section); OUTPUT_REVIEW vets the report itself.
+  # Standard markers [Fix Review Request] / [Fix Report] are inherited from
+  # base-common; the built-in Bash patterns already cover `gh pr create`.
+  required_critique_stages: [PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW]
+
+hermes-reviewer:
+  description: "Adversarial Hermes reviewer — checks out the PR head in its own worktree, re-runs the acceptance test + `hermes plugins doctor --ci` + the relevant scripts/run_tests.sh chunks, reads the diff, and returns [Review Verdict] APPROVE | REQUEST_CHANGES. Must-changes any diff outside plugins/** website/docs/** tests/** lacking a CORE-CHANGE ADR section. No push, no PR, no GitHub review posts."
+  project: hermes
+  extends: hermes-reader
+  invariants:
+    - container/spines/hermes/invariants/no-push.md
+    # Hermes-local code-change rules the reviewer enforces (this spine has no
+    # nanoclaw/ or slang/ sibling to borrow from on this branch).
+    - container/spines/hermes/invariants/code-changes.md
+  skills:
+    # Already inherited via hermes-common; listed for clarity — the reviewer
+    # must be able to build the env and run tests, not just read the diff.
+    - hermes-build
+  workflows:
+    # extends plan (mode=review): research = re-run doctor + acceptance test +
+    # test chunks in its own worktree (never trust the builder's log);
+    # diagnose = findings by severity with file:line; deliver = report to
+    # /workspace/agent/reviews/<pr>.md; handoff = [Review Verdict] as a reply
+    # (in_reply_to=<the Fix Review Request>) on the builder's edge.
+    - hermes-review
+  # Reviewer reads a diff and produces a verdict. CODE_REVIEW is codex's
+  # independent check of the reviewer's own assessment; OUTPUT_REVIEW vets the
+  # verdict message before it is sent.
+  required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]
+  # Same speed bump as the architect (see there) — the reviewer never pushes.
+  pr_command_patterns: ['git push']
