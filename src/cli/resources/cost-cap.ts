@@ -39,11 +39,13 @@ import {
 import {
   aggregateSessionCosts,
   fetchSessionCosts,
+  listStoppedSessions,
   rankSessionCosts,
   COST_PERIODS,
   type CostPeriod,
   type GroupCostAggregate,
   type SessionCostListEntry,
+  type StoppedSessionView,
 } from '../cost-cap-sessions.js';
 import { readCostPerCoworker, type CostPerCoworkerResult } from '../cost-per-coworker.js';
 
@@ -366,14 +368,62 @@ registerResource({
         return `Session ${d.session_id} (${d.agent_group_id}): ${parts.join(' ')}`;
       },
     },
+    stopped: {
+      access: 'open',
+      description:
+        'List the sessions that are CURRENTLY cost-stopped — LIVE `costStatus === stopped` right now (hard-blocked ' +
+        "pending a human Continue/Stop). Reads the dashboard's own `GET /api/sessions` — the SAME source, session " +
+        "universe, and `costStatus` the dashboard's stopped count/filter use — and applies the same predicate, so " +
+        'the dashboard, this verb, and the coworker MCP report the IDENTICAL set, deduped per session. This is the ' +
+        '"which sessions are blocked on cost right this instant" view — deliberately distinct from `escalations`, ' +
+        'the append-only HISTORY ledger of every ceiling-trip ever (a resumed or exited session keeps its episode ' +
+        "rows but is no longer `stopped`). Use it before reconcile/continue so you don't act on a session that is " +
+        'merely idle. Needs the dashboard installed/running (like `sessions`); fails loudly if unreachable, never a ' +
+        'false-empty. Filter: --group <folder>.',
+      args: [{ name: 'group', type: 'string', description: 'Filter to one coworker workspace folder.' }],
+      examples: ['ncl cost-cap stopped', 'ncl cost-cap stopped --group slang-fixer --json'],
+      handler: async (args) => {
+        const group = typeof args.group === 'string' && args.group.trim() ? args.group.trim() : undefined;
+        return listStoppedSessions({ group });
+      },
+      formatHuman: (data) => {
+        const d = data as {
+          count: number;
+          group: string | null;
+          costUnavailable?: string | null;
+          stopped: StoppedSessionView[];
+        };
+        const warn = d.costUnavailable ? `⚠ cost data may be unavailable: ${d.costUnavailable}\n` : '';
+        if (d.count === 0) {
+          return d.group
+            ? `${warn}No sessions in ${d.group} are currently cost-stopped (live status).`
+            : `${warn}No sessions are currently cost-stopped (live status).`;
+        }
+        const lines = [
+          `${warn}${d.count} session${d.count === 1 ? '' : 's'} currently STOPPED (live cost-cap status):`,
+        ];
+        for (const s of d.stopped) {
+          const parts: string[] = [];
+          if (typeof s.spent_usd === 'number') parts.push(`spent=${usd(s.spent_usd)}`);
+          if (typeof s.cap_usd === 'number') parts.push(`cap=${usd(s.cap_usd)}`);
+          if (typeof s.ceiling_usd === 'number' && s.ceiling_usd > 0) parts.push(`ceiling=${usd(s.ceiling_usd)}`);
+          if (s.immortal) parts.push('immortal');
+          const who = s.group_folder ?? s.agent_group_id;
+          lines.push(`  ${s.session_id} · ${who}${parts.length ? ` · ${parts.join(' ')}` : ''}`);
+        }
+        return lines.join('\n');
+      },
+    },
     escalations: {
       access: 'open',
       description:
-        'List cost-escalation episodes — per session: spent/cap/ceiling, decision_state ' +
-        "('pending' | 'continued' | 'stopped' | 'expired' | 'superseded' | 'observed'), reason (cap|ceiling), " +
-        'immortal, the coworker, and — when the session sits on a GitHub thread — the issue/PR author. This is ' +
-        'the LIST behind "which sessions were cost-stopped and how much did they cost"; pair it with ' +
-        '`cost-cap status --session` (one session, LIVE) and the dashboard Continue/Stop. Filters: --state, ' +
+        'The append-only HISTORY ledger of cost-escalation episodes — every ceiling/cap trip ever, per session: ' +
+        "spent/cap/ceiling, decision_state ('pending' | 'continued' | 'stopped' | 'expired' | 'superseded' | " +
+        "'observed'), reason (cap|ceiling), immortal, the coworker, and — when the session sits on a GitHub " +
+        'thread — the issue/PR author. NOTE: decision_state is the recorded outcome of an episode, NOT the ' +
+        "session's live status — a row here (even decision_state='stopped') does NOT mean the session is blocked " +
+        'RIGHT NOW. For "which sessions are CURRENTLY blocked", use `cost-cap stopped` (the live view); pair this ' +
+        'with `cost-cap status --session` (one session, LIVE) and the dashboard Continue/Stop. Filters: --state, ' +
         '--session, --group (coworker folder), --author (GitHub login), --limit.',
       args: [
         { name: 'state', type: 'string', description: 'pending|continued|stopped|expired|superseded|observed' },
@@ -406,7 +456,10 @@ registerResource({
       formatHuman: (data) => {
         const d = data as { count: number; escalations: ReturnType<typeof escalationView>[] };
         if (d.count === 0) return 'No cost escalations match.';
-        const lines = [`${d.count} escalation${d.count === 1 ? '' : 's'}:`];
+        const lines = [
+          `${d.count} escalation ${d.count === 1 ? 'episode' : 'episodes'} (history ledger — a listed ` +
+            'row is NOT necessarily blocked now; see `cost-cap stopped` for the LIVE set):',
+        ];
         for (const e of d.escalations) {
           const parts: string[] = [`spent=${e.spent_usd != null ? usd(e.spent_usd) : '?'}`];
           if (e.cap_usd != null) parts.push(`cap=${usd(e.cap_usd)}`);

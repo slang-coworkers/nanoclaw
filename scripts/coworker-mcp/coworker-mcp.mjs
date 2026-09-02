@@ -25,7 +25,7 @@ const TOKEN = process.env.COWORKER_MCP_TOKEN || '';
 const DASH_SECRET = process.env.NANOCLAW_DASHBOARD_SECRET || '';
 const NCL_BIN = process.env.NCL_BIN || 'ncl';
 const ALLOWED_ORIGINS = new Set((process.env.COWORKER_MCP_ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean));
-const SERVER_INFO = { name: 'nanoclaw-coworkers', version: '0.4.0' };
+const SERVER_INFO = { name: 'nanoclaw-coworkers', version: '0.5.0' };
 const SUPPORTED_PROTOCOLS = new Set(['2025-06-18', '2025-03-26', '2024-11-05']);
 const DEFAULT_PROTOCOL = '2025-06-18';
 const MAX_OUT = 100_000;
@@ -225,9 +225,32 @@ const TOOLS = [
     },
   },
   {
+    name: 'list_stopped_sessions',
+    description:
+      'V2: the LIVE currently-blocked set — sessions whose cost-cap status is `stopped` RIGHT NOW (hard-blocked pending a Continue/Stop). Reads the dashboard\'s own /api/sessions and applies the SAME `costStatus===stopped` predicate the dashboard\'s "stopped" count uses, so it reports the IDENTICAL set, deduped per session. This — NOT list_cost_escalations — answers "which coworkers are blocked on cost right now"; the escalations list is append-only HISTORY and includes long-resolved / exited sessions that are no longer blocked. Optional coworker folder filter. Pair with cost_status (live per-session) + continue_session.',
+    inputSchema: { type: 'object', properties: { coworker: { type: 'string', description: 'coworker folder filter' } }, additionalProperties: false },
+    async run(a) {
+      const cmd = ['cost-cap', 'stopped', '--json'];
+      if (str(a.coworker)) cmd.push('--group', reqStr(a.coworker, 'coworker'));
+      try {
+        const { stdout } = await execFileP(NCL_BIN, cmd, { timeout: 30000 });
+        let parsed;
+        try {
+          parsed = JSON.parse(stdout);
+        } catch {
+          parsed = { raw: String(stdout).slice(0, 4000) };
+        }
+        if (parsed && parsed.ok === false) return okText({ error: parsed.error?.message || 'ncl error' });
+        return okText(parsed && parsed.data ? parsed.data : parsed); // unwrap ncl --json {ok,data}
+      } catch (e) {
+        return okText({ error: 'stopped-sessions unavailable', detail: String(e?.message || e).slice(0, 200) });
+      }
+    },
+  },
+  {
     name: 'list_cost_escalations',
     description:
-      'V2: list cost-cap escalation episodes — which sessions hit the cap/ceiling, how much they spent (spent/cap/ceiling), their decision_state (stopped = blocked awaiting a Continue/Stop), the coworker, and the GitHub author. Filter by state / coworker / gh_author / session. Pair with cost_status (live) + continue_session.',
+      'V2: the append-only HISTORY ledger of cost-cap escalation episodes — every ceiling/cap trip ever: which sessions hit the cap/ceiling, how much they spent (spent/cap/ceiling), the episode decision_state (the recorded outcome — NOT the live status; a `stopped` row is NOT necessarily blocked now), the coworker, and the GitHub author. For "which sessions are blocked RIGHT NOW" use list_stopped_sessions instead. Filter by state / coworker / gh_author / session. Pair with cost_status (live) + continue_session.',
     inputSchema: {
       type: 'object',
       properties: {
