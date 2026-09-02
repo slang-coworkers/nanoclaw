@@ -263,6 +263,59 @@ registerResource({
         return `Set ${o.scope}: ${parts.join(' ') || '(nothing)'}\n${d.note}`;
       },
     },
+    reconcile: {
+      access: 'open',
+      description:
+        "Set a session's LIVE enforcement spend (costSpentUsd) to its real, transcript-priced cost — the " +
+        'correction for issue #1327, where the pre-fix accounting over-charged spend (per content block, ' +
+        '1.7x-17x) and left sessions falsely cost-stopped. --to is USD (the transcript oracle from the ' +
+        'dashboard / #68 litellm capture, NOT a guess); the value is converted to integer cents and applied ' +
+        'THROUGH the runner (the container is the sole writer of its own spend), epoch-fenced by the same ' +
+        'compare-and-set as set-ceiling. Elevated-only. Fails loudly on a stale epoch, an un-upgraded runner, ' +
+        'or an immortal/untracked session.',
+      args: [
+        { name: 'session', type: 'string', description: 'Session ID to reconcile.', required: true },
+        { name: 'to', type: 'number', description: 'Real transcript-priced spend to set (USD, >= 0).', required: true },
+      ],
+      examples: ['ncl cost-cap reconcile --session <session-id> --to 42.17'],
+      handler: async (args, ctx) => {
+        const sessionId = typeof args.session === 'string' ? args.session.trim() : '';
+        if (!sessionId) throw new Error('--session is required');
+        if (args.to === undefined) throw new Error('--to is required (USD)');
+        const targetSpentUsd = Number(args.to);
+        if (!Number.isFinite(targetSpentUsd) || targetSpentUsd < 0) {
+          throw new Error('--to must be a number >= 0 (USD)');
+        }
+
+        const { submitCostReconcile } = await import('../../modules/cost-ceiling-adjustment/index.js');
+        const res = await submitCostReconcile(sessionId, targetSpentUsd, `ncl:${actorLabel(ctx)}`);
+        if (res.status >= 300) {
+          const b = res.body as { error?: string; message?: string };
+          throw new Error(`cost reconcile failed (${res.status} ${b.error ?? 'error'}): ${b.message ?? ''}`.trim());
+        }
+        return { status: res.status, targetSpentUsd, ...res.body };
+      },
+      formatHuman: (data) => {
+        const d = data as {
+          status: number;
+          targetSpentUsd: number;
+          noop?: boolean;
+          adjustmentId?: string;
+          state?: string;
+          message?: string;
+        };
+        if (d.noop) return d.message ?? 'Nothing to reconcile.';
+        const target = usd(d.targetSpentUsd);
+        if (d.status === 200) {
+          return `Reconcile to ${target}: already terminal (${d.state ?? 'done'}, id ${d.adjustmentId ?? '?'}).`;
+        }
+        return (
+          `Reconcile to ${target} submitted (id ${d.adjustmentId ?? '?'}, state ${d.state ?? 'enqueued'}). ` +
+          'The runner applies it on its next poll and confirms via receipt; re-check with ' +
+          '`ncl cost-cap status --session <id>`.'
+        );
+      },
+    },
     clear: {
       access: 'open',
       description:
