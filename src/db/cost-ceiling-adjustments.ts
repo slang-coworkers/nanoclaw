@@ -29,16 +29,28 @@ import { deletePendingApproval, getPendingApprovalsByAction } from './sessions.j
 
 export type CostCeilingAdjustmentState = 'pending' | 'enqueued' | 'applied' | 'conflict' | 'rejected';
 
+/** Which runner operation a ledger row carries — set the ceiling to an exact value
+ *  (migration 942) or reconcile live enforcement spend to the transcript oracle
+ *  (migration 943, issue #1327). See `cost_reconcile` in `src/modules/cost-ceiling-adjustment`. */
+export type CostAdjustmentOperation = 'set_ceiling' | 'reconcile';
+
 const TERMINAL_STATES = new Set<CostCeilingAdjustmentState>(['applied', 'conflict', 'rejected']);
 
 export interface CostCeilingAdjustmentRow {
   adjustment_id: string;
   protocol_version: number;
+  /** `set_ceiling` (default; migration 942) or `reconcile` (migration 943). */
+  operation: CostAdjustmentOperation;
   session_id: string;
   agent_group_id: string;
   expected_epoch_key: string;
   expected_ceiling_cents: number;
   target_ceiling_cents: number;
+  /** The reconcile target (transcript-oracle spend, integer cents). NULL for `set_ceiling`. */
+  target_spent_cents: number | null;
+  /** The live spend the host read when stamping a reconcile — the third CAS leg
+   *  (epoch + ceiling + spend). NULL for `set_ceiling`. */
+  expected_spent_cents: number | null;
   state: CostCeilingAdjustmentState;
   inbound_message_id: string;
   requested_at: string;
@@ -59,11 +71,17 @@ export interface CostCeilingAdjustmentRow {
 export interface CostCeilingAdjustmentInsert {
   adjustment_id: string;
   protocol_version: number;
+  /** Defaults to `'set_ceiling'` when omitted (the pre-943 shape). */
+  operation?: CostAdjustmentOperation;
   session_id: string;
   agent_group_id: string;
   expected_epoch_key: string;
   expected_ceiling_cents: number;
   target_ceiling_cents: number;
+  /** Required for `operation: 'reconcile'`; NULL/omitted for `set_ceiling`. */
+  target_spent_cents?: number | null;
+  /** The live spend at stamp time (reconcile CAS third leg); NULL/omitted for `set_ceiling`. */
+  expected_spent_cents?: number | null;
   inbound_message_id: string;
   requested_at: string;
   requested_by: string;
@@ -79,11 +97,14 @@ async function db(): Promise<DbDriver | null> {
 /** Whether two creation requests are the "same" request (byte-identical body) for idempotency. */
 function sameRequest(row: CostCeilingAdjustmentRow, input: CostCeilingAdjustmentInsert): boolean {
   return (
+    row.operation === (input.operation ?? 'set_ceiling') &&
     row.session_id === input.session_id &&
     row.agent_group_id === input.agent_group_id &&
     row.expected_epoch_key === input.expected_epoch_key &&
     row.expected_ceiling_cents === input.expected_ceiling_cents &&
     row.target_ceiling_cents === input.target_ceiling_cents &&
+    (row.target_spent_cents ?? null) === (input.target_spent_cents ?? null) &&
+    (row.expected_spent_cents ?? null) === (input.expected_spent_cents ?? null) &&
     row.inbound_message_id === input.inbound_message_id
   );
 }
@@ -155,13 +176,13 @@ export async function createCostCeilingAdjustment(
 
       await d.run(
         `INSERT INTO cost_ceiling_adjustments
-           (adjustment_id, protocol_version, session_id, agent_group_id, expected_epoch_key,
-            expected_ceiling_cents, target_ceiling_cents, state, inbound_message_id,
-            requested_at, requested_by, enqueue_attempts)
+           (adjustment_id, protocol_version, operation, session_id, agent_group_id, expected_epoch_key,
+            expected_ceiling_cents, target_ceiling_cents, target_spent_cents, expected_spent_cents, state,
+            inbound_message_id, requested_at, requested_by, enqueue_attempts)
          VALUES
-           ($adjustment_id, $protocol_version, $session_id, $agent_group_id, $expected_epoch_key,
-            $expected_ceiling_cents, $target_ceiling_cents, 'pending', $inbound_message_id,
-            $requested_at, $requested_by, 0)`,
+           ($adjustment_id, $protocol_version, $operation, $session_id, $agent_group_id, $expected_epoch_key,
+            $expected_ceiling_cents, $target_ceiling_cents, $target_spent_cents, $expected_spent_cents, 'pending',
+            $inbound_message_id, $requested_at, $requested_by, 0)`,
         {
           // better-sqlite3's named-parameter binding requires the OBJECT key to be
           // the BARE name (no $/@/: sigil) even though the SQL text uses $-prefixed
@@ -169,11 +190,14 @@ export async function createCostCeilingAdjustment(
           // sigil in the object key too. Bare keys here, always.
           adjustment_id: input.adjustment_id,
           protocol_version: input.protocol_version,
+          operation: input.operation ?? 'set_ceiling',
           session_id: input.session_id,
           agent_group_id: input.agent_group_id,
           expected_epoch_key: input.expected_epoch_key,
           expected_ceiling_cents: input.expected_ceiling_cents,
           target_ceiling_cents: input.target_ceiling_cents,
+          target_spent_cents: input.target_spent_cents ?? null,
+          expected_spent_cents: input.expected_spent_cents ?? null,
           inbound_message_id: input.inbound_message_id,
           requested_at: input.requested_at,
           requested_by: input.requested_by,
@@ -289,6 +313,9 @@ export interface CostCeilingAdjustmentResultInput {
   expected_epoch_key: string;
   expected_ceiling_cents: number;
   target_ceiling_cents: number;
+  /** Echoed reconcile target (integer cents). Validated in place of
+   *  `target_ceiling_cents` when the central row's `operation` is `'reconcile'`. */
+  target_spent_cents?: number | null;
 }
 
 export type RecordCostCeilingAdjustmentResultOutcome =
@@ -320,11 +347,18 @@ export async function recordCostCeilingAdjustmentResult(
     const existing = await getCostCeilingAdjustment(input.adjustment_id);
     if (!existing) return { outcome: 'not-found' };
 
+    // The TARGET echo validated depends on the operation: a reconcile row's
+    // target is `target_spent_cents`, a set-ceiling row's is `target_ceiling_cents`.
+    // The central row's own `operation` is authoritative (never the receipt's claim).
+    const targetMatches =
+      existing.operation === 'reconcile'
+        ? (existing.target_spent_cents ?? null) === (input.target_spent_cents ?? null)
+        : existing.target_ceiling_cents === input.target_ceiling_cents;
     const echoMatches =
       existing.session_id === input.session_id &&
       existing.expected_epoch_key === input.expected_epoch_key &&
       existing.expected_ceiling_cents === input.expected_ceiling_cents &&
-      existing.target_ceiling_cents === input.target_ceiling_cents;
+      targetMatches;
     if (!echoMatches) return { outcome: 'mismatch', row: existing };
 
     if (TERMINAL_STATES.has(existing.state)) {
