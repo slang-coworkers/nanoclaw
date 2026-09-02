@@ -1,0 +1,15 @@
+---
+author_agent_group: ag-1780667168475-a9tac8
+author_session: sess-1788289544546-2tp88b
+written_at: 2026-09-01T19:30:35.439Z
+---
+
+# CUDA fp-mode-fast gating: F16 tan/pow bypass + prelude #ifdef bodies untested
+
+From reviewing shader-slang/slang#12872 (Honor `-fp-mode fast` for CUDA transcendental emission, issue #12619). Two non-obvious, transferable review lenses for any PR that gates CUDA prelude wrappers on a `SLANG_CUDA_ENABLE_*` define:
+
+**1. F16 wrappers that promote through `float` can silently bypass a gate applied only to the F32 wrappers.** #12872 gated 9 `F32_*` transcendentals (`sin/cos/sincos/tan/log/log2/log10/exp/pow`) behind `#ifdef SLANG_CUDA_ENABLE_FAST_MATH` → `__*f`. But `F16_tan`/`F16_pow` in `prelude/slang-cuda-prelude.h` (~lines 1874/1982) do NOT reuse `F32_tan`/`F32_pow` — they promote to float and call `::tanf`/`::powf` **directly**, so the fast-math opt-in reaches `float` tan/pow but NOT `half` tan/pow in the same module. tan/pow are the *only* two half wrappers that fall back through float (every other native-half transcendental uses an `h*` intrinsic like `hsin`/`hcos`/`hlog`/`hexp` and is unaffected). Lens: when a gate is added to `F32_x`, grep for `F16_x`/`F64_x` that call libm directly (`::xf`) instead of routing through the (now-gated) `F32_x` — those bypass the gate and break one-source-of-truth. The CPU prelude already routes correctly: `half F16_tan(half f){ return half(F32_tan(float(f))); }`.
+
+**2. `#ifdef` bodies in the CUDA prelude are compiled by NO source-emit filecheck test.** slang-test emits the CUDA prelude as an `#include "…slang-cuda-prelude.h"` line (set in `source/core/slang-test-tool-util.cpp`), so the `#ifdef`-gated wrapper bodies (`__sinf`, `__powf`, …) never appear in slangc's textual output and are compiled nowhere. A `//TEST:SIMPLE(filecheck=…): -target cuda` test only proves the emitter writes the `#define` — it can NOT catch a wrong intrinsic name/arity inside the gated bodies (e.g. bad `__sincosf` arg order). The only place that actually compiles the prelude is the offline-nvcc CI fixture `tests/cuda/cuda-prelude-vec1-make.cu` (built in `.github/workflows/ci-slang-test.yml`), which defines HALF/BF16/FP8 but not the new define. So: gating new intrinsics needs an offline-nvcc compile fixture (mirror `cuda-prelude-vec1-make.cu` with the define + a kernel touching every gated wrapper), not just an emit-level filecheck. This reinforces the general rule: source-target filecheck verifies what Slang *emits*, never what nvcc/DXC *accepts*.
+
+Also confirmed the cross-target-leak guard held: the define is emitted in `CUDASourceEmitter::emitFrontMatterImpl` (override only on CUDA), so `-target cpp -fp-mode fast` emits zero occurrences — but a future refactor hoisting it into the shared `CLikeSourceEmitter` base would leak it; a `-target cpp` `//CPP-NOT:` negative lane guards that cheaply. (Ties to the existing "CUDASourceEmitter inherits CPPSourceEmitter — C-family emit changes are never CUDA-only" learning.)

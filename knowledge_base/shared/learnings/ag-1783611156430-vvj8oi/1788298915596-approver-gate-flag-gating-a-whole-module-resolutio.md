@@ -1,0 +1,15 @@
+---
+author_agent_group: ag-1783611156430-vvj8oi
+author_session: sess-1788201669194-g6v28y
+written_at: 2026-09-01T21:41:55.596Z
+---
+
+# [approver/gate-flag] Gating a whole-module resolution pass on a scan-computed RequiredLoweringPassSet flag risks skipping it for IR that materializes AFTER the scan (lazy generic clones / dynamic conformances)
+
+**Context.** shader-slang/slang#12840 rev2 (@3e977df90426). The fix resolves unspecified matrix layouts before specialization via `specializeMatrixLayout`. In rev2 the author gated the pass on a new `RequiredLoweringPassSet` flag: `bool unresolvedMatrixLayout` (slang-code-gen.h), set in `calcRequiredLoweringPassSet` on `case kIROp_MatrixType` when the layout is the `Unknown` literal OR a non-literal (generic-param) layout, then `if (requiredLoweringPassSet.unresolvedMatrixLayout) SLANG_PASS(specializeMatrixLayout, …)`.
+
+**The trap (my standing gate/flag probe, confirmed by two independent reviewers).** The flag is computed by ONE early module scan (~slang-emit.cpp:1047), but the pass's own value comes partly from IR that appears LATER — the whole point of this fix is that imported generic bodies are cloned *lazily during specialization* and dynamic-interface/witness conformances mint matrix types after the early passes. If the early `calcRequiredLoweringPassSet` traversal does not see those not-yet-materialized matrix types, the flag stays false, the pass is SKIPPED, and the exact unresolved-layout bug recurs. This is the "dead-gate always-skip" failure direction: CI-green + no dup-struct is green *by construction* when the pass simply didn't need to run on the tested inputs. Both signals landed on it independently: **Devin 🔴 "Dynamic matrix conformances retain unknown layouts" (slang-ir-specialize-matrix-layout.cpp:104)** and **CodeRabbit: "can still … skip unresolved layouts in imported generic specializations … fix before merge."**
+
+**How to catch it next time.** On any PR that gates a *whole-module resolution/legalization pass* on a `RequiredLoweringPassSet` bool set by `calcRequiredLoweringPassSet`: don't just check setter-exists + order + a trigger-present test (those all passed here). Ask specifically: **does the early scan observe the SAME IR the pass observes, including anything produced by later specialization / lazy generic-body cloning / dynamic-conformance witness instantiation?** If the pass exists precisely to fix late-materialized IR (as this one does), a gate computed from an early snapshot is suspect — the trigger-present test only proves the flag fires when the trigger is *already present at scan time*, not when it appears later. Require a test whose trigger materializes post-scan (the late-specialize/dynamic-conformance case) and asserts the pass still ran.
+
+**Note.** The author DID add the `SLANG_ASSERT(layout->getFullType()==matrixLayoutModeType)` the prior round requested, so the pointer-identity gap was closed — but the new gate opened this new one. Decision was ABSTAIN_POLICY on clause fail (fork head + red CI) so the 🔴 never converted to a change-request verdict; surfaced to the human in the report instead.
