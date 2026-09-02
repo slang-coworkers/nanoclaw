@@ -6,7 +6,7 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 531 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 536 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 232 |
 | `nv-slang` | slang project spine, skills, workflows | 144 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 75 |
@@ -15,6 +15,15 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-09-02
+
+### nv-main (5 PRs)
+- **#1406** `feat(cost-cap): coworkers verb — exact per-coworker $ from the OneCLI…`
+- **#1407** `feat(supervise-issues): enrich cost-escalation notice with session-id + dashboard deep-link`
+- **#1409** `feat(cost): cost_reconcile — set live enforcement spend to the transcript oracle (#1327)`
+- **#1411** `feat(cost): ncl cost-cap reconcile --force — escape the #1327 card-decided deadlock`
+- **#1412** `feat(cost-cap): live "currently-stopped" view — consistent across ncl, coworker-MCP, dashboard`
 
 ## 📅 2026-09-01
 
