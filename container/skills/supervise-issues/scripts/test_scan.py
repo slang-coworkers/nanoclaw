@@ -11,6 +11,7 @@ import sys
 import unittest
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 SCAN = str(Path(__file__).resolve().parent / "scan.py")
 NOW = "2026-06-26T12:00:00Z"
@@ -435,7 +436,7 @@ class StoppedErroredBounce(unittest.TestCase):
     silence clock is still fresh — the container will not self-recover. Additive
     to we_owe_next_step; complements the host-side a2a redrive."""
 
-    def _bounced_chain(self, error_class="transient", container_status="stopped",
+    def _bounced_chain(self, error_class: Optional[str] = "transient", container_status="stopped",
                        our_last_outbound="2026-06-26T11:58:00Z"):
         # our_last_outbound only 2 min stale (WELL inside SILENT_S) — proves the
         # nudge comes from the bounce limb, not the silence clock. Stopped-ness is
@@ -665,6 +666,63 @@ class CostStopped(unittest.TestCase):
         r3 = row_for(out3, thread)
         self.assertEqual(r3["state"], "cost_stopped")
         self.assertTrue(r3["needs_cost_notice"], r3)  # re-armed, not suppressed by tick 1
+
+    def test_cost_notice_fields_name_the_stopped_session(self):
+        # The cost_stopped row carries ready-made deep-link fields so the
+        # supervisor's factual GitHub notice can name the SPECIFIC blocked
+        # session + dashboard route (#/cw/<folder>/s/<session>, session mode)
+        # without re-deriving them. delta drives the dedup exactly as
+        # needs_cost_notice does: the naming fields stay populated every tick
+        # the row is cost_stopped, but the notice only fires on entry.
+        thread = "gh-issue-shader-slang/slang-9001"
+        session = _sid_at("2026-06-26T08:00:00Z")  # real sess-<ms>-<rand> id
+        folder = "slang-fixer"
+        payload = {
+            "state": {},
+            "sessions": [{"id": session, "thread_id": thread,
+                          "container_status": "running", "cost_status": "stopped",
+                          "group_folder": folder}],
+            "chains": {thread: {
+                "repo": "shader-slang/slang", "issue": 9001, "sessions": [session],
+                "our_last_outbound": "2026-06-26T09:00:00Z", "comments": [],
+            }},
+        }
+        out1 = run_scan(payload)
+        r1 = row_for(out1, thread)
+        self.assertEqual(r1["state"], "cost_stopped")
+        self.assertNotEqual(r1["delta"], "same")          # entry tick
+        self.assertTrue(r1["needs_cost_notice"], r1)       # notice fires on entry
+        self.assertEqual(r1["cost_notice_session"], session)
+        self.assertEqual(r1["cost_notice_folder"], folder)
+        self.assertEqual(r1["cost_notice_link"], f"#/cw/{folder}/s/{session}")
+
+        # Unchanged next tick: still cost_stopped, delta 'same' -> notice off,
+        # but the naming fields remain populated on the row.
+        out2 = run_scan({**payload, "state": out1["state"]})
+        r2 = row_for(out2, thread)
+        self.assertEqual(r2["state"], "cost_stopped")
+        self.assertEqual(r2["delta"], "same")
+        self.assertFalse(r2["needs_cost_notice"], r2)
+        self.assertEqual(r2["cost_notice_session"], session)
+        self.assertEqual(r2["cost_notice_folder"], folder)
+        self.assertEqual(r2["cost_notice_link"], f"#/cw/{folder}/s/{session}")
+
+    def test_cost_notice_fields_empty_when_not_cost_stopped(self):
+        # Every row carries the keys; they are empty strings when not applicable.
+        out = run_scan({
+            "state": {},
+            "sessions": [{"id": "s1", "thread_id": "gh-issue-o/r-cs9",
+                          "container_status": "running", "group_folder": "slang-fixer"}],
+            "chains": {"gh-issue-o/r-cs9": {
+                "repo": "o/r", "issue": 9, "sessions": ["s1"],
+                "our_last_outbound": "2026-06-26T11:55:00Z", "comments": [],
+            }},
+        })
+        r = row_for(out, "gh-issue-o/r-cs9")
+        self.assertNotEqual(r["state"], "cost_stopped")
+        self.assertEqual(r["cost_notice_session"], "")
+        self.assertEqual(r["cost_notice_folder"], "")
+        self.assertEqual(r["cost_notice_link"], "")
 
 
 class ClosedIssueArchival(unittest.TestCase):
