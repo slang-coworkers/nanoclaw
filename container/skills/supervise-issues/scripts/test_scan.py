@@ -5,13 +5,14 @@ Each test pins a rule that has a documented production failure in SKILL.md, so a
 regression here is a regression of a real incident. Run: python3 test_scan.py
 """
 
+from __future__ import annotations
+
 import json
 import subprocess
 import sys
 import unittest
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 SCAN = str(Path(__file__).resolve().parent / "scan.py")
 NOW = "2026-06-26T12:00:00Z"
@@ -436,7 +437,7 @@ class StoppedErroredBounce(unittest.TestCase):
     silence clock is still fresh — the container will not self-recover. Additive
     to we_owe_next_step; complements the host-side a2a redrive."""
 
-    def _bounced_chain(self, error_class: Optional[str] = "transient", container_status="stopped",
+    def _bounced_chain(self, error_class: str | None = "transient", container_status="stopped",
                        our_last_outbound="2026-06-26T11:58:00Z"):
         # our_last_outbound only 2 min stale (WELL inside SILENT_S) — proves the
         # nudge comes from the bounce limb, not the silence clock. Stopped-ness is
