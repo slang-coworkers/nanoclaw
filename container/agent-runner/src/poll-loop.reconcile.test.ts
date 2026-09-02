@@ -70,6 +70,7 @@ function reconcileMsg(over: {
   expectedCeilingCents?: number;
   expectedSpentCents?: number;
   targetSpentCents?: number;
+  forced?: boolean;
   id?: string;
 }): MessageInRow {
   const adjustmentId = over.adjustmentId ?? 'csr-test';
@@ -85,6 +86,7 @@ function reconcileMsg(over: {
       expectedCeilingCents: over.expectedCeilingCents ?? 0,
       expectedSpentCents,
       targetSpentCents: over.targetSpentCents ?? 0,
+      ...(over.forced !== undefined ? { forced: over.forced } : {}),
     }),
   } as unknown as MessageInRow;
 }
@@ -270,6 +272,67 @@ describe('reconcile — preserves an explicit human stop (does not resurrect it)
     expect(s.costCeilingHardStop).toBe(false); // ceiling hard-stop cleared
     expect(H.computeCostStatus()).toBe('stopped');
     expect(receiptPayload('csr-humanstop').outcome).toBe('applied');
+  });
+
+  it('a FORCED reconcile on a human-stopped session still preserves the stop and echoes forced:true', () => {
+    // DEFENSE IN DEPTH: the host now refuses to force past a `stopped` card at
+    // submit (that would defeat a human stop), so this message should never be
+    // enqueued. But the runner has no card concept, so even if one arrived, `forced`
+    // changes NO logic — the human stop is still preserved, and the flag is echoed.
+    seed({
+      costCeilingUsd: 150,
+      costBudgetGen: 4,
+      costSpentUsd: 300,
+      costStopRequested: true,
+      costDecision: 'stop',
+    });
+    H.applyCostOverride(
+      reconcileMsg({
+        adjustmentId: 'csr-forcedstop',
+        expectedEpochKey: 4,
+        expectedCeilingCents: 15000,
+        expectedSpentCents: 30000,
+        targetSpentCents: 4400, // $44 real, well under the ceiling
+        forced: true,
+      }),
+    );
+    const s = H.getState();
+    expect(s.costSpentUsd).toBeCloseTo(44); // phantom spend removed
+    expect(s.costStopRequested).toBe(true); // stop still preserved despite --force
+    const receipt = receiptPayload('csr-forcedstop');
+    expect(receipt.outcome).toBe('applied');
+    expect(receipt.forced).toBe(true); // audit echo
+  });
+
+  it('a non-forced reconcile echoes forced:false', () => {
+    seed({ costCeilingUsd: 150, costBudgetGen: 0, costSpentUsd: 300 });
+    H.applyCostOverride(
+      reconcileMsg({
+        adjustmentId: 'csr-unforced',
+        expectedEpochKey: 0,
+        expectedCeilingCents: 15000,
+        expectedSpentCents: 30000,
+        targetSpentCents: 5000,
+      }),
+    );
+    expect(receiptPayload('csr-unforced').forced).toBe(false);
+  });
+
+  it('--force does NOT bypass the lower-only rule at the runner either', () => {
+    seed({ costCeilingUsd: 150, costBudgetGen: 0, costSpentUsd: 100 });
+    const before = H.getState();
+    H.applyCostOverride(
+      reconcileMsg({
+        adjustmentId: 'csr-forceraise',
+        expectedEpochKey: 0,
+        expectedCeilingCents: 15000,
+        expectedSpentCents: 10000,
+        targetSpentCents: 20000, // above live spend
+        forced: true,
+      }),
+    );
+    expect(H.getState()).toEqual(before); // zero mutation
+    expect(receiptPayload('csr-forceraise').reason).toBe('invalid_value');
   });
 });
 

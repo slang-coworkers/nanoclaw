@@ -379,6 +379,10 @@ function controlMessageContent(row: CostCeilingAdjustmentRow): string {
       expectedCeilingCents: row.expected_ceiling_cents,
       expectedSpentCents: row.expected_spent_cents ?? 0,
       targetSpentCents: row.target_spent_cents ?? 0,
+      // Audit passthrough only — the runner echoes it in the receipt. It does NOT
+      // change any runner logic (no card concept there); the fence it relaxed is
+      // purely host-side.
+      forced: row.forced === 1,
     });
   }
   return JSON.stringify({
@@ -664,11 +668,23 @@ function reconcileBadRequest(error: string, message: string): SubmitReconcileRes
  * operator or the `cli_scope:'global'` agent group that ran `ncl cost-cap
  * reconcile`). Returns the same status/body envelope as
  * `submitCostCeilingAdjustment`; the ncl verb throws on any non-2xx.
+ *
+ * `force` (issue #1327 recovery) relaxes ONLY the `card_already_decided` fence for
+ * a CONTINUED card, so a reconcile can correct a session `continue`d on inflated
+ * spend (the deadlock: it is falsely-stopped and cannot self-advance). A `stopped`
+ * card is NEVER forceable — that would defeat a human stop, so it still 409s. It
+ * changes NOTHING else — the reconcile is still downward-only (a target above live
+ * spend is refused regardless of `force`), still the three-leg epoch+ceiling+spend
+ * CAS at the runner, still idempotent. A forced override is recorded (`forced` on
+ * the ledger row + receipt) and logged host-side. Because the correction is
+ * strictly downward, it is more permissive than the human's `continue` intent and
+ * can never violate the decision.
  */
 export async function submitCostReconcile(
   sessionId: string,
   targetSpentUsd: number,
   source: string,
+  force = false,
 ): Promise<SubmitReconcileResult> {
   // 1. Shape/value validation (pure).
   const sid = typeof sessionId === 'string' ? sessionId.trim() : '';
@@ -831,6 +847,7 @@ export async function submitCostReconcile(
     target_ceiling_cents: liveCeilingCents, // unchanged by a reconcile
     target_spent_cents: targetSpentCents,
     expected_spent_cents: liveSpentCents,
+    force,
     inbound_message_id: inboundMessageId,
     requested_at: new Date().toISOString(),
     requested_by: source,
@@ -845,9 +862,17 @@ export async function submitCostReconcile(
     };
   }
   if (created.outcome === 'episode-already-won') {
+    // Only reachable when NOT forced (createCostCeilingAdjustment applies past a
+    // decided card when force is set) — point the operator at the escape hatch.
     return {
       status: 409,
-      body: { ok: false, error: 'card_already_decided', message: 'a decision card already resolved this exact epoch' },
+      body: {
+        ok: false,
+        error: 'card_already_decided',
+        message:
+          'a decision card already resolved this exact epoch — re-run with --force to correct a session ' +
+          'CONTINUEd on inflated (#1327) spend (downward-only). A stopped card is never forceable.',
+      },
     };
   }
   if (created.outcome === 'epoch-conflict') {
@@ -863,13 +888,29 @@ export async function submitCostReconcile(
   }
   if (created.outcome === 'idempotent-existing') {
     const row = created.row;
-    return { status: TERMINAL_STATES.has(row.state) ? 200 : 202, body: adjustmentResponseBody(row) };
+    return {
+      status: TERMINAL_STATES.has(row.state) ? 200 : 202,
+      body: { ...adjustmentResponseBody(row), forced: row.forced === 1 },
+    };
+  }
+
+  // A forced reconcile that actually overrode a decided card — durable audit + a
+  // loud host log so the override is traceable, not silent.
+  if (created.row.forced === 1) {
+    log.warn('cost-reconcile: FORCED override of an already-decided card', {
+      adjustmentId: created.row.adjustment_id,
+      sessionId: session.id,
+      epochKey: liveEpochKey,
+      targetSpentCents,
+      expectedSpentCents: liveSpentCents,
+      requestedBy: source,
+    });
   }
 
   // 8. Best-effort enqueue (same path + reconciler re-drive as set-ceiling).
   await enqueueAdjustment(session, created.row);
   const finalRow = (await getCostCeilingAdjustment(created.row.adjustment_id)) ?? created.row;
-  return { status: 202, body: adjustmentResponseBody(finalRow) };
+  return { status: 202, body: { ...adjustmentResponseBody(finalRow), forced: finalRow.forced === 1 } };
 }
 
 /**

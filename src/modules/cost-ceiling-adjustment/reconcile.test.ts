@@ -41,10 +41,12 @@ vi.mock('../../session-manager.js', () => ({
 
 import { createAgentGroup, updateAgentGroup } from '../../db/agent-groups.js';
 import {
+  createCostCeilingAdjustment,
   getCostCeilingAdjustment,
   getLatestCostCeilingAdjustmentBySession,
 } from '../../db/cost-ceiling-adjustments.js';
 import { getCostCapPolicy, setCostCapPolicy } from '../../db/cost-cap-policy.js';
+import { ingestEpisode } from '../../db/cost-escalation-episodes.js';
 import { closeDb, getDb, initTestDb, runMigrations } from '../../db/index.js';
 import { createSession } from '../../db/sessions.js';
 import {
@@ -307,6 +309,7 @@ describe('submitCostReconcile — happy path', () => {
       expectedCeilingCents: 15000,
       expectedSpentCents: 15500,
       targetSpentCents: 5000,
+      forced: false,
     });
     expect(mockWakeContainer).toHaveBeenCalled();
   });
@@ -317,6 +320,102 @@ describe('submitCostReconcile — happy path', () => {
     const second = await submitCostReconcile(SESSION_ID, 60, 'test');
     expect(second.status).toBe(409);
     expect(second.body.error).toBe('epoch_conflict');
+  });
+
+  it('a normal (non-forced) reconcile records forced=0', async () => {
+    const res = await submitCostReconcile(SESSION_ID, 50, 'test');
+    expect(res.status).toBe(202);
+    expect(res.body.forced).toBe(false);
+    const row = await getCostCeilingAdjustment(res.body.adjustmentId as string);
+    expect(row?.forced).toBe(0);
+  });
+});
+
+describe('submitCostReconcile — --force relaxes ONLY the card_already_decided fence (#1327 deadlock escape)', () => {
+  // A resolved decision card on the CURRENT live epoch (7) — the deadlock: a
+  // session card-decided on inflated spend, now falsely-stopped.
+  async function seedDecidedCard(decision: 'continued' | 'stopped' = 'continued'): Promise<void> {
+    await ingestEpisode({
+      episode_id: `esc-force-${decision}`,
+      short_id: 'cst-frc',
+      session_id: SESSION_ID,
+      agent_group_id: AGENT_GROUP_ID,
+      reason: 'ceiling',
+      window: 'lifetime',
+      epoch_key: '7',
+      immortal: false,
+      created_at: NOW,
+      decision_state: decision,
+    });
+  }
+
+  it('without --force → 409 card_already_decided (the deadlock)', async () => {
+    await seedDecidedCard('continued');
+    const res = await submitCostReconcile(SESSION_ID, 116, 'test');
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('card_already_decided');
+    expect(await getLatestCostCeilingAdjustmentBySession(SESSION_ID)).toBeUndefined();
+  });
+
+  it('with --force → applies, records forced=1 on the row + body, and stamps forced:true into the control message', async () => {
+    await seedDecidedCard('continued');
+    const res = await submitCostReconcile(SESSION_ID, 116, 'ncl:host', true);
+    expect(res.status).toBe(202);
+    expect(res.body.forced).toBe(true);
+    const adjustmentId = res.body.adjustmentId as string;
+    const row = await getCostCeilingAdjustment(adjustmentId);
+    expect(row?.forced).toBe(1);
+    expect(row?.operation).toBe('reconcile');
+    expect(row?.target_spent_cents).toBe(11600);
+
+    const msg = latestReconcileControlMessage();
+    expect(JSON.parse(msg!.content).forced).toBe(true);
+  });
+
+  it('--force NEVER overrides a STOPPED card — that would defeat a human stop, so it still 409s', async () => {
+    await seedDecidedCard('stopped');
+    const res = await submitCostReconcile(SESSION_ID, 44, 'ncl:host', true);
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('card_already_decided');
+    expect(await getLatestCostCeilingAdjustmentBySession(SESSION_ID)).toBeUndefined();
+  });
+
+  it('--force does NOT bypass lower-only — a target above live spend is still refused', async () => {
+    await seedDecidedCard('continued');
+    // live spend $155; a raise to $200 is refused even with --force.
+    const res = await submitCostReconcile(SESSION_ID, 200, 'ncl:host', true);
+    expect(res.status).toBe(422);
+    expect(res.body.error).toBe('target_above_live_spend');
+    expect(await getLatestCostCeilingAdjustmentBySession(SESSION_ID)).toBeUndefined();
+  });
+
+  it('--force with NO decided card records forced=0 (nothing was overridden)', async () => {
+    const res = await submitCostReconcile(SESSION_ID, 50, 'ncl:host', true);
+    expect(res.status).toBe(202);
+    expect(res.body.forced).toBe(false);
+    const row = await getCostCeilingAdjustment(res.body.adjustmentId as string);
+    expect(row?.forced).toBe(0);
+  });
+
+  it('force is scoped to reconcile — a set_ceiling row with force still hits episode-already-won', async () => {
+    // Defense in depth: force must never let a set-ceiling row bypass a decided card
+    // (its own submit path never sets force, but the shared accessor must enforce it).
+    await seedDecidedCard('continued');
+    const created = await createCostCeilingAdjustment({
+      adjustment_id: 'cca-forced-sc',
+      protocol_version: 2,
+      operation: 'set_ceiling',
+      session_id: SESSION_ID,
+      agent_group_id: AGENT_GROUP_ID,
+      expected_epoch_key: '7',
+      expected_ceiling_cents: 15000,
+      target_ceiling_cents: 17500,
+      force: true,
+      inbound_message_id: 'cost-ceiling-adjustment:cca-forced-sc',
+      requested_at: NOW,
+      requested_by: 'test',
+    });
+    expect(created.outcome).toBe('episode-already-won');
   });
 });
 

@@ -263,18 +263,35 @@ describe('cost-cap reconcile — USD→cents conversion, actor tag, money-safe f
 
   beforeEach(() => mockSubmitCostReconcile.mockReset());
 
-  it('passes the USD target verbatim (module does cents) with an ncl: source tag', async () => {
+  it('passes the USD target verbatim (module does cents) with an ncl: source tag; force defaults to false', async () => {
     mockSubmitCostReconcile.mockResolvedValue({
       status: 202,
       body: { ok: true, adjustmentId: 'csr-x', state: 'enqueued' },
     });
     const res = (await run({ session: 's1', to: '42.17' })) as Record<string, unknown>;
     expect(mockSubmitCostReconcile).toHaveBeenCalledTimes(1);
-    const [sessionId, targetSpentUsd, source] = mockSubmitCostReconcile.mock.calls[0] as [string, number, string];
+    const [sessionId, targetSpentUsd, source, force] = mockSubmitCostReconcile.mock.calls[0] as [
+      string,
+      number,
+      string,
+      boolean,
+    ];
     expect(sessionId).toBe('s1');
     expect(targetSpentUsd).toBeCloseTo(42.17);
     expect(source).toMatch(/^ncl:/);
+    expect(force).toBe(false);
     expect(res).toMatchObject({ status: 202, targetSpentUsd: 42.17, adjustmentId: 'csr-x' });
+  });
+
+  it('--force is threaded through to submitCostReconcile and surfaced in output', async () => {
+    mockSubmitCostReconcile.mockResolvedValue({
+      status: 202,
+      body: { ok: true, adjustmentId: 'csr-f', state: 'enqueued', forced: true },
+    });
+    const res = (await run({ session: 's1', to: '116', force: true })) as Record<string, unknown>;
+    const [, , , force] = mockSubmitCostReconcile.mock.calls[0] as [string, number, string, boolean];
+    expect(force).toBe(true);
+    expect(res).toMatchObject({ forced: true });
   });
 
   it('accepts a $0 target (full absorb)', async () => {

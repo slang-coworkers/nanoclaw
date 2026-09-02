@@ -1444,6 +1444,9 @@ interface CostOverrideContent {
   targetSpentCents?: unknown;
   /** `operation:'reconcile'` only — the live spend the host read (CAS third leg, integer cents). */
   expectedSpentCents?: unknown;
+  /** `operation:'reconcile'` only — audit flag: this reconcile was `--force`d past an
+   *  already-decided card (host-side fence relaxation). Echoed in the receipt; no runner logic. */
+  forced?: unknown;
 }
 
 /**
@@ -1821,6 +1824,9 @@ function applyReconcileOverride(msg: MessageInRow, parsed: CostOverrideContent):
   const requestExpectedCeilingCents = Number(parsed.expectedCeilingCents);
   const requestExpectedSpentCents = Number(parsed.expectedSpentCents);
   const requestTargetSpentCents = Number(parsed.targetSpentCents);
+  // Audit passthrough only — the host relaxed the card fence; the runner applies no
+  // card logic. Echoed in every receipt so a forced correction is traceable.
+  const requestForced = parsed.forced === true;
 
   const commitOrThrow = (receipt: CostReconcileReceipt, newCostCap: CostCapState | undefined, logMsg: string): void => {
     try {
@@ -1843,6 +1849,7 @@ function applyReconcileOverride(msg: MessageInRow, parsed: CostOverrideContent):
       expectedCeilingCents: Number.isFinite(requestExpectedCeilingCents) ? requestExpectedCeilingCents : 0,
       expectedSpentCents: Number.isFinite(requestExpectedSpentCents) ? requestExpectedSpentCents : 0,
       targetSpentCents: Number.isFinite(requestTargetSpentCents) ? requestTargetSpentCents : 0,
+      forced: requestForced,
       reason,
       ...(costEnabled
         ? {
@@ -1900,6 +1907,7 @@ function applyReconcileOverride(msg: MessageInRow, parsed: CostOverrideContent):
       expectedCeilingCents: requestExpectedCeilingCents,
       expectedSpentCents: requestExpectedSpentCents,
       targetSpentCents: requestTargetSpentCents,
+      forced: requestForced,
       reason,
       resultEpochKey: String(costBudgetGen),
       resultCeilingCents: liveCeilingCents,
@@ -1965,6 +1973,7 @@ function applyReconcileOverride(msg: MessageInRow, parsed: CostOverrideContent):
     resultCeilingCents: liveCeilingCents, // unchanged by a reconcile
     expectedSpentCents: requestExpectedSpentCents,
     targetSpentCents: requestTargetSpentCents,
+    forced: requestForced,
     previousSpentCents,
     resultSpentCents: Math.round(costSpentUsd * 100),
     spentUsd: Number(costSpentUsd.toFixed(4)),
