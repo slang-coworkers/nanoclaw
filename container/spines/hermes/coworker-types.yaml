@@ -31,6 +31,7 @@ hermes-common:
     fixer: hermes-builder
     release_tag: v2026.8.31
     release_tree: /workspace/extra/hermes-release
+    fork: slang-coworkers/hermes-agent   # the ONLY push/PR target; never {{vars.repo}}
   identity: container/spines/hermes/identity/engineer.md
   invariants:
     # Stable plugin/CLI/config surfaces + additive-compat + test-contract rules.
@@ -153,6 +154,8 @@ hermes-reviewer:
     # Already inherited via hermes-common; listed for clarity — the reviewer
     # must be able to build the env and run tests, not just read the diff.
     - hermes-build
+    # Devin Review second opinion (best-effort; auth-wall/timeout never block).
+    - hermes-pr-review-runner
   workflows:
     # extends plan (mode=review): research = re-run doctor + acceptance test +
     # test chunks in its own worktree (never trust the builder's log);

@@ -20,7 +20,7 @@ overrides:
        No ADR arrived and the task is non-trivial → run the **hermes-plan** workflow (mode = plan) yourself first; never improvise a plugin design from the chat text. Extract from the ADR: requirement id, plugin name/key, `## Plugin surface`, `## CORE-CHANGE` (`none` or a cited `{{vars.release_tree}}/<file>:<line>`), and `## Acceptance test` target path.
     2. **Fork checkout + one worktree per target — never the main checkout, never upstream:**
        ```bash
-       FORK=<fork remote URL from /hermes-github — the FORK, never https://github.com/{{vars.repo}}>
+       FORK=https://github.com/{{vars.fork}}   # the FORK ({{vars.fork}}), never https://github.com/{{vars.repo}}
        [ -d /workspace/agent/hermes-agent/.git ] || git clone "$FORK" /workspace/agent/hermes-agent
        cd /workspace/agent/hermes-agent
        git remote get-url upstream >/dev/null 2>&1 || git remote add upstream https://github.com/{{vars.repo}}.git
