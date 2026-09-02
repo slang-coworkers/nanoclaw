@@ -471,6 +471,9 @@ export interface CostReconcileReceipt {
   spentUsd?: number;
   status?: string;
   reason?: string;
+  /** Echoed from the control message (issue #1327): this reconcile was `--force`d
+   *  past an already-decided card. Audit only — the runner applies no card logic. */
+  forced?: boolean;
 }
 
 /**

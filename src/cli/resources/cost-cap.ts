@@ -272,12 +272,22 @@ registerResource({
         'dashboard / #68 litellm capture, NOT a guess); the value is converted to integer cents and applied ' +
         'THROUGH the runner (the container is the sole writer of its own spend), epoch-fenced by the same ' +
         'compare-and-set as set-ceiling. Elevated-only. Fails loudly on a stale epoch, an un-upgraded runner, ' +
-        'or an immortal/untracked session.',
+        'or an immortal/untracked session. --force relaxes ONLY the card_already_decided fence — the escape ' +
+        'for a session card-decided on inflated (#1327) spend that is now falsely-stopped; it stays ' +
+        'downward-only, keeps the epoch+ceiling+spend CAS, and never overrides a human stop.',
       args: [
         { name: 'session', type: 'string', description: 'Session ID to reconcile.', required: true },
         { name: 'to', type: 'number', description: 'Real transcript-priced spend to set (USD, >= 0).', required: true },
+        {
+          name: 'force',
+          type: 'boolean',
+          description: 'Apply even on an epoch with an already-decided card (relaxes ONLY that fence; downward-only).',
+        },
       ],
-      examples: ['ncl cost-cap reconcile --session <session-id> --to 42.17'],
+      examples: [
+        'ncl cost-cap reconcile --session <session-id> --to 42.17',
+        'ncl cost-cap reconcile --session <session-id> --to 116 --force',
+      ],
       handler: async (args, ctx) => {
         const sessionId = typeof args.session === 'string' ? args.session.trim() : '';
         if (!sessionId) throw new Error('--session is required');
@@ -286,9 +296,10 @@ registerResource({
         if (!Number.isFinite(targetSpentUsd) || targetSpentUsd < 0) {
           throw new Error('--to must be a number >= 0 (USD)');
         }
+        const force = args.force === true;
 
         const { submitCostReconcile } = await import('../../modules/cost-ceiling-adjustment/index.js');
-        const res = await submitCostReconcile(sessionId, targetSpentUsd, `ncl:${actorLabel(ctx)}`);
+        const res = await submitCostReconcile(sessionId, targetSpentUsd, `ncl:${actorLabel(ctx)}`, force);
         if (res.status >= 300) {
           const b = res.body as { error?: string; message?: string };
           throw new Error(`cost reconcile failed (${res.status} ${b.error ?? 'error'}): ${b.message ?? ''}`.trim());
@@ -303,14 +314,16 @@ registerResource({
           adjustmentId?: string;
           state?: string;
           message?: string;
+          forced?: boolean;
         };
         if (d.noop) return d.message ?? 'Nothing to reconcile.';
         const target = usd(d.targetSpentUsd);
+        const forced = d.forced ? ' [FORCED past a decided card]' : '';
         if (d.status === 200) {
-          return `Reconcile to ${target}: already terminal (${d.state ?? 'done'}, id ${d.adjustmentId ?? '?'}).`;
+          return `Reconcile to ${target}: already terminal (${d.state ?? 'done'}, id ${d.adjustmentId ?? '?'}).${forced}`;
         }
         return (
-          `Reconcile to ${target} submitted (id ${d.adjustmentId ?? '?'}, state ${d.state ?? 'enqueued'}). ` +
+          `Reconcile to ${target} submitted (id ${d.adjustmentId ?? '?'}, state ${d.state ?? 'enqueued'}).${forced} ` +
           'The runner applies it on its next poll and confirms via receipt; re-check with ' +
           '`ncl cost-cap status --session <id>`.'
         );

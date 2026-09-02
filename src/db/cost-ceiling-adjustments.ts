@@ -51,6 +51,9 @@ export interface CostCeilingAdjustmentRow {
   /** The live spend the host read when stamping a reconcile — the third CAS leg
    *  (epoch + ceiling + spend). NULL for `set_ceiling`. */
   expected_spent_cents: number | null;
+  /** 1 iff this reconcile was `--force`d past an already-decided card on its epoch
+   *  (migration 944, the #1327 recovery deadlock). 0 otherwise. Audit only. */
+  forced: number;
   state: CostCeilingAdjustmentState;
   inbound_message_id: string;
   requested_at: string;
@@ -82,6 +85,12 @@ export interface CostCeilingAdjustmentInsert {
   target_spent_cents?: number | null;
   /** The live spend at stamp time (reconcile CAS third leg); NULL/omitted for `set_ceiling`. */
   expected_spent_cents?: number | null;
+  /** Reconcile only (issue #1327): relax the `card_already_decided` fence so the
+   *  reconcile may apply on an epoch that already has a resolved decision card.
+   *  Relaxes ONLY that check — every other guard (lower-only, the three-leg CAS,
+   *  idempotency, the runner's preserve-human-stop) is unaffected. When this
+   *  request actually bypasses a decided card, the persisted `forced` column is set. */
+  force?: boolean;
   inbound_message_id: string;
   requested_at: string;
   requested_by: string;
@@ -134,6 +143,11 @@ export type CreateCostCeilingAdjustmentResult =
  *   3. A `continued`/`stopped` escalation episode already owns this EXACT
  *      (session, epoch) → refuse (a card decision beat this request — the
  *      episode's `cost_override` may already be durably enqueued for the runner).
+ *      EXCEPTION: a RECONCILE with `input.force` (issue #1327) applies past a
+ *      `continued` card (only) and records `forced = 1` — the deadlock escape for a
+ *      session `continue`d on inflated spend. A `stopped` card is NEVER forceable
+ *      (that would defeat a human stop). This relaxes ONLY this step; the
+ *      downward-only + three-leg CAS guards downstream are untouched.
  *   4. Any still-`pending` episode for this (session, epoch) is superseded (so a
  *      delayed card click can never apply once this request has claimed the epoch).
  *   5. Each superseded episode's dashboard `pending_approvals` row is deleted in
@@ -161,10 +175,27 @@ export async function createCostCeilingAdjustment(
       }
 
       const episodesForEpoch = await getEpisodesForSessionEpoch(input.session_id, input.expected_epoch_key);
-      const alreadyWon = episodesForEpoch.find(
-        (e) => e.decision_state === 'continued' || e.decision_state === 'stopped',
-      );
-      if (alreadyWon) return { outcome: 'episode-already-won', episode: alreadyWon };
+      // A `stopped` card is NEVER forceable: `--force` corrects a session a human
+      // meant to keep running (a `continue` on inflated spend), and its rationale is
+      // "strictly more permissive than the human's CONTINUE intent." Forcing past a
+      // `stopped` card would instead DEFEAT the human's stop — and racily so: the
+      // stop's `cost_override` may not have reached the runner yet, so a forced
+      // reconcile that rotates the epoch first would make that stop go stale. So a
+      // stopped card always wins.
+      const stoppedWinner = episodesForEpoch.find((e) => e.decision_state === 'stopped');
+      if (stoppedWinner) return { outcome: 'episode-already-won', episode: stoppedWinner };
+
+      // `--force` (RECONCILE only, issue #1327) relaxes ONLY this fence for a
+      // `continued` card: it lets a downward reconcile apply on an epoch whose
+      // card was continued on inflated spend. Everything downstream still holds —
+      // it does NOT bypass the lower-only rule or the runner's three-leg CAS. The
+      // operation scope is defense-in-depth: `force` on a set-ceiling row (which
+      // its own submit path never sets) can never bypass this. When a continued
+      // card IS overridden, `forced` is persisted for the audit trail.
+      const continuedWinner = episodesForEpoch.find((e) => e.decision_state === 'continued');
+      const forcedOverride =
+        (input.operation ?? 'set_ceiling') === 'reconcile' && input.force === true && !!continuedWinner;
+      if (continuedWinner && !forcedOverride) return { outcome: 'episode-already-won', episode: continuedWinner };
 
       const superseded = await supersedePendingEpisodesForEpoch(
         input.session_id,
@@ -177,12 +208,12 @@ export async function createCostCeilingAdjustment(
       await d.run(
         `INSERT INTO cost_ceiling_adjustments
            (adjustment_id, protocol_version, operation, session_id, agent_group_id, expected_epoch_key,
-            expected_ceiling_cents, target_ceiling_cents, target_spent_cents, expected_spent_cents, state,
+            expected_ceiling_cents, target_ceiling_cents, target_spent_cents, expected_spent_cents, forced, state,
             inbound_message_id, requested_at, requested_by, enqueue_attempts)
          VALUES
            ($adjustment_id, $protocol_version, $operation, $session_id, $agent_group_id, $expected_epoch_key,
-            $expected_ceiling_cents, $target_ceiling_cents, $target_spent_cents, $expected_spent_cents, 'pending',
-            $inbound_message_id, $requested_at, $requested_by, 0)`,
+            $expected_ceiling_cents, $target_ceiling_cents, $target_spent_cents, $expected_spent_cents, $forced,
+            'pending', $inbound_message_id, $requested_at, $requested_by, 0)`,
         {
           // better-sqlite3's named-parameter binding requires the OBJECT key to be
           // the BARE name (no $/@/: sigil) even though the SQL text uses $-prefixed
@@ -198,6 +229,7 @@ export async function createCostCeilingAdjustment(
           target_ceiling_cents: input.target_ceiling_cents,
           target_spent_cents: input.target_spent_cents ?? null,
           expected_spent_cents: input.expected_spent_cents ?? null,
+          forced: forcedOverride ? 1 : 0,
           inbound_message_id: input.inbound_message_id,
           requested_at: input.requested_at,
           requested_by: input.requested_by,
