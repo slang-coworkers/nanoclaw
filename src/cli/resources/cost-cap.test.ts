@@ -36,6 +36,15 @@ vi.mock('../session-cost-cap.js', () => ({
   readSessionCostCapStatus: (...a: unknown[]) => mockReadSessionCostCapStatus(...a),
 }));
 
+// `stopped`'s handler is a thin delegate to cost-cap-sessions.ts'
+// listStoppedSessions (which reads the dashboard's /api/sessions). Mock only that
+// export, preserving the rest of the module so the other verbs still register.
+const mockListStoppedSessions = vi.fn();
+vi.mock('../cost-cap-sessions.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../cost-cap-sessions.js')>()),
+  listStoppedSessions: (...a: unknown[]) => mockListStoppedSessions(...a),
+}));
+
 // `set-ceiling` dynamic-imports submitCostCeilingAdjustment; mock it so the
 // verb's OWN logic (live-epoch read → cents conversion → money-safe failure
 // surfacing) is what's under test, not the full ledger/runner flow (which has
@@ -55,7 +64,7 @@ vi.mock('../../modules/cost-approval/index.js', () => ({
   applyCostOverrideDecision: (...a: unknown[]) => mockApplyCostOverrideDecision(...a),
 }));
 
-import './cost-cap.js'; // side-effect: registers cost-cap-{get,set,clear,status,sessions,continue,stop,set-ceiling}
+import './cost-cap.js'; // side-effect: registers cost-cap-{get,set,clear,status,stopped,escalations,sessions,continue,stop,set-ceiling,reconcile,coworkers}
 import { commandGuard, lookup } from '../registry.js';
 import { guard, type GuardActor } from '../../guard/index.js';
 import type { CallerContext } from '../frame.js';
@@ -66,6 +75,8 @@ const COMMANDS = [
   'cost-cap-get',
   'cost-cap-clear',
   'cost-cap-status',
+  'cost-cap-stopped',
+  'cost-cap-escalations',
   'cost-cap-sessions',
   'cost-cap-continue',
   'cost-cap-stop',
@@ -168,6 +179,54 @@ describe('cost-cap status', () => {
       cap_usd: 10,
       spent_usd: 10.2,
     });
+  });
+});
+
+describe('cost-cap stopped — the LIVE currently-blocked set (distinct from the escalations history)', () => {
+  const HOST: CallerContext = { caller: 'host' };
+  const run = async (raw: Record<string, unknown>) => {
+    const cmd = lookup('cost-cap-stopped');
+    if (!cmd) throw new Error('cost-cap-stopped not registered');
+    return cmd.handler(cmd.parseArgs(raw), HOST);
+  };
+
+  beforeEach(() => mockListStoppedSessions.mockReset());
+
+  it('delegates to listStoppedSessions with no group filter and returns its result verbatim', async () => {
+    const result = {
+      count: 2,
+      group: null,
+      costUnavailable: null,
+      stopped: [
+        { session_id: 's2', agent_group_id: 'ag-2', status: 'stopped', spent_usd: 60, group_folder: 'slang-fixer' },
+        { session_id: 's1', agent_group_id: 'ag-1', status: 'stopped', spent_usd: 42, group_folder: 'slang-reader' },
+      ],
+    };
+    mockListStoppedSessions.mockResolvedValue(result);
+    const res = await run({});
+    expect(mockListStoppedSessions).toHaveBeenCalledWith({ group: undefined });
+    expect(res).toBe(result); // returned verbatim, incl. the dashboard's costUnavailable signal
+  });
+
+  it('passes --group through as the folder filter', async () => {
+    mockListStoppedSessions.mockResolvedValue({ count: 0, group: 'slang-fixer', costUnavailable: null, stopped: [] });
+    await run({ group: 'slang-fixer' });
+    expect(mockListStoppedSessions).toHaveBeenCalledWith({ group: 'slang-fixer' });
+  });
+
+  it('does NOT read the episode ledger — the stopped set comes only from the live /api/sessions delegate', async () => {
+    // listEscalationEpisodes is the history ledger; the stopped verb must never
+    // consult it. We assert this indirectly: the only source it calls is the
+    // live listStoppedSessions delegate.
+    mockListStoppedSessions.mockResolvedValue({ count: 0, group: null, costUnavailable: null, stopped: [] });
+    await run({});
+    expect(mockListStoppedSessions).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects an unknown flag', () => {
+    const cmd = lookup('cost-cap-stopped');
+    if (!cmd) throw new Error('cost-cap-stopped not registered');
+    expect(() => cmd.parseArgs({ groop: 'x' })).toThrow(/unknown flag/);
   });
 });
 
