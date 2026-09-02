@@ -16,7 +16,7 @@ Your scope is **`global`** — unrestricted. You can read and modify any agent g
 | `members`                                   | `list`, `add`, `remove`                                                                                                                                     | Unprivileged group access gate.                          |
 | `destinations`                              | `list`, `add`, `remove`                                                                                                                                     | Where an agent group can send messages.                  |
 | `sessions`                                  | `list`, `get`, `messages`                                                                                                                                   | Active sessions (read-only).                             |
-| `cost-cap`                                  | `get`, `set`, `clear`, `status`, `escalations`, `sessions`, `continue`, `stop`, `set-ceiling`                                                              | Runtime Tier-2 cost-cap policy (fleet ceiling + per-group cap/ceiling overrides); cost views (`status` live per-session, `escalations` tripped tail, `sessions` full distribution + p50/p90/p95); escalation resolution (`continue`/`stop`/`set-ceiling`). **Global/elevated only.** |
+| `cost-cap`                                  | `get`, `set`, `clear`, `status`, `escalations`, `sessions`, `coworkers`, `continue`, `stop`, `set-ceiling`                                                              | Runtime Tier-2 cost-cap policy (fleet ceiling + per-group cap/ceiling overrides); cost views (`status` live per-session, `escalations` tripped tail, `sessions` full distribution + p50/p90/p95, `coworkers` exact per-coworker $ from the gateway); escalation resolution (`continue`/`stop`/`set-ceiling`). **Global/elevated only.** |
 | `policies`                                  | `list`, `set`, `remove`                                                                                                                                     | Agent-to-agent approval gates, per (from → to) pair. Operator-only — agents cannot gate their own connections. |
 | `pr-mappings`                               | `list`, `remap`                                                                                                                                             | PR→session routing rows. `remap` reassigns one deliberately (approval-gated). |
 | `user-dms`, `dropped-messages`, `approvals` | `list`, `get`                                                                                                                                               | Diagnostic views (read-only).                            |
@@ -63,11 +63,15 @@ ncl cost-cap escalations --author <gh-login> # escalations on a GitHub user's is
 ncl cost-cap sessions                        # per-group cost aggregates + p50/p90/p95/max (default 30d)
 ncl cost-cap sessions --group <folder> --period 7d   # one group, 7-day window
 ncl cost-cap sessions --group <folder> --sessions    # the raw per-session list (ranked desc) instead
+ncl cost-cap coworkers                       # EXACT $ per coworker from the gateway (litellm capture), all-time
+ncl cost-cap coworkers --group <folder> --period 7d  # one coworker, 7-day window
 ```
 
 `escalations` lists per-session `spent`/`cap`/`ceiling` + `decision_state` + coworker + (for GitHub-thread sessions) the issue/PR author — the "which sessions were cost-stopped and how much did they cost" view.
 
 `sessions` is the **full cost distribution** (not just the tripped tail): per group with any priced session it reports `{sessions, total_usd, p50, p90, p95, max}` over that group's `cost>0` sessions, sorted by total spend. Percentiles use the nearest-rank method — the same one the host uses for its p90 cap auto-sourcing — so a `p95` you read here is a real observed session cost you can hand straight to `set-ceiling`. Reads the dashboard's priced-cost API, so the dashboard must be installed/running. `--period` accepts `1d|7d|30d|all`.
+
+`coworkers` is the **exact** inference $ per coworker — the litellm per-request cost the OneCLI gateway records into `request_logs`, rolled up by agent group (covers Claude + Codex, both route through the gateway). Where `sessions` gives the token-based priced-cost *distribution* (an estimate, from the dashboard), `coworkers` is the billing system's own number, date-correct. It needs the gateway capture flag (`ONECLI_CAPTURE_RESPONSE_HEADERS`) + `ONECLI_PG_CONTAINER`, and reports `configured:false` when either is unwired. The read runs host-side only — a global-scope caller gets the numbers back, never OneCLI DB access. `--period` accepts `<n>d`/`<n>h` (e.g. `30d`, `24h`; default all-time).
 
 ### Resolving cost escalations
 
