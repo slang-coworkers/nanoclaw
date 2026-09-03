@@ -30,7 +30,7 @@ const ALLOWED_ORIGINS = new Set(
     .map((s) => s.trim())
     .filter(Boolean),
 );
-const SERVER_INFO = { name: 'nanoclaw-coworkers', version: '0.5.0' };
+const SERVER_INFO = { name: 'nanoclaw-coworkers', version: '0.6.0' };
 const SUPPORTED_PROTOCOLS = new Set(['2025-06-18', '2025-03-26', '2024-11-05']);
 const DEFAULT_PROTOCOL = '2025-06-18';
 const MAX_OUT = 100_000;
@@ -366,6 +366,41 @@ const TOOLS = [
         return okText(parsed && parsed.data ? parsed.data : parsed); // unwrap ncl --json {ok,data}
       } catch (e) {
         return okText({ error: 'cost_per_coworker unavailable', detail: String(e?.message || e).slice(0, 200) });
+      }
+    },
+  },
+  {
+    name: 'cost_history',
+    description:
+      'V2: per-coworker cost over an ARBITRARY date range, bucketed by day/week/total — the historical view the other cost tools cannot give (cost_status is point-in-time; cost_per_coworker/list_stopped_sessions have no time axis). Reads the durable #65 cost ledger (per-session cost_events): one deduped, timestamped, token-priced row per Claude message + Codex call, summed per coworker and time bucket, provider-split. Bounded by ledger retention (old session DBs rotate out). Args: group (coworker id/folder/name), from + to (YYYY-MM-DD, inclusive), by (day|week|total, default week).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        group: { type: 'string', description: 'coworker filter (agent group id, folder, or name)' },
+        from: { type: 'string', description: 'inclusive start date YYYY-MM-DD' },
+        to: { type: 'string', description: 'inclusive end date YYYY-MM-DD' },
+        by: { type: 'string', description: 'day | week | total (default week)' },
+      },
+      additionalProperties: false,
+    },
+    async run(a) {
+      const cmd = ['cost-cap', 'history', '--json'];
+      if (str(a.group)) cmd.push('--group', reqStr(a.group, 'group'));
+      if (str(a.from)) cmd.push('--from', reqStr(a.from, 'from'));
+      if (str(a.to)) cmd.push('--to', reqStr(a.to, 'to'));
+      if (str(a.by)) cmd.push('--by', reqStr(a.by, 'by'));
+      try {
+        const { stdout } = await execFileP(NCL_BIN, cmd, { timeout: 60000 });
+        let parsed;
+        try {
+          parsed = JSON.parse(stdout);
+        } catch {
+          parsed = { raw: String(stdout).slice(0, 4000) };
+        }
+        if (parsed && parsed.ok === false) return okText({ error: parsed.error?.message || 'ncl error' });
+        return okText(parsed && parsed.data ? parsed.data : parsed); // unwrap ncl --json {ok,data}
+      } catch (e) {
+        return okText({ error: 'cost_history unavailable', detail: String(e?.message || e).slice(0, 200) });
       }
     },
   },
