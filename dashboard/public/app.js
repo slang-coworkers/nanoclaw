@@ -5951,7 +5951,7 @@ function renderGithubOriginCell(s) {
 // to pin with a direct test.
 function sessionGroupOptions(sessions) {
   return [
-    ...new Map((sessions || []).filter((s) => s.group_folder).map((s) => [s.group_folder, s.group_name || s.group_folder])).entries(),
+    ...new Map((sessions || []).filter((s) => s.group_folder && !s.group_paused).map((s) => [s.group_folder, s.group_name || s.group_folder])).entries(),
   ].sort((a, b) => a[1].localeCompare(b[1]));
 }
 
