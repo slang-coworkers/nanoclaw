@@ -187,14 +187,38 @@ is the **one exception to R6** ("closest-to-the-state authors; the supervisor en
 substitutes"): R6 assumes the owning coworker *can* act but hasn't yet, which is false here — the
 coworker is provably incapacitated, so the supervisor posts the notice itself instead of nudging a
 session that cannot respond. When a row carries `needs_cost_notice: true`, post **exactly one** short,
-factual, single-line comment on the chain's issue/PR — never phrased as a ping, nobody needs to reply:
+factual comment on the chain's issue/PR — a transient for-human diagnostic, never phrased as a ping,
+nobody needs to reply. `scan.py` hands you three ready-made fields on that row —
+`cost_notice_folder`, `cost_notice_session`, `cost_notice_link` — interpolate them for
+`<folder>`/`<session>`/`<link>` in this **verbatim** template:
 
 ```bash
-gh issue comment <num> --repo <owner>/<repo> \
-  --body "_[Supervisor] This chain's session hit its cost ceiling and is paused pending a human cost decision (dashboard → Continue/Stop). No action needed here — it resumes automatically once decided._"
-# PR-bearing chain: comment on the PR instead (same body).
-gh pr comment <pr> --repo <owner>/<repo> --body "..."
+# Post via `--body-file -` fed by a QUOTED heredoc (`<<'EOF'`). The body is
+# multi-line markdown containing backticks, so a fragile inline double-quoted
+# `--body` would mangle it — and an UNquoted heredoc would run the backticks as
+# shell command substitution. Substitute the three <…> placeholders with the
+# row's field values as literal text before posting; leave every backtick intact.
+gh issue comment <num> --repo <owner>/<repo> --body-file - <<'EOF'
+_[Supervisor] Cost-escalation diagnostic — transient status note, for the human maintainer._
+
+This chain's coworker session reached its Tier-2 cost ceiling and is **paused pending a human cost decision** (dashboard → **Continue** to raise the ceiling, or **Stop**). It resumes automatically once decided — **no action is needed on this issue.**
+
+- Coworker: `<folder>`
+- Session: `<session>`
+- Dashboard: `<link>`
+
+_Automated note — coworkers do not act on their own supervisor comments; this will not trigger further activity._
+EOF
+# PR-bearing chain: post the SAME heredoc body with
+#   gh pr comment <pr> --repo <owner>/<repo> --body-file -
+# instead of `gh issue comment`.
 ```
+
+The `<link>` deep-link is a **relative hash route** (`cost_notice_link` = `#/cw/<folder>/s/<session>`,
+session mode — the parser lives at `dashboard/public/app.js`), deliberately domain-less. It is **not**
+auto-clickable in GitHub, and that is by design: it keeps the internal dashboard host out of the
+**public** shader-slang issue/PR comment. A maintainer who already has the dashboard open pastes it
+after their own base URL.
 
 `needs_cost_notice` is `scan.py`'s own dedup gate for this — **do not build a second one.** It is
 `true` only on the tick a chain enters (or changes within) `cost_stopped`, reusing the same

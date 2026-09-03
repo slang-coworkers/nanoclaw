@@ -189,6 +189,82 @@ export async function getLatestEpisodeForSession(sessionId: string): Promise<Cos
   );
 }
 
+/** An episode enriched with its coworker (agent_groups) and, when the session's
+ *  thread traces to a GitHub issue/PR, the originating author (gh_thread_origin). */
+export interface EscalationListRow extends CostEpisodeRow {
+  group_folder: string | null;
+  group_name: string | null;
+  thread_id: string | null;
+  gh_author: string | null;
+  gh_repo: string | null;
+  gh_number: number | null;
+}
+
+export interface EscalationFilter {
+  state?: CostDecisionState;
+  sessionId?: string;
+  groupFolder?: string;
+  ghAuthor?: string;
+  limit?: number;
+}
+
+/**
+ * The per-session escalation LIST behind `ncl cost-cap escalations` (and the
+ * coworker MCP `list_cost_escalations` tool): every episode with its cost
+ * (spent/cap/ceiling), decision_state, coworker folder, and — when the session
+ * sits on a GitHub thread — the issue/PR author. Read-only, fail-soft (returns []
+ * with no DB/table). The `gh_thread_origin` join is guarded because it is a newer
+ * table (migration 940) that need not exist on every install; filtering by
+ * `ghAuthor` when it is absent yields [] rather than an error. Ordering is
+ * newest-first; `limit` is clamped to [1, 500].
+ */
+export async function listEscalationEpisodes(f: EscalationFilter = {}): Promise<EscalationListRow[]> {
+  const d = await db();
+  if (!d) return [];
+  const hasGh = await hasTable(d, 'gh_thread_origin');
+  if (f.ghAuthor && !hasGh) return []; // can't attribute without the table
+
+  const clauses: string[] = [];
+  const params: unknown[] = [];
+  if (f.state) {
+    clauses.push('e.decision_state = ?');
+    params.push(f.state);
+  }
+  if (f.sessionId) {
+    clauses.push('e.session_id = ?');
+    params.push(f.sessionId);
+  }
+  if (f.groupFolder) {
+    clauses.push('g.folder = ?');
+    params.push(f.groupFolder);
+  }
+  if (hasGh && f.ghAuthor) {
+    clauses.push('o.author = ?');
+    params.push(f.ghAuthor);
+  }
+  // Floor to an integer: SQLite rejects a non-integer bound param to `LIMIT ?`
+  // ("datatype mismatch"), matching the codebase clamp pattern (session-messages.ts).
+  const limit = Math.max(1, Math.min(Number.isFinite(f.limit) ? Math.floor(Number(f.limit)) : 50, 500));
+  params.push(limit);
+
+  const ghCols = hasGh
+    ? 'o.author AS gh_author, o.repo AS gh_repo, o.number AS gh_number'
+    : 'NULL AS gh_author, NULL AS gh_repo, NULL AS gh_number';
+  const ghJoin = hasGh ? 'LEFT JOIN gh_thread_origin o ON o.thread_id = s.thread_id' : '';
+
+  return d.all<EscalationListRow>(
+    `SELECT e.*, g.folder AS group_folder, g.name AS group_name, s.thread_id AS thread_id, ${ghCols}
+       FROM cost_escalation_episodes e
+       LEFT JOIN agent_groups g ON g.id = e.agent_group_id
+       LEFT JOIN sessions s ON s.id = e.session_id
+       ${ghJoin}
+       ${clauses.length ? 'WHERE ' + clauses.join(' AND ') : ''}
+       ORDER BY e.created_at DESC
+       LIMIT ?`,
+    ...params,
+  );
+}
+
 export interface ResolveResult {
   /** True iff THIS call won the compare-and-set (was the first to resolve a pending row). */
   won: boolean;
