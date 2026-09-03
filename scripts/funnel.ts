@@ -302,7 +302,7 @@ function issueNumFromThread(threadId: string | null): number | null {
 }
 
 async function main() {
-  initDb(path.join(DATA_DIR, 'v2.db'));
+  await initDb(path.join(DATA_DIR, 'v2.db'));
   const db = getDb();
 
   // ── Spine source: pr_session_mappings (durable PR↔instance↔thread) ──
