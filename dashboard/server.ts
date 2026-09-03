@@ -66,6 +66,7 @@ import {
   parseCodexRollout,
   priceCodexUsage,
 } from './codex-costs.js';
+import { ccusageIsStale, computeSessionsCostTotals } from './session-cost-totals.js';
 import {
   parseCostCapBlob,
   buildCostCapEntry,
@@ -2719,7 +2720,13 @@ function computeCostP99ByGroup(costByNano: Map<string, SessionCostEntry>): {
   for (const [folder, arr] of byGroup) {
     if (arr.length >= MIN_GROUP_SAMPLE) perGroupP99.set(folder, percentileOf(arr, 0.99));
   }
-  return { fleetP99: percentileOf(priced.map((e) => e.cost), 0.99), perGroupP99 };
+  return {
+    fleetP99: percentileOf(
+      priced.map((e) => e.cost),
+      0.99,
+    ),
+    perGroupP99,
+  };
 }
 
 // ---------- Warm-start persistence for the per-file cost cache ----------
@@ -4214,14 +4221,18 @@ function refreshContainerStatus(): void {
   // logical `nanoclaw-container-name` (nc-prod-<folder>-<session>) so the name
   // parsing below (matchContainerName) keeps working. Old `--filter name=<prefix>`
   // matched 0 and made the dashboard show "No containers running".
-  exec(`docker ps --filter label=${CONTAINER_INSTALL_LABEL} --format '{{.Label "nanoclaw-container-name"}}' 2>/dev/null`, { timeout: 3000 }, (_err, stdout) => {
-    runningContainers.clear();
-    if (stdout) {
-      for (const name of stdout.trim().split('\n')) {
-        if (name) runningContainers.add(name);
+  exec(
+    `docker ps --filter label=${CONTAINER_INSTALL_LABEL} --format '{{.Label "nanoclaw-container-name"}}' 2>/dev/null`,
+    { timeout: 3000 },
+    (_err, stdout) => {
+      runningContainers.clear();
+      if (stdout) {
+        for (const name of stdout.trim().split('\n')) {
+          if (name) runningContainers.add(name);
+        }
       }
-    }
-  });
+    },
+  );
 }
 
 // Initial refresh + periodic update
@@ -5162,11 +5173,7 @@ function invalidateStateCache(): void {
   stateDirtyHint = true;
 }
 
-function keyedDiff<T extends Record<string, unknown>>(
-  prev: T[],
-  next: T[],
-  keyOf: (x: T) => string,
-): KeyedChange<T> {
+function keyedDiff<T extends Record<string, unknown>>(prev: T[], next: T[], keyOf: (x: T) => string): KeyedChange<T> {
   const prevByKey = new Map<string, string>();
   for (const p of prev) prevByKey.set(keyOf(p), JSON.stringify(p));
   const upsert: T[] = [];
@@ -7256,7 +7263,10 @@ export async function handleRequest(
     if (!existsSync(p)) {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(
-        JSON.stringify({ error: 'no snapshot', hint: 'run: python3 scripts/review-rounds.py --json reports/review-rounds.json' }),
+        JSON.stringify({
+          error: 'no snapshot',
+          hint: 'run: python3 scripts/review-rounds.py --json reports/review-rounds.json',
+        }),
       );
       return;
     }
@@ -10201,10 +10211,37 @@ export async function handleRequest(
       'Content-Type': 'application/json',
       'Cache-Control': 'no-store',
     });
+    // Sessions-header totals (dash-6): the ccusage total for the SAME period —
+    // the whole transcript tree incl. skill-run transcripts, i.e. exactly what
+    // the Overview's "Total Cost" shows — per coworker, so the UI can render
+    // total · attributed-to-sessions · skills/unattributed from one source
+    // (session-cost-totals.ts). The ccusage cache only refreshes while
+    // Admin › Infra is open, so kick a bounded (≥5 min apart, single-flight)
+    // background refresh from here too; the response never waits for it.
+    const folderById = new Map<string, string>();
+    if (db) {
+      try {
+        for (const g of db.prepare('SELECT id, folder FROM agent_groups').all() as Array<{
+          id: string;
+          folder: string;
+        }>) {
+          if (g.id && g.folder) folderById.set(g.id, g.folder);
+        }
+      } catch {
+        /* no id→folder mapping — byGroupFolder stays empty, byGroupId still works */
+      }
+    }
+    const costTotals = computeSessionsCostTotals(
+      ccusageCache[period] ?? emptyCcusagePeriod,
+      ccusageCache.lastRefresh,
+      folderById,
+    );
+    if (ccusageUnavailable() == null && ccusageIsStale(ccusageCache.lastRefresh)) void refreshCcusageCache();
     res.end(
       JSON.stringify({
         sessions,
         period,
+        costTotals,
         costUnavailable: ccusageUnavailable(),
         // Base URL of the per-session transcript archive (build-transcripts-archive.ts,
         // served separately). When set, the Sessions tab links each row to
