@@ -15,6 +15,7 @@ import socket
 import sqlite3
 import sys
 import time
+import urllib.request
 from datetime import datetime, timezone
 
 NC = "/home/ubuntu/slang-coworkers-prod/nanoclaw"
@@ -30,6 +31,13 @@ CEILING_WARN_SEC = 1800      # warn once within this much of the ceiling
 APPROVAL_WINDOW_H = 24
 TOP_TOOLS = 25
 MAX_LOG_SCAN = 8 * 1024 * 1024   # cap a single incremental log read
+
+# Cost feed: the dashboard's /api/sessions is backed by sessionCostCache, which
+# refreshes unconditionally every 60s (dashboard/server.ts) -- unlike the
+# ccusage-backed endpoints, it is never stale without a browser open. period=1d
+# = cost accrued so far TODAY, priced from the transcript JSONL (Claude + Codex).
+DASH_URL = "http://127.0.0.1:3737"
+COST_TOP_SESSIONS = 100      # per-session cardinality cap; overflow is emitted, never silent
 
 _errors = []
 _out = []
@@ -431,6 +439,82 @@ def collect_health():
     })
 
 
+def collect_cost():
+    """Fleet / per-coworker / per-session USD accrued TODAY.
+
+    Reads the dashboard's /api/sessions?period=1d (always-fresh, 60s
+    sessionCostCache). Every dollar is priced from the transcript JSONL, so
+    Claude and Codex are both included and split out. Emitted as one measurement
+    `nanoclaw_cost` with a `scope` tag so a single dashboard row can show fleet,
+    per-coworker and per-session breakdowns off the same series:
+
+      scope=fleet                     -> whole-fleet usd today + active sessions
+      scope=group   group=<name>      -> one point per coworker (zero-cost skipped)
+      scope=session session=<id>      -> one point per costing session, top-N by usd
+
+    Honesty rules from ops/README.md are kept: a coworker/session that spent $0
+    today emits no point (so "no data" != "spent zero"), and if more sessions
+    cost money than the cardinality cap allows, the overflow COUNT is emitted
+    rather than silently dropped.
+    """
+    req = urllib.request.Request(DASH_URL + "/api/sessions?period=1d")
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        d = json.load(resp)
+    if d.get("costUnavailable"):
+        _errors.append("cost:costUnavailable")
+        return
+    sessions = d.get("sessions", []) or []
+
+    fleet_usd = fleet_claude = fleet_codex = 0.0
+    active = 0
+    per = {}          # folder -> [name, usd, claude, codex, sessions]
+    costed = []       # (usd, claude, codex, session_id, name, folder)
+    for s in sessions:
+        usd = float(s.get("cost") or 0)
+        claude = float(s.get("claudeUsd") or 0)
+        codex = float(s.get("codexUsd") or 0)
+        folder = s.get("group_folder") or ""
+        name = s.get("group_name") or folder or "unknown"
+        if (s.get("container_status") or "") == "running":
+            active += 1
+        fleet_usd += usd
+        fleet_claude += claude
+        fleet_codex += codex
+        g = per.setdefault(folder, [name, 0.0, 0.0, 0.0, 0])
+        g[1] += usd
+        g[2] += claude
+        g[3] += codex
+        g[4] += 1
+        if usd > 0:
+            costed.append((usd, claude, codex, s.get("session_id") or "", name, folder))
+
+    emit("nanoclaw_cost",
+         {"usd": round(fleet_usd, 6), "claude_usd": round(fleet_claude, 6),
+          "codex_usd": round(fleet_codex, 6),
+          "active_sessions": active, "sessions_total": len(sessions)},
+         {"scope": "fleet"})
+
+    for folder, g in per.items():
+        if g[1] <= 0:      # a coworker that spent nothing today emits nothing
+            continue
+        emit("nanoclaw_cost",
+             {"usd": round(g[1], 6), "claude_usd": round(g[2], 6),
+              "codex_usd": round(g[3], 6), "sessions": g[4]},
+             {"scope": "group", "group": g[0], "folder": folder})
+
+    costed.sort(reverse=True)
+    for usd, claude, codex, sid, name, folder in costed[:COST_TOP_SESSIONS]:
+        emit("nanoclaw_cost",
+             {"usd": round(usd, 6), "claude_usd": round(claude, 6),
+              "codex_usd": round(codex, 6)},
+             {"scope": "session", "session": sid, "group": name, "folder": folder})
+
+    overflow = len(costed) - COST_TOP_SESSIONS
+    if overflow > 0:
+        # never silently truncate: how many costing sessions we could not emit
+        emit("nanoclaw_cost", {"dropped_sessions": overflow}, {"scope": "session_overflow"})
+
+
 def main():
     t0 = time.time()
     now_ms = int(t0 * 1000)
@@ -439,7 +523,8 @@ def main():
     for name, fn in (("db", lambda: collect_db(now_ms)),
                      ("logs", lambda: collect_logs(state)),
                      ("funnel", collect_funnel),
-                     ("health", collect_health)):
+                     ("health", collect_health),
+                     ("cost", collect_cost)):
         try:
             fn()
         except Exception as exc:  # noqa: BLE001 - a collector must never crash the metrics pipeline

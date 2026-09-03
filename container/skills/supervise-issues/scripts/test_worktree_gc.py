@@ -71,7 +71,7 @@ class TestClassify(unittest.TestCase):
 class TestSelect(unittest.TestCase):
     def test_no_reclaim_when_disk_healthy(self):
         # Above the pressure gate: STALE-OPEN classified but nothing reclaimed.
-        out = wg.select({"free_gb": 50, "running_dirs": [],
+        out = wg.select({"free_gb": 200, "running_dirs": [],
                          "worktrees": [wt("a", idle=40)]})
         self.assertEqual(out["summary"]["counts"]["STALE-OPEN"], 1)
         self.assertEqual(out["reclaim"], [])
@@ -88,17 +88,17 @@ class TestSelect(unittest.TestCase):
         }
         out = wg.select(payload)
         dirs = [w["dir"] for w in out["reclaim"]]
-        # free 2 → target 40 needs +38G; only 12G of build/ exists, so all three
+        # free 2 → target 170 needs +168G; only 12G of build/ exists, so all three
         # are selected, ordered most-idle first.
         self.assertEqual(dirs, ["oldest", "middle", "young"])
 
     def test_projection_reports_a_cutoff_without_truncating_the_list(self):
         payload = {
-            "free_gb": 20, "running_dirs": [],
+            "free_gb": 148, "running_dirs": [],
             "worktrees": [wt(f"w{i}", idle=30 + i, size=10, build_size=6) for i in range(5)],
         }
         out = wg.select(payload)
-        # free 20, target 40 → need +20G. Each reclaim frees the 6G build/, NOT
+        # free 148, target 170 → need +22G. Each reclaim frees the 6G build/, NOT
         # the 10G worktree, so the PROJECTION expects four to be enough.
         self.assertEqual(out["summary"]["projected_sufficient_count"], 4)
         # …but every eligible candidate is still handed over. select() used to
@@ -119,7 +119,7 @@ class TestSelect(unittest.TestCase):
         than promised (open handles, hard links, a build still growing). It must
         still have somewhere to go."""
         payload = {
-            "free_gb": 20, "running_dirs": [],
+            "free_gb": 148, "running_dirs": [],
             "worktrees": [wt(f"w{i}", idle=30 + i, size=10, build_size=6) for i in range(5)],
         }
         reclaim = wg.select(payload)["reclaim"]
@@ -154,15 +154,15 @@ class TestSelect(unittest.TestCase):
     def test_thresholds_echoed_in_summary(self):
         out = wg.select({"free_gb": 2, "running_dirs": [], "worktrees": []})
         self.assertEqual(out["summary"]["thresholds"]["STALE_OPEN_IDLE_DAYS"], 14)
-        self.assertEqual(out["summary"]["thresholds"]["PRESSURE_GATE_GB"], 25)
-        self.assertEqual(out["summary"]["thresholds"]["TARGET_FREE_GB"], 40)
+        self.assertEqual(out["summary"]["thresholds"]["PRESSURE_GATE_GB"], 150)
+        self.assertEqual(out["summary"]["thresholds"]["TARGET_FREE_GB"], 170)
         self.assertEqual(out["summary"]["thresholds"]["CRITICAL_GATE_GB"], 5)
         self.assertEqual(out["summary"]["thresholds"]["CRITICAL_IDLE_DAYS"], 2)
 
 
 class TestCriticalTier(unittest.TestCase):
     def test_routine_pressure_does_not_touch_keep_builds(self):
-        # 10G free (< 25 routine, but >= 5 critical): idle KEEP build stays KEEP,
+        # 10G free (< 150 routine, but >= 5 critical): idle KEEP build stays KEEP,
         # NOT reclaimed. This is the 12:10-tick case — nothing safe to reclaim.
         out = wg.select({"free_gb": 10, "running_dirs": [],
                          "worktrees": [wt("k", idle=3, size=7)]})
@@ -213,15 +213,15 @@ class TestBuildSizeAccounting(unittest.TestCase):
 
     def test_projection_advances_by_build_size_only(self):
         # One 30G worktree with a 5G build. The old math projected 2 + 30 = 32
-        # and stopped; the truth is 2 + 5 = 7, still far under the 40G target.
+        # and stopped; the truth is 2 + 5 = 7, still far under the 170G target.
         out = wg.select({"free_gb": 2, "running_dirs": [],
                          "worktrees": [wt("a", idle=40, size=30, build_size=5)]})
         self.assertEqual(out["summary"]["projected_free_gb"], 7.0)
         self.assertTrue(out["summary"]["projection_is_lower_bound"])
 
     def test_a_gc_run_that_frees_less_than_the_worktree_keeps_going(self):
-        # Four idle chains, 25G each but only 5G of build/. Reaching 40 from 5
-        # needs 35G, and 20G is all there is — every one is selected rather than
+        # Four idle chains, 25G each but only 5G of build/. Reaching 170 from 5
+        # needs 165G, and 20G is all there is — every one is selected rather than
         # the first stopping the loop.
         out = wg.select({
             "free_gb": 5, "running_dirs": [],
@@ -256,11 +256,11 @@ class TestBuildSizeAccounting(unittest.TestCase):
             self.assertEqual(out["summary"]["projected_free_gb"], 2.0, f"build_size={bad!r}")
 
     def test_healthy_disk_still_reclaims_nothing(self):
-        out = wg.select({"free_gb": 50, "running_dirs": [],
+        out = wg.select({"free_gb": 200, "running_dirs": [],
                          "worktrees": [wt("a", idle=40, size=30, build_size=20)]})
         self.assertEqual(out["reclaim"], [])
         self.assertEqual(out["summary"]["reclaim_gb"], 0.0)
-        self.assertEqual(out["summary"]["projected_free_gb"], 50.0)
+        self.assertEqual(out["summary"]["projected_free_gb"], 200.0)
 
 
 if __name__ == "__main__":

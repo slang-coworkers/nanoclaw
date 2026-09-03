@@ -12,6 +12,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createAgentGroup } from './agent-groups.js';
+import { recordGhThreadOrigin } from './gh-thread-origin.js';
 import { closeDb, initTestDb, runMigrations } from './index.js';
 import { createSession } from './sessions.js';
 import {
@@ -20,6 +21,7 @@ import {
   getLatestEpisodeForSession,
   getPendingEpisodeForSession,
   ingestEpisode,
+  listEscalationEpisodes,
   listExpiredPending,
   markEffectApplied,
   markEffectEnqueued,
@@ -70,6 +72,92 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await closeDb();
+});
+
+describe('cost-escalation-episodes — listEscalationEpisodes (the `escalations` verb)', () => {
+  it('lists episodes newest-first, enriched with coworker; filters by state/group/session', async () => {
+    await ingestEpisode(
+      capEpisode({
+        episode_id: 'e-a',
+        short_id: 'cst-a',
+        decision_state: 'stopped',
+        spent_usd: 20,
+        created_at: '2026-08-20T12:00:00.000Z',
+      }),
+    );
+    await createAgentGroup({ id: 'ag-two', name: 'Two', folder: 'two', created_at: NOW });
+    await createSession({
+      id: 'sess-two',
+      agent_group_id: 'ag-two',
+      messaging_group_id: null,
+      thread_id: null,
+      agent_provider: 'claude',
+      status: 'active',
+      container_status: 'running',
+      last_active: NOW,
+      created_at: NOW,
+    });
+    await ingestEpisode(
+      capEpisode({
+        episode_id: 'e-b',
+        short_id: 'cst-b',
+        session_id: 'sess-two',
+        agent_group_id: 'ag-two',
+        decision_state: 'continued',
+        spent_usd: 5,
+        created_at: '2026-08-20T13:00:00.000Z',
+      }),
+    );
+
+    const all = await listEscalationEpisodes();
+    expect(all.map((r) => r.episode_id)).toEqual(['e-b', 'e-a']); // newest-first
+    expect(all.find((r) => r.episode_id === 'e-a')?.group_folder).toBe('cost');
+    expect(all.find((r) => r.episode_id === 'e-b')?.group_folder).toBe('two');
+    expect(all.find((r) => r.episode_id === 'e-a')?.gh_author).toBeNull(); // no gh thread
+
+    expect((await listEscalationEpisodes({ state: 'stopped' })).map((r) => r.episode_id)).toEqual(['e-a']);
+    expect((await listEscalationEpisodes({ groupFolder: 'two' })).map((r) => r.episode_id)).toEqual(['e-b']);
+    expect((await listEscalationEpisodes({ sessionId: SESSION_ID })).map((r) => r.episode_id)).toEqual(['e-a']);
+  });
+
+  it('attributes a GitHub-thread session to its issue/PR author', async () => {
+    await createSession({
+      id: 'sess-gh',
+      agent_group_id: 'ag-cost',
+      messaging_group_id: null,
+      thread_id: 'gh-issue-42',
+      agent_provider: 'claude',
+      status: 'active',
+      container_status: 'running',
+      last_active: NOW,
+      created_at: NOW,
+    });
+    await recordGhThreadOrigin({
+      threadId: 'gh-issue-42',
+      repo: 'shader-slang/slang',
+      number: 42,
+      kind: 'issue',
+      author: 'tangent-vector',
+    });
+    await ingestEpisode(
+      capEpisode({ episode_id: 'e-gh', short_id: 'cst-gh', session_id: 'sess-gh', decision_state: 'stopped' }),
+    );
+
+    const byAuthor = await listEscalationEpisodes({ ghAuthor: 'tangent-vector' });
+    expect(byAuthor.map((r) => r.episode_id)).toEqual(['e-gh']);
+    expect(byAuthor[0].gh_author).toBe('tangent-vector');
+    expect(byAuthor[0].gh_repo).toBe('shader-slang/slang');
+    expect(byAuthor[0].gh_number).toBe(42);
+    expect(await listEscalationEpisodes({ ghAuthor: 'nobody' })).toEqual([]); // no match
+  });
+
+  it('clamps limit to at least 1', async () => {
+    await ingestEpisode(capEpisode({ episode_id: 'e-1', short_id: 'cst-1', created_at: '2026-08-20T12:00:00.000Z' }));
+    await ingestEpisode(capEpisode({ episode_id: 'e-2', short_id: 'cst-2', created_at: '2026-08-20T13:00:00.000Z' }));
+    expect((await listEscalationEpisodes({ limit: 1 })).length).toBe(1);
+    expect((await listEscalationEpisodes({ limit: 0 })).length).toBe(1); // clamped to >= 1
+    expect((await listEscalationEpisodes({ limit: 1.5 })).length).toBe(1); // non-integer floored → valid LIMIT (no datatype mismatch)
+  });
 });
 
 describe('cost-escalation-episodes — idempotent ingest', () => {
