@@ -48,6 +48,15 @@ import {
   type StoppedSessionView,
 } from '../cost-cap-sessions.js';
 import { readCostPerCoworker, type CostPerCoworkerResult } from '../cost-per-coworker.js';
+import { readCostHistory, isValidDate, HISTORY_BY, type HistoryBy, type CostHistoryResult } from '../cost-history.js';
+
+/**
+ * Cost sources, by verb — the transcript engine (`sessions`) is the COST OF
+ * RECORD (matched the Anthropic bill to ~103%). `coworkers` (OneCLI gateway
+ * body-usage) and `history` (the #65 per-turn ledger) are ALTERNATE sources with
+ * caveats (litellm undercounts streamed today; the ledger is partial pre-2026-08-31)
+ * — callers select them explicitly; they are not the default and not hidden.
+ */
 
 /** Who is making the change, for the row's audit column. */
 function actorLabel(ctx: { caller: string; agentGroupId?: string } | undefined): string {
@@ -701,13 +710,18 @@ registerResource({
     coworkers: {
       access: 'open',
       description:
-        "Cost per coworker (agent group), from the inference gateway's EXACT per-request cost — the litellm " +
-        'number the OneCLI gateway captures into request_logs (header x-litellm-response-cost-original), rolled ' +
-        "up by agent group. Not a token estimate: it is the billing system's own figure, date-correct, covering " +
-        'both Claude and Codex (both route through the gateway). Read HOST-SIDE only — a cli_scope=global caller ' +
-        'gets back just the numbers, never OneCLI DB access. Needs the gateway capture flag ' +
-        '(ONECLI_CAPTURE_RESPONSE_HEADERS) + ONECLI_PG_CONTAINER; reports configured:false when unset. ' +
-        'Filters: --group (coworker folder), --period (e.g. 30d, 24h; default all-time).',
+        '[ALTERNATE source — NOT the default cost of record (that is `cost-cap sessions`, transcript-priced). ' +
+        'Currently UNDERCOUNTS: the gateway records $0 for streamed responses (≈all coworker traffic); accurate ' +
+        'only once the body-usage tap ships. Use for cross-check.] ' +
+        "Cost per coworker (agent group) from the inference gateway's own per-request records: the OneCLI " +
+        "gateway captures each response body's token usage (usage_* keys) and this verb prices those tokens " +
+        "with NanoClaw's rate table — the same table the dashboard uses — so Claude and Codex are covered and " +
+        "reconcilable per model against litellm's cost header (reported separately as headerCostUsd; exact " +
+        'only for non-streamed calls). Calls without body usage (logged before the body-usage gateway went ' +
+        'live, or an unpriced model) are reported as UNKNOWN, never $0 — no backfill. Read HOST-SIDE only: a ' +
+        'cli_scope=global caller gets back just the numbers, never OneCLI DB access. Needs the gateway flags ' +
+        '(ONECLI_CAPTURE_RESPONSE_HEADERS + ONECLI_CAPTURE_BODY_USAGE_HOSTS) + ONECLI_PG_CONTAINER; reports ' +
+        'configured:false when unset. Filters: --group (coworker folder), --period (e.g. 30d, 24h; default all-time).',
       args: [
         { name: 'group', type: 'string', description: 'filter to one coworker workspace folder' },
         {
@@ -729,11 +743,99 @@ registerResource({
         const d = data as CostPerCoworkerResult;
         if (!d.configured) return d.note ?? 'Cost source not configured.';
         if (d.coworkers.length === 0) return d.note ?? 'No captured cost rows.';
-        const lines = [`Cost per coworker (${d.period}, source: ${d.source}) — total ${money(d.totalUsd)}:`];
+        const unknown = d.unknownCalls > 0 ? ` + ${d.unknownCalls} call${d.unknownCalls === 1 ? '' : 's'} UNKNOWN` : '';
+        const lines = [
+          `Cost per coworker (${d.period}; gateway body usage × NanoClaw rates) — total ${money(d.totalUsd)}${unknown}:`,
+        ];
         for (const c of d.coworkers) {
           const who = c.folder ?? (c.name || c.groupId);
-          lines.push(`  ${who}: ${money(c.costUsd)} · ${c.calls} call${c.calls === 1 ? '' : 's'}`);
+          let line = `  ${who}: ${money(c.costUsd)} · ${c.pricedCalls} priced call${c.pricedCalls === 1 ? '' : 's'}`;
+          if (c.unknownCalls > 0) line += ` · ${c.unknownCalls} UNKNOWN`;
+          if (c.unpricedModels.length > 0) line += ` (unpriced: ${c.unpricedModels.join(', ')})`;
+          lines.push(line);
         }
+        if (d.note) lines.push(d.note);
+        return lines.join('\n');
+      },
+    },
+
+    history: {
+      access: 'open',
+      description:
+        'Per-coworker cost over an ARBITRARY date range, bucketed by day / week / total — the one cost view ' +
+        'the live tools cannot give (status is point-in-time; sessions/stopped/coworkers only offer fixed ' +
+        '1d/7d/30d/all windows with no time axis). Reads the durable #65 cost ledger (`cost_events`, per-' +
+        'session outbound.db): one deduped, timestamped, token-priced row per billable unit, written dual-run ' +
+        "for every Claude message + Codex call. Sums each row's stored priced_usd (the ledger is " +
+        'rate_version=1, so that equals a token re-price) across ALL window generations — validated to carry ' +
+        'no /clear-rotation double counting. Covers Claude + Codex, split out per provider. Bounded only by ' +
+        "ledger retention (old sessions' outbound.db rotate out). Filters: --group (id/folder/name), --from " +
+        'and --to (YYYY-MM-DD, both inclusive), --by (day|week|total, default week).',
+      args: [
+        { name: 'group', type: 'string', description: 'Filter to one coworker (agent group id, folder, or name).' },
+        { name: 'from', type: 'string', description: 'Inclusive start date, YYYY-MM-DD.' },
+        { name: 'to', type: 'string', description: 'Inclusive end date, YYYY-MM-DD.' },
+        {
+          name: 'by',
+          type: 'string',
+          description: 'Bucket granularity: day|week|total (default week).',
+          default: 'week',
+        },
+      ],
+      examples: [
+        'ncl cost-cap history',
+        'ncl cost-cap history --from 2026-08-01 --to 2026-08-31 --by week',
+        'ncl cost-cap history --group slang-fixer --from 2026-08-25 --by day --json',
+      ],
+      handler: async (args) => {
+        const trim = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+        const by = String(args.by ?? 'week').trim() as HistoryBy;
+        if (!HISTORY_BY.includes(by)) {
+          throw new Error(`--by must be one of: ${HISTORY_BY.join(', ')}`);
+        }
+        for (const [flag, val] of [
+          ['from', args.from],
+          ['to', args.to],
+        ] as const) {
+          const s = trim(val);
+          if (s && !isValidDate(s)) throw new Error(`--${flag} must be a real YYYY-MM-DD date`);
+        }
+        return readCostHistory({ group: trim(args.group), from: trim(args.from), to: trim(args.to), by });
+      },
+      formatHuman: (data) => {
+        const d = data as CostHistoryResult;
+        const range = d.from || d.to ? `${d.from ?? '…'} → ${d.to ?? 'now'}` : 'all ledger history';
+        const mixed =
+          d.rate_versions.length && (d.rate_versions.length > 1 || d.rate_versions[0] !== 1)
+            ? ` [rate_versions ${d.rate_versions.join(',')}: report-as-billed]`
+            : '';
+        // Never present a total as authoritative when a read failed (finding 2).
+        const incomplete = d.complete
+          ? ''
+          : `⚠ INCOMPLETE: ${d.read_errors} session read(s) failed — totals are a LOWER BOUND.\n`;
+        // Pre-ledger baseline lumps are excluded from the buckets (finding 1);
+        // surface them so their absence from the per-period total is explicit.
+        const legacy =
+          d.legacy_baseline_usd > 0
+            ? `\n(excluded: ${usd(d.legacy_baseline_usd)} pre-ledger migration baseline — non-timestamped, ` +
+              `provider-ambiguous, likely #1327-inflated; not in the totals above)`
+            : '';
+        if (d.groups.length === 0) {
+          return `${incomplete}No attributable ledger spend for ${range} (${d.sessions_with_ledger}/${d.sessions_scanned} sessions carry a ledger; ${d.sessions_no_ledger} pre-ledger).${mixed}${legacy}`;
+        }
+        const lines = [
+          `${incomplete}Per-coworker cost — ${range}, by ${d.by} — total ${usd(d.grand_total_usd)}${mixed}`,
+          `  (${d.sessions_with_ledger}/${d.sessions_scanned} sessions carry ledger rows)`,
+        ];
+        for (const g of d.groups) {
+          lines.push(`\n${g.group_name}  ${usd(g.total_usd)}  (claude ${usd(g.claudeUsd)} · codex ${usd(g.codexUsd)})`);
+          if (d.by !== 'total') {
+            for (const b of g.buckets) {
+              lines.push(`    ${b.bucket}  ${usd(b.usd)}`);
+            }
+          }
+        }
+        if (legacy) lines.push(legacy);
         return lines.join('\n');
       },
     },
