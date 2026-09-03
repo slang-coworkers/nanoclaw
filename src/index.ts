@@ -359,30 +359,11 @@ async function main(): Promise<void> {
       log.debug('Dashboard credential reject — response registry not yet implemented');
     },
     onCostOverrideFn: async (sessionId: string, decision: 'continue' | 'stop') => {
-      // Pill = the SECONDARY surface, but with the SAME money-safety as the card.
-      //  1. A live PENDING episode → route through its CAS (at-most-once decision + fence).
-      //  2. No pending, but the session HAS a (resolved) episode → route with THAT episode's
-      //     epoch as the fence. This is the P0 fix: a bare unfenced override here would let a
-      //     pill Continue double-grant after a card Continue already rotated the generation.
-      //     The fence makes a duplicate/stale press a no-op, while a genuine reversal (the
-      //     generation is unchanged after a Stop) still applies.
-      //  3. No episode ever (stale runner / never escalated) → the legacy unconditional
-      //     override — the ONLY place an unfenced override is allowed.
-      const { getPendingEpisodeForSession, getLatestEpisodeForSession } =
-        await import('./db/cost-escalation-episodes.js');
-      const pending = await getPendingEpisodeForSession(sessionId);
-      if (pending) {
-        const { decideCostEpisode } = await import('./modules/cost-approval/index.js');
-        await decideCostEpisode(pending.episode_id, decision, 'dashboard:pill');
-        return;
-      }
-      const { routeCostOverrideToSession } = await import('./router.js');
-      const latest = await getLatestEpisodeForSession(sessionId);
-      await routeCostOverrideToSession({
-        sessionId,
-        decision,
-        ...(latest ? { epochKey: latest.epoch_key } : {}),
-      });
+      // The pill's Continue/Stop shares ONE money-safe decision path with
+      // `ncl cost-cap continue|stop` — see `applyCostOverrideDecision` for the
+      // three-case pending/resolved/legacy fencing this used to inline here.
+      const { applyCostOverrideDecision } = await import('./modules/cost-approval/index.js');
+      await applyCostOverrideDecision(sessionId, decision, 'dashboard:pill');
     },
     onSetCeilingFn: async (raw: unknown) => {
       const { submitCostCeilingAdjustment } = await import('./modules/cost-ceiling-adjustment/index.js');
