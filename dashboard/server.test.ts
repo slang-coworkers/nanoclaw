@@ -744,10 +744,7 @@ describe('dashboard server', () => {
     db.prepare(
       `INSERT INTO pending_approvals (approval_id, session_id, request_id, action, payload, created_at, agent_group_id, status, title)
        VALUES ('appr-1', 'sess-1', 'req-1', 'cli_command', ?, ?, 'ag-orch', 'pending', 'CLI: wirings-delete')`,
-    ).run(
-      JSON.stringify({ frame: { id: 'cli-1', command: 'wirings-delete', args: { id: 'mga-self' } } }),
-      now,
-    );
+    ).run(JSON.stringify({ frame: { id: 'cli-1', command: 'wirings-delete', args: { id: 'mga-self' } } }), now);
     db.close();
     forceOpenDbForTests();
 
@@ -1349,7 +1346,9 @@ describe('dashboard server', () => {
     //   1. its own dashboard messaging group (dashboard:review-bot)
     //   2. a row in admin's messaging group with @reviewbot engage pattern
     const ownMg = verifyDb
-      .prepare("SELECT id FROM messaging_groups WHERE platform_id = 'dashboard:review-bot' AND channel_type = 'dashboard'")
+      .prepare(
+        "SELECT id FROM messaging_groups WHERE platform_id = 'dashboard:review-bot' AND channel_type = 'dashboard'",
+      )
       .get() as { id: string } | undefined;
     expect(ownMg, 'direct routing must give the coworker its own dashboard tab').toBeTruthy();
     const ownMembership = verifyDb
@@ -1390,12 +1389,12 @@ describe('dashboard server', () => {
     const prodCreated = await prod.json();
 
     const verifyDb = new Database(DB_PATH, { readonly: true, fileMustExist: true });
-    const scopedRow = verifyDb
-      .prepare('SELECT sidebar_group FROM agent_groups WHERE id = ?')
-      .get(scopedCreated.id) as { sidebar_group: string | null };
-    const prodRow = verifyDb
-      .prepare('SELECT sidebar_group FROM agent_groups WHERE id = ?')
-      .get(prodCreated.id) as { sidebar_group: string | null };
+    const scopedRow = verifyDb.prepare('SELECT sidebar_group FROM agent_groups WHERE id = ?').get(scopedCreated.id) as {
+      sidebar_group: string | null;
+    };
+    const prodRow = verifyDb.prepare('SELECT sidebar_group FROM agent_groups WHERE id = ?').get(prodCreated.id) as {
+      sidebar_group: string | null;
+    };
     verifyDb.close();
 
     expect(scopedRow.sidebar_group).toBe('dashboard:user1');
@@ -2942,9 +2941,7 @@ describe('/api/messages — Slack-style thread filtering', () => {
   it('thread view shows self-loop a2a rows (explicit thread defeats the self-echo hide)', async () => {
     seedThreadScenario();
     seedSelfLoopThread();
-    const res = await fetch(
-      `${baseUrl}/api/messages?group=thread-agent&thread_id=self-loop-thread&limit=50`,
-    );
+    const res = await fetch(`${baseUrl}/api/messages?group=thread-agent&thread_id=self-loop-thread&limit=50`);
     expect(res.status).toBe(200);
     const data = (await res.json()) as { messages: any[] };
     const ids = data.messages.map((m) => m.id);
@@ -2957,9 +2954,7 @@ describe('/api/messages — Slack-style thread filtering', () => {
   // (e.g. one slang-fixer chain handing work to another) that the old
   // platform_id-only isSelfEcho test wrongly conflated with single-session
   // routing echo.
-  function seedCrossSessionA2a(opts: {
-    sourceSessionId: string | null;
-  }): { receiverSessionId: string; rowId: string } {
+  function seedCrossSessionA2a(opts: { sourceSessionId: string | null }): { receiverSessionId: string; rowId: string } {
     const db = new Database(DB_PATH);
     const now = new Date().toISOString();
     const receiverId = 'sess-a2a-receiver';
@@ -3029,9 +3024,7 @@ describe('/api/messages — Slack-style thread filtering', () => {
       .run(JSON.stringify({ text: 'single-session loop' }), now);
     inDb.close();
     forceOpenDbForTests();
-    const res = await fetch(
-      `${baseUrl}/api/messages?group=thread-agent&session_id=sess-true-echo&limit=50`,
-    );
+    const res = await fetch(`${baseUrl}/api/messages?group=thread-agent&session_id=sess-true-echo&limit=50`);
     expect(res.status).toBe(200);
     const data = (await res.json()) as { messages: any[] };
     const ids = data.messages.map((m) => m.id);
@@ -3085,9 +3078,7 @@ describe('/api/messages — Slack-style thread filtering', () => {
     expect(mainData.messages.map((m) => m.id)).not.toContain('claudemd-refresh-1');
 
     // Thread view: surfaces it.
-    const thr = await fetch(
-      `${baseUrl}/api/messages?group=thread-agent&thread_id=claudemd-thread&limit=50`,
-    );
+    const thr = await fetch(`${baseUrl}/api/messages?group=thread-agent&thread_id=claudemd-thread&limit=50`);
     const thrData = (await thr.json()) as { messages: any[] };
     expect(thrData.messages.map((m) => m.id)).toContain('claudemd-refresh-1');
   });
@@ -3406,17 +3397,15 @@ describe('matchContainerName', () => {
   it('folder-scoped Shared Artifacts falls back when the root session container is stopped', () => {
     const rootSession = 'sess-root-tail';
     const threadContainer = `${PREFIX}-orchestrator-thread-tail-1762512225123`;
-    expect(
-      matchContainerNameForRequest([threadContainer], 'orchestrator', rootSession, false, PREFIX),
-    ).toBe(threadContainer);
+    expect(matchContainerNameForRequest([threadContainer], 'orchestrator', rootSession, false, PREFIX)).toBe(
+      threadContainer,
+    );
   });
 
   it('an explicit thread never falls back to another session container', () => {
     const requestedSession = 'sess-requested-tail';
     const otherContainer = `${PREFIX}-orchestrator-other-tail-1762512225123`;
-    expect(
-      matchContainerNameForRequest([otherContainer], 'orchestrator', requestedSession, true, PREFIX),
-    ).toBeNull();
+    expect(matchContainerNameForRequest([otherContainer], 'orchestrator', requestedSession, true, PREFIX)).toBeNull();
   });
 
   it('passes container commands as execFile arguments without host-shell interpolation', () => {
@@ -3456,7 +3445,9 @@ describe('/api/messages session scoping + swim-lane', () => {
     const sessDir = path.join(DATA_DIR, 'v2-sessions', s.ag, s.id);
     mkdirSync(sessDir, { recursive: true });
     const inDb = new Database(path.join(sessDir, 'inbound.db'));
-    inDb.exec('CREATE TABLE messages_in (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, thread_id TEXT)');
+    inDb.exec(
+      'CREATE TABLE messages_in (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, thread_id TEXT)',
+    );
     inDb
       .prepare('INSERT INTO messages_in (id, kind, content, timestamp, thread_id) VALUES (?, ?, ?, ?, ?)')
       .run(msg.id, 'chat', JSON.stringify({ text: msg.text }), msg.ts, s.thread);
@@ -3715,7 +3706,15 @@ describe('/api/sessions — GitHub PR/issue badge', () => {
     db.prepare(
       `INSERT INTO pr_session_mappings (repo, pr_number, agent_group_id, session_id, thread_id, created_at, owner_instance)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ).run('shader-slang/slang', 11500, 'ag-fixer', 'sess-fixer', 'gh-issue-shader-slang/slang-11487', new Date().toISOString(), 'prod');
+    ).run(
+      'shader-slang/slang',
+      11500,
+      'ag-fixer',
+      'sess-fixer',
+      'gh-issue-shader-slang/slang-11487',
+      new Date().toISOString(),
+      'prod',
+    );
     db.close();
     forceOpenDbForTests();
 
@@ -3749,10 +3748,25 @@ describe('/api/sessions — GitHub PR/issue badge', () => {
     db.prepare(
       `INSERT INTO pr_session_mappings (repo, pr_number, agent_group_id, session_id, thread_id, created_at, owner_instance)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ).run('shader-slang/slang', 11500, 'ag-fixer2', 'sess-fixer2', 'gh-issue-shader-slang/slang-11487', new Date().toISOString(), 'prod');
+    ).run(
+      'shader-slang/slang',
+      11500,
+      'ag-fixer2',
+      'sess-fixer2',
+      'gh-issue-shader-slang/slang-11487',
+      new Date().toISOString(),
+      'prod',
+    );
     db.prepare(
       `INSERT INTO gh_thread_origin (thread_id, repo, number, kind, author, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run('gh-issue-shader-slang/slang-11487', 'shader-slang/slang', 11487, 'issue', 'the-original-filer', new Date().toISOString());
+    ).run(
+      'gh-issue-shader-slang/slang-11487',
+      'shader-slang/slang',
+      11487,
+      'issue',
+      'the-original-filer',
+      new Date().toISOString(),
+    );
     db.close();
     forceOpenDbForTests();
 
@@ -3766,7 +3780,11 @@ describe('/api/sessions — GitHub PR/issue badge', () => {
     // No CREATE TABLE for either — this branch's own DB, and any install that
     // hasn't run the nv-main migration yet, looks exactly like this.
     const db = createDashboardTestDb();
-    seedSessionRow(db, { id: 'sess-premigration', agentGroupId: 'ag-premigration', threadId: 'gh-pr-shader-slang/slang-1' });
+    seedSessionRow(db, {
+      id: 'sess-premigration',
+      agentGroupId: 'ag-premigration',
+      threadId: 'gh-pr-shader-slang/slang-1',
+    });
     db.close();
     forceOpenDbForTests();
 
@@ -3779,5 +3797,33 @@ describe('/api/sessions — GitHub PR/issue badge', () => {
     // — but there is no author, and the response as a whole did not break.
     expect(row.ghAuthor).toBeUndefined();
     expect(Array.isArray(data.sessions)).toBe(true);
+  });
+});
+
+describe('/api/sessions — cost totals (dash-6)', () => {
+  it('carries costTotals from the ccusage cache alongside the per-row costs', async () => {
+    const db = createDashboardTestDb();
+    db.prepare(
+      'INSERT INTO agent_groups (id, name, folder, is_admin, routing, created_at) VALUES (?, ?, ?, 0, ?, ?) ON CONFLICT(id) DO NOTHING',
+    ).run('ag-totals', 'Totals', 'totals', 'direct', new Date().toISOString());
+    db.prepare('INSERT INTO sessions (id, agent_group_id, thread_id, status, created_at) VALUES (?, ?, ?, ?, ?)').run(
+      'sess-totals',
+      'ag-totals',
+      null,
+      'active',
+      new Date().toISOString(),
+    );
+    db.close();
+    forceOpenDbForTests();
+    const data = await (await fetch(`${baseUrl}/api/sessions?period=7d`)).json();
+    expect(data.period).toBe('7d');
+    expect(data.costTotals).toBeTruthy();
+    expect(typeof data.costTotals.available).toBe('boolean');
+    expect(typeof data.costTotals.lastRefresh).toBe('number');
+    expect(typeof data.costTotals.ccusageTotalUsd).toBe('number');
+    expect(data.costTotals.byGroupId).toEqual(expect.any(Object));
+    expect(data.costTotals.byGroupFolder).toEqual(expect.any(Object));
+    // Never refreshed in the test process → unavailable with zero totals, not an error.
+    if (!data.costTotals.available) expect(data.costTotals.ccusageTotalUsd).toBe(0);
   });
 });

@@ -1706,7 +1706,7 @@ function reviewRoundsHtml(rr) {
   if (rr.complete === false) {
     const errs = (rr.errors || [])
       .slice(0, 4)
-      .map((e) => esc(typeof e === 'string' ? e : (e && (e.what + ': ' + e.detail)) || String(e)))
+      .map((e) => esc(typeof e === 'string' ? e : (e && e.what + ': ' + e.detail) || String(e)))
       .join('<br>');
     return (
       '<div style="margin-top:20px">' +
@@ -1833,7 +1833,8 @@ function reviewRoundsTrendSvg(weekly) {
         `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.6" fill="${color}"><title>${esc(w.week)} — ${k === 'botAuthored' ? 'bot' : 'human'}: ${v} cycles/PR (${c.prs || 0} PRs${comp})</title></circle>`,
       );
     });
-    const line = pts.length > 1 ? `<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2"/>` : '';
+    const line =
+      pts.length > 1 ? `<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2"/>` : '';
     return line + dots.join('');
   };
   const xlabels = weekly
@@ -5749,6 +5750,7 @@ async function fetchAndApplySessions() {
   const data = await res.json();
   adminState.sessions = data.sessions || [];
   sessionsView.unavailable = data.costUnavailable ?? null;
+  sessionsView.costTotals = data.costTotals || null;
   sessionsView.transcriptsBase = data.transcriptsBase || '';
   reconcileCeilingPendingState(adminState.sessions);
 }
@@ -5893,7 +5895,9 @@ function renderCostCapCell(s) {
     ? '<span title="immortal (orchestrator/admin) — never stopped" style="color:var(--text-muted)"> ∞</span>'
     : '';
   const ceiling = typeof s.costCeiling === 'number' ? fmtUsd(s.costCeiling) : null;
-  const ceilingSuffix = ceiling ? `<span style="color:var(--text-muted)"> / ${ceiling} ceiling${perDay}</span>` : perDay;
+  const ceilingSuffix = ceiling
+    ? `<span style="color:var(--text-muted)"> / ${ceiling} ceiling${perDay}</span>`
+    : perDay;
   let cell;
   if (status === 'stopped') {
     cell =
@@ -5905,7 +5909,9 @@ function renderCostCapCell(s) {
     // applied to spend-vs-typical instead of spend-vs-cap — the mental model
     // carries over even though the underlying threshold changed).
     const ratio =
-      typeof s.costP99 === 'number' && s.costP99 > 0 && typeof s.costSpent === 'number' ? s.costSpent / s.costP99 : null;
+      typeof s.costP99 === 'number' && s.costP99 > 0 && typeof s.costSpent === 'number'
+        ? s.costSpent / s.costP99
+        : null;
     const color = ratio == null ? '#64748B' : ratio >= 1 ? '#EF4444' : ratio >= 0.8 ? '#F59E0B' : '#10B981';
     cell =
       `<span style="border:1px solid ${color};border-radius:4px;padding:1px 6px;white-space:nowrap">` +
@@ -5937,9 +5943,7 @@ function renderGithubOriginCell(s) {
   const link = s.ghUrl
     ? `<a href="${escAttr(s.ghUrl)}" target="_blank" rel="noopener" style="color:var(--accent)" title="${escAttr(s.ghRepo)} ${kindLabel} #${s.ghNumber}">${esc(label)}</a>`
     : esc(label);
-  const author = s.ghAuthor
-    ? `<span style="color:var(--text-muted);font-size:9px"> · @${esc(s.ghAuthor)}</span>`
-    : '';
+  const author = s.ghAuthor ? `<span style="color:var(--text-muted);font-size:9px"> · @${esc(s.ghAuthor)}</span>` : '';
   return link + author;
 }
 
@@ -5951,7 +5955,11 @@ function renderGithubOriginCell(s) {
 // to pin with a direct test.
 function sessionGroupOptions(sessions) {
   return [
-    ...new Map((sessions || []).filter((s) => s.group_folder && !s.group_paused).map((s) => [s.group_folder, s.group_name || s.group_folder])).entries(),
+    ...new Map(
+      (sessions || [])
+        .filter((s) => s.group_folder && !s.group_paused)
+        .map((s) => [s.group_folder, s.group_name || s.group_folder]),
+    ).entries(),
   ].sort((a, b) => a[1].localeCompare(b[1]));
 }
 
@@ -6072,9 +6080,37 @@ function renderAdminSessions() {
           )
           .join('') +
         `</div>`;
+  // Header totals (dash-6). The ccusage total for this window is the SAME number
+  // the Overview shows: every transcript in the selected coworker tree(s), including
+  // skill-run transcripts that never map to a session. "Attributed" is the sum of the
+  // session rows for the selected coworker(s) — ignoring the status filter, so the
+  // split describes the money, not the view. The remainder is skills / unattributed.
+  // The total REPLACES the row-sum as the headline; the two are never added.
+  const ct = sessionsView.costTotals;
+  const groupRows =
+    sessionsView.groupFilter === 'all'
+      ? adminState.sessions
+      : adminState.sessions.filter((s) => s.group_folder === sessionsView.groupFilter);
+  const attributedAll = groupRows.reduce((s, r) => s + (r.cost || 0), 0);
+  const ccTotal =
+    ct && ct.available
+      ? sessionsView.groupFilter === 'all'
+        ? ct.ccusageTotalUsd
+        : ct.byGroupFolder[sessionsView.groupFilter]
+      : undefined;
+  const totalsLine = costUnavailable
+    ? 'cost n/a'
+    : typeof ccTotal === 'number'
+      ? `<b style="color:#10B981" title="${escAttr('Total priced from every transcript in the coworker tree(s) for this window — the same number as the Overview')}">${fmtUsd(ccTotal)} total</b>` +
+        ` · ${fmtUsd(attributedAll)} attributed to sessions` +
+        ` · <span title="${escAttr('Transcripts not mapped to any session: skill runs, legacy / unmapped history')}">${fmtUsd(Math.max(0, ccTotal - attributedAll))} skills / unattributed</span>` +
+        (ct.lastRefresh
+          ? ` <span style="opacity:.7">(as of ${new Date(ct.lastRefresh).toLocaleTimeString()})</span>`
+          : '')
+      : `${fmtUsd(attributedAll)} attributed to sessions · <span title="${escAttr('The whole-tree total comes from the ccusage cache, which is being refreshed')}">total pending</span>`;
   let html =
     controls +
-    `<div style="color:var(--text-muted);font-size:10px;margin-bottom:6px">${rows.length} sessions · ${costUnavailable ? 'n/a' : fmtUsd(totalCost)} over ${p}</div>` +
+    `<div style="color:var(--text-muted);font-size:10px;margin-bottom:6px">${rows.length} sessions over ${p} · ${totalsLine}</div>` +
     distPills +
     `<table class="admin-table">
     <tr><th>#</th><th>Coworker</th><th>Session ID</th><th title="The PR/issue this session's work is tied to, and who filed it — blank when the session has no GitHub association">PR/Issue</th><th style="text-align:right">Cost (${p})</th><th title="Color = spend vs this group's typical (p99). Grey 'stopped' = actually blocked at its cost ceiling.">Cost status</th><th style="text-align:right">Tokens</th><th>Last active</th><th>Actions</th></tr>`;
@@ -6540,7 +6576,9 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
     const input = document.querySelector(`input.cost-ceiling-input[data-session-id="${CSS.escape(sid)}"]`);
     const typedCents = input ? parseUsdInputToCents(input.value) : null;
     if (typedCents == null) {
-      alert(`Enter a valid ceiling amount between ${fmtUsd(CEILING_MIN_CENTS / 100)} and ${fmtUsd(CEILING_MAX_CENTS / 100)}.`);
+      alert(
+        `Enter a valid ceiling amount between ${fmtUsd(CEILING_MIN_CENTS / 100)} and ${fmtUsd(CEILING_MAX_CENTS / 100)}.`,
+      );
       return;
     }
     if (typedCents < CEILING_MIN_CENTS || typedCents > CEILING_MAX_CENTS) {
@@ -6562,7 +6600,12 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
     const confirmMsg = `Set cost ceiling for session "${sid}" from ${oldStr} to ${newStr}? Current spend: ${fmtUsd(s.costSpent || 0)}.${warning}`;
     if (!confirm(confirmMsg)) return;
 
-    const requestId = resolveCeilingRequestId(ceilingInFlight.get(sid), targetCeilingCents, expectedEpochKey, expectedCeilingCents);
+    const requestId = resolveCeilingRequestId(
+      ceilingInFlight.get(sid),
+      targetCeilingCents,
+      expectedEpochKey,
+      expectedCeilingCents,
+    );
     ceilingInFlight.set(sid, { requestId, targetCeilingCents, expectedEpochKey, expectedCeilingCents });
     ceilingPending.add(sid);
     ceilingDrafts.set(sid, targetCeilingCents);
@@ -6572,7 +6615,9 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
       const res = await fetch(`/api/sessions/${encodeURIComponent(sid)}/cost-ceiling`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildCeilingRequestBody(requestId, targetCeilingCents, expectedEpochKey, expectedCeilingCents)),
+        body: JSON.stringify(
+          buildCeilingRequestBody(requestId, targetCeilingCents, expectedEpochKey, expectedCeilingCents),
+        ),
       });
       let data = null;
       try {
