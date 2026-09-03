@@ -50,6 +50,32 @@ import {
 import { readCostPerCoworker, type CostPerCoworkerResult } from '../cost-per-coworker.js';
 import { readCostHistory, isValidDate, HISTORY_BY, type HistoryBy, type CostHistoryResult } from '../cost-history.js';
 
+/**
+ * v1 cost model: the transcript-priced engine (`sessions`, reads the dashboard's
+ * `/api/sessions`) is the COST OF RECORD — it matched the real Anthropic bill to
+ * ~103% for August. Two OTHER cost sources exist but are NOT cost of record and
+ * are gated OFF by default behind this flag, to be finished as "v2":
+ *   - `coworkers` — the OneCLI gateway body-usage tap (#68/#1433). Structurally
+ *     $0 for streamed responses today, so it undercounts; re-enable next month.
+ *   - `history` — the per-turn #65 `cost_events` ledger. Its writer only rolled
+ *     out with v2.3.0 (2026-08-31), so it covers ~5% of pre-rollout spend and is
+ *     a coverage curve, not spend. It also misses ~15% (subagent/skill/codex)
+ *     even where covered.
+ * Set NANOCLAW_COST_V2=1 to reveal them (operators who understand the caveats).
+ */
+const COST_V2_ENABLED = process.env.NANOCLAW_COST_V2 === '1' || process.env.NANOCLAW_COST_V2 === 'true';
+
+/** Guard body for a v2-gated verb: throws unless the operator opted in. */
+function requireCostV2(verb: string): void {
+  if (!COST_V2_ENABLED) {
+    throw new Error(
+      `cost-cap ${verb} is disabled in v1 — it is experimental and NOT the cost of record. ` +
+        `Use \`ncl cost-cap sessions\` (transcript-priced, matches the bill) for per-coworker cost. ` +
+        `Enable this v2 source with NANOCLAW_COST_V2=1.`,
+    );
+  }
+}
+
 /** Who is making the change, for the row's audit column. */
 function actorLabel(ctx: { caller: string; agentGroupId?: string } | undefined): string {
   return ctx?.caller === 'agent' ? (ctx.agentGroupId ?? 'agent') : 'host';
@@ -702,6 +728,7 @@ registerResource({
     coworkers: {
       access: 'open',
       description:
+        '[v2 · DISABLED in v1 — experimental, NOT cost of record; set NANOCLAW_COST_V2=1. Use `cost-cap sessions`.] ' +
         "Cost per coworker (agent group) from the inference gateway's own per-request records: the OneCLI " +
         "gateway captures each response body's token usage (usage_* keys) and this verb prices those tokens " +
         "with NanoClaw's rate table — the same table the dashboard uses — so Claude and Codex are covered and " +
@@ -725,6 +752,7 @@ registerResource({
         'ncl cost-cap coworkers --group slang-fixer --json',
       ],
       handler: async (args) => {
+        requireCostV2('coworkers');
         const trim = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
         return readCostPerCoworker({ period: trim(args.period), groupFolder: trim(args.group) });
       },
@@ -751,6 +779,8 @@ registerResource({
     history: {
       access: 'open',
       description:
+        '[v2 · DISABLED in v1 — the #65 ledger is a coverage curve (writer rolled out 2026-08-31), NOT cost of ' +
+        'record; set NANOCLAW_COST_V2=1. Use `cost-cap sessions` for the transcript-priced truth.] ' +
         'Per-coworker cost over an ARBITRARY date range, bucketed by day / week / total — the one cost view ' +
         'the live tools cannot give (status is point-in-time; sessions/stopped/coworkers only offer fixed ' +
         '1d/7d/30d/all windows with no time axis). Reads the durable #65 cost ledger (`cost_events`, per-' +
@@ -777,6 +807,7 @@ registerResource({
         'ncl cost-cap history --group slang-fixer --from 2026-08-25 --by day --json',
       ],
       handler: async (args) => {
+        requireCostV2('history');
         const trim = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
         const by = String(args.by ?? 'week').trim() as HistoryBy;
         if (!HISTORY_BY.includes(by)) {

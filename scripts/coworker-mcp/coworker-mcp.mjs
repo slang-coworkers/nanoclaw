@@ -30,7 +30,12 @@ const ALLOWED_ORIGINS = new Set(
     .map((s) => s.trim())
     .filter(Boolean),
 );
-const SERVER_INFO = { name: 'nanoclaw-coworkers', version: '0.6.0' };
+const SERVER_INFO = { name: 'nanoclaw-coworkers', version: '0.7.0' };
+// v1 cost model: transcript-priced `cost_by_coworker` (via `ncl cost-cap sessions`)
+// is the cost of record. The OneCLI `cost_per_coworker` and the ledger
+// `cost_history` are NOT cost of record and are hidden unless NANOCLAW_COST_V2=1.
+const COST_V2 = process.env.NANOCLAW_COST_V2 === '1' || process.env.NANOCLAW_COST_V2 === 'true';
+const COST_V2_ONLY_TOOLS = new Set(['cost_per_coworker', 'cost_history']);
 const SUPPORTED_PROTOCOLS = new Set(['2025-06-18', '2025-03-26', '2024-11-05']);
 const DEFAULT_PROTOCOL = '2025-06-18';
 const MAX_OUT = 100_000;
@@ -233,7 +238,7 @@ const TOOLS = [
   {
     name: 'cost_status',
     description:
-      'V2: live cost state for a session (ok/warn/escalated/stopped + observed cost). Check this BEFORE continue_session (avoid blind resume).',
+      "Live cap ENFORCEMENT state for one session: status (ok/warn/escalated/stopped), cap, ceiling, and the runner's windowed enforcement spend the cap acts on. This spend is the ENFORCEMENT counter, NOT the cost of record — it is per-window and can diverge from actual spend; for real per-coworker/session spend use cost_by_coworker (transcript-priced). Use this to decide continue/stop; check it BEFORE continue_session (avoid blind resume).",
     inputSchema: {
       type: 'object',
       properties: { session_id: { type: 'string' } },
@@ -277,7 +282,7 @@ const TOOLS = [
   {
     name: 'list_stopped_sessions',
     description:
-      'V2: the LIVE currently-blocked set — sessions whose cost-cap status is `stopped` RIGHT NOW (hard-blocked pending a Continue/Stop). Reads the dashboard\'s own /api/sessions and applies the SAME `costStatus===stopped` predicate the dashboard\'s "stopped" count uses, so it reports the IDENTICAL set, deduped per session. This — NOT list_cost_escalations — answers "which coworkers are blocked on cost right now"; the escalations list is append-only HISTORY and includes long-resolved / exited sessions that are no longer blocked. Optional coworker folder filter. Pair with cost_status (live per-session) + continue_session.',
+      'V2: the LIVE currently-blocked set — sessions whose cost-cap status is `stopped` RIGHT NOW (hard-blocked pending a Continue/Stop). Reads the dashboard\'s own /api/sessions and applies the SAME `costStatus===stopped` predicate the dashboard\'s "stopped" count uses, so it reports the IDENTICAL set, deduped per session. This — NOT list_cost_escalations — answers "which coworkers are blocked on cost right now"; the escalations list is append-only HISTORY and includes long-resolved / exited sessions that are no longer blocked. Optional coworker folder filter. Pair with cost_status (live per-session) + continue_session. Cost fields: `cost`/`costLifetime` are transcript-priced (cost of record); `costSpent` is the windowed ENFORCEMENT counter (cap basis, not spend of record).',
     inputSchema: {
       type: 'object',
       properties: { coworker: { type: 'string', description: 'coworker folder filter' } },
@@ -405,6 +410,37 @@ const TOOLS = [
     },
   },
   {
+    name: 'cost_by_coworker',
+    description:
+      'THE cost-of-record per-coworker spend. Transcript-priced (the same engine whose monthly total matched the real Anthropic bill to ~103%): prices every session\'s Claude + Codex transcript, including subagents and skill runs, rolled up per coworker. This is the number to trust — NOT cost_history (per-turn ledger, partial coverage) or cost_per_coworker (OneCLI gateway, v2, disabled). Window is a fixed period: 1d | 7d | 30d | all (default 30d). Optional coworker folder filter. For each coworker returns sessions, total_usd, and p50/p90/p95/max per-session.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        period: { type: 'string', description: 'window: 1d | 7d | 30d | all (default 30d)' },
+        group: { type: 'string', description: 'coworker folder filter (one coworker)' },
+      },
+      additionalProperties: false,
+    },
+    async run(a) {
+      const cmd = ['cost-cap', 'sessions', '--json'];
+      if (str(a.period)) cmd.push('--period', reqStr(a.period, 'period'));
+      if (str(a.group)) cmd.push('--group', reqStr(a.group, 'group'));
+      try {
+        const { stdout } = await execFileP(NCL_BIN, cmd, { timeout: 60000 });
+        let parsed;
+        try {
+          parsed = JSON.parse(stdout);
+        } catch {
+          parsed = { raw: String(stdout).slice(0, 4000) };
+        }
+        if (parsed && parsed.ok === false) return okText({ error: parsed.error?.message || 'ncl error' });
+        return okText(parsed && parsed.data ? parsed.data : parsed); // unwrap ncl --json {ok,data}
+      } catch (e) {
+        return okText({ error: 'cost_by_coworker unavailable', detail: String(e?.message || e).slice(0, 200) });
+      }
+    },
+  },
+  {
     name: 'resolve_approval',
     description: 'Resolve a pending approval card. approval_id from the dashboard approvals list.',
     inputSchema: {
@@ -440,7 +476,11 @@ const TOOLS = [
       return okText({ ok: true });
     },
   },
-];
+]
+  // v1: hide the non-cost-of-record tools (OneCLI cost_per_coworker, ledger
+  // cost_history) unless NANOCLAW_COST_V2=1. Filtering here drops them from BOTH
+  // tools/list and the call dispatch map, so they're fully invisible in v1.
+  .filter((t) => COST_V2 || !COST_V2_ONLY_TOOLS.has(t.name));
 const TOOL_BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 const APPROVAL_TOOLS = new Set(['resolve_approval', 'answer_question', 'continue_session']);
 
