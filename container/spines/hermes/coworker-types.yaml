@@ -4,9 +4,21 @@
 # read-only at /workspace/extra/hermes-release; the fork lives at
 # /workspace/agent/hermes-agent with one worktree per target.
 #
-# The three role types (hermes-architect / hermes-builder / hermes-reviewer)
-# sit under hermes-common the way slang-triage / slang-fixer / slang-reviewer
-# sit under slang-common. Wiring is architect <-> builder <-> reviewer only.
+# The four role types (hermes-architect / hermes-builder / hermes-tester /
+# hermes-reviewer) sit under hermes-common the way slang-triage / slang-fixer /
+# slang-reviewer sit under slang-common. Wiring (wire_agents):
+#   architect <-> builder, builder <-> tester, builder <-> reviewer,
+#   reviewer -> tester (re-run requests; the tester's [Test Report] answer
+#   rides back as a reply on that edge — the tester never opens a fresh send
+#   to the reviewer), orchestrator -> tester (nightly regression against the
+#   fork's main). Per-PR chain: builder hand-off (round 1 unmarked
+#   `Fix report — …`, round 2 a [Fix Report] reply to the tester's FAIL) ->
+#   tester verifies -> [Test Report] PASS -> reviewer (the report travels
+#   attached to the builder's review request; the [Review Verdict] stays a
+#   gated reply on the builder's edge) | [Test Report] FAIL -> builder (max 2
+#   FAILs per PR, then the tester escalates to the orchestrator). The reviewer
+#   reads the diff + the Test Report; it no longer rebuilds baselines or
+#   re-runs suites.
 #
 # NOT type keys — set per agent group after create_agent:
 #   overlays (critique-gate / plan-gate) -> agent_groups.overlays via create_agent({overlays})
@@ -14,6 +26,11 @@
 #   apt packages (ripgrep ffmpeg make python3-dev libffi-dev procps xz-utils)
 #                                        -> ncl groups config add-package / install_packages
 #   the read-only release mount          -> additional_mounts (lands under /workspace/extra/<name>)
+#   model                                -> ncl groups config update --id <g> --model <id>
+#                                           (container_configs.model; CoworkerTypeEntry in
+#                                           src/claude-composer/types.ts has no per-type model or
+#                                           container hint). hermes-tester should run a cheaper
+#                                           sonnet-class model — set it at group creation.
 
 hermes-common:
   description: "Hermes Agent spine — plugin-first port; identity, plugin-contract invariants, release-tree layout + testbed recipe."
@@ -125,13 +142,19 @@ hermes-architect:
   pr_command_patterns: ['git push']
 
 hermes-builder:
-  description: "Implements the plugin in the Hermes fork worktree, writes tests, runs `hermes plugins doctor --ci` + scripts/run_tests.sh, opens a DRAFT PR to the fork only, and requests peer review from hermes-reviewer before reporting."
+  description: "Implements the plugin in the Hermes fork worktree, writes tests, runs `hermes plugins doctor --ci` + the focused scripts/run_tests.sh chunks, opens a DRAFT PR to the fork only, hands the [Fix Report] to hermes-tester for hermetic verification (suite T1–T12, UI + desktop tiers), then requests peer review from hermes-reviewer with the PASS [Test Report] attached before reporting up."
   project: hermes
   extends: hermes-writer
   invariants:
     # Always-in-context so it survives compaction (unlike the workflow step):
-    # [Fix Review Request] -> hermes-reviewer first; [Fix Report] up only after
-    # [Review Verdict] APPROVE (max 2 rounds, then blocked + escalate).
+    # hermes-tester first (round 1 unmarked `Fix report — …`, round 2 a
+    # [Fix Report] reply to its [Test Report] FAIL; max 2 FAILs, then the
+    # tester escalates and the builder reports blocked) -> review request to
+    # hermes-reviewer only with the PASS [Test Report] attached (reviewer
+    # audits report + diff, re-runs nothing) -> terminal [Fix Report] up only
+    # after [Review Verdict] APPROVE (max 2 review rounds, then blocked +
+    # escalate); a new head always re-enters the tester. Same protocol as
+    # hermes-implement's Ship step.
     - container/spines/hermes/invariants/peer-review.md
   # Builder reads the architect's ADR, commits to it, edits source, ships a
   # Fix Report. PLAN_REVIEW catches a wrong plugin surface before code is
@@ -141,8 +164,67 @@ hermes-builder:
   # base-common; the built-in Bash patterns already cover `gh pr create`.
   required_critique_stages: [PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW]
 
+hermes-tester:
+  description: "Hermetic verifier for the Hermes fork — one container per thread (NanoClaw), each in its own network namespace, so parallel test sessions never collide on ports. Owns (a) the hermetic testbed harness: temp HERMES_HOME per run, plugins.enabled injected, sockets blocked except loopback, fake HERMES_DOCKER_BINARY shim, `hermes approvals test --json` as oracle, suite T1–T12; (b) UI parity: `hermes serve` (headless backend) / `hermes dashboard` (web UI) in-container, driven by agent-browser with screenshots; (c) desktop: the release tree's apps/desktop Playwright e2e under xvfb-run, phase-gated — missing xvfb/Electron deps → DESKTOP=SKIPPED with the exact install_packages request, never a whole-run failure. Input: the builder's hand-off naming the PR head (round 1 an unmarked `Fix report — …`; round 2 a [Fix Report] reply to this role's [Test Report] FAIL) or the orchestrator's nightly regression dispatch against the fork's main. Output: /workspace/agent/reports/<thread-id>/test-report-*.md + a gated [Test Report] PASS | FAIL reply on the requester's edge. Max 2 FAILs per PR, then escalates to the orchestrator. Never pushes, never opens PRs."
+  project: hermes
+  extends: hermes-common
+  invariants:
+    # plugin-first.md + public-api.md are inherited from hermes-common (the
+    # composer appends + dedups); re-listed so this role's contract reads
+    # complete — the tester judges the PR head against the same plugin
+    # boundary and test-contract rules it verifies (behaviour-contract tests,
+    # run_tests.sh only, no ~/.hermes writes).
+    - container/spines/hermes/invariants/plugin-first.md
+    - container/spines/hermes/invariants/public-api.md
+    # Always-in-context so it survives compaction: no git push, no PR, no
+    # GitHub write endpoint; results travel as [Test Report] + send_file.
+    - container/spines/hermes/invariants/no-push.md
+  skills:
+    # Inherited from hermes-common: hermes-build (uv venv, run_tests.sh,
+    # doctor --ci), hermes-code-reader, hermes-github (read-only here: gh pr
+    # view, git fetch pull/<N>/head), codex-critique.
+    # Headless Chromium driver for the UI tier (screenshots of the
+    # `hermes dashboard` SPA and `hermes serve` health endpoints).
+    - agent-browser
+    # Hermetic testbed harness + suite T1–T12 + report writer (new skill).
+    - hermes-testbed
+  workflows:
+    # New: fresh testbed @ head -> T1–T12 -> UI tier -> desktop tier
+    # (phase-gated) -> report file -> one OUTPUT_REVIEW -> gated [Test Report].
+    - hermes-verify
+  # bindings: inherited (test: hermes-build, code/doc: hermes-code-reader,
+  # repo/issues: hermes-github). hermes-testbed also provides test.run /
+  # test.gen; `test:` stays bound to hermes-build ON PURPOSE (venv,
+  # run_tests.sh, doctor rows) — hermes-verify lists hermes-testbed under
+  # `uses.skills`, and its harness rows resolve via the resolver's
+  # direct-provider fallback, so no rebind is needed.
+  #
+  # Cost discipline: exactly one OUTPUT_REVIEW round on the finished report
+  # before the gated send — no per-step critique loops. The report is
+  # evidence, not a plan or a diff, so DIAGNOSIS/PLAN/CODE_REVIEW would only
+  # burn tokens. Do not clone the release tree (read-only mount at
+  # /workspace/extra/hermes-release); the fork clone lives at
+  # /workspace/agent/hermes-agent.
+  required_critique_stages: [OUTPUT_REVIEW]
+  # Novel marker (schema: CoworkerTypeEntry.deliveryMarkers, additive to the
+  # base-common vocabulary). ROUTING RULE — same chain-routing-gate constraint
+  # as [Spec handoff]: a marker-prefixed send needs in_reply_to, so
+  # [Test Report] is ALWAYS a reply on the requester's edge
+  # (in_reply_to=<the builder's Fix Report | the orchestrator's nightly
+  # dispatch | the reviewer's re-run request>). The tester never opens a
+  # thread with it; on PASS the builder forwards the attached report to the
+  # reviewer with its review request.
+  delivery_markers:
+    - Test Report
+  # Data-level backstop for no-push.md (same speed bump as the architect and
+  # reviewer — the invariant is the hard rule; keep fork write credentials
+  # out of this group's OneCLI scope). `gh pr create` duplicates the gate's
+  # built-in Bash floor on purpose: this role has no PR path at all, so the
+  # intent is spelled out where the role is declared.
+  pr_command_patterns: ['git push', 'gh pr create']
+
 hermes-reviewer:
-  description: "Adversarial Hermes reviewer — checks out the PR head in its own worktree, re-runs the acceptance test + `hermes plugins doctor --ci` + the relevant scripts/run_tests.sh chunks, reads the diff, and returns [Review Verdict] APPROVE | REQUEST_CHANGES. Must-changes any diff outside plugins/** website/docs/** tests/** lacking a CORE-CHANGE ADR section. No push, no PR, no GitHub review posts."
+  description: "Adversarial Hermes reviewer — intake is the builder's review request carrying hermes-tester's [Test Report] PASS for the PR head. Checks out that head in its own worktree to read the diff, audits the Test Report (head SHA, PASS/FAIL table), may spot-check ONE command, never rebuilds a baseline or re-runs the suite, and returns [Review Verdict] APPROVE | REQUEST_CHANGES citing the report path + table. Report missing / FAIL / stale → requests a re-run from hermes-tester instead of testing. Must-changes any diff outside plugins/** website/docs/** tests/** lacking a CORE-CHANGE ADR section. No push, no PR, no GitHub review posts."
   project: hermes
   extends: hermes-reader
   invariants:
@@ -151,17 +233,21 @@ hermes-reviewer:
     # nanoclaw/ or slang/ sibling to borrow from on this branch).
     - container/spines/hermes/invariants/code-changes.md
   skills:
-    # Already inherited via hermes-common; listed for clarity — the reviewer
-    # must be able to build the env and run tests, not just read the diff.
+    # Already inherited via hermes-common; listed for clarity — used only for
+    # the optional single spot-check (doctor --ci or the acceptance file);
+    # the suite itself is the tester's job.
     - hermes-build
     # Devin Review second opinion (best-effort; auth-wall/timeout never block).
     - hermes-pr-review-runner
   workflows:
-    # extends plan (mode=review): research = re-run doctor + acceptance test +
-    # test chunks in its own worktree (never trust the builder's log);
-    # diagnose = findings by severity with file:line; deliver = report to
-    # /workspace/agent/reviews/<pr>.md; handoff = [Review Verdict] as a reply
-    # (in_reply_to=<the Fix Review Request>) on the builder's edge.
+    # extends plan (mode=review): research = gate on the tester's [Test
+    # Report] (attached, PASS, head SHA == PR head, full T1–T12/UI/DESKTOP
+    # table) else an unmarked re-run request to hermes-tester; pin the head
+    # in its own worktree to read the diff (never trust the builder's log);
+    # at most one spot-check; diagnose = findings by severity with file:line;
+    # deliver = report to /workspace/agent/reviews/<pr>.md quoting the Test
+    # Report table; handoff = [Review Verdict] as a reply (in_reply_to=<the
+    # Fix Review Request>) on the builder's edge, citing the report path.
     - hermes-review
   # Reviewer reads a diff and produces a verdict. CODE_REVIEW is codex's
   # independent check of the reviewer's own assessment; OUTPUT_REVIEW vets the
