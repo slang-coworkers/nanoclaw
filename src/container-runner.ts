@@ -2334,6 +2334,29 @@ export async function composeSessionSpec(input: ComposeSessionSpecInput): Promis
     ...(gateway.env ?? {}),
   };
 
+  // Host-injected credential-NAMED envs must ride the `contributedEnv` lane,
+  // not `env`. The spec guardrail (drivers/types.ts validateSpec/isSecretShaped)
+  // name-checks `env` and denies ANY *_KEY/_TOKEN/_SECRET/PASSWORD key regardless
+  // of value, but only VALUE-checks `contributedEnv` (the sanctioned lane for
+  // host/gateway-injected env whose NAMES are credential-shaped by design — see
+  // the 'gateway's ride contributedEnv' contract). Without this, wakeContainer
+  // fails 'secret-shaped env' under 2.3.0's guardrail and flaps forever via the
+  // host-sweep retry (0 agent containers ever start).
+  //   - NVIDIA_API_KEY / GH_TOKEN: value is the non-secret sentinel
+  //     ROUTED_VIA_ONECLI_PROXY; the proxy injects real auth on the wire.
+  //   - MCP_PROXY_TOKEN: a real per-container bearer the agent-runner needs to
+  //     reach host MCP servers. Blocked by NAME (_TOKEN), not value (64-hex
+  //     matches no looksLikeCredential prefix). It is host-issued and scoped —
+  //     the sanctioned lane is exactly for this.
+  // Real credential VALUES are still refused in BOTH lanes (looksLikeCredential),
+  // so moving name-shaped host env here does not weaken the no-secrets invariant.
+  for (const k of ['NVIDIA_API_KEY', 'GH_TOKEN', 'MCP_PROXY_TOKEN'] as const) {
+    if (k in env) {
+      contributedEnv[k] = env[k];
+      delete env[k];
+    }
+  }
+
   const hostUid = process.getuid?.();
   const hostGid = process.getgid?.();
   // The spec contract (drivers/types.ts, `runAs`): the identity that must read

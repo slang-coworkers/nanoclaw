@@ -462,6 +462,35 @@ describe('set_ceiling — the runner-instance readiness handshake', () => {
   });
 });
 
+describe('set_ceiling — the cost_cap capability signal the dashboard gates on', () => {
+  // The dashboard's live ceiling control reads `protocolVersion` out of the
+  // persisted cost_cap blob (via deriveControlVersion) and renders the stepper
+  // only when it sees `>= 2`; an absent/`< 2` value renders "ceiling control:
+  // not yet available (runner not upgraded)". So EVERY cost_cap write must carry
+  // it — the handshake key alone (cost_control_protocol) is not read there.
+  it('persistCostCap stamps protocolVersion:2 into the cost_cap blob', () => {
+    seed({ costCeilingUsd: 100, costBudgetGen: 1 });
+    H.persistCostCap();
+    expect(getCostCap()?.protocolVersion).toBe(2);
+  });
+
+  it('persistCostCap stamps it even with no ceiling configured (control still gates on)', () => {
+    seed({ costCeilingUsd: 0, costBudgetGen: 0 });
+    H.persistCostCap();
+    const blob = getCostCap();
+    expect(blob?.protocolVersion).toBe(2);
+    expect(blob?.ceilingUsd).toBe(0); // "cost tracking on, no ceiling set" — still an upgraded runner
+  });
+
+  it('a successful set_ceiling apply keeps protocolVersion:2 in the committed blob', () => {
+    seed({ costCeilingUsd: 100, costBudgetGen: 3, costSpentUsd: 10 });
+    H.applyCostOverride(
+      setCeilingMsg({ adjustmentId: 'cca-pv', expectedEpochKey: 3, expectedCeilingCents: 10000, targetCeilingCents: 17500 }),
+    );
+    expect(getCostCap()?.protocolVersion).toBe(2);
+  });
+});
+
 describe('set_ceiling — a mid-query lower ends the active provider stream immediately', () => {
   function insertChat(id: string, text: string) {
     getInboundDb()

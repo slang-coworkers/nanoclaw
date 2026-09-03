@@ -1,0 +1,78 @@
+# LAUNCHABLE BOOTSTRAP INVENTORY — slang-coworkers-prod (brev-2sl8wvgfr), captured read-only 2026-08-26
+# This is GROUND TRUTH. bootstrap.sh (Half A) must reproduce every HOST-LAYER fact here.
+# State/secrets/network (Half B) are OUT OF SCOPE for bootstrap.sh — listed at bottom for cross-check.
+
+## INSTANCE
+OS: Ubuntu 22.04.5 LTS, kernel 5.15, x86_64
+CPU/MEM: 8 vCPU, 144 GiB RAM
+GPU: 1x NVIDIA L40S
+Disks:
+  /dev/vda1 -> /        124G  (89% used, 14G free)  = repo + data/   (SMALL, near-full)
+  /dev/vdb  -> /data    1007G (74% used, 256G free) = docker root + prod-groups (670G)
+  /data     -> /ephemeral  BIND MOUNT (same fs; NOT a copy)
+
+## FSTAB (exact)
+/dev/vdb  /data       ext4  defaults  0 2
+/data     /ephemeral  none  bind      0 0
+# inode proof: /data & /ephemeral both inode 2; prod-groups inode 41680897 under both names.
+
+## DOCKER + GPU RUNTIME
+/etc/docker/daemon.json:
+  { "data-root": "/data/docker", "runtimes": { "nvidia": { "args": [], "path": "nvidia-container-runtime" } } }
+docker: 27.3.1 ; storage overlay2 ; cgroup v2 systemd ; Runtimes: nvidia runc ; Default Runtime: runc
+/etc/nvidia-container-runtime/config.toml: mode = "legacy"   (CDI mode rejects `--gpus all` on this box)
+nvidia-ctk: 1.17.2 ; nvidia-driver-565 ; cuda-toolkit-12-6 ; datacenter-gpu-manager-4 (from Brev base image)
+
+## HOST TOOLCHAIN (exact versions)
+node v22.23.1 (apt nodejs) ; npm 10.9.8 ; corepack /usr/bin/corepack
+pnpm 11.24.0 (via corepack)
+bun 1.3.14
+uv 0.11.29
+gh 2.96.0  AT /home/ubuntu/.local/bin/gh   <-- HOST gh is LOAD-BEARING: refresh-gh-tokens cron dies if gh not on PATH
+python3 3.10.12 ; jq 1.6 ; rsync 3.2.7 ; git 2.34.1
+nginx: NOT INSTALLED on prod (nginx is a lego-only artifact — do NOT add it here)
+
+## SERVICES
+systemd --user:  nanoclaw.service, nanoclaw-dashboard.service, nanoclaw-prod-discord-feedback.service,
+                 nanoclaw-docker-gc.timer, nanoclaw-funnel.timer
+systemd system:  cloudflared.service (Cloudflare Tunnel client), cloudflared-update.service/.timer
+# --user services require `loginctl enable-linger` to run without an active login session.
+
+## PORTS (from .env / listeners)
+DASHBOARD_PORT=3737  DASHBOARD_READONLY_PORT=3739  DASHBOARD_INGRESS_PORT=3736
+MCP_PROXY_PORT=8808  GITHUB_WEBHOOK_PORT=3841
+OneCLI prod: 10254 (API/UI) 10255 (proxy)   OneCLI sprint: 10256->10254, 10257->10255
+Observability: grafana 13000, influxd 8086, dcgm-exporter 9400, node metrics 8908/8909, exporters 9500
+Other listeners: jupyter 8888, transcripts http.server 8080, claude-trace-www http.server 8081 (cron @reboot), cloudflared 20241
+TZ=UTC  INSTANCE_SLUG=prod
+INSTANCE_FORWARD_TARGETS=lego=https://webhook-xrnpj0b3n.apps.run.brev.nvidia.com/webhook/github
+
+## CRON (7 lines, incl @reboot)
+*/30 * * * *  ~/.config/nanoclaw/refresh-gh-tokens.sh
+0 */6 * * *   ~/.config/nanoclaw/refresh-transcripts.sh
+*/30 * * * *  ~/slang-coworkers-prod/nanoclaw/scripts/funnel-cron.sh
+30 4 * * *    (cd repo && python3 scripts/claude-trace-gc.py --days 7 --max-gb 5)
+*/15 * * * *  ~/.config/nanoclaw/refresh-claude-trace-www.sh
+@reboot       cd ~/.local/share/claude-trace-www && python3 -m http.server 8081 --bind 0.0.0.0
+37 * * * *    ~/slang-coworkers-prod/nanoclaw/scripts/refresh-skills-cron.sh
+
+## CONFIG (non-secret)
+~/.config/nanoclaw/mount-allowlist.json  = { allowedRoots:[{path:/ephemeral, allowReadWrite:false}], nonMainReadOnly:true }
+~/.config/nanoclaw/coworkers/*.yaml (12): dashboard_bug-solver, dashboard_slang-fixer, dashboard_slang-helper,
+  dashboard_slang-triage, gpu_opt, slang-build-first-test, slang_ci-babysitter, slang_ci, slang_hovi-perf,
+  slang_maintainer, slang_orphan_pr, slang_triage
+Repo: ~/slang-coworkers-prod/nanoclaw  HEAD 005229001  branch nv-coworkers
+Build steps: setup.sh(node/pnpm+nv-main compose) -> pnpm install --frozen-lockfile -> pnpm run build ->
+  npm run rebuild:claude -> bash scripts/fetch-skills.sh -> ./container/build.sh
+
+## ===================== HALF B — OUT OF SCOPE for bootstrap.sh (restore-state.sh + repoint.md) =====================
+STATE (rsync, FULL-FIDELITY per user — keep EVERYTHING incl .venv, wt-*, build/, node_modules, parent clones):
+  data/ 46G on / (COLD, SQLite) ; whole /data ~700G+ (docker graph store /data/docker + prod-groups 670G).
+  SAFE-COLD PRECONDITIONS: OLD box services + dockerd STOPPED before the copy; rsync -aHAX --numeric-ids
+  (-H is MANDATORY — overlay2 is hardlink-heavy); SAME docker version both ends (27.3.1). Never rsync /ephemeral (bind).
+SECRETS: ~/.config/nanoclaw/github-app.pem (1675b, UNREGENERABLE), registry-auth.json, ~/.onecli/gateway-ca.pem, all .env values
+VAULTS: TWO OneCLI docker stacks -> raw-volume copy of onecli_pgdata/onecli_app-data AND onecli-sprint_pgdata/onecli-sprint_app-data
+IMAGES: ride along INSIDE /data/docker via the full cold rsync (base nanoclaw-agent:prod + 4 custom ag-*: 1w6l4e,apezq5,vmjrwe,ht5rv2)
+  -> NO docker save/load, NO rebuild in migration mode. (docker save/load is the fallback ONLY if you choose to exclude /data/docker.)
+NETWORK RE-POINT: new box = new cloudflared tunnel hostname -> update GitHub App webhook URL + Pomerium/Brev ingress allowlists
+POST-RESTORE: stamp upgrade tripwire (scripts/upgrade-state.ts set) BEFORE first `nanoclaw` start
