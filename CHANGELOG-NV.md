@@ -6,15 +6,42 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 536 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 232 |
-| `nv-slang` | slang project spine, skills, workflows | 144 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 75 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 54 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 543 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 237 |
+| `nv-slang` | slang project spine, skills, workflows | 145 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 76 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 55 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-09-03
+
+### nv-main (7 PRs)
+- **#1417** `Sync nv-main with upstream/main`
+- **#1423** `fix(pr-guard): exempt *.patch from the whitespace/EOF check`
+- **#1427** `ops(onecli): body usage tap — per-request token usage for STREAMED responses (fixes $0 cost capture)`
+- **#1415** `composer: make the composed-document boundary a real seam (step 7)`
+- **#1433** `feat(cost-cap): price coworkers from gateway body usage; UNKNOWN (never $0) for rows without usage`
+- **#1434** `` feat(cost-cap): `history` verb — per-coworker cost over arbitrary date ranges (+ MCP cost_history) ``
+- **#1436** `feat(cost-cap): v1 = transcript cost of record; gate OneCLI + ledger behind NANOCLAW_COST_V2`
+
+### nv-dashboard (5 PRs)
+- **#1424** `fix(dashboard): hide paused coworkers from the Sessions coworker dropdown`
+- **#1426** `fix(dashboard): add the paused column to the /api/sessions test fixtures`
+- **#1419** `Sync nv-dashboard with upstream/main`
+- **#1435** `fix(dashboard): Sessions header shows total · attributed · skills/unattributed (Overview/Sessions cost mismatch)`
+- **#1437** `feat(dashboard): /api/cost-history — per-coworker cost of record over arbitrary date ranges`
+
+### nv-slang (1 PRs)
+- **#1420** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (1 PRs)
+- **#1421** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#1422** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-09-02
 
