@@ -12,6 +12,30 @@
  * matches — because no coworker-types.yaml under `container/spines` declares
  * `workflows:`. So the highest-risk step has no coverage here, and the synthetic
  * fixtures in `claude-composer.test.ts` carry it instead.
+ *
+ * ## Why `main` is not byte-pinned
+ *
+ * Only types whose CONTENT this branch owns can be pinned to a golden here.
+ * `main` is not one of them, and the reason is CI, not this refactor:
+ * `ci.yml`'s test job merges every nv-* branch first ("test the composed state,
+ * not standalone"), so `main` composes with sibling-branch skills that are absent
+ * from a standalone checkout —
+ * `origin/nv-slang:container/skills/slang-github-webhook/context/routing.md`
+ * contributes a whole `## GitHub webhook routing` section, and the projects table
+ * gains slang/slangpy rows. Measured: the same tree yields `main` = abaecd63bd33b299
+ * standalone and 81022e6ba3c5e18e composed.
+ *
+ * A golden for `main` is therefore unpinnable from this branch in the environment
+ * that matters, and would additionally go red on any unrelated nv-slang skill
+ * edit. `base-common` and `default` compose only from nv-main-owned content and
+ * ARE stable in both states — CI passes their byte tests while failing `main`'s,
+ * which is the evidence for drawing the line exactly here.
+ *
+ * `main` keeps its coverage from assertions that do not depend on sibling content:
+ * determinism and the second-H1 rule below (both over all three types), the
+ * golden-to-golden transform in `anchor-retarget.test.ts`, and
+ * `section-coverage.test.ts`. Its goldens stay on disk — that transform reads
+ * them, and they still document the standalone document.
  */
 import crypto from 'crypto';
 import fs from 'fs';
@@ -21,6 +45,9 @@ import { describe, expect, it } from 'vitest';
 
 import { composeCoworkerSpine } from '../claude-composer.js';
 import { PARITY_MCP, PARITY_PERSONA, PARITY_TYPES } from './parity.fixtures.js';
+
+/** The types composed from nv-main-owned content only — see the header. */
+const BYTE_PINNED = ['base-common', 'default'] as const;
 
 const GOLDEN_DIR = path.join(import.meta.dirname, '__goldens__');
 
@@ -34,7 +61,7 @@ function compose(type: string, withExtras: boolean): string {
 }
 
 describe('composed-document byte parity', () => {
-  for (const type of PARITY_TYPES) {
+  for (const type of BYTE_PINNED) {
     for (const withExtras of [false, true]) {
       const name = withExtras ? `${type}.persona` : type;
 
@@ -54,18 +81,18 @@ describe('composed-document byte parity', () => {
     const digests: Record<string, string> = {
       'base-common': 'bbf5bfaf85f610b4',
       'base-common.persona': '9ece3c38c976fefa',
-      // `main` and `main.persona` moved ONCE, deliberately: the `agents.md` anchor
-      // retarget. Every other digest is unchanged from the 3267493f capture, which
-      // is what bounds the content phase — see `anchor-retarget.test.ts` for the
-      // proof that the change is exactly that one substitution.
-      main: 'abaecd63bd33b299',
-      'main.persona': '8129ebe911b83bec',
+      // `main`/`main.persona` are absent by design, not omission: their bytes depend
+      // on sibling-branch skills under CI's composed-state merge (header). The
+      // standalone values the content phase produced — abaecd63bd33b299 and
+      // 8129ebe911b83bec, moved once by the `agents.md` anchor retarget — are
+      // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
+      // which compares golden to golden and so holds in both states.
       default: 'e54e91ce72b8021c',
       'default.persona': 'cce70e837641f8da',
     };
 
     const actual: Record<string, string> = {};
-    for (const type of PARITY_TYPES) {
+    for (const type of BYTE_PINNED) {
       for (const withExtras of [false, true]) {
         const name = withExtras ? `${type}.persona` : type;
         actual[name] = crypto.createHash('sha256').update(compose(type, withExtras)).digest('hex').slice(0, 16);
