@@ -9977,7 +9977,7 @@ export async function handleRequest(
       try {
         sessions = db
           .prepare(
-            'SELECT s.id as session_id, s.agent_group_id, s.thread_id, s.status, s.container_status, s.last_active, ag.name as group_name, ag.folder as group_folder FROM sessions s LEFT JOIN agent_groups ag ON s.agent_group_id = ag.id',
+            'SELECT s.id as session_id, s.agent_group_id, s.thread_id, s.status, s.container_status, s.last_active, ag.name as group_name, ag.folder as group_folder, ag.paused as group_paused FROM sessions s LEFT JOIN agent_groups ag ON s.agent_group_id = ag.id',
           )
           .all();
       } catch {
