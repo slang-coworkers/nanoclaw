@@ -30,12 +30,12 @@ const ALLOWED_ORIGINS = new Set(
     .map((s) => s.trim())
     .filter(Boolean),
 );
-const SERVER_INFO = { name: 'nanoclaw-coworkers', version: '0.7.0' };
-// v1 cost model: transcript-priced `cost_by_coworker` (via `ncl cost-cap sessions`)
-// is the cost of record. The OneCLI `cost_per_coworker` and the ledger
-// `cost_history` are NOT cost of record and are hidden unless NANOCLAW_COST_V2=1.
-const COST_V2 = process.env.NANOCLAW_COST_V2 === '1' || process.env.NANOCLAW_COST_V2 === 'true';
-const COST_V2_ONLY_TOOLS = new Set(['cost_per_coworker', 'cost_history']);
+const SERVER_INFO = { name: 'nanoclaw-coworkers', version: '0.8.0' };
+// Cost model: `cost_per_coworker` and `cost_history` each take a `source`.
+// The DEFAULT is `transcript` (cost of record — the engine whose monthly total
+// matched the Anthropic bill ~103%). Alternate sources (litellm gateway, #65
+// ledger) are opt-in via `source`, with their caveats in the descriptions.
+// No env flag, no hidden tools — one tool per shape, source picks the engine.
 const SUPPORTED_PROTOCOLS = new Set(['2025-06-18', '2025-03-26', '2024-11-05']);
 const DEFAULT_PROTOCOL = '2025-06-18';
 const MAX_OUT = 100_000;
@@ -95,6 +95,23 @@ const reqStr = (v, n) => {
   if (!s || !s.trim()) throw new Error(`${n} (string) required`);
   return s.trim();
 };
+
+// Run an `ncl` subcommand (expects `--json`), unwrap the {ok,data} envelope.
+async function runNcl(cmd, label, timeout = 60000) {
+  try {
+    const { stdout } = await execFileP(NCL_BIN, cmd, { timeout });
+    let parsed;
+    try {
+      parsed = JSON.parse(stdout);
+    } catch {
+      parsed = { raw: String(stdout).slice(0, 4000) };
+    }
+    if (parsed && parsed.ok === false) return okText({ error: parsed.error?.message || 'ncl error' });
+    return okText(parsed && parsed.data ? parsed.data : parsed);
+  } catch (e) {
+    return okText({ error: `${label} unavailable`, detail: String(e?.message || e).slice(0, 200) });
+  }
+}
 
 const TOOLS = [
   {
@@ -236,31 +253,93 @@ const TOOLS = [
     },
   },
   {
-    name: 'cost_status',
+    name: 'cost',
     description:
-      "Live cap ENFORCEMENT state for one session: status (ok/warn/escalated/stopped), cap, ceiling, and the runner's windowed enforcement spend the cap acts on. This spend is the ENFORCEMENT counter, NOT the cost of record — it is per-window and can diverge from actual spend; for real per-coworker/session spend use cost_by_coworker (transcript-priced). Use this to decide continue/stop; check it BEFORE continue_session (avoid blind resume).",
+      "The single cost tool — pick a `view`:\n" +
+      "• view='by_coworker' (DEFAULT) — spend per coworker. This is SPEND OF RECORD when source='transcript' (default): prices every session's Claude+Codex transcript incl. subagents/skills, the engine whose monthly total matched the Anthropic bill ~103%. Window: `period` (1d|7d|30d|all, default 30d) OR a date range `from`+`to` (YYYY-MM-DD, inclusive) with `by` (day|week|total). `group` filters one coworker.\n" +
+      "• view='session' — LIVE cap ENFORCEMENT state of one `session_id` (status ok/warn/escalated/stopped, cap, ceiling, windowed enforcement spend). NOTE: that spend is the ENFORCEMENT counter (cap basis), NOT spend of record — it is windowed and can diverge; for real spend use by_coworker.\n" +
+      "• view='stopped' — sessions cost-stopped RIGHT NOW (optional `group`).\n" +
+      "• view='escalations' — append-only HISTORY of cap/ceiling trips (filters: `state`, `group`, `author`, `limit`); not the live set.\n" +
+      "`source` (by_coworker only) — DEFAULT 'transcript' (the cost of record; use this). The other two are CURRENTLY BROKEN and only for cross-check: 'litellm' (OneCLI gateway body-usage) UNDERCOUNTS because the gateway records $0 for streamed responses (≈all coworker traffic) — accurate only once the body-usage tap ships; 'ledger' (#65 per-turn events) is PARTIAL because its writer only rolled out 2026-08-31, so pre-rollout windows are ~5% covered. Unless you are explicitly reconciling, omit `source` and get transcript. To resume a stopped session use continue_session (separate, it's a mutation).",
     inputSchema: {
       type: 'object',
-      properties: { session_id: { type: 'string' } },
-      required: ['session_id'],
+      properties: {
+        view: { type: 'string', description: "by_coworker (default) | session | stopped | escalations" },
+        source: { type: 'string', description: "by_coworker only: transcript (default) | litellm | ledger" },
+        period: { type: 'string', description: 'by_coworker fixed window: 1d|7d|30d|all (default 30d)' },
+        from: { type: 'string', description: 'by_coworker date-range start YYYY-MM-DD (inclusive)' },
+        to: { type: 'string', description: 'by_coworker date-range end YYYY-MM-DD (inclusive, default today)' },
+        by: { type: 'string', description: 'by_coworker date-range bucket: day|week|total (default week)' },
+        group: { type: 'string', description: 'coworker folder/name/id filter' },
+        session_id: { type: 'string', description: "required for view='session'" },
+        state: { type: 'string', description: 'escalations filter: pending|continued|stopped|expired|superseded|observed' },
+        author: { type: 'string', description: 'escalations GitHub-author filter' },
+        limit: { type: 'number', description: 'escalations max rows (default 50)' },
+      },
       additionalProperties: false,
     },
     async run(a) {
-      const sid = reqStr(a.session_id, 'session_id');
-      try {
-        const { stdout } = await execFileP(NCL_BIN, ['cost-cap', 'status', '--session', sid, '--json'], {
-          timeout: 10000,
-        });
-        let parsed;
-        try {
-          parsed = JSON.parse(stdout);
-        } catch {
-          parsed = { raw: String(stdout).trim().slice(0, 2000) };
-        }
-        return okText(parsed);
-      } catch (e) {
-        return okText({ session_id: sid, cost: 'unavailable', detail: String(e?.message || e).slice(0, 200) });
+      const view = (str(a.view) || 'by_coworker').toLowerCase();
+      const push = (cmd, flag, v) => {
+        if (str(v)) cmd.push(flag, reqStr(v, flag));
+      };
+      if (view === 'session') {
+        return runNcl(['cost-cap', 'status', '--session', reqStr(a.session_id, 'session_id'), '--json'], 'cost(session)', 10000);
       }
+      if (view === 'stopped') {
+        const cmd = ['cost-cap', 'stopped', '--json'];
+        push(cmd, '--group', a.group);
+        return runNcl(cmd, 'cost(stopped)', 30000);
+      }
+      if (view === 'escalations') {
+        const cmd = ['cost-cap', 'escalations', '--json'];
+        push(cmd, '--state', a.state);
+        push(cmd, '--group', a.group);
+        push(cmd, '--author', a.author);
+        if (a.limit != null && Number.isFinite(+a.limit)) cmd.push('--limit', String(Math.trunc(+a.limit)));
+        return runNcl(cmd, 'cost(escalations)', 20000);
+      }
+      // view = by_coworker
+      const source = (str(a.source) || 'transcript').toLowerCase();
+      const isRange = str(a.from) || str(a.to);
+      if (isRange) {
+        // Date-range per-coworker.
+        if (source === 'transcript') {
+          const qs = new URLSearchParams();
+          qs.set('from', reqStr(a.from, 'from'));
+          if (str(a.to)) qs.set('to', reqStr(a.to, 'to'));
+          if (str(a.by)) qs.set('by', reqStr(a.by, 'by'));
+          if (str(a.group)) qs.set('group', reqStr(a.group, 'group'));
+          try {
+            return okText(await dash('GET', `/api/cost-history?${qs.toString()}`));
+          } catch (e) {
+            return okText({ error: 'cost(by_coworker,transcript,range) unavailable', detail: String(e?.message || e).slice(0, 200) });
+          }
+        }
+        if (source === 'ledger') {
+          const cmd = ['cost-cap', 'history', '--json'];
+          push(cmd, '--group', a.group);
+          push(cmd, '--from', a.from);
+          push(cmd, '--to', a.to);
+          push(cmd, '--by', a.by);
+          return runNcl(cmd, 'cost(by_coworker,ledger)');
+        }
+        return okText({ error: `source='${source}' has no date-range support yet — use source=transcript (cost of record) or source=ledger` });
+      }
+      // Fixed-period per-coworker.
+      if (source === 'transcript') {
+        const cmd = ['cost-cap', 'sessions', '--json'];
+        push(cmd, '--period', a.period);
+        push(cmd, '--group', a.group);
+        return runNcl(cmd, 'cost(by_coworker,transcript)');
+      }
+      if (source === 'litellm' || source === 'onecli' || source === 'gateway') {
+        const cmd = ['cost-cap', 'coworkers', '--json'];
+        push(cmd, '--period', a.period);
+        push(cmd, '--group', a.group);
+        return runNcl(cmd, 'cost(by_coworker,litellm)');
+      }
+      return okText({ error: `unknown source '${source}' — use transcript | litellm | ledger` });
     },
   },
   {
@@ -277,167 +356,6 @@ const TOOLS = [
       const sid = reqStr(a.session_id, 'session_id');
       await dash('POST', '/api/cost-override', { session_id: sid, decision: 'continue' });
       return okText({ ok: true, note: `continued session ${sid}` });
-    },
-  },
-  {
-    name: 'list_stopped_sessions',
-    description:
-      'V2: the LIVE currently-blocked set — sessions whose cost-cap status is `stopped` RIGHT NOW (hard-blocked pending a Continue/Stop). Reads the dashboard\'s own /api/sessions and applies the SAME `costStatus===stopped` predicate the dashboard\'s "stopped" count uses, so it reports the IDENTICAL set, deduped per session. This — NOT list_cost_escalations — answers "which coworkers are blocked on cost right now"; the escalations list is append-only HISTORY and includes long-resolved / exited sessions that are no longer blocked. Optional coworker folder filter. Pair with cost_status (live per-session) + continue_session. Cost fields: `cost`/`costLifetime` are transcript-priced (cost of record); `costSpent` is the windowed ENFORCEMENT counter (cap basis, not spend of record).',
-    inputSchema: {
-      type: 'object',
-      properties: { coworker: { type: 'string', description: 'coworker folder filter' } },
-      additionalProperties: false,
-    },
-    async run(a) {
-      const cmd = ['cost-cap', 'stopped', '--json'];
-      if (str(a.coworker)) cmd.push('--group', reqStr(a.coworker, 'coworker'));
-      try {
-        const { stdout } = await execFileP(NCL_BIN, cmd, { timeout: 30000 });
-        let parsed;
-        try {
-          parsed = JSON.parse(stdout);
-        } catch {
-          parsed = { raw: String(stdout).slice(0, 4000) };
-        }
-        if (parsed && parsed.ok === false) return okText({ error: parsed.error?.message || 'ncl error' });
-        return okText(parsed && parsed.data ? parsed.data : parsed); // unwrap ncl --json {ok,data}
-      } catch (e) {
-        return okText({ error: 'stopped-sessions unavailable', detail: String(e?.message || e).slice(0, 200) });
-      }
-    },
-  },
-  {
-    name: 'list_cost_escalations',
-    description:
-      'V2: the append-only HISTORY ledger of cost-cap escalation episodes — every ceiling/cap trip ever: which sessions hit the cap/ceiling, how much they spent (spent/cap/ceiling), the episode decision_state (the recorded outcome — NOT the live status; a `stopped` row is NOT necessarily blocked now), the coworker, and the GitHub author. For "which sessions are blocked RIGHT NOW" use list_stopped_sessions instead. Filter by state / coworker / gh_author / session. Pair with cost_status (live) + continue_session.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        state: { type: 'string', description: 'pending|continued|stopped|expired|superseded|observed' },
-        coworker: { type: 'string', description: 'coworker folder filter' },
-        gh_author: { type: 'string', description: 'GitHub author filter (issue/PR opener)' },
-        session_id: { type: 'string', description: 'one session' },
-        limit: { type: 'number', description: 'max rows (default 50, max 500)' },
-      },
-      additionalProperties: false,
-    },
-    async run(a) {
-      const cmd = ['cost-cap', 'escalations', '--json'];
-      if (str(a.state)) cmd.push('--state', reqStr(a.state, 'state'));
-      if (str(a.coworker)) cmd.push('--group', reqStr(a.coworker, 'coworker'));
-      if (str(a.gh_author)) cmd.push('--author', reqStr(a.gh_author, 'gh_author'));
-      if (str(a.session_id)) cmd.push('--session', reqStr(a.session_id, 'session_id'));
-      if (a.limit != null && Number.isFinite(+a.limit)) cmd.push('--limit', String(Math.trunc(+a.limit)));
-      try {
-        const { stdout } = await execFileP(NCL_BIN, cmd, { timeout: 20000 });
-        let parsed;
-        try {
-          parsed = JSON.parse(stdout);
-        } catch {
-          parsed = { raw: String(stdout).slice(0, 4000) };
-        }
-        if (parsed && parsed.ok === false) return okText({ error: parsed.error?.message || 'ncl error' });
-        return okText(parsed && parsed.data ? parsed.data : parsed); // unwrap ncl --json {ok,data}
-      } catch (e) {
-        return okText({ error: 'escalations unavailable', detail: String(e?.message || e).slice(0, 200) });
-      }
-    },
-  },
-  {
-    name: 'cost_per_coworker',
-    description:
-      "V2: cost per coworker (agent group) from the inference gateway: the OneCLI gateway records each response body's token usage (usage_* in request_logs) and `ncl cost-cap coworkers` prices those tokens with NanoClaw's rate table (Claude + Codex). Calls without body usage (before the body-usage gateway went live, or an unpriced model) are UNKNOWN, never $0 — see unknownCalls/note. headerCostUsd = litellm's cost header, exact only for non-streamed calls. Host-side read; requires ONECLI_PG_CONTAINER on the host.",
-    inputSchema: {
-      type: 'object',
-      properties: {
-        group: { type: 'string', description: 'coworker folder filter (one coworker)' },
-        period: { type: 'string', description: 'lookback window: <n>d or <n>h (e.g. 30d, 24h). Default all-time.' },
-      },
-      additionalProperties: false,
-    },
-    async run(a) {
-      const cmd = ['cost-cap', 'coworkers', '--json'];
-      if (str(a.group)) cmd.push('--group', reqStr(a.group, 'group'));
-      if (str(a.period)) cmd.push('--period', reqStr(a.period, 'period'));
-      try {
-        const { stdout } = await execFileP(NCL_BIN, cmd, { timeout: 20000 });
-        let parsed;
-        try {
-          parsed = JSON.parse(stdout);
-        } catch {
-          parsed = { raw: String(stdout).slice(0, 4000) };
-        }
-        if (parsed && parsed.ok === false) return okText({ error: parsed.error?.message || 'ncl error' });
-        return okText(parsed && parsed.data ? parsed.data : parsed); // unwrap ncl --json {ok,data}
-      } catch (e) {
-        return okText({ error: 'cost_per_coworker unavailable', detail: String(e?.message || e).slice(0, 200) });
-      }
-    },
-  },
-  {
-    name: 'cost_history',
-    description:
-      'V2: per-coworker cost over an ARBITRARY date range, bucketed by day/week/total — the historical view the other cost tools cannot give (cost_status is point-in-time; cost_per_coworker/list_stopped_sessions have no time axis). Reads the durable #65 cost ledger (per-session cost_events): one deduped, timestamped, token-priced row per Claude message + Codex call, summed per coworker and time bucket, provider-split. Bounded by ledger retention (old session DBs rotate out). Args: group (coworker id/folder/name), from + to (YYYY-MM-DD, inclusive), by (day|week|total, default week).',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        group: { type: 'string', description: 'coworker filter (agent group id, folder, or name)' },
-        from: { type: 'string', description: 'inclusive start date YYYY-MM-DD' },
-        to: { type: 'string', description: 'inclusive end date YYYY-MM-DD' },
-        by: { type: 'string', description: 'day | week | total (default week)' },
-      },
-      additionalProperties: false,
-    },
-    async run(a) {
-      const cmd = ['cost-cap', 'history', '--json'];
-      if (str(a.group)) cmd.push('--group', reqStr(a.group, 'group'));
-      if (str(a.from)) cmd.push('--from', reqStr(a.from, 'from'));
-      if (str(a.to)) cmd.push('--to', reqStr(a.to, 'to'));
-      if (str(a.by)) cmd.push('--by', reqStr(a.by, 'by'));
-      try {
-        const { stdout } = await execFileP(NCL_BIN, cmd, { timeout: 60000 });
-        let parsed;
-        try {
-          parsed = JSON.parse(stdout);
-        } catch {
-          parsed = { raw: String(stdout).slice(0, 4000) };
-        }
-        if (parsed && parsed.ok === false) return okText({ error: parsed.error?.message || 'ncl error' });
-        return okText(parsed && parsed.data ? parsed.data : parsed); // unwrap ncl --json {ok,data}
-      } catch (e) {
-        return okText({ error: 'cost_history unavailable', detail: String(e?.message || e).slice(0, 200) });
-      }
-    },
-  },
-  {
-    name: 'cost_by_coworker',
-    description:
-      'THE cost-of-record per-coworker spend. Transcript-priced (the same engine whose monthly total matched the real Anthropic bill to ~103%): prices every session\'s Claude + Codex transcript, including subagents and skill runs, rolled up per coworker. This is the number to trust — NOT cost_history (per-turn ledger, partial coverage) or cost_per_coworker (OneCLI gateway, v2, disabled). Window is a fixed period: 1d | 7d | 30d | all (default 30d). Optional coworker folder filter. For each coworker returns sessions, total_usd, and p50/p90/p95/max per-session.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        period: { type: 'string', description: 'window: 1d | 7d | 30d | all (default 30d)' },
-        group: { type: 'string', description: 'coworker folder filter (one coworker)' },
-      },
-      additionalProperties: false,
-    },
-    async run(a) {
-      const cmd = ['cost-cap', 'sessions', '--json'];
-      if (str(a.period)) cmd.push('--period', reqStr(a.period, 'period'));
-      if (str(a.group)) cmd.push('--group', reqStr(a.group, 'group'));
-      try {
-        const { stdout } = await execFileP(NCL_BIN, cmd, { timeout: 60000 });
-        let parsed;
-        try {
-          parsed = JSON.parse(stdout);
-        } catch {
-          parsed = { raw: String(stdout).slice(0, 4000) };
-        }
-        if (parsed && parsed.ok === false) return okText({ error: parsed.error?.message || 'ncl error' });
-        return okText(parsed && parsed.data ? parsed.data : parsed); // unwrap ncl --json {ok,data}
-      } catch (e) {
-        return okText({ error: 'cost_by_coworker unavailable', detail: String(e?.message || e).slice(0, 200) });
-      }
     },
   },
   {
@@ -476,11 +394,7 @@ const TOOLS = [
       return okText({ ok: true });
     },
   },
-]
-  // v1: hide the non-cost-of-record tools (OneCLI cost_per_coworker, ledger
-  // cost_history) unless NANOCLAW_COST_V2=1. Filtering here drops them from BOTH
-  // tools/list and the call dispatch map, so they're fully invisible in v1.
-  .filter((t) => COST_V2 || !COST_V2_ONLY_TOOLS.has(t.name));
+];
 const TOOL_BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 const APPROVAL_TOOLS = new Set(['resolve_approval', 'answer_question', 'continue_session']);
 
