@@ -48,6 +48,7 @@ import {
   type StoppedSessionView,
 } from '../cost-cap-sessions.js';
 import { readCostPerCoworker, type CostPerCoworkerResult } from '../cost-per-coworker.js';
+import { readCostHistory, isValidDate, HISTORY_BY, type HistoryBy, type CostHistoryResult } from '../cost-history.js';
 
 /** Who is making the change, for the row's audit column. */
 function actorLabel(ctx: { caller: string; agentGroupId?: string } | undefined): string {
@@ -743,6 +744,87 @@ registerResource({
           lines.push(line);
         }
         if (d.note) lines.push(d.note);
+        return lines.join('\n');
+      },
+    },
+
+    history: {
+      access: 'open',
+      description:
+        'Per-coworker cost over an ARBITRARY date range, bucketed by day / week / total — the one cost view ' +
+        'the live tools cannot give (status is point-in-time; sessions/stopped/coworkers only offer fixed ' +
+        '1d/7d/30d/all windows with no time axis). Reads the durable #65 cost ledger (`cost_events`, per-' +
+        'session outbound.db): one deduped, timestamped, token-priced row per billable unit, written dual-run ' +
+        "for every Claude message + Codex call. Sums each row's stored priced_usd (the ledger is " +
+        'rate_version=1, so that equals a token re-price) across ALL window generations — validated to carry ' +
+        'no /clear-rotation double counting. Covers Claude + Codex, split out per provider. Bounded only by ' +
+        "ledger retention (old sessions' outbound.db rotate out). Filters: --group (id/folder/name), --from " +
+        'and --to (YYYY-MM-DD, both inclusive), --by (day|week|total, default week).',
+      args: [
+        { name: 'group', type: 'string', description: 'Filter to one coworker (agent group id, folder, or name).' },
+        { name: 'from', type: 'string', description: 'Inclusive start date, YYYY-MM-DD.' },
+        { name: 'to', type: 'string', description: 'Inclusive end date, YYYY-MM-DD.' },
+        {
+          name: 'by',
+          type: 'string',
+          description: 'Bucket granularity: day|week|total (default week).',
+          default: 'week',
+        },
+      ],
+      examples: [
+        'ncl cost-cap history',
+        'ncl cost-cap history --from 2026-08-01 --to 2026-08-31 --by week',
+        'ncl cost-cap history --group slang-fixer --from 2026-08-25 --by day --json',
+      ],
+      handler: async (args) => {
+        const trim = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+        const by = String(args.by ?? 'week').trim() as HistoryBy;
+        if (!HISTORY_BY.includes(by)) {
+          throw new Error(`--by must be one of: ${HISTORY_BY.join(', ')}`);
+        }
+        for (const [flag, val] of [
+          ['from', args.from],
+          ['to', args.to],
+        ] as const) {
+          const s = trim(val);
+          if (s && !isValidDate(s)) throw new Error(`--${flag} must be a real YYYY-MM-DD date`);
+        }
+        return readCostHistory({ group: trim(args.group), from: trim(args.from), to: trim(args.to), by });
+      },
+      formatHuman: (data) => {
+        const d = data as CostHistoryResult;
+        const range = d.from || d.to ? `${d.from ?? '…'} → ${d.to ?? 'now'}` : 'all ledger history';
+        const mixed =
+          d.rate_versions.length && (d.rate_versions.length > 1 || d.rate_versions[0] !== 1)
+            ? ` [rate_versions ${d.rate_versions.join(',')}: report-as-billed]`
+            : '';
+        // Never present a total as authoritative when a read failed (finding 2).
+        const incomplete = d.complete
+          ? ''
+          : `⚠ INCOMPLETE: ${d.read_errors} session read(s) failed — totals are a LOWER BOUND.\n`;
+        // Pre-ledger baseline lumps are excluded from the buckets (finding 1);
+        // surface them so their absence from the per-period total is explicit.
+        const legacy =
+          d.legacy_baseline_usd > 0
+            ? `\n(excluded: ${usd(d.legacy_baseline_usd)} pre-ledger migration baseline — non-timestamped, ` +
+              `provider-ambiguous, likely #1327-inflated; not in the totals above)`
+            : '';
+        if (d.groups.length === 0) {
+          return `${incomplete}No attributable ledger spend for ${range} (${d.sessions_with_ledger}/${d.sessions_scanned} sessions carry a ledger; ${d.sessions_no_ledger} pre-ledger).${mixed}${legacy}`;
+        }
+        const lines = [
+          `${incomplete}Per-coworker cost — ${range}, by ${d.by} — total ${usd(d.grand_total_usd)}${mixed}`,
+          `  (${d.sessions_with_ledger}/${d.sessions_scanned} sessions carry ledger rows)`,
+        ];
+        for (const g of d.groups) {
+          lines.push(`\n${g.group_name}  ${usd(g.total_usd)}  (claude ${usd(g.claudeUsd)} · codex ${usd(g.codexUsd)})`);
+          if (d.by !== 'total') {
+            for (const b of g.buckets) {
+              lines.push(`    ${b.bucket}  ${usd(b.usd)}`);
+            }
+          }
+        }
+        if (legacy) lines.push(legacy);
         return lines.join('\n');
       },
     },
