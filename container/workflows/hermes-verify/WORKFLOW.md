@@ -134,9 +134,9 @@ Ground rules that hold for every step:
    ```bash
    node --version            # apps/desktop/package.json engines: ^22.22.0 || ^24.11.0 || >=26.0.0
    command -v xvfb-run xauth npm     # xvfb-run shells out to xauth — both must resolve (skill §5)
-   for p in xvfb libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libdrm2 libgbm1 libasound2t64 libasound2; do dpkg -s "$p" >/dev/null 2>&1 && echo "ok $p" || echo "MISSING $p"; done
+   for p in xvfb libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libdrm2 libgbm1 libasound2 libasound2; do dpkg -s "$p" >/dev/null 2>&1 && echo "ok $p" || echo "MISSING $p"; done
    ```
-   The CI apt set is `xvfb libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libdrm2 libgbm1 libasound2t64` (`e2e-desktop.yml:36-40`). The coworker image ships chromium's share (`libgbm1 libnss3 libgtk-3-0 libdrm2 libasound2`) and lacks `xvfb xauth libnotify4 libxss1 libxtst6 xdg-utils libatspi2.0-0` — so the expected first-run outcome is:
+   The CI apt set is `xvfb libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libdrm2 libgbm1 libasound2` (`e2e-desktop.yml:36-40`). The coworker image ships chromium's share (`libgbm1 libnss3 libgtk-3-0 libdrm2 libasound2`) and lacks `xvfb xauth libnotify4 libxss1 libxtst6 xdg-utils libatspi2.0-0` — so the expected first-run outcome is:
 
    **`DESKTOP=SKIPPED — install_packages: <pkgs>` — never a failed run.** Any gate miss → write the exact request into the report's `DESKTOP` row and move on: `SKIPPED — install_packages: xvfb xauth libnotify4 libxss1 libxtst6 xdg-utils libatspi2.0-0` (only the missing ones — the same list the skill's §5 `install_packages` call names; the agent tool is `install_packages`, the operator form `ncl groups config add-package`). The reviewer treats a SKIPPED row as valid evidence, not as a re-run reason. Never `apt-get` yourself, never `npm install -g electron`, never patch the fork's Playwright config, never add `--no-sandbox` anywhere (a code change is the builder's). Electron refusing to launch inside the container (user-namespace / sandbox helper error) → `DESKTOP=SKIPPED — electron-sandbox: <first error line>`.
 

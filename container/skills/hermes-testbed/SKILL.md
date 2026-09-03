@@ -224,7 +224,7 @@ The human's order: **check desktop/electron works, then write the tests.** So: p
 ```bash
 node --version; npm --version                  # apps/desktop engines: node ^22.22.0 || ^24.11.0 || >=26.0.0; npm <11.10.0 || >=11.17.0 (root package.json engines)
 command -v xvfb-run xauth                      # e2e-desktop.yml:113 runs playwright under xvfb-run; xvfb-run shells out to xauth
-for p in xvfb libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libdrm2 libgbm1 libasound2; do dpkg -s "$p" >/dev/null 2>&1 && echo "ok $p" || echo "MISSING $p"; done   # CI set e2e-desktop.yml:37-40 (Ubuntu spells it libasound2t64; the Debian image = libasound2)
+for p in xvfb libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libdrm2 libgbm1 libasound2; do dpkg -s "$p" >/dev/null 2>&1 && echo "ok $p" || echo "MISSING $p"; done   # CI set e2e-desktop.yml:37-40 (Ubuntu spells it libasound2; the Debian image = libasound2)
 ls $WT/node_modules/electron/dist/electron $WT/apps/desktop/node_modules/electron/dist/electron 2>/dev/null   # either layout (e2e/electron-binary.ts:30-38); the binary is downloaded by electron's postinstall during the §4 `npm ci` (e2e-desktop.yml:52-57)
 ```
 
