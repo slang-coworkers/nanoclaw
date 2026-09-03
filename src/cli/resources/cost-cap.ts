@@ -50,6 +50,14 @@ import {
 import { readCostPerCoworker, type CostPerCoworkerResult } from '../cost-per-coworker.js';
 import { readCostHistory, isValidDate, HISTORY_BY, type HistoryBy, type CostHistoryResult } from '../cost-history.js';
 
+/**
+ * Cost sources, by verb — the transcript engine (`sessions`) is the COST OF
+ * RECORD (matched the Anthropic bill to ~103%). `coworkers` (OneCLI gateway
+ * body-usage) and `history` (the #65 per-turn ledger) are ALTERNATE sources with
+ * caveats (litellm undercounts streamed today; the ledger is partial pre-2026-08-31)
+ * — callers select them explicitly; they are not the default and not hidden.
+ */
+
 /** Who is making the change, for the row's audit column. */
 function actorLabel(ctx: { caller: string; agentGroupId?: string } | undefined): string {
   return ctx?.caller === 'agent' ? (ctx.agentGroupId ?? 'agent') : 'host';
@@ -702,6 +710,9 @@ registerResource({
     coworkers: {
       access: 'open',
       description:
+        '[ALTERNATE source — NOT the default cost of record (that is `cost-cap sessions`, transcript-priced). ' +
+        'Currently UNDERCOUNTS: the gateway records $0 for streamed responses (≈all coworker traffic); accurate ' +
+        'only once the body-usage tap ships. Use for cross-check.] ' +
         "Cost per coworker (agent group) from the inference gateway's own per-request records: the OneCLI " +
         "gateway captures each response body's token usage (usage_* keys) and this verb prices those tokens " +
         "with NanoClaw's rate table — the same table the dashboard uses — so Claude and Codex are covered and " +
