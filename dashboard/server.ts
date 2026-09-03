@@ -2421,6 +2421,84 @@ function getTraceDirListing(traceDir: string): { name: string; mtimeMs: number }
   return files;
 }
 
+/**
+ * Per-coworker cost of record over an ARBITRARY [fromKey, toKey] UTC-day window,
+ * bucketed by the caller. Reuses the SAME validated pricers as /api/sessions —
+ * `scanFileCost` (Claude per-day) + `scanSessionCodexCost` (Codex per-day), the
+ * engine whose monthly total matched the real Anthropic bill to ~103% — so this
+ * is cost of record, not the enforcement counter or the partial #65 ledger.
+ *
+ * Keys are `YYYYMMDD` (isoDayKey shape). Projects-only (skill transcripts
+ * excluded), matching the per-group `/api/sessions` attribution. On-demand walk
+ * with NO 31d mtime cutoff so historical windows resolve — bounded only by
+ * transcript retention on disk (older files may have been rotated away).
+ */
+function computeCostHistoryByGroup(
+  fromKey: string,
+  toKey: string,
+): Map<string, { folder: string; name: string; claude: Map<string, number>; codex: Map<string, number> }> {
+  const out = new Map<string, { folder: string; name: string; claude: Map<string, number>; codex: Map<string, number> }>();
+  if (!db) return out;
+  const inRange = (k: string) => k !== MISSING_TS_KEY && k >= fromKey && k <= toKey;
+  const sessionsDir = join(getDataDir(), 'v2-sessions');
+  const groups = db.prepare('SELECT id, folder, name FROM agent_groups').all() as {
+    id: string;
+    folder: string;
+    name: string;
+  }[];
+  for (const group of groups) {
+    const acc = out.get(group.folder) ?? {
+      folder: group.folder,
+      name: group.name,
+      claude: new Map<string, number>(),
+      codex: new Map<string, number>(),
+    };
+    // Claude — projects-only transcripts, priced per day.
+    const claudeShared = join(sessionsDir, group.id, '.claude-shared');
+    for (const f of collectClaudeJsonlFiles(claudeShared).filter((f) => f.includes('/projects/'))) {
+      let m = 0;
+      try {
+        m = statSync(f).mtimeMs;
+      } catch {
+        /* unreadable file → skip */
+      }
+      const fc = scanFileCost(f, m);
+      if (!fc.hadSignal) continue;
+      for (const [key, d] of fc.days) if (inRange(key)) acc.claude.set(key, (acc.claude.get(key) ?? 0) + d.cost);
+    }
+    // Codex — per session dir's rollout, priced per day.
+    let sessDirs: string[] = [];
+    try {
+      sessDirs = readdirSync(join(sessionsDir, group.id)).filter((d) => d.startsWith('sess-'));
+    } catch {
+      /* no session dir yet */
+    }
+    for (const sessId of sessDirs) {
+      const cc = scanSessionCodexCost(join(sessionsDir, group.id, sessId, 'codex'));
+      if (!cc.hadSignal) continue;
+      for (const [key, d] of cc.days) if (inRange(key)) acc.codex.set(key, (acc.codex.get(key) ?? 0) + d.cost);
+    }
+    if (acc.claude.size || acc.codex.size) out.set(group.folder, acc);
+  }
+  return out;
+}
+
+/** ISO year-week key ('YYYY-Www', Monday-anchored) from a 'YYYYMMDD' day key. */
+function weekKeyFromDayKey(dayKey: string): string {
+  const y = Number(dayKey.slice(0, 4));
+  const mo = Number(dayKey.slice(4, 6));
+  const da = Number(dayKey.slice(6, 8));
+  const d = new Date(Date.UTC(y, mo - 1, da));
+  if (Number.isNaN(d.getTime())) return '????-W??';
+  const dayNr = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - dayNr + 3);
+  const firstThu = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+  const firstDayNr = (firstThu.getUTCDay() + 6) % 7;
+  firstThu.setUTCDate(firstThu.getUTCDate() - firstDayNr + 3);
+  const week = 1 + Math.round((d.getTime() - firstThu.getTime()) / (7 * 86400000));
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
 // Guard against overlapping cold scans: the uncapped 30d pass can exceed the 60s
 // tick interval on a cold cache, so a second tick must not stack on the first.
 let sessionCostScanning = false;
@@ -9980,6 +10058,86 @@ export async function handleRequest(
   }
 
   // API: list sessions
+  if (req.method === 'GET' && url.pathname === '/api/cost-history') {
+    if (!requireAuth(req, res)) return;
+    // Per-coworker COST OF RECORD over an arbitrary [from,to] UTC-day window,
+    // bucketed by day|week|total. Transcript-priced (same engine as /api/sessions).
+    // Query: from=YYYY-MM-DD (required) · to=YYYY-MM-DD (default today) ·
+    //        by=day|week|total (default week) · group=<folder> (optional).
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+    const fromRaw = (url.searchParams.get('from') || '').trim();
+    const toRaw = (url.searchParams.get('to') || '').trim() || new Date().toISOString().slice(0, 10);
+    const by = (url.searchParams.get('by') || 'week').trim();
+    const groupFilter = (url.searchParams.get('group') || '').trim();
+    const isReal = (s: string) => dateRe.test(s) && new Date(`${s}T00:00:00Z`).toISOString().slice(0, 10) === s;
+    if (!fromRaw || !isReal(fromRaw) || !isReal(toRaw) || !['day', 'week', 'total'].includes(by)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          error: 'require from=YYYY-MM-DD (real date), optional to=YYYY-MM-DD, by=day|week|total',
+        }),
+      );
+      return;
+    }
+    if (fromRaw > toRaw) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: `from (${fromRaw}) is after to (${toRaw})` }));
+      return;
+    }
+    const fromKey = fromRaw.replace(/-/g, '');
+    const toKey = toRaw.replace(/-/g, '');
+    const bucketOf = (dayKey: string) => (by === 'total' ? 'all' : by === 'week' ? weekKeyFromDayKey(dayKey) : `${dayKey.slice(0, 4)}-${dayKey.slice(4, 6)}-${dayKey.slice(6, 8)}`);
+    const byGroup = computeCostHistoryByGroup(fromKey, toKey);
+    const groups: any[] = [];
+    let grand = 0;
+    for (const [folder, acc] of byGroup) {
+      if (groupFilter && folder !== groupFilter && acc.name !== groupFilter) continue;
+      const buckets = new Map<string, { usd: number; claudeUsd: number; codexUsd: number }>();
+      let total = 0;
+      let claudeTot = 0;
+      let codexTot = 0;
+      const add = (dayKey: string, usd: number, provider: 'claude' | 'codex') => {
+        const k = bucketOf(dayKey);
+        const b = buckets.get(k) ?? { usd: 0, claudeUsd: 0, codexUsd: 0 };
+        b.usd += usd;
+        if (provider === 'codex') b.codexUsd += usd;
+        else b.claudeUsd += usd;
+        buckets.set(k, b);
+        total += usd;
+        if (provider === 'codex') codexTot += usd;
+        else claudeTot += usd;
+      };
+      for (const [dk, usd] of acc.claude) add(dk, usd, 'claude');
+      for (const [dk, usd] of acc.codex) add(dk, usd, 'codex');
+      if (total <= 0) continue;
+      groups.push({
+        group_folder: folder,
+        group_name: acc.name || folder,
+        total_usd: total,
+        claudeUsd: claudeTot,
+        codexUsd: codexTot,
+        buckets: [...buckets.entries()]
+          .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+          .map(([bucket, v]) => ({ bucket, usd: v.usd, claudeUsd: v.claudeUsd, codexUsd: v.codexUsd })),
+      });
+      grand += total;
+    }
+    groups.sort((a, b) => b.total_usd - a.total_usd);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        source: 'transcript',
+        from: fromRaw,
+        to: toRaw,
+        by,
+        group: groupFilter || null,
+        groups,
+        grand_total_usd: grand,
+      }),
+    );
+    return;
+  }
+
   if (req.method === 'GET' && url.pathname === '/api/sessions') {
     if (!requireAuth(req, res)) return;
     let sessions: any[] = [];
