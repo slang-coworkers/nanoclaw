@@ -61,7 +61,11 @@ OUTPUT (stdout), a JSON object:
   "rows": [ {thread,repo,issue,pr,state,ball,delta,last_activity_by_us,
              needs_nudge,nudge_reason,action,non_nudge_reason,escalate,
              github_artifact,disposition,last_outbound_error_class,
-             stopped_session_count,mis_threaded,needs_cost_notice} ],
+             stopped_session_count,mis_threaded,needs_cost_notice,
+             cost_notice_session,cost_notice_folder,cost_notice_link} ],
+  # cost_notice_* are populated only on a cost_stopped row (the specific
+  # blocked session id, its coworker folder, and the dashboard session-mode
+  # deep-link "#/cw/<folder>/s/<session>"), empty strings otherwise.
   # action = 'nudge' iff needs_nudge else 'none' (strict 1:1; no 'suppress').
   # non_nudge_reason = enum-like token on 'none' rows (human-owned:<disp> |
   #   pr-open | running | fresh-dispatch | awaiting-human | cost-stopped |
@@ -150,7 +154,7 @@ def is_bot_author(comment, bot_logins):
     return comment.get("author") in bot_logins
 
 
-def latest(comments, predicate=lambda _c: True):
+def latest(comments, predicate=lambda _: True):
     """Most recent comment (by `at`) matching predicate, or None."""
     best = None
     best_ts = None
@@ -256,6 +260,26 @@ def any_stopped_errored(chain, sessions_by_id):
     )
 
 
+def first_cost_stopped_session(chain, sessions_by_id):
+    """The first cost-stopped session on this chain, as (session_id, group_folder).
+
+    Deterministic order: walks `chain["sessions"]` in the exact order the agent
+    listed them (the same single walk `any_session_cost_stopped` uses) and
+    returns the FIRST session whose live `cost_status == "stopped"`. Returning
+    the first — not "a" — match is what lets the row name one specific blocked
+    session stably tick-to-tick, so the supervisor's factual GitHub notice
+    (needs_cost_notice) can carry a concrete session-id + dashboard deep-link
+    instead of re-deriving them. `group_folder` is "" when the session row
+    didn't carry one (pull-universe.sh stamps it from `ncl groups list`;
+    absent -> ""). Returns None when no session on the chain is cost-stopped.
+    """
+    for sid in chain.get("sessions", []):
+        s = sessions_by_id.get(sid)
+        if s and s.get("cost_status") == "stopped":
+            return (sid, s.get("group_folder") or "")
+    return None
+
+
 def any_session_cost_stopped(chain, sessions_by_id):
     """A session on this chain hit its Tier-2 cost ceiling and is hard-blocked
     pending a human Continue/Stop decision (the dashboard's cost-approval card).
@@ -271,12 +295,11 @@ def any_session_cost_stopped(chain, sessions_by_id):
     necessarily exit. So neither existing signal catches this case — a chain
     in this state will NOT self-recover from a nudge or from time passing; it
     is unstuck only by a human clicking Continue (or Stop) on the dashboard.
+
+    Reimplemented in terms of first_cost_stopped_session so detection and the
+    row's cost_notice_* naming fields share one deterministic walk.
     """
-    for sid in chain.get("sessions", []):
-        s = sessions_by_id.get(sid)
-        if s and s.get("cost_status") == "stopped":
-            return True
-    return False
+    return first_cost_stopped_session(chain, sessions_by_id) is not None
 
 
 # Dispositions where a HUMAN (maintainer, external contributor, reporter) genuinely
@@ -554,6 +577,22 @@ def run(payload):
         # rather than inventing a second dedup mechanism (same spirit as R4).
         needs_cost_notice = state == "cost_stopped" and delta != "same"
 
+        # cost_notice_* — ready-made fields for the supervisor's factual GitHub
+        # notice on a cost_stopped chain: the SPECIFIC blocked session id, its
+        # coworker folder, and a dashboard session-mode deep-link
+        # (#/cw/<folder>/s/<session>; NO domain — a relative hash route, kept
+        # domain-less on purpose so the internal dashboard host never leaks into
+        # the PUBLIC shader-slang issue/PR comment). Empty strings on any
+        # non-cost_stopped row (not applicable), so every row carries the keys.
+        cost_notice_session = ""
+        cost_notice_folder = ""
+        cost_notice_link = ""
+        if state == "cost_stopped":
+            stopped = first_cost_stopped_session(chain, sessions_by_id)
+            if stopped is not None:
+                cost_notice_session, cost_notice_folder = stopped
+                cost_notice_link = f"#/cw/{cost_notice_folder}/s/{cost_notice_session}"
+
         # Effective age escalates on the dispatch clock when we never acted
         # (last_by_us is None) — else a bounced-at-dispatch chain would nudge but
         # never escalate, since age_seconds(None) is None -> 0.
@@ -596,6 +635,9 @@ def run(payload):
             "stopped_session_count": stopped_session_count(chain, sessions_by_id),
             "mis_threaded": mis_threaded(chain),
             "needs_cost_notice": needs_cost_notice,
+            "cost_notice_session": cost_notice_session,
+            "cost_notice_folder": cost_notice_folder,
+            "cost_notice_link": cost_notice_link,
         })
 
         # Refresh the durable snapshot — preserve prior bookkeeping fields
