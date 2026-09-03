@@ -24,7 +24,12 @@ const PORT = parseInt(process.env.COWORKER_MCP_PORT || '8830', 10);
 const TOKEN = process.env.COWORKER_MCP_TOKEN || '';
 const DASH_SECRET = process.env.NANOCLAW_DASHBOARD_SECRET || '';
 const NCL_BIN = process.env.NCL_BIN || 'ncl';
-const ALLOWED_ORIGINS = new Set((process.env.COWORKER_MCP_ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean));
+const ALLOWED_ORIGINS = new Set(
+  (process.env.COWORKER_MCP_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
+);
 const SERVER_INFO = { name: 'nanoclaw-coworkers', version: '0.5.0' };
 const SUPPORTED_PROTOCOLS = new Set(['2025-06-18', '2025-03-26', '2024-11-05']);
 const DEFAULT_PROTOCOL = '2025-06-18';
@@ -39,7 +44,8 @@ if (!isLoopback && !TOKEN) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function safeEq(a, b) {
-  const ab = Buffer.from(String(a)), bb = Buffer.from(String(b));
+  const ab = Buffer.from(String(a)),
+    bb = Buffer.from(String(b));
   return ab.length === bb.length && timingSafeEqual(ab, bb);
 }
 function okText(obj) {
@@ -65,7 +71,11 @@ async function dash(method, path, body, timeoutMs = 15000) {
   }
   const text = await r.text();
   let data;
-  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
   if (!r.ok) {
     const appMsg = data && typeof data === 'object' && data.error ? data.error : `HTTP ${r.status}`;
     throw new Error(`${r.status}: ${String(appMsg).slice(0, 300)}`); // app-level message only, no internal URL
@@ -75,7 +85,11 @@ async function dash(method, path, body, timeoutMs = 15000) {
 
 // ── tools ─────────────────────────────────────────────────────────────────
 const str = (v) => (typeof v === 'string' ? v : undefined);
-const reqStr = (v, n) => { const s = str(v); if (!s || !s.trim()) throw new Error(`${n} (string) required`); return s.trim(); };
+const reqStr = (v, n) => {
+  const s = str(v);
+  if (!s || !s.trim()) throw new Error(`${n} (string) required`);
+  return s.trim();
+};
 
 const TOOLS = [
   {
@@ -84,13 +98,16 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     async run() {
       const cw = await dash('GET', '/api/coworkers');
-      const slim = Array.isArray(cw) ? cw.map((c) => ({ folder: c.folder, name: c.name, type: c.type, status: c.status })) : cw;
+      const slim = Array.isArray(cw)
+        ? cw.map((c) => ({ folder: c.folder, name: c.name, type: c.type, status: c.status }))
+        : cw;
       return okText(slim);
     },
   },
   {
     name: 'talk_to_coworker',
-    description: 'Send a message to a coworker (wakes a cold container). Async: reply is not returned here — use wait_for_reply, or poll read_replies. `coworker` is the folder from list_coworkers.',
+    description:
+      'Send a message to a coworker (wakes a cold container). Async: reply is not returned here — use wait_for_reply, or poll read_replies. `coworker` is the folder from list_coworkers.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -106,12 +123,16 @@ const TOOLS = [
       const t = str(a.thread_id);
       if (t && t.trim()) body.thread_id = t.trim().slice(0, 200);
       await dash('POST', '/api/chat/send', body);
-      return okText({ ok: true, note: `delivered to ${body.group}; call wait_for_reply({coworker:"${body.group}"}) for the reply` });
+      return okText({
+        ok: true,
+        note: `delivered to ${body.group}; call wait_for_reply({coworker:"${body.group}"}) for the reply`,
+      });
     },
   },
   {
     name: 'read_replies',
-    description: 'Read the recent transcript for a coworker (or a session). Returns newest messages incl. agent replies (direction=outgoing).',
+    description:
+      'Read the recent transcript for a coworker (or a session). Returns newest messages incl. agent replies (direction=outgoing).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -133,14 +154,21 @@ const TOOLS = [
       const data = await dash('GET', `/api/messages?${qs.toString()}`);
       const messages = data && data.messages ? data.messages : data;
       const slim = Array.isArray(messages)
-        ? messages.map((m) => ({ ts: m.timestamp, direction: m.direction, kind: m.kind, session_id: m.session_id, content: m.content }))
+        ? messages.map((m) => ({
+            ts: m.timestamp,
+            direction: m.direction,
+            kind: m.kind,
+            session_id: m.session_id,
+            content: m.content,
+          }))
         : messages;
       return okText({ count: Array.isArray(slim) ? slim.length : undefined, messages: slim });
     },
   },
   {
     name: 'wait_for_reply',
-    description: 'Block (server-side poll) until the coworker/session produces a NEW reply (direction=outgoing) after now, or timeout. Call right after talk_to_coworker to get the reply in one shot.',
+    description:
+      'Block (server-side poll) until the coworker/session produces a NEW reply (direction=outgoing) after now, or timeout. Call right after talk_to_coworker to get the reply in one shot.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -157,7 +185,10 @@ const TOOLS = [
       else if (str(a.coworker)) qs.set('group', reqStr(a.coworker, 'coworker'));
       else throw new Error('provide coworker or session_id');
       qs.set('limit', '15');
-      const timeout = Math.min(Math.max(Number.isFinite(+a.timeout_ms) ? Math.trunc(+a.timeout_ms) : 60000, 2000), 120000);
+      const timeout = Math.min(
+        Math.max(Number.isFinite(+a.timeout_ms) ? Math.trunc(+a.timeout_ms) : 60000, 2000),
+        120000,
+      );
       const after = str(a.after_ts) && !Number.isNaN(Date.parse(a.after_ts)) ? Date.parse(a.after_ts) : Date.now();
       const deadline = Date.now() + timeout;
       while (Date.now() < deadline) {
@@ -201,13 +232,26 @@ const TOOLS = [
   },
   {
     name: 'cost_status',
-    description: 'V2: live cost state for a session (ok/warn/escalated/stopped + observed cost). Check this BEFORE continue_session (avoid blind resume).',
-    inputSchema: { type: 'object', properties: { session_id: { type: 'string' } }, required: ['session_id'], additionalProperties: false },
+    description:
+      'V2: live cost state for a session (ok/warn/escalated/stopped + observed cost). Check this BEFORE continue_session (avoid blind resume).',
+    inputSchema: {
+      type: 'object',
+      properties: { session_id: { type: 'string' } },
+      required: ['session_id'],
+      additionalProperties: false,
+    },
     async run(a) {
       const sid = reqStr(a.session_id, 'session_id');
       try {
-        const { stdout } = await execFileP(NCL_BIN, ['cost-cap', 'status', '--session', sid, '--json'], { timeout: 10000 });
-        let parsed; try { parsed = JSON.parse(stdout); } catch { parsed = { raw: String(stdout).trim().slice(0, 2000) }; }
+        const { stdout } = await execFileP(NCL_BIN, ['cost-cap', 'status', '--session', sid, '--json'], {
+          timeout: 10000,
+        });
+        let parsed;
+        try {
+          parsed = JSON.parse(stdout);
+        } catch {
+          parsed = { raw: String(stdout).trim().slice(0, 2000) };
+        }
         return okText(parsed);
       } catch (e) {
         return okText({ session_id: sid, cost: 'unavailable', detail: String(e?.message || e).slice(0, 200) });
@@ -216,8 +260,14 @@ const TOOLS = [
   },
   {
     name: 'continue_session',
-    description: 'V2: resume a session that was stopped by the cost cap (cost-override continue). Show the user cost_status first — do not blind-resume.',
-    inputSchema: { type: 'object', properties: { session_id: { type: 'string' } }, required: ['session_id'], additionalProperties: false },
+    description:
+      'V2: resume a session that was stopped by the cost cap (cost-override continue). Show the user cost_status first — do not blind-resume.',
+    inputSchema: {
+      type: 'object',
+      properties: { session_id: { type: 'string' } },
+      required: ['session_id'],
+      additionalProperties: false,
+    },
     async run(a) {
       const sid = reqStr(a.session_id, 'session_id');
       await dash('POST', '/api/cost-override', { session_id: sid, decision: 'continue' });
@@ -228,7 +278,11 @@ const TOOLS = [
     name: 'list_stopped_sessions',
     description:
       'V2: the LIVE currently-blocked set — sessions whose cost-cap status is `stopped` RIGHT NOW (hard-blocked pending a Continue/Stop). Reads the dashboard\'s own /api/sessions and applies the SAME `costStatus===stopped` predicate the dashboard\'s "stopped" count uses, so it reports the IDENTICAL set, deduped per session. This — NOT list_cost_escalations — answers "which coworkers are blocked on cost right now"; the escalations list is append-only HISTORY and includes long-resolved / exited sessions that are no longer blocked. Optional coworker folder filter. Pair with cost_status (live per-session) + continue_session.',
-    inputSchema: { type: 'object', properties: { coworker: { type: 'string', description: 'coworker folder filter' } }, additionalProperties: false },
+    inputSchema: {
+      type: 'object',
+      properties: { coworker: { type: 'string', description: 'coworker folder filter' } },
+      additionalProperties: false,
+    },
     async run(a) {
       const cmd = ['cost-cap', 'stopped', '--json'];
       if (str(a.coworker)) cmd.push('--group', reqStr(a.coworker, 'coworker'));
@@ -287,7 +341,7 @@ const TOOLS = [
   {
     name: 'cost_per_coworker',
     description:
-      'V2: exact cost per coworker (agent group) from the inference gateway — the litellm per-request $ the OneCLI gateway records into request_logs, rolled up by coworker. Not a token estimate; date-correct; covers Claude + Codex (both route through the gateway). Optional group (coworker folder) + period (e.g. 30d, 24h; default all-time). Read host-side only.',
+      "V2: cost per coworker (agent group) from the inference gateway: the OneCLI gateway records each response body's token usage (usage_* in request_logs) and `ncl cost-cap coworkers` prices those tokens with NanoClaw's rate table (Claude + Codex). Calls without body usage (before the body-usage gateway went live, or an unpriced model) are UNKNOWN, never $0 — see unknownCalls/note. headerCostUsd = litellm's cost header, exact only for non-streamed calls. Host-side read; requires ONECLI_PG_CONTAINER on the host.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -325,7 +379,12 @@ const TOOLS = [
       additionalProperties: false,
     },
     async run(a) {
-      await dash('POST', '/api/approvals/action', { approvalId: reqStr(a.approval_id, 'approval_id'), decision: reqStr(a.decision, 'decision') }, 35000);
+      await dash(
+        'POST',
+        '/api/approvals/action',
+        { approvalId: reqStr(a.approval_id, 'approval_id'), decision: reqStr(a.decision, 'decision') },
+        35000,
+      );
       return okText({ ok: true });
     },
   },
@@ -339,7 +398,10 @@ const TOOLS = [
       additionalProperties: false,
     },
     async run(a) {
-      await dash('POST', '/api/questions/respond', { questionId: reqStr(a.question_id, 'question_id'), selectedOption: reqStr(a.selected_option, 'selected_option') });
+      await dash('POST', '/api/questions/respond', {
+        questionId: reqStr(a.question_id, 'question_id'),
+        selectedOption: reqStr(a.selected_option, 'selected_option'),
+      });
       return okText({ ok: true });
     },
   },
@@ -353,12 +415,14 @@ const rpcError = (id, code, message) => ({ jsonrpc: '2.0', id, error: { code, me
 const isPlainObj = (o) => o && typeof o === 'object' && !Array.isArray(o);
 
 async function handleRpc(msg) {
-  if (!isPlainObj(msg) || msg.jsonrpc !== '2.0' || typeof msg.method !== 'string') return rpcError(null, -32600, 'invalid request');
+  if (!isPlainObj(msg) || msg.jsonrpc !== '2.0' || typeof msg.method !== 'string')
+    return rpcError(null, -32600, 'invalid request');
   const hasId = Object.prototype.hasOwnProperty.call(msg, 'id');
   if (hasId && !(typeof msg.id === 'string' || (typeof msg.id === 'number' && Number.isInteger(msg.id)))) {
     return rpcError(null, -32600, 'invalid request id'); // null id is NOT a valid notification per MCP
   }
-  if (msg.params !== undefined && !isPlainObj(msg.params)) return hasId ? rpcError(msg.id, -32602, 'invalid params') : null;
+  if (msg.params !== undefined && !isPlainObj(msg.params))
+    return hasId ? rpcError(msg.id, -32602, 'invalid params') : null;
   const id = msg.id;
   const params = msg.params || {};
 
@@ -367,11 +431,17 @@ async function handleRpc(msg) {
   if (msg.method === 'initialize') {
     const want = params.protocolVersion;
     const proto = typeof want === 'string' && SUPPORTED_PROTOCOLS.has(want) ? want : DEFAULT_PROTOCOL;
-    return rpcResult(id, { protocolVersion: proto, capabilities: { tools: { listChanged: false } }, serverInfo: SERVER_INFO });
+    return rpcResult(id, {
+      protocolVersion: proto,
+      capabilities: { tools: { listChanged: false } },
+      serverInfo: SERVER_INFO,
+    });
   }
   if (msg.method === 'ping') return rpcResult(id, {});
   if (msg.method === 'tools/list') {
-    return rpcResult(id, { tools: TOOLS.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })) });
+    return rpcResult(id, {
+      tools: TOOLS.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })),
+    });
   }
   if (msg.method === 'tools/call') {
     const name = params.name;
@@ -381,7 +451,10 @@ async function handleRpc(msg) {
     try {
       return rpcResult(id, { content: [{ type: 'text', text: await tool.run(args) }] });
     } catch (e) {
-      return rpcResult(id, { content: [{ type: 'text', text: `Error: ${String(e?.message || e).slice(0, 400)}` }], isError: true });
+      return rpcResult(id, {
+        content: [{ type: 'text', text: `Error: ${String(e?.message || e).slice(0, 400)}` }],
+        isError: true,
+      });
     }
   }
   return rpcError(id, -32601, `method not found: ${msg.method}`);
@@ -393,7 +466,10 @@ function overLimit(key, max, windowMs) {
   const now = Date.now();
   if (buckets.size > 5000) buckets.clear();
   let b = buckets.get(key);
-  if (!b || now > b.reset) { b = { count: 0, reset: now + windowMs }; buckets.set(key, b); }
+  if (!b || now > b.reset) {
+    b = { count: 0, reset: now + windowMs };
+    buckets.set(key, b);
+  }
   b.count++;
   return b.count > max;
 }
@@ -401,12 +477,24 @@ function overLimit(key, max, windowMs) {
 function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    let size = 0, settled = false;
-    const done = (fn, v) => { if (!settled) { settled = true; fn(v); } };
+    let size = 0,
+      settled = false;
+    const done = (fn, v) => {
+      if (!settled) {
+        settled = true;
+        fn(v);
+      }
+    };
     req.on('data', (c) => {
       if (settled) return;
       size += c.length;
-      if (size > 1024 * 1024) { const e = new Error('body too large'); e.code = 'BODY_TOO_LARGE'; done(reject, e); req.resume(); return; }
+      if (size > 1024 * 1024) {
+        const e = new Error('body too large');
+        e.code = 'BODY_TOO_LARGE';
+        done(reject, e);
+        req.resume();
+        return;
+      }
       chunks.push(c);
     });
     req.on('end', () => done(resolve, Buffer.concat(chunks).toString('utf8')));
@@ -416,10 +504,19 @@ function readBody(req) {
 
 const server = http.createServer(async (req, res) => {
   const send = (status, obj, headers = {}) => {
-    try { res.writeHead(status, { 'Content-Type': 'application/json', ...headers }); res.end(obj === null ? '' : JSON.stringify(obj)); } catch { /* socket gone */ }
+    try {
+      res.writeHead(status, { 'Content-Type': 'application/json', ...headers });
+      res.end(obj === null ? '' : JSON.stringify(obj));
+    } catch {
+      /* socket gone */
+    }
   };
   let url;
-  try { url = new URL(req.url || '/', 'http://localhost'); } catch { return send(400, { error: 'bad request' }); }
+  try {
+    url = new URL(req.url || '/', 'http://localhost');
+  } catch {
+    return send(400, { error: 'bad request' });
+  }
 
   if (req.method === 'GET' && url.pathname === '/health') return send(200, { ok: true, tools: TOOLS.length });
   if (url.pathname !== '/mcp' && url.pathname !== '/') return send(404, { error: 'not found' });
@@ -435,33 +532,56 @@ const server = http.createServer(async (req, res) => {
   if (origin && !ALLOWED_ORIGINS.has(origin)) return send(403, { error: 'forbidden origin' });
 
   if (req.method !== 'POST') return send(405, { error: 'method not allowed' }, { Allow: 'POST' });
-  const ctype = String(req.headers['content-type'] || '').split(';')[0].trim();
+  const ctype = String(req.headers['content-type'] || '')
+    .split(';')[0]
+    .trim();
   if (ctype !== 'application/json') return send(415, { error: 'content-type must be application/json' });
 
   let raw;
-  try { raw = await readBody(req); }
-  catch (e) { return e?.code === 'BODY_TOO_LARGE' ? send(413, { error: 'payload too large' }) : send(400, { error: 'read error' }); }
+  try {
+    raw = await readBody(req);
+  } catch (e) {
+    return e?.code === 'BODY_TOO_LARGE'
+      ? send(413, { error: 'payload too large' })
+      : send(400, { error: 'read error' });
+  }
 
   let parsed;
-  try { parsed = JSON.parse(raw); } catch { return send(400, rpcError(null, -32700, 'parse error')); }
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return send(400, rpcError(null, -32700, 'parse error'));
+  }
   if (Array.isArray(parsed)) return send(400, rpcError(null, -32600, 'JSON-RPC batches are not supported')); // MCP 2025-06-18 removed batching
 
   // stricter limit for state-changing tools
-  if (isPlainObj(parsed) && parsed.method === 'tools/call' && isPlainObj(parsed.params) && APPROVAL_TOOLS.has(parsed.params.name)) {
-    if (overLimit(`a:${ip}`, 30, 60000)) return send(429, rpcError(parsed.id ?? null, -32000, 'rate limited (mutations)'));
+  if (
+    isPlainObj(parsed) &&
+    parsed.method === 'tools/call' &&
+    isPlainObj(parsed.params) &&
+    APPROVAL_TOOLS.has(parsed.params.name)
+  ) {
+    if (overLimit(`a:${ip}`, 30, 60000))
+      return send(429, rpcError(parsed.id ?? null, -32000, 'rate limited (mutations)'));
   }
   try {
     const r = await handleRpc(parsed);
     return r === null ? send(202, null) : send(200, r);
   } catch (e) {
     console.error('dispatch error', e);
-    return send(500, rpcError(isPlainObj(parsed) ? parsed.id ?? null : null, -32603, 'internal error'));
+    return send(500, rpcError(isPlainObj(parsed) ? (parsed.id ?? null) : null, -32603, 'internal error'));
   }
 });
 
-server.on('clientError', (_err, socket) => { try { socket.destroy(); } catch {} });
+server.on('clientError', (_err, socket) => {
+  try {
+    socket.destroy();
+  } catch {}
+});
 process.on('unhandledRejection', (e) => console.error('unhandledRejection', e));
 
 server.listen(PORT, HOST, () => {
-  console.log(`coworker-mcp v${SERVER_INFO.version} on http://${HOST}:${PORT}/mcp -> ${DASH} (${TOOLS.length} tools${TOKEN ? ', token' : ''}${DASH_SECRET ? ', dash-auth' : ''})`);
+  console.log(
+    `coworker-mcp v${SERVER_INFO.version} on http://${HOST}:${PORT}/mcp -> ${DASH} (${TOOLS.length} tools${TOKEN ? ', token' : ''}${DASH_SECRET ? ', dash-auth' : ''})`,
+  );
 });
