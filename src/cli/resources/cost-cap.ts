@@ -701,13 +701,15 @@ registerResource({
     coworkers: {
       access: 'open',
       description:
-        "Cost per coworker (agent group), from the inference gateway's EXACT per-request cost — the litellm " +
-        'number the OneCLI gateway captures into request_logs (header x-litellm-response-cost-original), rolled ' +
-        "up by agent group. Not a token estimate: it is the billing system's own figure, date-correct, covering " +
-        'both Claude and Codex (both route through the gateway). Read HOST-SIDE only — a cli_scope=global caller ' +
-        'gets back just the numbers, never OneCLI DB access. Needs the gateway capture flag ' +
-        '(ONECLI_CAPTURE_RESPONSE_HEADERS) + ONECLI_PG_CONTAINER; reports configured:false when unset. ' +
-        'Filters: --group (coworker folder), --period (e.g. 30d, 24h; default all-time).',
+        "Cost per coworker (agent group) from the inference gateway's own per-request records: the OneCLI " +
+        "gateway captures each response body's token usage (usage_* keys) and this verb prices those tokens " +
+        "with NanoClaw's rate table — the same table the dashboard uses — so Claude and Codex are covered and " +
+        "reconcilable per model against litellm's cost header (reported separately as headerCostUsd; exact " +
+        'only for non-streamed calls). Calls without body usage (logged before the body-usage gateway went ' +
+        'live, or an unpriced model) are reported as UNKNOWN, never $0 — no backfill. Read HOST-SIDE only: a ' +
+        'cli_scope=global caller gets back just the numbers, never OneCLI DB access. Needs the gateway flags ' +
+        '(ONECLI_CAPTURE_RESPONSE_HEADERS + ONECLI_CAPTURE_BODY_USAGE_HOSTS) + ONECLI_PG_CONTAINER; reports ' +
+        'configured:false when unset. Filters: --group (coworker folder), --period (e.g. 30d, 24h; default all-time).',
       args: [
         { name: 'group', type: 'string', description: 'filter to one coworker workspace folder' },
         {
@@ -729,11 +731,18 @@ registerResource({
         const d = data as CostPerCoworkerResult;
         if (!d.configured) return d.note ?? 'Cost source not configured.';
         if (d.coworkers.length === 0) return d.note ?? 'No captured cost rows.';
-        const lines = [`Cost per coworker (${d.period}, source: ${d.source}) — total ${money(d.totalUsd)}:`];
+        const unknown = d.unknownCalls > 0 ? ` + ${d.unknownCalls} call${d.unknownCalls === 1 ? '' : 's'} UNKNOWN` : '';
+        const lines = [
+          `Cost per coworker (${d.period}; gateway body usage × NanoClaw rates) — total ${money(d.totalUsd)}${unknown}:`,
+        ];
         for (const c of d.coworkers) {
           const who = c.folder ?? (c.name || c.groupId);
-          lines.push(`  ${who}: ${money(c.costUsd)} · ${c.calls} call${c.calls === 1 ? '' : 's'}`);
+          let line = `  ${who}: ${money(c.costUsd)} · ${c.pricedCalls} priced call${c.pricedCalls === 1 ? '' : 's'}`;
+          if (c.unknownCalls > 0) line += ` · ${c.unknownCalls} UNKNOWN`;
+          if (c.unpricedModels.length > 0) line += ` (unpriced: ${c.unpricedModels.join(', ')})`;
+          lines.push(line);
         }
+        if (d.note) lines.push(d.note);
         return lines.join('\n');
       },
     },
