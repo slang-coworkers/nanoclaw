@@ -55,6 +55,8 @@ import {
   expireEpisode,
   getEpisode,
   getEpisodeByShortId,
+  getLatestEpisodeForSession,
+  getPendingEpisodeForSession,
   ingestEpisode,
   listExpiredPending,
   listUnappliedEffects,
@@ -346,6 +348,47 @@ export async function decideCostEpisode(
     });
   }
   return res;
+}
+
+/**
+ * Apply an operator Continue|Stop decision to a session's cost cap — the
+ * SECONDARY surface (the dashboard pill AND `ncl cost-cap continue|stop`), with
+ * the SAME money-safety as the approval card. This is the single decision path
+ * BOTH callers share, extracted verbatim from the dashboard-ingress
+ * `onCostOverrideFn` so a second caller can never drift from the pill's
+ * hard-won semantics:
+ *
+ *   1. A live PENDING episode → route through its CAS (`decideCostEpisode`):
+ *      at-most-once decision + epoch fence.
+ *   2. No pending, but the session HAS a (resolved) episode → route with THAT
+ *      episode's epoch as the fence. This is the P0 fix — a bare unfenced
+ *      override here would let a Continue double-grant after a card Continue
+ *      already rotated the generation. The fence makes a duplicate/stale press
+ *      a no-op, while a genuine reversal (generation unchanged after a Stop)
+ *      still applies.
+ *   3. No episode ever (stale runner / never escalated) → the legacy
+ *      unconditional override — the ONLY place an unfenced override is allowed.
+ *
+ * `resolvedBy` tags the audit trail with the caller (`dashboard:pill`,
+ * `ncl:<actor>`). Throws (via `routeCostOverrideToSession`) if the session id
+ * does not resolve, so a bad `--session` fails loudly.
+ */
+export async function applyCostOverrideDecision(
+  sessionId: string,
+  decision: 'continue' | 'stop',
+  resolvedBy = 'dashboard:pill',
+): Promise<void> {
+  const pending = await getPendingEpisodeForSession(sessionId);
+  if (pending) {
+    await decideCostEpisode(pending.episode_id, decision, resolvedBy);
+    return;
+  }
+  const latest = await getLatestEpisodeForSession(sessionId);
+  await routeCostOverrideToSession({
+    sessionId,
+    decision,
+    ...(latest ? { epochKey: latest.epoch_key } : {}),
+  });
 }
 
 /** Pull `episodeId` out of an approval payload; undefined if missing/unparseable. */

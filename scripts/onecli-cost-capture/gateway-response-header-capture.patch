@@ -1,0 +1,160 @@
+diff --git a/apps/gateway/src/gateway/forward.rs b/apps/gateway/src/gateway/forward.rs
+index 1c7fb06..17ce5bd 100644
+--- a/apps/gateway/src/gateway/forward.rs
++++ b/apps/gateway/src/gateway/forward.rs
+@@ -920,6 +920,7 @@ fn emit_policy_telemetry(
+         existing_log_id: None,
+         log_id: None,
+         budget_charge: None,
++        captured_headers: String::new(),
+     });
+ }
+ 
+@@ -975,6 +976,7 @@ fn emit_approval_telemetry(
+         existing_log_id,
+         log_id,
+         budget_charge: None,
++        captured_headers: String::new(),
+     });
+ }
+ 
+diff --git a/apps/gateway/src/gateway/hooks.rs b/apps/gateway/src/gateway/hooks.rs
+index 209ffac..20a4c90 100644
+--- a/apps/gateway/src/gateway/hooks.rs
++++ b/apps/gateway/src/gateway/hooks.rs
+@@ -87,10 +87,49 @@ pub(crate) async fn prepare_request_body(
+     body
+ }
+ 
++/// Lowercased response-header names to capture into `request_logs.extra_data`,
++/// read once from `ONECLI_CAPTURE_RESPONSE_HEADERS` (comma-separated). Empty =
++/// disabled (default), so this is a no-op unless explicitly configured. Generic
++/// on purpose — the gateway stays provider-agnostic; set it to
++/// `x-litellm-response-cost-original,x-litellm-model-id` to record per-request
++/// cost beside the already-logged `agent_id`.
++fn capture_header_allowlist() -> &'static [String] {
++    static ALLOW: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
++    ALLOW.get_or_init(|| {
++        std::env::var("ONECLI_CAPTURE_RESPONSE_HEADERS")
++            .unwrap_or_default()
++            .split(',')
++            .map(|s| s.trim().to_ascii_lowercase())
++            .filter(|s| !s.is_empty())
++            .collect()
++    })
++}
++
++/// Serialize the allowlisted response headers as a JSON object string (for the
++/// `request_logs.extra_data` jsonb column), or "" when none are configured or
++/// present.
++fn capture_headers(resp_headers: &hyper::HeaderMap) -> String {
++    let allow = capture_header_allowlist();
++    if allow.is_empty() {
++        return String::new();
++    }
++    let mut map = serde_json::Map::new();
++    for name in allow {
++        if let Some(val) = resp_headers.get(name.as_str()).and_then(|v| v.to_str().ok()) {
++            map.insert(name.clone(), serde_json::Value::String(val.to_string()));
++        }
++    }
++    if map.is_empty() {
++        String::new()
++    } else {
++        serde_json::to_string(&serde_json::Value::Object(map)).unwrap_or_default()
++    }
++}
++
+ pub(crate) fn track_and_wrap(
+     meta: RequestMeta,
+     _rules: &ResolvedRules,
+-    _resp_headers: &hyper::HeaderMap,
++    resp_headers: &hyper::HeaderMap,
+     stream: impl futures_util::Stream<Item = Result<Bytes, reqwest::Error>> + Send + 'static,
+ ) -> BodyStream {
+     crate::telemetry::on_request(crate::telemetry::RequestEvent {
+@@ -114,6 +153,7 @@ pub(crate) fn track_and_wrap(
+         existing_log_id: meta.existing_log_id,
+         log_id: None,
+         budget_charge: None,
++        captured_headers: capture_headers(resp_headers),
+     });
+     Box::pin(stream.map_ok(Frame::data))
+ }
+diff --git a/apps/gateway/src/gateway/websocket.rs b/apps/gateway/src/gateway/websocket.rs
+index c3a0c29..42b7f91 100644
+--- a/apps/gateway/src/gateway/websocket.rs
++++ b/apps/gateway/src/gateway/websocket.rs
+@@ -428,6 +428,7 @@ fn emit_telemetry(
+             existing_log_id: None,
+             log_id: None,
+             budget_charge: None,
++            captured_headers: String::new(),
+         });
+     }
+ }
+diff --git a/apps/gateway/src/telemetry.rs b/apps/gateway/src/telemetry.rs
+index e90088a..bc59f78 100644
+--- a/apps/gateway/src/telemetry.rs
++++ b/apps/gateway/src/telemetry.rs
+@@ -41,8 +41,10 @@ async fn insert_batch(pool: &PgPool, events: &[RequestEvent]) -> Result<(), sqlx
+     let c = extract_columns(&filtered);
+ 
+     sqlx::query(
+-        "INSERT INTO request_logs (id, project_id, agent_id, method, host, path, provider, status, latency_ms, injection_count)
+-         SELECT * FROM UNNEST($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[], $8::int4[], $9::int4[], $10::int4[])",
++        "INSERT INTO request_logs (id, project_id, agent_id, method, host, path, provider, status, latency_ms, injection_count, extra_data)
++         SELECT id, project_id, agent_id, method, host, path, provider, status, latency_ms, injection_count, NULLIF(extra, '')::jsonb
++         FROM UNNEST($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[], $8::int4[], $9::int4[], $10::int4[], $11::text[])
++           AS t(id, project_id, agent_id, method, host, path, provider, status, latency_ms, injection_count, extra)",
+     )
+     .bind(&c.ids)
+     .bind(&c.project_ids)
+@@ -54,6 +56,7 @@ async fn insert_batch(pool: &PgPool, events: &[RequestEvent]) -> Result<(), sqlx
+     .bind(&c.statuses)
+     .bind(&c.latencies)
+     .bind(&c.injections)
++    .bind(&c.extra_datas)
+     .execute(pool)
+     .await?;
+ 
+diff --git a/apps/gateway/src/telemetry_core.rs b/apps/gateway/src/telemetry_core.rs
+index 2e14993..98bb00f 100644
+--- a/apps/gateway/src/telemetry_core.rs
++++ b/apps/gateway/src/telemetry_core.rs
+@@ -85,6 +85,11 @@ pub(crate) struct RequestEvent {
+     /// `None` for non-budgeted requests; always `None` in OSS.
+     #[allow(dead_code)] // read by cloud telemetry (budget flush), unused in OSS
+     pub budget_charge: Option<BudgetCharge>,
++    /// Allowlisted upstream response headers (e.g. litellm per-request cost),
++    /// serialized as a JSON object string for the `request_logs.extra_data`
++    /// column. Empty string when no configured header was present on the
++    /// response (or `ONECLI_CAPTURE_RESPONSE_HEADERS` is unset).
++    pub captured_headers: String,
+ }
+ 
+ pub(crate) static SENDER: OnceLock<mpsc::Sender<RequestEvent>> = OnceLock::new();
+@@ -140,6 +145,7 @@ pub(crate) struct BatchColumns {
+     pub statuses: Vec<i32>,
+     pub latencies: Vec<i32>,
+     pub injections: Vec<i32>,
++    pub extra_datas: Vec<String>,
+ }
+ 
+ pub(crate) fn extract_columns(events: &[&RequestEvent]) -> BatchColumns {
+@@ -161,6 +167,7 @@ pub(crate) fn extract_columns(events: &[&RequestEvent]) -> BatchColumns {
+         statuses: events.iter().map(|e| e.status as i32).collect(),
+         latencies: events.iter().map(|e| e.latency_ms as i32).collect(),
+         injections: events.iter().map(|e| e.injection_count as i32).collect(),
++        extra_datas: events.iter().map(|e| e.captured_headers.clone()).collect(),
+     }
+ }
+ 
+@@ -188,6 +195,7 @@ mod tests {
+             existing_log_id: None,
+             log_id: None,
+             budget_charge: None,
++            captured_headers: String::new(),
+         }
+     }
+ 

@@ -73,8 +73,8 @@ import sys
 
 # ─── Thresholds — the ONLY place these live. Markdown references them by name. ───
 STALE_OPEN_IDLE_DAYS = 14   # PR untouched longer than this + no running session → STALE-OPEN
-PRESSURE_GATE_GB = 25       # only reclaim STALE-OPEN builds when free < this
-TARGET_FREE_GB = 40         # stop reclaiming once free would reach this
+PRESSURE_GATE_GB = 150      # only reclaim STALE-OPEN builds when free < this
+TARGET_FREE_GB = 170        # stop reclaiming once free would reach this
 CRITICAL_GATE_GB = 5        # below this = ENOSPC-imminent: widen reclaim to idle KEEP builds too
 CRITICAL_IDLE_DAYS = 2      # under critical pressure, a KEEP build idle > this is reclaimable
 
