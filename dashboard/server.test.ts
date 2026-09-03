@@ -106,6 +106,8 @@ function createDashboardTestDb(): Database.Database {
       disable_overlays INTEGER NOT NULL DEFAULT 0,
       overlays TEXT,
       sidebar_group TEXT,
+      -- Mirrors migration 937; /api/sessions selects ag.paused.
+      paused INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS sessions (
