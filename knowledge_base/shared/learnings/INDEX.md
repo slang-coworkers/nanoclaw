@@ -4056,6 +4056,9 @@
 - [a2a redrive bounce citing a reused reviewer sessio](ag-1776713211742-1w6l4e/1788468189401-a2a-redrive-bounce-citing-a-reused-reviewer-sessio.md) — _ag-1776713211742-1w6l4e_
 - [on state conflict github system of record breaks t](ag-1776713211742-1w6l4e/1788475445155-on-state-conflict-github-system-of-record-breaks-t.md) — _ag-1776713211742-1w6l4e_
 - [auto filed bug reports must confirm reproduction o](ag-1776713211742-1w6l4e/1788492271185-auto-filed-bug-reports-must-confirm-reproduction-o.md) — _ag-1776713211742-1w6l4e_
+- [gh rest reviews paginate 401 flaps mid pagination ](ag-1776713211742-1w6l4e/1788523950028-gh-rest-reviews-paginate-401-flaps-mid-pagination-.md) — _ag-1776713211742-1w6l4e_
+- [dedup root cause classification without a repro is](ag-1776713211742-1w6l4e/1788538710735-dedup-root-cause-classification-without-a-repro-is.md) — _ag-1776713211742-1w6l4e_
+- [handling aarch64 only compiler miscompiles from an](ag-1776713211742-1w6l4e/1788542612503-handling-aarch64-only-compiler-miscompiles-from-an.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4128,6 +4131,9 @@
 - [correction gh cli app installation token is fine f](ag-1776713259045-nax3cr/1788205146208-correction-gh-cli-app-installation-token-is-fine-f.md) — _ag-1776713259045-nax3cr_
 - [slang ci windows 11 vs2026 arm64 runner image not ](ag-1776713259045-nax3cr/1788242807926-slang-ci-windows-11-vs2026-arm64-runner-image-not-.md) — _ag-1776713259045-nax3cr_
 - [ci babysitter classify only subagent scope violati](ag-1776713259045-nax3cr/1788287467646-ci-babysitter-classify-only-subagent-scope-violati.md) — _ag-1776713259045-nax3cr_
+- [gh run rerun fails on wedged falcor build approval](ag-1776713259045-nax3cr/1788545503656-gh-run-rerun-fails-on-wedged-falcor-build-approval.md) — _ag-1776713259045-nax3cr_
+- [test falcor reruns fail deterministically once the](ag-1776713259045-nax3cr/1788546124300-test-falcor-reruns-fail-deterministically-once-the.md) — _ag-1776713259045-nax3cr_
+- [correction test falcor 403 and artifact expiry are](ag-1776713259045-nax3cr/1788546545702-correction-test-falcor-403-and-artifact-expiry-are.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [never judge github api quota from rate limit the g](ag-1777389337838-f54d9l/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — _ag-1777389337838-f54d9l_
@@ -4406,6 +4412,12 @@
 - [slang foo gt bar lt t gt 30101 is a non idempotent](ag-1780667166418-apezq5/1788394233351-slang-foo-gt-bar-lt-t-gt-30101-is-a-non-idempotent.md) — _ag-1780667166418-apezq5_
 - [bindless rwstructuredbuffer handle vk tests must u](ag-1780667166418-apezq5/1788441444776-bindless-rwstructuredbuffer-handle-vk-tests-must-u.md) — _ag-1780667166418-apezq5_
 - [glsl bindless variable descriptor array index reje](ag-1780667166418-apezq5/1788442267382-glsl-bindless-variable-descriptor-array-index-reje.md) — _ag-1780667166418-apezq5_
+- [a runtime driver not slangc descriptor heap verdic](ag-1780667166418-apezq5/1788536959957-a-runtime-driver-not-slangc-descriptor-heap-verdic.md) — _ag-1780667166418-apezq5_
+- [chain routing gate requires in reply to on handoff](ag-1780667166418-apezq5/1788540148122-chain-routing-gate-requires-in-reply-to-on-handoff.md) — _ag-1780667166418-apezq5_
+- [investigation only deliverables stay in the analys](ag-1780667166418-apezq5/1788542147628-investigation-only-deliverables-stay-in-the-analys.md) — _ag-1780667166418-apezq5_
+- [e30019 loc less synthesized derefexpr in coerce pa](ag-1780667166418-apezq5/1788560155779-e30019-loc-less-synthesized-derefexpr-in-coerce-pa.md) — _ag-1780667166418-apezq5_
+- [validate ir detailed can sigabrt on transient inva](ag-1780667166418-apezq5/1788583275994-validate-ir-detailed-can-sigabrt-on-transient-inva.md) — _ag-1780667166418-apezq5_
+- [correction disableirvalidationscope does not gate ](ag-1780667166418-apezq5/1788583742043-correction-disableirvalidationscope-does-not-gate-.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -4754,6 +4766,11 @@
 - [closure reports verify test counts against the mer](ag-1780667166439-vmjrwe/1788475445885-closure-reports-verify-test-counts-against-the-mer.md) — _ag-1780667166439-vmjrwe_
 - [slang rhi cpu backend is harness skipped on linux ](ag-1780667166439-vmjrwe/1788475957247-slang-rhi-cpu-backend-is-harness-skipped-on-linux-.md) — _ag-1780667166439-vmjrwe_
 - [git worktree fetch updates fetch head not origin b](ag-1780667166439-vmjrwe/1788475965703-git-worktree-fetch-updates-fetch-head-not-origin-b.md) — _ag-1780667166439-vmjrwe_
+- [12871 host vm pathinfo type ub is not neg specific](ag-1780667166439-vmjrwe/1788537147888-12871-host-vm-pathinfo-type-ub-is-not-neg-specific.md) — _ag-1780667166439-vmjrwe_
+- [re check issue open closed state before starting t](ag-1780667166439-vmjrwe/1788538402509-re-check-issue-open-closed-state-before-starting-t.md) — _ag-1780667166439-vmjrwe_
+- [github auto close ignores negation does not resolv](ag-1780667166439-vmjrwe/1788544490306-github-auto-close-ignores-negation-does-not-resolv.md) — _ag-1780667166439-vmjrwe_
+- [test falcor ci failures have multiple infra modes ](ag-1780667166439-vmjrwe/1788545708307-test-falcor-ci-failures-have-multiple-infra-modes-.md) — _ag-1780667166439-vmjrwe_
+- [slang validate ir detailed sigabrt is the post pas](ag-1780667166439-vmjrwe/1788584458760-slang-validate-ir-detailed-sigabrt-is-the-post-pas.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -4854,6 +4871,9 @@
 - [dispatching slang pr review reviewers in backgroun](ag-1780667168475-a9tac8/1788446192623-dispatching-slang-pr-review-reviewers-in-backgroun.md) — _ag-1780667168475-a9tac8_
 - [gh invalid token in auth status still allows publi](ag-1780667168475-a9tac8/1788469857073-gh-invalid-token-in-auth-status-still-allows-publi.md) — _ag-1780667168475-a9tac8_
 - [slang pr review runs cleanly against slang rhi and](ag-1780667168475-a9tac8/1788477201526-slang-pr-review-runs-cleanly-against-slang-rhi-and.md) — _ag-1780667168475-a9tac8_
+- [gh auth status token invalid warning is a false al](ag-1780667168475-a9tac8/1788549008722-gh-auth-status-token-invalid-warning-is-a-false-al.md) — _ag-1780667168475-a9tac8_
+- [gh auth status may report gh token invalid while a](ag-1780667168475-a9tac8/1788558749393-gh-auth-status-may-report-gh-token-invalid-while-a.md) — _ag-1780667168475-a9tac8_
+- [slang pr review gh pr diff works even when gh auth](ag-1780667168475-a9tac8/1788581852750-slang-pr-review-gh-pr-diff-works-even-when-gh-auth.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -5556,6 +5576,14 @@
 - [approver human disagreement bot fixer author trust](ag-1783611156430-vvj8oi/1788482760309-approver-human-disagreement-bot-fixer-author-trust.md) — _ag-1783611156430-vvj8oi_
 - [approver challenger miss spir v debug type canonic](ag-1783611156430-vvj8oi/1788485137044-approver-challenger-miss-spir-v-debug-type-canonic.md) — _ag-1783611156430-vvj8oi_
 - [approver calibration confirmed opaque type debugin](ag-1783611156430-vvj8oi/1788485501480-approver-calibration-confirmed-opaque-type-debugin.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger calibration cuda sm capability](ag-1783611156430-vvj8oi/1788502196859-approver-challenger-calibration-cuda-sm-capability.md) — _ag-1783611156430-vvj8oi_
+- [approver infra abstain gh onecli github connection](ag-1783611156430-vvj8oi/1788506787387-approver-infra-abstain-gh-onecli-github-connection.md) — _ag-1783611156430-vvj8oi_
+- [approver infra abstain flap resistant review harve](ag-1783611156430-vvj8oi/1788523820839-approver-infra-abstain-flap-resistant-review-harve.md) — _ag-1783611156430-vvj8oi_
+- [approver procedure a step 1 clause fail pre empts ](ag-1783611156430-vvj8oi/1788552456784-approver-procedure-a-step-1-clause-fail-pre-empts-.md) — _ag-1783611156430-vvj8oi_
+- [approver ops a synchronize re wake can be metadata](ag-1783611156430-vvj8oi/1788556078923-approver-ops-a-synchronize-re-wake-can-be-metadata.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger probe gate enforcement prs che](ag-1783611156430-vvj8oi/1788565861086-approver-challenger-probe-gate-enforcement-prs-che.md) — _ag-1783611156430-vvj8oi_
+- [approver confirmed safe coopvec math intrinsic ove](ag-1783611156430-vvj8oi/1788576772705-approver-confirmed-safe-coopvec-math-intrinsic-ove.md) — _ag-1783611156430-vvj8oi_
+- [approver critique mustfix critique gate mechanics ](ag-1783611156430-vvj8oi/1788576785263-approver-critique-mustfix-critique-gate-mechanics-.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement a finding held by a re](ag-1783611156448-d49n0a/1786357056431-approver-human-disagreement-a-finding-held-by-a-re.md) — _ag-1783611156448-d49n0a_
 - [approver human agreement a merge can ship an unver](ag-1783611156448-d49n0a/1786361356886-approver-human-agreement-a-merge-can-ship-an-unver.md) — _ag-1783611156448-d49n0a_
 - [approver infra abstain record decision returns dec](ag-1783611156448-d49n0a/1786361652051-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156448-d49n0a_
@@ -5677,6 +5705,15 @@
 - [approver human disagreement terminal confirm slang](ag-1783611156448-d49n0a/1788444914596-approver-human-disagreement-terminal-confirm-slang.md) — _ag-1783611156448-d49n0a_
 - [approver confirmed board sync protected path absta](ag-1783611156448-d49n0a/1788453054232-approver-confirmed-board-sync-protected-path-absta.md) — _ag-1783611156448-d49n0a_
 - [approver policy behavior bot authored companion pr](ag-1783611156448-d49n0a/1788481930442-approver-policy-behavior-bot-authored-companion-pr.md) — _ag-1783611156448-d49n0a_
+- [approver process slangpy external slang rhi bump o](ag-1783611156448-d49n0a/1788504229444-approver-process-slangpy-external-slang-rhi-bump-o.md) — _ag-1783611156448-d49n0a_
+- [approver calibration pr merged where merged by the](ag-1783611156448-d49n0a/1788504907831-approver-calibration-pr-merged-where-merged-by-the.md) — _ag-1783611156448-d49n0a_
+- [approver human disagreement confirmed correct abst](ag-1783611156448-d49n0a/1788512650346-approver-human-disagreement-confirmed-correct-abst.md) — _ag-1783611156448-d49n0a_
+- [approver clause gap ci green on sha reads legacy c](ag-1783611156448-d49n0a/1788518242912-approver-clause-gap-ci-green-on-sha-reads-legacy-c.md) — _ag-1783611156448-d49n0a_
+- [approver challenger miss a no op by default absent](ag-1783611156448-d49n0a/1788518256361-approver-challenger-miss-a-no-op-by-default-absent.md) — _ag-1783611156448-d49n0a_
+- [approver infra slangpy pr ci never runs root setup](ag-1783611156448-d49n0a/1788518272934-approver-infra-slangpy-pr-ci-never-runs-root-setup.md) — _ag-1783611156448-d49n0a_
+- [approver infra abstain coderabbit review latency t](ag-1783611156448-d49n0a/1788527120708-approver-infra-abstain-coderabbit-review-latency-t.md) — _ag-1783611156448-d49n0a_
+- [approver clause gap harvest pending bot checks onl](ag-1783611156448-d49n0a/1788562907093-approver-clause-gap-harvest-pending-bot-checks-onl.md) — _ag-1783611156448-d49n0a_
+- [approver clause gap protected path only pr routes ](ag-1783611156448-d49n0a/1788562917440-approver-clause-gap-protected-path-only-pr-routes-.md) — _ag-1783611156448-d49n0a_
 - [dashboard_slang triage 1776263007885](dashboard_slang-triage-1776263007885.md) — _unattributed_
 - [devin reviewer scrape reliability](devin-reviewer-scrape-reliability.md) — _unattributed_
 - [legoop feedback_ab_evaluation_criteria](legoop-feedback_ab_evaluation_criteria.md) — _unattributed_
