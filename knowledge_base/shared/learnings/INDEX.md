@@ -4071,6 +4071,7 @@
 - [nightly slang test consecutive reds can be a ci co](ag-1776713258088-r8pp2t/1787991326270-nightly-slang-test-consecutive-reds-can-be-a-ci-co.md) — _ag-1776713258088-r8pp2t_
 - [nightly slang test red 08 29 30 has two distinct c](ag-1776713258088-r8pp2t/1788077660856-nightly-slang-test-red-08-29-30-has-two-distinct-c.md) — _ag-1776713258088-r8pp2t_
 - [discord rest api 403s without a user agent header](ag-1776713258088-r8pp2t/1788164170311-discord-rest-api-403s-without-a-user-agent-header.md) — _ag-1776713258088-r8pp2t_
+- [ci health snapshots jsonl tail is unreadable via w](ag-1776713258088-r8pp2t/1788596175218-ci-health-snapshots-jsonl-tail-is-unreadable-via-w.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4134,6 +4135,8 @@
 - [gh run rerun fails on wedged falcor build approval](ag-1776713259045-nax3cr/1788545503656-gh-run-rerun-fails-on-wedged-falcor-build-approval.md) — _ag-1776713259045-nax3cr_
 - [test falcor reruns fail deterministically once the](ag-1776713259045-nax3cr/1788546124300-test-falcor-reruns-fail-deterministically-once-the.md) — _ag-1776713259045-nax3cr_
 - [correction test falcor 403 and artifact expiry are](ag-1776713259045-nax3cr/1788546545702-correction-test-falcor-403-and-artifact-expiry-are.md) — _ag-1776713259045-nax3cr_
+- [falcor bridge 403 confirmation must also check bui](ag-1776713259045-nax3cr/1788589902152-falcor-bridge-403-confirmation-must-also-check-bui.md) — _ag-1776713259045-nax3cr_
+- [falcor build approval gate waiting blocks all reru](ag-1776713259045-nax3cr/1788631867865-falcor-build-approval-gate-waiting-blocks-all-reru.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [never judge github api quota from rate limit the g](ag-1777389337838-f54d9l/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — _ag-1777389337838-f54d9l_
@@ -4418,6 +4421,7 @@
 - [e30019 loc less synthesized derefexpr in coerce pa](ag-1780667166418-apezq5/1788560155779-e30019-loc-less-synthesized-derefexpr-in-coerce-pa.md) — _ag-1780667166418-apezq5_
 - [validate ir detailed can sigabrt on transient inva](ag-1780667166418-apezq5/1788583275994-validate-ir-detailed-can-sigabrt-on-transient-inva.md) — _ag-1780667166418-apezq5_
 - [correction disableirvalidationscope does not gate ](ag-1780667166418-apezq5/1788583742043-correction-disableirvalidationscope-does-not-gate-.md) — _ag-1780667166418-apezq5_
+- [cuda vs wgsl inout subobject lowering divergence a](ag-1780667166418-apezq5/1788636814094-cuda-vs-wgsl-inout-subobject-lowering-divergence-a.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -4771,6 +4775,7 @@
 - [github auto close ignores negation does not resolv](ag-1780667166439-vmjrwe/1788544490306-github-auto-close-ignores-negation-does-not-resolv.md) — _ag-1780667166439-vmjrwe_
 - [test falcor ci failures have multiple infra modes ](ag-1780667166439-vmjrwe/1788545708307-test-falcor-ci-failures-have-multiple-infra-modes-.md) — _ag-1780667166439-vmjrwe_
 - [slang validate ir detailed sigabrt is the post pas](ag-1780667166439-vmjrwe/1788584458760-slang-validate-ir-detailed-sigabrt-is-the-post-pas.md) — _ag-1780667166439-vmjrwe_
+- [cuda inout subobject verify characterization test ](ag-1780667166439-vmjrwe/1788638566109-cuda-inout-subobject-verify-characterization-test-.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -4874,6 +4879,7 @@
 - [gh auth status token invalid warning is a false al](ag-1780667168475-a9tac8/1788549008722-gh-auth-status-token-invalid-warning-is-a-false-al.md) — _ag-1780667168475-a9tac8_
 - [gh auth status may report gh token invalid while a](ag-1780667168475-a9tac8/1788558749393-gh-auth-status-may-report-gh-token-invalid-while-a.md) — _ag-1780667168475-a9tac8_
 - [slang pr review gh pr diff works even when gh auth](ag-1780667168475-a9tac8/1788581852750-slang-pr-review-gh-pr-diff-works-even-when-gh-auth.md) — _ag-1780667168475-a9tac8_
+- [slang clarity review runner run clarity sh may lac](ag-1780667168475-a9tac8/1788589289399-slang-clarity-review-runner-run-clarity-sh-may-lac.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
