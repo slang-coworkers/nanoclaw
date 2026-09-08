@@ -125,22 +125,32 @@ describe('resolveSpawnProvider', () => {
 // asserted before absence so the guard cannot pass vacuously on a renamed helper.
 describe('one provider per spawn', () => {
   const RUNNER = fs.readFileSync(new URL('./container-runner.ts', import.meta.url), 'utf-8');
-  // The slice ends at the first column-0 `}`. That is the function's real end
-  // only while nothing inside it opens one — this file builds a config.toml
-  // template with unindented braces elsewhere, so assert the balance the
-  // extraction depends on: a complete body is open by exactly its own `{`.
-  // Without this, a truncating edit would leave the presence assertions passing
-  // (their anchors sit near the top) and silently narrow the absence ones.
-  const fnBody = (decl: string): string => {
+  // The slice ends at the first column-0 `}` — the function's real end only
+  // while nothing inside it opens one, and this file builds a config.toml
+  // template with unindented braces elsewhere. A truncated slice keeps the
+  // presence assertions passing (their anchors sit near the top of each
+  // function) while silently narrowing the absence ones, so the extraction has
+  // to prove it reached the end.
+  //
+  // `tail` is that proof and it is the load-bearing check. Brace balance alone
+  // is NOT sufficient: a cut at a statement boundary leaves the prefix balanced,
+  // so an injected template there drops 61% of `spawnContainer` with balance
+  // still 1 and the anchor still present. Balance is kept only for the cuts it
+  // does catch — those landing inside a nested block.
+  const fnBody = (decl: string, tail: string): string => {
     const start = RUNNER.indexOf(decl);
     expect(start).toBeGreaterThan(-1);
     const rest = RUNNER.slice(start);
     const body = rest.slice(0, rest.indexOf('\n}\n'));
-    expect(body.split('{').length - body.split('}').length).toBe(1);
+    expect(body, `${decl}: slice stopped before the function's last statement`).toContain(tail);
+    expect(body.split('{').length - body.split('}').length, `${decl}: body truncated inside a nested block`).toBe(1);
     return body;
   };
-  const spawn = fnBody('async function spawnContainer');
-  const contribution = fnBody('export async function resolveProviderContribution');
+  const spawn = fnBody('async function spawnContainer', 'await releaseClaimQuietly(session.id, claimIncarnation)');
+  const contribution = fnBody(
+    'export async function resolveProviderContribution',
+    'return { provider, contribution: surfaces.contribution, surfaces };',
+  );
 
   it('both halves resolve through the shared helper', () => {
     expect(spawn).toMatch(/resolveSpawnProvider\(/);
