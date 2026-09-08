@@ -26,6 +26,7 @@ import {
   readStandingInstructions,
   reportProjectDocPressure,
   resolveProviderName,
+  resolveSpawnProvider,
   syncSkillSymlinks,
   toMountSpecs,
 } from './container-runner.js';
@@ -53,34 +54,87 @@ afterAll(async () => {
 });
 
 describe('resolveProviderName', () => {
+  const tiers = (
+    session: string | null | undefined,
+    group: string | null | undefined,
+    config: string | null | undefined,
+  ) => ({ session, group, config });
+
   it('prefers session over group and container config', () => {
-    expect(resolveProviderName('codex', 'claude', 'opencode')).toBe('codex');
+    expect(resolveProviderName(tiers('codex', 'claude', 'opencode'))).toBe('codex');
   });
 
-  // The tier a two-argument call silently drops: with the group tier missing,
-  // container.json lands on it and a group-level pick loses to the config.
+  // The tier a positional call is apt to drop by passing the config where the
+  // group belongs: with the group missing, a group-level pick loses to the config.
   it('prefers the group over container config when session is null', () => {
-    expect(resolveProviderName(null, 'codex', 'claude')).toBe('codex');
+    expect(resolveProviderName(tiers(null, 'codex', 'claude'))).toBe('codex');
   });
 
   it('falls back to container config when session and group are null', () => {
-    expect(resolveProviderName(null, null, 'opencode')).toBe('opencode');
+    expect(resolveProviderName(tiers(null, null, 'opencode'))).toBe('opencode');
   });
 
   it('defaults to claude when nothing is set', () => {
-    expect(resolveProviderName(null, undefined, undefined)).toBe('claude');
+    expect(resolveProviderName(tiers(null, undefined, undefined))).toBe('claude');
   });
 
   it('lowercases the resolved name', () => {
-    expect(resolveProviderName('CODEX', null, null)).toBe('codex');
-    expect(resolveProviderName(null, 'Claude', null)).toBe('claude');
-    expect(resolveProviderName(null, null, 'OpenCode')).toBe('opencode');
+    expect(resolveProviderName(tiers('CODEX', null, null))).toBe('codex');
+    expect(resolveProviderName(tiers(null, 'Claude', null))).toBe('claude');
+    expect(resolveProviderName(tiers(null, null, 'OpenCode'))).toBe('opencode');
   });
 
   it('treats empty string as unset (falls through)', () => {
-    expect(resolveProviderName('', 'opencode', null)).toBe('opencode');
-    expect(resolveProviderName(null, '', 'codex')).toBe('codex');
-    expect(resolveProviderName(null, '', '')).toBe('claude');
+    expect(resolveProviderName(tiers('', 'opencode', null))).toBe('opencode');
+    expect(resolveProviderName(tiers(null, '', 'codex'))).toBe('codex');
+    expect(resolveProviderName(tiers(null, '', ''))).toBe('claude');
+  });
+});
+
+describe('resolveSpawnProvider', () => {
+  it('reads each tier off the row it belongs to', () => {
+    expect(
+      resolveSpawnProvider(
+        { agent_provider: null } as Session,
+        { agent_provider: 'codex' } as AgentGroup,
+        { provider: 'claude' } as ContainerConfig,
+      ),
+    ).toBe('codex');
+  });
+});
+
+// A spawn has two halves — the group-filesystem scaffold and the
+// mounts/contribution — and they must run on ONE provider. The defect this pins
+// was a second, independently-written resolution in `spawnContainer` that
+// dropped the group tier, so a group whose provider lived only in
+// `agent_groups.agent_provider` had its filesystem prepared for one provider and
+// its container built for another. The two agree whenever that column is empty,
+// which is why it survived; and because the function body never changed, no
+// unit test of the precedence rule can see it.
+//
+// Asserted against the source for the reason publication-contract.test.ts gives:
+// this is a control-flow property of a function that needs a container runtime
+// to execute, and a mock deep enough to run it would pin the mock. Presence is
+// asserted before absence so the guard cannot pass vacuously on a renamed helper.
+describe('one provider per spawn', () => {
+  const RUNNER = fs.readFileSync(new URL('./container-runner.ts', import.meta.url), 'utf-8');
+  const fnBody = (decl: string): string => {
+    const start = RUNNER.indexOf(decl);
+    expect(start).toBeGreaterThan(-1);
+    const rest = RUNNER.slice(start);
+    return rest.slice(0, rest.indexOf('\n}\n'));
+  };
+  const spawn = fnBody('async function spawnContainer');
+  const contribution = fnBody('export async function resolveProviderContribution');
+
+  it('both halves resolve through the shared helper', () => {
+    expect(spawn).toMatch(/resolveSpawnProvider\(/);
+    expect(contribution).toMatch(/resolveSpawnProvider\(/);
+  });
+
+  it('neither half resolves the tiers itself', () => {
+    expect(spawn).not.toMatch(/resolveProviderName\(/);
+    expect(contribution).not.toMatch(/resolveProviderName\(/);
   });
 });
 
