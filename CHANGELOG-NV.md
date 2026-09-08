@@ -6,15 +6,39 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 545 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 238 |
-| `nv-slang` | slang project spine, skills, workflows | 146 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 77 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 56 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 553 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 239 |
+| `nv-slang` | slang project spine, skills, workflows | 147 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 78 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 57 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-09-08
+
+### nv-main (8 PRs)
+- **#1454** `explain-diff-html: every coworker PR ships a self-contained HTML explanation`
+- **#1450** `Sync nv-main with upstream/main 75f2016 (2026-09-07)`
+- **#1464** `learnings-wiki: see per-author subdirectories (1,823 atoms invisible since Aug 10) + gate subcommand`
+- **#1476** `Guard surface ownership on the production registry`
+- **#1477** `Sync nv-main with upstream/main 6656b32 (2026-09-08)`
+- **#1479** `docs: prod learnings-wiki task prompt gains step 0 (re-materialise the builder each run)`
+- **#1478** `Require every provider tier at the call site`
+- **#1481** `docs: re-seal the prod scheduled-task snapshot pair (unbreaks nv-main CI)`
+
+### nv-dashboard (1 PRs)
+- **#1472** `Sync nv-dashboard with nv-main 533ccf6d`
+
+### nv-slang (1 PRs)
+- **#1473** `Sync nv-slang with nv-main 533ccf6d`
+
+### nv-slangpy (1 PRs)
+- **#1474** `Sync nv-slangpy with nv-main 533ccf6d`
+
+### nv-nanoclaw (1 PRs)
+- **#1475** `Sync nv-nanoclaw with nv-main 533ccf6d`
 
 ## 📅 2026-09-07
 
