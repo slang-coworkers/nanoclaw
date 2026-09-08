@@ -93,6 +93,10 @@ hermes-common:
     # release file:line; the release tree is the only citation source.
     - container/spines/hermes/invariants/plugin-first.md
   context:
+    # The fleet baseline every design is judged against (one gateway in Bot
+    # Mode, profiles, Bot Chat + kanban, per-profile podman sandboxes, elevated
+    # orchestrator, adopt-native-first). Decided by the operator 2026-09-08.
+    - container/spines/hermes/context/topology.md
     - container/spines/hermes/context/layout.md
     # uv recipe, HERMES_HOME=/workspace/agent/.hermes-testbed, run_tests.sh
     # under env -i, doctor --ci, worktree-per-target, apt gaps, chunked runs.
@@ -400,6 +404,9 @@ main:
     # .claude-shared/skills → /home/node/.claude/skills/ and invocable as a
     # slash command.
     - container/spines/hermes/context/status-report.md
+    # The Orchestrator dispatches rows and judges CORE-CHANGE asks against the
+    # same fleet baseline the roles design to.
+    - container/spines/hermes/context/topology.md
   # Route the merge/ready commands through the critique gate's Bash matcher, so
   # the merge decision itself gets one OUTPUT_REVIEW round before it executes.
   # Additive to the gate's built-in floor (`gh pr create`, `gh api …/pulls`,
