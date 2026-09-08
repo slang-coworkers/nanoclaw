@@ -123,8 +123,39 @@ describe('resolveSpawnProvider', () => {
 // this is a control-flow property of a function that needs a container runtime
 // to execute, and a mock deep enough to run it would pin the mock. Presence is
 // asserted before absence so the guard cannot pass vacuously on a renamed helper.
+// One read of container-runner.ts for every structural assertion in this file.
+// It used to be four independent reads (three `readFileSync(process.cwd()...)`
+// plus a `new URL` read) with three different body boundaries between them,
+// which is four places for a guard to drift.
+const RUNNER = fs.readFileSync(new URL('./container-runner.ts', import.meta.url), 'utf-8');
+
+// Three assertions, each added because the previous set was satisfiable
+// without the property holding:
+//   1. the anchor is unique FILE-WIDE and present in the slice ⇒ the slice
+//      reached that exact offset;
+//   2. the anchor is the function's last statement ⇒ every earlier cut fails
+//      presence. Balance alone does not: a cut at a statement boundary leaves
+//      the prefix balanced, which passed a 61% truncation;
+//   3. the cuts still available sit between the anchor and the true end, all
+//      inside nested blocks ⇒ a column-0 `}` there leaves them unclosed.
+// (1) closes the ladder, and only because it looks outside the region checked.
+const fnBody = (decl: string, tail: string): string => {
+  const start = RUNNER.indexOf(decl);
+  expect(start).toBeGreaterThan(-1);
+  // Against the WHOLE file: a duplicated anchor lets `toContain` pass on the
+  // first occurrence, so a cut between the two still truncates — that is how
+  // `releaseClaimQuietly`, which appears twice in this function, passed a 16%
+  // cut. Asserting uniqueness on the slice would be circular, since the cut
+  // that drops the second occurrence is what makes the slice's copy unique.
+  expect(RUNNER.split(tail).length - 1, `${decl}: tail anchor must be unique in the file`).toBe(1);
+  const rest = RUNNER.slice(start);
+  const body = rest.slice(0, rest.indexOf('\n}\n'));
+  expect(body, `${decl}: slice stopped before the function's last statement`).toContain(tail);
+  expect(body.split('{').length - body.split('}').length, `${decl}: body truncated inside a nested block`).toBe(1);
+  return body;
+};
+
 describe('one provider per spawn', () => {
-  const RUNNER = fs.readFileSync(new URL('./container-runner.ts', import.meta.url), 'utf-8');
   // The slice ends at the first column-0 `}` — the function's real end only
   // while nothing inside it opens one, and this file builds a config.toml
   // template with unindented braces elsewhere. A truncated slice keeps the
@@ -132,31 +163,6 @@ describe('one provider per spawn', () => {
   // function) while silently narrowing the absence ones, so the extraction has
   // to prove it reached the end.
   //
-  // Three assertions, each added because the previous set was satisfiable
-  // without the property holding:
-  //   1. the anchor is unique FILE-WIDE and present in the slice ⇒ the slice
-  //      reached that exact offset;
-  //   2. the anchor is the function's last statement ⇒ every earlier cut fails
-  //      presence. Balance alone does not: a cut at a statement boundary leaves
-  //      the prefix balanced, which passed a 61% truncation;
-  //   3. the cuts still available sit between the anchor and the true end, all
-  //      inside nested blocks ⇒ a column-0 `}` there leaves them unclosed.
-  // (1) closes the ladder, and only because it looks outside the region checked.
-  const fnBody = (decl: string, tail: string): string => {
-    const start = RUNNER.indexOf(decl);
-    expect(start).toBeGreaterThan(-1);
-    // Against the WHOLE file: a duplicated anchor lets `toContain` pass on the
-    // first occurrence, so a cut between the two still truncates — that is how
-    // `releaseClaimQuietly`, which appears twice in this function, passed a 16%
-    // cut. Asserting uniqueness on the slice would be circular, since the cut
-    // that drops the second occurrence is what makes the slice's copy unique.
-    expect(RUNNER.split(tail).length - 1, `${decl}: tail anchor must be unique in the file`).toBe(1);
-    const rest = RUNNER.slice(start);
-    const body = rest.slice(0, rest.indexOf('\n}\n'));
-    expect(body, `${decl}: slice stopped before the function's last statement`).toContain(tail);
-    expect(body.split('{').length - body.split('}').length, `${decl}: body truncated inside a nested block`).toBe(1);
-    return body;
-  };
   const spawn = fnBody('async function spawnContainer', 'await runtime.finishedPromise;');
   const contribution = fnBody(
     'export async function resolveProviderContribution',
@@ -254,15 +260,12 @@ describe('detectStaleContainers per-session compose guard (structural)', () => {
   // Driving the real loop needs a live activeContainers map, so guard the wiring
   // structurally, matching the invariant test above.
   it('wraps the per-session spine compose in try/catch and continues on failure', () => {
-    const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
-    const fnStart = src.indexOf('export async function detectStaleContainers');
-    expect(fnStart).toBeGreaterThan(-1);
-    const fnBody = src.slice(fnStart, src.indexOf('\n}', fnStart));
+    const body = fnBody('export async function detectStaleContainers', 'return stale;');
     // The render must sit inside a try whose catch skips just this session. The
     // compose call now lives behind `renderComposedDocument` (one seam shared with
     // spawn), so the guard is asserted on the call that can throw.
-    expect(fnBody).toMatch(/try\s*{[\s\S]*renderComposedDocument\(/);
-    expect(fnBody).toMatch(/catch \(err\) {[\s\S]*Skipping stale-check[\s\S]*continue;/);
+    expect(body).toMatch(/try\s*{[\s\S]*renderComposedDocument\(/);
+    expect(body).toMatch(/catch \(err\) {[\s\S]*Skipping stale-check[\s\S]*continue;/);
   });
 
   // Both hash sites must resolve the persona the SAME way spawn does. They used
@@ -282,11 +285,16 @@ describe('detectStaleContainers per-session compose guard (structural)', () => {
   // happening to agree. Assert that neither reconstructs the inputs locally —
   // which is how the original bug was written.
   it('records and compares the spawn hash through the same persona reader as spawn', () => {
-    const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
-    for (const fn of ['export async function recomposeAndUpdateHash', 'export async function detectStaleContainers']) {
-      const start = src.indexOf(fn);
-      expect(start, `${fn} not found`).toBeGreaterThan(-1);
-      const body = src.slice(start, src.indexOf('\n}', start));
+    // Pairs, not names: each function needs its OWN tail anchor. One shared
+    // anchor would anchor both extractions to whichever string happened to be
+    // unique, and the assertions below are negative — a truncated body can only
+    // make a `not.toMatch` easier to pass.
+    const targets: Array<[string, string]> = [
+      ['export async function recomposeAndUpdateHash', "return { kind: 'render-failed' };"],
+      ['export async function detectStaleContainers', 'return stale;'],
+    ];
+    for (const [fn, tail] of targets) {
+      const body = fnBody(fn, tail);
       // Naming the legacy path is fine — it is the migration SOURCE argument.
       // Reading it straight off disk is the bug.
       expect(body, `${fn} must not read the legacy persona path directly`).not.toMatch(
@@ -299,8 +307,12 @@ describe('detectStaleContainers per-session compose guard (structural)', () => {
     }
 
     // The seam is where the shared persona reader must actually be called.
-    const seam = src.slice(src.indexOf('async function composeOptionsFor'));
-    expect(seam.slice(0, seam.indexOf('\n}\n'))).toMatch(/readStandingInstructions\(/);
+    expect(
+      fnBody(
+        'async function composeOptionsFor',
+        'mcpInstructions: readMcpInstructions(configRow?.mcp_servers, agentGroup.name),',
+      ),
+    ).toMatch(/readStandingInstructions\(/);
   });
 });
 
