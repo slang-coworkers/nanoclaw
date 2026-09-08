@@ -74,6 +74,16 @@ hermes-common:
     # as the artifacts-round<k>.tgz the tester attaches; this link is the
     # convenience route, never the only one.
     test_reports_url: https://nv-hermes-transcript-xrnpj0b3n.gobrev.dev/test-reports
+    # Live tier for `live:` scenarios: the coworkers' OWN model gateway, reached
+    # through the OneCLI proxy with a dummy key the proxy replaces per request.
+    # This is the only inference host with a credential in the vault; a scenario
+    # naming any other host (e.g. integrate.api.nvidia.com) gets a 401 from
+    # OneCLI — that is what failed P0-LOOP round 1. Keep the literal copies in
+    # container/skills/hermes-testbed/SKILL.md (§ model: live) in sync.
+    live_inference_host: inference-api.nvidia.com
+    live_inference_api_mode: anthropic_messages
+    live_inference_model: "aws/anthropic/bedrock-claude-opus-4-8[1m]"
+    live_inference_key_env: ANTHROPIC_API_KEY
   identity: container/spines/hermes/identity/engineer.md
   invariants:
     # Stable plugin/CLI/config surfaces + additive-compat + test-contract rules.

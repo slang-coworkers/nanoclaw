@@ -297,7 +297,7 @@ A scenario whose steps expect the bot in a Bot-Mode roster also needs the `ui_me
 cp $TB/harness.env $TB/harness.live.env
 cat >> $TB/harness.live.env <<EOF
 export http_proxy=$http_proxy https_proxy=$https_proxy HTTP_PROXY=$HTTP_PROXY HTTPS_PROXY=$HTTPS_PROXY   # back to the container's OneCLI proxy, off the 127.0.0.1:9 pin
-export HERMES_TESTBED_LIVE_HOST=<inference-host>        # the ONE host the scenario names; never a wildcard
+export HERMES_TESTBED_LIVE_HOST=inference-api.nvidia.com   # the ONE live host — the coworkers' own gateway (hermes-common.vars.live_inference_host); the scenario's provider block must use api_mode anthropic_messages, model aws/anthropic/bedrock-claude-opus-4-8[1m], key_env ANTHROPIC_API_KEY with a dummy value. Any other host has no OneCLI credential and 401s (P0-LOOP round 1).
 export HERMES_TESTBED_LIVE_PROXY=$(printf '%s' "$HTTPS_PROXY" | sed -E 's#^https?://##; s#/$##')   # host:port the python client actually connects to
 export HERMES_TESTBED_LIVECALLS=$TB/logs/live-calls.log
 export LIVE_MODEL_CALLS_MAX=40
