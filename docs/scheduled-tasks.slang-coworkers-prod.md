@@ -1420,6 +1420,7 @@ BACKLOG GUARD (no-backlog invariant). The gate payload reports `uncovered` (unci
 
 
 PART A — synth (follow the /learnings-wiki skill's INCREMENTAL path):
+0. Write the embedded builder from /home/node/.claude/skills/learnings-wiki/SKILL.md to /workspace/shared/.learnings_wiki.py (Step 0 of the skill; idempotent — the mirrored SKILL.md is the source of truth, never the previous copy).
 1. cd /workspace/shared && python3 .learnings_wiki.py build
 2. python3 .learnings_wiki.py finalize — note UNCOVERED, OVERSIZE and NO-TLDR. (finalize prints only the first 40 uncovered; compute the true set with: for each wiki/learnings/*.md, it is uncovered unless some wiki/concepts/*.md links to it via [[wiki/learnings/<file>.md]] or [text](wiki/learnings/<file>.md).)
 3. Fold each uncovered learning into the most relevant existing wiki/concepts/*.md page — RECONCILE, don't append. Add or extend a synthesis paragraph with an inline [[wiki/learnings/<file>.md]] link and add a "- [[…]] — <desc>" row to that page's "**Source learnings (N):**" footer. Do NOT hand-maintain N — _normalize_concept_footers() recomputes it and drops duplicate rows.
