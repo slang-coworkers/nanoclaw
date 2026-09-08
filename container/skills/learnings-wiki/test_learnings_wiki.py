@@ -22,6 +22,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -464,3 +465,76 @@ class TestBuildStillWorks(Fold):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestDiscoveryCoversAuthorSubdirs(Fold):
+    """Since PR #1171 (2026-08-10) the host writes atoms to learnings/<agent-group-id>/; the
+    builder used a non-recursive glob and silently dropped every one of them (1,823 of 5,801
+    on prod by 2026-09-08) while `finalize` reported "0 uncovered"."""
+
+    def nested(self, stem, title, body="Nested content.", **frontmatter):
+        d = Path(self.kb, "learnings", "ag-1234-author")
+        d.mkdir(exist_ok=True)
+        fm = "".join(f"{k}: {v}\n" for k, v in frontmatter.items())
+        head = f"---\n{fm}---\n" if fm else ""
+        (d / f"{stem}.md").write_text(f"{head}# {title}\n\n{body}\n", encoding="utf-8")
+
+    def test_an_atom_in_a_per_author_subdir_is_built(self):
+        self.nested(THIRD, "Third rule")
+        self.build()
+        self.assertTrue(Path(self.kb, "wiki", "learnings", f"{THIRD}.md").exists())
+        self.assertTrue(Path(self.kb, "sources", "learnings", f"{THIRD}.md").exists())
+        self.assertIn(THIRD, self.lw.l1_stems())
+
+    def test_index_md_is_never_an_atom_at_any_depth(self):
+        Path(self.kb, "learnings", "INDEX.md").write_text("# index\n", encoding="utf-8")
+        Path(self.kb, "learnings", "ag-1234-author").mkdir()
+        Path(self.kb, "learnings", "ag-1234-author", "INDEX.md").write_text("# index\n", encoding="utf-8")
+        self.build()
+        self.assertFalse(Path(self.kb, "wiki", "learnings", "INDEX.md").exists())
+        self.assertNotIn("INDEX", {s.upper() for s in self.lw.l1_stems()})
+
+    def test_a_marker_written_on_a_nested_atom_is_honoured(self):
+        self.nested(THIRD, "Third rule", superseded_by=NEW)
+        self.build()
+        self.concept_citing(NEW)
+        out = self.finalize()
+        self.assertNotIn(f"UNCOVERED wiki/learnings/{THIRD}.md", out)
+        self.assertIn("1 superseded, excluded", out)
+
+    def test_a_nested_live_atom_is_reported_as_uncovered(self):
+        # Guards the guard: the nested atom must be SEEN to be reported.
+        self.nested(THIRD, "Third rule")
+        self.build()
+        self.concept_citing(OLD, NEW)
+        out = self.finalize()
+        self.assertIn(f"UNCOVERED wiki/learnings/{THIRD}.md", out)
+
+    def test_duplicate_stems_across_dirs_keep_the_first_and_say_so(self):
+        # Same stem in the flat dir and an author dir: basename order ties, path order decides;
+        # the shadowed copy is reported instead of silently overwriting the L3 page.
+        self.nested(OLD, "Old SPIRV rule (author copy)", body="Different body.")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.lw.build()
+        self.assertIn(f"DUPLICATE-STEM {OLD}", out.getvalue())
+        page = self.wiki_page(OLD)
+        self.assertIn("Some content about spirv codegen.", page)   # the flat copy (sorts first) won
+        self.assertNotIn("Different body.", page)
+
+    def test_gate_wakes_on_a_fresh_kb_and_sleeps_after_a_build_with_nothing_new(self):
+        r = self.run_cli("gate")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(json.loads(r.stdout)["wakeAgent"])          # no wiki yet → every atom is new
+        old = time.time() - 3600
+        for p in Path(self.kb, "learnings").rglob("*.md"):
+            os.utime(p, (old, old))
+        self.build()                                                 # index.md is now newer than every atom
+        r = self.run_cli("gate")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertFalse(json.loads(r.stdout)["wakeAgent"])         # 2 uncovered ≤ 60, nothing new
+        self.nested(THIRD, "Third rule")                             # a NEW nested atom must wake it
+        r = self.run_cli("gate")
+        payload = json.loads(r.stdout)
+        self.assertTrue(payload["wakeAgent"])
+        self.assertEqual(payload["data"]["new_learnings"], 1)
