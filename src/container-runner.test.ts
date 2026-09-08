@@ -58,7 +58,7 @@ describe('resolveProviderName', () => {
     session: string | null | undefined,
     group: string | null | undefined,
     config: string | null | undefined,
-  ) => ({ session, group, config });
+  ) => ({ override: undefined, session, group, config });
 
   it('prefers session over group and container config', () => {
     expect(resolveProviderName(tiers('codex', 'claude', 'opencode'))).toBe('codex');
@@ -84,6 +84,13 @@ describe('resolveProviderName', () => {
     expect(resolveProviderName(tiers(null, null, 'OpenCode'))).toBe('opencode');
   });
 
+  it('an override outranks every stored tier', () => {
+    expect(resolveProviderName({ override: 'opencode', session: 'codex', group: 'claude', config: 'pi' })).toBe(
+      'opencode',
+    );
+    expect(resolveProviderName({ override: '', session: 'codex', group: null, config: null })).toBe('codex');
+  });
+
   it('treats empty string as unset (falls through)', () => {
     expect(resolveProviderName(tiers('', 'opencode', null))).toBe('opencode');
     expect(resolveProviderName(tiers(null, '', 'codex'))).toBe('codex');
@@ -94,11 +101,11 @@ describe('resolveProviderName', () => {
 describe('resolveSpawnProvider', () => {
   it('reads each tier off the row it belongs to', () => {
     expect(
-      resolveSpawnProvider(
-        { agent_provider: null } as Session,
-        { agent_provider: 'codex' } as AgentGroup,
-        { provider: 'claude' } as ContainerConfig,
-      ),
+      resolveSpawnProvider({
+        session: { agent_provider: null } as Session,
+        agentGroup: { agent_provider: 'codex' } as AgentGroup,
+        containerConfig: { provider: 'claude' } as ContainerConfig,
+      }),
     ).toBe('codex');
   });
 });
@@ -118,11 +125,19 @@ describe('resolveSpawnProvider', () => {
 // asserted before absence so the guard cannot pass vacuously on a renamed helper.
 describe('one provider per spawn', () => {
   const RUNNER = fs.readFileSync(new URL('./container-runner.ts', import.meta.url), 'utf-8');
+  // The slice ends at the first column-0 `}`. That is the function's real end
+  // only while nothing inside it opens one — this file builds a config.toml
+  // template with unindented braces elsewhere, so assert the balance the
+  // extraction depends on: a complete body is open by exactly its own `{`.
+  // Without this, a truncating edit would leave the presence assertions passing
+  // (their anchors sit near the top) and silently narrow the absence ones.
   const fnBody = (decl: string): string => {
     const start = RUNNER.indexOf(decl);
     expect(start).toBeGreaterThan(-1);
     const rest = RUNNER.slice(start);
-    return rest.slice(0, rest.indexOf('\n}\n'));
+    const body = rest.slice(0, rest.indexOf('\n}\n'));
+    expect(body.split('{').length - body.split('}').length).toBe(1);
+    return body;
   };
   const spawn = fnBody('async function spawnContainer');
   const contribution = fnBody('export async function resolveProviderContribution');

@@ -1108,7 +1108,7 @@ async function spawnContainer(session: Session): Promise<void> {
 
   // initGroupFilesystem must scaffold for the provider the container will
   // actually run, so this resolves through the same call as the contribution.
-  const providerName = resolveSpawnProvider(session, agentGroup, containerConfig);
+  const providerName = resolveSpawnProvider({ session, agentGroup, containerConfig });
   await initGroupFilesystem(agentGroup, { provider: providerName });
 
   // Resolve the effective provider + any host-side contribution it declares
@@ -1773,7 +1773,7 @@ export async function resolveProviderContribution(
 ): Promise<{ provider: string; contribution: ProviderContainerContribution; surfaces?: ProviderSpawnRealization }> {
   // The config is threaded in by the caller (already materialized once per
   // spawn) rather than re-read here.
-  const provider = resolveSpawnProvider(session, agentGroup, containerConfig);
+  const provider = resolveSpawnProvider({ session, agentGroup, containerConfig });
   const fn = getProviderContainerConfig(provider);
   const contract = getProviderHostContract(provider);
   if (!contract && !fn) {

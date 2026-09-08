@@ -669,8 +669,12 @@ registerResource({
             const agentGroup = await getAgentGroup(id);
             assertDeclaredSpeedTier(
               speed,
+              // `--provider` in this same command is the `override` tier: it
+              // outranks both stored tiers without being one. There is no
+              // session in a CLI validation.
               resolveProviderName({
-                session: updates.provider,
+                override: updates.provider,
+                session: undefined,
                 group: agentGroup?.agent_provider,
                 config: row.provider,
               }),

@@ -14,6 +14,12 @@ import type { AgentGroup, Session } from '../types.js';
  * the remaining values onto the wrong tiers.
  */
 export interface ProviderTiers {
+  /**
+   * A provider named in the operation being validated, outranking anything
+   * stored: the `--provider` a command carries alongside the field it is
+   * checking. Not a stored tier — nothing reads it back.
+   */
+  override: string | null | undefined;
   /** `sessions.agent_provider` — a per-session pin. */
   session: string | null | undefined;
   /** `agent_groups.agent_provider` — the group's own runtime provider. */
@@ -33,7 +39,7 @@ export interface ProviderTiers {
  * which makes a group-level provider pick silently lose to container.json.
  */
 export function resolveProviderName(tiers: ProviderTiers): string {
-  return (tiers.session || tiers.group || tiers.config || 'claude').toLowerCase();
+  return (tiers.override || tiers.session || tiers.group || tiers.config || 'claude').toLowerCase();
 }
 
 /**
@@ -42,14 +48,21 @@ export function resolveProviderName(tiers: ProviderTiers): string {
  * a group whose provider lives only in `agent_groups.agent_provider` gets its
  * filesystem prepared for one provider and its container built for another.
  */
-export function resolveSpawnProvider(
-  session: Pick<Session, 'agent_provider'>,
-  agentGroup: Pick<AgentGroup, 'agent_provider'>,
-  containerConfig: Pick<ContainerConfig, 'provider'>,
-): string {
+export function resolveSpawnProvider(rows: {
+  // Whole rows, not `Pick<_, 'agent_provider'>`: both declare
+  // `agent_provider: string | null`, so the picked types are structurally
+  // identical and `{ session: agentGroup, agentGroup: session }` would compile
+  // and silently invert their precedence. The full types have no such overlap,
+  // and the structure test pins only that this helper is *called* — not the
+  // rows it is called with.
+  session: Session;
+  agentGroup: AgentGroup;
+  containerConfig: Pick<ContainerConfig, 'provider'>;
+}): string {
   return resolveProviderName({
-    session: session.agent_provider,
-    group: agentGroup.agent_provider,
-    config: containerConfig.provider,
+    override: undefined,
+    session: rows.session.agent_provider,
+    group: rows.agentGroup.agent_provider,
+    config: rows.containerConfig.provider,
   });
 }
