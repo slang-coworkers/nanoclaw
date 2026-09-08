@@ -13,6 +13,8 @@ Provides identity, invariants, context, and coworker types:
 | `hermes-builder` | `hermes-writer` | implements the plugin in the fork worktree, tests + `doctor --ci`, draft PR to the fork, `peer-review` invariant; stages `PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW` |
 | `hermes-reviewer` | `hermes-reader` | adversarial re-run of acceptance test + doctor in its own container (`hermes-review`); `no-push` + `code-changes`; stages `CODE_REVIEW, OUTPUT_REVIEW` |
 
+Acceptance criteria (`AC-<req-id>-<n>` in the ADR) carry a **kind** that fixes how each one is proved: `pytest:` (hermetic acceptance test, the floor every criterion keeps), `ui:` (dashboard click-through against the model stub), `desktop:` (Electron Playwright spec under `apps/desktop/e2e/`), `live:` (a real model through the OneCLI live tier, required for anything agent-to-agent). The builder ships the `ui:`/`live:` scenario files at `tests/e2e-scenarios/<req-id>/AC-<req-id>-<n>.md` and the `desktop:` specs in the same draft PR, and the tester's `## Results` table then carries one row per id with its kind and an evidence path (per-step screenshots for the scenario kinds), which is what the reviewer audits and what the merge gate joins to the ADR by id.
+
 Wiring is architect ↔ builder ↔ reviewer/tester (`wire_agents`), plus `orchestrator → tester`; the orchestrator drives requirement rows to the architect. Overlays (`critique-gate`, `plan-gate`), `cli_scope`, apt packages, and the release mount are per-group settings, not type keys.
 
 ## Merge authority (there is no orchestrator ↔ builder edge)

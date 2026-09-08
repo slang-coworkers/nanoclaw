@@ -1,6 +1,6 @@
 ---
 name: hermes-testbed
-description: "Hermetic verification harness for Hermes Agent plugin PRs (release v2026.8.31 = 0.21.0): temp-HERMES_HOME testbed with loopback-only sockets and a fake container runtime, the T1–T12 acceptance suite, `hermes plugins doctor --ci` + `hermes approvals test --json` oracles, web-UI parity via `hermes dashboard`/`hermes serve` + agent-browser screenshots, the phase-gated apps/desktop Electron Playwright tier under xvfb-run, and the test-report-<sha7>.md `## Results` rows the reviewer audits — the fixed tier rows plus one AC-<req-id>-<n> row per ADR acceptance criterion, emitted by one test per criterion named test_ac_<req_id>_<n> so the reviewer and the merge gate can join criteria to tests mechanically. Load from the hermes-verify workflow when a [Fix Report] names a PR head, when the orchestrator dispatches a nightly regression run against the fork's main, or when writing/extending T-suite or desktop e2e tests."
+description: "Hermetic verification harness for Hermes Agent plugin PRs (release v2026.8.31 = 0.21.0): temp-HERMES_HOME testbed with loopback-only sockets and a fake container runtime, the T1–T12 acceptance suite, `hermes plugins doctor --ci` + `hermes approvals test --json` oracles, web-UI parity via `hermes dashboard`/`hermes serve` + agent-browser screenshots, the scenario tier for the ADR's ui:/desktop:/live: acceptance criteria (scenario files under tests/e2e-scenarios/, fixture install, the loopback stub or the OneCLI live tier bounded at LIVE_MODEL_CALLS_MAX=40 / LIVE_BUDGET_USD=5 per scenario, artifacts under scenario-<AC-id>/), the phase-gated apps/desktop Electron Playwright tier under xvfb-run, and the test-report-<sha7>.md `## Results` rows the reviewer audits — the fixed tier rows plus one AC-<req-id>-<n> row per ADR acceptance criterion, emitted by one test per criterion named test_ac_<req_id>_<n> so the reviewer and the merge gate can join criteria to tests mechanically. Load from the hermes-verify workflow when a [Fix Report] names a PR head, when the orchestrator dispatches a nightly regression run against the fork's main, or when writing/extending T-suite or desktop e2e tests."
 provides: [test.run, test.gen]
 allowed-tools: Bash(git:*), Bash(uv:*), Bash(hermes:*), Bash(.venv/bin/hermes:*), Bash(scripts/run_tests.sh:*), Bash(bash:*), Bash(curl:*), Bash(npm:*), Bash(npx:*), Bash(xvfb-run:*), Bash(agent-browser:*), Bash(dpkg:*), Bash(node:*), Bash(python3:*), Agent, Read, Write, Grep, Glob, mcp__nanoclaw__send_file
 ---
@@ -162,7 +162,7 @@ Ids are the plan's (v1 §5, carried into v2 P2) — never renumber, never add `T
 
 The desktop e2e ships the reference: a mock OpenAI-compatible inference server on `127.0.0.1` (apps/desktop/e2e/mock-server.ts:655) and the exact `config.yaml` shape that points Hermes at it (fixtures.ts:160-189: `model.default: mock-model`, `model.provider: mock`, `providers.mock.api: <url>/v1`, `api_mode: chat_completions`, `key_env: MOCK_API_KEY`, `models: {mock-model: {}}`; `.env` with `MOCK_API_KEY=...`, 195-198). Write the Python equivalent at `$TB/bin/model-stub.py` (`http.server`, `POST /v1/chat/completions` → one canned completion, bind `127.0.0.1:0`, print the port), append that provider block to `$TB/home/config.yaml`, write `$TB/home/.env`. The stub is Python, so it runs under the same socket guard. Never point the harness at a real provider unless `tier=live` was dispatched (§7).
 
-**Live tier via OneCLI — a dummy key, never a real one.** When a dispatch says `tier=live` for a row that genuinely needs a real model (T5b, T6), the hermetic `config.yaml` may point at the real inference `base_url` with a **dummy** `api_key` (`key_env: LIVE_API_KEY`, `LIVE_API_KEY=unused-testbed` in `$TB/home/.env`). The container's egress goes through the OneCLI proxy, which injects the real credential per request from the vault — so a placeholder is all Hermes ever needs to hold, and the credential never enters the testbed, the config, the logs, the report, or an artifact. **Never write a real API key anywhere under `$TB`, `$WT`, or `$ART`**, never read one out of the environment to paste into a config, and never ask for one: a row that "needs the key" is a row you record as `SKIPPED(no-provider)`. Two harness knobs have to be relaxed for the call to leave the container, and both go in the report's `## Network` section for that run: the §2 socket guard must allow the inference host (add it to `_ok`'s allow-list explicitly, by host — never disable the guard), and the `*_proxy` pin must be dropped back to the container's own OneCLI proxy values instead of `127.0.0.1:9`. Do that in a separate `$TB/harness.live.env` used only by the live rows; the default `harness.env` stays offline, and every other row keeps running under it.
+**Live tier via OneCLI — a dummy key, never a real one.** When a dispatch says `tier=live` for a row that genuinely needs a real model (T5b, T6), or the ADR marks an acceptance criterion `live:` (§4b: there the ADR is the dispatch, and the bounds are per scenario), the hermetic `config.yaml` may point at the real inference `base_url` with a **dummy** `api_key` (`key_env: LIVE_API_KEY`, `LIVE_API_KEY=unused-testbed` in `$TB/home/.env`). The container's egress goes through the OneCLI proxy, which injects the real credential per request from the vault — so a placeholder is all Hermes ever needs to hold, and the credential never enters the testbed, the config, the logs, the report, or an artifact. **Never write a real API key anywhere under `$TB`, `$WT`, or `$ART`**, never read one out of the environment to paste into a config, and never ask for one: a row that "needs the key" is a row you record as `SKIPPED(no-provider)`. Two harness knobs have to be relaxed for the call to leave the container, and both go in the report's `## Network` section for that run: the §2 socket guard must allow the inference host (add it to `_ok`'s allow-list explicitly, by host — never disable the guard), and the `*_proxy` pin must be dropped back to the container's own OneCLI proxy values instead of `127.0.0.1:9`. Do that in a separate `$TB/harness.live.env` (§4b writes it) used only by the live rows; the default `harness.env` stays offline, and every other row keeps running under it.
 
 ### 3b. Companion rows the reviewer's gate checks (same run, same harness)
 
@@ -178,13 +178,13 @@ The desktop e2e ships the reference: a mock OpenAI-compatible inference server o
 # FOCUSED-PYTEST — `scripts/run_tests.sh tests/plugins/ tests/hermes_cli/` in an `Agent` with explicit timeout; `⚠ FLAKY` = FAIL for that file.
 ```
 
-### 3c. Acceptance-criterion rows `AC-<req-id>-<n>` — the `test.gen` contract
+### 3c. Acceptance-criterion rows `AC-<req-id>-<n>` for `pytest:` criteria — the `test.gen` contract
 
 The `ACCEPTANCE` row above says "the acceptance file passed". That is not enough to merge on: nobody reads this diff, so the reviewer and the Orchestrator's merge gate need to see **each acceptance criterion individually satisfied by a named test**. The join is by id, and it is mechanical — there is no prose step where a human decides whether criterion 3 was "basically covered".
 
 **The id.** The architect's ADR carries a `## Acceptance criteria` table with one row per criterion and a stable id `AC-<req-id>-<n>`: `AC-FR-3-1`, `AC-SR-2-4`. `<n>` is 1-based and ids are **never renumbered** — a criterion added in a later ADR revision takes the next free `<n>`, a dropped one leaves a hole. Round 2 reuses round 1's ids exactly.
 
-**The rule.** `test.gen` emits **exactly one test function per criterion**, in `tests/plugins/test_<plugin>_acceptance.py`, named by lowercasing the id and replacing `-` with `_`:
+**The rule.** `test.gen` emits **exactly one test function per `pytest:` criterion** (the criteria whose `how it will be verified` cell opens `pytest:` or carries no prefix), in `tests/plugins/test_<plugin>_acceptance.py`, named by lowercasing the id and replacing `-` with `_`:
 
 ```python
 def test_ac_fr_3_1(tmp_path, monkeypatch):
@@ -203,9 +203,9 @@ First docstring line = the criterion id + its text verbatim. One criterion may n
 )
 ```
 
-Then one `## Results` row per **ADR** id (never per test found):
+Then one `## Results` row per **ADR `pytest:` id** (never per test found):
 
-| ADR id | test at this head | pytest outcome | row |
+| ADR `pytest:` id | test at this head | pytest outcome | row |
 |---|---|---|---|
 | present | present | passed | `PASS`, evidence = the node id |
 | present | present | failed / errored | `FAIL`, evidence = node id + first assertion |
@@ -213,7 +213,9 @@ Then one `## Results` row per **ADR** id (never per test found):
 | present | absent | — | `FAIL`, evidence = `no test — criterion unimplemented`, exit `–`, log `artifacts/ac-functions.txt` |
 | absent | present | — | no row; list it in `## Skipped / advisory` as `orphan test id <name>` |
 
-**A criterion with no test id is a `FAIL`, never a silent omission.** Do not fold it into `ACCEPTANCE`, do not record it as `SKIPPED`, do not drop it because the builder said it was out of scope, and never renumber ids so the two sets line up. Any non-`PASS` `AC-` row makes the report verdict `FAIL` (§6) — which is the point: an unimplemented criterion should stop the merge at the tester, not at a human who is not there.
+A criterion whose kind is `ui:`, `desktop:` or `live:` gets **NO row here** — its single row comes from §4b, against the artifact the builder shipped. Never emit a `no test — criterion unimplemented` row for a non-`pytest:` id: there was never meant to be a test function for it, and two rules producing two rows for one id is exactly the contradiction the id-per-criterion rule exists to prevent.
+
+**A `pytest:` criterion with no test id is a `FAIL`, never a silent omission.** Do not fold it into `ACCEPTANCE`, do not record it as `SKIPPED`, do not drop it because the builder said it was out of scope, and never renumber ids so the two sets line up. Any non-`PASS` `AC-` row makes the report verdict `FAIL` (§6) — which is the point: an unimplemented criterion should stop the merge at the tester, not at a human who is not there.
 
 **If you write the tests yourself** (§5): same rule, same naming, and the diff travels as `$ART/tests.patch` + `send_file` — you never push, and you never invent a criterion the ADR does not list (report the gap in `## Failures` and let the architect amend the ADR).
 
@@ -241,7 +243,7 @@ Then, hermetically (fixed port; `serve` from T2 must be down first — `hermes s
 
 `--isolated` (dashboard.py:51-60) is a no-op on a fresh home (active profile = default) and matters only when a named profile launched the server — kept so a `-p <bot>` launch is scoped to that profile instead of re-execing as the machine dashboard (main.py:12063-12091). `EADDRINUSE` → `hermes dashboard --stop`, retry once, then FAIL with the log. A fresh `HERMES_HOME` has no provider unless §3a configured one, so an onboarding overlay is an expected first screen — record what rendered.
 
-**Drive with agent-browser** (headless Chromium is the image default, `AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium`; `no_proxy` keeps loopback off the dead proxy):
+**Drive with agent-browser** (headless Chromium is the image default, `AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium`; `no_proxy` keeps loopback off the dead proxy). `/hermes-ui-driver` holds the full driving recipe (readiness, the "Gateway checking…" screen, snapshot by `@ref`, screenshots, sending a chat message and reading the reply, creating a bot through the UI); the T-suite rows below are what to prove with it, not a second copy of how:
 
 ```bash
 agent-browser open "http://127.0.0.1:9119/"
@@ -255,6 +257,101 @@ kill -TERM $(cat $TB/dashboard.pid)
 ```
 
 Naming: `artifacts/ui-T<nn>-<slug>.png`; multi-step rows add `-<step 2 digits>` (`ui-T11-02-form.png`). Compare with the same-named baseline when one exists (`python3 -c` PIL pixel diff if PIL imports, else `cmp -s` + note `byte-compare only`): a diff > 1 % of pixels is a **FAIL** for a PR that did not touch `web/**`/`apps/shared/**`, and a listed REVIEW-ITEM (not a failure) for one that did. Every wait is bounded (`agent-browser wait --text/--url/--load` under an outer `timeout`, `/agent-browser` rule); on timeout take one `snapshot -i` + screenshot, save both, FAIL the id, move on — never re-enter a wait.
+
+## 4b. Scenario tier (`ui:` / `desktop:` / `live:` acceptance criteria)
+
+§3c covers the criteria the ADR marks `pytest:`. The other three kinds are proven the way a user would see them, from artifacts the **builder** shipped in the same PR: a scenario file `tests/e2e-scenarios/<req-id>/AC-<req-id>-<n>.md` for `ui:` and `live:`, a Playwright spec `apps/desktop/e2e/<req-id-lowercase>-ac<n>.spec.ts` for `desktop:`. `hermes-verify` step 3 owns the sequencing and the verdict; UI driving (dashboard launch, readiness, snapshot/click/screenshot, the Electron notes) is `/hermes-ui-driver` and is not repeated here; this section owns the harness mechanics: frontmatter, fixtures, stub or live env, artifact layout, row rules.
+
+**You never write or repair a scenario file or a spec.** A missing file, a step naming a control that does not exist, a frontmatter that contradicts the ADR: each is a `FAIL` row plus a defect in `## Failures`, fixed by the builder in the PR on a new head. Anything you author yourself travels as `tests.patch` (§5), never as an edit inside the scenario dir.
+
+**Frontmatter.** Five keys, read before anything runs: `ac` (the criterion id, equal to the file name), `kind` (`ui | live`, equal to the ADR's kind for that id), `model` (`stub` = the §3a loopback stub, the default for `ui`; `live` = the OneCLI live tier, mandatory for `kind: live`), `fixtures` (profile dirs relative to `tests/e2e-scenarios/<req-id>/`, each with `distribution.yaml` at its root, the same shape T3 installs), `timeout_s` (the ceiling for ONE step's bounded wait, in seconds; the whole scenario is separately capped by §7's `scenario tier ≤ 10 min per criterion`). Default `300` for `ui`, `600` for `live`; a file with no `timeout_s` uses those defaults rather than failing. A `kind: live` file carries two more keys, `base_url` and `model` id (the provider block the live tier configures) — see the live paragraph below.
+
+```bash
+AC=<AC-id>; SCN=$WT/tests/e2e-scenarios/<req-id>; mkdir -p $ART/scenario-$AC
+( source $TB/harness.env && python3 - "$SCN/$AC.md" <<'EOF'
+import re, sys, yaml
+m = re.match(r"^---\n(.*?)\n---\n", open(sys.argv[1], encoding="utf-8").read(), re.S)
+print(yaml.safe_load(m.group(1)) if m else "NO FRONTMATTER")
+EOF
+) > $ART/scenario-$AC/frontmatter.txt 2>&1 ; echo frontmatter_exit=$?
+```
+
+`NO FRONTMATTER`, `ac` different from the file name, `kind` different from the ADR's, or `kind: live` with `model: stub` are all `FAIL` for that id with `frontmatter.txt` as the evidence. You do not correct the file to make it parse.
+
+**Fixtures.** You install the frontmatter `fixtures:` list and nothing else, with T3's shape, into the same temp home every other row uses, **before** the scenario's own `## Setup` runs. `## Setup` must not repeat those installs — it holds only what comes after (roster / `ui_meta` writes, peer start-up, seeding). A `## Setup` line that re-installs a fixture already named in `fixtures:` is a scenario defect: the second `hermes profile install` on an existing name exits non-zero, so `FAIL` the id with `setup.log` as the evidence and do not de-duplicate it yourself. Profile name = the fixture directory's basename.
+
+```bash
+( source $TB/harness.env && cd $WT
+  hermes profile install $SCN/fixtures/<bot> --name <bot> -y >> $ART/scenario-$AC/setup.log 2>&1 ; echo install_exit=$?   # local dir, distribution.yaml at root (subcommands/profile.py:153-180)
+  hermes profile list >> $ART/scenario-$AC/setup.log 2>&1
+)
+```
+
+A scenario whose steps expect the bot in a Bot-Mode roster also needs the `ui_meta.hermes-bots` block T3's row writes (no CLI writes it, `profile_distribution.py:88-95`); run that same `python3 -c` step here. Fixtures are per scenario, but the home is shared for the round: install once per bot name, and a fixture that collides with a T3 bot name is a scenario defect, not a name you rewrite. The builder is told to name every fixture dir `<req-id-lowercase>-<role>` (`p0-loop-bot-a`) precisely so the collision cannot happen; a bare `bot-a` that does collide comes back as a `FAIL` for the id with the two names quoted.
+
+**`model: stub`.** One §3a stub serves every stub scenario of the round: `$TB/bin/model-stub.py` on `127.0.0.1:0` plus the provider block in `$TB/home/config.yaml` and `$TB/home/.env`. Its canned completion is the string the scenario waits on (`agent-browser wait --text "<canned reply>"`), so keep it stable across rounds and quote it in the report when a step waits for it.
+
+**`model: live` on the OneCLI live tier, bounded.** Written once per round, from your MAIN shell (the container's own OneCLI proxy values are still in the environment there; inside the harness they are not):
+
+```bash
+cp $TB/harness.env $TB/harness.live.env
+cat >> $TB/harness.live.env <<EOF
+export http_proxy=$http_proxy https_proxy=$https_proxy HTTP_PROXY=$HTTP_PROXY HTTPS_PROXY=$HTTPS_PROXY   # back to the container's OneCLI proxy, off the 127.0.0.1:9 pin
+export HERMES_TESTBED_LIVE_HOST=<inference-host>        # the ONE host the scenario names; never a wildcard
+export HERMES_TESTBED_LIVE_PROXY=$(printf '%s' "$HTTPS_PROXY" | sed -E 's#^https?://##; s#/$##')   # host:port the python client actually connects to
+export HERMES_TESTBED_LIVECALLS=$TB/logs/live-calls.log
+export LIVE_MODEL_CALLS_MAX=40
+export LIVE_BUDGET_USD=5
+EOF
+# $ART is published: refuse to copy an env file carrying anything credential-shaped that is not the placeholder
+grep -Ei '(api[_-]?key|token|secret|password)[=:]' $TB/harness.live.env | grep -qv 'unused-testbed' && { echo 'REFUSING: harness.live.env carries a credential-shaped value'; exit 1; }
+cp $TB/harness.live.env $ART/harness.live.env           # published with the report — placeholders and host:port only
+```
+
+and the guard keeps its shape: add one env-gated branch to `_ok` in `$TB/pyguard/sitecustomize.py` (inert under `harness.env`, which never sets the variables), **before** the loopback check, so the allow-list is one named endpoint and every allowed connect is counted:
+
+```python
+    proxy = os.environ.get("HERMES_TESTBED_LIVE_PROXY", "")   # host:port taken from $HTTPS_PROXY
+    if proxy and f"{host}:{addr[1]}" == proxy:
+        with open(os.environ["HERMES_TESTBED_LIVECALLS"], "a", encoding="utf-8") as f:
+            f.write(f"ALLOW {host}:{addr[1]}\n")
+        return True
+```
+
+That key is the PROXY endpoint, not the inference host, because with `http_proxy`/`https_proxy` restored the client connects to the proxy and never resolves the model host itself — and `socket.connect` receives an already-resolved `(ip, port)` tuple, so a hostname comparison matches nothing either way.
+
+**The connect log is advisory**, and it undercounts by design: keep-alive carries several requests on one connection, and a loopback proxy is allowed by the loopback branch before the counter ever fires. The **binding** count is `session_model_usage`, summed across every bot the scenario installed, read between steps with the query in `/hermes-ui-driver` §1f: `calls` against `LIVE_MODEL_CALLS_MAX=40` and `usd` against `LIVE_BUDGET_USD=5`. Past either bound the scenario stops and the row is `FAIL(budget) — <calls> calls / cap 40 / $5`; a scenario whose usage table cannot be read is `FAIL(budget)` too, never one you keep running blind. The key stays a placeholder (`LIVE_API_KEY=unused-testbed`, §3a): a real credential never enters `$TB`, `$WT`, `$ART`, a config, a log, or the report, and both relaxations above go into the report's `## Network` section for that run.
+
+**Where the three live values come from, in this order:** (1) the scenario's frontmatter, when it carries `base_url:` and `model:` explicitly — the builder copies both from the ADR outline; (2) the container's own provider config (`onecli agents secrets --id <this agent>` names the host pattern the proxy will inject for; the `base_url` is that host); (3) nowhere else. Missing either value → the id is `FAIL` with evidence `live tier unconfigured — scenario names no base_url/model and none is derivable`, listed in `## Failures` for the builder. Never read a base URL or a key out of an unrelated env var, and never fall back to a public endpoint.
+
+**Artifacts, one dir per criterion (`$ART/scenario-<AC-id>/`):**
+
+```
+scenario-AC-LOOP-F35-2/
+├── frontmatter.txt · artifact.txt · setup.log     # parse, existence check, ## Setup output
+├── step-1.png … step-<n>.png                      # one per numbered ## Steps entry, 1-based, never renumbered
+├── step-<n>.snapshot.txt                          # only for the step a bounded wait timed out on
+├── evidence.txt                                   # the ## Evidence queries and their output (state.db rows, log greps)
+├── live-calls-after-step-<n>.txt                  # live scenarios only
+└── results.json · playwright-stdout.log · test-results/   # desktop scenarios only
+```
+
+Screenshot naming is the step number, not a slug, because the row's evidence cell is a range (`scenario-<AC-id>/step-1..6.png`). A step with no screenshot cannot be evidence: if the driver could not take one, the id is a `FAIL`.
+
+**Row rules, one `## Results` row per ADR criterion, same table and same vocabulary as §3c:**
+
+| ADR id | artifact at this head | outcome | row |
+|---|---|---|---|
+| present | scenario file present | every step's `expect:` observed and `## Pass` true | `PASS`, evidence = `scenario-<AC-id>/step-1..<n>.png` (+ `evidence.txt` when the file names a query) |
+| present | spec present (`desktop:`) | the spec's `AC-` titled test is `ok` in the reporter JSON | `PASS`, evidence = the spec path plus its test title (`<spec> › AC-<req-id>-<n>`; Playwright has no `::` node id) + `scenario-<AC-id>/results.json` |
+| present | present | a step's `expect:` not observed, a bounded wait timed out, or `## Pass` false | `FAIL`, evidence = the failing `step-<n>.png` + what was missing |
+| present | present | a `## Setup` line exited non-zero, or the frontmatter contradicts the ADR | `FAIL`, evidence = `scenario-<AC-id>/setup.log` or `frontmatter.txt` |
+| present | present (`live:`) | past `LIVE_MODEL_CALLS_MAX` / `LIVE_BUDGET_USD` | `FAIL(budget)`, evidence = `<calls> calls / cap 40 / $5` + the screenshots taken so far |
+| present | absent at this head | — | `FAIL`, evidence = `no scenario file — <path> absent at <sha7>` (`no spec — …`), exit `–`, log `scenario-<AC-id>/artifact.txt` |
+| present | `desktop:` with the §5 preflight failing | — | `FAIL`, evidence = `desktop tier unavailable — install_packages: <pkgs>`, request repeated verbatim in `## Skipped / advisory` |
+| absent | scenario file present in the PR | — | no row; `## Skipped / advisory` as `orphan scenario <path>` |
+
+The kind changes the evidence, never the vocabulary: `PASS` or `FAIL` only, no `SKIPPED`, no `ADVISORY-FAIL`, one row per ADR id in ADR order, ids verbatim (§6). And the evidence must be openable: **a `ui`/`desktop`/`live` PASS whose evidence names no artifact path is an invalid report**, so the path is written or the row is a `FAIL`.
 
 ## 5. Desktop / Electron tier (phase-gated; never fails the run on missing deps)
 
@@ -306,47 +403,53 @@ Why this is hermetic enough: the fixtures sandbox `HERMES_HOME`, set `HERMES_DES
 ```
 /workspace/agent/reports/<thread-id>/
 ├── test-report-<sha7>.md      # one per head SHA (the reviewer globs test-report-*.md and rejects a SHA ≠ PR head); OUTPUT_REVIEW attests its hash
-├── rounds.log · state.md      # round counter + resume state (hermes-verify steps 0/5)
+├── rounds.log · state.md      # round counter + resume state (hermes-verify steps 0/6)
 ├── artifacts-round<k>.tgz     # bulky logs bundled once per round
 └── artifacts/
     ├── results.tsv · junit.xml           # T-suite rows; junit.xml generated from results.tsv by a ~20-line python3 helper (classname "hermes-testbed", one <testcase> per row id)
     ├── T01.log … T12.log · doctor.log · plugins-list.json · acceptance.log · negative-control.log · ruff.log · footguns.log · pytest-focused.log
     ├── serve.log · dashboard.log · docker-calls.log · peer-calls.log · net-denials.log · npm-ci.log · desktop-build.log · e2e-smoke.log · e2e.log · junit-desktop.xml
     ├── ui-T10-home.png · ui-T11-new-agent.png · ui-T12-bot-chat.png · playwright-report/
-    ├── changed-files.txt · harness.env
+    ├── scenario-<AC-id>/                 # one per ui/desktop/live criterion (§4b): step-<n>.png, setup.log, evidence.txt, results.json
+    ├── changed-files.txt · harness.env · harness.live.env
     └── tests.patch                      # only when you wrote/changed tests (§5)
 ```
+
+**Everything under `$ART` is publishable.** It travels to the reviewer as `artifacts-round<k>.tgz` and, where a viewer is configured, to a URL on the PR. Never write an env dump, a config holding a real `key_env` value, or any credential-shaped string into it; `harness.live.env` is copied only after the grep in §4b passes.
 
 **Header:** `# Test Report — <fork-slug>#<N> — head <sha> — round <k>/2 — <PASS|FAIL>` (nightly: `# Test Report — nightly <date> — head <sha> — <PASS|FAIL>`), then the canonical path, PR URL, base SHA, requirement id, plugin key, ADR path, worktree, thread id.
 
 **Sections, in order:** `## Verdict` (`PASS | FAIL`, plus `UI=<PASS|FAIL|SMOKE-ONLY>` and `DESKTOP=<PASS|FAIL|SKIPPED — …>`); `## Results` — **one row per tier, these ids verbatim** (the reviewer's gate checks them), opened by this **exact** header line and separator, five columns, no extras, no reordering:
 
 ```
-| row | result | exit | log | evidence |
-|---|---|---|---|---|
-| DOCTOR | PASS | 0 | artifacts/doctor.log | "OK: runtime discovery, manifest parsing, import, and registration passed" |
-| LIST | PASS | 0 | artifacts/plugins-list.json | <key> enabled, error null |
-| ACCEPTANCE | PASS | 0 | artifacts/acceptance.log | tests/plugins/test_<plugin>_acceptance.py 3 passed |
-| NEGATIVE-CONTROL | PASS | 1 | artifacts/negative-control.log | acceptance FAILS on origin/<BASE> (expected non-zero) |
-| RUFF | PASS | 0 | artifacts/ruff.log | |
-| FOOTGUNS | PASS | 0 | artifacts/footguns.log | |
-| FOCUSED-PYTEST | PASS | 0 | artifacts/pytest-focused.log | tests/plugins + tests/hermes_cli; FLAKY: none |
-| SUITE T1 | PASS | 0 | artifacts/T01.log | hermes --version → 0.21.0 |
+| row | kind | result | exit | log | evidence |
+|---|---|---|---|---|---|
+| DOCTOR | – | PASS | 0 | artifacts/doctor.log | "OK: runtime discovery, manifest parsing, import, and registration passed" |
+| LIST | – | PASS | 0 | artifacts/plugins-list.json | <key> enabled, error null |
+| ACCEPTANCE | – | PASS | 0 | artifacts/acceptance.log | tests/plugins/test_<plugin>_acceptance.py 3 passed |
+| NEGATIVE-CONTROL | – | PASS | 1 | artifacts/negative-control.log | acceptance FAILS on origin/<BASE> (expected non-zero) |
+| RUFF | – | PASS | 0 | artifacts/ruff.log | |
+| FOOTGUNS | – | PASS | 0 | artifacts/footguns.log | |
+| FOCUSED-PYTEST | – | PASS | 0 | artifacts/pytest-focused.log | tests/plugins + tests/hermes_cli; FLAKY: none |
+| SUITE T1 | – | PASS | 0 | artifacts/T01.log | hermes --version → 0.21.0 |
 | … one row per id through SUITE T12 (T5b/T6 as SKIPPED(tier=live) or ADVISORY-FAIL; T10–T12 point at ui-*.png) … |
-| UI | PASS | 0 | artifacts/dashboard.log | /api/health ok; ui-T10/T11/T12 png; baseline <nightly-date|none>; diff <n>% |
-| DESKTOP | SKIPPED — install_packages: xvfb xauth libnotify4 libxss1 libxtst6 xdg-utils libatspi2.0-0 | – | artifacts/desktop-preflight.log | see Skipped / advisory |
-| AC-FR-3-1 | PASS | 0 | artifacts/acceptance.log | tests/plugins/test_a2a_acceptance.py::test_ac_fr_3_1 |
-| AC-FR-3-2 | FAIL | 1 | artifacts/acceptance.log | tests/plugins/test_a2a_acceptance.py::test_ac_fr_3_2 — AssertionError: peer reply not recorded |
-| AC-FR-3-3 | FAIL | – | artifacts/ac-functions.txt | no test — criterion unimplemented |
+| UI | – | PASS | 0 | artifacts/dashboard.log | /api/health ok; ui-T10/T11/T12 png; baseline <nightly-date|none>; diff <n>% |
+| DESKTOP | – | SKIPPED — install_packages: xvfb xauth libnotify4 libxss1 libxtst6 xdg-utils libatspi2.0-0 | – | artifacts/desktop-preflight.log | see Skipped / advisory |
+| AC-FR-3-1 | pytest | PASS | 0 | artifacts/acceptance.log | tests/plugins/test_a2a_acceptance.py::test_ac_fr_3_1 |
+| AC-FR-3-2 | pytest | FAIL | 1 | artifacts/acceptance.log | tests/plugins/test_a2a_acceptance.py::test_ac_fr_3_2 — AssertionError: peer reply not recorded |
+| AC-FR-3-3 | pytest | FAIL | – | artifacts/ac-functions.txt | no test — criterion unimplemented |
+| AC-LOOP-F35-2 | ui | PASS | 0 | artifacts/scenario-AC-LOOP-F35-2/setup.log | scenario-AC-LOOP-F35-2/step-1..6.png |
+| AC-LOOP-F35-3 | live | FAIL | 1 | artifacts/scenario-AC-LOOP-F35-3/setup.log | scenario-AC-LOOP-F35-3/step-4.png — bot-b never replied within 120 s |
+| AC-LOOP-F35-4 | desktop | PASS | 0 | artifacts/scenario-AC-LOOP-F35-4/playwright-stdout.log | apps/desktop/e2e/loop-f35-ac4.spec.ts → scenario-AC-LOOP-F35-4/results.json |
 ```
 
-The `AC-<req-id>-<n>` rows come **last, in ADR order, one per criterion** (§3c). Their `result` cell is `PASS` or `FAIL` only — no `SKIPPED`, no `ADVISORY-FAIL`, no `N/A`, no `✅` — and their `evidence` cell is a pytest **node id** or the literal `no test — criterion unimplemented`. The reviewer's `## Acceptance criteria` cross-walk and the Orchestrator's merge gate join the ADR to this table by id, so a renamed header, a collapsed range row (`AC-FR-3-1..3 PASS`), a missing id, or an invented id breaks the merge silently.
+The `AC-<req-id>-<n>` rows come **last, in ADR order, one per criterion** (§3c for `pytest`, §4b for `ui`/`desktop`/`live`). Their `result` cell is `PASS` or `FAIL` only — no `SKIPPED`, no `ADVISORY-FAIL`, no `N/A`, no `✅`. The `kind` cell is `–` on every tier row and the ADR's kind (`pytest | ui | desktop | live`) on every `AC-` row, copied from the criterion, never inferred from what you ended up running. The `evidence` cell is a pytest **node id** or the literal `no test — criterion unimplemented` for `pytest`; for `ui`, `desktop` and `live` it is an artifact path under `artifacts/` that exists on disk (`scenario-<AC-id>/step-1..<n>.png`, `scenario-<AC-id>/results.json`, plus the spec node id for a desktop row). **A `ui`/`desktop`/`live` PASS with no artifact path is an invalid report**: the reviewer answers REQUEST_CHANGES and the merge gate reads the row as red, so `ls` every PASS path before the critique and write `FAIL` where there is nothing to show. The reviewer's `## Acceptance criteria` cross-walk and the Orchestrator's merge gate join the ADR to this table by id, so a renamed header, a collapsed range row (`AC-FR-3-1..3 PASS`), a missing id, or an invented id breaks the merge silently.
 
-then `## Network` — the §2 enforcement table with the line count of `net-denials.log`; `## Failures` — per failing row: command, exit, first failing assertion or last 30 log lines, and `reproduce with:` one paste-able line; `## Skipped / advisory` — reasons, the verbatim `install_packages` request when `DESKTOP=SKIPPED`, T5b/T6 outcomes, the negative-control caveat for CORE-CHANGE PRs; `## Environment` — `hermes --version`, `python3 --version`, `uv --version`, `node --version`, `npm --version`, container gaps; `## References` — release-tree `file:line` for every command relied on. Round 2 = a NEW `test-report-<newsha7>.md` with a `## Delta from round 1 (head <oldsha7>)` section; rows not re-run are copied with `(round 1)` in the evidence column.
+then `## Network` — the §2 enforcement table with the line count of `net-denials.log`, plus, when a `live:` criterion ran, the two relaxations `$TB/harness.live.env` made (guard allow-list by the one live endpoint, proxy pin back to OneCLI) and the `session_model_usage` counts against `LIVE_MODEL_CALLS_MAX=40` / `LIVE_BUDGET_USD=5` per scenario and the round caps (§4b, §7); `## Failures` — per failing row: command, exit, first failing assertion or last 30 log lines, and `reproduce with:` one paste-able line; `## Skipped / advisory` — reasons, the verbatim `install_packages` request when `DESKTOP=SKIPPED` or when a `desktop:` criterion had no tier to run on, orphan scenario files, T5b/T6 outcomes, the negative-control caveat for CORE-CHANGE PRs; `## Environment` — `hermes --version`, `python3 --version`, `uv --version`, `node --version`, `npm --version`, container gaps; `## References` — release-tree `file:line` for every command relied on. Round 2 = a NEW `test-report-<newsha7>.md` with a `## Delta from round 1 (head <oldsha7>)` section; rows not re-run are copied with `(round 1)` in the evidence column.
 
-**Verdict rule.** `PASS` iff `DOCTOR`, `ACCEPTANCE`, `NEGATIVE-CONTROL`, `RUFF`, `FOOTGUNS`, `FOCUSED-PYTEST` all PASS **and every `AC-<req-id>-<n>` row is PASS** **and** every non-advisory, non-skipped `SUITE` row is PASS **and** `UI` is PASS or SMOKE-ONLY **and** `DESKTOP` is not a blocking FAIL. Advisory rows and SKIPPED rows never flip the verdict — and never hide: every SKIPPED carries its reason. `AC-` rows have no advisory or skipped state; one non-`PASS` criterion is a `FAIL` report.
+**Verdict rule.** `PASS` iff `DOCTOR`, `ACCEPTANCE`, `NEGATIVE-CONTROL`, `RUFF`, `FOOTGUNS`, `FOCUSED-PYTEST` all PASS **and every `AC-<req-id>-<n>` row is PASS** **and** every non-advisory, non-skipped `SUITE` row is PASS **and** `UI` is PASS or SMOKE-ONLY **and** `DESKTOP` is not a blocking FAIL. Advisory rows and SKIPPED rows never flip the verdict — and never hide: every SKIPPED carries its reason. `AC-` rows have no advisory or skipped state whatever their kind; one non-`PASS` criterion is a `FAIL` report, and `FAIL(budget)` on a `live` row counts as one.
 
-**`[Test Report]` message** (marker-prefixed → always a reply, `in_reply_to=<intake-id>` — the builder's Fix Report, the reviewer's re-run request, or the orchestrator's nightly dispatch; exact routing per hermes-verify step 7):
+**`[Test Report]` message** (marker-prefixed → always a reply, `in_reply_to=<intake-id>` — the builder's Fix Report, the reviewer's re-run request, or the orchestrator's nightly dispatch; exact routing per hermes-verify step 8):
 
 ```
 [Test Report] <fork-slug>#<N> (round <k>/2, head <sha7>)
@@ -367,8 +470,8 @@ followed by `send_file(in_reply_to=<intake-id>, path="/workspace/agent/reports/<
 - **One `/codex-critique` per run, `STAGE: OUTPUT_REVIEW`, on `test-report-<sha7>.md` (attested) + the exact `[Test Report]` text, at the very end.** No per-row, per-tier, or per-step critique; never on logs or on the diff. Must-fix → edit the report → `codex-reply` on the same thread (3 rounds max). Write nothing under `reports/<thread-id>/` between the approve and the send — the gate re-hashes the attested file.
 - **Never clone or copy the release tree.** Cite from `/workspace/extra/hermes-release`; build/test only in `wt-verify-<N>`. Never `uv python install`; never a second `uv sync` when `.venv` already imports `hermes_cli`; the negative control reuses the PR venv via symlink.
 - **Reuse across rounds and nights:** the worktree, `.venv` (unless `uv.lock`/`pyproject.toml` changed), `node_modules` (unless `package-lock.json`/`apps/desktop/package.json` changed), `web_dist-<sha7>` (unless `web/`/`apps/shared/` changed), `apps/desktop/dist` (unless `apps/` changed), the nightly baseline screenshots. Never `rm -rf` a cache "to be safe".
-- **Model calls:** the §3a stub by default; `tier=live` rows only when dispatched (T5b/T6 are the expensive ones). A live row uses the real `base_url` with a **dummy** key and lets the OneCLI proxy inject the credential (§3a) — a real key never touches the testbed, and a row you cannot run without one is `SKIPPED(no-provider)`.
-- **Time caps — each chunk its own Bash call with a declared `timeout`, long ones inside `Agent`, never `run_in_background`, never an unbounded wait:** T-suite ≤ 30 min; focused pytest ≈ 1500000 ms per chunk; UI ≤ 15 min; desktop smoke ≤ 5 min, PR set ≤ 25 min. Full `scripts/run_tests.sh` and full desktop `e2e/` only for a CORE-CHANGE diff or the nightly.
+- **Model calls:** the §3a stub by default; `tier=live` rows only when dispatched (T5b/T6 are the expensive ones), plus the `live:` acceptance criteria the ADR itself declares (§4b), each bounded at `LIVE_MODEL_CALLS_MAX=40` and `LIVE_BUDGET_USD=5` per scenario, past which the scenario stops as `FAIL(budget)`. **Per round, across every `live:` criterion together: `LIVE_ROUND_CALLS_MAX=120` and `LIVE_ROUND_BUDGET_USD=15`** — read the running total (the `session_model_usage` sum over every profile in `$TB/home/profiles/`) before starting each scenario; past either, every remaining `live:` id is `FAIL(budget) — round cap` with the totals, and `## Failures` says the ADR asks for more live verification than one round can pay for. Never raise a bound, never re-run a budget failure, and never promote a `ui:` criterion to the live tier because the stub was inconvenient. A live row uses the real `base_url` with a **dummy** key and lets the OneCLI proxy inject the credential (§3a) — a real key never touches the testbed, and a suite row you cannot run without one is `SKIPPED(no-provider)` (an `AC-` row in that position is a `FAIL`, §4b).
+- **Time caps — each chunk its own Bash call with a declared `timeout`, long ones inside `Agent`, never `run_in_background`, never an unbounded wait:** T-suite ≤ 30 min; focused pytest ≈ 1500000 ms per chunk; UI ≤ 15 min; scenario tier ≤ 10 min per criterion (each step additionally bounded by the scenario's `timeout_s`, one dashboard for all of them); desktop smoke ≤ 5 min, PR set ≤ 25 min. Full `scripts/run_tests.sh` and full desktop `e2e/` only for a CORE-CHANGE diff or the nightly.
 - **Round cap:** 2 verification rounds per PR, then ESCALATE. Nightly: once per day against the fork's default branch, one report, no rounds.
 - **No installs of any kind, no pushes, no PRs, no GitHub writes** (`no-push.md`); `DESKTOP=SKIPPED` with the verbatim `install_packages` request is the correct outcome for a missing dependency; tests you write travel as `tests.patch` + `send_file`.
 
@@ -380,4 +483,4 @@ followed by `send_file(in_reply_to=<intake-id>, path="/workspace/agent/reports/<
 - `hermes_cli/subcommands/profile.py:29-64, 153-180`; `hermes_cli/profile_distribution.py:88-95` (DEFAULT_DIST_OWNED — no profile.yaml); `tui_gateway/methods_profiles.py:749, 780-782` (`profiles.configure` ui_meta writer); `tools/bot_mode_probe.py:60-76, 242-248, 288`; `tests/tools/test_bot_mode_probe.py:24-27` (ui_meta block shape); `hermes_cli/subcommands/cron.py:23, 27-44, 268-270, 328`; `hermes_cli/kanban.py:790-802`; `hermes_cli/kanban_db.py:582-584`; `hermes_cli/_parser.py:151, 154-155`; `hermes_cli/subcommands/gui.py:15-34`
 - `tools/environments/docker.py:324-328`; `hermes_state.py:759-767, 846`; `tests/conftest.py:545`; `scripts/run_tests.sh:54-75, 169-183`; `gateway/platforms/api_server.py:266` (8642), `gateway/platforms/webhook.py:130` (8644); `pyproject.toml:3, 125, 624-660`
 - `apps/desktop/playwright.config.ts:30-43`; `apps/desktop/e2e/fixtures.ts:1-20, 160-198, 239-243, 262-272, 314-320`; `apps/desktop/e2e/electron-binary.ts:30-38`; `apps/desktop/e2e/mock-server.ts:655`; `apps/desktop/electron/main.ts:2422-2423, 4640-4648`; `apps/desktop/scripts/assert-root-install.mjs:8-12`; `.github/workflows/e2e-desktop.yml:37-40, 52-57, 113-125`; root `package.json` (workspaces, engines); `apps/desktop/package.json` (electron 40.10.2, @playwright/test 1.62.1)
-- Plan: `reports/nemoclaw-coworkers-port-plan.html` §5 (T1–T12), `-v2.html` P2 (harness spec); NanoClaw `container/Dockerfile` (image libs, no xvfb); workflow `hermes-verify` (intake, checkout, rounds, routing); skills `/hermes-build` (venv, run_tests.sh, doctor), `/agent-browser` (bounded waits), `/codex-critique` (OUTPUT_REVIEW + attestation)
+- Plan: `reports/nemoclaw-coworkers-port-plan.html` §5 (T1–T12), `-v2.html` P2 (harness spec); NanoClaw `container/Dockerfile` (image libs, no xvfb); workflow `hermes-verify` (intake, checkout, rounds, routing); skills `/hermes-build` (venv, run_tests.sh, doctor), `/hermes-ui-driver` (dashboard + Electron driving for the §4b scenario tier), `/agent-browser` (bounded waits), `/codex-critique` (OUTPUT_REVIEW + attestation)

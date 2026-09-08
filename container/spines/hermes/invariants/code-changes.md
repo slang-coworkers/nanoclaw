@@ -2,7 +2,7 @@
 
 Apply when writing or reviewing Hermes code (builder, reviewer; readers can ignore). A reviewer must-changes any violation below.
 
-- **Surface:** `plugins/**`, `website/docs/**`, `tests/**` only, unless the ADR carries a `CORE-CHANGE` section citing the blocking release `file:line` (see plugin-first). No unrelated refactors riding along.
+- **Surface:** `plugins/**`, `website/docs/**`, `tests/**`, `apps/desktop/e2e/**` (one `<req-id-lowercase>-ac<n>.spec.ts` per `desktop:` criterion, nothing else) only, unless the ADR carries a `CORE-CHANGE` section citing the blocking release `file:line` (see plugin-first). No unrelated refactors riding along.
 - **One logical change per PR;** Conventional Commits `<type>(<scope>): <description>` with `fix | feat | docs | test | refactor | chore` (`CONTRIBUTING.md:944-969`); branch `plugin/<name>` or `fix/ | feat/ | docs/ | test/ | refactor/` (`CONTRIBUTING.md:919-927`). Draft PR to the fork only — never upstream.
 - **Work from a current checkout:** `git fetch` and read the file at its present state before editing or asserting anything about it; claims drafted against a remembered version are the most common avoidable error.
 - **Tests are contract:** every plugin ships tests under `tests/plugins/` or `tests/hermes_cli/` that load it through real discovery from an isolated `HERMES_HOME` with `HERMES_BUNDLED_PLUGINS` pointed at an empty dir. Behavior contracts only — no change-detector tests, no source-reading tests, no bare `skipif` for OS (use `@pytest.mark.linux_only` etc.), no `assert not _wait_until(...)` negative-timing races; wall-clock bounds ≥ 2 s. JS/TS assertions live in vitest. Never delete or silence a failing test without evidence it was wrong.
