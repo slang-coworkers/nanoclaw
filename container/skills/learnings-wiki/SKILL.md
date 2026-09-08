@@ -10,7 +10,7 @@ description: Organize the slang-coworkers SHARED LEARNINGS into a navigable, LLM
 > general-purpose wiki tool. It organizes those learnings into a synthesized wiki so agents
 > can navigate accumulated knowledge instead of grepping a flat pile.
 
-Turns the flat `learnings/*.md` (what `append_learning` writes) into a navigable,
+Turns `learnings/*.md` and `learnings/<agent-group-id>/*.md` (what `append_learning` writes; per-author subdirectories since 2026-08-10) into a navigable,
 cross-linked, **LLM-synthesized** wiki. **No embeddings, no RAG, no MCP server** — inside
 the container you read the files directly with Read/Grep/Glob. Built on Karpathy's
 LLM-Wiki pattern: knowledge compiles once into concept pages and compounds, rather than
@@ -443,9 +443,20 @@ def _persist(state):
 
 def _now(): return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
+def l1_files():
+    """Every L1 atom, wherever `append_learning` put it: the flat `learnings/*.md` of the
+    first months and the per-author `learnings/<agent-group-id>/*.md` the host writes since
+    2026-08-10 (PR #1171). The non-recursive glob this replaces silently dropped every atom in
+    a subdirectory — 1,823 of 5,801 on prod by 2026-09-08 — while `finalize` kept reporting
+    "0 uncovered". `INDEX.md` at any depth is the host's generated index, never an atom.
+    Sorted by basename so authoring order (the ms-timestamp prefix) wins regardless of directory.
+    """
+    out = [f for f in glob.glob(os.path.join(L1, "**", "*.md"), recursive=True)
+           if os.path.basename(f).lower() != "index.md"]
+    return sorted(out, key=lambda f: (os.path.basename(f), f))
+
 def l1_stems():
-    return {stem_of(os.path.basename(f)) for f in glob.glob(os.path.join(L1, "*.md"))
-            if os.path.basename(f).lower() != "index.md"}
+    return {stem_of(os.path.basename(f)) for f in l1_files()}
 
 def _norm_target(v):
     """Normalize FORMATTING variance in a marker value (path prefix, .md suffix, quotes).
@@ -511,8 +522,8 @@ def _scan_markers():
     cannot tell whether it carried a marker, so the run must not claim it saw everything.
     """
     found, unreadable = {}, []
-    for d in (os.path.join(WIKI, "learnings"), L1):
-        for p in sorted(glob.glob(os.path.join(d, "*.md"))):
+    for files in (sorted(glob.glob(os.path.join(WIKI, "learnings", "*.md"))), l1_files()):
+        for p in files:
             try:
                 v = fm(_read(p), "superseded_by")
             except OSError as e:
@@ -631,8 +642,17 @@ def build():
     for d in (SRC, os.path.join(WIKI, "learnings"), os.path.join(WIKI, "topics"), concepts_dir.rstrip(os.sep)):
         os.makedirs(d, exist_ok=True)
 
-    files = [f for f in sorted(glob.glob(os.path.join(L1, "*.md")))
-             if os.path.basename(f).lower() != "index.md"]
+    files, first = [], {}
+    for f in l1_files():
+        s = stem_of(os.path.basename(f))
+        if s in first:
+            # Two author dirs holding the same stem would collapse onto one L3 page; keep the
+            # first (basename order) and say so, rather than letting the later one win in silence.
+            print(f"DUPLICATE-STEM {s}: {os.path.relpath(f, ROOT).replace(os.sep, '/')} "
+                  f"shadowed by {os.path.relpath(first[s], ROOT).replace(os.sep, '/')}")
+            continue
+        first[s] = f
+        files.append(f)
     entries, scrubbed = [], 0
     clusters = collections.OrderedDict()
     for path in files:
@@ -989,9 +1009,38 @@ def show_lineage():
         print(f"  tombstone  {s} (was {r.get('was','')}, at {r.get('at','')}) {r.get('reason','')}")
     return 3 if report_lineage(state, l1_stems()) else 0
 
+def gate():
+    """The scheduler's wake test, in one place and over the SAME recursive L1 set the builder
+    reads. Wake when any atom is newer than wiki/index.md (or there is no wiki yet), or when
+    more than 60 L3 pages are neither cited by a concept page nor superseded. Prints the
+    `{"wakeAgent": …}` JSON a task script must emit; exit 0 always — a gate that fails must
+    not look like "sleep"."""
+    idx = os.path.join(WIKI, "index.md")
+    files = l1_files()
+    if os.path.exists(idx):
+        t0 = os.path.getmtime(idx)
+        new = sum(1 for f in files if os.path.getmtime(f) > t0)
+    else:
+        new = len(files)
+    cited = set()
+    for cp in glob.glob(os.path.join(WIKI, "concepts", "*.md")):
+        cited.update(re.findall(r"wiki/learnings/([A-Za-z0-9_.-]+\.md)", _read(cp)))
+    uncov = 0
+    for lp in glob.glob(os.path.join(WIKI, "learnings", "*.md")):
+        if os.path.basename(lp) in cited or fm(_read(lp), "superseded_by"):
+            continue
+        uncov += 1
+    if new > 0 or uncov > 60:
+        print(json.dumps({"wakeAgent": True, "data": {"uncovered": uncov, "new_learnings": new}}))
+    else:
+        print(json.dumps({"wakeAgent": False}))
+    return 0
+
 def main(argv):
     cmd = argv[1] if len(argv) > 1 else "build"
     try:
+        if cmd == "gate":
+            return gate()
         if cmd == "build":
             return 3 if build() else 0
         if cmd == "finalize":
@@ -1010,7 +1059,7 @@ def main(argv):
     # A typo used to run finalize: `(build if cmd == "build" else finalize)()` treated every
     # unrecognized word as "finalize", so `buidl` rebuilt the index and reported coverage
     # for a tree that was never built.
-    print(f"unknown command {cmd!r} — expected build|finalize|retire|unretire|lineage",
+    print(f"unknown command {cmd!r} — expected gate|build|finalize|retire|unretire|lineage",
           file=sys.stderr)
     return 2
 
