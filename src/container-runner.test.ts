@@ -132,21 +132,32 @@ describe('one provider per spawn', () => {
   // function) while silently narrowing the absence ones, so the extraction has
   // to prove it reached the end.
   //
-  // `tail` is that proof and it is the load-bearing check. Brace balance alone
-  // is NOT sufficient: a cut at a statement boundary leaves the prefix balanced,
-  // so an injected template there drops 61% of `spawnContainer` with balance
-  // still 1 and the anchor still present. Balance is kept only for the cuts it
-  // does catch — those landing inside a nested block.
+  // Three assertions, each added because the previous set was satisfiable
+  // without the property holding:
+  //   1. the anchor is unique FILE-WIDE and present in the slice ⇒ the slice
+  //      reached that exact offset;
+  //   2. the anchor is the function's last statement ⇒ every earlier cut fails
+  //      presence. Balance alone does not: a cut at a statement boundary leaves
+  //      the prefix balanced, which passed a 61% truncation;
+  //   3. the cuts still available sit between the anchor and the true end, all
+  //      inside nested blocks ⇒ a column-0 `}` there leaves them unclosed.
+  // (1) closes the ladder, and only because it looks outside the region checked.
   const fnBody = (decl: string, tail: string): string => {
     const start = RUNNER.indexOf(decl);
     expect(start).toBeGreaterThan(-1);
+    // Against the WHOLE file: a duplicated anchor lets `toContain` pass on the
+    // first occurrence, so a cut between the two still truncates — that is how
+    // `releaseClaimQuietly`, which appears twice in this function, passed a 16%
+    // cut. Asserting uniqueness on the slice would be circular, since the cut
+    // that drops the second occurrence is what makes the slice's copy unique.
+    expect(RUNNER.split(tail).length - 1, `${decl}: tail anchor must be unique in the file`).toBe(1);
     const rest = RUNNER.slice(start);
     const body = rest.slice(0, rest.indexOf('\n}\n'));
     expect(body, `${decl}: slice stopped before the function's last statement`).toContain(tail);
     expect(body.split('{').length - body.split('}').length, `${decl}: body truncated inside a nested block`).toBe(1);
     return body;
   };
-  const spawn = fnBody('async function spawnContainer', 'await releaseClaimQuietly(session.id, claimIncarnation)');
+  const spawn = fnBody('async function spawnContainer', 'await runtime.finishedPromise;');
   const contribution = fnBody(
     'export async function resolveProviderContribution',
     'return { provider, contribution: surfaces.contribution, surfaces };',
