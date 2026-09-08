@@ -1106,7 +1106,9 @@ async function spawnContainer(session: Session): Promise<void> {
   // and buildContainerArgs so we don't re-read.
   const containerConfig = await materializeContainerJson(agentGroup.id);
 
-  const providerName = resolveProviderName(session.agent_provider, containerConfig.provider);
+  // All three tiers, same as resolveProviderContribution: initGroupFilesystem
+  // must scaffold for the provider the container will actually run.
+  const providerName = resolveProviderName(session.agent_provider, agentGroup.agent_provider, containerConfig.provider);
   await initGroupFilesystem(agentGroup, { provider: providerName });
 
   // Resolve the effective provider + any host-side contribution it declares

@@ -53,26 +53,34 @@ afterAll(async () => {
 });
 
 describe('resolveProviderName', () => {
-  it('prefers session over container config', () => {
-    expect(resolveProviderName('codex', 'claude')).toBe('codex');
+  it('prefers session over group and container config', () => {
+    expect(resolveProviderName('codex', 'claude', 'opencode')).toBe('codex');
   });
 
-  it('falls back to container config when session is null', () => {
-    expect(resolveProviderName(null, 'opencode')).toBe('opencode');
+  // The tier a two-argument call silently drops: with the group tier missing,
+  // container.json lands on it and a group-level pick loses to the config.
+  it('prefers the group over container config when session is null', () => {
+    expect(resolveProviderName(null, 'codex', 'claude')).toBe('codex');
+  });
+
+  it('falls back to container config when session and group are null', () => {
+    expect(resolveProviderName(null, null, 'opencode')).toBe('opencode');
   });
 
   it('defaults to claude when nothing is set', () => {
-    expect(resolveProviderName(null, undefined)).toBe('claude');
+    expect(resolveProviderName(null, undefined, undefined)).toBe('claude');
   });
 
   it('lowercases the resolved name', () => {
-    expect(resolveProviderName('CODEX', null)).toBe('codex');
-    expect(resolveProviderName(null, 'Claude')).toBe('claude');
+    expect(resolveProviderName('CODEX', null, null)).toBe('codex');
+    expect(resolveProviderName(null, 'Claude', null)).toBe('claude');
+    expect(resolveProviderName(null, null, 'OpenCode')).toBe('opencode');
   });
 
   it('treats empty string as unset (falls through)', () => {
-    expect(resolveProviderName('', 'opencode')).toBe('opencode');
-    expect(resolveProviderName(null, '')).toBe('claude');
+    expect(resolveProviderName('', 'opencode', null)).toBe('opencode');
+    expect(resolveProviderName(null, '', 'codex')).toBe('codex');
+    expect(resolveProviderName(null, '', '')).toBe('claude');
   });
 });
 
