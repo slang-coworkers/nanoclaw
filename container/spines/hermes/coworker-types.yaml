@@ -80,9 +80,15 @@ hermes-common:
     # naming any other host (e.g. integrate.api.nvidia.com) gets a 401 from
     # OneCLI — that is what failed P0-LOOP round 1. Keep the literal copies in
     # container/skills/hermes-testbed/SKILL.md (§ model: live) in sync.
+    # P0-LOOP round 2 (2026-09-08): the gateway answered 403 "key can only access
+    # models=['default-models']. Tried to access …opus-4-8[1m]". The `[1m]` suffix is a
+    # Claude Code convention (it strips it and sends a 1M-context beta header); a
+    # Hermes client sends the id verbatim, and no such model exists. Base URL is the
+    # literal host — never `${ANTHROPIC_BASE_URL}`, which inside a traced container is
+    # the loopback claude-trace proxy.
     live_inference_host: inference-api.nvidia.com
     live_inference_api_mode: anthropic_messages
-    live_inference_model: "aws/anthropic/bedrock-claude-opus-4-8[1m]"
+    live_inference_model: aws/anthropic/bedrock-claude-opus-4-8
     live_inference_key_env: ANTHROPIC_API_KEY
   identity: container/spines/hermes/identity/engineer.md
   invariants:
