@@ -16,6 +16,9 @@ ln -sfn "$ROOT/groups/orchestrator/reports/status" "$WWW/status"
 ln -sfn "$ROOT/groups/hermes-tester/reports" "$WWW/test-reports"
 # Architect ADRs (+ notes, acceptance tests) per requirement: /adr/<req-id-lowercase>.md
 ln -sfn "$ROOT/groups/hermes-architect/reports" "$WWW/adr"
+# Learnings wiki (L3) and the raw atoms — built daily by the Orchestrator's learnings-wiki task.
+ln -sfn "$ROOT/data/shared/wiki"      "$WWW/wiki"
+ln -sfn "$ROOT/data/shared/learnings" "$WWW/learnings"
 
 # Explanations: one symlink per coworker group whose dir exists (created on the group's first PR).
 for g in "$ROOT"/groups/*/; do

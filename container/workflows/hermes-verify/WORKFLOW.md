@@ -36,6 +36,8 @@ Ground rules that hold for every step:
 
    On restart: read `/workspace/agent/reports/<thread-id>/state.md` + `rounds.log`, `cd` into your worktree, resume at the first step not marked done.
 
+0b. **Recall** {#recall} — Spawn an `Agent` to scan prior testbed learnings, wiki-first: "Check if `/workspace/shared/wiki/index.md` exists. IF YES read it, open at most 2 concept pages about the hermes testbed / uv / `run_tests.sh` / xvfb / the OneCLI live tier with `limit=60`. IF NO `wiki/`: Grep `/workspace/shared/learnings/` for the same keywords, at most 3 hits. Return at most 5 bullets (title, one line, path) or `no prior hits`." Apply the hits to the suite plan; never re-derive a known apt/uv gap. Never read `learnings/INDEX.md` inline.
+
 1. **Checkout — own worktree, pinned head** {#setup} —
 
    ```bash
