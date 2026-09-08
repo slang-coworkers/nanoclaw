@@ -35,7 +35,6 @@ import { buildMounts, resolveProviderContribution } from './container-runner.js'
 import { closeDb, createAgentGroup, initTestDb, runMigrations } from './db/index.js';
 import { ensureContainerConfig } from './db/container-configs.js';
 import { initGroupFilesystem } from './group-init.js';
-import { PERSONA_PREPEND_FILE } from './group-persona.js';
 import { log } from './log.js';
 import {
   initializeProviderGroupSurfaces,
@@ -99,6 +98,54 @@ registerProviderHostContract('ordered-mount-provider', {
     {
       backingId: 'ordered-skills',
       containerPath: '/home/node/.agents',
+      mode: 'ro',
+      mountClass: 'allowlisted-extra',
+    },
+  ],
+  files: [],
+  commands: { nativeAdmin: [], nativeFiltered: [] },
+});
+
+// A provider that declares a host contract and does NOT claim the agent
+// surfaces — claude's own shape. Its contract must decide nothing about
+// surfaces: not the project document, not a state volume, not a skill view,
+// and not whether a universal mount is a duplicate. Its declarations are
+// deliberately chosen to collide with the defaults if ever consulted.
+const contractOnlyContribution = vi.fn((ctx: { groupDir: string }) => ({
+  env: { CONTRACT_ONLY: '1' },
+  mounts: [{ hostPath: ctx.groupDir, containerPath: '/contract-only-extra', readonly: true }],
+}));
+registerProviderContainerConfig('contract-only-provider', contractOnlyContribution);
+registerProviderHostContract('contract-only-provider', {
+  seamVersion: PROVIDER_HOST_CONTRACT_SEAM_VERSION,
+  projectDocument: {
+    fileName: 'AGENTS.md',
+    containerPath: '/workspace/agent/AGENTS.md',
+    mountClass: 'allowlisted-extra',
+  },
+  stateVolumes: [
+    {
+      id: 'contract-only-state',
+      directory: '.contract-only-state',
+      containerPath: '/home/node/.codex',
+      scope: 'group',
+      mode: 'rw',
+      mountClass: 'allowlisted-extra',
+    },
+  ],
+  skillBackings: [
+    {
+      id: 'contract-only-skills',
+      location: { kind: 'state-volume', volumeId: 'contract-only-state', subdirectory: '' },
+      skillsSubdirectory: 'skills',
+      conflictDiagnostics: 'silent',
+      templateCopies: 'in-place',
+    },
+  ],
+  skillViews: [
+    {
+      backingId: 'contract-only-skills',
+      containerPath: '/workspace/agent/.agents',
       mode: 'ro',
       mountClass: 'allowlisted-extra',
     },
@@ -316,12 +363,9 @@ describe('buildMounts agent surfaces', () => {
     expect(normalizeMounts(declaredMounts)).toEqual(normalizeMounts(legacyMounts));
     expect(declaredMounts.map((m) => m.containerPath)).toContain('/opt/claude-trace');
     expect(legacyMounts.map((m) => m.containerPath)).not.toContain('/opt/claude-trace');
-    // Upstream asserts the contract's composeProjectDocument wrote the document
-    // during realization. On this fork claude's document is composed by the lego
-    // spine in spawnContainer (composeCoworkerClaudeMd), NOT on the buildMounts /
-    // initGroupFilesystem path these two calls exercise — so neither group has one
-    // here, and that symmetry is the real invariant: nothing on this path writes
-    // the project document behind the spine composer's back.
+    // The lego spine composer (composeCoworkerClaudeMd, called in spawnContainer)
+    // is the only writer of the project document. Neither initGroupFilesystem nor
+    // buildMounts may write one behind its back, for either group.
     for (const ag of [declared, legacy]) {
       expect(fs.existsSync(path.join(GROUPS_DIR, ag.folder, 'CLAUDE.md'))).toBe(false);
     }
@@ -336,10 +380,9 @@ describe('buildMounts agent surfaces', () => {
           fs.readFileSync(path.join(DATA_DIR, 'v2-sessions', declared.id, '.claude-shared', 'settings.json'), 'utf-8'),
         ),
       );
-      // Upstream symlinks each selected skill to /app/skills/<name>; this fork
-      // MIRRORS them (copy-forward, pruned per coworker type) in group-init, so
-      // the entry is a real directory here. The parity claim is what matters:
-      // both groups get the same kind of entry for the same skill.
+      // A selected skill is mirrored as a real directory (copy-forward, pruned
+      // per coworker type), not symlinked. The claim here is parity: both groups
+      // get the same kind of entry for the same skill.
       const describeEntry = (dir: string): string => {
         const entry = path.join(dir, 'skills', 'welcome');
         const stat = fs.lstatSync(entry);
@@ -673,5 +716,53 @@ describe('derived provider spawn surfaces', () => {
     expect(initializeProviderGroupSurfaces('consumer', contract, 'diagnostic-group', GROUPS_DIR)).toContain(
       'settings.json (reconciled Diagnostic-source settings)',
     );
+  });
+
+  it("keeps this fork's surfaces when a provider declares a contract without owning them", async () => {
+    const ag = group('ag-contract-only', 'contract-only');
+    await createAgentGroup(ag);
+    await ensureContainerConfig(ag.id);
+    await initGroupFilesystem(ag, { provider: 'contract-only-provider' });
+
+    const state = path.join(DATA_DIR, 'v2-sessions', ag.id, '.claude-shared');
+    const welcome = path.join(state, 'skills', 'welcome');
+    expect(fs.lstatSync(welcome).isDirectory()).toBe(true);
+    expect(fs.existsSync(path.join(welcome, 'SKILL.md'))).toBe(true);
+    // The contract's own state volume is never realized for a non-owner.
+    expect(fs.existsSync(path.join(DATA_DIR, 'v2-sessions', ag.id, '.contract-only-state'))).toBe(false);
+
+    const mounts = await buildMounts(
+      ag,
+      session('contract-only-session', ag.id),
+      { ...containerConfig(), skills: ['welcome'] },
+      'contract-only-provider',
+      contractOnlyContribution({ groupDir: path.join(GROUPS_DIR, ag.folder) }),
+    );
+    const at = (containerPath: string) => mounts.filter((m) => m.containerPath === containerPath);
+
+    expect(at('/home/node/.claude')).toEqual([
+      {
+        hostPath: state,
+        containerPath: '/home/node/.claude',
+        readonly: false,
+        mountClass: 'group-state',
+        scope: ag.id,
+      },
+    ]);
+    // A declared container path is a duplicate only when its contract is the
+    // active one, so the universal codex mount still lands on the session dir.
+    expect(at('/home/node/.codex')).toEqual([
+      {
+        hostPath: path.join(DATA_DIR, 'v2-sessions', ag.id, 'contract-only-session', 'codex'),
+        containerPath: '/home/node/.codex',
+        readonly: false,
+        mountClass: 'group-state',
+        scope: ag.id,
+      },
+    ]);
+    // Declared skill views belong to the surfaces the contract does not own.
+    expect(at('/workspace/agent/.agents')).toEqual([]);
+    // The adapter ran, so the mounts it contributed are not silently dropped.
+    expect(at('/contract-only-extra')).toHaveLength(1);
   });
 });

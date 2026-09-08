@@ -7,11 +7,7 @@ import { getDb } from './db/connection.js';
 import { ensureContainerConfig } from './db/container-configs.js';
 import { PERSONA_PREPEND_FILE, stageGroupPersona } from './group-persona.js';
 import { log } from './log.js';
-import {
-  CLAUDE_DEFAULT_SETTINGS,
-  CLEANUP_PERIOD_DAYS_NEVER,
-  migrateClaudeMemorySettings,
-} from './migrate-claude-memory-settings.js';
+import { CLAUDE_DEFAULT_SETTINGS, CLEANUP_PERIOD_DAYS_NEVER } from './migrate-claude-memory-settings.js';
 import { getProviderHostContract } from './provider-contracts/registry.js';
 import { initializeProviderGroupSurfaces } from './provider-contracts/realize.js';
 import { providerProvidesAgentSurfaces } from './providers/provider-container-registry.js';
@@ -88,14 +84,13 @@ export async function initGroupFilesystem(
   // Default agent surfaces apply unless the provider declares (at registration)
   // that it provides its own.
   //
-  // NOT gated on `contract`, unlike upstream. Claude declares a host contract,
-  // and this fork's group surfaces are the lego mirrors below — scoped skills/,
-  // agents/, overlays/ selected by coworker_type — which the contract's
-  // group-init operations do not reproduce. Gating on the contract here would
-  // silently stop mirroring skills for every claude coworker while every test
-  // that checks the contract path stayed green.
-  const contract = getProviderHostContract(providerHint);
+  // Declaring a host contract and owning the group surfaces are independent: a
+  // provider may declare a contract for its runtime while the surfaces stay
+  // this fork's — the coworker_type-scoped skills/, agents/ and overlays/
+  // mirrors below, which a contract's group-init operations do not reproduce.
+  // Only the surface owner's contract realizes them.
   const defaultSurfaces = !providerProvidesAgentSurfaces(providerHint);
+  const activeSurfaceContract = defaultSurfaces ? undefined : getProviderHostContract(providerHint);
 
   // 1. groups/<folder>/ — group memory + working dir
   const groupDir = path.resolve(GROUPS_DIR, group.folder);
@@ -170,10 +165,8 @@ export async function initGroupFilesystem(
   initialized.push('container_configs');
 
   // 2. data/v2-sessions/<id>/.claude-shared/ — Claude state + per-group skills
-  // A contract realizes the surfaces only for a provider that owns them; when
-  // this fork owns them (defaultSurfaces) the legacy branch below is the one.
-  if (contract && !defaultSurfaces) {
-    initialized.push(...initializeProviderGroupSurfaces(providerHint, contract, group.id, groupDir));
+  if (activeSurfaceContract) {
+    initialized.push(...initializeProviderGroupSurfaces(providerHint, activeSurfaceContract, group.id, groupDir));
   } else if (defaultSurfaces) {
     const claudeDir = path.join(DATA_DIR, 'v2-sessions', group.id, '.claude-shared');
     if (!fs.existsSync(claudeDir)) {

@@ -1857,23 +1857,27 @@ export async function buildMounts(
   // dir) apply unless the provider declares it provides its own — a capability,
   // never a provider name. See provider-container-registry.
   //
-  // NOT gated on `contract` (upstream gates on it): claude declares one, and
-  // this fork's surfaces are its own. Same reasoning as group-init.ts.
-  const contract = getProviderHostContract(provider);
+  // Declaring a host contract and owning the agent surfaces are independent:
+  // a provider may declare a contract for its runtime, commands and inference
+  // while the surfaces remain this fork's own (skills/, agents/, overlays/
+  // scoped by coworker type). A contract therefore decides surface paths,
+  // mounts and duplicate checks only while it is the active one, so anything
+  // surface-shaped reads `activeSurfaceContract`, never `contract`.
   const defaultSurfaces = !providerProvidesAgentSurfaces(provider);
+  const activeSurfaceContract = defaultSurfaces ? undefined : getProviderHostContract(provider);
 
   const groupDir = path.resolve(GROUPS_DIR, agentGroup.folder);
   const claudeDir = path.join(DATA_DIR, 'v2-sessions', agentGroup.id, '.claude-shared');
   const sessDir = sessionDir(agentGroup.id, session.id);
-  const projectDocument = contract?.projectDocument;
+  const projectDocument = activeSurfaceContract?.projectDocument;
   let lateProjectDocumentMount: VolumeMount | undefined;
   const lateStateVolumeMounts = new Map<string, VolumeMount>();
   const lateSkillViewMounts = new Map<string, VolumeMount[]>();
   let skillBackingPaths = new Map<string, string>();
-  if (contract && !defaultSurfaces) {
+  if (activeSurfaceContract) {
     providerSurfaces ??= await realizeProviderSpawnSurfaces(
       provider,
-      contract,
+      activeSurfaceContract,
       agentGroup.id,
       groupDir,
       sessDir,
@@ -2313,10 +2317,9 @@ export async function buildMounts(
   // requires here.
   // A provider that owns its surfaces gets them from its contract's declared
   // state volumes and skill views; this fork's own surfaces stay on the branch
-  // below. Both paths exist — dropping the contract one silently omitted every
-  // declared provider's mounts.
-  if (contract && !defaultSurfaces) {
-    for (const volume of contract.stateVolumes) {
+  // below.
+  if (activeSurfaceContract) {
+    for (const volume of activeSurfaceContract.stateVolumes) {
       const hostPath = providerStateVolumePath(volume, agentGroup.id, sessDir);
       const mount = {
         hostPath,
@@ -2328,7 +2331,7 @@ export async function buildMounts(
       if (mount.mountClass === 'allowlisted-extra') lateStateVolumeMounts.set(volume.id, mount);
       else mounts.push(mount);
     }
-    for (const view of contract.skillViews) {
+    for (const view of activeSurfaceContract.skillViews) {
       const hostPath = skillBackingPaths.get(view.backingId);
       if (!hostPath)
         throw new Error(`Provider '${provider}' skill view references unknown backing '${view.backingId}'`);
@@ -2448,7 +2451,7 @@ export async function buildMounts(
   // where its state lives; this universal mount exists for the providers that
   // declare nothing.
   const codexPathDeclared =
-    contract?.stateVolumes.some((volume) => volume.containerPath === '/home/node/.codex') === true;
+    activeSurfaceContract?.stateVolumes.some((volume) => volume.containerPath === '/home/node/.codex') === true;
   if (!codexPathDeclared)
     mounts.push({
       hostPath: codexDir,
@@ -2551,16 +2554,16 @@ export async function buildMounts(
     mounts.push(...validated.map((m) => ({ ...m, mountClass: 'allowlisted-extra' as const, scope })));
   }
 
-  // Declared allowlisted-extra surfaces replace the old callback contribution
-  // at the same late slot, in the spawn order derived from resource kinds.
-  // Without this the maps above are filled and never drained, so a declared
-  // provider's mounts vanish silently.
-  if (contract && !defaultSurfaces) {
-    for (const volume of contract.stateVolumes) {
+  // Declared allowlisted-extra surfaces occupy the same late slot the callback
+  // contribution used, in the spawn order derived from resource kinds. Every
+  // map filled above must be drained here: a mount collected and never
+  // re-pushed is dropped with no error.
+  if (activeSurfaceContract) {
+    for (const volume of activeSurfaceContract.stateVolumes) {
       const mount = lateStateVolumeMounts.get(volume.id);
       if (mount) mounts.push(mount);
     }
-    for (const backing of contract.skillBackings) {
+    for (const backing of activeSurfaceContract.skillBackings) {
       mounts.push(...(lateSkillViewMounts.get(backing.id) ?? []));
     }
     if (lateProjectDocumentMount) mounts.push(lateProjectDocumentMount);
@@ -2595,8 +2598,10 @@ export async function buildMounts(
   // Provider-contributed mounts (e.g. opencode-xdg). Vetted upstream by the
   // in-tree provider registration, which is exactly the 'allowlisted-extra'
   // contract — classing them group-state would deny any provider whose state
-  // root sits outside the group subtree.
-  if (!contract && providerContribution.mounts) {
+  // root sits outside the group subtree. Applied whenever no active surface
+  // contract supersedes them, matching the condition under which
+  // resolveProviderContribution invoked the adapter that produced them.
+  if (!activeSurfaceContract && providerContribution.mounts) {
     mounts.push(...providerContribution.mounts.map((m) => ({ ...m, mountClass: 'allowlisted-extra' as const, scope })));
   }
 
