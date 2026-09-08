@@ -729,16 +729,39 @@ describe('derived provider spawn surfaces', () => {
     expect(fs.lstatSync(welcome).isDirectory()).toBe(true);
     expect(fs.existsSync(path.join(welcome, 'SKILL.md'))).toBe(true);
     // The contract's own state volume is never realized for a non-owner.
-    expect(fs.existsSync(path.join(DATA_DIR, 'v2-sessions', ag.id, '.contract-only-state'))).toBe(false);
+    const contractState = path.join(DATA_DIR, 'v2-sessions', ag.id, '.contract-only-state');
+    expect(fs.existsSync(contractState)).toBe(false);
 
-    const mounts = await buildMounts(
-      ag,
-      session('contract-only-session', ag.id),
-      { ...containerConfig(), skills: ['welcome'] },
-      'contract-only-provider',
-      contractOnlyContribution({ groupDir: path.join(GROUPS_DIR, ag.folder) }),
-    );
+    // Stands in for the spine composer's output, the only writer of this file.
+    fs.writeFileSync(path.join(GROUPS_DIR, ag.folder, 'CLAUDE.md'), '# composed\n');
+
+    // Resolved the way a spawn resolves it: the adapter's mounts reach
+    // buildMounts only because resolution invokes the adapter for a
+    // contract-declaring non-owner.
+    const sess = session('contract-only-session', ag.id);
+    const config = { ...containerConfig(), skills: ['welcome'] };
+    const resolved = await resolveProviderContribution(sess, ag, { ...config, provider: 'contract-only-provider' });
+    expect(contractOnlyContribution).toHaveBeenCalledOnce();
+    expect(resolved.surfaces).toBeUndefined();
+
+    const mounts = await buildMounts(ag, sess, config, resolved.provider, resolved.contribution, resolved.surfaces);
     const at = (containerPath: string) => mounts.filter((m) => m.containerPath === containerPath);
+
+    // Spawn-time realization is skipped too, so the declared state volume still
+    // does not exist once mounts are built.
+    expect(fs.existsSync(contractState)).toBe(false);
+    // The document is the default one at the default path, never the contract's
+    // declared AGENTS.md.
+    expect(at('/workspace/agent/CLAUDE.md')).toEqual([
+      {
+        hostPath: path.join(GROUPS_DIR, ag.folder, 'CLAUDE.md'),
+        containerPath: '/workspace/agent/CLAUDE.md',
+        readonly: true,
+        mountClass: 'group-state',
+        scope: ag.id,
+      },
+    ]);
+    expect(at('/workspace/agent/AGENTS.md')).toEqual([]);
 
     expect(at('/home/node/.claude')).toEqual([
       {

@@ -1859,10 +1859,10 @@ export async function buildMounts(
   //
   // Declaring a host contract and owning the agent surfaces are independent:
   // a provider may declare a contract for its runtime, commands and inference
-  // while the surfaces remain this fork's own (skills/, agents/, overlays/
-  // scoped by coworker type). A contract therefore decides surface paths,
-  // mounts and duplicate checks only while it is the active one, so anything
-  // surface-shaped reads `activeSurfaceContract`, never `contract`.
+  // while the surfaces remain this fork's own (.claude-shared/skills, scoped by
+  // coworker type, and .claude-shared/agents). A contract therefore decides
+  // surface paths, mounts and duplicate checks only while it is the active one,
+  // so anything surface-shaped reads `activeSurfaceContract`, never `contract`.
   const defaultSurfaces = !providerProvidesAgentSurfaces(provider);
   const activeSurfaceContract = defaultSurfaces ? undefined : getProviderHostContract(provider);
 

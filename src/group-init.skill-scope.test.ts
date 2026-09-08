@@ -235,7 +235,8 @@ describe('initGroupFilesystem skills mirror', () => {
 
 // The mirrors are this fork's own agent surfaces: a provider declaring a host
 // contract (claude does) must not change what a coworker type gets. These
-// assertions are on the resulting tree, not on how the branch is selected.
+// assertions are on the resulting tree — .claude-shared/skills and
+// .claude-shared/agents — not on how the branch is selected.
 describe('initGroupFilesystem surfaces for a contract-declaring provider', () => {
   it('mirrors the type-scoped skills, their agents, and overlay agents', async () => {
     const ag = makeGroup('ag-claude-typed', 'proj-a-reader');
@@ -247,8 +248,8 @@ describe('initGroupFilesystem surfaces for a contract-declaring provider', () =>
       expect(fs.lstatSync(dir).isDirectory()).toBe(true);
       expect(fs.existsSync(path.join(dir, 'SKILL.md'))).toBe(true);
     }
-    // Overlay agents are group-selected, so one arrives regardless of type;
-    // a skill's agent arrives only when the type gets the skill.
+    // Every overlay's agent.md is mirrored — overlays are not coworker-type
+    // scoped; a skill's agent arrives only when the type gets the skill.
     expect(mirroredAgents(ag.id)).toEqual(['crit-overlay.md', 'proj-a-tools.md']);
   });
 

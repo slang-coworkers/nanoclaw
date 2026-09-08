@@ -86,9 +86,10 @@ export async function initGroupFilesystem(
   //
   // Declaring a host contract and owning the group surfaces are independent: a
   // provider may declare a contract for its runtime while the surfaces stay
-  // this fork's — the coworker_type-scoped skills/, agents/ and overlays/
-  // mirrors below, which a contract's group-init operations do not reproduce.
-  // Only the surface owner's contract realizes them.
+  // this fork's — the mirrors below, which a contract's group-init operations
+  // do not reproduce: skills/ scoped to the coworker type, and agents/ holding
+  // the agent.md of each in-scope skill plus every overlay's. Only the surface
+  // owner's contract realizes surfaces.
   const defaultSurfaces = !providerProvidesAgentSurfaces(providerHint);
   const activeSurfaceContract = defaultSurfaces ? undefined : getProviderHostContract(providerHint);
 
