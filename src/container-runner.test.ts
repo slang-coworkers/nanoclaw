@@ -26,6 +26,7 @@ import {
   readStandingInstructions,
   reportProjectDocPressure,
   resolveProviderName,
+  resolveSpawnProvider,
   syncSkillSymlinks,
   toMountSpecs,
 } from './container-runner.js';
@@ -53,26 +54,123 @@ afterAll(async () => {
 });
 
 describe('resolveProviderName', () => {
-  it('prefers session over container config', () => {
-    expect(resolveProviderName('codex', 'claude')).toBe('codex');
+  const tiers = (
+    session: string | null | undefined,
+    group: string | null | undefined,
+    config: string | null | undefined,
+  ) => ({ override: undefined, session, group, config });
+
+  it('prefers session over group and container config', () => {
+    expect(resolveProviderName(tiers('codex', 'claude', 'opencode'))).toBe('codex');
   });
 
-  it('falls back to container config when session is null', () => {
-    expect(resolveProviderName(null, 'opencode')).toBe('opencode');
+  // The tier a positional call is apt to drop by passing the config where the
+  // group belongs: with the group missing, a group-level pick loses to the config.
+  it('prefers the group over container config when session is null', () => {
+    expect(resolveProviderName(tiers(null, 'codex', 'claude'))).toBe('codex');
+  });
+
+  it('falls back to container config when session and group are null', () => {
+    expect(resolveProviderName(tiers(null, null, 'opencode'))).toBe('opencode');
   });
 
   it('defaults to claude when nothing is set', () => {
-    expect(resolveProviderName(null, undefined)).toBe('claude');
+    expect(resolveProviderName(tiers(null, undefined, undefined))).toBe('claude');
   });
 
   it('lowercases the resolved name', () => {
-    expect(resolveProviderName('CODEX', null)).toBe('codex');
-    expect(resolveProviderName(null, 'Claude')).toBe('claude');
+    expect(resolveProviderName(tiers('CODEX', null, null))).toBe('codex');
+    expect(resolveProviderName(tiers(null, 'Claude', null))).toBe('claude');
+    expect(resolveProviderName(tiers(null, null, 'OpenCode'))).toBe('opencode');
+  });
+
+  it('an override outranks every stored tier', () => {
+    expect(resolveProviderName({ override: 'opencode', session: 'codex', group: 'claude', config: 'pi' })).toBe(
+      'opencode',
+    );
+    expect(resolveProviderName({ override: '', session: 'codex', group: null, config: null })).toBe('codex');
   });
 
   it('treats empty string as unset (falls through)', () => {
-    expect(resolveProviderName('', 'opencode')).toBe('opencode');
-    expect(resolveProviderName(null, '')).toBe('claude');
+    expect(resolveProviderName(tiers('', 'opencode', null))).toBe('opencode');
+    expect(resolveProviderName(tiers(null, '', 'codex'))).toBe('codex');
+    expect(resolveProviderName(tiers(null, '', ''))).toBe('claude');
+  });
+});
+
+describe('resolveSpawnProvider', () => {
+  it('reads each tier off the row it belongs to', () => {
+    expect(
+      resolveSpawnProvider({
+        session: { agent_provider: null } as Session,
+        agentGroup: { agent_provider: 'codex' } as AgentGroup,
+        containerConfig: { provider: 'claude' } as ContainerConfig,
+      }),
+    ).toBe('codex');
+  });
+});
+
+// A spawn has two halves — the group-filesystem scaffold and the
+// mounts/contribution — and they must run on ONE provider. The defect this pins
+// was a second, independently-written resolution in `spawnContainer` that
+// dropped the group tier, so a group whose provider lived only in
+// `agent_groups.agent_provider` had its filesystem prepared for one provider and
+// its container built for another. The two agree whenever that column is empty,
+// which is why it survived; and because the function body never changed, no
+// unit test of the precedence rule can see it.
+//
+// Asserted against the source for the reason publication-contract.test.ts gives:
+// this is a control-flow property of a function that needs a container runtime
+// to execute, and a mock deep enough to run it would pin the mock. Presence is
+// asserted before absence so the guard cannot pass vacuously on a renamed helper.
+describe('one provider per spawn', () => {
+  const RUNNER = fs.readFileSync(new URL('./container-runner.ts', import.meta.url), 'utf-8');
+  // The slice ends at the first column-0 `}` — the function's real end only
+  // while nothing inside it opens one, and this file builds a config.toml
+  // template with unindented braces elsewhere. A truncated slice keeps the
+  // presence assertions passing (their anchors sit near the top of each
+  // function) while silently narrowing the absence ones, so the extraction has
+  // to prove it reached the end.
+  //
+  // Three assertions, each added because the previous set was satisfiable
+  // without the property holding:
+  //   1. the anchor is unique FILE-WIDE and present in the slice ⇒ the slice
+  //      reached that exact offset;
+  //   2. the anchor is the function's last statement ⇒ every earlier cut fails
+  //      presence. Balance alone does not: a cut at a statement boundary leaves
+  //      the prefix balanced, which passed a 61% truncation;
+  //   3. the cuts still available sit between the anchor and the true end, all
+  //      inside nested blocks ⇒ a column-0 `}` there leaves them unclosed.
+  // (1) closes the ladder, and only because it looks outside the region checked.
+  const fnBody = (decl: string, tail: string): string => {
+    const start = RUNNER.indexOf(decl);
+    expect(start).toBeGreaterThan(-1);
+    // Against the WHOLE file: a duplicated anchor lets `toContain` pass on the
+    // first occurrence, so a cut between the two still truncates — that is how
+    // `releaseClaimQuietly`, which appears twice in this function, passed a 16%
+    // cut. Asserting uniqueness on the slice would be circular, since the cut
+    // that drops the second occurrence is what makes the slice's copy unique.
+    expect(RUNNER.split(tail).length - 1, `${decl}: tail anchor must be unique in the file`).toBe(1);
+    const rest = RUNNER.slice(start);
+    const body = rest.slice(0, rest.indexOf('\n}\n'));
+    expect(body, `${decl}: slice stopped before the function's last statement`).toContain(tail);
+    expect(body.split('{').length - body.split('}').length, `${decl}: body truncated inside a nested block`).toBe(1);
+    return body;
+  };
+  const spawn = fnBody('async function spawnContainer', 'await runtime.finishedPromise;');
+  const contribution = fnBody(
+    'export async function resolveProviderContribution',
+    'return { provider, contribution: surfaces.contribution, surfaces };',
+  );
+
+  it('both halves resolve through the shared helper', () => {
+    expect(spawn).toMatch(/resolveSpawnProvider\(/);
+    expect(contribution).toMatch(/resolveSpawnProvider\(/);
+  });
+
+  it('neither half resolves the tiers itself', () => {
+    expect(spawn).not.toMatch(/resolveProviderName\(/);
+    expect(contribution).not.toMatch(/resolveProviderName\(/);
   });
 });
 
