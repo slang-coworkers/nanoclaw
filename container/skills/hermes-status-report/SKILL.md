@@ -128,8 +128,10 @@ The ledger is the status source; the requirements matrix is the denominator.
 
 Requirement ids come in **four** families — `FR-` functional, `SR-` security/safety, `PR-`
 port/parity, `NF-` non-functional (`container/workflows/hermes-spec-requirement/WORKFLOW.md`).
-Ids are `<FAMILY>-F<NN>` (RT-F01, ISO-F10, …); a family-specific pattern silently drops rows,
-which understates the denominator *and* hides merged work.
+Ids are `<FAMILY>-F<NN>` (RT-F01, ISO-F10, …) and the family may contain a digit (A2A-F18 …
+A2A-F21), so the character class is `[A-Z0-9]+`. A family-specific pattern, or a letters-only
+one (`[A-Z]+` counted 57 of 61 on 2026-09-08), silently drops rows, which understates the
+denominator *and* hides merged work.
 
 ```bash
 . /workspace/agent/reports/status/.run-env
@@ -139,7 +141,7 @@ LEDGER=/workspace/agent/reports/ledger.md                                   # th
 GAP=/workspace/shared/hermes-requirements.md
 [ -f "$GAP" ] || GAP=/workspace/shared/hermes/gap-matrix.md
 ls -l "$LEDGER" "$GAP" 2>&1 | head -5
-grep -cE '^\| *[A-Z]+-F[0-9]+' "$GAP" 2>/dev/null   # ids are <FAMILY>-F<NN>
+grep -cE '^\| *[A-Z0-9]+-F[0-9]+' "$GAP" 2>/dev/null   # ids are <FAMILY>-F<NN>; the family can carry a digit (A2A-F18…F21)
 ```
 
 Then bucket the ledger's **outcome column** in a single pass. The Orchestrator's ledger is a
@@ -159,7 +161,7 @@ awk -F'|' '
       if (h == "merged/blocked") { c=i; worklist=1 } else if (h == "status") c=i }
     next
   }
-  NF>2 && $2 ~ /[A-Z]+-F[0-9]+/ {                                            # gap-matrix ids are <FAMILY>-F<NN> (RT-F01, ISO-F10, ...)
+  NF>2 && $2 ~ /[A-Z0-9]+-F[0-9]+/ {                                         # gap-matrix ids are <FAMILY>-F<NN> (RT-F01, ISO-F10, A2A-F18, ...)
     s = c ? $c : $NF; if (!c && s ~ /^[ \t]*$/) s=$(NF-1);                    # no header match → legacy last-column shape
     gsub(/^[ \t]+|[ \t]+$/,"",s);
     if (s ~ /^merged/) d++;
