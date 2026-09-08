@@ -14,6 +14,8 @@ mkdir -p "$OUT" || exit 1
 ln -sfn "$ROOT/groups/orchestrator/reports/status" "$WWW/status"
 # Tester evidence: test-report-<sha7>.md + scenario screenshots per thread, linked from PR comments.
 ln -sfn "$ROOT/groups/hermes-tester/reports" "$WWW/test-reports"
+# Architect ADRs (+ notes, acceptance tests) per requirement: /adr/<req-id-lowercase>.md
+ln -sfn "$ROOT/groups/hermes-architect/reports" "$WWW/adr"
 
 # Explanations: one symlink per coworker group whose dir exists (created on the group's first PR).
 for g in "$ROOT"/groups/*/; do
