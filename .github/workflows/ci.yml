@@ -3,6 +3,12 @@ name: CI
 on:
   pull_request:
     branches: [main, nv-main, nv-dashboard, nv-slang, nv-slangpy, nv-nanoclaw]
+  # Upstream also runs this workflow on `push` to its trunk. Not adopted here:
+  # three steps below read PR-only context — `github.base_ref` decides
+  # OWNED_SRC for the composed-state merge, and the ruff step's HEAD_SHA is
+  # `github.event.pull_request.head.sha`. Both are empty on a push, which would
+  # silently pick the wrong canonical source and lint an empty file list.
+  # Adopting the trigger needs those three made event-agnostic first.
 
 jobs:
   test:
@@ -343,3 +349,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: test "${{ needs.test.result }}" = success
+
+  # The single check the main ruleset will require, in every repo under the same
+  # name. It needs `ci` as well as `test` so the older required context and the
+  # new one cannot disagree. if: always() because a skipped required check is
+  # not a failed one.
+  gate:
+    name: gate
+    if: always()
+    needs: [test, ci]
+    permissions: {}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: every needed job succeeded
+        run: |
+          test "${{ needs.test.result }}" = success
+          test "${{ needs.ci.result }}" = success
