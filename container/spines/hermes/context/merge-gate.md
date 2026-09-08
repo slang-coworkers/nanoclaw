@@ -91,7 +91,7 @@ Green iff `state == "OPEN"`, `mergeable == "MERGEABLE"`, `baseRefName == "$BASE"
 ```bash
 gh pr diff <N> --repo "$FORK" --name-only
 ```
-Every path must be under `plugins/**`, `website/docs/**`, or `tests/**`. Each path that is not must appear in the ADR's `## CORE-CHANGE` section as `/workspace/extra/hermes-release/<file>:<line>`, and **that citation must resolve in the release tree** — check it, do not take the ADR's word:
+Every path must be under `plugins/**`, `website/docs/**`, `tests/**`, or `apps/desktop/e2e/**` (the last only for files matching `*-ac<n>.spec.ts` — a desktop acceptance spec; any other file under `apps/` is out of surface). Each path that is not must appear in the ADR's `## CORE-CHANGE` section as `/workspace/extra/hermes-release/<file>:<line>`, and **that citation must resolve in the release tree** — check it, do not take the ADR's word:
 ```bash
 sed -n '<line>p' /workspace/extra/hermes-release/<file>     # must print a non-empty line
 sed -n '<line-3>,<line+3>p' /workspace/extra/hermes-release/<file>   # and must be the code the ADR says blocks a plugin
@@ -108,16 +108,18 @@ DECLARED=<the n from the architect's "Acceptance criteria: <n> ids" bullet>
 
 [ -s "$ADR" ] || { echo 'P5 RED: ADR missing or empty'; }
 [ -s "$RPT" ] || { echo 'P5 RED: test report missing or empty'; }
-grep -oE 'AC-[A-Z]{2}-[0-9]+-[0-9]+' "$ADR" | sort -u > /tmp/adr-ids    || echo 'P5 RED: no AC ids in ADR'
-grep -oE 'AC-[A-Z]{2}-[0-9]+-[0-9]+' "$RPT" | sort -u > /tmp/report-ids || echo 'P5 RED: no AC ids in report'
+grep -oE 'AC-[A-Z0-9]+(-[A-Z0-9]+)*-[0-9]+' "$ADR" | sort -u > /tmp/adr-ids    || echo 'P5 RED: no AC ids in ADR'
+grep -oE 'AC-[A-Z0-9]+(-[A-Z0-9]+)*-[0-9]+' "$RPT" | sort -u > /tmp/report-ids || echo 'P5 RED: no AC ids in report'
 N=$(wc -l < /tmp/adr-ids); M=$(wc -l < /tmp/report-ids)
 echo "adr=$N report=$M declared=$DECLARED"
 comm -23 /tmp/adr-ids /tmp/report-ids    # ids the report never mentions — MUST be empty
 comm -13 /tmp/adr-ids /tmp/report-ids    # ids the report invented — MUST be empty
 ```
+Req-ids are the gap-matrix ids (`LOOP-F35`, `GOV-F22`, `P0-LOOP`) as well as `FR-x` / `SR-x` / `PR-x` / `NF-x`, so the id pattern is `AC-<req-id>-<n>` with `<req-id>` allowed to carry digits and hyphens; the trailing `-<n>` is always the criterion number. A pattern that only accepts a two-letter family reports `P5 RED` on every gap-matrix requirement and sends the architect looking for a defect that is not there.
+
 Green needs **all** of: both files non-empty; `N >= 1`; `N == $DECLARED` — the same `<n>` the architect's `[Spec handoff]` bullet and the tester's `**Acceptance criteria:** <n>/<n> PASS` line and the reviewer's `## Acceptance criteria` row count all declare; `M == N`; both `comm` outputs empty. `grep` exiting non-zero (no match) is red on its own — it is the empty-set case wearing a green mask.
 
-Then read each id's `## Results` row: `result` must be literally `PASS`, `evidence` must be a pytest node id (`tests/plugins/test_<plugin>_acceptance.py::test_ac_<req_id>_<n>`) — never `no test — criterion unimplemented`, never `SKIPPED`, never a collapsed range (`AC-FR-3-1..3 PASS` is not a row). The reviewer's `## Acceptance criteria` cross-walk must carry the same id set with the same PASS/FAIL. **A missing id is a FAIL, never an omission** — it means the report was built against a different ADR revision.
+Then read each id's `## Results` row: `result` must be literally `PASS`, and `evidence` must be the pointer that row's `kind` requires and never empty (a pytest node id `tests/plugins/test_<plugin>_acceptance.py::test_ac_<req_id>_<n>` for `pytest`; a Playwright spec node for `desktop`; a screenshot path `scenario-<AC-id>/step-<n>.png` for `ui` and `live`) — never `no test — criterion unimplemented`, never `SKIPPED`, never a collapsed range (`AC-FR-3-1..3 PASS` is not a row). The reviewer's `## Acceptance criteria` cross-walk must carry the same id set with the same PASS/FAIL. **A missing id is a FAIL, never an omission** — it means the report was built against a different ADR revision.
 *Special case, not a merge:* the ADR has **no** `## Acceptance criteria` table, or its criteria carry no ids (`N == 0` on a readable ADR) → `blocked: P5 — ADR has no enumerated ## Acceptance criteria table`, sent back to `hermes-architect` on the `[Triage Resolution]` edge. Never invent, infer or renumber ids to close the gap yourself.
 
 **P6 — base is the derived pinned baseline branch, never fork `main`.** `baseRefName` from P1 must equal `$BASE` exactly. Confirm the branch is real before merging into it:

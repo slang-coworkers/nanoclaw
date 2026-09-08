@@ -67,6 +67,13 @@ hermes-common:
     release_tag: v2026.8.31
     release_tree: /workspace/extra/hermes-release
     fork: slang-coworkers/hermes-agent   # the ONLY push/PR target; never {{vars.repo}}
+    # instance-specific: the 8091 viewer of this install (nemoclaw-coworkers),
+    # /test-reports/ -> groups/hermes-tester/reports/, refreshed every 15 min by
+    # ops/nemoclaw-coworkers/refresh-viewers.sh. Other installs may publish
+    # nothing here, so the scenario evidence a reviewer must open ALSO travels
+    # as the artifacts-round<k>.tgz the tester attaches; this link is the
+    # convenience route, never the only one.
+    test_reports_url: https://nv-hermes-transcript-xrnpj0b3n.gobrev.dev/test-reports
   identity: container/spines/hermes/identity/engineer.md
   invariants:
     # Stable plugin/CLI/config surfaces + additive-compat + test-contract rules.
@@ -113,6 +120,10 @@ hermes-writer:
   skills:
     - hermes-code-writer
     - hermes-docs
+    # /hermes-ui-driver is referenced from hermes-implement's Change step
+    # (scenario files + desktop specs the tester can actually drive), so it
+    # belongs on the type that OWNS that workflow — hermes-builder inherits it.
+    - hermes-ui-driver
   workflows:
     - hermes-plan
     - hermes-implement
@@ -174,6 +185,9 @@ hermes-builder:
     # escalate); a new head always re-enters the tester. Same protocol as
     # hermes-implement's Ship step.
     - container/spines/hermes/invariants/peer-review.md
+  skills:
+    # Writing scenario files and desktop specs the tester can actually drive.
+    - hermes-ui-driver
   # Builder reads the architect's ADR, commits to it, edits source, ships a
   # Fix Report. PLAN_REVIEW catches a wrong plugin surface before code is
   # written; CODE_REVIEW catches diff issues (incl. any out-of-surface hunk
@@ -194,7 +208,7 @@ hermes-builder:
   pr_command_patterns: ['gh pr merge', 'gh pr ready']
 
 hermes-tester:
-  description: "Hermetic verifier for the Hermes fork — one container per thread (NanoClaw), each in its own network namespace, so parallel test sessions never collide on ports. Owns (a) the hermetic testbed harness: temp HERMES_HOME per run, plugins.enabled injected, sockets blocked except loopback, fake HERMES_DOCKER_BINARY shim, `hermes approvals test --json` as oracle, suite T1–T12; (b) UI parity: `hermes serve` (headless backend) / `hermes dashboard` (web UI) in-container, driven by agent-browser with screenshots; (c) desktop: the release tree's apps/desktop Playwright e2e under xvfb-run, phase-gated — missing xvfb/Electron deps → DESKTOP=SKIPPED with the exact install_packages request, never a whole-run failure. Input: the builder's hand-off naming the PR head (round 1 an unmarked `Fix report — …`; round 2 a [Fix Report] reply to this role's [Test Report] FAIL) or the orchestrator's nightly regression dispatch against the fork's main. Output: /workspace/agent/reports/<thread-id>/test-report-*.md + a gated [Test Report] PASS | FAIL reply on the requester's edge. Max 2 FAILs per PR, then escalates to the orchestrator. Never pushes, never opens PRs."
+  description: "Hermetic verifier for the Hermes fork — one container per thread (NanoClaw), each in its own network namespace, so parallel test sessions never collide on ports. Owns (a) the hermetic testbed harness: temp HERMES_HOME per run, plugins.enabled injected, sockets blocked except loopback, fake HERMES_DOCKER_BINARY shim, `hermes approvals test --json` as oracle, suite T1–T12; (b) the scenario tier: the ADR's ui:/desktop:/live: acceptance criteria driven from the scenario files the builder shipped, one screenshot per step, live rows bounded at LIVE_MODEL_CALLS_MAX=40 / LIVE_BUDGET_USD=5 per scenario; (c) UI parity: `hermes serve` (headless backend) / `hermes dashboard` (web UI) in-container, driven by agent-browser with screenshots; (d) desktop: the release tree's apps/desktop Playwright e2e under xvfb-run, phase-gated — missing xvfb/Electron deps → DESKTOP=SKIPPED with the exact install_packages request, never a whole-run failure. Input: the builder's hand-off naming the PR head (round 1 an unmarked `Fix report — …`; round 2 a [Fix Report] reply to this role's [Test Report] FAIL) or the orchestrator's nightly regression dispatch against the fork's main. Output: /workspace/agent/reports/<thread-id>/test-report-*.md + a gated [Test Report] PASS | FAIL reply on the requester's edge. Max 2 FAILs per PR, then escalates to the orchestrator. Never pushes, never opens PRs."
   project: hermes
   extends: hermes-common
   invariants:
@@ -217,9 +231,12 @@ hermes-tester:
     - agent-browser
     # Hermetic testbed harness + suite T1–T12 + report writer (new skill).
     - hermes-testbed
+    # Driving the dashboard SPA and the Electron app for the scenario tier.
+    - hermes-ui-driver
   workflows:
-    # New: fresh testbed @ head -> T1–T12 -> UI tier -> desktop tier
-    # (phase-gated) -> report file -> one OUTPUT_REVIEW -> gated [Test Report].
+    # New: fresh testbed @ head -> T1–T12 -> scenario tier -> UI tier ->
+    # desktop tier (phase-gated) -> report file -> one OUTPUT_REVIEW ->
+    # gated [Test Report].
     - hermes-verify
   # bindings: inherited (test: hermes-build, code/doc: hermes-code-reader,
   # repo/issues: hermes-github). hermes-testbed also provides test.run /
