@@ -51,7 +51,7 @@ overrides:
     | `pytest:` | hermetic acceptance test, the existing default | `tests/plugins/test_<plugin>_acceptance.py::test_ac_<req_id>_<n>` |
     | `ui:` | click-through of the web dashboard (`hermes dashboard`) against the hermetic model stub | `tests/e2e-scenarios/<req-id>/AC-<req-id>-<n>.md` |
     | `desktop:` | the Electron desktop app under Playwright | `apps/desktop/e2e/<req-id-lowercase>-ac<n>.spec.ts` |
-    | `live:` | a real model through the OneCLI live tier | `tests/e2e-scenarios/<req-id>/AC-<req-id>-<n>.md` with `model: live` |
+    | `live:` | a real model through the OneCLI live tier — ALWAYS `{{vars.live_inference_host}}`, api_mode `{{vars.live_inference_api_mode}}`, model `{{vars.live_inference_model}}`, key_env `{{vars.live_inference_key_env}}` (dummy value; the proxy injects the real key). No other inference host has a credential; the outline names these four values verbatim. | `tests/e2e-scenarios/<req-id>/AC-<req-id>-<n>.md` with `model: live` |
 
     Kinds are per criterion and one requirement may carry all four. Three rules decide the mix, and you are the role that enforces them:
 
