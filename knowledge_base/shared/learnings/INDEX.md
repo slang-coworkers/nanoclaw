@@ -4059,6 +4059,7 @@
 - [gh rest reviews paginate 401 flaps mid pagination ](ag-1776713211742-1w6l4e/1788523950028-gh-rest-reviews-paginate-401-flaps-mid-pagination-.md) — _ag-1776713211742-1w6l4e_
 - [dedup root cause classification without a repro is](ag-1776713211742-1w6l4e/1788538710735-dedup-root-cause-classification-without-a-repro-is.md) — _ag-1776713211742-1w6l4e_
 - [handling aarch64 only compiler miscompiles from an](ag-1776713211742-1w6l4e/1788542612503-handling-aarch64-only-compiler-miscompiles-from-an.md) — _ag-1776713211742-1w6l4e_
+- [okf synth escalate on a load bearing top offender ](ag-1776713211742-1w6l4e/1788842883204-okf-synth-escalate-on-a-load-bearing-top-offender-.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4183,6 +4184,7 @@
 - [slang nightly slang test agentic tests 2 night fai](ag-1777389337838-f54d9l/1788428378771-slang-nightly-slang-test-agentic-tests-2-night-fai.md) — _ag-1777389337838-f54d9l_
 - [ad hoc github api curl is anonymous tier unreliabl](ag-1777389337838-f54d9l/1788457383415-ad-hoc-github-api-curl-is-anonymous-tier-unreliabl.md) — _ag-1777389337838-f54d9l_
 - [discord support do mandatory research before sendi](ag-1777389337838-f54d9l/1788755188581-discord-support-do-mandatory-research-before-sendi.md) — _ag-1777389337838-f54d9l_
+- [okf synthesis fabricated is exempt mechanism claim](ag-1777389337838-f54d9l/1788842961529-okf-synthesis-fabricated-is-exempt-mechanism-claim.md) — _ag-1777389337838-f54d9l_
 - [a base64 decode failure makes every grep count 0 i](ag-1780667166418-apezq5/1786363611912-a-base64-decode-failure-makes-every-grep-count-0-i.md) — _ag-1780667166418-apezq5_
 - [correction maintainer authored tracking issue stil](ag-1780667166418-apezq5/1786366151304-correction-maintainer-authored-tracking-issue-stil.md) — _ag-1780667166418-apezq5_
 - [a placement vs materialization mixup how to tell t](ag-1780667166418-apezq5/1786381744509-a-placement-vs-materialization-mixup-how-to-tell-t.md) — _ag-1780667166418-apezq5_
@@ -4426,6 +4428,16 @@
 - [correction disableirvalidationscope does not gate ](ag-1780667166418-apezq5/1788583742043-correction-disableirvalidationscope-does-not-gate-.md) — _ag-1780667166418-apezq5_
 - [cuda vs wgsl inout subobject lowering divergence a](ag-1780667166418-apezq5/1788636814094-cuda-vs-wgsl-inout-subobject-lowering-divergence-a.md) — _ag-1780667166418-apezq5_
 - [slang spir v opaque resource sampler function loca](ag-1780667166418-apezq5/1788744414687-slang-spir-v-opaque-resource-sampler-function-loca.md) — _ag-1780667166418-apezq5_
+- [lambda this capture broken in interface default me](ag-1780667166418-apezq5/1788769686058-lambda-this-capture-broken-in-interface-default-me.md) — _ag-1780667166418-apezq5_
+- [lambda this capture broken in interface default me](ag-1780667166418-apezq5/1788770320317-lambda-this-capture-broken-in-interface-default-me.md) — _ag-1780667166418-apezq5_
+- [gh api rest works with the app installation token ](ag-1780667166418-apezq5/1788776005130-gh-api-rest-works-with-the-app-installation-token-.md) — _ag-1780667166418-apezq5_
+- [enum enumtype conformance failing in multi file in](ag-1780667166418-apezq5/1788776018731-enum-enumtype-conformance-failing-in-multi-file-in.md) — _ag-1780667166418-apezq5_
+- [slang has opt in default off warnings warninglevel](ag-1780667166418-apezq5/1788789285754-slang-has-opt-in-default-off-warnings-warninglevel.md) — _ag-1780667166418-apezq5_
+- [native github issue type is separate from labels r](ag-1780667166418-apezq5/1788790959096-native-github-issue-type-is-separate-from-labels-r.md) — _ag-1780667166418-apezq5_
+- [e30082 float double warning only tags scalar conve](ag-1780667166418-apezq5/1788791945839-e30082-float-double-warning-only-tags-scalar-conve.md) — _ag-1780667166418-apezq5_
+- [triaging a follow up issue verify the parent pr s ](ag-1780667166418-apezq5/1788807264906-triaging-a-follow-up-issue-verify-the-parent-pr-s-.md) — _ag-1780667166418-apezq5_
+- [slang type flow extractexistential type witnesstab](ag-1780667166418-apezq5/1788817368144-slang-type-flow-extractexistential-type-witnesstab.md) — _ag-1780667166418-apezq5_
+- [descriptorhandle t uint2 semantics handle typealia](ag-1780667166418-apezq5/1788846740887-descriptorhandle-t-uint2-semantics-handle-typealia.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -4785,6 +4797,15 @@
 - [slang spir v opaque handle local debug info fix at](ag-1780667166439-vmjrwe/1788748635093-slang-spir-v-opaque-handle-local-debug-info-fix-at.md) — _ag-1780667166439-vmjrwe_
 - [filecheck assert x never appears robustly with a c](ag-1780667166439-vmjrwe/1788754022134-filecheck-assert-x-never-appears-robustly-with-a-c.md) — _ag-1780667166439-vmjrwe_
 - [naming descriptorhandle t and other opaque types i](ag-1780667166439-vmjrwe/1788756352102-naming-descriptorhandle-t-and-other-opaque-types-i.md) — _ag-1780667166439-vmjrwe_
+- [gettypenamehint is shared naming an opaque ir type](ag-1780667166439-vmjrwe/1788774792668-gettypenamehint-is-shared-naming-an-opaque-ir-type.md) — _ag-1780667166439-vmjrwe_
+- [reproduce a reviewer s exact codegen scenario befo](ag-1780667166439-vmjrwe/1788774818139-reproduce-a-reviewer-s-exact-codegen-scenario-befo.md) — _ag-1780667166439-vmjrwe_
+- [synthesized closure struct fields must not borrow ](ag-1780667166439-vmjrwe/1788793839980-synthesized-closure-struct-fields-must-not-borrow-.md) — _ag-1780667166439-vmjrwe_
+- [slang lossy int float warning diagnostic test anno](ag-1780667166439-vmjrwe/1788797863864-slang-lossy-int-float-warning-diagnostic-test-anno.md) — _ag-1780667166439-vmjrwe_
+- [codex critique delivery gate recorded rounds requi](ag-1780667166439-vmjrwe/1788800125011-codex-critique-delivery-gate-recorded-rounds-requi.md) — _ag-1780667166439-vmjrwe_
+- [slang diagnostic test diag check is exhaustive sho](ag-1780667166439-vmjrwe/1788800130239-slang-diagnostic-test-diag-check-is-exhaustive-sho.md) — _ag-1780667166439-vmjrwe_
+- [integerliteralexpr folds unary ops un truncated fo](ag-1780667166439-vmjrwe/1788812664549-integerliteralexpr-folds-unary-ops-un-truncated-fo.md) — _ag-1780667166439-vmjrwe_
+- [getmaximumtypebitsize returns 64 for intptr uintpt](ag-1780667166439-vmjrwe/1788817928259-getmaximumtypebitsize-returns-64-for-intptr-uintpt.md) — _ag-1780667166439-vmjrwe_
+- [slang typeflow extractexistential singleton guard ](ag-1780667166439-vmjrwe/1788821533041-slang-typeflow-extractexistential-singleton-guard-.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -4893,6 +4914,18 @@
 - [verify recommended test infra exists on the pr bra](ag-1780667168475-a9tac8/1788679995187-verify-recommended-test-infra-exists-on-the-pr-bra.md) — _ag-1780667168475-a9tac8_
 - [slang pr review reviewer a max budget usd must be ](ag-1780667168475-a9tac8/1788751025464-slang-pr-review-reviewer-a-max-budget-usd-must-be-.md) — _ag-1780667168475-a9tac8_
 - [synthesized idefaultinitializable witness visibili](ag-1780667168475-a9tac8/1788756424590-synthesized-idefaultinitializable-witness-visibili.md) — _ag-1780667168475-a9tac8_
+- [slang pr review re review gotchas benign integrity](ag-1780667168475-a9tac8/1788769244100-slang-pr-review-re-review-gotchas-benign-integrity.md) — _ag-1780667168475-a9tac8_
+- [slang pr review runner concurrent reviews in share](ag-1780667168475-a9tac8/1788769315552-slang-pr-review-runner-concurrent-reviews-in-share.md) — _ag-1780667168475-a9tac8_
+- [reviewer discipline don t close a self raised find](ag-1780667168475-a9tac8/1788771443270-reviewer-discipline-don-t-close-a-self-raised-find.md) — _ag-1780667168475-a9tac8_
+- [reviewer trap an irglobalparam gate doesn t prove ](ag-1780667168475-a9tac8/1788774851147-reviewer-trap-an-irglobalparam-gate-doesn-t-prove-.md) — _ag-1780667168475-a9tac8_
+- [gh auth status failure gh read failure on public s](ag-1780667168475-a9tac8/1788782167834-gh-auth-status-failure-gh-read-failure-on-public-s.md) — _ag-1780667168475-a9tac8_
+- [gh auth status failing doesn t block pr mode revie](ag-1780667168475-a9tac8/1788795649545-gh-auth-status-failing-doesn-t-block-pr-mode-revie.md) — _ag-1780667168475-a9tac8_
+- [gh app token invalid warning is a false alarm for ](ag-1780667168475-a9tac8/1788799392809-gh-app-token-invalid-warning-is-a-false-alarm-for-.md) — _ag-1780667168475-a9tac8_
+- [re check the full file list of post review fix com](ag-1780667168475-a9tac8/1788799970382-re-check-the-full-file-list-of-post-review-fix-com.md) — _ag-1780667168475-a9tac8_
+- [e30082 float literal exemption is scalar only asym](ag-1780667168475-a9tac8/1788801482957-e30082-float-literal-exemption-is-scalar-only-asym.md) — _ag-1780667168475-a9tac8_
+- [reviewer c drift check a read of slang review post](ag-1780667168475-a9tac8/1788810108542-reviewer-c-drift-check-a-read-of-slang-review-post.md) — _ag-1780667168475-a9tac8_
+- [width based int float diagnostics getmaximumtypebi](ag-1780667168475-a9tac8/1788814344464-width-based-int-float-diagnostics-getmaximumtypebi.md) — _ag-1780667168475-a9tac8_
+- [gh invalid token warning is benign for read only p](ag-1780667168475-a9tac8/1788823384047-gh-invalid-token-warning-is-benign-for-read-only-p.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -5603,6 +5636,8 @@
 - [approver challenger probe gate enforcement prs che](ag-1783611156430-vvj8oi/1788565861086-approver-challenger-probe-gate-enforcement-prs-che.md) — _ag-1783611156430-vvj8oi_
 - [approver confirmed safe coopvec math intrinsic ove](ag-1783611156430-vvj8oi/1788576772705-approver-confirmed-safe-coopvec-math-intrinsic-ove.md) — _ag-1783611156430-vvj8oi_
 - [approver critique mustfix critique gate mechanics ](ag-1783611156430-vvj8oi/1788576785263-approver-critique-mustfix-critique-gate-mechanics-.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger miss devin loading diffs banne](ag-1783611156430-vvj8oi/1788777703213-approver-challenger-miss-devin-loading-diffs-banne.md) — _ag-1783611156430-vvj8oi_
+- [approver infra abstain devin partial render is a d](ag-1783611156430-vvj8oi/1788792549825-approver-infra-abstain-devin-partial-render-is-a-d.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement a finding held by a re](ag-1783611156448-d49n0a/1786357056431-approver-human-disagreement-a-finding-held-by-a-re.md) — _ag-1783611156448-d49n0a_
 - [approver human agreement a merge can ship an unver](ag-1783611156448-d49n0a/1786361356886-approver-human-agreement-a-merge-can-ship-an-unver.md) — _ag-1783611156448-d49n0a_
 - [approver infra abstain record decision returns dec](ag-1783611156448-d49n0a/1786361652051-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156448-d49n0a_
@@ -5733,6 +5768,12 @@
 - [approver infra abstain coderabbit review latency t](ag-1783611156448-d49n0a/1788527120708-approver-infra-abstain-coderabbit-review-latency-t.md) — _ag-1783611156448-d49n0a_
 - [approver clause gap harvest pending bot checks onl](ag-1783611156448-d49n0a/1788562907093-approver-clause-gap-harvest-pending-bot-checks-onl.md) — _ag-1783611156448-d49n0a_
 - [approver clause gap protected path only pr routes ](ag-1783611156448-d49n0a/1788562917440-approver-clause-gap-protected-path-only-pr-routes-.md) — _ag-1783611156448-d49n0a_
+- [approver calibration size cap abstain on a trusted](ag-1783611156448-d49n0a/1788763100874-approver-calibration-size-cap-abstain-on-a-trusted.md) — _ag-1783611156448-d49n0a_
+- [approver clause gap ci green on sha reads the stat](ag-1783611156448-d49n0a/1788764743013-approver-clause-gap-ci-green-on-sha-reads-the-stat.md) — _ag-1783611156448-d49n0a_
+- [approver calibration trusted author fix warnings p](ag-1783611156448-d49n0a/1788767903720-approver-calibration-trusted-author-fix-warnings-p.md) — _ag-1783611156448-d49n0a_
+- [approver infra a merge only synchronize pr diff un](ag-1783611156448-d49n0a/1788780675857-approver-infra-a-merge-only-synchronize-pr-diff-un.md) — _ag-1783611156448-d49n0a_
+- [approver human disagreement a human review s commi](ag-1783611156448-d49n0a/1788780992990-approver-human-disagreement-a-human-review-s-commi.md) — _ag-1783611156448-d49n0a_
+- [approver human disagreement abstain open gap vs hu](ag-1783611156448-d49n0a/1788781046062-approver-human-disagreement-abstain-open-gap-vs-hu.md) — _ag-1783611156448-d49n0a_
 - [dashboard_slang triage 1776263007885](dashboard_slang-triage-1776263007885.md) — _unattributed_
 - [devin reviewer scrape reliability](devin-reviewer-scrape-reliability.md) — _unattributed_
 - [legoop feedback_ab_evaluation_criteria](legoop-feedback_ab_evaluation_criteria.md) — _unattributed_
