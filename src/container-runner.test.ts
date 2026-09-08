@@ -123,10 +123,12 @@ describe('resolveSpawnProvider', () => {
 // this is a control-flow property of a function that needs a container runtime
 // to execute, and a mock deep enough to run it would pin the mock. Presence is
 // asserted before absence so the guard cannot pass vacuously on a renamed helper.
-// One read of container-runner.ts for every structural assertion in this file.
-// It used to be four independent reads (three `readFileSync(process.cwd()...)`
-// plus a `new URL` read) with three different body boundaries between them,
-// which is four places for a guard to drift.
+// The single read of container-runner.ts behind every structural assertion in
+// this file — body extractions and raw-offset ordering guards alike. It used to
+// be five independent reads (four `readFileSync(process.cwd()...)` plus a
+// `new URL` read) with three different body boundaries between them, which is
+// five places for a guard to drift. `import.meta.url` anchors to this file
+// rather than to wherever vitest was invoked from.
 const RUNNER = fs.readFileSync(new URL('./container-runner.ts', import.meta.url), 'utf-8');
 
 // Three assertions, each added because the previous set was satisfiable
@@ -221,13 +223,17 @@ describe('paused agent-group kill switch (structural)', () => {
   // the pause MUST gate the spawn itself. Driving wakeContainer needs a live DB
   // + runtime, so this guards the invariant structurally: the paused check must
   // read the group and short-circuit BEFORE spawnContainer is reached.
-  const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
 
   it('wakeContainer checks group.paused', () => {
-    const wake = src.indexOf('export function wakeContainer');
-    const spawnCall = src.indexOf('spawnContainer(session)', wake);
-    const pausedCheck = src.indexOf('group?.paused', wake);
+    const wake = RUNNER.indexOf('export function wakeContainer');
+    const spawnCall = RUNNER.indexOf('spawnContainer(session)', wake);
+    const pausedCheck = RUNNER.indexOf('group?.paused', wake);
     expect(wake).toBeGreaterThan(-1);
+    // Every offset this comparison rests on, asserted present first: `indexOf`
+    // returns -1 for a renamed anchor, and -1 is less than every real offset, so
+    // the ordering assertion below would pass vacuously on exactly the rename it
+    // exists to catch.
+    expect(spawnCall).toBeGreaterThan(-1);
     expect(pausedCheck).toBeGreaterThan(-1);
     // The guard returns before the spawn.
     expect(pausedCheck).toBeLessThan(spawnCall);
@@ -240,9 +246,9 @@ describe('paused agent-group kill switch (structural)', () => {
     // outcome is unchanged — a paused group resolves false — but inside an async
     // function that is spelled `return false`, not `return Promise.resolve(false)`,
     // and the block now ends at the spawn `try` rather than `const existing`.
-    const guarded = src.indexOf('async function wakeGuarded');
+    const guarded = RUNNER.indexOf('async function wakeGuarded');
     expect(guarded).toBeGreaterThan(-1);
-    const guardBlock = src.slice(src.indexOf('group?.paused', guarded), src.indexOf('try {', guarded));
+    const guardBlock = RUNNER.slice(RUNNER.indexOf('group?.paused', guarded), RUNNER.indexOf('try {', guarded));
     expect(guardBlock).toContain('return false;');
     expect(guardBlock).not.toContain('throw');
   });
