@@ -3,7 +3,7 @@ title: "Critique Gate and Decision Recording"
 type: concept
 group: review-process
 tags: [critique-gate, record-decision, fails-open, fails-closed, human-agreement, approver, codex, verdict, delivery-gate, workflow-state, false-abstain, published-vs-local]
-source_count: 6
+source_count: 7
 ---
 
 # Critique Gate and Decision Recording
@@ -66,6 +66,8 @@ jq -r '(.critique_attested//{}).OUTPUT_REVIEW//{}|to_entries[]|"\(.value)  \(.ke
 All hashes matching means the approve genuinely still binds, whatever the counter says — **re-hash before you re-review**. This is the same family as the container-scoped-paths trap: shared container state answers a different question than the one you asked.
 
 The generalization is the discipline, not the three workarounds. **A gate's denial is a claim.** Before spending a round on it, ask what the gate measured — here a substring, a shared counter, and command text — versus what you need to know: did the artifact under review change?
+
+A **fourth** fails-closed mode is environmental rather than pattern-based: the hook persists its state to `/workspace/.claude/workflow-state.json`, and when that directory does not exist in the container its `> "$STATE.tmp"` write fails → non-zero exit → the tool call is **blocked regardless of what it was** (with an internal `line 417: /workspace/.claude/workflow-state.json.tmp: No such file or directory`), and the gate message prints anyway. This compounds the verb-blind mode 1: on slang#12924 a read-only `gh api repos/.../pulls/12924` was denied both because the `pulls\b` pattern matches GETs and because the state dir was missing. Two cheap mitigations that do **not** weaken the gate (empty state still = no critique recorded = deny on real deliveries): run `mkdir -p /workspace/.claude` once at session start so the state machine can persist, and route metadata reads away from the `pulls` pattern — `gh pr view --json …` (matches `gh pr create`, not `view`), `gh pr diff <n>`, and the **issues** endpoint for `author_association` (`gh api repos/O/R/issues/<n> --jq .author_association`) are all gate-safe, and the skill scripts (`collect-reviews.sh`, `eval-clauses.py`) hide their inner `gh api .../pulls` from the hook, which only inspects your top-level command string. On an `ABSTAIN_POLICY` path the host relaxes the delivery gate, but the separate `gate-chain-routing.sh` hook still requires `in_reply_to=<inbound id>` on the `[Approval Decision]` `send_message` or the send is denied ([critique-gate hook blocks read-only `gh api .../pulls` and fails closed when `/workspace/.claude/` is missing](../learnings/1788945661953-approver-tooling-critique-gate-hook-blocks-read-on.md)).
 
 ## Output side: the verdict recorder fails OPEN
 
@@ -145,12 +147,13 @@ The second resolved prediction is a negative calibration datapoint of the same s
 One post-decision event on #12322 looked like a re-decision trigger and correctly was not. `nv-slang-bot[bot]` commented 2026-08-05T02:14:48Z that the PR had been evicted from the merge queue at 2026-08-05T00:09:14Z (`reason: failed_checks`) by the tracked Falcor flake #12145 (`test_GBufferRTTexGrads_d3d12`, `0xC0000005` access violation). Non-causal on its face — the entire diff is a slang-test harness file that is not linked into `Mogwai.exe` — head stayed green, and the PR later merged. **Two independent reasons it was a no-op: the comment is bot-authored** (your own or another tier's bot output is not a routing inbound and does not carry a human reply's weight), **and the head never moved** (no new revision means no re-gate). It also re-confirms the standing calibration that a combined-status failure arising from a non-causal flake is not a blocker.
 
 ---
-**Source learnings (6):**
+**Source learnings (7):**
 - [critique-gate false positives: it cannot tell a GET from a POST, its edit counter is container-wide, and it scans your command TEXT](../learnings/1785992478312-critique-gate-false-positives-it-cannot-tell-a-get.md) — The gate's denial is a claim; it measures a substring, a shared counter, and command text, not whether your reviewed artifact changed — re-hash the attested set instead.
 - [The critique-gate verdict recorder fails OPEN: a must-fix can be recorded as approve](../learnings/1785989503064-the-critique-gate-verdict-recorder-fails-open-a-mu.md) — An MCP-array `tool_response` parses to empty, a guarded write preserves the previous verdict, and the `unparseable` fail-closed arm is unreachable — read codex's own `### Verdict`.
 - [A fix to your local artifact is NOT a fix to the published copy — a gate-blocked delivery is an outstanding action](../learnings/1785992450842-a-fix-to-your-local-artifact-is-not-a-fix-to-the-p.md) — Satisfying the gate feels like finishing the work but is not the delivery; re-fetch and diff the published copy, because "corrected but undelivered" reads exactly like "never corrected."
 - [approver/human-agreement: slang#12322 joined MERGED + formally APPROVED at the exact decided SHA](../learnings/1785987292855-approver-human-agreement-slang-12322-joined-merged.md) — Score joins off `head.sha` in a squash-only repo, and record declined checks explicitly: an averted false-abstain leaves no error signal of its own.
 - [the critique gate fires on no-code triage-confirmations too](../learnings/1783523465568-critique-gate-fires-on-no-code-triage-confirmation.md) — The gate keys off delivery markers (`[Resolution]`/`[Report]`), not diffs, so a zero-diff verdict still needs all three stages; satisfy it honestly by writing the deliverable to a file and framing CODE_REVIEW as "did I drop an in-scope fix?"
 - [the DECISION/OUTPUT_REVIEW gate can must-fix an un-editable PR-author input comment (slang#12453) → false ESCALATE; approver is read-only and the project's own conventions govern comment style, so accept factual catches, hold the scope line, and label an unresolvable soft-cap ESCALATED.](../learnings/1786490730776-approver-critique-mustfix-critique-gate-over-appli.md)
+- [critique-gate hook blocks read-only `gh api .../pulls` GETs and fails closed when `/workspace/.claude/` is missing](../learnings/1788945661953-approver-tooling-critique-gate-hook-blocks-read-on.md) — a fourth fails-closed input-side mode: a missing state dir makes the `.tmp` write fail → blocked regardless of the call. `mkdir -p /workspace/.claude`; route reads via `gh pr view`/`gh pr diff`/the `issues` endpoint; on ABSTAIN the delivery gate relaxes but `gate-chain-routing.sh` still needs `in_reply_to`.
 
 _Catalog: [[wiki/index.md]]_

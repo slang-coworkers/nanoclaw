@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-1480 learnings. [Catalog](../index.md)
+1483 learnings. [Catalog](../index.md)
 
 - ["Did a human speak last?" — __typename alone is NOT enough: nv-slang-bot posts under TWO accounts, one of them type=User](../learnings/1786451840418-did-a-human-speak-last-typename-alone-is-not-enoug.md)
 - ["N crash signatures" is a hypothesis about count, not an observation — but code shape is the WRONG test (slang#8785)](../learnings/1785804467761-n-crash-signatures-is-a-hypothesis-about-count-not.md)
@@ -57,6 +57,7 @@ type: topic
 - [[approver/clause-gap] capdef atom PRs: check-cmdline-ref (not just check-spirv-generated) fails if command-line-slangc-reference.md isn't regenerated](../learnings/1784026216900-approver-clause-gap-capdef-atom-prs-check-cmdline-.md)
 - [[approver/clause-gap] ci_green_on_sha passed on a CodeRabbit-only combined status while 4 builds failed — the D2 defect fired for real on slangpy#1090 R2](../learnings/1785936275585-approver-clause-gap-ci-green-on-sha-passed-on-a-co.md)
 - [[approver/clause-gap] ci_green_on_sha reads the COMBINED STATUS API, not check-runs — a red commit status (e.g. cross-repo SlangPy Tests) fails it while every check-run is green; and the mounted policy can change between revisions of the same PR](../learnings/1788303100252-approver-clause-gap-ci-green-on-sha-reads-the-comb.md)
+- [[approver/clause-gap] ci_green_on_sha=failure from the external "SlangPy Tests" repository_dispatch status, not a check-run — expected-red on SlangPy-coordination PRs](../learnings/1788945529133-approver-clause-gap-ci-green-on-sha-failure-from-t.md)
 - [[approver/clause-gap] CORRECTION — the slangpy#1050 vendored share is 8726 lines (69%), not 7644 (60%); I hand-summed an enumeration and called it a measurement](../learnings/1786385423604-approver-clause-gap-correction-the-slangpy-1050-ve.md)
 - [[approver/clause-gap] CORRECTION: ci_green_on_sha on slangpy#1090 R2 took the policy-skip path, not the substantive one — I read a pass and inferred its cause without reading the evidence string](../learnings/1785936858731-approver-clause-gap-correction-ci-green-on-sha-on-.md)
 - [[approver/clause-gap] CORRECTION: zero status-posters is the FAIL-SAFE case — the hazard is exactly one trivial poster, and shader-slang/slang is the worst case (2 contexts speak for 278 check-runs)](../learnings/1785940416707-approver-clause-gap-correction-zero-status-posters.md)
@@ -200,6 +201,7 @@ type: topic
 - [clang -Wformat-security rejects argless printf(fmt) — Linux gcc verify won't catch it](../learnings/1783560312328-clang-wformat-security-rejects-argless-printf-fmt-.md)
 - [clang-format 17 via pip when absent from container (formatting.sh needs it on PATH)](../learnings/1786540878336-clang-format-17-via-pip-when-absent-from-container.md)
 - [clang-format 17 vs 18 on shader-slang/slang: 9 of 1489 files diverge, and the committed tree matches 17 in 9/9 — the [17,18) pin is load-bearing](../learnings/1786033924190-clang-format-17-vs-18-on-shader-slang-slang-9-of-1.md)
+- [clang-format absent but clang-format-17 present; bare formatting.sh silently skips C++](../learnings/1788947866097-clang-format-absent-but-clang-format-17-present-ba.md)
 - [clang-format for slang formatting.sh: extract the PyPI wheel, no apt/admin needed](../learnings/1785989277743-clang-format-for-slang-formatting-sh-extract-the-p.md)
 - [clang-format for slang: 17.x ONLY (repo docs say 17-18 and are wrong) — install via venv, PEP 668 blocks system pip](../learnings/1786381193362-clang-format-for-slang-17-x-only-repo-docs-say-17-.md)
 - [clang-format via pip wheel: never point it at .meta.slang (it will rewrite the whole file)](../learnings/1784332011128-clang-format-via-pip-wheel-never-point-it-at-meta-.md)
@@ -847,6 +849,7 @@ type: topic
 - [Slang int64 shift literals need LL suffix, not L (L is 32-bit)](../learnings/1787337737957-slang-int64-shift-literals-need-ll-suffix-not-l-l-.md)
 - [Slang interface: __init requirements cannot have default bodies (E30317)](../learnings/1785565100286-slang-interface-init-requirements-cannot-have-defa.md)
 - [Slang int→enum public-param retype breaks downstream generic matrix extensions (SlangPy Tests CI)](../learnings/1788455543019-slang-int-enum-public-param-retype-breaks-downstre.md)
+- [Slang int→half E30081 warning: use round-trip exactness, not a fixed [-2048,2048] range](../learnings/1788945215723-slang-int-half-e30081-warning-use-round-trip-exact.md)
 - [Slang IR text dumper renders all IRParams identically — orphan-vs-attached invisible from text](../learnings/1780729718385-slang-ir-text-dumper-renders-all-irparams-identica.md)
 - [Slang IR-pass diagnostics lose source locations because struct keys inherit IRBuilder's incidental loc](../learnings/1780328920397-slang-ir-pass-diagnostics-lose-source-locations-be.md)
 - [Slang IR: model an absent operand as FEWER operands, never a null operand (IRDebugInlinedAt precedent)](../learnings/1785897823903-slang-ir-model-an-absent-operand-as-fewer-operands.md)

@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-446 learnings. [Catalog](../index.md)
+447 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -34,6 +34,7 @@ type: topic
 - [[approver/ops] A "synchronize" re-wake can be metadata-only (label / review re-request / CI re-run) with NO new commit — verify the head moved before deciding; an unchanged head is the same revision, not a new ledger row](../learnings/1788556078923-approver-ops-a-synchronize-re-wake-can-be-metadata.md)
 - [[approver/process] On a merge-only synchronize, settle a prior gap by BLOB IDENTITY of the decisive files, not a rebuild](../learnings/1787668555293-approver-process-on-a-merge-only-synchronize-settl.md)
 - [[approver/process] Re-verify PR head freshness at the RECORD step, not just at stage — a merge can land between stage and decide](../learnings/1787910262928-approver-process-re-verify-pr-head-freshness-at-th.md)
+- [[approver/synthesis] Devin AI-analysis narrative can cite branch-history files absent from the PR diff](../learnings/1788944228525-approver-synthesis-devin-ai-analysis-narrative-can.md)
 - [[approver] Stale draft build caveats + all-CI-SKIPPED on large feature PRs (slang#12859)](../learnings/1788480227101-approver-stale-draft-build-caveats-all-ci-skipped-.md)
 - [[approver] test-infra PR with a dedicated CI lane that builds+runs the new target = discriminating control for WOULD_APPROVE](../learnings/1786711832544-approver-test-infra-pr-with-a-dedicated-ci-lane-th.md)
 - [[infra] gh GraphQL RECOVERED 2026-08-04 12:41Z — the 401 is OSCILLATING (4th cycle), so re-probe it; and `gh api user` 403 is correct App behavior, not an outage](../learnings/1785847386829-infra-gh-graphql-recovered-2026-08-04-12-41z-the-4.md)

@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-631 learnings. [Catalog](../index.md)
+632 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -377,6 +377,7 @@ type: topic
 - [grep absence ladder — run every rung including contractions before claiming a phrase is missing](../learnings/1785875073603-grep-absence-ladder-run-every-rung-including-contr.md)
 - [Grepping an abort STRING ≠ reading the dispatch routing — I made a wrong public claim about a PR's behavior](../learnings/1785774900126-grepping-an-abort-string-reading-the-dispatch-rout.md)
 - [Group-scoped silence ≠ dead coworker; Main resolves via global session list](../learnings/1783619754568-group-scoped-silence-dead-coworker-main-resolves-v.md)
+- [Half int-literal conversion warning (E30081): getMaximumTypeBitSize=0 for half routes everything through _coerce, not overflow](../learnings/1788947867563-half-int-literal-conversion-warning-e30081-getmaxi.md)
 - [Hand-editing docs/generated/tests coverage tree: lint gate + honest META + PR disclosure](../learnings/1788384936519-hand-editing-docs-generated-tests-coverage-tree-li.md)
 - [Held-no-PR is triage's GitHub footprint; fixer posting its own hold comment races + duplicates (slang#12051)](../learnings/1783708077598-held-no-pr-is-triage-s-github-footprint-fixer-post.md)
 - [Hold interim triage classification 5-bullet until terminal; author-facing scoping questions are fine to post](../learnings/1781116432142-hold-interim-triage-classification-5-bullet-until-.md)

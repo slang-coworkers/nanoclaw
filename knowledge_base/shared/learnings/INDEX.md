@@ -4458,6 +4458,7 @@
 - [slang cli once per invocation hook to diagnose sla](ag-1780667166418-apezq5/1788897649053-slang-cli-once-per-invocation-hook-to-diagnose-sla.md) — _ag-1780667166418-apezq5_
 - [design rfc issues authored by a language lead hold](ag-1780667166418-apezq5/1788909843006-design-rfc-issues-authored-by-a-language-lead-hold.md) — _ag-1780667166418-apezq5_
 - [operator named decls are already referenceable as ](ag-1780667166418-apezq5/1788910043597-operator-named-decls-are-already-referenceable-as-.md) — _ag-1780667166418-apezq5_
+- [slang int half e30081 warning use round trip exact](ag-1780667166418-apezq5/1788945215723-slang-int-half-e30081-warning-use-round-trip-exact.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -4836,6 +4837,8 @@
 - [clang format 17 present but not symlinked delivery](ag-1780667166439-vmjrwe/1788909076727-clang-format-17-present-but-not-symlinked-delivery.md) — _ag-1780667166439-vmjrwe_
 - [slangc warnings as errors needs an operand module ](ag-1780667166439-vmjrwe/1788913047747-slangc-warnings-as-errors-needs-an-operand-module-.md) — _ag-1780667166439-vmjrwe_
 - [slang qualified operator name references fix pr ga](ag-1780667166439-vmjrwe/1788914603700-slang-qualified-operator-name-references-fix-pr-ga.md) — _ag-1780667166439-vmjrwe_
+- [clang format absent but clang format 17 present ba](ag-1780667166439-vmjrwe/1788947866097-clang-format-absent-but-clang-format-17-present-ba.md) — _ag-1780667166439-vmjrwe_
+- [half int literal conversion warning e30081 getmaxi](ag-1780667166439-vmjrwe/1788947867563-half-int-literal-conversion-warning-e30081-getmaxi.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5688,6 +5691,12 @@
 - [approver human disagreement fork head ci workflow ](ag-1783611156430-vvj8oi/1788943265623-approver-human-disagreement-fork-head-ci-workflow-.md) — _ag-1783611156430-vvj8oi_
 - [approver challenger calibration widening core meta](ag-1783611156430-vvj8oi/1788943725016-approver-challenger-calibration-widening-core-meta.md) — _ag-1783611156430-vvj8oi_
 - [approver synthesis devin ai analysis narrative can](ag-1783611156430-vvj8oi/1788944228525-approver-synthesis-devin-ai-analysis-narrative-can.md) — _ag-1783611156430-vvj8oi_
+- [approver clause gap ci green on sha failure from t](ag-1783611156430-vvj8oi/1788945529133-approver-clause-gap-ci-green-on-sha-failure-from-t.md) — _ag-1783611156430-vvj8oi_
+- [approver tooling critique gate hook blocks read on](ag-1783611156430-vvj8oi/1788945661953-approver-tooling-critique-gate-hook-blocks-read-on.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger miss uninit analysis guard cor](ag-1783611156430-vvj8oi/1788947202230-approver-challenger-miss-uninit-analysis-guard-cor.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger calibration on docs prs devin ](ag-1783611156430-vvj8oi/1788947298987-approver-challenger-calibration-on-docs-prs-devin-.md) — _ag-1783611156430-vvj8oi_
+- [approver human disagreement large vendoring test o](ag-1783611156430-vvj8oi/1788948128585-approver-human-disagreement-large-vendoring-test-o.md) — _ag-1783611156430-vvj8oi_
+- [approver infra abstain ci green on sha unevaluable](ag-1783611156430-vvj8oi/1788949627703-approver-infra-abstain-ci-green-on-sha-unevaluable.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement a finding held by a re](ag-1783611156448-d49n0a/1786357056431-approver-human-disagreement-a-finding-held-by-a-re.md) — _ag-1783611156448-d49n0a_
 - [approver human agreement a merge can ship an unver](ag-1783611156448-d49n0a/1786361356886-approver-human-agreement-a-merge-can-ship-an-unver.md) — _ag-1783611156448-d49n0a_
 - [approver infra abstain record decision returns dec](ag-1783611156448-d49n0a/1786361652051-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156448-d49n0a_
