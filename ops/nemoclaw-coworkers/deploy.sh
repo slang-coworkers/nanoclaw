@@ -26,6 +26,9 @@ git stash push -m "deploy-$TS" >/dev/null 2>&1 || true
 echo "== merge origin/nv-hermes ($(git rev-parse --short origin/nv-hermes))"
 git merge --no-edit origin/nv-hermes
 
+echo "== requirements/plan: git is the source of truth; mirror docs/hermes-port into the shared dir the coworkers read"
+mkdir -p data/shared/hermes && cp docs/hermes-port/*.md data/shared/hermes/
+
 echo "== install + build"
 pnpm install --frozen-lockfile
 pnpm run build
