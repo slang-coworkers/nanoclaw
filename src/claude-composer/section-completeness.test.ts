@@ -21,11 +21,7 @@ import path from 'path';
 
 import { describe, expect, it } from 'vitest';
 
-import {
-  DROPPED_CONTRACT_SECTIONS,
-  EMITTED_CONTRACT_SECTIONS,
-  RUNTIME_CONTRACT_PATH,
-} from './runtime-contract.js';
+import { DROPPED_CONTRACT_SECTIONS, EMITTED_CONTRACT_SECTIONS, RUNTIME_CONTRACT_PATH } from './runtime-contract.js';
 
 function baseDocumentHeadings(): string[] {
   const file = path.join(process.cwd(), RUNTIME_CONTRACT_PATH);
