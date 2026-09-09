@@ -871,6 +871,22 @@ describe('new_session predicate (default-on: opt-out via new_session:false)', ()
   it('isNewSessionBatch — FALSE on mixed batches (chat present preserves history)', () => {
     expect(isNewSessionBatch([chat({ text: 'hi' }), task({ prompt: 'a' })])).toBe(false);
     expect(isNewSessionBatch([chat({ text: 'hi' }), task({ prompt: 'a', new_session: true })])).toBe(false);
+    // An explicitly addressed chat (trigger=1) vetoes just the same.
+    expect(isNewSessionBatch([{ ...chat({ text: 'hi' }), trigger: 1 }, task({ prompt: 'a' })])).toBe(false);
+  });
+
+  it('isNewSessionBatch — accumulated trigger=0 context rows ride along without vetoing (prod 2026-09-09)', () => {
+    const echo = (text: string) => ({ ...chat({ text }), trigger: 0 });
+    // A scheduled task plus three session echoes is still a fresh-session batch.
+    expect(isNewSessionBatch([echo('e1'), echo('e2'), echo('e3'), { ...task({ prompt: 'fold' }), trigger: 1 }])).toBe(
+      true,
+    );
+    // The opt-out still wins when the task itself asks for continuity.
+    expect(isNewSessionBatch([echo('e1'), { ...task({ prompt: 'fold', new_session: false }), trigger: 1 }])).toBe(
+      false,
+    );
+    // Context rows alone never make a fresh session (they are never a batch on their own anyway).
+    expect(isNewSessionBatch([echo('e1'), echo('e2')])).toBe(false);
   });
 
   it('isNewSessionBatch — FALSE on empty batch (defensive: no spurious fresh sessions)', () => {
