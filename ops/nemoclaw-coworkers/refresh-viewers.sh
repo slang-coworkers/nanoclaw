@@ -31,7 +31,7 @@ for g in "$ROOT"/groups/*/; do
   fi
 done
 
-LIST=$(find "$OUT"/ -L -mindepth 2 -maxdepth 2 -name '*.html' -printf '%T@ %P\n' 2>/dev/null | sort -rn | head -500)
+LIST=$(find -L "$OUT"/ -mindepth 2 -maxdepth 2 -name '*.html' -printf '%T@ %P\n' 2>/dev/null | sort -rn | head -500)
 
 {
   cat <<'HTML'
