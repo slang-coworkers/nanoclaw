@@ -86,16 +86,20 @@ describe('composed-document byte parity', () => {
       // never told about. Goldens regenerated in the same commit, visibly, both
       // times: that is the point of pinning the digests here as well as the
       // bytes, since a golden edited alongside a regression would go unnoticed.
-      'base-common': 'b0534ea8b3a02175',
-      'base-common.persona': 'fc1b0c6a9ffb8220',
+      //
+      // They also include `## Resident Skill Instructions` — every shipped
+      // `instructions.md` a type can reach, held in context rather than fetched on
+      // demand. So a skill gaining or losing one moves them, deliberately.
+      'base-common': '3ee2d7f21f0d949a',
+      'base-common.persona': 'ed75f20e3b6920c0',
       // `main`/`main.persona` are absent by design, not omission: their bytes depend
       // on sibling-branch skills under CI's composed-state merge (header). The
       // standalone values the content phase produced — abaecd63bd33b299 and
       // 8129ebe911b83bec, moved once by the `agents.md` anchor retarget — are
       // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
       // which compares golden to golden and so holds in both states.
-      default: 'f1858af24e037976',
-      'default.persona': '529ba81171490a8d',
+      default: '4a8ba0bcabd5c6eb',
+      'default.persona': 'e61b98b8235b027e',
     };
 
     const actual: Record<string, string> = {};

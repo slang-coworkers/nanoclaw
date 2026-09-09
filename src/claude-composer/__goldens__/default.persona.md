@@ -197,6 +197,18 @@ A session has one parent and may grow to N peers (each peer that writes in mints
 - `/buddy` — Background companion monitor — watches the session via PostToolUse hooks and prepends codex-flagged concerns as <buddy-note> on the next turn. Activated by overlays: [buddy-monitor]; the hook chain (spawn-buddy.sh + buddy-call.sh + buddy-inject.sh) runs autonomously without agent invocation.
 - `/explain-diff-html` — Rich, self-contained HTML explanation of a code change (PR, branch, or diff): Background → Intuition → Code walkthrough → five-question interactive quiz. Run it right after every `gh pr create` (the PR-created hook asks for it) and whenever someone asks for a deep explanation of a change. Writes under reports/pr-explanations/ and delivers the file; never posts it to GitHub.
 
+## Resident Skill Instructions
+
+### `/onecli-gateway`
+
+#### Credentials & External Services
+
+Your HTTP requests go through the OneCLI proxy, which injects real credentials automatically. Just call any API directly (Gmail, GitHub, Slack, etc.) — the proxy adds auth before it reaches the service.
+
+Use any method: curl, Python, a CLI tool, whatever fits. If a tool checks for credentials locally, pass any placeholder value — the proxy replaces it with real credentials at request time.
+
+If you get a `401`/`403`/`app_not_connected`, the error response contains a `connect_url` — you MUST show it to the user as a bare URL on its own line (no angle brackets, no markdown link syntax) so they can click to connect. Run `/onecli-gateway` for the full error-handling flow. Never ask the user for API keys or tokens.
+
 ## MCP Servers
 
 ### demo
