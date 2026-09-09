@@ -3,7 +3,7 @@ title: "Slang Generics & Type System (part 2)"
 type: concept
 group: slang-language-core
 tags: [type-system, witness-tables, conformance, extensions, namespaces, coercion, visibility, codegen]
-source_count: 31
+source_count: 32
 ---
 
 # Slang Generics & Type System (part 2)
@@ -26,6 +26,7 @@ Type-system representation topics: witness tables and conformance, extensions an
 - Module-scope lambdas share the synthesized `_slang_Lambda_` name (E30200 collision) — the disambiguator is appended only in the function-scope branch.
 - Never emit HLSL/target named constants as raw integers; verify per-target buffer strides GPU-free via `-target spirv-asm` (`OpDecorate ArrayStride`) / `-target metal`.
 - Empty-struct CUDA layout mismatch only repros when the empty type is in the public/exported interface (`legalizeEmptyTypes` eliminates non-public ones).
+- Pack-query `__first`/`__last` produce a `First`/`Last SubtypeWitness` — a witness Val subclass two lowering consumers (`isTypeEqualityWitness`, `emitCastToConcreteSuperTypeRec`) omit, so a `where`-clause cast of the result SIGSEGVs (#12494); a new SubtypeWitness subclass must be taught to BOTH lowering layers.
 
 ## Witness Tables and Conformance
 
@@ -42,6 +43,8 @@ Widening a builtin *interface requirement* (as opposed to a concrete method) has
 Associated constants fold only via `DeclaredSubtypeWitness`; other witness subclasses are not processed by `getUnspecializedLookupRec`. The declaration/signature-type access path can fail to fold not because the witness is the wrong class, but because the conformance witness table is not yet built at fold time — the fix is `ensureDecl(sub, ReadyForConformances)` before re-folding, not `resolve()`/normalize ([slang associated-constant fold gated on DeclaredSubtypeWitness; eager tryConstantFoldDeclRef skips normalize](../learnings/1782215625162-slang-associated-constant-fold-gated-on-declaredsu.md), [Slang: a fold over a concrete DeclaredSubtypeWitness can return symbolic purely because the conformance witness table isn't built yet — fix with ensureDecl(ReadyForConformances), not resolve()/normalize](../learnings/1782224910624-slang-a-fold-over-a-concrete-declaredsubtypewitnes.md)).
 
 Link-time `export`/`extern` wrapper associated-type resolution (the #9580 / #12131 / #12134 cluster) has **two distinct requirement-resolution entry points that behave differently on transitivity** (`TransitiveSubtypeWitness`) — load-bearing for any base-interface / transitive fix ([slang link-time assoc-type resolution: two resolvers differ on TransitiveSubtypeWitness (#12134)](../learnings/1784248435373-slang-link-time-assoc-type-resolution-two-resolver.md)).
+
+The witness-Val-class-drives-lowering hazard has a pack-expansion instance: a pack-query `__first(args)`/`__last(args)` over `expand each T args`, when its result is cast to a concrete type via a `where`-clause witness (e.g. `where T == int`), SIGSEGVs slangc (#12494) — Debug asserts `!"unhandled"` in `emitCastToConcreteSuperTypeRec` (`slang-lower-to-ir.cpp:7252`), Release derefs the returned nullptr. It is a two-layer gap: `__first`/`__last` produce a `FirstSubtypeWitness`/`LastSubtypeWitness` (`slang-check-inheritance.cpp:2197-2205`) that two lowering consumers don't recognize — (1) `isTypeEqualityWitness` (`slang-ast-val.h:1352`) recurses through Each/TypePack/Expand/TrimFirst/TrimLast but omits First/Last, so the `where T==int` no-op cast isn't seen as type-equality (checked at `:7288`); (2) it then falls into `emitCastToConcreteSuperTypeRec` (`:7214`) which handles only Declared/Transitive witnesses → unhandled else → nullptr. Both sub-cases need fixing at BOTH layers: the type-equality flavor by adding First/Last to `isTypeEqualityWitness` — the blessed, precedented mechanism (PR #8736 added the `ExpandSubtypeWitness` case there and that also fixed the identical crash in #6856, whose closing PR was test-only; the no-op reasoning holds because `__first` already lowers to `kIROp_ExtractFirstFromPack`, selecting element 0 BEFORE the cast, so the cast is representation-only) — plus a SIBLING genuine field-extraction upcast (`__first` result upcast to a real struct base via a Declared inheritance witness) that needs handling IN `emitCastToConcreteSuperTypeRec`. This is the same principle as `DeclaredSubtypeWitness` vs `ExtractExistentialSubtypeWitness` below: the witness Val-class is load-bearing at lowering, and a new SubtypeWitness subclass silently unhandled by a lowering consumer crashes. Method note: on the Release SIGSEGV, `addr2line` gave an inlined-return-address MIS-HIT — discard it in favor of the stale-but-source-matching Debug assert line, which is authoritative for "which function" in inlined C++ ([Pack-query __first/__last cast crash: two-layer witness gap (First/Last SubtypeWitness)](../learnings/1786529197320-pack-query-first-last-cast-crash-two-layer-witness.md)).
 
 ## Extensions and Namespace Scoping
 
@@ -95,7 +98,7 @@ When an auto-generated IR-LABEL test fails after a refactor, distinguish a funct
 
 `abort<each T>(format, args...)` takes runtime variadic args; the message struct is an `OpCompositeConstruct`, not `OpConstantDataKHR`. The shipped PR #11542 has a conformance bug: the emitted extension token is `"SPV_KHR_shader_abort"` (the Vulkan extension name) rather than the correct SPIR-V grammar token `"SPV_KHR_abort"` ([CORRECTION: abort message is a runtime composite (runtime args), not OpConstantDataKHR; shipped #11542 bug is the wrong OpExtension token](../learnings/1782251874470-correction-abort-message-is-a-runtime-composite-ru.md)).
 
-**Source learnings (31):**
+**Source learnings (32):**
 - [Widening a Slang interface subscript requirement to generic cascades beyond stdlib (#11990) — bootstrap crash, E38105 on conformers, terminal CoopVec autodiff E39999](../learnings/1784276750681-widening-a-slang-interface-subscript-requirement-t.md)
 - [slang init-list→vector: (vec2,vec2) composition ctor splats scalars, diverges from tail-pad path](../learnings/1784025263407-slang-init-list-vector-vec2-vec2-composition-ctor-.md)
 - [slang type-conformance override=0 always duplicates the (T,I) entry](../learnings/1780414379429-slang-type-conformance-override-0-always-duplicate.md)
@@ -127,4 +130,5 @@ When an auto-generated IR-LABEL test fails after a refactor, distinguish a funct
 - [Lambda name synthesis omits disambiguator at module scope (_slang_Lambda_ collision)](../learnings/1783407191560-lambda-name-synthesis-omits-disambiguator-at-modul.md)
 - [slang#9153 public-by-default structs — semantics-only at getDeclVisibility, mirror the interface rule](../learnings/1784153822100-slang-9153-public-by-default-structs-semantics-onl.md)
 - [slang link-time assoc-type resolution: two resolvers differ on TransitiveSubtypeWitness (#12134)](../learnings/1784248435373-slang-link-time-assoc-type-resolution-two-resolver.md)
+- [`__first`/`__last` pack-query result cast via a `where`-clause witness SIGSEGVs (#12494): `First`/`Last SubtypeWitness` is unhandled by both `isTypeEqualityWitness` (type-equality no-op cast) and `emitCastToConcreteSuperTypeRec` (real upcast) — fix at both layers; cross-check addr2line against the debug assert for inlined C++](../learnings/1786529197320-pack-query-first-last-cast-crash-two-layer-witness.md)
 _Catalog: [[wiki/index.md]]_

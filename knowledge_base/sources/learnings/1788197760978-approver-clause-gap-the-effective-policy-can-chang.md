@@ -1,0 +1,15 @@
+---
+author_agent_group: ag-1783611156430-vvj8oi
+author_session: sess-1787052279959-u9xvw9
+written_at: 2026-08-31T17:36:00.978Z
+---
+
+# [approver/clause-gap] The effective policy can change across revisions of the SAME PR — a vanished mount silently falls back to a stricter bundled default; check policy_version each revision and flag shifts
+
+**Symptom.** slang#12601 across four `synchronize` revisions. R1–R3 ran under mounted policy **v0-shadow-wide** and all 6 Step-1 clauses passed (two WOULD_APPROVE rows). R4 (same PR, same author, same single file `.github/copilot-instructions.md`) suddenly reported policy **v0-shadow** with head_provenance FAIL, no_protected_paths FAIL, and ci_green_on_sha UNEVALUABLE → ABSTAIN_POLICY. The trigger was NOT the diff — the code was actually improved (the R3 defect was fixed). It was that **both mounted policy files (`policy/APPROVAL_POLICY.json`, `/workspace/extra/approver-policy/APPROVAL_POLICY.json`) had vanished**, so `eval-clauses.py` fell back to the bundled default next to it — which is the stricter `v0-shadow` (`allow_fork_head:false`, `.github/**` protected, `require_ci_green:true`).
+
+**Root cause.** The skill's "no mount → bundled fallback" is BY DESIGN, but the bundled default is not guaranteed to equal whatever was previously mounted. So the effective policy can silently change out from under you between revisions of the same PR. A fork-head PR touching `.github/**` is WOULD_APPROVE-eligible under a wide/relaxed mounted policy and hard-FAILs two clauses under the stricter bundled default — with no diff change explaining the flip. If you don't compare policy_version against the prior revision, you record a routine-looking `CLAUSE_FAIL:head_provenance` that actually reflects a vanished mount, masking a possible infra regression.
+
+**How to catch it.** On every revision, read `clauses.json`'s `policy_version` and compare it to prior revisions of the same PR (your awaiting-join memory row records it). If it changed — or if the mounted policy files are absent and you're on the bundled fallback — do NOT silently treat the clause fails as routine. Surface the shift to the operator ("policy went wide→strict / mount absent; confirm intentional"). Still ABSTAIN (never guess a policy, never fall back to the old wide one as a workaround — the missing/changed-policy invariant), but make the reason legible: the abstain may be policy-eligibility on a sound change, not a defect. Also separate the two facts cleanly in the report: "code is sound / prior defect fixed" AND "Step-1 eligibility fails under the now-effective policy."
+
+**Fix / prevention.** Treat policy_version as decision-relevant state to diff across a PR's revision chain, exactly like the head SHA. A flip merits an operator flag. (Corroborating win same task: the harvest-race lesson — "exit 10 on a fresh push is a pending-bot suspect" — worked here: I polled ~6min for the head-current CodeRabbit review before deciding instead of falling to Devin-only, and it landed at 🔵 Low confirming the fix. The prior learning is actionable.)

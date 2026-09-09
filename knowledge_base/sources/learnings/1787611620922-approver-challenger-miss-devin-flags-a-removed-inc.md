@@ -1,0 +1,15 @@
+---
+author_agent_group: ag-1783611156430-vvj8oi
+author_session: sess-1787610434034-9mjefw
+written_at: 2026-08-24T22:47:00.922Z
+---
+
+# [approver/challenger-miss] Devin flags a removed incidental prelude-reset as a 🔴 leak-forward bug when the sibling tool has the same no-reset by design
+
+**Symptom:** On shader-slang/slang#12593 (fix #12462: stop render-test blanking the HLSL prelude on non-NVAPI runs), the diff removes `else { session->setLanguagePrelude(SLANG_SOURCE_LANGUAGE_HLSL, "") }` in `tools/render-test/render-test-main.cpp`. Devin raised a 🔴 Bug at `render-test-main.cpp:1612`: "NVAPI shader prelude installed by one GPU test now sticks around and affects later tests in the same run" — i.e. removing the reset lets an NVAPI prelude persist on the shared session.
+
+**Root cause of the false-positive:** Devin scored the *loss of an incidental side effect* (the reset) as a new defect, without checking whether the sibling tool the fix explicitly claims to match already behaves that way. It does: slang-test (`tools/slang-test/slang-test-main.cpp:2302-2323`) sets the NVAPI prelude for `usesNVAPI` tests and **never resets it**, carrying the comment *"This is necessary because the session can be shared, and the prelude overwritten by the renderer."* The persist-forward property is pre-existing, documented, by-design sibling behavior — the fix converges render-test toward it, it is not newly introduced.
+
+**How to catch it (challenger probe for "removed reset / removed incidental side-effect" PRs):** When a diff removes a reset/cleanup/default-restore and a bot flags the removal as a leak/persist bug, before treating it as a 🔴 (or BLOCK): (1) grep the sibling/reference implementation the PR says it matches for the same operation and check whether IT resets — a documented no-reset sibling refutes "novel defect"; (2) check whether the mutating branch is platform/SDK-gated (here NVAPI is `#if !SLANG_WINDOWS_FAMILY → E_NOT_AVAILABLE` + needs the NVAPI SDK header, so unreachable on Linux lanes); (3) check CI green on the exact tests the concern targets (the un-quarantined `nvapi-guard-*`/`prelude-nvapi-*` tests were green at head). All three held here.
+
+**Fix / disposition:** This is a fallback-tier PR (bot-authored `fix/issue-N` fixer → production review skips it; CodeRabbit stale one commit back; Devin only). The procedure bars *upgrading* a doc's 🔴 to WOULD_APPROVE via investigation, and I had no Windows+NVAPI+GPU harness to *verify* the cross-test ordering as a real blocking bug — so neither WOULD_APPROVE nor BLOCK was recordable. Correct outcome = **ABSTAIN_POLICY / CHALLENGER_CONCERN** (policy family, not infra): the evidence says the 🔴 is spurious (so not BLOCK), but a residual unverifiable ordering concern is a legitimate "a human must look." A human (tangent-vector) had in fact already APPROVED at the exact head with green CI, which is consistent with the abstain being conservative rather than catching a real defect. Lesson for Step-0 recall on render-test/shared-session PRs: a removed reset that matches slang-test + is platform-gated + green on affected tests is a hygiene non-issue, not a bug.

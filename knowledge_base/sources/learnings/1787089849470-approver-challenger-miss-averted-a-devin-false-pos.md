@@ -1,0 +1,19 @@
+---
+author_agent_group: ag-1783611156430-vvj8oi
+author_session: sess-1787069167721-fc70ed
+written_at: 2026-08-18T21:50:49.470Z
+---
+
+# [approver/challenger-miss-averted] A Devin false-positive 🔴 on BYTE-IDENTICAL code routes correctly via doc-🔴→BLOCK→critique-must-fix→ABSTAIN(CRITIQUE_MUSTFIX), not BLOCK
+
+**Symptom.** On a revision re-decision (slang#12194 R2 @ 8d201ee6, Devin-only fallback tier), Devin — which reported **0 bugs** on the prior revision 9ae5301 — now reported **1 🔴 Bug** at `slang-lower-to-ir.cpp:16437` (the `FuncDecl`-keyed `entryPointInferredCaps` map: "same function compiled for two stages can be tagged with the wrong feature requirements"). A naive read of "doc has a 🔴 ⇒ BLOCK" would have recorded a BLOCK on code a domain-expert human had just approved.
+
+**Two things that made this a FALSE POSITIVE, and how each was established:**
+1. **Byte-identical code across the flip.** The flagged line 16437 and the whole map build/consume were byte-identical between 9ae5301 (Devin: 0 bugs) and 8d201ee6 (Devin: 1 bug). `git diff 9ae5301..8d201ee6 -- slang-lower-to-ir.cpp` showed the interval only reworded comments and removed a fallback at 16472-16481. **A 🔴 that materializes on unchanged code from a signal whose freshness is "unknown" is a false-positive tell, not a new defect.**
+2. **Unreachable by construction (the real proof).** An entry point's inferred set = stage-invariant `FuncDecl`/generic-struct requirements + SV semantic-accessor contributions. The ONLY feature-bearing semantic in `core.meta.slang` is `SV_Barycentrics`, whose getter is **fragment-only**. `validateSystemValueSemanticForType` stage-matches the accessor, so validating the same `FuncDecl` as an entry point at a *different* stage contributes nothing → no two same-FuncDecl entry points can obtain **divergent** inferred sets → the FuncDecl-keyed map cannot mis-attach a stage-specific feature requirement at this head. (A tempting-but-WRONG shortcut: "the emit loop only takes spirv/metal *version* atoms, and `spvFragmentBarycentricKHR` is a *feature* atom" — false, because that feature atom's capability *expansion* includes `_spirv_1_0`, which the loop DOES emit. Codex caught this in DECISION_REVIEW. The no-divergent-set argument is the correct one.)
+
+**Decision routing (the reusable procedure point).** A doc-🔴 mandates BLOCK at Step 2 *before* the challenger runs, and BLOCK is critique-gated. When the DECISION_REVIEW critique establishes the 🔴 is a false positive, you must NOT record BLOCK (wrong) and must NOT upgrade to WOULD_APPROVE (the procedure forbids upgrading a doc-🔴 by investigation). The correct terminal is **ABSTAIN_POLICY / reason_code CRITIQUE_MUSTFIX** ("must-fix ⇒ revise or ABSTAIN") — a human adjudicates the spurious flag. reason_code is NOT `CHALLENGER_CONCERN` (the challenger never legitimately runs on a 🔴 doc) and NOT `STALE_STAGE` (the signal was mixed-stale but partly head-current).
+
+**Mixed-stale detection (extends the R1 freshness lesson).** Same PR, R1 @ 9ae5301: Devin was fully stale (analyzed the parent) → ABSTAIN/STALE_STAGE. R2 @ 8d201ee6: Devin was PARTLY fresh — it cited head-only code (`SLANG_RELEASE_ASSERT` at 15261-15262, which exists only at head) yet ALSO carried forward the same stale note from R1 (`isStageOnlyRequirement … slang-check-shader.cpp:161-171`, the pre-9ae5301 one-way `.implies`). **Cross-check EVERY Devin citation's line numbers against the head individually — a single Devin report can mix fresh and stale findings.** `devin-commit-status.txt="unknown"` is the standing tell that freshness is unconfirmed and per-finding cross-checking is mandatory.
+
+**Calibration.** jhelferty-nv (author of the superseded prior attempt #10666) APPROVED at the exact decided head 8d201ee6b349, which corroborates the false-positive finding — but human approval is calibration, never a clause input, and never overrides the deterministic doc-🔴 handling rule.

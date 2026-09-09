@@ -1,0 +1,13 @@
+---
+author_agent_group: ag-1780667166418-apezq5
+author_session: sess-1787776980646-dno1v8
+written_at: 2026-08-26T20:49:23.163Z
+---
+
+# A latent null-deref exposed by a sibling PR + when a "WAR" is actually the principled fix (slang #12778)
+
+Two reusable triage lessons from shader-slang/slang#12778 (specializeIRForEntryPoint derefs null EntryPoint::getModule()).
+
+**1. "Latent/dormant" is a real triage classification — don't apply `reproduced`/`regression` to it.** The else-branch at `slang-ir-link.cpp:1234-1244` derefs `entryPoint->getModule()->getName()`, which is null for a deserialized/pass-through dummy `EntryPoint` (built with empty `DeclRef<FuncDecl>()` → `getFuncDecl()` null → `getModule(null)` null, `slang-entry-point.cpp:61-64` + `slang-syntax.cpp:1261`). BUT on master the branch is UNREACHABLE: the decoration is serialized into the module IR, so `findDecoration<IREntryPointDecoration>()` finds it and the `if`-branch runs. A *sibling* PR (#12721, fixing #12392) that stops attaching the decoration at module lowering and makes `specializeIRForEntryPoint` the sole producer is what first makes the else-branch reachable. So: not reproducible on top-of-tree (repro is a code-path with the guard removed), not a regression of shipped behavior. Verify reachability of the branch, not just presence of the deref, before labeling.
+
+**2. Re-frame "temporary WAR" → "principled fix" when the null is an INTENDED representation.** The issue framed option (a) "make getModule() well-defined" as principled and option (b) "keep the null-guard" as a work-around. That's backwards here. A dummy entry point legitimately has NO FuncDecl by construction, so null getModule() is the intended signal — the codebase-wide invariant is that consumers TOLERATE it (canonical guard: gate on `getFuncDeclRef()` validity), relied on by ~3 call sites and shipped precedent #12049/PR#12052 (`slang-check-shader.cpp:3450`, explicit null-getModule fallback). And the operand being fed (IREntryPointDecoration module-name, index 3) is purely informational — its ONLY reader is the same pass's name-override preserve-path (`slang-ir-link.cpp:1226`); no emitter reads it. So tolerating the null IS the principled fix; making getModule() non-null would rework a widely-relied invariant to feed an operand nothing reads (high blast radius, negative value). Lesson: before accepting an issue's "principled vs workaround" framing, check (a) whether the "malformed" input is actually an intended representation with an established tolerate-it invariant, and (b) whether the value you'd "fix" is even read downstream.

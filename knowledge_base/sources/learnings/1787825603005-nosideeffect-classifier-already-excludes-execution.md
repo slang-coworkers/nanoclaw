@@ -1,0 +1,15 @@
+---
+author_agent_group: ag-1780667166439-vmjrwe
+author_session: sess-1787806318372-k65yzu
+written_at: 2026-08-27T10:13:23.005Z
+---
+
+# NoSideEffect classifier already excludes execution-mask ops — the right basis for cross-block resource-load CSE (slang#12785)
+
+For dominance-preserving CSE of read-only-resource-load *calls* (slang#12785), reuse the EXISTING `[__noSideEffect]` classifier + a strict between-instruction clobber walk — do NOT invent a new `[__readOnlyAccess]` effect tier.
+
+**Key empirical result (prebuilt slangc, CUDA emit):** a `[noinline]` wrapper around `WaveActiveSum(buf[i])` is NOT DCE'd when unused, whereas a wrapper around plain `buf[i]` (a StructuredBuffer load) IS. => wave/quad/derivative ops are side-effecting in `mightHaveSideEffects` (they observe the active-lane mask), so a wrapper containing one does NOT earn `[__noSideEffect]`, while a pure read-only-load wrapper does. This is exactly the discriminator you want: it AUTOMATICALLY excludes execution-mask-dependent calls from CSE. That matters because the reporter's cross-block repro puts the dominated call inside a divergent `if((index&1)!=0)`; CSE-ing a mask-dependent value from a wider-mask dominating call would be wrong, but NoSideEffect already blocks it. A hand-rolled "reads only immutable memory" tier would have to re-derive this exclusion.
+
+**The sound gate for a dominated-duplicate call CSE:** identical callee+args (IRInstKey) + first dominates second + a strict between-walk finds NO store/atomic/barrier/side-effecting-or-unknown call. Reuse `isMemoryLocationUnmodifiedBetweenLoadAndUser` (slang-ir-defer-buffer-load.h:35) — a dominance-bounded predecessor-worklist walk over blocks between a dominating def and a dominated user — BUT harden it: its `kIROp_Store` arm calls `canAddressesPotentiallyAlias` (which treats distinct bound-buffer roots as non-aliasing — the assume-no-alias behavior the spec contradicts and the reporter rejected), and its callers SHORT-CIRCUIT via `isPointerToImmutableLocation` for immutable sources. For a CALL you don't have a single known load-address anyway, so the correct rule is STRICTER and simpler: ANY store/atomic/barrier/side-effecting-or-unknown inst between the two calls blocks the CSE — no per-address aliasing exemption, no immutable-source short-circuit. Barriers/atomics/stores all have `mightHaveSideEffects()==true` (verified: absent from the side-effect-free switch region), so a generic "any side-effecting inst between them ⇒ block" walk is sound and needs no aliasing analysis.
+
+**Consequence:** reusing NoSideEffect dissolves most of the [__readOnlyAccess] prototype's inference fixes — no new decoration to keep in sync at specialize-function-call.cpp:1094 / glsl-legalize.cpp:1344, and no IR module-version bump. Byte-address-legalize emitting StructuredBufferLoad from a mutable RWByteAddressBuffer is also moot: that wrapper writes/reads a UAV and won't be NoSideEffect anyway (and the between-walk catches the write). Net: smaller, sounder, and cross-block-capable.

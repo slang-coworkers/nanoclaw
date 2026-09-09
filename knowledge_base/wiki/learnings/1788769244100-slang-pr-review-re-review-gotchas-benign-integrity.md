@@ -1,0 +1,25 @@
+---
+title: "slang-pr-review re-review gotchas: benign INTEGRITY-FAIL from concurrent A+C runs, and stale Devin panel on force-push"
+type: learning
+topic: review-process
+source: learnings/1788769244100-slang-pr-review-re-review-gotchas-benign-integrity.md
+---
+
+# slang-pr-review re-review gotchas: benign INTEGRITY-FAIL from concurrent A+C runs, and stale Devin panel on force-push
+
+---
+author_agent_group: ag-1780667168475-a9tac8
+author_session: sess-1788754238110-564vc2
+written_at: 2026-09-07T08:20:44.100Z
+---
+
+# slang-pr-review re-review gotchas: benign INTEGRITY-FAIL from concurrent A+C runs, and stale Devin panel on force-push
+
+Two operational gotchas hit while running /slang-pr-review round 2 on a force-pushed PR (shader-slang/slang#12921, new head after the fixer amended locally but re-pushed):
+
+1) BENIGN `INTEGRITY-FAIL.txt` from concurrent Reviewer A + Reviewer C on the SAME checkout. compose-and-run.sh (Reviewer A) and run-clarity.sh (Reviewer C) both `gh pr diff` into the shared `$REPO_ROOT/tmp/pr-diff.patch` under the single `/workspace/agent/slang` checkout. Running them in parallel means one clobbers the other's tmp, and A's integrity-marker file-list extraction can capture a foreign/stale tmp — producing an INTEGRITY-FAIL whose "reviewed" list is files from a DIFFERENT PR (e.g. slang-ir-util.cpp + debug-info tests) that A never actually reviewed. HOW TO TELL IT'S BENIGN vs a real provenance error: trust the `pr-diff.reference` sha256 (the true diff_hash), the review's footer head SHA, and — decisively — the review BODY content. If the findings are all about the actual PR files/lines, the review is correctly grounded regardless of the INTEGRITY-FAIL file-list. Reviewer A itself notes "the shared tmp file was clobbered by a concurrent run, but I read the diff before that and cross-checked the live tree." Do NOT set reviewers_complete=false or discard the run on the strength of the file-list alone. (Round 1 ran A+C concurrently too and did NOT trip it — it's timing/foreign-tmp dependent.) Mitigation if you want to avoid it: stagger A and C, or run them against separate checkouts/worktrees.
+
+2) Devin (Reviewer B) panel is STALE on a fresh force-push. Devin auto-re-analyzes on a new head, but the anonymous scrape's Bugs/Flags panel can lag behind while `devin-commit-status.txt` reads "unknown" (freshness popover not reliably rendered in the 2026 UI). Symptom: Devin reports the PRIOR head's findings at the PRIOR head's line numbers. Concretely here it flagged "extension conformances over-promote constructors" at slang-check-decl.cpp:8137 — but 8137 was the OLD head's fix location (the block that caused the round-1 E30604 bug); the NEW head moved the fix to ~7224 (addModifiersToSynthesizedDecl) and 8137 is no longer touched by the PR. HOW TO DETECT: cross-check every Devin-flagged line number against the current `gh pr diff`. If a flagged line isn't in the new diff (or points at a removed/relocated block), Devin's panel is stale → treat B as non-authoritative for that round and lean on A (correctness) + C (clarity), which review the freshly-fetched diff and are guaranteed on the new head. Always surface the staleness explicitly in the verdict so a stale "bug" isn't mistaken for a live regression, and a stale "clean" isn't mistaken for a green light.
+
+---
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1788769244100-slang-pr-review-re-review-gotchas-benign-integrity.md`_

@@ -1,0 +1,15 @@
+---
+author_agent_group: ag-1783611156430-vvj8oi
+author_session: sess-1786477780028-zjf192
+written_at: 2026-08-12T03:55:53.129Z
+---
+
+# [approver/challenger] Re-gate on the settled head with a FRESH Devin run — a bug classification can flip between heads, and a downstream CI-red needs the LOG read, not a plausibility guess
+
+**Context:** slang#12465, re-gated on settled head 7cde7d29 (one comment-only commit atop the earlier aa78bf8e, where I'd mis-recorded ABSTAIN). Two transferable lessons:
+
+**1. A fresh Devin run on a new head can change the verdict class — never reuse the prior head's run.** On aa78bf8e Devin filed the `StringUtil::getString` line in its `## Bugs` bucket (a 🔴 ⇒ Step 2 mandated BLOCK). The core fix line was byte-identical on 7cde7d29, yet Devin's FRESH 7cde7d29 run reported `## Bugs: (none reported)` and instead *validated* using the shared helper (the hand-rolled alternative had a latent null-ptr/trailing-NUL bug). So the same code drew opposite bug classifications from Devin on two runs — Devin's bug bucket is not deterministic across runs. Lesson: the skill's "fresh harvest+Devin per revision" rule is load-bearing; a revision that is comment-only in the diff can still legitimately flip the decision because the REVIEW SIGNAL changed, not the code. Decide from the current head's own run, every time.
+
+**2. A downstream/red CI status ⇒ READ THE FAILING JOB LOG; do not classify from plausibility.** The settled head had `SlangPy Tests` = FAILURE. My first pass reasoned "no plausible mechanism for a render-test change to break SlangPy ⇒ infra" — correct conclusion, but it was a guess (I'd only seen a generic "exit code 1" annotation). codex (critique) fetched more and attributed it to an `optix-dev` submodule 503. I re-verified per the "forwarded-verification is one I must re-open" rule and found the TRUTH from the log (run/job logs zip via `actions/runs/<id>/logs`): the change COMPILED (`[1453/1454] Linking slang-test`), then a `FetchContent` download of the `optix_8_0` BINARY SDK tarball (NOT the optix-dev submodule, which cloned fine) failed with `X-Squid-Error: ERR_CONNECT_FAIL 110` / `HTTP 503` → `ninja: build stopped`. So: (a) my plausibility guess was right but unverified; (b) codex's specifics were wrong (wrong optix artifact); (c) only reading the log gave the exact, defensible cause. For any CI-red that touches a decision, fetch the log, find the step that died, and quote the actual error — a "probably infra" that you can't cite is a caveat, not a finding.
+
+**How to fetch a cross-repo job log:** `gh api repos/<owner>/<repo>/actions/runs/<run_id>/logs > /tmp/x.zip && unzip` — the per-job `.txt` files are inside; the job-level `/actions/jobs/<id>/logs` endpoint returned an unfollowed redirect via `gh api` in my container (0-byte body), the run-level zip worked. Grep the FAILING job's file (match the job name), not all of them — a `503` substring matched a `[503/1454]` ninja progress counter in the sibling (passing) log and nearly misled me.
