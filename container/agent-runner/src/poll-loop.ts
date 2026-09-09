@@ -84,6 +84,13 @@ const FRESH_SESSION_IDLE_END_MS = process.env.NANOCLAW_FRESH_SESSION_IDLE_END_MS
   ? Math.max(60_000, parseInt(process.env.NANOCLAW_FRESH_SESSION_IDLE_END_MS, 10))
   : 300_000;
 
+// A scheduled task run whose provider turn dies on a KNOWN transient error
+// (stream stall, gateway 5xx, connection reset) is bounced so the host reclaims
+// the claim and the row is polled again, instead of being acked complete with
+// the error text as its run log. Bounded per row for the life of this runner.
+const TASK_BOUNCE_MAX_TRIES = 3;
+const taskBounceCounts = new Map<string, number>();
+
 /**
  * Number of consecutive driver-classified read failures after which the
  * follow-up poll gives up and exits the process. At ACTIVE_POLL_INTERVAL_MS
@@ -3471,17 +3478,42 @@ export async function processQuery(
         // acks normally below) or it was silent again (and the branch at the
         // bottom finalizes it, because silentTurnNudged is already set).
         silentTurnOpen = false;
-        const bounceClass =
-          event.isError === true && event.text && routing.channelType === 'agent'
-            ? classifyTurnError(event.text)
-            : 'permanent';
-        if (event.isError === true && event.text && routing.channelType === 'agent' && bounceClass !== 'permanent') {
-          markBounced(initialBatchIds, bounceClass === 'transient' ? 'bounced-transient' : 'bounced-unknown');
+        const isTaskTurn = routing.taskRun === true;
+        const bounceEligible =
+          event.isError === true && !!event.text && (routing.channelType === 'agent' || isTaskTurn);
+        const bounceClass = bounceEligible && event.text ? classifyTurnError(event.text) : 'permanent';
+        // Task runs bounce only on KNOWN transient signatures (never 'unknown'),
+        // and at most TASK_BOUNCE_MAX_TRIES times per row while this runner lives;
+        // after that the error is logged as the run's result as before. Prod
+        // 2026-09-09: a stream stall ("The response stopped arriving") ended a
+        // wiki fold after 4 minutes and the fire was acked complete, no retry.
+        const taskTries = isTaskTurn ? Math.max(0, ...initialBatchIds.map((id) => taskBounceCounts.get(id) ?? 0)) : 0;
+        const taskBounce = isTaskTurn && bounceClass === 'transient' && taskTries < TASK_BOUNCE_MAX_TRIES;
+        if (
+          bounceEligible &&
+          event.text &&
+          bounceClass !== 'permanent' &&
+          (routing.channelType === 'agent' || taskBounce)
+        ) {
+          const status = bounceClass === 'transient' ? 'bounced-transient' : 'bounced-unknown';
+          markBounced(initialBatchIds, status);
           bouncedIds.push(...initialBatchIds);
           bounced = true;
-          log(
-            `a2a transient bounce (${bounceClass}) — trigger left pending for host redrive: ` + event.text.slice(0, 80),
-          );
+          if (isTaskTurn) {
+            for (const id of initialBatchIds) taskBounceCounts.set(id, taskTries + 1);
+            log(
+              `task-run transient bounce (try ${taskTries + 1}/${TASK_BOUNCE_MAX_TRIES}) — row left pending for retry: ` +
+                event.text.slice(0, 80),
+            );
+            await autoAppendTaskLog(
+              `[transient provider error, retry ${taskTries + 1}/${TASK_BOUNCE_MAX_TRIES}] ${event.text.slice(0, 200)}`,
+            );
+          } else {
+            log(
+              `a2a transient bounce (${bounceClass}) — trigger left pending for host redrive: ` +
+                event.text.slice(0, 80),
+            );
+          }
           notifyExchangeComplete(onExchangeComplete, {
             prompt: archivePrompts[0] ?? initialPrompt,
             result: event.text,
