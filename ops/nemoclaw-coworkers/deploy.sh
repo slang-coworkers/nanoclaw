@@ -26,6 +26,26 @@ git stash push -m "deploy-$TS" >/dev/null 2>&1 || true
 echo "== merge origin/nv-hermes ($(git rev-parse --short origin/nv-hermes))"
 git merge --no-edit origin/nv-hermes
 
+echo "== learnings-wiki vocabulary -> data/shared/.wiki-config.json (the KB root the builder reads)"
+mkdir -p data/shared
+REPO_CFG=ops/nemoclaw-coworkers/learnings-wiki/wiki-config.json
+LIVE_CFG=data/shared/.wiki-config.json
+if [ ! -f "$REPO_CFG" ]; then
+  # ops/nemoclaw-coworkers is nv-hermes-owned; a merge that does not carry the file yet must not
+  # abort the deploy under set -e AFTER the DB backup but BEFORE the build and the restart.
+  echo "  $REPO_CFG not in the merged tree; leaving $LIVE_CFG as it is"
+elif [ -f "$LIVE_CFG" ] && ! cmp -s "$REPO_CFG" "$LIVE_CFG"; then
+  # The fold agent is told to edit the LIVE file when VOCAB repeats, so a difference here is
+  # probably agent-added vocabulary. The repo copy still wins, but keep the old one and print the
+  # diff: silently deleting a vocabulary row nobody can reconstruct is not an acceptable deploy.
+  cp "$LIVE_CFG" "$LIVE_CFG.bak-$TS"
+  echo "  live $LIVE_CFG DIFFERS from the repo copy (agent-added vocabulary?) — kept as $LIVE_CFG.bak-$TS"
+  diff -u "$LIVE_CFG.bak-$TS" "$REPO_CFG" || true
+  cp "$REPO_CFG" "$LIVE_CFG"
+else
+  cp "$REPO_CFG" "$LIVE_CFG"
+fi
+
 echo "== requirements/plan: git is the source of truth; mirror docs/hermes-port into the shared dir the coworkers read"
 mkdir -p data/shared/hermes && cp docs/hermes-port/*.md data/shared/hermes/
 
