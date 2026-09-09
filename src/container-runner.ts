@@ -102,6 +102,21 @@ import {
   type McpAllowlistResolution,
 } from './mcp-allowlist.js';
 import { validateAdditionalMounts } from './modules/mount-security/index.js';
+// Provider contracts use a separate barrel so update-skills identity detection
+// remains tied to src/providers/index.ts.
+import './provider-contracts/index.js';
+// The composer is wired ONLY through a provider contract's composeProjectDocument
+// (codex path). This fork's own CLAUDE.md comes from the lego spine — see the
+// `defaultSurfaces` branch in buildMounts.
+import { composeGroupProjectDoc } from './project-doc-compose.js';
+import { getProviderHostContract } from './provider-contracts/registry.js';
+import { resolveProviderName, resolveSpawnProvider } from './providers/provider-name.js';
+import {
+  providerStateVolumePath,
+  realizeProviderSpawnSurfaces,
+  syncSharedSkillLinks,
+  type ProviderSpawnRealization,
+} from './provider-contracts/realize.js';
 // Provider host-side config barrel — each provider that needs host-side
 // container setup self-registers on import.
 import './providers/index.js';
@@ -1091,15 +1106,17 @@ async function spawnContainer(session: Session): Promise<void> {
   // and buildContainerArgs so we don't re-read.
   const containerConfig = await materializeContainerJson(agentGroup.id);
 
-  const providerName = resolveProviderName(session.agent_provider, containerConfig.provider);
+  // initGroupFilesystem must scaffold for the provider the container will
+  // actually run, so this resolves through the same call as the contribution.
+  const providerName = resolveSpawnProvider({ session, agentGroup, containerConfig });
   await initGroupFilesystem(agentGroup, { provider: providerName });
 
   // Resolve the effective provider + any host-side contribution it declares
   // (extra mounts, env passthrough). Computed once and threaded through both
   // buildMounts and buildContainerArgs so side effects (mkdir, etc.) fire once.
-  const { provider, contribution } = await resolveProviderContribution(session, agentGroup, containerConfig);
+  const { provider, contribution, surfaces } = await resolveProviderContribution(session, agentGroup, containerConfig);
 
-  const mounts = await buildMounts(agentGroup, session, containerConfig, provider, contribution);
+  const mounts = await buildMounts(agentGroup, session, containerConfig, provider, contribution, surfaces);
   // Container name embeds the NanoClaw session id tail so the dashboard can
   // route shell-exec requests to the right container when a coworker has
   // multiple live sessions (root + thread sessions). Without the tail, every
@@ -1607,13 +1624,7 @@ export async function honorPendingStopIntents(
  *
  * Pure so the precedence can be unit-tested without a DB or filesystem.
  */
-export function resolveProviderName(
-  sessionProvider: string | null | undefined,
-  agentGroupProvider: string | null | undefined,
-  containerConfigProvider?: string | null | undefined,
-): string {
-  return (sessionProvider || agentGroupProvider || containerConfigProvider || 'claude').toLowerCase();
-}
+export { resolveProviderName, resolveSpawnProvider };
 
 /**
  * What the sweep learned. It publishes nothing, so it cannot report a publication
@@ -1755,32 +1766,56 @@ export async function detectStaleContainers(): Promise<
   return stale;
 }
 
-async function resolveProviderContribution(
+export async function resolveProviderContribution(
   session: Session,
   agentGroup: AgentGroup,
   containerConfig: import('./container-config.js').ContainerConfig,
-): Promise<{ provider: string; contribution: ProviderContainerContribution }> {
-  // Precedence: session provider > agent_group provider > container.json > default.
-  // `agentGroup.agent_provider` is a real tier on this fork — upstream's call
-  // passes only two arguments, which would make a group-level provider pick
-  // silently lose to container.json. The config is now threaded in by the
-  // caller (already materialized once per spawn) rather than re-read here.
-  const provider = resolveProviderName(
-    session.agent_provider,
-    agentGroup.agent_provider,
-    containerConfig.provider ?? null,
-  );
+): Promise<{ provider: string; contribution: ProviderContainerContribution; surfaces?: ProviderSpawnRealization }> {
+  // The config is threaded in by the caller (already materialized once per
+  // spawn) rather than re-read here.
+  const provider = resolveSpawnProvider({ session, agentGroup, containerConfig });
   const fn = getProviderContainerConfig(provider);
-  const contribution = fn
-    ? await fn({
-        sessionDir: sessionDir(agentGroup.id, session.id),
-        agentGroupId: agentGroup.id,
-        groupDir: path.resolve(GROUPS_DIR, agentGroup.folder),
-        selectedSkills: selectedSkillNames(containerConfig),
-        hostEnv: process.env,
-      })
-    : {};
-  return { provider, contribution };
+  const contract = getProviderHostContract(provider);
+  if (!contract && !fn) {
+    // Same as before contracts existed: the group spawns with the default
+    // (Claude) surfaces. Say so once per spawn so an operator can spot it.
+    log.warn('Provider has no registered host contract or adapter; spawning with default surfaces', {
+      provider,
+      agentGroupId: agentGroup.id,
+    });
+  }
+  const context = {
+    sessionDir: sessionDir(agentGroup.id, session.id),
+    agentGroupId: agentGroup.id,
+    groupDir: path.resolve(GROUPS_DIR, agentGroup.folder),
+    selectedSkills: selectedSkillNames(containerConfig),
+    hostEnv: process.env,
+  };
+  // `!providerProvidesAgentSurfaces` means this fork owns the agent surfaces, so
+  // the contract's spawn realization must not run: its composeProjectDocument
+  // would be a SECOND writer of CLAUDE.md alongside the lego spine composer.
+  // A contract that declares it needs a legacy adapter and has none is a broken
+  // install — checked BEFORE the ownership gate below, so a misdeclared payload
+  // fails fast whichever side owns the surfaces.
+  if (contract?.legacyHostAdapter === 'required' && !fn) {
+    throw new Error(`Provider '${provider}' host contract requires a legacy host adapter`);
+  }
+  if (!contract || !providerProvidesAgentSurfaces(provider))
+    return { provider, contribution: fn ? await fn(context) : {} };
+
+  const surfaces = await realizeProviderSpawnSurfaces(
+    provider,
+    contract,
+    agentGroup.id,
+    context.groupDir,
+    context.sessionDir,
+    context.selectedSkills,
+    {
+      legacyOverlay: () => Promise.resolve(fn?.({ ...context, coreOwnsProviderSurfaces: true as const }) ?? {}),
+      composeProjectDocument: (spec) => composeGroupProjectDoc(agentGroup, context.groupDir, spec),
+    },
+  );
+  return { provider, contribution: surfaces.contribution, surfaces };
 }
 
 /**
@@ -1809,17 +1844,46 @@ export async function buildMounts(
   containerConfig: import('./container-config.js').ContainerConfig,
   provider: string,
   providerContribution: ProviderContainerContribution,
+  providerSurfaces?: ProviderSpawnRealization,
 ): Promise<VolumeMount[]> {
   const projectRoot = process.cwd();
 
   // Default agent surfaces (composed project doc, skill links, provider state
   // dir) apply unless the provider declares it provides its own — a capability,
   // never a provider name. See provider-container-registry.
+  //
+  // Declaring a host contract and owning the agent surfaces are independent:
+  // a provider may declare a contract for its runtime, commands and inference
+  // while the surfaces remain this fork's own (.claude-shared/skills, scoped by
+  // coworker type, and .claude-shared/agents). A contract therefore decides
+  // surface paths, mounts and duplicate checks only while it is the active one,
+  // so anything surface-shaped reads `activeSurfaceContract`, never `contract`.
   const defaultSurfaces = !providerProvidesAgentSurfaces(provider);
+  const activeSurfaceContract = defaultSurfaces ? undefined : getProviderHostContract(provider);
 
   const groupDir = path.resolve(GROUPS_DIR, agentGroup.folder);
   const claudeDir = path.join(DATA_DIR, 'v2-sessions', agentGroup.id, '.claude-shared');
-  if (defaultSurfaces) {
+  const sessDir = sessionDir(agentGroup.id, session.id);
+  const projectDocument = activeSurfaceContract?.projectDocument;
+  let lateProjectDocumentMount: VolumeMount | undefined;
+  const lateStateVolumeMounts = new Map<string, VolumeMount>();
+  const lateSkillViewMounts = new Map<string, VolumeMount[]>();
+  let skillBackingPaths = new Map<string, string>();
+  if (activeSurfaceContract) {
+    providerSurfaces ??= await realizeProviderSpawnSurfaces(
+      provider,
+      activeSurfaceContract,
+      agentGroup.id,
+      groupDir,
+      sessDir,
+      selectedSkillNames(containerConfig),
+      {
+        legacyOverlay: async () => providerContribution,
+        composeProjectDocument: (spec) => composeGroupProjectDoc(agentGroup, groupDir, spec),
+      },
+    );
+    skillBackingPaths = providerSurfaces.skillBackingPaths;
+  } else if (defaultSurfaces) {
     syncSkillSymlinks(claudeDir, containerConfig);
     // No project-doc composer here: this fork composes CLAUDE.md from the lego
     // spine (composeCoworkerClaudeMd, called in spawnContainer). Upstream's
@@ -1828,7 +1892,6 @@ export async function buildMounts(
   }
 
   const mounts: VolumeMount[] = [];
-  const sessDir = sessionDir(agentGroup.id, session.id);
   const scope = agentGroup.id;
 
   // Convenience: drop a symlink at groups/<folder>/.workflow-state.json pointing
@@ -2247,7 +2310,42 @@ export async function buildMounts(
   // Claude state dir — only for providers using the default Claude surfaces.
   // Under `dataRoot/v2-sessions/<group>`, so 'group-state' is what the policy
   // requires here.
-  if (defaultSurfaces) {
+  // A provider that owns its surfaces gets them from its contract's declared
+  // state volumes and skill views; this fork's own surfaces stay on the branch
+  // below.
+  if (activeSurfaceContract) {
+    for (const volume of activeSurfaceContract.stateVolumes) {
+      const hostPath = providerStateVolumePath(volume, agentGroup.id, sessDir);
+      const mount = {
+        hostPath,
+        containerPath: volume.containerPath,
+        readonly: volume.mode === 'ro',
+        mountClass: volume.mountClass,
+        scope,
+      } satisfies VolumeMount;
+      if (mount.mountClass === 'allowlisted-extra') lateStateVolumeMounts.set(volume.id, mount);
+      else mounts.push(mount);
+    }
+    for (const view of activeSurfaceContract.skillViews) {
+      const hostPath = skillBackingPaths.get(view.backingId);
+      if (!hostPath)
+        throw new Error(`Provider '${provider}' skill view references unknown backing '${view.backingId}'`);
+      const mount = {
+        hostPath,
+        containerPath: view.containerPath,
+        readonly: view.mode === 'ro',
+        mountClass: view.mountClass,
+        scope,
+      } satisfies VolumeMount;
+      if (mount.mountClass === 'allowlisted-extra') {
+        const backingMounts = lateSkillViewMounts.get(view.backingId) ?? [];
+        backingMounts.push(mount);
+        lateSkillViewMounts.set(view.backingId, backingMounts);
+      } else {
+        mounts.push(mount);
+      }
+    }
+  } else if (defaultSurfaces) {
     mounts.push({
       hostPath: claudeDir,
       containerPath: '/home/node/.claude',
@@ -2293,15 +2391,22 @@ export async function buildMounts(
   // The spine regenerates it every spawn, so an agent-side write would be
   // clobbered; read-only makes that fail loudly instead. CLAUDE.local.md
   // (per-group memory) stays RW via the group-dir mount.
-  const composedClaudeMd = path.join(groupDir, 'CLAUDE.md');
-  if (defaultSurfaces && fs.existsSync(composedClaudeMd)) {
-    mounts.push({
-      hostPath: composedClaudeMd,
-      containerPath: '/workspace/agent/CLAUDE.md',
+  // A declared contract names its own document (file name, container path, mount
+  // class); this fork's own document is CLAUDE.md at the agent workspace. Both
+  // are read-only: the spine regenerates the file every spawn, so an agent-side
+  // write would be clobbered — read-only makes that fail loudly instead.
+  // CLAUDE.local.md (per-group memory) stays RW via the group-dir mount.
+  const composedProjectDocument = path.join(groupDir, projectDocument?.fileName ?? 'CLAUDE.md');
+  if ((projectDocument || defaultSurfaces) && fs.existsSync(composedProjectDocument)) {
+    const mount = {
+      hostPath: composedProjectDocument,
+      containerPath: projectDocument?.containerPath ?? '/workspace/agent/CLAUDE.md',
       readonly: true,
-      mountClass: 'group-state',
+      mountClass: projectDocument?.mountClass ?? ('group-state' as const),
       scope,
-    });
+    } satisfies VolumeMount;
+    if (mount.mountClass === 'allowlisted-extra') lateProjectDocumentMount = mount;
+    else mounts.push(mount);
   }
 
   // Per-session codex state at /home/node/.codex (sessions/, memories/, etc.).
@@ -2335,13 +2440,21 @@ export async function buildMounts(
       }
     }
   }
-  mounts.push({
-    hostPath: codexDir,
-    containerPath: '/home/node/.codex',
-    readonly: false,
-    mountClass: 'group-state',
-    scope,
-  });
+  // Skipped when a declared contract already claims this container path: two
+  // mounts on one path is a duplicate the runtime would have to break a tie on.
+  // The contract's own state volume wins — it is the provider's declaration of
+  // where its state lives; this universal mount exists for the providers that
+  // declare nothing.
+  const codexPathDeclared =
+    activeSurfaceContract?.stateVolumes.some((volume) => volume.containerPath === '/home/node/.codex') === true;
+  if (!codexPathDeclared)
+    mounts.push({
+      hostPath: codexDir,
+      containerPath: '/home/node/.codex',
+      readonly: false,
+      mountClass: 'group-state',
+      scope,
+    });
 
   // Overlay hook scripts at /app/hooks (read-only — host-managed).
   //
@@ -2436,6 +2549,21 @@ export async function buildMounts(
     mounts.push(...validated.map((m) => ({ ...m, mountClass: 'allowlisted-extra' as const, scope })));
   }
 
+  // Declared allowlisted-extra surfaces occupy the same late slot the callback
+  // contribution used, in the spawn order derived from resource kinds. Every
+  // map filled above must be drained here: a mount collected and never
+  // re-pushed is dropped with no error.
+  if (activeSurfaceContract) {
+    for (const volume of activeSurfaceContract.stateVolumes) {
+      const mount = lateStateVolumeMounts.get(volume.id);
+      if (mount) mounts.push(mount);
+    }
+    for (const backing of activeSurfaceContract.skillBackings) {
+      mounts.push(...(lateSkillViewMounts.get(backing.id) ?? []));
+    }
+    if (lateProjectDocumentMount) mounts.push(lateProjectDocumentMount);
+  }
+
   // claude-trace: mount the patched reverse-proxy build read-only at
   // /opt/claude-trace. The wrapper (CLAUDE_CODE_EXECUTABLE, set below) runs the
   // native claude binary behind claude-trace's local reverse proxy and dumps
@@ -2465,8 +2593,10 @@ export async function buildMounts(
   // Provider-contributed mounts (e.g. opencode-xdg). Vetted upstream by the
   // in-tree provider registration, which is exactly the 'allowlisted-extra'
   // contract — classing them group-state would deny any provider whose state
-  // root sits outside the group subtree.
-  if (providerContribution.mounts) {
+  // root sits outside the group subtree. Applied whenever no active surface
+  // contract supersedes them, matching the condition under which
+  // resolveProviderContribution invoked the adapter that produced them.
+  if (!activeSurfaceContract && providerContribution.mounts) {
     mounts.push(...providerContribution.mounts.map((m) => ({ ...m, mountClass: 'allowlisted-extra' as const, scope })));
   }
 
@@ -2718,48 +2848,11 @@ export function syncSkillSymlinks(
     fs.mkdirSync(skillsDir, { recursive: true });
   }
 
-  const desired = selectedSkillNames(containerConfig);
-  const desiredSet = new Set(desired);
-
-  // Remove symlinks not in the desired set
-  for (const entry of fs.readdirSync(skillsDir)) {
-    const entryPath = path.join(skillsDir, entry);
-    let isSymlink = false;
-    try {
-      isSymlink = fs.lstatSync(entryPath).isSymbolicLink();
-    } catch {
-      continue;
-    }
-    if (isSymlink && !desiredSet.has(entry)) {
-      fs.unlinkSync(entryPath);
-    }
-  }
-
-  // Create symlinks for desired skills (container path targets)
-  for (const skill of desired) {
-    const linkPath = path.join(skillsDir, skill);
-    let entry: fs.Stats | undefined;
-    try {
-      entry = fs.lstatSync(linkPath);
-    } catch {
-      /* missing */
-    }
-    if (!entry) {
-      fs.symlinkSync(`/app/skills/${skill}`, linkPath);
-    } else if (!entry.isSymbolicLink()) {
-      // A real entry here is either a template overlay (intentional; see
-      // src/group-skills.ts) or a stale pre-refactor skill copy that shadows
-      // the shared skill (#3001). No marker distinguishes them yet, so
-      // surface the skip instead of staying silent.
-      log.warn(
-        'Shared skill not symlinked: real entry occupies the path (template overlay or stale pre-refactor copy)',
-        {
-          skill,
-          path: linkPath,
-        },
-      );
-    }
-  }
+  // Same body as the declared-contract path; real (non-symlink) entries are
+  // either a template overlay (intentional; see src/group-skills.ts) or a stale
+  // pre-refactor skill copy that shadows the shared skill (#3001), so the
+  // skip is surfaced as a warning.
+  syncSharedSkillLinks(skillsDir, selectedSkillNames(containerConfig), true);
 }
 
 /**

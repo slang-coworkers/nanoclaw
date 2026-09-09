@@ -12,6 +12,7 @@ import {
   checkRoutingGate,
   classifyThrownBounce,
   dispatchResultText,
+  freshSessionArrivalAction,
   isCorruptionError,
   isNewSessionBatch,
   processQuery,
@@ -604,8 +605,7 @@ describe('mock provider', () => {
     const typed = events.filter((e) => e.type !== 'activity');
     expect(typed.length).toBeGreaterThanOrEqual(3);
     expect(typed[0].type).toBe('init');
-    // The mock declares emitsMidTurnText, so the turn's text streams as a
-    // text event before the result repeats it.
+    // The mock streams text before the result repeats it.
     expect(typed[1].type).toBe('text');
     expect(typed[2].type).toBe('result');
     expect((typed[2] as { text: string }).text).toBe('Echo: Hello');
@@ -2041,4 +2041,97 @@ describe('silent turn — a result that delivers nothing is never acked complete
     expect(pushes).toHaveLength(0); // re-asking a failed turn just re-hammers it
     expect(getUndeliveredMessages()).toHaveLength(1);
   });
+});
+
+describe('fresh-session task arriving mid-query — defer, never abort the active turn', () => {
+  // Prod 2026-09-09: a 06:00 scheduled fire landed while the same series' manual
+  // run was mid fan-out. The poller ended the query to route the task through
+  // the fresh-session path; end() closes the SDK input stream, so every in-flight
+  // tool call was auto-denied and the run died. The task must wait instead.
+
+  it('freshSessionArrivalAction — defer while active, end only once idle past the idle-end threshold', () => {
+    expect(freshSessionArrivalAction(0, 60_000)).toBe('defer');
+    expect(freshSessionArrivalAction(59_999, 60_000)).toBe('defer');
+    expect(freshSessionArrivalAction(60_000, 60_000)).toBe('defer');
+    expect(freshSessionArrivalAction(60_001, 60_000)).toBe('end');
+  });
+
+  it('leaves the task pending and does not end the query while the turn is still producing events', async () => {
+    const pushes: string[] = [];
+    let endCalls = 0;
+    let endCallsSeenMidTurn = -1;
+    let pushedMidTurn = false;
+
+    async function* events(): AsyncGenerator<ProviderEvent> {
+      yield { type: 'init', continuation: 's1' };
+      yield { type: 'result', text: 'fold batch 1 done' };
+      // The scheduled fire: a task WITHOUT new_session:false, i.e. fresh-session by default.
+      insertMessage('t2', 'task', { prompt: 'scheduled fire' });
+      // The follow-up poller ticks every 500ms — give it several looks.
+      await new Promise((r) => setTimeout(r, 1_700));
+      endCallsSeenMidTurn = endCalls;
+      pushedMidTurn = pushes.some((p) => p.includes('scheduled fire'));
+      yield { type: 'result', text: 'fold batch 2 done' };
+    }
+
+    const query: AgentQuery = {
+      push: (m: string) => {
+        pushes.push(m);
+      },
+      end: () => {
+        endCalls += 1;
+      },
+      events: events(),
+      abort: () => {},
+    };
+
+    await processQuery(query, TASK_ROUTING, ['t1'], 'claude', undefined, 'prompt', undefined);
+
+    expect(endCallsSeenMidTurn).toBe(0); // the active turn was NOT aborted
+    expect(pushedMidTurn).toBe(false); // and the task was NOT pushed into the open query either
+    expect(endCalls).toBe(0);
+    // Both results of the uninterrupted turn landed.
+    expect(taskLogRows().map((l) => l.text)).toEqual(['fold batch 1 done', 'fold batch 2 done']);
+    // The task is still pending, and reads as a fresh-session batch for the outer loop.
+    const pendingT2 = getPendingMessages().filter((m) => m.id === 't2');
+    expect(pendingT2).toHaveLength(1);
+    expect(isNewSessionBatch(pendingT2)).toBe(true);
+  }, 20_000);
+
+  it('still pushes an opted-out follow-up that arrives alongside the deferred task', async () => {
+    const pushes: string[] = [];
+    let endCalls = 0;
+
+    async function* events(): AsyncGenerator<ProviderEvent> {
+      yield { type: 'init', continuation: 's1' };
+      yield { type: 'result', text: 'first' };
+      insertMessage('t2', 'task', { prompt: 'scheduled fire' }); // deferred
+      insertMessage('t3', 'task', { prompt: 'fire three', new_session: false }); // pushed
+      const deadline = Date.now() + 15_000;
+      while (!pushes.some((p) => p.includes('fire three')) && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      if (!pushes.some((p) => p.includes('fire three'))) {
+        throw new Error(`follow-up poller never pushed the opted-out task; pushes: ${JSON.stringify(pushes)}`);
+      }
+      yield { type: 'result', text: 'second' };
+    }
+
+    const query: AgentQuery = {
+      push: (m: string) => {
+        pushes.push(m);
+      },
+      end: () => {
+        endCalls += 1;
+      },
+      events: events(),
+      abort: () => {},
+    };
+
+    await processQuery(query, TASK_ROUTING, ['t1'], 'claude', undefined, 'prompt', undefined);
+
+    expect(endCalls).toBe(0);
+    expect(pushes.some((p) => p.includes('scheduled fire'))).toBe(false);
+    expect(getPendingMessages().map((m) => m.id)).toEqual(['t2']);
+  }, 20_000);
 });
