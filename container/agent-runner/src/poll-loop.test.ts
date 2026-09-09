@@ -13,6 +13,7 @@ import {
   classifyThrownBounce,
   dispatchResultText,
   freshSessionArrivalAction,
+  idleEndLimit,
   isCorruptionError,
   isNewSessionBatch,
   processQuery,
@@ -2137,6 +2138,12 @@ describe('fresh-session task arriving mid-query — defer, never abort the activ
     expect(freshSessionArrivalAction(59_999, false, 60_000, 30_000)).toBe('defer');
     expect(freshSessionArrivalAction(60_000, false, 60_000, 30_000)).toBe('defer');
     expect(freshSessionArrivalAction(60_001, false, 60_000, 30_000)).toBe('end');
+  });
+
+  it('idleEndLimit — the long limit applies only while background subagents are open', () => {
+    expect(idleEndLimit(0, 1_200_000, 5_400_000)).toBe(1_200_000);
+    expect(idleEndLimit(1, 1_200_000, 5_400_000)).toBe(5_400_000);
+    expect(idleEndLimit(3, 1_200_000, 600_000)).toBe(1_200_000); // never below the base
   });
 
   it('freshSessionArrivalAction — after a completed turn the shorter quiet period is enough', () => {
