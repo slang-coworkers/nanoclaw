@@ -1,6 +1,6 @@
 ---
 name: learnings-wiki
-description: Organize the slang-coworkers SHARED LEARNINGS into a navigable, LLM-synthesized Karpathy wiki (sources → concepts → index). Scoped to a shared-learnings knowledge base: slang-coworkers by default, or any KB that supplies its own `.wiki-config.json`. No RAG, no embeddings, no MCP — direct file search. Triggers on "rebuild learnings wiki", "organize learnings", "learnings-wiki".
+description: "Organize the slang-coworkers SHARED LEARNINGS into a navigable, LLM-synthesized Karpathy wiki (sources → concepts → index). Scoped to a shared-learnings knowledge base: slang-coworkers by default, or any KB that supplies its own `.wiki-config.json`. No RAG, no embeddings, no MCP — direct file search. Triggers on \"rebuild learnings wiki\", \"organize learnings\", \"learnings-wiki\"."
 ---
 
 # learnings-wiki
