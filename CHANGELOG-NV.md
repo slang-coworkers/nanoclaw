@@ -6,7 +6,7 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 553 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 569 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 239 |
 | `nv-slang` | slang project spine, skills, workflows | 147 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 78 |
@@ -15,6 +15,20 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-09-09
+
+### nv-main (16 PRs)
+- **#1494** `--check: compare the mirror's body, not just the id it carries`
+- **#1496** `ncl group scope: tell agents about the two resources they can already reach`
+- **#1497** `Account for every section of the shared base document`
+- **#1498** `docs: prod scheduled-task snapshot 2026-09-09 (learnings-wiki v2 prompt)`
+- **#1500** `ops(prod): approver policy of record (v0-shadow-wide-r2) + how it is mounted`
+- **#1503** `fix(runner): a deferred fresh-session task ends the query after a completed turn plus a short quiet period`
+- **#1505** `fix(runner): a task run that dies on a transient provider error is bounced and retried, not acked complete`
+- **#1504** `composer: hold a skill's instructions.md resident instead of dropping it`
+- **#1508** `fix(runner): keep the query alive while background subagents run; surface SDK task lifecycle events`
+_+7 more: #1491, #1490, #1489, #1487, #1486, #1484, #1480_
 
 ## 📅 2026-09-08
 
