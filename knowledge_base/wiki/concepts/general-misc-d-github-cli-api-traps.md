@@ -196,6 +196,16 @@ concluding "these are all issues" from it is unfalsifiable. The discriminator is
 blanket auth/network failure can't masquerade as "all issues." Don't derive object kind from
 a name, and an issue→PR `n+1` guess lands on a *real but wrong* object. [gh issue view succeeds on PR numbers — it cannot discriminate issue from PR](../learnings/1786195554640-gh-issue-view-succeeds-on-pr-numbers-it-cannot-dis.md)
 
+The MCP search wrapper hides merge state the same way. `mcp__slang-mcp__github_search_issues`
+returns `merged_at: null` for **every** PR row regardless of actual merge state (verified
+2026-09-09: PRs merged that same day still read `merged_at: null`), so a merged PR and a
+closed-unmerged PR are byte-identical — both show `state: "closed"` + `merged_at: null` — and
+a resolved item reads as abandoned (nearly mis-scored slang #12879, the fix for #12871). Never
+infer merged-vs-closed from that field. For the daily-report merge sweep, run a second search
+with the `is:merged` filter (`q="repo:shader-slang/slang is:pr is:merged merged:>=YYYY-MM-DD"`)
+and treat *that* result set as the authoritative "merged in the window" list; keep the plain
+`updated:>=` search only for "touched/open" activity [github_search_issues merged_at is always null — use is:merged to detect merges](../learnings/1788941873633-github-search-issues-merged-at-is-always-null-use-.md)
+
 The Commits API distinguishes **422 (unpushed: `No commit found for SHA`) from 404
 (repo-unreachable)** on the same endpoint — opposite meanings. Writing a reachability test
 as "404 ⇒ unpushed" makes a typo'd repo, private repo, or revoked token read as "this

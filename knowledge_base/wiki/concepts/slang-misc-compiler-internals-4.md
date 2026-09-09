@@ -5,6 +5,7 @@
 - Same discipline: fix the producer, not the consumer; assert out-of-contract shapes rather than guarding them.
 - `SLANG_ASSERT` becomes `SLANG_ASSUME` under NDEBUG, so a false assert in release is UB.
 - Before citing an internals behaviour, read it at a named ref — several entries here record a premise that was false.
+- An aarch64-only `0 0` in a `//TEST:INTERPRET` autodiff test is host-VM serialization UB (uninitialized `PathInfo::type`), NOT specific to the differentiated op shown in the CHECK — deterministic-across-all-aarch64 is expected (cold zero-pages), not evidence against UB.
 
 
 ## slang#12069: Endianness Fails Loudly, Pointer Size Fails Silently (2026-07-12 fold)
@@ -48,7 +49,13 @@ Slang's COM-lite API is NOT uniformly "returned interface is caller-owned / rele
 **`buildHash` drops the second integer operand (#12270).** `CompilerOptionSet::buildHash`'s `Int` branch appends only `v.intValue`, never `v.intValue2` — asymmetric with the `String` branch (which appends both). Four options pack a second int into `intValue2` (`-fvk-bind-globals <index> <set>`, `VulkanBindShift`/`BindShiftAll`, `-trace-coverage-binding <index> <space>`) and all change emitted code, so they collide on the cache key that feeds BOTH the shader cache and `.slang-module` freshness. One-line generic fix (`builder.append(v.intValue2)`); regression lives in slang-unit-test (`buildHash` is API-path, not `.slang`-reachable) ([buildHash Int branch drops intValue2 — multi-integer options collide on cache key](../learnings/1785350469856-buildhash-int-branch-drops-intvalue2-multi-integer.md)).
 
 
-**Source learnings (17):**
+## Host-VM PathInfo::type is uninitialized — an aarch64-only `0 0` in an INTERPRET autodiff test (#12871)
+
+For an aarch64-only wrong result in a `//TEST:INTERPRET` (slangi) autodiff test — e.g. `9 6 0 0 9 6` vs x86_64's `9 6 -9 -6 9 6` in `tests/autodiff/unary-plus-diff.slang`, where the zeroed values are the primal+tangent of `fwd_diff` through unary `-` — do NOT anchor on the specific differentiated op shown in the CHECK. The root cause is uninitialized `PathInfo::type` (`enum class Type : uint8_t`, no default init, `source/compiler-core/slang-source-loc.h:125`, read by `hasFoundPath()` ~l.77) during host-VM module serialization: `emitHostVMCode` does `new Module(linkage)` (`source/slang/slang-emit.cpp:3728`) and never sets a PathInfo before `serialize()`. That read happens ONCE PER slangi/INTERPRET invocation at module-serialization level, entirely upstream of and independent from whether the shader used a user `IFloat.neg()` or a builtin-scalar `-`. So the earlier #12871 assumption — that a builtin-scalar `-` mirror sidesteps the bug (it was filed against user `IFloat.neg()`) — is WRONG: ANY sufficiently-complex INTERPRET autodiff program can trip it on aarch64, and #12879 (`Type type = Type::Unknown;`) greens all of them, not just the neg() repro. Deterministic-across-all-aarch64-jobs is expected (cold zero-pages), not evidence against UB; which value gets zeroed is a downstream artifact of the corrupted serialization [#12871 host-VM PathInfo::type UB is not neg()-specific — hits builtin-scalar autodiff too](../learnings/1788537147888-12871-host-vm-pathinfo-type-ub-is-not-neg-specific.md).
+
+
+**Source learnings (18):**
+- [#12871 host-VM PathInfo::type UB is not neg()-specific — uninitialized enum read during module serialization hits any INTERPRET autodiff run on aarch64 (fix #12879)](../learnings/1788537147888-12871-host-vm-pathinfo-type-ub-is-not-neg-specific.md)
 - [[Differentiable] property accessor segfaults getFuncType — PropertyDecl is not a CallableDecl; DeclRef::as<U> doesn't validate (#12210, regr #5922)](../learnings/1784883686572-differentiable-property-accessor-segfaults-getfunc.md)
 - [#language glsl version mis-validates against Slang versions (not isValidGLSLVersion); tracked-by-PR #12179 dedup](../learnings/1784916319659-language-glsl-version-mis-validates-against-slang-.md)
 - [lexer lone-continuation-byte gap is a guard-narrowness bug, not a decoder gap (#12222)](../learnings/1784917194691-slang-lexer-lone-continuation-byte-gap-is-a-guard-.md)

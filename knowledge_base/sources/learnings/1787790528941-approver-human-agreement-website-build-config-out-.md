@@ -1,0 +1,13 @@
+---
+author_agent_group: ag-1783611156430-vvj8oi
+author_session: sess-1787777490740-8cr5yy
+written_at: 2026-08-27T00:28:48.941Z
+---
+
+# [approver/human-agreement] website BUILD-CONFIG out-of-scope abstain (gh.io#193) vindicated by non-self approval+merge at the exact decided head
+
+**Symptom / join:** shader-slang.github.io#193 ("Skip adding orphan directive when page is root", `docs/conf.py` +6/-0) was decided ABSTAIN_POLICY:OUT_OF_SCOPE:website-build-config at R2 head `9b48529e7e4b` (see the sibling clause-gap learning for the sub-class rationale). It then MERGED @ 2026-08-27T00:26:55Z, merge commit 813b70a8bc68, **head at merge = 9b48529e7e4b = my exact decided commit** (join is clean; nothing shipped that I didn't read). Reviewed+merged by **jkwak-work**, a NON-SELF actor (author is aidanfnv), who also posted the APPROVED review at that same commit.
+
+**Why this is AGREEMENT, not a trivially-correct abstain:** The scoring rule (score an OUT_OF_SCOPE abstain against the falsifiable reading, not "a human must look; a human looked") is satisfied by the #207 distinction: a self-merge / no-review merge is NEITHER agreement nor disagreement (no independent human verdict); a **non-self genuine approval + merge at the decided head** IS agreement — a human with authority over the docs site independently judged it mergeable, confirming that routing-to-human (withhold) was the right call for a repo outside the compiler harness's domain. This is the FIRST join of the `:website-build-config` sub-class (distinct from #207's `:website-content` prose join), so it's a real new calibration point: the build-config abstain — where I DID run the challenger and read the guard as correct but couldn't execute the Sphinx build — held up. Withhold was calibration-safe; the code was safe (my read matched the shipped, merged diff).
+
+**How to catch / transferable lesson:** On a `github.pr_merged` join for an OUT_OF_SCOPE abstain: (1) verify the merged head equals your decided commit BEFORE scoring (if the head moved between decision and merge, diff the interval — a fix in that window would mean my clean read missed something; here head==decision, so no interval); (2) check merged_by/reviewer vs the PR author — self ⇒ not a calibration signal, non-self approval+merge ⇒ agreement/vindicated withhold; (3) since a build-config abstain rests partly on "can't run the build," a clean non-self merge is moderate positive evidence the read was right, but it does NOT retroactively license upgrading future same-shape PRs to an approve — the repo is still out of the harness's calibration domain. There is no `record_human_verdict` in the approver's tool surface; the host auto-joins the outcome ledger-side on the merge webhook.

@@ -1,0 +1,19 @@
+---
+author_agent_group: ag-1780667166439-vmjrwe
+author_session: sess-1787705136406-r9ycc8
+written_at: 2026-08-26T00:56:55.951Z
+---
+
+# slang member operators unreachable by infix lookup — declaration-site diagnostic is the maintainer-preferred fix (issue 12761)
+
+**Fact (verified at master @ 8fe3df827):** Slang infix operator resolution (`a OP b`) finds candidates by **pure lexical scope-chain lookup of the operator name** — operand types play NO role (no `lookUpMember`, no ADL). So *no* member-declared binary/unary operator is reachable via `a OP b` — plain struct member, non-generic extension, or (un)constrained generic extension all fail identically with `no overload for 'OP'`. Only FREE (file-scope) functions resolve. The two exceptions that DO use `lookUpMember` on the operand type are `operator()` (`slang-check-expr.cpp:5138`) and `__subscript` (`:3649`). The scope-only path: `visitInvokeExpr`→`CheckTerm(functionExpr)` (`slang-check-expr.cpp:5123`)→`visitVarExpr` (`:5334`, `lookUp(...expr->scope...)`)→`_lookUpInScopes` (`slang-lookup.cpp:786`, walks `scope->parent` only). Also: a non-static member binary operator couldn't match even if found, because implicit `this` isn't counted as a call argument. This behavior is **documented + test-pinned as intentional** (`docs/generated/design/name-resolution/overload-resolution.md:961-973` + `operator-member-declaration-not-in-scope-diagnostic.slang`).
+
+**Why this matters for the fix decision:** "make member/extension operators resolvable" (Approach A) is a LANGUAGE-SEMANTICS change (member-vs-free precedence, commutativity `a.op+(b)`≠`b.op+(a)`, ambiguity explosion, contradicts the pinned doc/test) — HIGH blast radius, a maintainer call, NOT the fixer's. The safe interim (Approach B) is a **declaration-site diagnostic** in `checkCallableDeclCommon` (`slang-check-decl.cpp:15582`, beside `maybeInferPrefixModifierForOperator` :15558): fire when `getParentAggTypeDeclBase(decl)!=nullptr && !isEffectivelyStatic(decl)` AND the name is an operator name, EXCLUDING `operator()`/`__subscript`.
+
+**Two traps for Approach B:**
+1. `isPrefixOperatorName` (`slang-check-decl.cpp:15524`) matches ONLY `- + ~ !` — too narrow; you need a broader operator-name predicate for `* / % == != < > << >> & | ^ && || ,` + compound-assign.
+2. You MUST exclude `operator()`/`__subscript`: an in-tree audit found 34 legitimate member-style declarations of those (core-module `IFunc`/`IArray`/`IBwdCallable`, `_Texture`/`InputPatch` subscripts, functor/ifunc/autodiff tests). But there are **ZERO** member-style binary/unary operator *definitions* in the compiler's `.slang`/`.meta.slang` or `tests/` — so B (with the exclusion) regresses nothing. C++ preludes (`prelude/*.h`) are downstream C++/CUDA, never Slang-parsed → out of scope.
+
+**Strongest signal:** this is the SAME class as the #11493/#11879 fast-path gap, where maintainer **jkwak-work** already established the fix belongs as a **declaration-site error in `checkCallableDeclCommon`** and CLOSED the "honor the user's overload" alternative (PR #11879). He also showed a use-site name-only scope probe (`hasUserDefinedNonCoreOperatorInScope`) false-positives — B avoids that by keying off the *declaration's own shape*, not a scope probe. So a declaration-site diagnostic is the maintainer-aligned pattern for "an operator you declared will never be honored."
+
+**Sub-decision to escalate, not pick:** warning (non-breaking, ships now) vs error (matches "fail loudly", but `pr: breaking change` — breaks external declare-and-never-use code; zero such cases in-tree). Diagnostics live in `source/slang/slang-diagnostics.lua` (fiddle-generated; there is NO `slang-diagnostic-defs.h`); `warning("kebab-name", <39xxx code>, "msg with ~name:Name", span{loc="decl:Decl"})` → `Diagnostics::PascalName`.
