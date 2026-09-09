@@ -1,0 +1,21 @@
+{
+  "policy_version": "v0-shadow-wide-r2",
+  "_comment": "Human-signed WIDE policy for slang-pr-approver / slangpy-pr-approver (eval-clauses.py). Operator-authored 2026-09-09 to replace the v0-shadow-wide file lost in the 2026-08 host move (the group mount /ephemeral/approver-policy -> /workspace/extra/approver-policy/APPROVAL_POLICY.json pointed at a directory that no longer existed, so every decision fell back to the bundled v0-shadow). Intent: Verity evaluates EVERY PR in shadow mode (any author association, fork heads allowed, no size tier), abstains only on GitHub workflow files, and REQUIRES CI green on the pinned head (operator decision 2026-09-09: without it every push re-triggers a full evaluation, too many requests and too much cost). Shadow mode never auto-approves for real. Widen or narrow only with human sign-off; the signed copy lives in the repo at ops/slang-coworkers-prod/approver-policy/APPROVAL_POLICY.json and in ~/slang-coworkers-prod/backups/approver-policy/ on the box.",
+  "trusted_associations": [
+    "OWNER",
+    "MEMBER",
+    "COLLABORATOR",
+    "CONTRIBUTOR",
+    "FIRST_TIME_CONTRIBUTOR",
+    "FIRST_TIMER",
+    "MANNEQUIN",
+    "NONE"
+  ],
+  "allow_fork_head": true,
+  "require_ci_green": true,
+  "protected_paths": [
+    ".github/workflows/**"
+  ],
+  "max_total_lines": 1000000,
+  "max_files": 100000
+}
