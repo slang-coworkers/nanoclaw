@@ -66,6 +66,7 @@ import { classifyAndPrepend } from './intent-router-bridge.js';
 import { stripHarnessTagArtifacts } from './harness-tag-strip.js';
 import { isUploadTraceCommand, uploadTrace } from './upload-trace.js';
 import type { AgentProvider, AgentQuery, ProviderEvent, ProviderExchange } from './providers/types.js';
+import type { ProviderRuntimeContract } from './provider-contracts/registry.js';
 
 const POLL_INTERVAL_MS = 1000;
 const ACTIVE_POLL_INTERVAL_MS = 500;
@@ -2272,9 +2273,28 @@ export function classifyThrownBounce(channelType: string | null, errMsg: string)
 }
 
 /**
+ * What the follow-up poller does when a fresh-session task (a `task` row without
+ * `new_session: false`) arrives while a query is open. Ending the query closes the
+ * SDK's input stream, and every tool call still in flight is auto-denied — the
+ * active turn is aborted, not paused. That is only safe when nothing is in flight,
+ * i.e. the query has been idle for `idleEndMs` (the same threshold as the plain
+ * idle-end rule). Otherwise the task is deferred: its row stays `pending` and is
+ * routed through the fresh-session path once the active turn ends on its own.
+ */
+export function freshSessionArrivalAction(idleMs: number, idleEndMs: number = IDLE_END_MS): 'defer' | 'end' {
+  return idleMs > idleEndMs ? 'end' : 'defer';
+}
+
+/**
  * Default-on fresh-session policy for recurring task batches:
  *   - Empty batch: false (defensive — no spurious fresh sessions).
- *   - Any chat in the batch: false (mixed batches preserve chat history).
+ *   - Any ADDRESSED chat in the batch (trigger=1): false (mixed batches preserve
+ *     chat history). Accumulated trigger=0 context rows (session echoes, ambient
+ *     channel traffic the router stored for context) ride along with whatever
+ *     batch picks them up and do NOT veto: on prod 2026-09-09 three such echoes
+ *     turned a scheduled task's batch into "task,chat", so the fold ran inside
+ *     the immortal Orchestrator's 1M-context continuation instead of a fresh
+ *     session, and the run was wasted.
  *   - All-tasks AND at least one opts out via `new_session: false`: false
  *     (safer to preserve continuity than drop it when any task asks).
  *   - All-tasks AND none opts out: true (the common heartbeat/cron case,
@@ -2285,8 +2305,10 @@ export function classifyThrownBounce(channelType: string | null, errMsg: string)
  * support: $0.57 after flip vs $1.00 before, on 11 turns vs 3) confirmed
  * the delta is real enough to make opt-out the sane default.
  */
-export function isNewSessionBatch(keep: Array<{ kind: string; content: string }>): boolean {
-  return keep.length > 0 && keep.every((m) => m.kind === 'task') && !keep.some(taskOptsOutOfNewSession);
+export function isNewSessionBatch(keep: Array<{ kind: string; content: string; trigger?: number }>): boolean {
+  // Rows without a trigger column (older callers, tests) count as addressed.
+  const addressed = keep.filter((m) => m.trigger !== 0);
+  return addressed.length > 0 && addressed.every((m) => m.kind === 'task') && !addressed.some(taskOptsOutOfNewSession);
 }
 
 /**
@@ -2359,6 +2381,8 @@ function buildDestinationsPushNote(): string {
 
 export interface PollLoopConfig {
   provider: AgentProvider;
+  /** Declared provider runtime behavior. Contractless providers keep legacy defaults. */
+  providerContract?: Pick<ProviderRuntimeContract, 'textDelivery' | 'commands'>;
   /**
    * Name of the provider (e.g. "claude", "codex", "opencode"). Used to key
    * the stored continuation per-provider so flipping providers doesn't
@@ -2398,6 +2422,16 @@ export interface PollLoopConfig {
  * 6. Loop
  */
 export async function runPollLoop(config: PollLoopConfig): Promise<void> {
+  // Contract providers declare these; a contractless (legacy payload)
+  // provider keeps declaring them as instance flags, exactly as before.
+  const legacy = config.provider as { supportsNativeSlashCommands?: boolean; emitsMidTurnText?: boolean };
+  const nativeSlashCommands = config.providerContract
+    ? config.providerContract.commands.formatting === 'native'
+    : (legacy.supportsNativeSlashCommands ?? false);
+  const midTurnCompleteDelivery = config.providerContract
+    ? config.providerContract.textDelivery === 'mid-turn-complete'
+    : (legacy.emitsMidTurnText ?? false);
+
   // Resume the agent's prior session from a previous container run if one
   // was persisted. The continuation is opaque to the poll-loop — the
   // provider decides how to use it (Claude resumes a .jsonl transcript,
@@ -2578,7 +2612,7 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
           platform_id: routing.platformId,
           channel_type: routing.channelType,
           thread_id: routing.threadId,
-          content: JSON.stringify({ text: uploadTrace() }),
+          content: JSON.stringify({ text: uploadTrace(config.providerName) }),
         });
         commandIds.push(msg.id);
         continue;
@@ -2631,7 +2665,7 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
 
     // Format messages: passthrough commands get raw text (only if the
     // provider natively handles slash commands), others get XML.
-    let prompt = formatMessagesWithCommands(keep, config.provider.supportsNativeSlashCommands);
+    let prompt = formatMessagesWithCommands(keep, nativeSlashCommands, config.providerName);
 
     // A ceiling-continue queued a one-shot cost-sensitivity note — this is the
     // first real turn since, so prepend it. cost_override rows are never fed to
@@ -2645,7 +2679,7 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     // Claude SDK fires UserPromptSubmit hooks natively; for Codex/OpenCode
     // we call the same bridge so workflow classification applies to every
     // user message regardless of provider.
-    if (!config.provider.supportsNativeSlashCommands) {
+    if (!nativeSlashCommands) {
       prompt = await classifyAndPrepend(prompt);
     }
 
@@ -2701,7 +2735,7 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
         config.provider.onExchangeComplete?.bind(config.provider),
         prompt,
         continuation,
-        config.provider.emitsMidTurnText === true,
+        midTurnCompleteDelivery,
         config.signal,
         config.activePollIntervalMs,
         newSessionBatch,
@@ -2844,13 +2878,17 @@ function resolveSkillBody(command: string): string | null {
  * dispatch them. For non-native providers, skill bodies are resolved and
  * injected so the agent gets the full SKILL.md content on invocation.
  */
-function formatMessagesWithCommands(messages: MessageInRow[], nativeSlashCommands: boolean): string {
+function formatMessagesWithCommands(
+  messages: MessageInRow[],
+  nativeSlashCommands: boolean,
+  providerName: string,
+): string {
   const parts: string[] = [];
   const normalBatch: MessageInRow[] = [];
 
   for (const msg of messages) {
-    if (msg.kind === 'chat' || msg.kind === 'chat-sdk') {
-      const cmdInfo = categorizeMessage(msg);
+    if (nativeSlashCommands && (msg.kind === 'chat' || msg.kind === 'chat-sdk')) {
+      const cmdInfo = categorizeMessage(msg, providerName);
       if (cmdInfo.category === 'passthrough' || cmdInfo.category === 'admin') {
         if (nativeSlashCommands) {
           // Flush normal batch first
@@ -2913,15 +2951,15 @@ export async function processQuery(
   initialPrompt = '',
   initialContinuation: string | undefined = undefined,
   /**
-   * The provider's declared `emitsMidTurnText` capability (see
-   * providers/types.ts). True → mid-turn streaming is the single content
+   * The provider contract's `textDelivery: 'mid-turn-complete'`. True →
+   * mid-turn streaming is the single content
    * door: complete <message> blocks deliver exactly once, at parse time from
    * streamed 'text' events (with cross-segment assembly of split blocks),
    * and the final result never delivers content — it only surfaces error
    * results and decides the wrap-nudge. False → text events are
    * delivery-inert and the final result stays the single delivery door.
    */
-  emitsMidTurnText = false,
+  midTurnCompleteDelivery = false,
   signal?: AbortSignal,
   activePollIntervalMs = ACTIVE_POLL_INTERVAL_MS,
   skipPersistContinuation = false,
@@ -2964,7 +3002,7 @@ export async function processQuery(
   // "was not answered" and ack the batch failed, after it had been answered.
   let batchDelivered = false;
   // How many <message> blocks were delivered from 'text' events this turn
-  // (chat runs, emitsMidTurnText providers only). A frame-local count, never
+  // (chat runs, mid-turn delivery providers only). A frame-local count, never
   // keyed by content: it feeds the result door's nudge decision ("did this
   // turn deliver anything?"). Reset at the turn boundary (the 'result'
   // event) — NOT at the follow-up push seam: query.push() does not end the
@@ -3044,6 +3082,7 @@ export async function processQuery(
   // will kill the container and messages get reset to pending.
   let pollInFlight = false;
   let endedForCommand = false;
+  let freshSessionDeferLogged = false;
   let mailboxFailureStreak = 0;
   const onSignalAbort = () => query.abort();
   signal?.addEventListener('abort', onSignalAbort, { once: true });
@@ -3065,7 +3104,7 @@ export async function processQuery(
         // not end: end() lets an in-flight turn run to completion, which
         // can block the command (e.g. /clear during a long task) for as
         // long as the turn takes.
-        if (pending.some((m) => isRunnerCommand(m))) {
+        if (pending.some((m) => isRunnerCommand(m, providerName))) {
           log('Pending slash command — aborting active stream so outer loop can process');
           endedForCommand = true;
           query.abort();
@@ -3153,15 +3192,42 @@ export async function processQuery(
         // continuation and defeat the default. End the active query instead;
         // the next poll iteration's initial-batch path will pick up the
         // pending rows via the fresh-session path. Leave rows as 'pending'.
+        //
+        // But NEVER end a query that is still working. `query.end()` closes the
+        // SDK's input stream, and every tool call still in flight is then
+        // auto-denied ("The user doesn't want to take this action right now") —
+        // the active turn is aborted, not paused. Seen on prod 2026-09-09: a
+        // scheduled fire landed while the same series' manual run was mid
+        // fan-out and killed it. So the task rows stay `pending` (spliced out
+        // of this tick's push) until the active turn ends on its own, and the
+        // query is ended here only when it has already been idle for as long as
+        // the plain idle-end rule tolerates (`freshSessionArrivalAction`).
         const wantsFreshSession = (m: { kind: string; content: string }) =>
           m.kind === 'task' && !taskOptsOutOfNewSession(m);
-        if (newMessages.some(wantsFreshSession)) {
-          log(
-            `fresh-session task arrived mid-query (${newMessages.length} msg) — ending active query to route through fresh-session path`,
-          );
-          query.end();
-          done = true;
-          return;
+        const freshSessionTasks = newMessages.filter(wantsFreshSession);
+        if (freshSessionTasks.length > 0) {
+          const idleMs = Date.now() - lastEventTime;
+          if (freshSessionArrivalAction(idleMs) === 'end') {
+            log(
+              `fresh-session task arrived (${freshSessionTasks.length} msg) while the query has been idle ` +
+                `${Math.round(idleMs / 1000)}s — ending it to route through fresh-session path`,
+            );
+            query.end();
+            done = true;
+            return;
+          }
+          if (!freshSessionDeferLogged) {
+            freshSessionDeferLogged = true;
+            log(
+              `fresh-session task arrived mid-query (${freshSessionTasks.length} msg) — leaving it pending until ` +
+                `the active turn ends; ending the query now would deny its in-flight tool calls`,
+            );
+          }
+          for (const t of freshSessionTasks) {
+            const idx = newMessages.indexOf(t);
+            if (idx >= 0) newMessages.splice(idx, 1);
+          }
+          if (newMessages.length === 0) return;
         }
 
         // Update the shared routing when a follow-up brings richer routing
@@ -3335,10 +3401,10 @@ export async function processQuery(
         // final result only carries the LAST assistant text, so complete
         // <message> blocks composed here would otherwise be lost — deliver
         // them now (chat runs only; task runs stay one-door). Gated on the
-        // provider's static capability: for a provider that does not declare
-        // emitsMidTurnText the result stays the only delivery door, so a
-        // stray text event must not open a second one.
-        if (emitsMidTurnText) {
+        // provider contract: for a provider that does not declare mid-turn
+        // delivery the result stays the only delivery door, so a stray text
+        // event must not open a second one.
+        if (midTurnCompleteDelivery) {
           const scan = await deliverMidTurnBlocks(event.text, routing, turnStartSeq, midTurnTail);
           midTurnSent += scan.delivered;
           midTurnTail = scan.tail;
@@ -3404,18 +3470,18 @@ export async function processQuery(
             routing,
             {
               midTurnSent,
-              // For emitsMidTurnText providers the result door NEVER delivers
+              // For mid-turn-delivery providers the result door NEVER delivers
               // a <message> block: mid-turn streaming is the single content
               // door. The result door's remaining jobs are the error-result
               // surface (below) and the nudge decision — see turnDelivered.
-              suppressDelivery: emitsMidTurnText,
+              suppressDelivery: midTurnCompleteDelivery,
               // "Did anything user-visible go out this turn?" — door
               // deliveries (midTurnSent) plus any chat row written since the
               // turn boundary (which also sees MCP send_message calls the
               // frame-local count can't). When false and the result still
               // carries content, the wrap-nudge fires so the model re-sends
               // and the retry streams through the mid-turn door.
-              turnDelivered: emitsMidTurnText ? midTurnSent > 0 || chatRowWrittenSince(turnStartSeq) : undefined,
+              turnDelivered: midTurnCompleteDelivery ? midTurnSent > 0 || chatRowWrittenSince(turnStartSeq) : undefined,
               // The isError branch below owns the error surface; keep the
               // auto-route shortcut from writing a second, unsanitized copy.
               isErrorResult: event.isError === true,
@@ -4349,7 +4415,7 @@ export interface ResultDispatchOptions {
    */
   midTurnSent?: number;
   /**
-   * Providers declaring `emitsMidTurnText`: the result door NEVER delivers
+   * Providers declaring `textDelivery: 'mid-turn-complete'`: the result door NEVER delivers
    * content. Mid-turn streaming (parse-time block delivery plus cross-
    * segment assembly) is the single content door; a complete <message>
    * block in the result text is at best a repeat of a mid-turn delivery and
@@ -4426,7 +4492,7 @@ export interface MidTurnScanResult {
   tail: string;
   /**
    * Fork: gate refusals raised on blocks in THIS segment. The mid-turn door is
-   * the only delivery door for an `emitsMidTurnText` provider, so the critique
+   * the only delivery door for a mid-turn-delivery provider, so the critique
    * and chain-routing gates have to run here or they would be unreachable for
    * that provider. Refusals are sender feedback — the caller pushes them back
    * as a <system> nudge, exactly as the result door does.
@@ -4502,7 +4568,7 @@ export async function deliverMidTurnBlocks(
     }
 
     // Fork gates, re-applied at this door. With `suppressDelivery` on for an
-    // emitsMidTurnText provider this is the ONLY path that writes a block, so
+    // mid-turn-delivery provider this is the ONLY path that writes a block, so
     // gating only in dispatchResultText would let every gated body through for
     // that provider. Same gates, same state, same sender-directed refusal: the
     // body is withheld from the peer and the reason goes back to the emitter.
@@ -4762,7 +4828,7 @@ export async function dispatchResultText(
       blocked++;
       continue;
     }
-    // One content door: with an emitsMidTurnText provider the result door
+    // One content door: with a mid-turn-delivery provider the result door
     // never sends. A deliverable block here is either a repeat of a mid-turn
     // delivery (turnDelivered — keep it out of the scratchpad so it does not
     // read as an undelivered reply) or content the streaming door missed —
@@ -4816,7 +4882,7 @@ export async function dispatchResultText(
   // "final-output blocks stay inert" invariant.
   //
   // NOT under `suppressDelivery` either: auto-routing IS a result-door
-  // delivery, and for an emitsMidTurnText provider the result door never
+  // delivery, and for a mid-turn-delivery provider the result door never
   // delivers content. Letting it through here would re-open the double-send
   // the one-door design closes — and would deliver the "[not delivered — the
   // result door does not send]" scratchpad note itself as chat. Unwrapped

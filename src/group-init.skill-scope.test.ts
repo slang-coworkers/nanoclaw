@@ -19,7 +19,12 @@ vi.mock('./log.js', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), fatal: vi.fn() },
 }));
 
+// The barrel every spawn loads, and with it claude's registered host contract.
+// Surface mirroring must be independent of contract presence, so a test that
+// leaves the registry empty cannot observe a contract-gated mirror.
+import './provider-contracts/index.js';
 import { resolveMirroredSkillScope } from './claude-composer.js';
+import { getProviderHostContract } from './provider-contracts/registry.js';
 import { closeDb, createAgentGroup, initTestDb, runMigrations } from './db/index.js';
 import { initGroupFilesystem } from './group-init.js';
 import type { AgentGroup } from './types.js';
@@ -54,6 +59,20 @@ function buildFixtureRoot(root: string): void {
       `---\nname: ${name}\ndescription: The ${name} skill.\n---\n\n# /${name}\n\nBody.\n`,
     );
   }
+
+  // `agent.md` siblings: one in a skill the type gets, one in a skill it does
+  // not, one in an overlay (overlays are group-selected, never type-scoped).
+  for (const name of ['proj-a-tools', 'proj-b-tools']) {
+    write(path.join(root, 'container', 'skills', name, 'agent.md'), `---\nname: ${name}\n---\n\nSubagent.\n`);
+  }
+  write(
+    path.join(root, 'container', 'overlays', 'crit-overlay', 'OVERLAY.md'),
+    '---\nname: crit-overlay\n---\n\nOverlay body.\n',
+  );
+  write(
+    path.join(root, 'container', 'overlays', 'crit-overlay', 'agent.md'),
+    '---\nname: crit-overlay\n---\n\nSubagent.\n',
+  );
 
   write(
     path.join(root, 'container', 'workflows', 'proj-a-do', 'WORKFLOW.md'),
@@ -116,8 +135,17 @@ function makeGroup(id: string, coworkerType: string | null): AgentGroup {
   return ag;
 }
 
+function sharedDir(groupId: string, ...rest: string[]): string {
+  return path.join(TEST_ROOT, 'data', 'v2-sessions', groupId, '.claude-shared', ...rest);
+}
+
 function mirroredSkills(groupId: string): string[] {
-  const dir = path.join(TEST_ROOT, 'data', 'v2-sessions', groupId, '.claude-shared', 'skills');
+  const dir = sharedDir(groupId, 'skills');
+  return fs.existsSync(dir) ? fs.readdirSync(dir).sort() : [];
+}
+
+function mirroredAgents(groupId: string): string[] {
+  const dir = sharedDir(groupId, 'agents');
   return fs.existsSync(dir) ? fs.readdirSync(dir).sort() : [];
 }
 
@@ -203,5 +231,46 @@ describe('initGroupFilesystem skills mirror', () => {
 
     expect(mirroredSkills(ag.id)).not.toContain('proj-b-tools');
     expect(mirroredSkills(ag.id)).toContain('proj-a-tools');
+  });
+});
+
+// The mirrors are this fork's own agent surfaces: a provider declaring a host
+// contract (claude does) must not change what a coworker type gets. These
+// assertions are on the resulting tree — .claude-shared/skills and
+// .claude-shared/agents — not on how the branch is selected.
+describe('initGroupFilesystem surfaces for a contract-declaring provider', () => {
+  // Without a registered contract the branch these tests exist to cover is
+  // unreachable, so the whole block would pass for the wrong reason. The
+  // registry is populated by the side-effect import above, which nothing else
+  // in this file references — assert it took effect.
+  it('has claude registered as a contract-declaring provider', () => {
+    expect(getProviderHostContract('claude')).toBeDefined();
+  });
+
+  it('mirrors the type-scoped skills, their agents, and overlay agents', async () => {
+    const ag = makeGroup('ag-claude-typed', 'proj-a-reader');
+    await initGroupFilesystem(ag, { provider: 'claude' });
+
+    expect(mirroredSkills(ag.id)).toEqual(PROJ_A_SCOPE);
+    for (const name of PROJ_A_SCOPE) {
+      const dir = sharedDir(ag.id, 'skills', name);
+      expect(fs.lstatSync(dir).isDirectory()).toBe(true);
+      expect(fs.existsSync(path.join(dir, 'SKILL.md'))).toBe(true);
+    }
+    // Every overlay's agent.md is mirrored — overlays are not coworker-type
+    // scoped; a skill's agent arrives only when the type gets the skill.
+    expect(mirroredAgents(ag.id)).toEqual(['crit-overlay.md', 'proj-a-tools.md']);
+  });
+
+  it('prunes both the out-of-scope skill and its agent when the type changes', async () => {
+    const ag = makeGroup('ag-claude-prune', null);
+    await initGroupFilesystem(ag, { provider: 'claude' });
+    expect(mirroredSkills(ag.id)).toContain('proj-b-tools');
+    expect(mirroredAgents(ag.id)).toContain('proj-b-tools.md');
+
+    await initGroupFilesystem({ ...ag, coworker_type: 'proj-a-reader' } as AgentGroup, { provider: 'claude' });
+
+    expect(mirroredSkills(ag.id)).toEqual(PROJ_A_SCOPE);
+    expect(mirroredAgents(ag.id)).toEqual(['crit-overlay.md', 'proj-a-tools.md']);
   });
 });
