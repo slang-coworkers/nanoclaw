@@ -40,6 +40,17 @@ pull data/shared/hermes/autopilot/state.json state.json
 pull data/shared/hermes/autopilot/config.json config.json
 pull data/shared/hermes/autopilot/nudges.json nudges.json
 pull data/shared/hermes/autopilot/dispatch.log dispatch.log
+pull groups/orchestrator/reports/status/autopilot.md autopilot.md
+
+# The a|b|t|r report the last tick rendered (viewer /status/autopilot.md), verbatim and first.
+if [ -s "$OUT/autopilot.md" ]; then
+  echo
+  echo "== a|b|t|r report from the box (pulled copy dated $(date -r "$OUT/autopilot.md" -u +%Y-%m-%dT%H:%M:%SZ))"
+  cat "$OUT/autopilot.md"
+  echo
+else
+  echo "  (no autopilot.md on the box yet: the first supervise tick after install writes it)"
+fi
 
 echo "== fork PRs ($FORK, read-only)"
 if gh pr list --repo "$FORK" --state all --limit 100 \
@@ -92,6 +103,6 @@ CFG=~/haaggarwal/nemoclaw-coworkers/data/shared/hermes/autopilot/config.json
 Dispatch tick (host cron):  crontab -l | grep dispatch-cron; tail -20 ~/haaggarwal/nemoclaw-coworkers/data/shared/hermes/autopilot/dispatch.log
 Supervise series:           cd ~/haaggarwal/nemoclaw-coworkers && ./bin/ncl tasks list --group ag-822c9c8a-23e2-4e7a-a6bc-4c071d976392
 Last dispatch ticks pulled: $(tail -3 "$OUT/dispatch.log" 2>/dev/null | cut -c1-160 || echo "(no dispatch.log yet)")
-Files pulled to $OUT (ledger.md, alerts.md, state.json, config.json, nudges.json, dispatch.log, prs.json, scorecard.json). Doc: docs/hermes-port/autopilot.md
+Files pulled to $OUT (autopilot.md, ledger.md, alerts.md, state.json, config.json, nudges.json, dispatch.log, prs.json, scorecard.json). Doc: docs/hermes-port/autopilot.md
 EOF
 exit 0

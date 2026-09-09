@@ -132,6 +132,29 @@ class PullStateTest(unittest.TestCase):
         self.assertEqual(json.loads((self.ap / "config.json").read_text())["wip"], 3)
         self.assertIn("nudges", json.loads((self.ap / "nudges.json").read_text()))
 
+    def test_abtr_markdown_and_brief_written_next_to_alerts_and_state(self):
+        st = self.run_pull()
+        md = (self.alerts.parent / "autopilot.md").read_text()  # STATUS_DIR defaults next to alerts.md
+        self.assertTrue(md.startswith(f"Hermes autopilot · {NOW} · in flight 2/3 · "), md.splitlines()[0])
+        self.assertIn("| LOOP-F35 | 1a | ✓ ", md)   # spec accepted 15:27 IST, builder holds the row
+        self.assertIn("| ▶ 9.0h | · | · | · |", md)
+        self.assertIn("| MEM-F44 | 1b | ▶ 1.0h | · | · | · | · |", md)   # the hand dispatch, no ledger row
+        self.assertIn("queued: ", md)
+        self.assertLessEqual(max(len(line) for line in md.splitlines()), 120)
+        brief = (self.ap / "tick-report.txt").read_text().splitlines()
+        self.assertEqual(brief[0], md.splitlines()[0])
+        self.assertEqual(brief[1:3], ["LOOP-F35 | ✓ 09:57Z | ▶ 9.0h | · | ·", "MEM-F44 | ▶ 1.0h | · | · | ·"])
+        self.assertEqual(brief[-1], "full table: /status/autopilot.md")
+        self.assertEqual(st["sources"]["core"], {"queue": "ok", "supervise": "ok"})
+
+    def test_abtr_render_failure_does_not_fail_the_collector(self):
+        # A directory that cannot be created (a regular file in the way) makes the write fail; the pull still exits 0.
+        blocker = Path(self.tmp.name) / "blocker"
+        blocker.write_text("not a directory")
+        st = self.run_pull(STATUS_DIR=str(blocker / "status"))
+        self.assertEqual(st["generated_at"], NOW)
+        self.assertFalse((blocker / "status" / "autopilot.md").exists())
+
     def test_supervisor_sees_the_flattened_thread_and_nudges_the_stale_builder(self):
         st = self.run_pull()
         row = st["supervise"]["rows"]["LOOP-F35"]
@@ -184,7 +207,7 @@ class PullStateTest(unittest.TestCase):
             "GH": str(self.bin / "gh"), "NOW_OVERRIDE": NOW, "PATH": f"{self.bin}:{os.environ.get('PATH', '')}",
         }
         shutil.copy(HERE / "pull-state.sh", self.ap / "pull-state.sh")
-        for f in ("hermes_queue.py", "hermes_supervise.py", "collect_threads.py", "scorecard.py"):
+        for f in ("hermes_queue.py", "hermes_supervise.py", "collect_threads.py", "scorecard.py", "abtr.py"):
             shutil.copy(HERE / f, self.ap / f)
         proc = subprocess.run(["bash", str(HERE / "gate-supervise.sh")], capture_output=True, text=True, env=env, check=False)
         self.assertEqual(proc.returncode, 0, proc.stderr)
