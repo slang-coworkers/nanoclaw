@@ -176,6 +176,10 @@ The desktop e2e ships the reference: a mock OpenAI-compatible inference server o
 #   worktree wt-verify-<N>-base at origin/<BASE>, `.venv` SYMLINKED from $WT (runner probes <worktree>/.venv, run_tests.sh:54-75),
 #   copy the acceptance test in, run it there → EXPECT non-zero. Exit 0 = the test does not test the plugin → row FAIL.
 # FOCUSED-PYTEST — `scripts/run_tests.sh tests/plugins/ tests/hermes_cli/` in an `Agent` with explicit timeout; `⚠ FLAKY` = FAIL for that file.
+#   BASE-REPRODUCING FAILURES ARE NOT THE PR'S: re-run every failing node once on wt-verify-<N>-base (origin/<BASE>, the
+#   NEGATIVE-CONTROL worktree). A node that fails there too is recorded `ADVISORY-FAIL(base)` with the node id and never
+#   flips the verdict; only nodes green at base and red at head are FAIL. (P0-LOOP round 3 was a 3/3-PASS PR reported FAIL
+#   on failures that reproduced identically at base.)
 ```
 
 ### 3c. Acceptance-criterion rows `AC-<req-id>-<n>` for `pytest:` criteria — the `test.gen` contract
@@ -447,7 +451,7 @@ The `AC-<req-id>-<n>` rows come **last, in ADR order, one per criterion** (§3c 
 
 then `## Network` — the §2 enforcement table with the line count of `net-denials.log`, plus, when a `live:` criterion ran, the two relaxations `$TB/harness.live.env` made (guard allow-list by the one live endpoint, proxy pin back to OneCLI) and the `session_model_usage` counts against `LIVE_MODEL_CALLS_MAX=40` / `LIVE_BUDGET_USD=5` per scenario and the round caps (§4b, §7); `## Failures` — per failing row: command, exit, first failing assertion or last 30 log lines, and `reproduce with:` one paste-able line; `## Skipped / advisory` — reasons, the verbatim `install_packages` request when `DESKTOP=SKIPPED` or when a `desktop:` criterion had no tier to run on, orphan scenario files, T5b/T6 outcomes, the negative-control caveat for CORE-CHANGE PRs; `## Environment` — `hermes --version`, `python3 --version`, `uv --version`, `node --version`, `npm --version`, container gaps; `## References` — release-tree `file:line` for every command relied on. Round 2 = a NEW `test-report-<newsha7>.md` with a `## Delta from round 1 (head <oldsha7>)` section; rows not re-run are copied with `(round 1)` in the evidence column.
 
-**Verdict rule.** `PASS` iff `DOCTOR`, `ACCEPTANCE`, `NEGATIVE-CONTROL`, `RUFF`, `FOOTGUNS`, `FOCUSED-PYTEST` all PASS **and every `AC-<req-id>-<n>` row is PASS** **and** every non-advisory, non-skipped `SUITE` row is PASS **and** `UI` is PASS or SMOKE-ONLY **and** `DESKTOP` is not a blocking FAIL. Advisory rows and SKIPPED rows never flip the verdict — and never hide: every SKIPPED carries its reason. `AC-` rows have no advisory or skipped state whatever their kind; one non-`PASS` criterion is a `FAIL` report, and `FAIL(budget)` on a `live` row counts as one.
+**Verdict rule.** `PASS` iff `DOCTOR`, `ACCEPTANCE`, `NEGATIVE-CONTROL`, `RUFF`, `FOOTGUNS`, `FOCUSED-PYTEST` all PASS or `ADVISORY-FAIL(base)` (a focused-pytest node that fails identically on the base tree is the base's defect, not the PR's — list the node ids in `## Failures`, do not flip the verdict) **and every `AC-<req-id>-<n>` row is PASS** **and** every non-advisory, non-skipped `SUITE` row is PASS **and** `UI` is PASS or SMOKE-ONLY **and** `DESKTOP` is not a blocking FAIL. Advisory rows and SKIPPED rows never flip the verdict — and never hide: every SKIPPED carries its reason. `AC-` rows have no advisory or skipped state whatever their kind; one non-`PASS` criterion is a `FAIL` report, and `FAIL(budget)` on a `live` row counts as one.
 
 **`[Test Report]` message** (marker-prefixed → always a reply, `in_reply_to=<intake-id>` — the builder's Fix Report, the reviewer's re-run request, or the orchestrator's nightly dispatch; exact routing per hermes-verify step 8):
 
