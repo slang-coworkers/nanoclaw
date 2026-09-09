@@ -2273,6 +2273,19 @@ export function classifyThrownBounce(channelType: string | null, errMsg: string)
 }
 
 /**
+ * What the follow-up poller does when a fresh-session task (a `task` row without
+ * `new_session: false`) arrives while a query is open. Ending the query closes the
+ * SDK's input stream, and every tool call still in flight is auto-denied — the
+ * active turn is aborted, not paused. That is only safe when nothing is in flight,
+ * i.e. the query has been idle for `idleEndMs` (the same threshold as the plain
+ * idle-end rule). Otherwise the task is deferred: its row stays `pending` and is
+ * routed through the fresh-session path once the active turn ends on its own.
+ */
+export function freshSessionArrivalAction(idleMs: number, idleEndMs: number = IDLE_END_MS): 'defer' | 'end' {
+  return idleMs > idleEndMs ? 'end' : 'defer';
+}
+
+/**
  * Default-on fresh-session policy for recurring task batches:
  *   - Empty batch: false (defensive — no spurious fresh sessions).
  *   - Any chat in the batch: false (mixed batches preserve chat history).
@@ -3061,6 +3074,7 @@ export async function processQuery(
   // will kill the container and messages get reset to pending.
   let pollInFlight = false;
   let endedForCommand = false;
+  let freshSessionDeferLogged = false;
   let mailboxFailureStreak = 0;
   const onSignalAbort = () => query.abort();
   signal?.addEventListener('abort', onSignalAbort, { once: true });
@@ -3170,15 +3184,42 @@ export async function processQuery(
         // continuation and defeat the default. End the active query instead;
         // the next poll iteration's initial-batch path will pick up the
         // pending rows via the fresh-session path. Leave rows as 'pending'.
+        //
+        // But NEVER end a query that is still working. `query.end()` closes the
+        // SDK's input stream, and every tool call still in flight is then
+        // auto-denied ("The user doesn't want to take this action right now") —
+        // the active turn is aborted, not paused. Seen on prod 2026-09-09: a
+        // scheduled fire landed while the same series' manual run was mid
+        // fan-out and killed it. So the task rows stay `pending` (spliced out
+        // of this tick's push) until the active turn ends on its own, and the
+        // query is ended here only when it has already been idle for as long as
+        // the plain idle-end rule tolerates (`freshSessionArrivalAction`).
         const wantsFreshSession = (m: { kind: string; content: string }) =>
           m.kind === 'task' && !taskOptsOutOfNewSession(m);
-        if (newMessages.some(wantsFreshSession)) {
-          log(
-            `fresh-session task arrived mid-query (${newMessages.length} msg) — ending active query to route through fresh-session path`,
-          );
-          query.end();
-          done = true;
-          return;
+        const freshSessionTasks = newMessages.filter(wantsFreshSession);
+        if (freshSessionTasks.length > 0) {
+          const idleMs = Date.now() - lastEventTime;
+          if (freshSessionArrivalAction(idleMs) === 'end') {
+            log(
+              `fresh-session task arrived (${freshSessionTasks.length} msg) while the query has been idle ` +
+                `${Math.round(idleMs / 1000)}s — ending it to route through fresh-session path`,
+            );
+            query.end();
+            done = true;
+            return;
+          }
+          if (!freshSessionDeferLogged) {
+            freshSessionDeferLogged = true;
+            log(
+              `fresh-session task arrived mid-query (${freshSessionTasks.length} msg) — leaving it pending until ` +
+                `the active turn ends; ending the query now would deny its in-flight tool calls`,
+            );
+          }
+          for (const t of freshSessionTasks) {
+            const idx = newMessages.indexOf(t);
+            if (idx >= 0) newMessages.splice(idx, 1);
+          }
+          if (newMessages.length === 0) return;
         }
 
         // Update the shared routing when a follow-up brings richer routing
