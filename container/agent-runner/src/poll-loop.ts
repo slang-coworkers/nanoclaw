@@ -83,6 +83,22 @@ const IDLE_END_MS = process.env.NANOCLAW_IDLE_END_MS
 const FRESH_SESSION_IDLE_END_MS = process.env.NANOCLAW_FRESH_SESSION_IDLE_END_MS
   ? Math.max(60_000, parseInt(process.env.NANOCLAW_FRESH_SESSION_IDLE_END_MS, 10))
   : 300_000;
+// Idle-end limit while background subagents are in flight. The main agent emits
+// no SDK events while it waits on them (only task_progress heartbeats, which the
+// provider surfaces as activity), so the plain 20-min rule would end the query
+// and kill the subagents. Floor at IDLE_END_MS; default 90 min.
+const BG_TASK_IDLE_END_MS = process.env.NANOCLAW_BG_TASK_IDLE_END_MS
+  ? Math.max(IDLE_END_MS, parseInt(process.env.NANOCLAW_BG_TASK_IDLE_END_MS, 10))
+  : Math.max(IDLE_END_MS, 5_400_000);
+
+/** The idle-end limit that applies right now: the long one while subagents run. */
+export function idleEndLimit(
+  bgTasks: number,
+  base: number = IDLE_END_MS,
+  bgLimit: number = BG_TASK_IDLE_END_MS,
+): number {
+  return bgTasks > 0 ? Math.max(base, bgLimit) : base;
+}
 
 // A scheduled task run whose provider turn dies on a KNOWN transient error
 // (stream stall, gateway 5xx, connection reset) is bounced so the host reclaims
@@ -3110,6 +3126,8 @@ export async function processQuery(
   // True once the SDK has emitted a `result` for the current turn and nothing has
   // been pushed since; cleared by the next push. Post-turn accounting events keep it.
   let turnComplete = false;
+  // Background subagents spawned by the SDK and not yet reported finished.
+  let bgTasks = 0;
   let mailboxFailureStreak = 0;
   const onSignalAbort = () => query.abort();
   signal?.addEventListener('abort', onSignalAbort, { once: true });
@@ -3187,9 +3205,13 @@ export async function processQuery(
         }
 
         if (newMessages.length === 0) {
-          // End stream when agent is idle: no SDK events and no pending messages
-          if (Date.now() - lastEventTime > IDLE_END_MS) {
-            log(`No SDK events for ${IDLE_END_MS / 1000}s, ending query`);
+          // End stream when agent is idle: no SDK events and no pending messages.
+          // While background subagents run, the longer BG_TASK_IDLE_END_MS applies.
+          const idleLimit = idleEndLimit(bgTasks);
+          if (Date.now() - lastEventTime > idleLimit) {
+            log(
+              `No SDK events for ${idleLimit / 1000}s${bgTasks > 0 ? ` (${bgTasks} background task(s) still open)` : ''}, ending query`,
+            );
             query.end();
           }
           return;
@@ -3234,7 +3256,8 @@ export async function processQuery(
         const freshSessionTasks = newMessages.filter(wantsFreshSession);
         if (freshSessionTasks.length > 0) {
           const idleMs = Date.now() - lastEventTime;
-          if (freshSessionArrivalAction(idleMs, turnComplete) === 'end') {
+          // A completed turn with subagents still running is NOT a finished turn.
+          if (freshSessionArrivalAction(idleMs, turnComplete && bgTasks === 0, idleEndLimit(bgTasks)) === 'end') {
             log(
               `fresh-session task arrived (${freshSessionTasks.length} msg) while the query has been idle ` +
                 `${Math.round(idleMs / 1000)}s${turnComplete ? ' after a completed turn' : ''} — ending it to route through fresh-session path`,
@@ -3373,6 +3396,8 @@ export async function processQuery(
       // else means the SDK is working again.
       if (event.type === 'result') turnComplete = true;
       else if (event.type !== 'usage' && event.type !== 'message_usage') turnComplete = false;
+      if (event.type === 'progress' && event.task === 'started') bgTasks += 1;
+      else if (event.type === 'progress' && event.task === 'finished') bgTasks = Math.max(0, bgTasks - 1);
       handleEvent(event, routing);
       touchHeartbeat();
 
