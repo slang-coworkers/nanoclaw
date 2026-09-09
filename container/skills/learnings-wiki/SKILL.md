@@ -1,6 +1,6 @@
 ---
 name: learnings-wiki
-description: Organize the slang-coworkers SHARED LEARNINGS into a navigable, LLM-synthesized Karpathy wiki (sources → concepts → index). Scoped to the slang-coworkers learnings knowledge base only. No RAG, no embeddings, no MCP — direct file search. Triggers on "rebuild learnings wiki", "organize learnings", "learnings-wiki".
+description: Organize the slang-coworkers SHARED LEARNINGS into a navigable, LLM-synthesized Karpathy wiki (sources → concepts → index). Scoped to a shared-learnings knowledge base: slang-coworkers by default, or any KB that supplies its own `.wiki-config.json`. No RAG, no embeddings, no MCP — direct file search. Triggers on "rebuild learnings wiki", "organize learnings", "learnings-wiki".
 ---
 
 # learnings-wiki
@@ -8,7 +8,9 @@ description: Organize the slang-coworkers SHARED LEARNINGS into a navigable, LLM
 > **Scope:** This skill is **only** for the **slang-coworkers shared learnings** knowledge
 > base — the `append_learning` files under `/workspace/shared/learnings/`. It is not a
 > general-purpose wiki tool. It organizes those learnings into a synthesized wiki so agents
-> can navigate accumulated knowledge instead of grepping a flat pile.
+> can navigate accumulated knowledge instead of grepping a flat pile. A second install runs the
+> same skill over its own atoms by dropping a `.wiki-config.json` at its KB root; the layout is
+> identical, only the vocabulary differs.
 
 Turns `learnings/*.md` and `learnings/<agent-group-id>/*.md` (what `append_learning` writes; per-author subdirectories since 2026-08-10) into a navigable,
 cross-linked, **LLM-synthesized** wiki. **No embeddings, no RAG, no MCP server** — inside
@@ -28,10 +30,41 @@ wiki/                 L3 synthesized, navigable
   concepts/<g>-<x>.md synthesized pages: merge related learnings, flag contradictions, cite + cross-link
   topics/<topic>.md   auto-grouped buckets
   learnings/<stem>.md one viewable page per learning (frontmatter + backlinks)
+.wiki-config.json     optional: this corpus's vocabulary + index copy (below)
 ```
 
 Only the **admin / Main group (the orchestrator)** has read-write on `/workspace/shared`;
 coworker groups mount it read-only and cannot build the wiki.
+
+**`.wiki-config.json` (optional, at the KB root)** names the vocabulary for *this* corpus. With no
+file the builder uses its Slang defaults byte for byte, so an install that never writes one is
+unaffected:
+
+```json
+{"title": "Acme Learnings - Index",
+ "heading": "Acme Wiki",
+ "description": "one line under the index counts",
+ "topics": [["hermes-plugins", "Hermes plugins", ["plugin.yaml", "register_", "doctor"]]],
+ "groups": [["hermes-plugins", ["plugin", "hook", "manifest"]]],
+ "group_labels": {"hermes-plugins": "Hermes plugins"}}
+```
+
+Every key is optional and keeps its default when missing. `topics` bucket `wiki/topics/`, `groups`
+drive the `.ingest/<group>.txt` clusters and the `<group>-` prefix on concept pages, `group_labels`
+name the index headings, `heading` overrides the index H1 (default: the title with a trailing
+`- Index` swapped for ` Wiki`); keywords are matched lowercased against each atom's stem + title,
+best match wins. Every `topics`/`groups` key becomes a filename, so it must be a plain page name
+(`[A-Za-z0-9][A-Za-z0-9_-]*`).
+
+**A `topics` or `groups` list REPLACES the built-in table wholesale, it does not extend it.** On a KB
+that has no `.wiki-config.json` today (prod is one) a partial config re-buckets the entire corpus:
+every `.ingest/*.txt` cluster is rewritten, the `<group>-` page prefixes stop matching, and every
+topic page is regenerated. To add one row, copy the existing rows out of the builder's
+`DEFAULT_TOPICS` / `DEFAULT_GROUPS` first. A malformed file prints `WIKI-CONFIG-ERROR` and the run
+continues on the defaults (it holds no unique state, unlike `.lineage.json`, so refusing to build
+over a vocabulary typo would cost more than one mis-bucketed run). A group the config does not
+declare still works: its pages get their own index heading, so the fold can add a group and use it
+on the same run.
 
 ## Query (navigate, don't vector-search)
 
@@ -62,11 +95,17 @@ This normalizes learnings → `sources/`, writes per-learning pages + topic buck
 **Step 2 — synthesize concept pages (the LLM step).** For each non-empty `.ingest/<group>.txt`,
 spawn a sub-agent (Task tool) that reads that group's source files and writes one or more
 `wiki/concepts/<group>-<subtopic>.md` pages. Each concept page MUST:
+- **be named for what it says.** `<subtopic>` is a noun phrase a reader can pick out of the index
+  (`ci-runners-flake-triage`, `review-pr-head-binding`). **Numbered suffixes are forbidden**: a `-2`
+  names nothing but "the overflow of something else", so finding one rule costs the whole family.
+  `finalize` reports each `-<n>.md` page that sits in a family (`x-2` beside `x` or `x-3`) as
+  `NUMBERED-SPLIT`, and leaves a lone trailing number that names a subject alone (`glibc-2-34`);
 - **open with a `## TL;DR` of ≤40 lines** — the durable rules, no citations. Readers open pages
   with `limit=60`, so anything a reader must not miss belongs above that line;
 - **stay under 40 KB.** A page above that is silently truncated by the `Read` tool, so its tail
-  never reaches the agent. At the cap, **split by subtopic** (`<group>-<subtopic>-2.md`) — do not
-  keep appending. Growth belongs in page *count*, never page *size*;
+  never reaches the agent. **The cap is the trigger, the theme is the boundary**: at the cap read the
+  page, name the two or three subjects actually inside it, and write each out as its own
+  `<group>-<subtopic>.md` with its own TL;DR. Growth belongs in page *count*, never page *size*;
 - **split the largest over-cap pages first**, not just the one you folded into. Each run,
   `ls -S wiki/concepts/*.md | head -5` and bring the biggest down, even if this run's learnings
   never touched them — otherwise the biggest and most-read pages stay over cap indefinitely;
@@ -93,6 +132,21 @@ pages untouched that day).
 **Target: 0 dangling, 0 uncovered, 0 oversize, 0 missing-TL;DR, 0 lineage errors.** "Covered" means
 each *live* learning is cited by ≥1 concept — an atom with a **valid** `superseded_by:` is retired,
 not a gap.
+
+`finalize` also prints these **shape reports**. The builder only surfaces them; deciding is the
+fold's job, and none of them change the exit code:
+
+| Line | Means | Act |
+|------|-------|-----|
+| `NUMBERED-SPLIT <page>` | a page in a numbered family, i.e. split by size | consolidate the family into pages named by meaning |
+| `CANDIDATE-SUPERSESSION <old> ~ <new> (jaccard=…)` | two live atoms whose titles say nearly the same thing, older stem first | merge into one paragraph and `retire <old> <new>`, or leave both if they only look alike |
+| `CANDIDATE-CORRECTION <stem>` | an atom that announces itself as a correction | retire what it corrects, not the correction |
+| `VOCAB <stem> <tokens>` | an atom whose **topic** fell through to `misc` | a token set that repeats is the proposal for the next `topics` row in `.wiki-config.json` (mirror it into `groups` only if the theme also deserves its own `.ingest` cluster) |
+| `SHAPE live_atoms=… concept_bytes=… bytes_per_atom=… numbered_pages=… over_cap=…` | the trend (`concept_bytes` is UTF-8 bytes) | `bytes_per_atom` flat or falling is synthesis, climbing is inventorying |
+| `CANDIDATE-SUPERSESSION-TRUNCATED` | the pair scan stopped early, so the list above is a partial slice | fold this run's candidates, then re-run `finalize` for the rest |
+
+Each list stops at the first 40 with a `… and N more` tail, so a backlog reports a workable slice
+instead of a wall.
 
 **Check the exit code — both commands have one.** `0` ok · `2` refused (bad usage, or the durable
 lineage state exists and cannot be trusted) · `3` completed, but the lineage graph has errors and an
@@ -122,10 +176,37 @@ the routine update is cheap:
    **The target stem must exist and must not be the atom itself** — see *Lineage integrity* below;
    `python3 .learnings_wiki.py retire <old> <new>` records the same thing and rejects a bad target
    on the spot instead of a build later. Near-duplicates collapse into one paragraph
-   citing both. Add a new concept page only if it opens a genuinely new topic — **or if the target
-   page is at the 40 KB cap**, in which case split it by subtopic. Don't re-synthesize untouched themes.
-4. Re-run `finalize` → expect 0 dangling, 0 uncovered, 0 oversize, 0 missing-TL;DR, 0 `LINEAGE-*`,
-   and **exit 0**.
+   citing both. Add a new concept page only if it opens a genuinely new topic, **or if the target
+   page is at the 40 KB cap**, in which case split it by theme into pages named for their subjects.
+   Don't re-synthesize untouched themes.
+4. **Act on the candidates.** `CANDIDATE-SUPERSESSION` is the fold's queue for the supersession rule
+   above: read both atoms, then either rewrite the single paragraph that states the current truth and
+   `retire <old> <new>`, or leave both live because they only look alike. `CANDIDATE-CORRECTION` is
+   an atom that says it corrects something, so find and retire *that* atom, never the correction.
+5. **Consolidate one numbered family per run, at most 4 of its pages.** Take the first
+   `NUMBERED-SPLIT` family (`X-1.md` … `X-k.md`) and rewrite up to four of its pages as pages named
+   for the subjects they hold, each with its own TL;DR and each under cap. Carry every citation
+   across with the paragraph that cites it, `retire` the duplicates the merge exposes rather than
+   keeping both rows, and delete a numbered page only once its content lives on a named one. Never
+   leave a page over cap. One family is the bound on scope, four pages the bound on cost: prod's
+   largest family is 13 pages at or near the 40 KB cap, so "read all of it" is half a megabyte
+   before a word is rewritten. Finish a bigger family over several runs, leaving the pages you did
+   not reach numbered, and spawn a bounded sub-agent for the rewrite when the pages are large.
+6. **When `VOCAB` repeats, extend the vocabulary.** The same tokens across several `misc` atoms is a
+   theme the config does not name. `VOCAB` measures an atom's **topic**, so the row goes in
+   `"topics"` (key, label, keywords) in `<ROOT>/.wiki-config.json`; mirror it into `"groups"` plus
+   its `"group_labels"` entry only if the theme also deserves its own `.ingest` synthesis cluster,
+   and fold those atoms into `<new-group>-<subtopic>.md`. Unknown groups are tolerated and get their
+   own index heading, so a new group works on the same run. One atom is not a theme. Two rules bound
+   this: a `topics`/`groups` list **replaces** the built-in table (copy the defaults out of the
+   builder first, see *Layout*), and on a KB that has **no** `.wiki-config.json` — prod is one —
+   creating the first one re-buckets the whole corpus, so that is an operator change to report, not
+   a fold-time edit. After editing, validate it before re-running `build`:
+   `python3 -c 'import json;json.load(open("<ROOT>/.wiki-config.json"))'`.
+7. Re-run `finalize` → expect 0 dangling, 0 uncovered, 0 oversize, 0 missing-TL;DR, 0 `LINEAGE-*`,
+   no `WIKI-CONFIG-ERROR` (it is non-fatal and exits 0, so nothing else catches a config typo, and a
+   run bucketed with the wrong vocabulary did its folding against the wrong clusters), **exit 0**,
+   and a `SHAPE` line whose `bytes_per_atom` did not climb.
 
 ### Lineage integrity
 
@@ -154,9 +235,11 @@ live on an immutable L1 atom, where dropping the lineage entry alone would let t
 re-apply it. Naming a *different* target later is a deliberate re-retirement and clears the
 tombstone. `python3 .learnings_wiki.py lineage` prints the current state.
 
-**Watch the shape, not just the count.** If total concept-page bytes grow faster than the atom
-count, the fold is inventorying rather than synthesizing — the fix is more supersession and more
-splitting, not a bigger page.
+**Watch the shape, not just the count.** `finalize` prints
+`SHAPE live_atoms=… concept_bytes=… bytes_per_atom=… numbered_pages=… over_cap=…`.
+`bytes_per_atom` is the synthesis ratio: flat or falling means the fold is merging, climbing means it
+is inventorying. `numbered_pages` should trend to zero. The fix for either is more supersession and
+more consolidation, not a bigger page.
 
 **Full rebuild** (occasionally, when themes drift): `rm -rf wiki/concepts/*`, then run build →
 synthesize **all** groups → finalize. Re-balances themes at full LLM cost.
@@ -188,6 +271,10 @@ The pre-task `script` gate (bash, 30s) should `echo '{\"wakeAgent\": false}'` wh
 are newer than `wiki/index.md`, so idle days cost nothing. On a burst of new learnings, trigger
 sooner.
 
+The one line the task posts must carry `bytes_per_atom` and `numbered_pages` from the `SHAPE` line
+alongside the counts. Those two are the only numbers that show whether the nightly fold is
+synthesizing or inventorying, and nobody opens the wiki to find out.
+
 The prod task also carries a **PART B** that syncs `wiki/`, `sources/` and `learnings/` to the
 public `knowledge_base` mirror and opens/merges the PR. That half is instance-specific — it is
 in the canonical prompt, not in this skill.
@@ -211,6 +298,7 @@ Layout under the KB root:
   sources/learnings/  L2 cleaned, secret-scrubbed, citeable + sources/index.md
   wiki/               L3 index.md, glossary.md, concepts/, topics/, learnings/
   .themes.json/.ingest/*.txt  cluster manifests for the LLM synthesis step
+  .wiki-config.json   OPTIONAL vocabulary + index copy for THIS KB; absent = Slang defaults
 
 Usage:
   python3 learnings_wiki.py build            # L2 + deterministic L3 base + cluster manifests (PRESERVES wiki/concepts/)
@@ -252,6 +340,13 @@ LINEAGE_SCHEMA = 2
 LINK = re.compile(r"\[(?:[^\]]*)\]\((wiki/[^)]+\.md)\)")
 OBSIDIAN_WITH_DESC = re.compile(r"\[\[wiki/learnings/([^\]]+\.md)\]\]\s*—\s*(.+)")
 OBSIDIAN_BARE = re.compile(r"\[\[wiki/learnings/([^\]]+\.md)\]\]")
+# Topic and group keys BECOME filenames (wiki/topics/<key>.md, .ingest/<key>.txt), and both
+# reach here from data an agent writes: an atom's `topic:` frontmatter and the KB's
+# .wiki-config.json. A key of `../concepts/<page>` would make build() overwrite a
+# synthesized concept page — the one class of file its delete sweep deliberately preserves —
+# and `../../../x` would write outside the KB entirely. So a key that is not a plain page
+# name is refused at both doors.
+SAFE_KEY = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*\Z")
 
 PATTERNS = [
     (re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}"), "GITHUB_TOKEN"),
@@ -267,8 +362,14 @@ def scrub(text):
         text, c = rx.subn(f"[REDACTED:{label}]", text); n += c
     return text, n
 
-# broad topics (for wiki/topics/ buckets) — first match wins
-TOPICS = [
+# ---------------------------------------------------------------- vocabulary
+# The buckets below are the Slang-Coworkers vocabulary this wiki grew up with. They are the
+# DEFAULT, not the definition: a KB that ships a .wiki-config.json replaces them wholesale
+# (see load_config), and a KB that ships none must build byte-for-byte as it did before the
+# config existed — which is why the literals stay here rather than in a file every install
+# would then have to carry.
+# broad topics (for wiki/topics/ buckets) — best match wins
+DEFAULT_TOPICS = [
     ("slang-compiler", "Slang compiler & language",
      ["slang","spirv","autodiff","metal","wgsl","glsl","optix","reflection","generic","clang","slangc",
       "slangpy","intrinsic","dxc","shader","compiler","ir-","witness","raypayload","coopvec"]),
@@ -293,8 +394,8 @@ TOPICS = [
       "false-positive","false positive","probe","bisect","reproduce","repro ","confirmed",
       "assumption","overclaim"]),
 ]
-# concept groups for the LLM synthesis step (theme keywords -> 12 groups)
-GROUPS = [
+# concept groups for the LLM synthesis step (theme keywords -> groups)
+DEFAULT_GROUPS = [
     ("slang-backends", ["spirv","spir-v","glsl","metal","wgsl","webgpu","optix","raypayload","raygen","anyhit","paq","msl"]),
     ("slang-language-core", ["generic","interface","witness","conformance","existential","reflection","intrinsic","builtin","overload"]),
     ("slang-autodiff-ir", ["autodiff","differentiable","gradient","transpose","derivative","simplifyir","constexpr","phi","ssa","witnesstable"]),
@@ -306,15 +407,126 @@ GROUPS = [
     ("ci-tooling", ["ci-flake","flake","runner","thundering-herd","ci-","gh-cli","gh "]),
     ("review-process", ["review","reviewer","devin","comment-hygiene","papers","arxiv","pdf","transcript","read-tool"]),
 ]
-TOPIC_LABEL = {k: l for k, l, _ in TOPICS}; TOPIC_LABEL["misc"] = "Uncategorized"
-TOPIC_ORDER = [k for k, _, _ in TOPICS] + ["misc"]
-GROUP_LABEL = {
+DEFAULT_GROUP_LABEL = {
     "slang-backends":"Slang backends","slang-language-core":"Slang language core",
     "slang-autodiff-ir":"Slang autodiff & IR","slang-tooling":"Slang tooling","slangpy":"SlangPy",
     "agent-routing":"Agent routing & messaging","agent-infra":"Agent infrastructure",
     "agent-fixer-codex-skills":"Agent fixer / codex / skills","ci-tooling":"CI & tooling",
     "review-process":"Review & process","misc":"General / misc",
 }
+DEFAULT_TITLE = "Slang-Coworkers Learnings — Index"
+DEFAULT_DESCRIPTION = ""
+CONFIG_PATH = os.path.join(ROOT, ".wiki-config.json")
+
+def _cfg_rows(raw, name, arity):
+    """[[key, label, [kw...]]] / [[key, [kw...]]] -> tuples. Raises ValueError naming the row."""
+    if raw is None:
+        return None
+    if not isinstance(raw, list):
+        raise ValueError(f"'{name}' must be a list, got {type(raw).__name__}")
+    rows = []
+    for row in raw:
+        if not isinstance(row, (list, tuple)) or len(row) != arity:
+            raise ValueError(f"'{name}': every row needs {arity} items, got {row!r}")
+        head, kws = list(row[:-1]), row[-1]
+        if not all(isinstance(h, str) and h.strip() for h in head):
+            raise ValueError(f"'{name}': key/label must be non-empty strings, got {row!r}")
+        if not SAFE_KEY.match(head[0]):
+            raise ValueError(f"'{name}': key {head[0]!r} must match [A-Za-z0-9][A-Za-z0-9_-]*")
+        if not isinstance(kws, list) or not all(isinstance(k, str) for k in kws):
+            raise ValueError(f"'{name}': keywords must be a list of strings, got {row!r}")
+        # Lowercased once here: classify() matches against a lowercased haystack, so an
+        # operator writing "OneCLI" in the config would otherwise silently never match.
+        rows.append(tuple(head) + ([k.lower() for k in kws],))
+    return rows
+
+def load_config(path=None):
+    """Vocabulary + index copy for THIS knowledge base, from <ROOT>/.wiki-config.json.
+
+    Absent -> the Slang defaults above, byte for byte. Present -> topics, groups, group
+    labels, index title and description all come from it, so a second corpus (nemoclaw's
+    Hermes atoms, say) gets its own buckets without forking this script. Shape:
+
+      {"title": str, "description": str, "heading": str,
+       "topics": [[key, label, [kw, ...]], ...],
+       "groups": [[key, [kw, ...]], ...],
+       "group_labels": {key: label}}
+
+    Every key is optional; whatever is missing keeps its default. A MALFORMED file is
+    reported and ignored, not fatal: unlike .lineage.json it holds no unique state, so
+    refusing to build the wiki over a vocabulary typo would cost more than one run bucketed
+    with the previous vocabulary.
+    """
+    path = path or CONFIG_PATH
+    cfg = {"title": DEFAULT_TITLE, "description": DEFAULT_DESCRIPTION, "heading": "",
+           "topics": DEFAULT_TOPICS, "groups": DEFAULT_GROUPS,
+           "group_labels": dict(DEFAULT_GROUP_LABEL)}
+    try:
+        with open(path, encoding="utf-8") as fh:
+            raw = json.load(fh)
+    except FileNotFoundError:
+        return cfg
+    except (OSError, ValueError) as e:
+        print(f"WIKI-CONFIG-ERROR {os.path.basename(path)}: {e} — using the default vocabulary")
+        return cfg
+    try:
+        if not isinstance(raw, dict):
+            raise ValueError(f"top level must be an object, got {type(raw).__name__}")
+        topics = _cfg_rows(raw.get("topics"), "topics", 3)
+        groups = _cfg_rows(raw.get("groups"), "groups", 2)
+        labels = raw.get("group_labels")
+        if labels is not None and (not isinstance(labels, dict) or not all(
+                isinstance(k, str) and isinstance(v, str) for k, v in labels.items())):
+            raise ValueError("'group_labels' must map strings to strings")
+        for key in ("title", "description", "heading"):
+            if key in raw and not isinstance(raw[key], str):
+                raise ValueError(f"'{key}' must be a string")
+    except ValueError as e:
+        print(f"WIKI-CONFIG-ERROR {os.path.basename(path)}: {e} — using the default vocabulary")
+        return cfg
+    if topics is not None: cfg["topics"] = topics
+    if groups is not None: cfg["groups"] = groups
+    if labels is not None: cfg["group_labels"] = dict(labels)
+    for key in ("title", "description", "heading"):
+        if raw.get(key): cfg[key] = raw[key]
+    return cfg
+
+def _heading_from(title):
+    """Turn a "<X> — Index" title into the "<X> Wiki" heading. The index has always
+    carried both strings; deriving one keeps them in step instead of asking for two."""
+    base = re.sub(r"\s*[—–-]\s*Index\s*$", "", (title or "").strip()).strip()
+    return base if base.lower().endswith("wiki") else (base + " Wiki").strip()
+
+def _apply_config(cfg=None):
+    """Bind the module-level vocabulary. Called at import, and again at the top of build()
+    and finalize() so a config written after this module was imported still counts."""
+    global CONFIG, TOPICS, GROUPS, TOPIC_LABEL, TOPIC_ORDER, GROUP_LABEL
+    global WIKI_TITLE, WIKI_HEADING, WIKI_DESCRIPTION
+    CONFIG = cfg if cfg is not None else load_config()
+    TOPICS, GROUPS = CONFIG["topics"], CONFIG["groups"]
+    TOPIC_LABEL = {k: l for k, l, _ in TOPICS}
+    TOPIC_LABEL.setdefault("misc", "Uncategorized")
+    keys = [k for k, _, _ in TOPICS]
+    TOPIC_ORDER = keys + ([] if "misc" in keys else ["misc"])   # misc is the fallthrough, last
+    GROUP_LABEL = dict(CONFIG["group_labels"])
+    GROUP_LABEL.setdefault("misc", "General / misc")
+    WIKI_TITLE = CONFIG["title"]
+    WIKI_HEADING = CONFIG["heading"] or _heading_from(WIKI_TITLE)
+    WIKI_DESCRIPTION = CONFIG["description"]
+    return CONFIG
+
+def _topic_order(by_topic):
+    """Configured order first, then any topic an atom named that the vocabulary does not
+    know. An explicit `topic:` outlives a vocabulary change, and a topic with no page is a
+    dangling link from every learning that carries it. Unknown keys are filtered through
+    SAFE_KEY: build() already refuses one that is not a page name, and this is the second
+    door, because an unfiltered key here becomes a `wiki/topics/<key>.md` link in the index."""
+    return TOPIC_ORDER + sorted(k for k in by_topic
+                                if k not in TOPIC_ORDER and SAFE_KEY.match(k))
+
+CONFIG = TOPICS = GROUPS = TOPIC_LABEL = TOPIC_ORDER = GROUP_LABEL = None
+WIKI_TITLE = WIKI_HEADING = WIKI_DESCRIPTION = ""
+_apply_config()          # import-time bind; refreshed at the top of build() and finalize()
 
 def _read(path):
     """Read and CLOSE. The bare `open(...).read()` idiom this replaces leaked a file object
@@ -630,6 +842,7 @@ def report_lineage(state, stems, info=None):
 # ---------------------------------------------------------------- build
 
 def build():
+    _apply_config()            # a .wiki-config.json written since import still counts
     stems = l1_stems()
     state, info = harvest_lineage(stems)   # MUST precede the delete sweep below
     lineage = state["superseded_by"]       # validated edges only
@@ -664,6 +877,12 @@ def build():
         # page, so without this a hand- or LLM-corrected topic is silently reverted on the
         # next run and the keyword table can never be overridden for a specific atom.
         topic = fm(text, "topic") or classify(hay, [(k, kw) for k, _, kw in TOPICS], "misc")
+        # `fm()` searches the WHOLE atom, not just its frontmatter, so an ordinary prose line
+        # reading `topic: ../concepts/x` in a learning ABOUT the wiki is enough to steer the
+        # write below. misc is the fallthrough the classifier already uses.
+        if not SAFE_KEY.match(topic):
+            print(f"BAD-TOPIC {stem}: {topic!r} is not a usable page name — filed under misc")
+            topic = "misc"
         group = classify(hay, GROUPS, "misc")
         ts = (re.match(r"^(\d{10,})-", stem) or [None, ""])[1] if re.match(r"^(\d{10,})-", stem) else ""
         _write(os.path.join(SRC, stem + ".md"), norm(text))
@@ -686,11 +905,12 @@ def build():
 
     by_topic = collections.defaultdict(list)
     for e in entries: by_topic[e["topic"]].append(e)
-    for key in TOPIC_ORDER:
+    for key in _topic_order(by_topic):
         items = sorted(by_topic.get(key, []), key=lambda e: e["title"].lower())
         if not items: continue
-        lines = ["---", f'title: "{TOPIC_LABEL[key]}"', "type: topic", "---", "",
-                 f"# {TOPIC_LABEL[key]}", "", f"{len(items)} learnings. [Catalog](wiki/index.md)", ""]
+        label = TOPIC_LABEL.get(key, key)
+        lines = ["---", f'title: "{yesc(label)}"', "type: topic", "---", "",
+                 f"# {label}", "", f"{len(items)} learnings. [Catalog](wiki/index.md)", ""]
         lines += [f"- [{e['title']}](wiki/learnings/{e['stem']}.md)" for e in items] + [""]
         _write(os.path.join(WIKI, "topics", key + ".md"), "\n".join(lines))
 
@@ -714,23 +934,33 @@ def _write_index(entries, by_topic, concepts=None):
     by_group = collections.OrderedDict()
     for c in sorted(concepts, key=lambda c: (c["group"], c["title"].lower())):
         by_group.setdefault(c["group"], []).append(c)
-    idx = ["---", 'title: "Slang-Coworkers Learnings — Index"', "type: nav", "---", "",
-           "# Slang-Coworkers Learnings Wiki", "",
+    idx = ["---", f'title: "{yesc(WIKI_TITLE)}"', "type: nav", "---", "",
+           f"# {WIKI_HEADING}", "",
            f"Standalone wiki built from **{len(entries)} agent learnings**"
-           + (f", synthesized into **{len(concepts)} concept pages**" if concepts else "") + ".", "",
-           "**Navigate:** concept (synthesized) → its linked learnings.", "",
-           "> Links below are relative to the KB root. In a container that root is `/workspace/shared/`,",
-           "> and your cwd is `/workspace/agent` — so read `](wiki/concepts/x.md)` as",
-           "> `/workspace/shared/wiki/concepts/x.md`. Keyword fallback:",
-           "> `grep -ril <term> /workspace/shared/sources/learnings/`.", ""]
+           + (f", synthesized into **{len(concepts)} concept pages**" if concepts else "") + ".", ""]
+    # The configured description sits under the counts sentence, and is empty by default —
+    # a KB with no .wiki-config.json renders exactly the index it rendered before.
+    if WIKI_DESCRIPTION:
+        idx += [WIKI_DESCRIPTION, ""]
+    idx += ["**Navigate:** concept (synthesized) → its linked learnings.", "",
+            "> Links below are relative to the KB root. In a container that root is `/workspace/shared/`,",
+            "> and your cwd is `/workspace/agent` — so read `](wiki/concepts/x.md)` as",
+            "> `/workspace/shared/wiki/concepts/x.md`. Keyword fallback:",
+            "> `grep -ril <term> /workspace/shared/sources/learnings/`.", ""]
     if concepts:
         idx += ["## Concepts (synthesized)", ""]
         for g, items in by_group.items():
             idx.append(f"### {GROUP_LABEL.get(g, g)}")
             idx += [f"- [{c['title']}]({c['rel']})" for c in items] + [""]
     idx += ["## Topics", ""]
-    for key in TOPIC_ORDER:
-        if by_topic.get(key): idx.append(f"- [{TOPIC_LABEL[key]}](wiki/topics/{key}.md) ({len(by_topic[key])})")
+    for key in _topic_order(by_topic):
+        # The page, not just the bucket: build() writes the topic pages before it calls this,
+        # so on the normal path every non-empty bucket has one. finalize() re-derives the
+        # buckets from the L3 pages, where a topic can have drifted out of the vocabulary
+        # since the last build — and a link the builder itself emitted turning up in its own
+        # DANGLING list sends the fold chasing its own tail.
+        if by_topic.get(key) and os.path.isfile(os.path.join(WIKI, "topics", key + ".md")):
+            idx.append(f"- [{TOPIC_LABEL.get(key, key)}](wiki/topics/{key}.md) ({len(by_topic[key])})")
     # NOTE: no per-learning chronological list here. The index is a CATALOG (O(concepts)),
     # not an inventory (O(learnings)) — an atom-per-line tail made it 433 KB / 98.7% dead
     # weight and forced every reader to guess a `limit=`. Raw atoms stay enumerable via
@@ -802,13 +1032,156 @@ def _normalize_concept_footers():
         print(f"footers normalized: {fixed} pages (N recomputed), {dups} duplicate rows dropped")
 
 
+# ---------------------------------------------------------------- shape reporting
+
+STOP_WORDS = set("""the a an of to in on for and or is are be with from that this it its by as at not no into
+when what which how why can cannot must should will would only just also then than there their them they
+you your our we us if else while does did done doing use used using make makes made get gets got has have
+had was were been being about after before over under out up down off same each per via across between
+during both any all some more most less least new old first last next prev""".split())
+
+REPORT_LIMIT = 40
+SUPERSESSION_JACCARD = 0.6
+NUMBER_SUFFIX = re.compile(r"-\d+\Z")
+CORRECTION_MARKERS = ("supersedes", "no longer", "was wrong")
+
+def _numbered_family(stems):
+    """The concept pages that are part of a SIZE-split family: `x-2` next to `x` or `x-3`.
+
+    A trailing number is not by itself a split. `ci-tooling-glibc-2-34`,
+    `agent-routing-github-api-403` and `slang-backends-spirv-1-6` are named for exactly what
+    they say, and flagging them sends the fold to RENAME a correctly named page — which
+    dangles every inbound `wiki/concepts/...` link. Worse, the list is sorted and the fold
+    takes the first family, so one early-sorting false positive can consume the whole per-run
+    consolidation budget. Every real family on prod (`...-discipline-1..13`,
+    `review-pr-practices-1..9`) has siblings, so requiring one costs no recall.
+    """
+    stems = set(stems)
+    by_base = collections.defaultdict(set)
+    for s in stems:
+        by_base[NUMBER_SUFFIX.sub("", s)].add(s)
+    return {s for s in stems if NUMBER_SUFFIX.search(s)
+            and (len(by_base[NUMBER_SUFFIX.sub("", s)]) > 1
+                 or NUMBER_SUFFIX.sub("", s) in stems)}
+
+def _bounded(lines, limit=REPORT_LIMIT):
+    """Print at most `limit` lines and SAY how many were cut. A report that prints 900 lines
+    is a report nobody reads; one that silently prints 40 of 900 is worse."""
+    for line in lines[:limit]:
+        print(line)
+    if len(lines) > limit:
+        print(f"  … and {len(lines) - limit} more")
+
+def _title_tokens(title):
+    """The significant words of a title: what two atoms must share to be the same rule
+    written twice. Stop words and 1-3 letter fragments would pair everything with everything."""
+    return {w for w in re.split(r"[^a-z0-9]+", (title or "").lower())
+            if len(w) > 3 and w not in STOP_WORDS and not w.isdigit()}
+
+def _is_correction_title(title):
+    t = (title or "").strip().lower()
+    return t.startswith("correction") or any(m in t for m in CORRECTION_MARKERS)
+
+def _supersession_candidates(items, threshold=SUPERSESSION_JACCARD, budget=5_000_000,
+                             df_cap=None):
+    """Pairs of live atoms whose titles say nearly the same thing. Returns [(jaccard, older,
+    newer)], strongest first, plus whether the scan was cut short.
+
+    Surfacing only — the fold decides whether one supersedes the other, whether they merge,
+    or whether both stay. Prod carried 251 self-declared "correction" atoms against 3
+    lineage edges because nothing ever put a candidate in front of the fold agent.
+
+    Inverted index, not the n^2 sweep: 5.8k atoms is 17M set comparisons per finalize. A
+    token carried by more than 5% of the corpus cannot discriminate, so it is skipped as an
+    index entry. `budget` then bounds the scan itself — generously, because a budget that
+    trips on a normal corpus silently drops the NEWEST atoms (the loop walks them in
+    timestamp order), which are the ones the fold is there to place.
+
+    The index BLOCKS, it does not score. Scoring off the pruned postings counted a common
+    token in the union but never in the intersection, so every pair sharing one was pushed
+    below the threshold: at prod scale (5.8k atoms, df_cap 290) two titles differing by one
+    word scored 0.50 and were reported as nothing, because the tokens that get pruned are
+    exactly the corpus's dominant themes. Candidates come from the index, the ratio comes
+    from the full token sets.
+    """
+    postings = collections.defaultdict(list)
+    for idx, (_stem, toks) in enumerate(items):
+        for t in toks:
+            postings[t].append(idx)
+    df_cap = max(50, len(items) // 20) if df_cap is None else df_cap
+    pairs, scanned, truncated = [], 0, False
+    for idx, (stem, toks) in enumerate(items):
+        shared = set()
+        for t in toks:
+            plist = postings[t]
+            if len(plist) > df_cap:
+                continue
+            for j in plist:
+                if j > idx:
+                    shared.add(j)
+        scanned += len(shared)
+        for j in shared:
+            other = items[j][1]
+            inter, union = len(toks & other), len(toks | other)
+            if union and inter / union >= threshold:
+                older, newer = sorted((stem, items[j][0]))   # ms-timestamp prefix orders them
+                pairs.append((round(inter / union, 2), older, newer))
+        if scanned > budget:
+            truncated = True
+            break
+    pairs.sort(key=lambda p: (-p[0], p[1], p[2]))
+    return pairs, truncated
+
+def _report_shape(entries, live, numbered, concept_bytes, over_cap):
+    """The things a size-driven fold cannot see about itself. Reports only; nothing here
+    changes a page, retires an atom or affects the exit code.
+
+    NUMBERED-SPLIT          `<x>-2.md`, `<x>-3.md` with a sibling: pages split by SIZE, so one
+                            rule is spread over k pages and the reader has to open all of them.
+    CANDIDATE-SUPERSESSION  two live atoms saying nearly the same thing, older stem first.
+    CANDIDATE-CORRECTION    an atom that announces itself as a correction of something.
+    VOCAB                   atoms that landed in `misc`, with the words that put them there
+                            — the proposal for the next topic in .wiki-config.json.
+    SHAPE                   bytes of concept text per live atom. Synthesis holds that flat;
+                            inventorying makes it climb.
+    """
+    _bounded([f"  NUMBERED-SPLIT {rel} — split by size; fold the family into "
+              f"<group>-<subtopic>.md pages named by meaning" for rel in sorted(numbered)])
+
+    live_entries = [e for e in entries if "wiki/learnings/" + e["stem"] + ".md" in live]
+    items = [(e["stem"], _title_tokens(e["title"])) for e in live_entries]
+    pairs, truncated = _supersession_candidates([(s, t) for s, t in items if len(t) >= 2])
+    _bounded([f"  CANDIDATE-SUPERSESSION {older} ~ {newer} (jaccard={j:.2f})"
+              for j, older, newer in pairs])
+    if truncated:
+        print("  CANDIDATE-SUPERSESSION-TRUNCATED scan budget reached; re-run after folding")
+    _bounded([f"  CANDIDATE-CORRECTION {e['stem']}"
+              for e in sorted(live_entries, key=lambda e: e["stem"])
+              if _is_correction_title(e["title"])])
+
+    misc = [e for e in live_entries if e.get("topic", "misc") == "misc"]
+    freq = collections.Counter(w for e in misc for w in _title_tokens(e["title"]))
+    vocab = []
+    for e in sorted(misc, key=lambda e: e["stem"]):
+        top = sorted(_title_tokens(e["title"]), key=lambda w: (-freq[w], w))[:5]
+        if top:
+            vocab.append(f"  VOCAB {e['stem']} {','.join(top)}")
+    _bounded(vocab)
+
+    n = len(live_entries)
+    print(f"SHAPE live_atoms={n} concept_bytes={concept_bytes} "
+          f"bytes_per_atom={concept_bytes // n if n else 0} "
+          f"numbered_pages={len(numbered)} over_cap={over_cap}")
+
+
 def finalize():
+    _apply_config()            # same refresh as build(): the vocabulary can change under us
     _convert_obsidian_links(os.path.join(WIKI, "learnings"))
     _normalize_concept_footers()
     cfiles = sorted(glob.glob(os.path.join(WIKI, "concepts", "*.md")))
-    concepts = []
+    concepts, ctext = [], {}
     for p in cfiles:
-        t = _read(p)
+        t = ctext[p] = _read(p)
         concepts.append({"rel": "wiki/concepts/" + os.path.basename(p),
                          "title": fm(t, "title") or os.path.basename(p)[:-3],
                          "group": fm(t, "group") or "misc"})
@@ -820,10 +1193,11 @@ def finalize():
             if line.startswith("# "): return line[2:].strip()
         return os.path.basename(p)[:-3]
     entries = [{"stem": os.path.basename(p)[:-3], "title": t_of(p),
-                "ts": (re.match(r"^(\d{10,})", os.path.basename(p)) or [""])[0]} for p in learn]
+                "ts": (re.match(r"^(\d{10,})", os.path.basename(p)) or [""])[0],
+                "topic": fm(ltext[p], "topic") or "misc"} for p in learn]
     by_topic = collections.defaultdict(list)
-    for p in learn:
-        by_topic[fm(ltext[p], "topic") or "misc"].append(1)
+    for e in entries:
+        by_topic[e["topic"]].append(1)
     _write_index(entries, by_topic, concepts)
     # glossary
     bg = collections.OrderedDict()
@@ -881,14 +1255,27 @@ def finalize():
     # Page budget: a concept page must stay readable in ONE bounded Read. Oversize pages are
     # silently truncated by the Read tool, so the tail of the biggest (= most-read) pages was
     # never reaching the agent. Report, don't rewrite — splitting is a synthesis decision.
+    # The cap is the TRIGGER, never the boundary: split by theme into named pages, not into
+    # `-2`, `-3` (which finalize then reports right back as NUMBERED-SPLIT).
     PAGE_CAP = 40_000
+    numbered, over_cap, concept_bytes = [], 0, 0
+    family = _numbered_family(os.path.basename(p)[:-3] for p in cfiles)
     for p in cfiles:
-        t = _read(p)
+        t = ctext.get(p) or _read(p)
         rel = os.path.relpath(p, ROOT).replace(os.sep, "/")
+        # BYTES, not characters: this corpus is full of em dashes and arrows, and
+        # bytes_per_atom is the trend line the nightly report publishes, so it has to match
+        # what `du -cb wiki/concepts` says. (The PAGE_CAP comparison below stays on
+        # characters — it is the existing OVERSIZE threshold and moving it would move it.)
+        concept_bytes += len(t.encode("utf-8"))
         if len(t) > PAGE_CAP:
+            over_cap += 1
             print(f"  OVERSIZE {rel} {len(t)}B > {PAGE_CAP}B — split by subtopic")
         if "## TL;DR" not in t:
             print(f"  NO-TLDR  {rel} — add a <=40-line '## TL;DR' at the top")
+        if os.path.basename(p)[:-3] in family:
+            numbered.append(rel)
+    _report_shape(entries, live, numbered, concept_bytes, over_cap)
     _report_uncategorised(learn, ltext)
     return lineage_errors
 
@@ -900,13 +1287,9 @@ def _report_uncategorised(learn, ltext=None):
     the corpus has outgrown it. Without this, `misc` reached 31% of all atoms and its
     dominant term ("approver", 202 atoms) had no keyword anywhere in the table — invisible
     because nothing ever counted it. The recurring terms below ARE the proposal for the
-    next category; add them to TOPICS when one keeps climbing.
+    next category; add them to the topic table (DEFAULT_TOPICS, or this KB's
+    .wiki-config.json) when one keeps climbing. VOCAB in _report_shape names the atoms.
     """
-    STOP = set("""the a an of to in on for and or is are be with from that this it its by as at not no into
-when what which how why can cannot must should will would only just also then than there their them they
-you your our we us if else while does did done doing use used using make makes made get gets got has have
-had was were been being about after before over under out up down off same each per via across between
-during both any all some more most less least new old first last next prev""".split())
     ltext = ltext or {}
     misc, total, terms = [], 0, collections.Counter()
     for p in learn:
@@ -916,7 +1299,7 @@ during both any all some more most less least new old first last next prev""".sp
         slug = re.sub(r"^\d{13}-", "", os.path.basename(p))[:-3]
         misc.append(slug)
         for w in re.split(r"[^a-z0-9]+", slug.lower()):
-            if len(w) > 3 and w not in STOP and not w.isdigit():
+            if len(w) > 3 and w not in STOP_WORDS and not w.isdigit():
                 terms[w] += 1
     if not total:
         return
