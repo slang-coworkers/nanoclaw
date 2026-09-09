@@ -49,6 +49,24 @@ fi
 echo "== requirements/plan: git is the source of truth; mirror docs/hermes-port into the shared dir the coworkers read"
 mkdir -p data/shared/hermes && cp docs/hermes-port/*.md data/shared/hermes/
 
+echo "== autopilot: mirror ops/nemoclaw-coworkers/autopilot into data/shared/hermes/autopilot (config.json kept when present)"
+if [ -d ops/nemoclaw-coworkers/autopilot ]; then
+  # The core, collector, the supervise gate + prompt (run by the Orchestrator's series from
+  # /workspace/shared/hermes/autopilot) and dispatch-cron.sh (run by the host crontab from this mirror).
+  # config.json is the human's live knob set (wip, paused, authorize_round) and is never overwritten here.
+  # Tests stay in git. The series and the crontab line are created/updated by ops/nemoclaw-coworkers/autopilot/install.sh.
+  mkdir -p data/shared/hermes/autopilot
+  for f in ops/nemoclaw-coworkers/autopilot/*.py ops/nemoclaw-coworkers/autopilot/*.sh ops/nemoclaw-coworkers/autopilot/*.md; do
+    case $(basename "$f") in test_*) continue ;; esac
+    if [ -f "$f" ]; then cp "$f" data/shared/hermes/autopilot/; fi
+  done
+  if [ ! -f data/shared/hermes/autopilot/config.json ]; then cp ops/nemoclaw-coworkers/autopilot/config.json data/shared/hermes/autopilot/; fi
+  [ -f data/shared/hermes/autopilot/dispatch-cron.sh ] && chmod +x data/shared/hermes/autopilot/dispatch-cron.sh
+  rm -f data/shared/hermes/autopilot/gate-dispatch.sh data/shared/hermes/autopilot/dispatch-tick.md   # retired: the dispatch tick is the host cron
+else
+  echo "  ops/nemoclaw-coworkers/autopilot not in the merged tree; skipping"
+fi
+
 echo "== install + build"
 pnpm install --frozen-lockfile
 pnpm run build

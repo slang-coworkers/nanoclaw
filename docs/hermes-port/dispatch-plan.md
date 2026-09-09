@@ -280,7 +280,7 @@ POST http://127.0.0.1:3937/api/chat/send
  "content":"Dispatch LOOP-F35 — <name>. Row: /workspace/shared/hermes/rows-final.json (disposition, design_note, acceptance_hint); evidence: gap-matrix-evidence.md; baseline: topology.md; plan: dispatch-plan.md. The ADR must cover this row AND every id listed as 'carries AC-<id>'. Add the row to /workspace/agent/reports/ledger.md, dispatch to hermes-architect on thread hermes-LOOP-F35, merge only through the merge gate. Reply here only with the outcome line when merged or blocked."}
 ```
 
-The Orchestrator adds the ledger row, dispatches to `hermes-architect` (ADR + acceptance test via `hermes-spec-requirement`), the chain runs builder → tester → reviewer, and the Orchestrator merges through the gate. **Adopt-track rows go on a separate, cheaper thread** (`hermes-adopt-<phase>`): doc page + hermetic test, one reviewer pass, no architect ADR.
+The Orchestrator adds the ledger row, dispatches to `hermes-architect` (ADR + acceptance test via `hermes-spec-requirement`), the chain runs builder → tester → reviewer, and the Orchestrator merges through the gate. **Adopt-track rows run on their own `hermes-<ROW-ID>` thread too** (one thread per row, not a shared `hermes-adopt-<phase>` thread; autopilot.md open question 2): doc page + hermetic test, one reviewer pass, no architect ADR.
 
 ## Decisions (answer once; defaults in bold are what runs if unanswered)
 
