@@ -2066,10 +2066,19 @@ describe('fresh-session task arriving mid-query — defer, never abort the activ
   // tool call was auto-denied and the run died. The task must wait instead.
 
   it('freshSessionArrivalAction — defer while active, end only once idle past the idle-end threshold', () => {
-    expect(freshSessionArrivalAction(0, 60_000)).toBe('defer');
-    expect(freshSessionArrivalAction(59_999, 60_000)).toBe('defer');
-    expect(freshSessionArrivalAction(60_000, 60_000)).toBe('defer');
-    expect(freshSessionArrivalAction(60_001, 60_000)).toBe('end');
+    expect(freshSessionArrivalAction(0, false, 60_000, 30_000)).toBe('defer');
+    expect(freshSessionArrivalAction(59_999, false, 60_000, 30_000)).toBe('defer');
+    expect(freshSessionArrivalAction(60_000, false, 60_000, 30_000)).toBe('defer');
+    expect(freshSessionArrivalAction(60_001, false, 60_000, 30_000)).toBe('end');
+  });
+
+  it('freshSessionArrivalAction — after a completed turn the shorter quiet period is enough', () => {
+    // turn complete (result seen, nothing pushed since): end after the short quiet period
+    expect(freshSessionArrivalAction(30_001, true, 60_000, 30_000)).toBe('end');
+    expect(freshSessionArrivalAction(30_000, true, 60_000, 30_000)).toBe('defer');
+    // turn still open (no result yet): only the long idle-end applies
+    expect(freshSessionArrivalAction(30_001, false, 60_000, 30_000)).toBe('defer');
+    expect(freshSessionArrivalAction(60_001, true, 60_000, 30_000)).toBe('end');
   });
 
   it('leaves the task pending and does not end the query while the turn is still producing events', async () => {

@@ -75,6 +75,14 @@ const ACTIVE_POLL_INTERVAL_MS = 500;
 const IDLE_END_MS = process.env.NANOCLAW_IDLE_END_MS
   ? Math.max(60_000, parseInt(process.env.NANOCLAW_IDLE_END_MS, 10))
   : 1_200_000;
+// How long a query must have been quiet AFTER a completed turn (a `result` event
+// with no follow-up pushed since) before a pending fresh-session task may end it.
+// Shorter than IDLE_END_MS on purpose: with nothing in flight the only thing the
+// wait protects is an agent that is between turns waiting for subagent or system
+// notifications, and those arrive within minutes. Floor 60s.
+const FRESH_SESSION_IDLE_END_MS = process.env.NANOCLAW_FRESH_SESSION_IDLE_END_MS
+  ? Math.max(60_000, parseInt(process.env.NANOCLAW_FRESH_SESSION_IDLE_END_MS, 10))
+  : 300_000;
 
 /**
  * Number of consecutive driver-classified read failures after which the
@@ -2276,13 +2284,22 @@ export function classifyThrownBounce(channelType: string | null, errMsg: string)
  * What the follow-up poller does when a fresh-session task (a `task` row without
  * `new_session: false`) arrives while a query is open. Ending the query closes the
  * SDK's input stream, and every tool call still in flight is auto-denied — the
- * active turn is aborted, not paused. That is only safe when nothing is in flight,
- * i.e. the query has been idle for `idleEndMs` (the same threshold as the plain
- * idle-end rule). Otherwise the task is deferred: its row stays `pending` and is
- * routed through the fresh-session path once the active turn ends on its own.
+ * active turn is aborted, not paused. That is only safe when nothing is in flight:
+ * either the query has been idle for `idleEndMs` (the plain idle-end rule), or the
+ * last turn already finished (`turnComplete`: a `result` event with no follow-up
+ * pushed since) and the query has been quiet for `afterResultIdleEndMs`. Otherwise
+ * the task is deferred: its row stays `pending` and is routed through the
+ * fresh-session path once the active turn ends on its own.
  */
-export function freshSessionArrivalAction(idleMs: number, idleEndMs: number = IDLE_END_MS): 'defer' | 'end' {
-  return idleMs > idleEndMs ? 'end' : 'defer';
+export function freshSessionArrivalAction(
+  idleMs: number,
+  turnComplete = false,
+  idleEndMs: number = IDLE_END_MS,
+  afterResultIdleEndMs: number = FRESH_SESSION_IDLE_END_MS,
+): 'defer' | 'end' {
+  if (idleMs > idleEndMs) return 'end';
+  if (turnComplete && idleMs > afterResultIdleEndMs) return 'end';
+  return 'defer';
 }
 
 /**
@@ -3083,6 +3100,9 @@ export async function processQuery(
   let pollInFlight = false;
   let endedForCommand = false;
   let freshSessionDeferLogged = false;
+  // True once the SDK has emitted a `result` for the current turn and nothing has
+  // been pushed since; cleared by the next push. Post-turn accounting events keep it.
+  let turnComplete = false;
   let mailboxFailureStreak = 0;
   const onSignalAbort = () => query.abort();
   signal?.addEventListener('abort', onSignalAbort, { once: true });
@@ -3207,10 +3227,10 @@ export async function processQuery(
         const freshSessionTasks = newMessages.filter(wantsFreshSession);
         if (freshSessionTasks.length > 0) {
           const idleMs = Date.now() - lastEventTime;
-          if (freshSessionArrivalAction(idleMs) === 'end') {
+          if (freshSessionArrivalAction(idleMs, turnComplete) === 'end') {
             log(
               `fresh-session task arrived (${freshSessionTasks.length} msg) while the query has been idle ` +
-                `${Math.round(idleMs / 1000)}s — ending it to route through fresh-session path`,
+                `${Math.round(idleMs / 1000)}s${turnComplete ? ' after a completed turn' : ''} — ending it to route through fresh-session path`,
             );
             query.end();
             done = true;
@@ -3308,6 +3328,7 @@ export async function processQuery(
         archivePrompts.push(prompt);
         markCompleted(keptIds);
         lastEventTime = Date.now(); // new input counts as activity
+        turnComplete = false; // a new turn starts
       } catch (err) {
         // Without this catch the rejection escapes the void IIFE and Node
         // terminates the container on unhandled-rejection.
@@ -3341,6 +3362,10 @@ export async function processQuery(
   try {
     for await (const event of query.events) {
       lastEventTime = Date.now();
+      // `result` closes a turn; usage events are post-turn accounting; anything
+      // else means the SDK is working again.
+      if (event.type === 'result') turnComplete = true;
+      else if (event.type !== 'usage' && event.type !== 'message_usage') turnComplete = false;
       handleEvent(event, routing);
       touchHeartbeat();
 
