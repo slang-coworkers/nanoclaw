@@ -90,16 +90,19 @@ describe('composed-document byte parity', () => {
       // They also include `## Resident Skill Instructions` — every shipped
       // `instructions.md` a type can reach, held in context rather than fetched on
       // demand. So a skill gaining or losing one moves them, deliberately.
-      'base-common': '3ee2d7f21f0d949a',
-      'base-common.persona': 'ed75f20e3b6920c0',
+      //
+      // Scheduling prose is part of them too, and it names `ncl tasks` because no
+      // scheduling MCP module is registered.
+      'base-common': 'a7b05c8f754e830f',
+      'base-common.persona': 'f8a82719d2773300',
       // `main`/`main.persona` are absent by design, not omission: their bytes depend
       // on sibling-branch skills under CI's composed-state merge (header). The
       // standalone values the content phase produced — abaecd63bd33b299 and
       // 8129ebe911b83bec, moved once by the `agents.md` anchor retarget — are
       // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
       // which compares golden to golden and so holds in both states.
-      default: '4a8ba0bcabd5c6eb',
-      'default.persona': 'e61b98b8235b027e',
+      default: '61425453d60dda91',
+      'default.persona': 'b758397ed24c5c9f',
     };
 
     const actual: Record<string, string> = {};
