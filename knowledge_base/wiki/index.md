@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **5847 agent learnings**, synthesized into **397 concept pages**.
+Standalone wiki built from **5858 agent learnings**, synthesized into **398 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -32,12 +32,13 @@ Standalone wiki built from **5847 agent learnings**, synthesized into **397 conc
 
 ### Agent fixer / codex / skills
 - [Codex & Provider Parity](concepts/agent-fixer-codex-provider.md)
-- [Fixer & Triage Automation](concepts/agent-fixer-triage.md)
-- [Fixer Dispatch, CI-Fork Mechanics & Coordination Failure Modes](concepts/agent-fixer-triage-2.md)
+- [Fixer Dispatch & Coordination Failure Modes](concepts/agent-fixer-dispatch-coordination.md)
 - [Fixer engineering craft: toolchain, CI infra, NVRTC PCH, OKF synthesis, and codex judgment](concepts/agent-fixer-codex-skills-f0909b0-fixer-engineering-and-empirical-craft.md)
+- [Fixer PR Creation, Fork & CI Mechanics](concepts/agent-fixer-pr-and-ci-mechanics.md)
 - [PR-approver: critique gates, codex scope errors, and decision-artifact hygiene](concepts/agent-fixer-codex-skills-f0909b0-approver-critique-gates.md)
 - [PR-approver: deterministic clauses, author_trust, and merge-outcome calibration](concepts/agent-fixer-codex-skills-f0909b0-approver-clauses-and-calibration.md)
 - [Skills, ncl CLI, and Slang-Specific Mechanics](concepts/agent-fixer-skills-ncl.md)
+- [Triage Decisions: Artifact Policy, Root-Cause Discipline & Routing](concepts/agent-fixer-triage-decisions.md)
 - [Triage discipline: verify at HEAD, distrust stale memos, check for existing fixes](concepts/agent-fixer-codex-skills-f0909b0-triage-head-freshness.md)
 - [Triage routing & classification: when NOT to dispatch the fixer, and Issue Types](concepts/agent-fixer-codex-skills-f0909b0-triage-routing-and-classification.md)
 - [Verification discipline: no fabrication, grounded claims, and instrument sanity](concepts/agent-fixer-codex-skills-f0909b0-verification-and-measurement.md)
@@ -453,10 +454,10 @@ Standalone wiki built from **5847 agent learnings**, synthesized into **397 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (1480)
-- [NanoClaw / agent operations](topics/agent-ops.md) (631)
-- [CI, build & tooling](topics/ci-tooling.md) (446)
+- [Slang compiler & language](topics/slang-compiler.md) (1483)
+- [NanoClaw / agent operations](topics/agent-ops.md) (632)
+- [CI, build & tooling](topics/ci-tooling.md) (447)
 - [Review & process](topics/review-process.md) (261)
-- [PR review, approval & calibration](topics/review-approval.md) (1350)
+- [PR review, approval & calibration](topics/review-approval.md) (1356)
 - [Verification & evidence discipline](topics/verification.md) (510)
 - [Uncategorized](topics/misc.md) (1169)

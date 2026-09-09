@@ -5,7 +5,7 @@ type: topic
 
 # PR review, approval & calibration
 
-1350 learnings. [Catalog](../index.md)
+1356 learnings. [Catalog](../index.md)
 
 - [[approver/calibration-confirmed] Opaque-type DebugInfoNone SPIR-V fix merged unchanged — advisory doc/coverage nits were correctly non-blocking](../learnings/1788485501480-approver-calibration-confirmed-opaque-type-debugin.md)
 - [[approver/calibration] #11917 comment-only-delta re-verdict rode to merge with zero follow-up — the byte-identical-logic shortcut was safe (confirmed on #11987)](../learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md)
@@ -85,8 +85,10 @@ type: topic
 - [[approver/challenger-calibration] hard-coded identifier in a parameterized tool — verify against the file's own convention](../learnings/1786502456767-approver-challenger-calibration-hard-coded-identif.md)
 - [[approver/challenger-calibration] Layout-decoration PR: the deterministic FileCheck emission test IS the trigger-present control — check it distinguishes live-from-dead before clearing a "GPU-only test" gap](../learnings/1787762551604-approver-challenger-calibration-layout-decoration-.md)
 - [[approver/challenger-calibration] Mirror-a-sibling-callback PRs — a pre-existing cross-cutting gap does not clear, but it is not new risk](../learnings/1788416787180-approver-challenger-calibration-mirror-a-sibling-c.md)
+- [[approver/challenger-calibration] On docs PRs, Devin's confident 'doc-accuracy bug' claims are often prose misreadings — the source-reading production review is the arbiter](../learnings/1788947298987-approver-challenger-calibration-on-docs-prs-devin-.md)
 - [[approver/challenger-calibration] Untested exception/catch branch on a shared primitive is OPEN_GAP, not a nit](../learnings/1787049320318-approver-challenger-calibration-untested-exception.md)
 - [[approver/challenger-calibration] VM-emit missing-constant fix: a bundled test-assertion change is un-masking, verify vs core-module source not scope-creep](../learnings/1786546050952-approver-challenger-calibration-vm-emit-missing-co.md)
+- [[approver/challenger-calibration] Widening core.meta.slang overload + identity constant-fold merged unchanged (slang#12651) — direction is what makes core-module edits a false-safe risk](../learnings/1788943725016-approver-challenger-calibration-widening-core-meta.md)
 - [[approver/challenger-ci-gate] A main-merge synchronize can't clear a code-level 🔴 — diff the two heads before assuming the push addressed it](../learnings/1785496402847-approver-challenger-ci-gate-a-main-merge-synchroni.md)
 - [[approver/challenger-ci-gate] Confirmed: reverting a data-submodule bump restores fixtures and turns CI green — the fix for the #1082-class OPEN_GAP](../learnings/1785495128502-approver-challenger-ci-gate-confirmed-reverting-a-.md)
 - [[approver/challenger-ci-gate] Data-submodule bump can turn CI red on UNCHANGED tests — always diff the submodule tree](../learnings/1785426143619-approver-challenger-ci-gate-data-submodule-bump-ca.md)
@@ -327,6 +329,7 @@ type: topic
 - [[approver/challenger-miss] Two PRs armed 2.5 min apart is not a precedent pair — #1078 was manually brought up to date 10s before arming, so it never tested whether BEHIND self-clears; and #925 is behind by exactly #1078's merge commit](../learnings/1785946244053-approver-challenger-miss-two-prs-armed-2-5-min-apa.md)
 - [[approver/challenger-miss] Two review-pipeline false-cleans in ONE decision: an OMITTING channel and a DROPPING parser both present as "no findings"](../learnings/1786442096931-approver-challenger-miss-two-review-pipeline-false.md)
 - [[approver/challenger-miss] Two tiers each enumerated a DIFFERENT OBJECT and both were right — pin a ref before citing source, and never cite a dirty working tree; the shallow-graft trap also breaks `git log -- <path>`](../learnings/1785848166458-approver-challenger-miss-two-tiers-each-enumerated.md)
+- [[approver/challenger-miss] Uninit-analysis guard-correlation PRs: probe path-blocking predicates for vacuous-truth](../learnings/1788947202230-approver-challenger-miss-uninit-analysis-guard-cor.md)
 - [[approver/challenger-miss] Unjustified opaque-decl inclusion in a classification predicate is an OPEN_GAP even when it's not a provable crash — the maintainer bar is "prove fields materialize here, or exclude it"](../learnings/1788298131000-approver-challenger-miss-unjustified-opaque-decl-i.md)
 - [[approver/challenger-miss] Val-lowering memoization audit — dispatch==dispatchType, and the module-parent guard is the env-independence proof](../learnings/1784074914750-approver-challenger-miss-val-lowering-memoization-.md)
 - [[approver/challenger-miss] Validated: for liveness/mark-encoding changes, a two-directional test with a false-live positive control is a merge-precondition, not a nit](../learnings/1788301800371-approver-challenger-miss-validated-for-liveness-ma.md)
@@ -1014,6 +1017,7 @@ type: topic
 - [[approver/human-disagreement] Human APPROVED over a shadow-only ABSTAIN — a merge over an unposted finding is NOT evidence the finding was wrong; don't relax the bar](../learnings/1785493492602-approver-human-disagreement-human-approved-over-a-.md)
 - [[approver/human-disagreement] JOIN #12631: a "why is this needed?" CHANGES_REQUESTED clears with zero code change — the approved head merged unchanged, so the standing-block abstain leaned conservative under the falsifiable reading](../learnings/1787253126764-approver-human-disagreement-join-12631-a-why-is-th.md)
 - [[approver/human-disagreement] Large samples/experiment PRs self-merge past the size-cap abstain — the tier_eligible cap systematically abstains on a class humans fast-track](../learnings/1783918446960-approver-human-disagreement-large-samples-experime.md)
+- [[approver/human-disagreement] Large vendoring/test-only PR merged unchanged at ABSTAIN commit despite 7 bot-flagged gaps](../learnings/1788948128585-approver-human-disagreement-large-vendoring-test-o.md)
 - [[approver/human-disagreement] Latent-bug gaps in dev-only release tooling: maintainers merge them knowingly — ABSTAIN_POLICY aligns, and this class rarely warrants BLOCK](../learnings/1784150237934-approver-human-disagreement-latent-bug-gaps-in-dev.md)
 - [[approver/human-disagreement] Maintainer merged over a production-review 🔴 (example-only assert + untrusted-input DoS) — shadow BLOCK correct on the facts, disagreement was on blocking-threshold not correctness](../learnings/1784391272446-approver-human-disagreement-maintainer-merged-over.md)
 - [[approver/human-disagreement] Maintainer self-merged a mirror-a-sibling callback add as-is over an OPEN_GAP abstain (slangpy#1133)](../learnings/1788417974479-approver-human-disagreement-maintainer-self-merged.md)
@@ -1089,6 +1093,7 @@ type: topic
 - [[approver/infra-abstain] Before debating an infra mechanism with a peer, grep your OWN work tree — the recorded host denial was there all along; and a silent log is not a clean run (test with a known-positive)](../learnings/1786454516285-approver-infra-abstain-before-debating-an-infra-me.md)
 - [[approver/infra-abstain] Check the policy SOURCE (mounted overlay vs bundled default), not just the version string — a dropped overlay silently tightens clauses and flips decisions between revisions](../learnings/1788222845246-approver-infra-abstain-check-the-policy-source-mou.md)
 - [[approver/infra-abstain] CI check-run count: single-page jq undercounts skips; use --paginate + name every non-success](../learnings/1786707862561-approver-infra-abstain-ci-check-run-count-single-p.md)
+- [[approver/infra-abstain] ci_green_on_sha unevaluable on check-runs-only repos (combined-status API empty)](../learnings/1788949627703-approver-infra-abstain-ci-green-on-sha-unevaluable.md)
 - [[approver/infra-abstain] CodeRabbit EDITS ITS SUMMARY COMMENT IN PLACE — judge its currency by the "Commits" range it names, never by created_at](../learnings/1786398325966-approver-infra-abstain-coderabbit-edits-its-summar.md)
 - [[approver/infra-abstain] CodeRabbit findings live on pulls/N/comments, NOT reviews[].body — a successful harvest can still score 0 findings](../learnings/1785778078080-approver-infra-abstain-coderabbit-findings-live-on.md)
 - [[approver/infra-abstain] CodeRabbit review latency times out the 6-min harvest window on large slangpy PRs](../learnings/1788527120708-approver-infra-abstain-coderabbit-review-latency-t.md)
@@ -1295,6 +1300,7 @@ type: topic
 - [[approver/process] Bot-authored upstream-sync PRs are a dispositive clause-fail class — run Step-1 clauses before spending Devin](../learnings/1788442495371-approver-process-bot-authored-upstream-sync-prs-ar.md)
 - [[approver/process] slangpy external/slang-rhi bump or oversize PR = deterministic Step-1 ABSTAIN — run eval-clauses first, and it is a POLICY reason not NO_REVIEW_SIGNAL](../learnings/1788504229444-approver-process-slangpy-external-slang-rhi-bump-o.md)
 - [[approver/safe-shape] COM-interface method deprecation — the ABI-safe pattern and its blocking discriminator](../learnings/1787105470326-approver-safe-shape-com-interface-method-deprecati.md)
+- [[approver/tooling] critique-gate hook blocks read-only gh api .../pulls and fails closed when /workspace/.claude/ is missing](../learnings/1788945661953-approver-tooling-critique-gate-hook-blocks-read-on.md)
 - [[approver] Critique-gate Bash hook: wrap read-only gh api /pulls calls in a script file to avoid the false-match](../learnings/1785453486073-approver-critique-gate-bash-hook-wrap-read-only-gh.md)
 - [[RETRACTED — DO NOT USE] slangpy#1075 "ABSTAIN vindicated" — factually wrong; superseded](../learnings/1785493520816-approver-human-agreement-slangpy-1075-abstain-vind.md)
 - [A check that reads one element of an unordered set cannot be validated by running it — measured false-agreement rates](../learnings/1785768953168-a-check-that-reads-one-element-of-an-unordered-set.md)

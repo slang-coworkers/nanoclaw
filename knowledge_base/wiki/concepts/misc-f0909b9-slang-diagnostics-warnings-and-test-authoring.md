@@ -3,7 +3,7 @@ title: "Slang diagnostics: the warning mechanism, lossy int→float warnings, an
 type: concept
 group: misc
 tags: [slang, warnings, warning-level, pedantic, diagnostic-test, filecheck, int-to-float, getMaximumTypeBitSize, slang-test, unit-test, lang-server]
-source_count: 13
+source_count: 15
 ---
 
 ## TL;DR
@@ -99,6 +99,29 @@ constructors, look through literal-constructor `InvokeExpr`s). The new
 conversion is already rejected as TypeMismatch earlier
 ([E30082 float-literal exemption is scalar-only (asymmetry with vector/matrix constructors)](../learnings/1788801482957-e30082-float-literal-exemption-is-scalar-only-asym.md)).
 
+**The int→half case (#12979) needs round-trip exactness, not a range.** Same diagnostic (E30081
+`UnrecommendedImplicitConversion`), different target: for an int/uint literal → `half`, the decision
+lives in `SemanticsVisitor::isIntValueInRangeOfType`'s `Half` arm (`slang-check-decl.cpp:12114`),
+gated by the same E30081 `_coerce` path (`slang-check-conversion.cpp:2861-2881`). The flawed check
+suppresses the warning only for the *contiguous* run `[-2048, 2048]` — but `half` has 11 significant
+bits, so exactly-representable integers above 2048 are **non-contiguous** (even numbers to 4096,
+multiples of 4 to 8192, … up to the max finite `half` **65504**), and no `[lo,hi]` range can express
+"4096 ok / 4097 not." The correct test is an exact round-trip reusing `source/core/slang-math.h`'s
+`FloatToHalf`/`HalfToFloat`: `(double)HalfToFloat(FloatToHalf((float)value)) == (double)value` —
+compare in floating point, since casting an inf/nan half back to int64 is UB (the idiom already exists
+at `slang-ir.cpp:2566`); extract a named `isIntExactlyRepresentableInHalf`. A non-obvious routing
+fact makes this the *only* path: `getMaximumTypeBitSize()` returns **0** for `BaseType::Half`
+(the `default:` arm), so the separate `IntegerConstantOverflow` branch (guarded by `maxBitSize > 0`)
+is SKIPPED — **every** int→half literal, including overflowing ones like `131072`, is diagnosed via
+E30081, not the overflow diagnostic (don't assume large half literals hit `IntegerConstantOverflow`).
+This is diagnostic-only / non-breaking; do **not** touch `ConversionCost` buckets (it perturbs overload
+resolution). A shared "exactly representable in float type T" predicate would serve the whole
+cluster — #12929 (int→float / int64→double), #12930 (float vec/mat → double vec/mat), #12979
+(int→half). For the `diag=CHECK` test, the caret width equals the source token length *including* a
+`u` suffix (`65505u` → 6 carets)
+([int→half E30081: use round-trip exactness, not a fixed `[-2048,2048]` range](../learnings/1788945215723-slang-int-half-e30081-warning-use-round-trip-exact.md),
+[int→half E30081 routes through `_coerce` because `getMaximumTypeBitSize`=0 for half](../learnings/1788947867563-half-int-literal-conversion-warning-e30081-getmaxi.md)).
+
 ## DIAGNOSTIC_TEST and FileCheck authoring
 
 `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK)` is **exhaustive substring matching**, NOT
@@ -179,7 +202,7 @@ convenient local checkout at a different commit. Any claim about what's *present
 target, file, helper) must be checked at the exact reviewed ref
 ([verify recommended test-infra exists on the PR branch, not just master/your local checkout](../learnings/1788679995187-verify-recommended-test-infra-exists-on-the-pr-bra.md)).
 
-**Source learnings (13):**
+**Source learnings (15):**
 
 - [Slang HAS opt-in default-off warnings (WarningLevel + -W<name>) — wiki "disable-only" is stale](../learnings/1788789285754-slang-has-opt-in-default-off-warnings-warninglevel.md) — full opt-in ladder; use `pedantic` for off-by-default; a sign-change warning needs its own `_coerce` branch.
 - [Slang lossy int→float warning: diagnostic-test annotation mechanics + unsigned-literal & warning-group pitfalls](../learnings/1788797863864-slang-lossy-int-float-warning-diagnostic-test-anno.md) — -Wextra ON / -Wall+-Wpedantic OFF; lossy int→float is an independent `if` in _coerce (cost 400); don't raise conversion cost.
@@ -194,3 +217,5 @@ target, file, helper) must be checked at the exact reviewed ref
 - [slang-rhi CPU backend is harness-skipped on Linux — CPU-scoped rhi tests can't run locally there](../learnings/1788475957247-slang-rhi-cpu-backend-is-harness-skipped-on-linux-.md) — a harness SKIP counts as "passed"; isolate the .cpu variant; scope regression tests to CPU not ALL.
 - [slang-static-unit-test is the module for testing non-exported source/slang symbols](../learnings/1788679074455-slang-static-unit-test-is-the-module-for-testing-n.md) — static-linking executable reaches internal entry points; no ABI change or sign-off; typed fossil accessor.
 - [Verify recommended test-infra exists on the PR branch, not just master/your local checkout](../learnings/1788679995187-verify-recommended-test-infra-exists-on-the-pr-bra.md) — a target present on master may 404 on a behind-master PR head; check presence at the exact reviewed ref.
+- [int→half E30081 warning: use round-trip exactness, not a fixed [-2048,2048] range](../learnings/1788945215723-slang-int-half-e30081-warning-use-round-trip-exact.md) — half's exactly-representable integers above 2048 are non-contiguous (…65504); test via `HalfToFloat(FloatToHalf(v))==v`; diagnostic-only, don't touch ConversionCost; shared predicate serves #12929/#12930/#12979.
+- [half int-literal E30081 routes through `_coerce`, not overflow — `getMaximumTypeBitSize`=0 for half](../learnings/1788947867563-half-int-literal-conversion-warning-e30081-getmaxi.md) — the `maxBitSize>0`-guarded IntegerConstantOverflow branch is skipped for half, so every int→half literal (incl. 131072) is diagnosed via E30081; `diag=CHECK` caret width counts the `u` suffix.
