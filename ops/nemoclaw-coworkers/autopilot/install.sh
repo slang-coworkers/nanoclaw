@@ -29,7 +29,7 @@ DST=data/shared/hermes/autopilot
 NCL=./bin/ncl
 
 [ -d "$SRC" ] || { echo "missing $SRC: merge nv-hermes (deploy.sh) first"; exit 1; }
-for f in hermes_queue.py hermes_supervise.py collect_threads.py record.py scorecard.py pull-state.sh \
+for f in hermes_queue.py hermes_supervise.py collect_threads.py record.py scorecard.py abtr.py pull-state.sh \
          gate-supervise.sh supervise-tick.md dispatch-cron.sh config.json; do
   [ -f "$SRC/$f" ] || { echo "missing $SRC/$f"; exit 1; }
 done

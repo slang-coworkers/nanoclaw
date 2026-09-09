@@ -9,6 +9,9 @@ prompts (and the Mac-side check) act on their output; nothing in here sends a me
 |---|---|---|---|
 | `hermes_queue.py` | §2.2 source A, §4 | `dispatch-plan.md`, `gap-matrix.md`, `ledger.md`, `config.json`, previous `state.json` | the state JSON: rows, `in_flight`, `merged`, `blocked`, `eligible_next` (with the §4.4 dispatch text per row), `wip`, `gating`, `alerts`, `plan_sha256` |
 | `hermes_supervise.py` | §2.3, §3, §5 | that state, the row threads, `gh pr list --json`, the nudge ledger, optional sessions/cost | per in-flight row: `stage`, `age_hours`, `slo_breach`, `action` (`none` / `nudge` / `escalate`), `target_role`, `message`; plus `actions` (hold, gate, nudge, alert) and the `alerts.md` lines |
+| `abtr.py` (CLI: `scorecard.py --markdown [PATH]`, `--brief [PATH]`) | §7 | `state.json`, `ledger.md`, `alerts.md`, `prs.json`, `config.json` | the a \| b \| t \| r report: one markdown line per row with architect, builder, tester, reviewer and the gate as cells (`✓ HH:MMZ` done, `▶ 3.6h` active, `✗ FAIL r2`, `⏸`, `·`), in-flight rows first by age, then blocked, then merged, then the queued count |
+
+`pull-state.sh` writes the report every tick to `groups/orchestrator/reports/status/autopilot.md` (container `/workspace/agent/reports/status/autopilot.md`, viewer `/status/autopilot.md`) and its brief (header + one `<row> | a | b | t | r` line per in-flight row) to `data/shared/hermes/autopilot/tick-report.txt`, which the supervise tick ends its turn with and `hermes-check.sh` prints first.
 
 ```bash
 python3 hermes_queue.py --plan dispatch-plan.md --matrix gap-matrix.md --ledger ledger.md \

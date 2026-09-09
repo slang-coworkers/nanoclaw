@@ -10,6 +10,14 @@ Inputs in --dir (each optional; a missing one is reported, never fatal):
   state.json   data/shared/hermes/autopilot/state.json (last tick)
   config.json  data/shared/hermes/autopilot/config.json (wip, paused, plan_sha256)
   prs.json     gh pr list --repo slang-coworkers/hermes-agent --state all --json ...
+Each has a path override (--ledger, --alerts, --state, --config, --prs) for the container,
+where the three live in different directories.
+
+  --markdown [PATH]   the a | b | t | r report (abtr.py): one line per row, roles as cells,
+                      printed and, with PATH, written atomically (the tick writes
+                      /workspace/agent/reports/status/autopilot.md = viewer /status/autopilot.md)
+  --brief [PATH]      the tick's report: the markdown's header line plus one
+                      `<row> | a | b | t | r` line per in-flight row and the link to the table
 
 The ledger is parsed the way hermes-status-report does it: columns located
 from the header row, ids matched whole-cell with [A-Z0-9]+-F[0-9]+(.[a-z])?,
@@ -27,6 +35,11 @@ import os
 import re
 import sys
 from datetime import datetime, timedelta, timezone
+
+try:
+    import abtr
+except ImportError:  # the mirror on the box may lag one file; the text scorecard still renders
+    abtr = None
 
 ROW_ID_RE = re.compile(r"^[A-Z0-9]+-F[0-9]+(\.[a-z])?$")
 ID_TOKEN_RE = re.compile(r"\b[A-Z0-9]+-F[0-9]+(?:\.[a-z])?\b")
@@ -164,6 +177,7 @@ def parse_ledger(text: str, default_offset: timedelta) -> dict:
             "spec_accepted_at": spec_at.isoformat().replace("+00:00", "Z") if spec_at else None,
             "verdict": verdict if not is_empty_cell(verdict) else "",
             "outcome_cell": outcome_cell[:120],
+            "notes": " ".join(cell("notes").split())[:240],
         }
         if rid != raw_id:
             rows[rid]["id_cell_raw"] = raw_id
@@ -248,9 +262,15 @@ def fmt_h(h):
     return "?" if h is None else f"{h:g}h"
 
 
-def build(dirpath: str, now, plan_sha_local, plan_path, default_offset) -> dict:
+def build(dirpath: str, now, plan_sha_local, plan_path, default_offset, paths: dict | None = None) -> dict:
+    """`paths` overrides the per-file location (name -> path); anything else is read from `dirpath`."""
     notes = []
-    ledger_text, err = load_text(os.path.join(dirpath, "ledger.md"))
+    overrides = {k: v for k, v in (paths or {}).items() if v}
+
+    def where(name: str) -> str:
+        return overrides.get(name) or os.path.join(dirpath, name)
+
+    ledger_text, err = load_text(where("ledger.md"))
     ledger = parse_ledger(ledger_text or "", default_offset)
     if err:
         notes.append(f"ledger.md {err}")
@@ -261,20 +281,20 @@ def build(dirpath: str, now, plan_sha_local, plan_path, default_offset) -> dict:
     for sp in ledger["spelling"]:
         notes.append(f"ledger row-id cell {sp['cell']!r} read as {sp['row']}; make the cell the bare id")
 
-    alerts_text, err = load_text(os.path.join(dirpath, "alerts.md"))
+    alerts_text, err = load_text(where("alerts.md"))
     alerts = parse_alerts(alerts_text or "")
     if err:
         notes.append(f"alerts.md {err}")
 
-    state, err = load_json(os.path.join(dirpath, "state.json"))
-    if err:
-        notes.append(f"state.json {err} (stages from the ledger only; SLOs unknown)")
+    state, err = load_json(where("state.json"))
+    if err or not isinstance(state, dict):
+        notes.append(f"state.json {err or 'is not an object'} (stages from the ledger only; SLOs unknown)")
         state = {}
-    config, err = load_json(os.path.join(dirpath, "config.json"))
-    if err:
+    config, err = load_json(where("config.json"))
+    if err or not isinstance(config, dict):
         config = state.get("config") if isinstance(state.get("config"), dict) else {}
         notes.append(f"config.json {err}; using state.json's copy" if config else f"config.json {err}")
-    prs, err = load_json(os.path.join(dirpath, "prs.json"))
+    prs, err = load_json(where("prs.json"))
     if err:
         notes.append(f"prs.json {err} (gh unavailable or not run)")
         prs = []
@@ -365,7 +385,21 @@ def build(dirpath: str, now, plan_sha_local, plan_path, default_offset) -> dict:
     eligible = state.get("eligible_next") or []
     eligible_ids = [(e.get("id") or e.get("row")) if isinstance(e, dict) else str(e) for e in eligible][:5]
 
+    # The a | b | t | r report (abtr.py) from the same inputs; a render bug must not sink the scorecard.
+    abtr_markdown = abtr_brief = None
+    if abtr is None:
+        notes.append("abtr.py missing next to scorecard.py: a|b|t|r markdown not rendered")
+    else:
+        try:
+            kw = {"prs": prs, "alerts": alerts, "config": config, "dispatchable": dispatchable}
+            abtr_markdown = abtr.render_abtr_markdown(state, ledger["rows"], now, **kw)
+            abtr_brief = abtr.render_abtr_brief(state, ledger["rows"], now, **kw)
+        except Exception as exc:  # noqa: BLE001 - any render bug degrades to the text card and is named in notes
+            notes.append(f"a|b|t|r render failed: {type(exc).__name__}: {exc}")
+
     return {
+        "abtr_markdown": abtr_markdown,
+        "abtr_brief": abtr_brief,
         "now": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "notes": notes,
         "tick_at": state.get("generated_at"),
@@ -455,18 +489,45 @@ def main() -> int:
     ap.add_argument("--plan", default=None, help="path to the git copy of dispatch-plan.md (dispatchable count)")
     ap.add_argument("--ledger-tz-offset", default="+05:30", help="zone for ledger stamps without a named zone")
     ap.add_argument("--json", action="store_true", help="emit the scorecard as JSON instead of text")
+    for name in ("ledger", "alerts", "state", "config", "prs"):
+        ap.add_argument(f"--{name}", default=None, help=f"path of {name}.{'md' if name in ('ledger', 'alerts') else 'json'} (default: <dir>/)")
+    ap.add_argument("--markdown", nargs="?", const="-", default=None, metavar="PATH",
+                    help="print the a|b|t|r markdown report instead of the text card; write it to PATH (atomic) when given")
+    ap.add_argument("--brief", nargs="?", const="-", default=None, metavar="PATH",
+                    help="print the tick's brief (header + one line per in-flight row); write it to PATH when given")
     args = ap.parse_args()
     now = parse_iso(args.now) or datetime.now(timezone.utc)
     sign = -1 if args.ledger_tz_offset.startswith("-") else 1
     hh, mm = args.ledger_tz_offset.lstrip("+-").split(":")
     offset = sign * timedelta(hours=int(hh), minutes=int(mm))
-    card = build(args.dir, now, args.plan_sha256, args.plan, offset)
+    paths = {"ledger.md": args.ledger, "alerts.md": args.alerts, "state.json": args.state, "config.json": args.config, "prs.json": args.prs}
+    card = build(args.dir, now, args.plan_sha256, args.plan, offset, paths)
     if args.json:
         json.dump(card, sys.stdout, indent=2, default=str)
         sys.stdout.write("\n")
-    else:
+        return 0
+    if args.markdown is None and args.brief is None:
         sys.stdout.write(render(card))
-    return 0
+        return 0
+    rc = 0
+    for flag, key in (("markdown", "abtr_markdown"), ("brief", "abtr_brief")):
+        dest = getattr(args, flag)
+        if dest is None:
+            continue
+        text = card.get(key)
+        if not text:
+            why = "; ".join(n for n in card["notes"] if "abtr" in n or "a|b|t|r" in n) or "not rendered"
+            sys.stderr.write(f"scorecard: --{flag}: {why}\n")
+            rc = 1
+            continue
+        sys.stdout.write(text)
+        if dest != "-":
+            try:
+                abtr.write_atomic(dest, text)
+            except OSError as exc:
+                sys.stderr.write(f"scorecard: --{flag}: cannot write {dest}: {exc}\n")
+                rc = 1
+    return rc
 
 
 if __name__ == "__main__":

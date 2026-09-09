@@ -30,7 +30,8 @@ at `/workspace/shared/hermes/autopilot/` and the host cron runs from):
 | `dispatch-cron.sh` | on the HOST, from the box's crontab (`17 */2 * * *`), hostname-guarded: runs the queue on host paths, raises its alerts, POSTs each eligible row's `orchestrator_text` to the dashboard chat API on `thread_id = hermes-<ID>` (the shape of `dispatch-rows.sh`), records every HTTP 200 with `record.py dispatched`; `--dry-run` prints the bodies and writes nothing (§6) |
 | `gate-supervise.sh` | the `ncl tasks --script` gate of the supervise series: runs `pull-state.sh` under `timeout 22` (10 s transcript budget), prints `{"wakeAgent": <bool>, "data": {...}}` last |
 | `supervise-tick.md` | the supervise task prompt (§6), passed verbatim to `ncl tasks create --prompt` |
-| `scorecard.py` | renders the human's scorecard from the pulled files (§7) |
+| `scorecard.py` | renders the human's scorecard from the pulled files (§7); `--markdown [PATH]` / `--brief [PATH]` render the a \| b \| t \| r report through `abtr.py` |
+| `abtr.py` | the a \| b \| t \| r report: one markdown line per row with architect, builder, tester, reviewer and the gate as cells; `pull-state.sh` writes it every tick to `reports/status/autopilot.md` (viewer `/status/autopilot.md`) and its brief to `tick-report.txt`, the supervise tick's run output (§7) |
 | `install.sh` | box-side, hostname-guarded: mirrors the directory, creates or updates the supervise series (idempotent by name slug), installs the one dispatch crontab line (replacing any earlier one), cancels a leftover `hermes-ap-dispatch` series |
 | `config.json` | the human's knobs (§6); the live copy on the box is never overwritten by a deploy |
 | `test_*.py` | unittest: every rule in §2 to §8 that names a regex or a threshold has a test; `test_pull_state.py` runs `pull-state.sh` and the supervise gate offline against a fake `ncl` and `gh`; `test_dispatch_cron.py` runs `dispatch-cron.sh` against a fake `hostname`, `curl` and `ncl` |
@@ -507,6 +508,16 @@ escalated | unknown`, PR, `hold:` / `cost_hold` / `paused` flags, whether it cam
 plan hash (git copy vs box vs pinned), fork PR counts, the next eligible rows, collector errors
 on the last tick. `status: ATTENTION` (a breach, an alert in 6 h, a stale tick, a plan-hash
 change) is what the human's Claude session keys on; `--json` gives the same card as JSON.
+
+Before the scorecard, the check prints the box's `groups/orchestrator/reports/status/autopilot.md`
+verbatim: the a | b | t | r report every supervise tick refreshes (viewer `/status/autopilot.md`).
+Header `Hermes autopilot · <tick> · in flight n/wip · merged m · blocked k · queued q · alerts 6h a`,
+then one line per row, in-flight first by age, with the four roles and the gate as cells: `✓ 09:57Z`
+done at that time, `▶ 3.6h` active for that long, `✗ FAIL r2` a tester FAIL round 2 (or reviewer
+`✗ RC r1`), `⏸` paused or cost hold, `·` not started, gate `✓ <sha7>` / `✗ <reason>`; the note is
+the row's latest SLO breach or alert, else the ledger note. The same header plus one `<row> | a | b |
+t | r` line per in-flight row is the supervise tick's run output (`tick-report.txt`), so a Telegram
+reader sees the fleet in one message and follows the link for the table.
 
 The three interventions and how they land:
 

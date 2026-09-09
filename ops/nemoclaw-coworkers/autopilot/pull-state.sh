@@ -501,3 +501,26 @@ summary = {
 }
 print("pull-state: state.json written " + json.dumps(summary))
 PY
+
+# --- 9. The a|b|t|r markdown for the viewer and the tick's brief (after state.json; never fatal) ---
+#   $STATUS_DIR/autopilot.md   one line per row: a | b | t | r | gate | note (viewer: /status/autopilot.md)
+#   $AP/tick-report.txt        the header line + one `<row> | a | b | t | r` line per in-flight row,
+#                              what the supervise tick ends its turn with (supervise-tick.md STEP 2)
+STATUS_DIR=${STATUS_DIR:-$(dirname "$ALERTS")}
+SC=$(find_core scorecard.py)
+if [ -z "$SC" ]; then
+  log "scorecard.py not found next to pull-state.sh or in $AP; autopilot.md not rendered"
+else
+  TZOFF=$(python3 -c 'import json, sys
+try:
+    m = int(json.load(open(sys.argv[1])).get("install_tz_offset_minutes", 330))
+except Exception:
+    m = 330
+print("%s%02d:%02d" % ("-" if m < 0 else "+", abs(m) // 60, abs(m) % 60))' "$AP/config.json" 2>/dev/null || echo "+05:30")
+  if python3 "$SC" --dir "$AP" --ledger "$LEDGER" --alerts "$ALERTS" --plan "$PLAN" --now "$NOW" --ledger-tz-offset "$TZOFF" \
+       --markdown "$STATUS_DIR/autopilot.md" --brief "$AP/tick-report.txt" > /dev/null 2> "$RAW/abtr.err"; then
+    log "wrote $STATUS_DIR/autopilot.md and $AP/tick-report.txt"
+  else
+    log "a|b|t|r render failed (state.json is written; not fatal): $(head -c 200 "$RAW/abtr.err" | tr '\n' ' ')"
+  fi
+fi
