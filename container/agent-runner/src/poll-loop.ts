@@ -2288,7 +2288,13 @@ export function freshSessionArrivalAction(idleMs: number, idleEndMs: number = ID
 /**
  * Default-on fresh-session policy for recurring task batches:
  *   - Empty batch: false (defensive — no spurious fresh sessions).
- *   - Any chat in the batch: false (mixed batches preserve chat history).
+ *   - Any ADDRESSED chat in the batch (trigger=1): false (mixed batches preserve
+ *     chat history). Accumulated trigger=0 context rows (session echoes, ambient
+ *     channel traffic the router stored for context) ride along with whatever
+ *     batch picks them up and do NOT veto: on prod 2026-09-09 three such echoes
+ *     turned a scheduled task's batch into "task,chat", so the fold ran inside
+ *     the immortal Orchestrator's 1M-context continuation instead of a fresh
+ *     session, and the run was wasted.
  *   - All-tasks AND at least one opts out via `new_session: false`: false
  *     (safer to preserve continuity than drop it when any task asks).
  *   - All-tasks AND none opts out: true (the common heartbeat/cron case,
@@ -2299,8 +2305,10 @@ export function freshSessionArrivalAction(idleMs: number, idleEndMs: number = ID
  * support: $0.57 after flip vs $1.00 before, on 11 turns vs 3) confirmed
  * the delta is real enough to make opt-out the sane default.
  */
-export function isNewSessionBatch(keep: Array<{ kind: string; content: string }>): boolean {
-  return keep.length > 0 && keep.every((m) => m.kind === 'task') && !keep.some(taskOptsOutOfNewSession);
+export function isNewSessionBatch(keep: Array<{ kind: string; content: string; trigger?: number }>): boolean {
+  // Rows without a trigger column (older callers, tests) count as addressed.
+  const addressed = keep.filter((m) => m.trigger !== 0);
+  return addressed.length > 0 && addressed.every((m) => m.kind === 'task') && !addressed.some(taskOptsOutOfNewSession);
 }
 
 /**
